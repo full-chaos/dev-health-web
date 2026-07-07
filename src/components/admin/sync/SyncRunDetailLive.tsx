@@ -58,6 +58,39 @@ function unitBadgeStatus(status: string): SyncStatus {
     }
 }
 
+function statusCount(summary: SyncRunUnitSummary | null, status: string): number | null {
+    if (!summary) return null;
+    return summary.by_status[status] ?? 0;
+}
+
+function totalUnitCount(run: SyncRun, summary: SyncRunUnitSummary | null): number {
+    return summary ? Math.max(summary.unit_count, run.total_units) : run.total_units;
+}
+
+function effectiveRunStatus(run: SyncRun, summary: SyncRunUnitSummary | null): string {
+    if (!summary) return run.status;
+
+    const successCount = statusCount(summary, "success") ?? 0;
+    const failedCount = statusCount(summary, "failed") ?? 0;
+    const settledCount = successCount + failedCount;
+    const totalUnits = totalUnitCount(run, summary);
+    if (totalUnits > 0 && settledCount >= totalUnits) {
+        if (failedCount === 0) return "success";
+        if (successCount === 0) return "failed";
+        return "partial_failed";
+    }
+    if (
+        settledCount > 0 ||
+        (statusCount(summary, "running") ?? 0) > 0 ||
+        (statusCount(summary, "retrying") ?? 0) > 0
+    ) {
+        return "running";
+    }
+    if ((statusCount(summary, "dispatching") ?? 0) > 0) return "dispatching";
+    if ((statusCount(summary, "planned") ?? 0) > 0) return "planned";
+    return run.status;
+}
+
 function formatDuration(seconds: number | null): string {
     if (seconds == null) return "—";
     if (seconds < 60) return `${formatNumber(seconds)}s`;
@@ -194,13 +227,17 @@ export function SyncRunDetailLive({
         }
     }, []);
 
+    const currentRunStatus = effectiveRunStatus(run, summary);
+    const liveStatus = mapPlannerRunStatus(currentRunStatus);
+    const isTerminal = isTerminalSyncStatus(liveStatus);
+
     // Poll run + unit state while the run is non-terminal, mirroring the
     // cleanup/timeout discipline in useSyncTrigger.ts. State is only mutated
     // inside the async interval callback (never synchronously in the effect
     // body), so react-hooks/set-state-in-effect stays satisfied.
     useEffect(() => {
         if (testMode) return undefined;
-        if (isTerminalSyncStatus(mapPlannerRunStatus(initialRun.status))) return undefined;
+        if (isTerminal) return undefined;
 
         let cancelled = false;
 
@@ -233,7 +270,10 @@ export function SyncRunDetailLive({
                 setUnitsError(null);
                 const nextRun = runRes.data;
                 setRun(nextRun);
-                if (isTerminalSyncStatus(mapPlannerRunStatus(nextRun.status))) {
+                const nextLiveStatus = mapPlannerRunStatus(
+                    effectiveRunStatus(nextRun, unitsRes.data),
+                );
+                if (isTerminalSyncStatus(nextLiveStatus)) {
                     stopPolling();
                 }
             } finally {
@@ -248,10 +288,7 @@ export function SyncRunDetailLive({
             cancelled = true;
             stopPolling();
         };
-    }, [testMode, runId, initialRun.status, stopPolling]);
-
-    const liveStatus = mapPlannerRunStatus(run.status);
-    const isTerminal = isTerminalSyncStatus(liveStatus);
+    }, [testMode, runId, isTerminal, stopPolling]);
 
     // Resolve source ids → display names from the units themselves. We NEVER
     // surface a raw source id when a resolved name exists (web DoD / A7).
@@ -269,9 +306,9 @@ export function SyncRunDetailLive({
         [sourceNameById],
     );
 
-    const total = run.total_units;
-    const completed = run.completed_units;
-    const failed = run.failed_units;
+    const total = totalUnitCount(run, summary);
+    const completed = statusCount(summary, "success") ?? run.completed_units;
+    const failed = statusCount(summary, "failed") ?? run.failed_units;
     const settled = Math.min(total, completed + failed);
     const percent = total > 0 ? Math.min(100, Math.round((settled / total) * 100)) : 0;
 
@@ -391,7 +428,7 @@ export function SyncRunDetailLive({
                                 <dt className="text-xs text-(--ink-muted) uppercase tracking-wider">
                                     Status
                                 </dt>
-                                <dd className="text-foreground">{run.status}</dd>
+                                <dd className="text-foreground">{currentRunStatus}</dd>
                             </div>
                             <div>
                                 <dt className="text-xs text-(--ink-muted) uppercase tracking-wider">
@@ -484,7 +521,15 @@ export function SyncRunDetailLive({
                         {formatNumber(settled)} / {formatNumber(total)} ({formatPercent(percent)})
                     </span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-(--card-70)">
+                <div
+                    className="h-2 w-full overflow-hidden rounded-full bg-(--card-70)"
+                    role="progressbar"
+                    aria-label="Overall sync progress"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={percent}
+                    aria-valuetext={`${formatNumber(settled)} of ${formatNumber(total)} units settled`}
+                >
                     <div
                         className="h-full bg-(--accent) transition-all duration-500 ease-out"
                         style={{ width: `${percent}%` }}
