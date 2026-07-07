@@ -16,7 +16,7 @@ export default async function AppLayout({
     const session = await requireSession();
 
     return (
-        <SessionProvider session={session}>
+        <SessionProvider>
             <GraphQLProvider orgId={session.user.org_id}>
                 <TelemetryProvider orgId={session.user.org_id} userId={session.user.id}>
                     <div className="min-h-screen bg-[image:var(--app-gradient)] bg-fixed">
