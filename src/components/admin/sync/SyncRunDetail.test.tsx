@@ -29,6 +29,10 @@ describe("SyncRunDetailLive", () => {
         // completed (2) + failed (1) = 3 of 4 settled → 75%
         expect(screen.getByText(/3 \/ 4/)).toBeInTheDocument();
         expect(screen.getByText(/75%/)).toBeInTheDocument();
+        expect(screen.getByRole("progressbar", { name: "Overall sync progress" })).toHaveAttribute(
+            "aria-valuenow",
+            "75",
+        );
 
         // Status rollup labels from by_status.
         expect(screen.getByText("Unit status")).toBeInTheDocument();
@@ -37,6 +41,62 @@ describe("SyncRunDetailLive", () => {
 
         // Unit count header reflects the summary.
         expect(screen.getByText(/Units \(4\)/)).toBeInTheDocument();
+    });
+
+    it("uses unit rollups for progress when run counters are stale", () => {
+        render(
+            <SyncRunDetailLive
+                initialRun={{
+                    ...SAMPLE_SYNC_RUN,
+                    status: "dispatching",
+                    total_units: 4,
+                    completed_units: 0,
+                    failed_units: 0,
+                }}
+                initialSummary={SAMPLE_SYNC_RUN_UNIT_SUMMARY}
+                testMode
+            />,
+        );
+
+        expect(screen.getByText(/3 \/ 4/)).toBeInTheDocument();
+        expect(screen.getByText(/75%/)).toBeInTheDocument();
+        expect(screen.getByText("running")).toBeInTheDocument();
+        const progressCard = screen.getByText("Overall progress").closest(".rounded-xl");
+        expect(progressCard).toBeInstanceOf(HTMLElement);
+        if (!(progressCard instanceof HTMLElement)) return;
+        expect(within(progressCard).getByText("2")).toBeInTheDocument();
+        expect(within(progressCard).getByText("1")).toBeInTheDocument();
+    });
+
+    it("uses unit rows over a stale terminal run status", () => {
+        render(
+            <SyncRunDetailLive
+                initialRun={{
+                    ...SAMPLE_SYNC_RUN,
+                    status: "success",
+                    total_units: 4,
+                    completed_units: 4,
+                    failed_units: 0,
+                }}
+                initialSummary={{
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                    by_status: { success: 1, running: 3 },
+                    unit_count: 4,
+                    units: SAMPLE_SYNC_RUN_UNIT_SUMMARY.units.map((unit, index) => ({
+                        ...unit,
+                        status: index === 0 ? "success" : "running",
+                    })),
+                }}
+                testMode
+            />,
+        );
+
+        expect(screen.getByText(/1 \/ 4/)).toBeInTheDocument();
+        expect(screen.getByText(/25%/)).toBeInTheDocument();
+        const headerCard = screen.getAllByText("Status")[0]?.closest(".rounded-xl");
+        expect(headerCard).toBeInstanceOf(HTMLElement);
+        if (!(headerCard instanceof HTMLElement)) return;
+        expect(within(headerCard).getByText("running")).toBeInTheDocument();
     });
 
     it("renders resolved source NAMES and never the raw source id", () => {
@@ -273,6 +333,67 @@ describe("SyncRunDetailLive — live poll error handling", () => {
 
         // Last good snapshot is retained — units were NOT fabricated/emptied.
         expect(screen.getByText(/Units \(4\)/)).toBeInTheDocument();
+    });
+
+    it("does not poll when initial unit rollups make a stale running run terminal", async () => {
+        render(
+            <SyncRunDetailLive
+                initialRun={{
+                    ...RUNNING_RUN,
+                    total_units: 4,
+                    completed_units: 0,
+                    failed_units: 0,
+                }}
+                initialSummary={{
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                    by_status: { success: 4 },
+                    unit_count: 4,
+                    units: SAMPLE_SYNC_RUN_UNIT_SUMMARY.units.map((unit) => ({
+                        ...unit,
+                        status: "success",
+                    })),
+                }}
+            />,
+        );
+
+        expect(screen.getByText(/Run complete/)).toBeInTheDocument();
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(3500 * 2);
+        });
+        expect(getSyncRunStatus).not.toHaveBeenCalled();
+    });
+
+    it("keeps polling when unit rows are incomplete relative to run total", async () => {
+        const partialSummary = {
+            ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+            by_status: { success: 1 },
+            unit_count: 1,
+            units: [
+                {
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY.units[0],
+                    status: "success",
+                },
+            ],
+        };
+        const staleRun = {
+            ...RUNNING_RUN,
+            total_units: 4,
+            completed_units: 0,
+            failed_units: 0,
+        };
+        vi.mocked(getSyncRunStatus).mockResolvedValue({ data: staleRun });
+        vi.mocked(getSyncRunUnits).mockResolvedValue({ data: partialSummary });
+
+        render(<SyncRunDetailLive initialRun={staleRun} initialSummary={partialSummary} />);
+
+        expect(screen.getByText(/1 \/ 4/)).toBeInTheDocument();
+        expect(screen.getByText(/25%/)).toBeInTheDocument();
+        expect(screen.getByText("running")).toBeInTheDocument();
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(3500 * 2);
+        });
+        expect(getSyncRunStatus).toHaveBeenCalledTimes(2);
+        expect(getSyncRunUnits).toHaveBeenCalledTimes(2);
     });
 
     it("renders the server-side initialUnitsError without polling for a terminal run", () => {
