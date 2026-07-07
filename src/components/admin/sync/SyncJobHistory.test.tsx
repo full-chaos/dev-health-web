@@ -150,8 +150,8 @@ describe("SyncJobHistory", () => {
 
             await waitFor(() => {
                 expect(mockGetSyncJobs).toHaveBeenCalledWith("cfg-1", 11, 10);
+                expect(screen.getByText("Showing 11-15")).toBeInTheDocument();
             });
-            expect(screen.getByText("Showing 11-15")).toBeInTheDocument();
         });
 
         it("shows an inline error and keeps the current page when the fetch fails", async () => {
