@@ -4,7 +4,9 @@ import {
     formatMetricValue,
     formatNumber,
     formatPercent,
+    formatTimestamp,
     formatDateTimeUTC,
+    parseTimestampDate,
     defaultFormatter,
     integerFormatter,
     compactFormatter,
@@ -61,6 +63,25 @@ describe("formatters", () => {
             expect(formatMetricValue(42, "%")).toBe("42%");
             expect(formatMetricValue(3, "days")).toBe("3d");
         });
+    });
+});
+
+describe("timestamp formatting", () => {
+    it("parses API timestamps without an explicit timezone as UTC", () => {
+        expect(parseTimestampDate("2026-07-08T17:06:00.000")?.toISOString()).toBe(
+            "2026-07-08T17:06:00.000Z",
+        );
+    });
+
+    it("formats timezone-less and explicit UTC timestamps identically", () => {
+        expect(formatTimestamp("2026-07-08T17:06:00.000")).toBe(
+            formatTimestamp("2026-07-08T17:06:00.000Z"),
+        );
+    });
+
+    it("uses the provided fallback for missing or invalid values", () => {
+        expect(formatTimestamp(null, "—")).toBe("—");
+        expect(formatTimestamp("not-a-date", "—")).toBe("—");
     });
 });
 

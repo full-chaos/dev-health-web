@@ -69,7 +69,9 @@ describe("SyncJobHistory", () => {
     it("renders requested/covered ranges and links planner-backed rows to run detail", () => {
         render(<SyncJobHistory jobs={[SYNC_JOB_WITH_RUN]} configId="cfg-1" testMode />);
 
-        const link = screen.getByRole("link", { name: /View run details/ });
+        const link = screen.getByRole("link", {
+            name: /View run details for sync run started/,
+        });
         expect(link).toHaveAttribute("href", "/org/admin/sync/cfg-1/runs/run-coverage");
         expect(screen.getByText("Jan 1, 2026 → Jan 3, 2026")).toBeInTheDocument();
     });

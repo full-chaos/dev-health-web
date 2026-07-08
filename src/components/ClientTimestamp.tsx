@@ -1,21 +1,7 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
-
-const formatter = new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-});
-
-function formatLocal(value: string): string {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    const parts = formatter.formatToParts(date);
-    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
-    return `${get("month")} ${get("day")}, ${get("hour")}:${get("minute")} ${get("dayPeriod")}`;
-}
+import { formatTimestamp } from "@/lib/formatters";
 
 const subscribe = () => () => {};
 const getSnapshot = () => true;
@@ -38,7 +24,7 @@ export function ClientTimestamp({
 }: ClientTimestampProps) {
     const isClient = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-    const formatted = isClient ? (value ? formatLocal(value) || fallback : fallback) : "";
+    const formatted = isClient ? formatTimestamp(value, fallback) : "";
 
     return (
         <span className={className}>
