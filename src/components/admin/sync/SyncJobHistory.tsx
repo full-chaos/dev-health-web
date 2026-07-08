@@ -7,7 +7,7 @@ import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { getSyncJobs } from "@/lib/admin/server";
 import type { SyncJob } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { formatNumber } from "@/lib/formatters";
+import { formatDateTimeUTC, formatNumber } from "@/lib/formatters";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 import { CoverageBadge, jobCoverageLabel, jobCoverageTone } from "./CoverageBadge";
 import {
@@ -118,6 +118,9 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                     {visibleJobs.map((job) => {
                         const runId = getRunId(job);
                         const href = runId ? `/org/admin/sync/${configId}/runs/${runId}` : null;
+                        const formattedRunStarted = formatDateTimeUTC(job.started_at);
+                        const runStartedLabel =
+                            formattedRunStarted === "—" ? "unknown time" : formattedRunStarted;
                         const coverageResult = deriveJobCoverageResult(job);
                         const sr = job.sync_run;
 
@@ -174,7 +177,7 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                                     {href ? (
                                         <Link
                                             href={href}
-                                            aria-label={CTA_LABELS.viewRun}
+                                            aria-label={`View run details for sync run started ${runStartedLabel}`}
                                             className="text-(--accent) hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent)"
                                         >
                                             {CTA_LABELS.viewRun}
