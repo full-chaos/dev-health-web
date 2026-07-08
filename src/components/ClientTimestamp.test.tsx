@@ -21,6 +21,18 @@ describe("ClientTimestamp", () => {
         expect(span?.textContent).not.toBe("");
     });
 
+    it("renders timezone-less API timestamps the same as explicit UTC timestamps", () => {
+        render(
+            <>
+                <ClientTimestamp value="2026-07-08T17:06:00.000" fallback="N/A" />
+                <ClientTimestamp value="2026-07-08T17:06:00.000Z" fallback="N/A" />
+            </>,
+        );
+
+        const spans = document.querySelectorAll("span");
+        expect(spans[0]?.textContent).toBe(spans[1]?.textContent);
+    });
+
     it("renders fallback for an invalid date string", () => {
         render(<ClientTimestamp value="not-a-date" fallback="Invalid" />);
         expect(screen.getByText("Invalid")).toBeInTheDocument();

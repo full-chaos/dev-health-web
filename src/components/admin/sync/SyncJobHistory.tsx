@@ -3,19 +3,24 @@
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { getSyncJobs } from "@/lib/admin/server";
 import type { SyncJob } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { formatDateUTC, formatNumber } from "@/lib/formatters";
+import { formatNumber } from "@/lib/formatters";
 import { SyncStatusBadge } from "./SyncStatusBadge";
+import { CoverageBadge, jobCoverageLabel, jobCoverageTone } from "./CoverageBadge";
 import {
-    CoverageBadge,
-    jobCoverageLabel,
-    jobCoverageTone,
-    type JobCoverageResult,
-} from "./CoverageBadge";
-
-const PAGE_SIZE = 10;
+    deriveJobCoverageResult,
+    formatRange,
+    getBadgeLabel,
+    getBadgeStatus,
+    getDuration,
+    getRunId,
+    getScopeLabel,
+    HEADINGS,
+    PAGE_SIZE,
+} from "./SyncJobHistory.helpers";
 
 interface SyncJobHistoryProps {
     jobs: SyncJob[];
@@ -27,139 +32,6 @@ interface SyncJobHistoryProps {
      */
     testMode?: boolean;
 }
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-    return value !== null && typeof value === "object" && !Array.isArray(value);
-}
-
-// Locked UTC-anchored formatter: bare toLocaleString() drifts between Node
-// and browser locales/timezones (hydration + CI mismatches). Module-level
-// so we don't allocate a new Intl.DateTimeFormat per render.
-const TIMESTAMP_FORMATTER = new Intl.DateTimeFormat("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "UTC",
-});
-
-function formatTimestamp(value: string | null | undefined): string {
-    if (!value) return "—";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "—";
-    return TIMESTAMP_FORMATTER.format(date);
-}
-
-function formatRange(range: { since: string; before: string } | null | undefined): string {
-    if (!range) return "—";
-    return `${formatDateUTC(range.since)} → ${formatDateUTC(range.before)}`;
-}
-
-function getDuration(job: SyncJob): string {
-    if (job.duration_seconds != null) return `${Math.round(job.duration_seconds)}s`;
-    if (job.completed_at && job.started_at) {
-        return `${Math.round(
-            (new Date(job.completed_at).getTime() - new Date(job.started_at).getTime()) / 1000,
-        )}s`;
-    }
-    return "—";
-}
-
-function getBadgeStatus(status: SyncJob["status"]) {
-    switch (status) {
-        case "success":
-            return "success" as const;
-        case "failed":
-        case "cancelled":
-            return "failed" as const;
-        case "running":
-            return "running" as const;
-        case "pending":
-            return "idle" as const;
-        default:
-            return "never" as const;
-    }
-}
-
-function getBadgeLabel(status: SyncJob["status"]) {
-    switch (status) {
-        case "pending":
-            return "Queued";
-        case "cancelled":
-            return "Cancelled";
-        default:
-            return undefined;
-    }
-}
-
-/**
- * Derive the coverage-result label for a planner-backed job (CHAOS-2792),
- * using ONLY persisted job status + sync_run unit counts. Never re-derives
- * from range/interval comparisons (platform ban on client-side coverage math).
- * Returns null for non-terminal jobs or legacy rows (no sync_run block) —
- * those render the plain job status badge instead.
- *
- * Precedence is deliberate and pinned by tests: failed > partial > gap >
- * complete. A terminal failed/cancelled run is a STRONGER signal than an
- * unsettled-units gap — so a failed/cancelled run with unsettled units
- * (settled < total_units) still reports "failed"/"partial", never "gap".
- * Only a terminal SUCCESS run with unsettled units reports "gap".
- */
-function deriveJobCoverageResult(job: SyncJob): JobCoverageResult | null {
-    const sr = job.sync_run;
-    if (!sr) return null;
-    if (job.status === "pending" || job.status === "running") return null;
-
-    const settled = sr.completed_units + sr.failed_units;
-
-    // failed/cancelled precedence: a stronger signal than "gap" (see doc
-    // comment above) — reported regardless of how many units settled.
-    if (job.status === "failed" || job.status === "cancelled") {
-        return sr.completed_units === 0 ? "failed" : "partial";
-    }
-    // job.status === "success"
-    if (sr.total_units === 0) return "complete";
-    if (sr.failed_units > 0 && sr.completed_units > 0) return "partial";
-    if (sr.failed_units > 0 && sr.completed_units === 0) return "failed";
-    if (settled < sr.total_units) return "gap";
-    return "complete";
-}
-
-function getRunId(job: SyncJob): string | null {
-    if (job.sync_run?.sync_run_id) return job.sync_run.sync_run_id;
-    if (isRecord(job.result) && typeof job.result.sync_run_id === "string") {
-        return job.result.sync_run_id;
-    }
-    return null;
-}
-
-function getScopeLabel(job: SyncJob): string {
-    const sr = job.sync_run;
-    if (!sr) {
-        const datasetKey =
-            isRecord(job.result) && typeof job.result.dataset_key === "string"
-                ? job.result.dataset_key
-                : null;
-        return datasetKey ?? "—";
-    }
-    const sourceIds = new Set<string>([
-        ...(sr.requested_range?.source_ids ?? []),
-        ...(sr.covered_range?.source_ids ?? []),
-    ]);
-    if (sourceIds.size === 0) return "—";
-    return `${formatNumber(sourceIds.size)} source${sourceIds.size === 1 ? "" : "s"}`;
-}
-
-const HEADINGS = [
-    "Trigger",
-    "Mode",
-    "Requested range",
-    "Covered range",
-    "Status",
-    "Scope",
-    "Units",
-    "Started",
-    "Duration",
-    "Actions",
-];
 
 export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHistoryProps) {
     const router = useRouter();
@@ -293,7 +165,7 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                                         : (job.items_synced ?? "—")}
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">
-                                    {formatTimestamp(job.started_at)}
+                                    <ClientTimestamp value={job.started_at} fallback="—" />
                                 </td>
                                 <td className="px-4 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
                                     {getDuration(job)}
@@ -302,9 +174,7 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                                     {href ? (
                                         <Link
                                             href={href}
-                                            aria-label={`View run details for sync run started ${formatTimestamp(
-                                                job.started_at,
-                                            )}`}
+                                            aria-label={CTA_LABELS.viewRun}
                                             className="text-(--accent) hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent)"
                                         >
                                             {CTA_LABELS.viewRun}
