@@ -19,6 +19,15 @@ const _tsParts = new Intl.DateTimeFormat("en-US", {
     minute: "2-digit",
 });
 
+const ISO_DATETIME_WITHOUT_TIMEZONE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,6})?)?$/;
+
+export const parseTimestampDate = (value: string | null | undefined): Date | null => {
+    if (!value) return null;
+    const normalizedValue = ISO_DATETIME_WITHOUT_TIMEZONE.test(value) ? `${value}Z` : value;
+    const date = new Date(normalizedValue);
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+
 // Fallback cache for custom formatter options - exported for testing
 export const customFormatters = new Map<string, Intl.NumberFormat>();
 
@@ -87,14 +96,9 @@ export const formatMetricValue = (value: number, unit: string) => {
     return `${formatNumber(value)} ${unit}`.trim();
 };
 
-export const formatTimestamp = (value?: string | null) => {
-    if (!value) {
-        return "Unavailable";
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-        return "Unavailable";
-    }
+export const formatTimestamp = (value?: string | null, fallback = "Unavailable") => {
+    const date = parseTimestampDate(value);
+    if (!date) return fallback;
     const parts = _tsParts.formatToParts(date);
     const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
     return `${get("month")} ${get("day")}, ${get("hour")}:${get("minute")} ${get("dayPeriod")}`;
@@ -107,13 +111,33 @@ export const formatTimestamp = (value?: string | null) => {
  * two coverage surfaces never drift apart on date-only formatting.
  */
 export const formatDateUTC = (value: string | null | undefined): string => {
-    if (!value) return "—";
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "—";
+    const date = parseTimestampDate(value);
+    if (!date) return "—";
     return date.toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
         day: "numeric",
         timeZone: "UTC",
+    });
+};
+
+/**
+ * Full date + time formatter locked to UTC (CHAOS-2843): audit-log
+ * timestamps must be unambiguous and deterministic across server/client
+ * rendering, so this never falls back to a bare `toLocaleString()` call.
+ * Appends an explicit `UTC` marker so investigators never misread the
+ * offset.
+ */
+export const formatDateTimeUTC = (value: string | null | undefined): string => {
+    const date = parseTimestampDate(value);
+    if (!date) return "—";
+    return date.toLocaleString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "UTC",
+        timeZoneName: "short",
     });
 };

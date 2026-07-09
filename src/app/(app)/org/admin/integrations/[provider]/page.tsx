@@ -10,10 +10,10 @@ import { ModeCards } from "@/components/admin/integrations/customer-push/ModeCar
 import { CustomerPushLockedPreview } from "@/components/admin/integrations/customer-push/CustomerPushLockedPreview";
 import { CustomerPushSourceList } from "@/components/admin/integrations/customer-push/CustomerPushSourceList";
 import {
-    listCredentials,
-    listSyncConfigs,
-    listCustomerPushSources,
     getCustomerPushIngestEntitlement,
+    listCredentials,
+    listCustomerPushSources,
+    listSyncConfigs,
 } from "@/lib/admin/server";
 import {
     CUSTOMER_PUSH_INGEST_FEATURE,
@@ -77,22 +77,27 @@ export default async function IntegrationPage({
     const customerPushSources = customerPushSourcesResult?.data ?? [];
 
     return (
-        <div>
+        <div className="space-y-6">
             <AdminHeader
-                title={`${providerName} Integration`}
+                title={providerName}
                 description={
                     isCustomProvider
                         ? "Manage your custom customer-push sources."
-                        : `Manage your ${providerName} connections and ingestion mode.`
+                        : `Manage ${providerName} credentials and connections.`
                 }
             />
 
             {credentialsResult.error && !isCustomProvider && (
-                <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
                     Failed to load credentials: {credentialsResult.error}
                 </div>
             )}
 
+            {/* CHAOS-2837: never a standalone install-card CTA on this page —
+                setup (including the recommended GitHub App path) routes entirely
+                through the Add Provider wizard below. This banner only ever
+                surfaces the OAuth-callback result (connected/error) when the
+                browser lands back here after the install round trip. */}
             {provider === "github" && githubAppResult && (
                 <GitHubAppConnect result={githubAppResult} variant="banner-only" />
             )}
@@ -103,11 +108,12 @@ export default async function IntegrationPage({
                 </div>
             )}
 
-            {supportsCustomerPush && customerPushEnabled && (
+            {supportsCustomerPush && (!isCustomProvider || customerPushEnabled) && (
                 <ModeCards
                     provider={provider}
                     providerName={providerName}
                     showManagedSync={!isCustomProvider}
+                    showCustomerPush={customerPushEnabled}
                     customerPushSourceCount={customerPushSources.length}
                 />
             )}
@@ -125,13 +131,6 @@ export default async function IntegrationPage({
 
             {!isCustomProvider && (
                 <div id="managed-sync-credentials" className="space-y-8">
-                    <ModeCards
-                        provider={provider}
-                        providerName={providerName}
-                        showManagedSync={true}
-                        showCustomerPush={false}
-                        customerPushSourceCount={0}
-                    />
                     <ProviderCredentialsList
                         provider={provider as Provider}
                         providerName={providerName}

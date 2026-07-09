@@ -103,11 +103,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
 
     const quadrantPoints = riskData.quadrant_data
         ? riskData.quadrant_data.flatMap(
-              (item: {
-                  id: string;
-                  pipeline_success_rate: number;
-                  test_pass_rate?: number | null;
-              }) => {
+              (item: { id: string; pipeline_success_rate?: number; test_pass_rate?: number }) => {
                   if (
                       !isFiniteNumber(item.pipeline_success_rate) ||
                       !isFiniteNumber(item.test_pass_rate)
@@ -179,7 +175,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                         <MetricCard
                             label="Release Confidence"
                             value={
-                                riskData.release_confidence
+                                riskData.release_confidence != null
                                     ? riskData.release_confidence * 100
                                     : undefined
                             }
@@ -199,7 +195,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                         <MetricCard
                             label="Pipeline Stability"
                             value={
-                                riskData.pipeline_stability
+                                riskData.pipeline_stability != null
                                     ? riskData.pipeline_stability * 100
                                     : undefined
                             }

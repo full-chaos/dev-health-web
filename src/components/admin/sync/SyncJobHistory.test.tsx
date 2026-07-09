@@ -69,7 +69,9 @@ describe("SyncJobHistory", () => {
     it("renders requested/covered ranges and links planner-backed rows to run detail", () => {
         render(<SyncJobHistory jobs={[SYNC_JOB_WITH_RUN]} configId="cfg-1" testMode />);
 
-        const link = screen.getByRole("link", { name: /View run details/ });
+        const link = screen.getByRole("link", {
+            name: /View run details for sync run started/,
+        });
         expect(link).toHaveAttribute("href", "/org/admin/sync/cfg-1/runs/run-coverage");
         expect(screen.getByText("Jan 1, 2026 → Jan 3, 2026")).toBeInTheDocument();
     });
@@ -150,8 +152,8 @@ describe("SyncJobHistory", () => {
 
             await waitFor(() => {
                 expect(mockGetSyncJobs).toHaveBeenCalledWith("cfg-1", 11, 10);
+                expect(screen.getByText("Showing 11-15")).toBeInTheDocument();
             });
-            expect(screen.getByText("Showing 11-15")).toBeInTheDocument();
         });
 
         it("shows an inline error and keeps the current page when the fetch fails", async () => {

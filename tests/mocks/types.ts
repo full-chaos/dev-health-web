@@ -126,18 +126,142 @@ export interface MockSyncConfig {
     updated_at: string;
 }
 
+/**
+ * Mirrors the backend TeamMapping contract (src/lib/admin/types.ts) so admin
+ * surfaces that dereference array fields (repo_patterns, project_keys) never
+ * throw on mock-created rows. `source` is a legacy mock-only field kept for
+ * existing specs.
+ */
 export interface MockTeam {
     id: string;
     team_id: string;
     name: string;
-    source: string;
+    source?: string;
+    description: string | null;
+    repo_patterns: string[];
+    project_keys: string[];
+    extra_data: Record<string, unknown>;
+    managed_fields: string[];
+    sync_policy: number;
+    flagged_changes: Record<string, unknown> | null;
+    last_drift_sync_at: string | null;
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
 }
 
+/**
+ * Mirrors the backend IdentityMapping contract (src/lib/admin/types.ts) so
+ * admin surfaces that dereference team_ids/provider_identities never throw on
+ * mock-created rows. provider/external_id/user_id are legacy mock-only fields
+ * kept for existing specs.
+ */
 export interface MockIdentity {
     id: string;
-    provider: string;
-    external_id: string;
-    user_id: string;
+    canonical_id: string;
+    display_name: string | null;
+    email: string | null;
+    provider_identities: Record<string, string[]>;
+    team_ids: string[];
+    is_active: boolean;
+    created_at: string;
+    updated_at: string;
+    provider?: string;
+    external_id?: string;
+    user_id?: string;
+}
+
+/**
+ * Mirrors IngestSourceResponse (CHAOS-2690/2714) — verified directly against
+ * dev-health-ops/api/admin/schemas/customer_push.py. See
+ * src/lib/admin/types.ts's CustomerPushSource for the full field-shape notes.
+ */
+export interface MockCustomerPushSource {
+    id: string;
+    org_id: string;
+    system: string;
+    instance: string;
+    display_name: string | null;
+    mode: "fullchaos_sync" | "customer_push" | "disabled";
+    enabled: boolean;
+    webhook_mode: "disabled" | "customer_relay" | "fullchaos_hosted";
+    matched_integration_source_id: string | null;
+    created_at: string;
+    updated_at: string;
+    warnings: string[];
+}
+
+/** Mirrors IngestTokenResponse — no `token`/`status`/`last_result` field. */
+export interface MockCustomerPushToken {
+    id: string;
+    org_id: string;
+    source_id: string | null;
+    name: string;
+    token_prefix: string;
+    scopes: string[];
+    expires_at: string | null;
+    revoked_at: string | null;
+    last_used_at: string | null;
+    created_at: string;
+}
+
+/** Mirrors IngestTokenCreateResponse — one-time plaintext token. */
+export interface MockCustomerPushTokenCreateResponse extends MockCustomerPushToken {
+    token: string;
+}
+
+/** Mirrors AdminBatchListItemResponse (list row — no window/producer_version/org_id). */
+export interface MockCustomerPushBatchSummary {
+    ingestion_id: string;
+    status: "accepted" | "stream_unavailable" | "processing" | "completed" | "partial" | "failed";
+    source_system: string;
+    source_instance: string;
+    producer: string | null;
+    items_received: number;
+    items_accepted: number;
+    items_rejected: number;
+    created_at: string;
+    completed_at: string | null;
+}
+
+/** Mirrors AdminBatchListResponse — paginated envelope, not a bare array. */
+export interface MockCustomerPushBatchListResponse {
+    items: MockCustomerPushBatchSummary[];
+    total: number;
+    limit: number;
+    offset: number;
+}
+
+/** Mirrors AdminRejectedRecordResponse — `path` is nullable. */
+export interface MockCustomerPushRejectedRecord {
+    index: number;
+    kind: string;
+    external_id: string | null;
+    code: string;
+    message: string;
+    path: string | null;
+}
+
+/** Mirrors AdminBatchResponse (full detail, incl. paginated rejected_records). */
+export interface MockCustomerPushBatchDetail extends MockCustomerPushBatchSummary {
+    org_id: string;
+    attempts: number;
+    producer_version: string | null;
+    schema_version: string;
+    window_started_at: string | null;
+    window_ended_at: string | null;
+    record_counts: Record<string, number> | null;
+    error_summary: {
+        total_rejected: number;
+        stored_rejections: number;
+        truncated: boolean;
+        top_codes: { code: string; count: number }[];
+    } | null;
+    updated_at: string;
+    rejected_records: MockCustomerPushRejectedRecord[];
+    rejected_records_total: number;
+    rejected_records_limit: number;
+    rejected_records_offset: number;
 }
 
 /**

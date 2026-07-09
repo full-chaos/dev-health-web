@@ -43,6 +43,7 @@ export interface SetupStatus {
     has_sync_config: boolean;
     sync_config_id: string | null;
     first_sync_started: boolean;
+    first_sync_completed: boolean;
     sync_status: SetupSyncStatus;
     selected_repositories_count: number;
     last_sync_error: string | null;

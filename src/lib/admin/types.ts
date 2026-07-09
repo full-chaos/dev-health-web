@@ -373,6 +373,7 @@ export interface BackfillJob {
     started_at: string | null;
     completed_at: string | null;
     created_at: string;
+    updated_at: string;
 }
 
 export interface BackfillJobListResponse {
@@ -405,19 +406,21 @@ export interface IdentityMapping {
     updated_at: string;
 }
 
+/**
+ * Payload for POST /identities. The backend endpoint
+ * (create_or_update_identity) is an UPSERT keyed on `canonical_id` with
+ * replacement semantics for `provider_identities` / `team_ids`: a field
+ * that IS present in the request body replaces the stored value wholesale,
+ * even if the array/object is empty. There is no PATCH /identities/{id}
+ * route — both create and update flows must POST the FULL desired state
+ * (not a partial diff) through this same shape.
+ */
 export interface IdentityMappingCreate {
     canonical_id: string;
     display_name?: string | null;
     email?: string | null;
     provider_identities?: Record<string, string[]>;
     team_ids?: string[];
-}
-
-export interface IdentityMappingUpdate {
-    display_name?: string | null;
-    email?: string | null;
-    provider_identities?: Record<string, string[]> | null;
-    team_ids?: string[] | null;
 }
 
 // ---- Team Mappings ----
@@ -769,6 +772,88 @@ export interface LLMSettingsActionResult<T> {
     status?: number;
 }
 
+// ---- BYO LLM Spend Summary (CHAOS-2564) ----
+
+/**
+ * A single run's LLM spend aggregate row, returned inside
+ * `GET /admin/llm-settings/spend`. Sourced from ClickHouse `llm_token_usage`
+ * (per-run calls/tokens/model) joined with `failures_by_class` derived from
+ * `work_unit_investments.categorization_status` / `categorization_errors_json`
+ * for that run (see CHAOS-2349 plan §3 Task B).
+ *
+ * `failures_by_class` keys are persisted **categorization-outcome** classes
+ * (e.g. "llm_error", "low_confidence") — NOT the exact fatal provider-exception
+ * taxonomy (`LLMAuthError`/`LLMRateLimitError`/etc, which is only logged, never
+ * persisted). The UI must label this distinction explicitly (plan §7 C4).
+ */
+export interface LLMSpendRunSummary {
+    run_id: string;
+    provider?: string | null;
+    model: string | null;
+    calls: number;
+    input_tokens: number;
+    output_tokens: number;
+    computed_at?: string | null;
+    failures_by_class: Record<string, number>;
+}
+
+/**
+ * A pre-run_id `llm_token_usage` row — spend recorded before `run_id` was
+ * threaded through the sink (plan §7 C1). `run_id` is always the empty
+ * string here (`marker: "legacy_empty_run_id"` flags it); the UI must never
+ * present these as per-run data (plan §6.3, §7 C4).
+ */
+export interface LLMSpendLegacyRow {
+    run_id: "";
+    marker: "legacy_empty_run_id";
+    provider: string | null;
+    model: string | null;
+    calls: number;
+    input_tokens: number;
+    output_tokens: number;
+    computed_at: string | null;
+}
+
+/**
+ * `GET /admin/llm-settings/spend` response. Org-scoped; `runs` defaults to
+ * the latest ~20 non-empty `run_id`s within the last 30 days (`since`),
+ * capped at `limit`, ordered by `max(computed_at) DESC` (CHAOS-2349 plan
+ * §6.3). `legacy` holds pre-run_id rows excluded from `runs` — spend
+ * happened but can't be attributed to a specific run; the UI must render an
+ * explicit legacy state for them and never fold them into per-run data
+ * (plan §6.3, §7 C4).
+ */
+export interface LLMSpendSummaryResponse {
+    since: string;
+    limit: number;
+    runs: LLMSpendRunSummary[];
+    legacy: LLMSpendLegacyRow[];
+}
+
+/**
+ * Reason code for the current BYO-LLM status evaluation (CHAOS-2560, plan
+ * correction C2). The backend evaluator is pure (no AuditLog side effects on
+ * a GET) and returns exactly one of these buckets.
+ */
+export type LLMSettingsStatusReasonCode =
+    "not_configured" | "unknown_provider" | "missing_credentials" | "invalid_base_url" | "active";
+
+/**
+ * GET /admin/llm-settings/status response (CHAOS-2560). Drives the BYO-LLM
+ * status badge on the AI Setup summary (CHAOS-2565): `active` renders
+ * "Active", `configured && degraded` renders "Invalid — using platform
+ * default", and `!configured` renders "Not configured". This endpoint is a
+ * pure evaluator over stored settings + recent fallback audit rows — never a
+ * live provider call — so a fetch failure degrades gracefully to the
+ * settings-derived Saved/Not configured wording rather than blocking the UI.
+ */
+export interface LLMSettingsStatusResponse {
+    configured: boolean;
+    active: boolean;
+    degraded: boolean;
+    reason_code: LLMSettingsStatusReasonCode;
+    last_fallback_at: string | null;
+}
 // ---- Provider types ----
 
 export type Provider = "github" | "gitlab" | "jira" | "linear" | "launchdarkly";

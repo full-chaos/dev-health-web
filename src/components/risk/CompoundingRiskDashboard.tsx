@@ -16,17 +16,28 @@
 
 import Link from "next/link";
 
-function buildRiskDrilldownUrl({
-    scope,
-}: {
-    scope: { kind: "repo" | "team"; id: string };
-}): string {
-    const params = new URLSearchParams({
-        tab: "graph",
-        risk_scope_kind: scope.kind,
-        risk_scope_id: scope.id,
-    });
-    return `/work?${params.toString()}`;
+import { CTA_LABELS } from "@/lib/design/cta";
+import { defaultMetricFilter } from "@/lib/filters/defaults";
+import type { MetricFilter } from "@/lib/filters/types";
+import { withFilterParam } from "@/lib/filters/url";
+
+// Builds a direct `/diagnose/work-graph?f=…` link (bypassing the lossy
+// `/work` legacy-redirect, which drops any query param outside `tab`/`view`)
+// so the scope survives the drilldown (CHAOS-2851).
+//
+// Repo-scope only: `WorkGraphEdgeFilterInput` (and `GraphView`, which reads
+// `filters.what.repos`) only supports filtering graph edges by `repoIds` —
+// there is no team-repo resolution available client-side today. Team-scope
+// rows therefore render a disabled indicator instead of a drilldown link
+// (see `ScopeTable` below) rather than linking to an unscoped/misleading
+// "global" graph.
+function buildRiskDrilldownUrl({ repoId }: { repoId: string }): string {
+    const filters: MetricFilter = {
+        ...defaultMetricFilter,
+        scope: { level: "repo", ids: [repoId] },
+        what: { ...defaultMetricFilter.what, repos: [repoId] },
+    };
+    return withFilterParam("/diagnose/work-graph", filters);
 }
 
 export type CompoundingRiskSeverity = "unknown" | "low" | "elevated" | "high";
@@ -40,7 +51,6 @@ export type CompoundingRiskComponentsView = {
     reviewNorm: number | null;
     reworkChurn: number | null;
     complexityDelta: number | null;
-    busFactor: number | null;
     ownershipGini: number | null;
     singleOwnerRatio: number | null;
     reviewLatencyP90h: number | null;
@@ -82,7 +92,7 @@ export type CompoundingRiskDashboardProps = {
     breakout: CompoundingRiskScope;
     rows: CompoundingRiskRowView[];
     trend: CompoundingRiskTrendPointView[];
-    generatedAt: string;
+    generatedAt: string | null;
 };
 
 const SEVERITY_COPY: Record<CompoundingRiskSeverity, { label: string; tone: string }> = {
@@ -249,9 +259,9 @@ function ScopeTable({
                 className="rounded-2xl border border-(--card-stroke) bg-card p-6 text-sm text-(--ink-muted)"
                 data-testid="empty-state"
             >
-                No Compounding Risk data is available for this org yet. Run{" "}
-                <code className="font-mono text-[0.85em]">dev-hops metrics daily</code> to populate{" "}
-                <code className="font-mono text-[0.85em]">compounding_risk_daily</code>.
+                Compounding Risk needs persisted churn, complexity, ownership, and review-latency
+                inputs before it can show a score. Check that the upstream repository metrics and
+                daily risk rollups have completed for this org.
             </p>
         );
     }
@@ -275,12 +285,13 @@ function ScopeTable({
                 </thead>
                 <tbody>
                     {rows.map((row) => {
-                        const workGraphHref = buildRiskDrilldownUrl({
-                            scope:
-                                breakout === "team"
-                                    ? { kind: "team", id: row.scopeId }
-                                    : { kind: "repo", id: row.scopeId },
-                        });
+                        // Team-scope has no persisted team→repo resolution, so
+                        // Work Graph (repo-only filtering) can't be scoped to it —
+                        // only repo rows get an active drilldown.
+                        const workGraphHref =
+                            breakout === "repo"
+                                ? buildRiskDrilldownUrl({ repoId: row.scopeId })
+                                : null;
                         return (
                             <tr
                                 key={row.scopeId}
@@ -311,13 +322,23 @@ function ScopeTable({
                                     {fmtScore(row.components.reviewNorm)}
                                 </td>
                                 <td className="px-5 py-3">
-                                    <Link
-                                        href={workGraphHref}
-                                        className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent) hover:underline"
-                                        data-testid="open-in-work-graph"
-                                    >
-                                        Open in Work Graph →
-                                    </Link>
+                                    {workGraphHref ? (
+                                        <Link
+                                            href={workGraphHref}
+                                            className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent) hover:underline"
+                                            data-testid="open-in-work-graph"
+                                        >
+                                            {CTA_LABELS.openWorkGraph} ↗
+                                        </Link>
+                                    ) : (
+                                        <span
+                                            className="text-xs text-(--ink-muted)"
+                                            data-testid="work-graph-drilldown-unavailable"
+                                            title="Work Graph doesn't support team-level scoping yet; switch to the repo view to drill in."
+                                        >
+                                            Not available for team scope
+                                        </span>
+                                    )}
                                 </td>
                             </tr>
                         );
@@ -329,13 +350,19 @@ function ScopeTable({
 }
 
 export function CompoundingRiskDashboard({
-    orgId,
     breakout,
     rows,
     trend,
     generatedAt,
 }: CompoundingRiskDashboardProps) {
     const hasRows = rows.length > 0;
+    const generatedAtLabel =
+        generatedAt === null
+            ? null
+            : {
+                  dateTime: generatedAt,
+                  text: generatedAt.replace("T", " ").slice(0, 16),
+              };
     const allScoresNull = !hasRows || rows.every((r) => r.score === null);
     if (allScoresNull) {
         const missingInputs: string[] = [];
@@ -360,9 +387,9 @@ export function CompoundingRiskDashboard({
                     className="rounded-2xl border border-(--card-stroke) bg-card p-8 shadow-sm"
                     data-testid="all-scores-null-state"
                 >
-                    <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
+                    <h2 className="text-3xl font-semibold tracking-tight md:text-5xl">
                         Scores currently unavailable
-                    </h1>
+                    </h2>
 
                     <p className="mt-6 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
                         Compounding Risk is a deterministic composite of four normalized inputs:
@@ -372,12 +399,8 @@ export function CompoundingRiskDashboard({
                     </p>
                     <p className="mt-2 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
                         {hasRows
-                            ? `This usually clears once more PR review activity or recent complexity data is recorded. The page will populate automatically when the next daily metrics run completes.`
-                            : `No compounding_risk_daily rows are available yet for this org. Run `}
-                        {!hasRows && (
-                            <code className="font-mono text-[0.85em]">dev-hops metrics daily</code>
-                        )}
-                        {!hasRows && ` to populate the metric, then refresh this page.`}
+                            ? `This usually clears once more PR review activity, file complexity history, ownership data, or review-latency data is recorded. The page will populate automatically after the upstream repository metrics and daily risk rollups complete.`
+                            : `No eligible compounding-risk rows are available for this org yet. Confirm the upstream repository metrics, including complexity history and review latency, have been generated before rerunning the daily risk rollup.`}
                     </p>
 
                     {missingInputs.length > 0 && (
@@ -393,12 +416,14 @@ export function CompoundingRiskDashboard({
                         </div>
                     )}
 
-                    <p className="mt-8 text-xs text-(--ink-muted)">
-                        Org <span className="font-mono">{orgId}</span> · generated{" "}
-                        <time dateTime={generatedAt}>
-                            {generatedAt.replace("T", " ").slice(0, 16)}
-                        </time>
-                    </p>
+                    {generatedAtLabel !== null && (
+                        <p className="mt-8 text-xs text-(--ink-muted)">
+                            Generated{" "}
+                            <time dateTime={generatedAtLabel.dateTime}>
+                                {generatedAtLabel.text}
+                            </time>
+                        </p>
+                    )}
                 </section>
             </div>
         );
@@ -420,12 +445,14 @@ export function CompoundingRiskDashboard({
                             inspectable: weights, thresholds, and raw inputs are persisted alongside
                             the composite so historical rows stay auditable.
                         </p>
-                        <p className="mt-3 text-xs text-(--ink-muted)">
-                            Org <span className="font-mono">{orgId}</span> · generated{" "}
-                            <time dateTime={generatedAt}>
-                                {generatedAt.replace("T", " ").slice(0, 16)}
-                            </time>
-                        </p>
+                        {generatedAtLabel !== null && (
+                            <p className="mt-3 text-xs text-(--ink-muted)">
+                                Generated{" "}
+                                <time dateTime={generatedAtLabel.dateTime}>
+                                    {generatedAtLabel.text}
+                                </time>
+                            </p>
+                        )}
                     </div>
                     <div className="border-t border-(--card-stroke) bg-(--card-60) p-8 lg:border-l lg:border-t-0">
                         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">

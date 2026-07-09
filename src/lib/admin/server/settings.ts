@@ -3,6 +3,9 @@
 import { adminApi } from "../api";
 import { AdminApiError } from "../api";
 import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { getClientIp, isTrustProxyEnabled } from "@/lib/client-ip";
+import { getServerEnv } from "@/lib/config";
 import type { ActionResult } from "@/lib/result";
 import type {
     Setting,
@@ -19,8 +22,10 @@ import type {
     RetentionPolicyListResponse,
     RetentionExecuteResponse,
     LLMSettingsResponse,
+    LLMSettingsStatusResponse,
     LLMSettingsUpsert,
     LLMSettingsActionResult,
+    LLMSpendSummaryResponse,
 } from "../types";
 import { getSessionContext, withErrorHandling } from "./_shared";
 
@@ -135,6 +140,24 @@ export async function checkIPAllowed(ipAddress: string): Promise<ActionResult<IP
     });
 }
 
+/**
+ * Best-effort detection of the requesting admin's own client IP (CHAOS-2842),
+ * derived the same way as rate limiting (`getClientIp` + `TRUST_PROXY`) so it
+ * reflects what the backend itself would see. Used only to warn admins before
+ * they save an IP allowlist rule that would exclude their own current IP —
+ * never treated as an authoritative allow/deny decision.
+ */
+export async function getCurrentClientIp(): Promise<ActionResult<string>> {
+    return withErrorHandling(async () => {
+        await getSessionContext();
+        const requestHeaders = await headers();
+        return getClientIp(
+            { headers: requestHeaders },
+            { trustProxy: isTrustProxyEnabled(getServerEnv().TRUST_PROXY) },
+        );
+    });
+}
+
 // ---- Data Retention Policies ----
 
 export async function listRetentionPolicies(
@@ -225,6 +248,22 @@ export async function getLLMSettings(): Promise<LLMSettingsActionResult<LLMSetti
     });
 }
 
+/**
+ * BYO-LLM status badge read (CHAOS-2560/2565). Pure evaluator, no side
+ * effects on the GET. The backend endpoint is being built on a sibling
+ * branch (CHAOS-2560); callers must treat any error here as "unknown" and
+ * fall back to settings-derived wording rather than surfacing it as a hard
+ * failure.
+ */
+export async function getLLMSettingsStatus(): Promise<
+    LLMSettingsActionResult<LLMSettingsStatusResponse>
+> {
+    return withStatusErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        return adminApi.llmSettings.status(token, orgId);
+    });
+}
+
 export async function upsertLLMSettings(
     data: LLMSettingsUpsert,
 ): Promise<LLMSettingsActionResult<LLMSettingsResponse>> {
@@ -242,5 +281,17 @@ export async function deleteLLMSettings(): Promise<LLMSettingsActionResult<{ del
         const result = await adminApi.llmSettings.remove(token, orgId);
         revalidatePath("/org/admin/ai");
         return result;
+    });
+}
+
+// Org-scoped per-run spend summary (CHAOS-2564). Uses withStatusErrorHandling
+// (not the generic withErrorHandling) so a tier/flag gate (402/403) surfaces
+// as a distinguishable locked state rather than a generic load error.
+export async function getLLMSpendSummary(): Promise<
+    LLMSettingsActionResult<LLMSpendSummaryResponse>
+> {
+    return withStatusErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        return adminApi.llmSettings.spend(token, orgId);
     });
 }

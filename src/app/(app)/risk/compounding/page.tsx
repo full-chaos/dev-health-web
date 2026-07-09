@@ -160,7 +160,7 @@ export default async function CompoundingRiskPage({ searchParams }: CompoundingR
         breakout,
         rows: [],
         trend: [],
-        generatedAt: new Date().toISOString(),
+        generatedAt: null,
     };
 
     return (

@@ -1,8 +1,10 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ProviderBadge } from "./ProviderBadge";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export type Identity = {
     canonical_id: string;
@@ -14,10 +16,38 @@ export type Identity = {
 
 type IdentityTableProps = {
     identities: Identity[];
-    onDelete?: (id: string) => void;
+    onDeleteAction?: (id: string) => void;
 };
 
-export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
+function includesSearch(value: string | null | undefined, query: string): boolean {
+    return value?.toLowerCase().includes(query) ?? false;
+}
+
+function identityMatchesSearch(identity: Identity, query: string): boolean {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) {
+        return true;
+    }
+
+    return (
+        includesSearch(identity.canonical_id, normalizedQuery) ||
+        includesSearch(identity.display_name, normalizedQuery) ||
+        includesSearch(identity.email, normalizedQuery) ||
+        identity.team_ids.some((teamId) => includesSearch(teamId, normalizedQuery)) ||
+        Object.entries(identity.provider_identities).some(
+            ([provider, usernames]) =>
+                includesSearch(provider, normalizedQuery) ||
+                usernames.some((username) => includesSearch(username, normalizedQuery)),
+        )
+    );
+}
+
+export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps) {
+    const [searchQuery, setSearchQuery] = useState("");
+    const filteredIdentities = useMemo(
+        () => identities.filter((identity) => identityMatchesSearch(identity, searchQuery)),
+        [identities, searchQuery],
+    );
     const columns: DataTableColumn<Identity>[] = [
         {
             key: "canonical",
@@ -104,15 +134,15 @@ export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
                         href={`/org/admin/identities/${identity.canonical_id}/edit`}
                         className="text-(--accent) hover:underline"
                     >
-                        Edit
+                        {CTA_LABELS.edit}
                     </Link>
-                    {onDelete && (
+                    {onDeleteAction && (
                         <button
                             type="button"
-                            onClick={() => onDelete(identity.canonical_id)}
+                            onClick={() => onDeleteAction(identity.canonical_id)}
                             className="text-red-500 hover:underline"
                         >
-                            Delete
+                            {CTA_LABELS.delete}
                         </button>
                     )}
                 </div>
@@ -123,10 +153,21 @@ export function IdentityTable({ identities, onDelete }: IdentityTableProps) {
     return (
         <DataTable
             columns={columns}
-            data={identities}
+            data={filteredIdentities}
             rowKeyAction={(identity) => identity.canonical_id}
             emptyColSpan={6}
-            emptyMessage="No identities found."
+            emptyMessage={
+                identities.length === 0
+                    ? "No identities found."
+                    : "No identities match your search."
+            }
+            search={{
+                value: searchQuery,
+                placeholder: "Search identities",
+                buttonLabel: CTA_LABELS.applyFilters,
+            }}
+            onSearchAction={setSearchQuery}
+            onSearchChangeAction={setSearchQuery}
         />
     );
 }

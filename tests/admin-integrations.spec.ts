@@ -1,66 +1,80 @@
 import { expect, test } from "@playwright/test";
 
-test("integrations page renders provider cards", async ({ page }) => {
+test("providers page renders a provider management table", async ({ page }) => {
     await page.goto("/org/admin/integrations");
 
-    await expect(page.getByRole("heading", { name: "Integrations" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "GitHub" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "GitLab" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Jira" })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Linear" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Providers" })).toBeVisible();
+    await expect(page.getByRole("table")).toBeVisible();
+    await expect(page.getByRole("cell", { name: "GitHub", exact: true })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "GitLab", exact: true })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "Jira", exact: true })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "Linear", exact: true })).toBeVisible();
 });
 
-// CHAOS-840 made the integrations page credential-card-first. When at least
-// one credential is already saved (the case in the seeded test environment),
-// the page renders saved-credential cards rather than the legacy form, so
-// these tests open the form via the "Add Connection" button before asserting
-// on form fields. The button is also rendered when no credentials exist (the
-// page just auto-opens the form in that case), so the click is conditional.
-async function openGithubForm(page: import("@playwright/test").Page) {
-    await page.goto("/org/admin/integrations/github");
-    const addConnection = page.getByRole("button", { name: "Add Connection" }).first();
-    if (await addConnection.isVisible({ timeout: 2_000 }).catch(() => false)) {
-        await addConnection.click();
+// CHAOS-2837 reworked provider connections into a guided Add Provider
+// workflow (provider -> auth method -> credential -> verify -> review),
+// replacing the always-visible credential form. The wizard auto-opens when
+// a provider has zero credentials (the "Add Provider" button click below is
+// conditional for that reason, mirroring the pre-existing seeded-vs-empty
+// test-environment handling).
+async function openAddProviderWizard(page: import("@playwright/test").Page, provider: string) {
+    await page.goto(`/org/admin/integrations/${provider}`);
+    const addProvider = page.getByRole("button", { name: "Add Provider" }).first();
+    if (await addProvider.isVisible({ timeout: 2_000 }).catch(() => false)) {
+        await addProvider.click();
     }
 }
 
-test("GitHub integration form renders all fields", async ({ page }) => {
-    await openGithubForm(page);
+test("GitHub Add Provider wizard offers GitHub App first, then a manual token credential step", async ({
+    page,
+}) => {
+    await openAddProviderWizard(page, "github");
+
+    // Auth-method step only renders when no GitHub App is connected yet.
+    const manualLink = page.getByText("Use a personal access token instead");
+    if (await manualLink.isVisible({ timeout: 2_000 }).catch(() => false)) {
+        await manualLink.click();
+        await page.getByRole("button", { name: "Continue" }).click();
+    }
 
     await expect(page.locator("#github-token")).toBeVisible();
     await expect(page.locator("#github-org")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Save Changes" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Test Connection" })).toBeVisible();
 });
 
-test("GitHub save shows success toast", async ({ page }) => {
-    await openGithubForm(page);
+test("GitHub manual credential flow: fill token -> verify -> finish", async ({ page }) => {
+    await openAddProviderWizard(page, "github");
+
+    const manualLink = page.getByText("Use a personal access token instead");
+    if (await manualLink.isVisible({ timeout: 2_000 }).catch(() => false)) {
+        await manualLink.click();
+        await page.getByRole("button", { name: "Continue" }).click();
+    }
 
     await page.locator("#github-token").fill("ghp_test123");
     await page.locator("#github-org").fill("test-org");
-    await page.getByRole("button", { name: "Save Changes" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
 
-    await expect(page.getByText("Settings saved successfully")).toBeVisible({ timeout: 10_000 });
+    await page.getByRole("button", { name: "Verify connection", exact: true }).click();
+    await expect(page.getByText(/Connection successful/i)).toBeVisible({ timeout: 10_000 });
+
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Finish" }).click();
+
+    await expect(page.getByText(/credential saved/i)).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByRole("link", { name: "Create sync configuration" })).toBeVisible();
 });
 
-test("GitHub test connection updates status", async ({ page }) => {
-    await openGithubForm(page);
-
-    await page.locator("#github-token").fill("ghp_test123");
-    await page.getByRole("button", { name: "Test Connection" }).click();
-
-    await expect(page.getByText("Connection successful")).toBeVisible({ timeout: 10_000 });
-});
-
-test("GitLab integration form renders fields", async ({ page }) => {
-    await page.goto("/org/admin/integrations/gitlab");
+test("GitLab Add Provider wizard renders manual credential fields immediately", async ({
+    page,
+}) => {
+    await openAddProviderWizard(page, "gitlab");
 
     await expect(page.locator("#gitlab-token")).toBeVisible();
     await expect(page.locator("#gitlab-group")).toBeVisible();
 });
 
-test("Jira integration form renders fields", async ({ page }) => {
-    await page.goto("/org/admin/integrations/jira");
+test("Jira Add Provider wizard renders manual credential fields immediately", async ({ page }) => {
+    await openAddProviderWizard(page, "jira");
 
     await expect(page.locator("#jira-url")).toBeVisible();
     await expect(page.locator("#jira-email")).toBeVisible();
@@ -68,8 +82,10 @@ test("Jira integration form renders fields", async ({ page }) => {
     await expect(page.locator("#jira-projects")).toBeVisible();
 });
 
-test("Linear integration form renders fields", async ({ page }) => {
-    await page.goto("/org/admin/integrations/linear");
+test("Linear Add Provider wizard renders manual credential fields immediately", async ({
+    page,
+}) => {
+    await openAddProviderWizard(page, "linear");
 
     await expect(page.locator("#linear-key")).toBeVisible();
     await expect(page.locator("#linear-teams")).toBeVisible();

@@ -10,8 +10,12 @@ type AdminHeaderProps = {
 };
 
 export function AdminHeader({ title, description, children, breadcrumbs }: AdminHeaderProps) {
+    const headerClassName = children
+        ? "mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:pr-36"
+        : "mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between";
+
     return (
-        <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <header className={headerClassName}>
             <div>
                 {breadcrumbs && breadcrumbs.length > 0 ? (
                     <div className="mb-3">

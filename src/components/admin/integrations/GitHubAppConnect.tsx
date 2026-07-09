@@ -21,7 +21,17 @@ type GitHubAppConnectProps = {
      * shared component knowing about any specific analytics vocabulary.
      */
     onInstallClickAction?: () => void;
-    variant?: "card" | "banner-only";
+    /**
+     * `"card"` (default): banner + a bordered, shadowed CTA box — used as a
+     * page-level call-to-action (GitHub integration page, onboarding step).
+     * `"flat"`: banner + the same CTA content with no outer border/shadow,
+     * for use inside a surface that already provides its own card chrome
+     * (CHAOS-2837 Add Provider wizard credential step) so borders never nest.
+     * `"banner-only"`: renders only the connected/error result banner, no
+     * CTA at all — for a provider page showing a post-install-redirect
+     * result next to a separate, wizard-driven entry point.
+     */
+    variant?: "card" | "flat" | "banner-only";
 };
 
 // Build the install href. A bare connect routes toward the first-run sync
@@ -49,9 +59,13 @@ export function GitHubAppConnect({
     variant = "card",
 }: GitHubAppConnectProps) {
     const showCta = variant !== "banner-only";
+    const ctaBoxClassName =
+        variant === "flat"
+            ? ""
+            : "rounded-lg border border-(--border-subtle) bg-(--surface-base) p-6 shadow-sm";
 
     return (
-        <div className="mb-6 space-y-4">
+        <div className="space-y-4">
             {result === "connected" && (
                 <div
                     role="status"
@@ -72,7 +86,7 @@ export function GitHubAppConnect({
             )}
 
             {showCta && (
-                <div className="rounded-lg border border-(--border-subtle) bg-(--surface-base) p-6 shadow-sm">
+                <div className={ctaBoxClassName}>
                     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                         <div>
                             <h2 className="text-lg font-medium text-(--ink-base)">

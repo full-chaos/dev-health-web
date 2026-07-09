@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@/test/utils";
 
 import {
@@ -55,6 +55,17 @@ function makeCustomerPushSource(): CustomerPushSource {
 }
 
 describe("IntegrationPage ([provider]) — CHAOS-2837 blocker 3", () => {
+    beforeEach(() => {
+        vi.mocked(getCustomerPushIngestEntitlement).mockResolvedValue({
+            data: {
+                tier: "team",
+                features: { customer_push_ingest: false },
+                enabled: false,
+            },
+        });
+        vi.mocked(listCustomerPushSources).mockResolvedValue({ data: [] });
+    });
+
     it("never renders a standalone install-card CTA, even with zero credentials and no callback result", async () => {
         vi.mocked(listCredentials).mockResolvedValue({ data: [] });
         vi.mocked(listSyncConfigs).mockResolvedValue({ data: [] });
@@ -134,13 +145,6 @@ describe("IntegrationPage ([provider]) — CHAOS-2837 blocker 3", () => {
     it("locks customer-push mode and skips source loading when customer_push_ingest is disabled", async () => {
         vi.mocked(listCredentials).mockResolvedValue({ data: [] });
         vi.mocked(listSyncConfigs).mockResolvedValue({ data: [] });
-        vi.mocked(getCustomerPushIngestEntitlement).mockResolvedValue({
-            data: {
-                tier: "team",
-                features: { customer_push_ingest: false },
-                enabled: false,
-            },
-        });
 
         render(
             await IntegrationPage({

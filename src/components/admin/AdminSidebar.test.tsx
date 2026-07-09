@@ -55,7 +55,7 @@ describe("AdminSidebar", () => {
         expect(screen.getAllByText("Platform Admin")).toHaveLength(2);
         expect(screen.getByRole("link", { name: /platform adminglobal/i })).toBeInTheDocument();
         expect(
-            screen.queryByRole("link", { name: /organizationsettings/i }),
+            screen.queryByRole("link", { name: /organizationworkspace settings/i }),
         ).not.toBeInTheDocument();
     });
 
@@ -71,11 +71,32 @@ describe("AdminSidebar", () => {
             />,
         );
 
-        expect(screen.getByRole("link", { name: /audit logsenterprise/i })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: /retentioncompliance/i })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: /ai setupllm/i })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /audit logsaccess history/i })).toBeInTheDocument();
         expect(
-            screen.queryByRole("link", { name: /ip allowlistsecurity/i }),
+            screen.getByRole("link", { name: /data retentionretention policy/i }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /ai setupmodel provider/i })).toBeInTheDocument();
+        expect(
+            screen.queryByRole("link", { name: /ip allowlistnetwork access/i }),
         ).not.toBeInTheDocument();
+    });
+
+    it.each([
+        ["/org/admin/users/new", /usersorg members/i],
+        ["/org/admin/integrations/github", /providersconnected sources/i],
+        ["/org/admin/teams/team-1/edit", /teamsteam ownership/i],
+    ])("keeps the parent nav item active for descendant route %s", (route, linkName) => {
+        pathname = route;
+
+        render(<AdminSidebar />);
+
+        const activeLinks = screen
+            .getAllByRole("link")
+            .filter((link) => link.getAttribute("aria-current") === "page");
+        expect(activeLinks).toHaveLength(1);
+        expect(screen.getByRole("link", { name: linkName })).toHaveAttribute(
+            "aria-current",
+            "page",
+        );
     });
 });

@@ -32,11 +32,39 @@ describe("fetchRiskMetrics", () => {
         expect(result).toEqual(SAMPLE_RISK_DATA);
     });
 
-    it("returns undefined metrics when API returns empty timeseries", async () => {
+    it("returns undefined metrics when persisted risk payload is empty", async () => {
         mockAuth({ user: { org_id: "org-1" } });
-        vi.mocked(graphqlFetch).mockResolvedValue({ analytics: emptyAnalytics });
+        vi.mocked(graphqlFetch).mockResolvedValue({
+            testopsRisk: {
+                releaseConfidence: null,
+                qualityDragHours: null,
+                pipelineStability: null,
+                timeseries: [],
+                qualityDragBreakdown: [],
+                quadrantData: [],
+                confidenceSpark: [],
+                confidenceDelta: null,
+                dragSpark: [],
+                dragDelta: null,
+                stabilitySpark: [],
+                stabilityDelta: null,
+            },
+        });
 
-        const result = await fetchRiskMetrics({ timeseries: [], breakdowns: [] }, false);
+        const result = await fetchRiskMetrics(
+            {
+                timeseries: [
+                    {
+                        dimension: "TEAM",
+                        measure: "PIPELINE_SUCCESS_RATE",
+                        interval: "DAY",
+                        dateRange: { startDate: "2026-05-19", endDate: "2026-05-20" },
+                    },
+                ],
+                breakdowns: [],
+            },
+            false,
+        );
 
         expect(result).not.toBeNull();
         expect(result!.release_confidence).toBeUndefined();

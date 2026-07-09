@@ -11,14 +11,42 @@ type SchedulePreset = {
     value: string | null;
     label: string;
     intervalHours: number | null;
+    /** User-facing consequence of this cadence (CHAOS-2838 acceptance #4). */
+    description: string;
 };
 
 const SCHEDULE_PRESETS: SchedulePreset[] = [
-    { value: null, label: "Manual only (no schedule)", intervalHours: null },
-    { value: "0 * * * *", label: "Every hour", intervalHours: 1 },
-    { value: "0 */6 * * *", label: "Every 6 hours", intervalHours: 6 },
-    { value: "0 0 * * *", label: "Daily at midnight", intervalHours: 24 },
-    { value: "0 0 * * 1", label: "Weekly on Monday", intervalHours: 168 },
+    {
+        value: null,
+        label: "Manual only (no schedule)",
+        intervalHours: null,
+        description: "Data only updates when you manually trigger a sync.",
+    },
+    {
+        value: "0 * * * *",
+        label: "Every hour",
+        intervalHours: 1,
+        description: "Near real-time data, but the most frequent API usage of these presets.",
+    },
+    {
+        value: "0 */6 * * *",
+        label: "Every 6 hours",
+        intervalHours: 6,
+        description: "Frequent updates with moderate API usage.",
+    },
+    {
+        value: "0 0 * * *",
+        label: "Daily at midnight",
+        intervalHours: 24,
+        description: "Once-daily updates with lower API usage.",
+    },
+    {
+        value: "0 0 * * 1",
+        label: "Weekly on Monday",
+        intervalHours: 168,
+        description:
+            "Once-weekly updates — the lowest API usage; data can go a week between refreshes.",
+    },
 ];
 
 function getSupportedTimezones(): string[] {
@@ -103,19 +131,24 @@ export function SchedulePicker({
                 {visiblePresets.map((preset) => {
                     const modeValue = preset.value ?? "manual";
                     return (
-                        <label
+                        <div
                             key={modeValue}
-                            className="flex items-center gap-2 rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 hover:bg-(--card-60)"
+                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 hover:bg-(--card-60)"
                         >
-                            <input
-                                type="radio"
-                                name="schedule-mode"
-                                checked={mode === modeValue}
-                                onChange={() => handleModeChange(modeValue)}
-                                className="h-4 w-4 border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
-                            />
-                            <span className="text-sm">{preset.label}</span>
-                        </label>
+                            <label className="flex items-center gap-2">
+                                <input
+                                    type="radio"
+                                    name="schedule-mode"
+                                    checked={mode === modeValue}
+                                    onChange={() => handleModeChange(modeValue)}
+                                    className="h-4 w-4 border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
+                                />
+                                <span className="text-sm">{preset.label}</span>
+                            </label>
+                            <p className="mt-1 pl-6 text-xs text-(--ink-muted)">
+                                {preset.description}
+                            </p>
+                        </div>
                     );
                 })}
 

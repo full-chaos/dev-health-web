@@ -44,17 +44,18 @@ export function repoSelectionHref(syncConfigId: string | null): string {
  * Precedence is deterministic: a failed sync always surfaces the blocker first;
  * otherwise a missing integration is either an active prompt or a non-blocking
  * "skipped" banner (distinguished by `next_action`); a present integration is
- * either pending sync or fully ready.
+ * pending only until the first sync has completed. Later in-flight syncs must
+ * not reopen first-run setup copy.
  */
 export function deriveSetupSurface(status: SetupStatus): SetupSurfaceVariant {
-    if (status.sync_status === "failed") {
-        return "sync-failed";
-    }
     if (!status.has_integration) {
         return status.next_action === "complete" ? "skipped" : "no-integration";
     }
-    if (status.sync_status === "complete") {
+    if (status.first_sync_completed || status.sync_status === "complete") {
         return "ready";
+    }
+    if (status.sync_status === "failed") {
+        return "sync-failed";
     }
     return "sync-pending";
 }

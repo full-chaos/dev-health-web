@@ -1,13 +1,22 @@
-import { useState, type SyntheticEvent } from "react";
+import { type SyntheticEvent } from "react";
 import Link from "next/link";
 import { Team } from "./TeamTable";
 import { BaseForm, inputClass, useBaseFormState } from "@/components/shared/BaseForm";
+import { TokenInput } from "@/components/shared/TokenInput";
+import { ReviewSummary, type ReviewSummaryRow } from "@/components/shared/ReviewSummary";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type TeamFormProps = {
     initialData?: Team;
     onSubmit: (data: Team) => void;
     isEditing?: boolean;
     isLoading?: boolean;
+    /**
+     * Count of identities currently mapped to this team (real backend data,
+     * sourced from the identities list) — omitted on the create form, where
+     * no such data exists yet, so the review preview degrades gracefully.
+     */
+    linkedIdentityCount?: number;
 };
 
 export function TeamForm({
@@ -15,8 +24,9 @@ export function TeamForm({
     onSubmit,
     isEditing = false,
     isLoading = false,
+    linkedIdentityCount,
 }: TeamFormProps) {
-    const { formData, handleChange } = useBaseFormState<Team>(
+    const { formData, setFormData, handleChange } = useBaseFormState<Team>(
         initialData || {
             team_id: "",
             name: "",
@@ -26,30 +36,40 @@ export function TeamForm({
         },
     );
 
-    const [repoPatternsInput, setRepoPatternsInput] = useState(
-        initialData?.repo_patterns.join(", ") || "",
-    );
-    const [projectKeysInput, setProjectKeysInput] = useState(
-        initialData?.project_keys.join(", ") || "",
-    );
+    const handleRepoPatternsChange = (next: string[]) => {
+        setFormData((prev) => ({ ...prev, repo_patterns: next }));
+    };
+
+    const handleProjectKeysChange = (next: string[]) => {
+        setFormData((prev) => ({ ...prev, project_keys: next }));
+    };
 
     const handleSubmit = (event: SyntheticEvent<HTMLFormElement>) => {
         event.preventDefault();
-        const repo_patterns = repoPatternsInput
-            .split(",")
-            .map((value) => value.trim())
-            .filter(Boolean);
-        const project_keys = projectKeysInput
-            .split(",")
-            .map((value) => value.trim())
-            .filter(Boolean);
-
-        onSubmit({
-            ...formData,
-            repo_patterns,
-            project_keys,
-        });
+        onSubmit({ ...formData });
     };
+
+    const reviewRows: ReviewSummaryRow[] = [
+        { label: "Team ID", value: formData.team_id || "—" },
+        {
+            label: "Repository patterns",
+            value:
+                formData.repo_patterns.length > 0
+                    ? formData.repo_patterns.join(", ")
+                    : "None added",
+        },
+        {
+            label: "Project keys",
+            value:
+                formData.project_keys.length > 0 ? formData.project_keys.join(", ") : "None added",
+        },
+    ];
+    if (linkedIdentityCount !== undefined) {
+        reviewRows.push({
+            label: "Linked identities",
+            value: `${linkedIdentityCount} ${linkedIdentityCount === 1 ? "identity" : "identities"} currently mapped`,
+        });
+    }
 
     return (
         <BaseForm
@@ -64,7 +84,7 @@ export function TeamForm({
                     href="/org/admin/teams"
                     className="rounded-lg px-4 py-2 text-sm font-medium text-(--ink-muted) hover:text-foreground"
                 >
-                    Cancel
+                    {CTA_LABELS.cancel}
                 </Link>
             }
         >
@@ -120,37 +140,36 @@ export function TeamForm({
             </div>
 
             <div>
-                <label htmlFor="repo_patterns" className="mb-1.5 block text-sm font-medium">
-                    Repository Patterns
-                </label>
-                <input
-                    type="text"
-                    id="repo_patterns"
-                    value={repoPatternsInput}
-                    onChange={(event) => setRepoPatternsInput(event.target.value)}
-                    className={`${inputClass} text-sm`}
-                    placeholder="e.g., github/org/repo-*, gitlab/group/*"
+                <span className="mb-1.5 block text-sm font-medium">Repository Patterns</span>
+                <TokenInput
+                    value={formData.repo_patterns}
+                    onChangeAction={handleRepoPatternsChange}
+                    ariaLabel="Repository Patterns"
+                    placeholder="e.g., github/org/repo-*"
                 />
                 <p className="mt-1 text-xs text-(--ink-muted)">
-                    Comma-separated list of glob patterns to match repositories owned by this team.
+                    Glob patterns matching repositories owned by this team. Press Enter or comma to
+                    add each pattern.
                 </p>
             </div>
 
             <div>
-                <label htmlFor="project_keys" className="mb-1.5 block text-sm font-medium">
-                    Project Keys
-                </label>
-                <input
-                    type="text"
-                    id="project_keys"
-                    value={projectKeysInput}
-                    onChange={(event) => setProjectKeysInput(event.target.value)}
-                    className={`${inputClass} text-sm`}
-                    placeholder="e.g., PROJ, PLAT"
+                <span className="mb-1.5 block text-sm font-medium">Project Keys</span>
+                <TokenInput
+                    value={formData.project_keys}
+                    onChangeAction={handleProjectKeysChange}
+                    ariaLabel="Project Keys"
+                    placeholder="e.g., PROJ"
                 />
                 <p className="mt-1 text-xs text-(--ink-muted)">
-                    Comma-separated list of project keys (e.g. Jira) owned by this team.
+                    Project keys (e.g. Jira) owned by this team. Press Enter or comma to add each
+                    key.
                 </p>
+            </div>
+
+            <div>
+                <span className="mb-1.5 block text-sm font-medium">Review before saving</span>
+                <ReviewSummary rows={reviewRows} />
             </div>
         </BaseForm>
     );

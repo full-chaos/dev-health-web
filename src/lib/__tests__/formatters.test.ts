@@ -4,6 +4,9 @@ import {
     formatMetricValue,
     formatNumber,
     formatPercent,
+    formatTimestamp,
+    formatDateTimeUTC,
+    parseTimestampDate,
     defaultFormatter,
     integerFormatter,
     compactFormatter,
@@ -63,6 +66,25 @@ describe("formatters", () => {
     });
 });
 
+describe("timestamp formatting", () => {
+    it("parses API timestamps without an explicit timezone as UTC", () => {
+        expect(parseTimestampDate("2026-07-08T17:06:00.000")?.toISOString()).toBe(
+            "2026-07-08T17:06:00.000Z",
+        );
+    });
+
+    it("formats timezone-less and explicit UTC timestamps identically", () => {
+        expect(formatTimestamp("2026-07-08T17:06:00.000")).toBe(
+            formatTimestamp("2026-07-08T17:06:00.000Z"),
+        );
+    });
+
+    it("uses the provided fallback for missing or invalid values", () => {
+        expect(formatTimestamp(null, "—")).toBe("—");
+        expect(formatTimestamp("not-a-date", "—")).toBe("—");
+    });
+});
+
 describe("formatter caching", () => {
     beforeEach(() => {
         customFormatters.clear();
@@ -113,5 +135,20 @@ describe("formatter caching", () => {
         });
         expect(formatter).not.toBe(compactFormatter);
         expect(customFormatters.size).toBe(1);
+    });
+});
+
+describe("formatDateTimeUTC", () => {
+    it("formats a timestamp deterministically in UTC regardless of runtime timezone", () => {
+        expect(formatDateTimeUTC("2025-01-01T12:34:00Z")).toBe("Jan 1, 2025, 12:34 PM UTC");
+    });
+
+    it("returns an em dash for a null or undefined value", () => {
+        expect(formatDateTimeUTC(null)).toBe("—");
+        expect(formatDateTimeUTC(undefined)).toBe("—");
+    });
+
+    it("returns an em dash for an unparseable value", () => {
+        expect(formatDateTimeUTC("not-a-date")).toBe("—");
     });
 });

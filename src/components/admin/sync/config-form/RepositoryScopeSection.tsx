@@ -3,6 +3,8 @@ import { inputClass } from "@/components/shared/BaseForm";
 import { RepoSelector } from "../RepoSelector";
 import { FormSection } from "./FormSection";
 import { DestructiveWarning } from "./DestructiveWarning";
+import { PrerequisiteCallout } from "./PrerequisiteCallout";
+import { getRepoSelectionBlockReason } from "./wizardSteps";
 
 type RepositoryScopeSectionProps = {
     provider: string;
@@ -100,28 +102,36 @@ export function RepositoryScopeSection({
                 </p>
             )}
             <DestructiveWarning items={destructiveWarnings} />
-            {!syncAllRepos && canBrowseRepos && credentialId && owner ? (
-                <div>
-                    <span className="mb-2 block text-sm font-medium text-(--ink-muted)">
-                        Select Repositories
-                    </span>
-                    <RepoSelector
-                        credentialId={credentialId}
-                        owner={owner}
-                        selectedRepos={repos}
-                        onSelectionChangeAction={onReposChange}
-                        maxRepos={maxRepos}
+            {(() => {
+                if (syncAllRepos || !canBrowseRepos) return null;
+                const blockReason = getRepoSelectionBlockReason({
+                    credentialId,
+                    owner,
+                    syncAllRepos,
+                });
+                if (!blockReason) {
+                    return (
+                        <div>
+                            <span className="mb-2 block text-sm font-medium text-(--ink-muted)">
+                                Select Repositories
+                            </span>
+                            <RepoSelector
+                                credentialId={credentialId}
+                                owner={owner}
+                                selectedRepos={repos}
+                                onSelectionChangeAction={onReposChange}
+                                maxRepos={maxRepos}
+                            />
+                        </div>
+                    );
+                }
+                return (
+                    <PrerequisiteCallout
+                        title="Repository selection unavailable"
+                        description={blockReason}
                     />
-                </div>
-            ) : (
-                !syncAllRepos &&
-                canBrowseRepos && (
-                    <p className="text-xs text-(--ink-muted)">
-                        Select a credential and enter an owner above to browse and select
-                        repositories.
-                    </p>
-                )
-            )}
+                );
+            })()}
         </FormSection>
     );
 }

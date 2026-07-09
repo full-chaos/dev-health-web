@@ -23,64 +23,64 @@ const navItems: NavItem[] = [
         id: "users",
         label: "Users",
         href: "/org/admin/users",
-        description: "Management",
+        description: "Org members",
     },
     {
         id: "organization",
         label: "Organization",
         href: "/org/admin/settings",
-        description: "Settings",
+        description: "Workspace settings",
     },
     {
         id: "integrations",
-        label: "Integrations",
+        label: "Providers",
         href: "/org/admin/integrations",
-        description: "Connectors",
+        description: "Connected sources",
     },
     {
         id: "sync",
         label: "Sync Status",
         href: "/org/admin/sync",
-        description: "Jobs",
+        description: "Sync activity",
     },
     {
         id: "teams",
         label: "Teams",
         href: "/org/admin/teams",
-        description: "Identity",
+        description: "Team ownership",
     },
     {
         id: "identities",
         label: "Identities",
         href: "/org/admin/identities",
-        description: "Mapping",
+        description: "Identity mapping",
     },
     {
         id: "audit",
         label: "Audit Logs",
         href: "/org/admin/audit-logs",
-        description: "Enterprise",
+        description: "Access history",
         featureKey: "audit_log",
     },
     {
         id: "ip-allowlist",
         label: "IP Allowlist",
         href: "/org/admin/ip-allowlist",
-        description: "Security",
+        description: "Network access",
         featureKey: "ip_allowlist",
     },
     {
         id: "retention",
-        label: "Retention",
+        label: "Data Retention",
         href: "/org/admin/retention",
-        description: "Compliance",
+        description: "Retention policy",
         featureKey: "custom_retention",
     },
     {
         id: "byo-llm",
         label: "AI Setup",
         href: "/org/admin/ai",
-        description: "LLM",
+        description: "Model provider",
         featureKey: "byo_llm",
     },
 ];
@@ -89,6 +89,13 @@ type AdminSidebarProps = {
     isSuperuser?: boolean;
     features?: Record<string, boolean>;
 };
+
+function isNavItemActive(pathname: string, item: NavItem): boolean {
+    if (item.href === "/org/admin") {
+        return pathname === item.href;
+    }
+    return pathname === item.href || pathname.startsWith(`${item.href}/`);
+}
 
 export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
     const pathname = usePathname();
@@ -125,7 +132,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                     <OrgSwitcher />
                     <nav className="mt-5 space-y-2 text-sm">
                         {filteredNavItems.map((item) => {
-                            const isActive = pathname === item.href;
+                            const isActive = isNavItemActive(pathname, item);
                             return (
                                 <Link
                                     key={item.id}

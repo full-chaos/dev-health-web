@@ -254,9 +254,16 @@ describe("jwt callback — token lifecycle", () => {
         };
     }
 
-    afterEach(() => {
+    afterEach(async () => {
         vi.unstubAllGlobals();
+        vi.useRealTimers();
+        await resetActiveValidationMemo();
     });
+
+    async function resetActiveValidationMemo(): Promise<void> {
+        const { resetValidationMemoForTests } = await import("@/lib/authValidationMemo");
+        resetValidationMemoForTests();
+    }
 
     it("(a) clears token.error on fresh credentials login", async () => {
         const jwt = getJwtCallback();
@@ -488,16 +495,140 @@ describe("jwt callback — token lifecycle", () => {
     const VALIDATION_INTERVAL = 5 * 60 * 1000;
     const VALIDATION_BACKOFF_BASE = 60 * 1000;
     const VALIDATION_BACKOFF_CAP = 15 * 60 * 1000;
+    let validationTokenCounter = 0;
+    let validationAccessToken = "valid-access-0";
 
-    function validationDueToken(): Record<string, unknown> {
+    beforeEach(() => {
+        validationAccessToken = `valid-access-${validationTokenCounter}`;
+        validationTokenCounter += 1;
+    });
+
+    function validationDueToken(overrides: Record<string, unknown> = {}): Record<string, unknown> {
         return {
             id: "user-1",
-            access_token: "valid-access",
+            access_token: validationAccessToken,
             refresh_token: "valid-refresh",
             expires_at: Date.now() + 3600 * 1000, // not expired — skips refresh path
             last_validated: Date.now() - VALIDATION_INTERVAL - 1000, // validation due
+            ...overrides,
         };
     }
+
+    function validationResponse(body: Record<string, unknown>, status = 200): Response {
+        return new Response(JSON.stringify(body), {
+            status,
+            headers: { "Content-Type": "application/json" },
+        });
+    }
+
+    function deferredValidationResponse(): {
+        readonly promise: Promise<Response>;
+        readonly resolve: (response: Response) => void;
+    } {
+        let resolveResponse: ((response: Response) => void) | undefined;
+        const promise = new Promise<Response>((resolve) => {
+            resolveResponse = resolve;
+        });
+        return {
+            promise,
+            resolve(response) {
+                if (!resolveResponse) throw new Error("validation response resolver missing");
+                resolveResponse(response);
+            },
+        };
+    }
+
+    function expectNumber(value: unknown): number {
+        expect(typeof value).toBe("number");
+        if (typeof value !== "number") throw new Error("expected number");
+        return value;
+    }
+
+    it("(f0) concurrent stale-token validations share one backend request and memoize success", async () => {
+        const deferred = deferredValidationResponse();
+        const fetchMock = vi.fn().mockReturnValue(deferred.promise);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const first = jwt({ token: validationDueToken(), user: null, account: null });
+        const second = jwt({ token: validationDueToken(), user: null, account: null });
+        const third = jwt({ token: validationDueToken(), user: null, account: null });
+
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+        deferred.resolve(validationResponse({ valid: true }));
+
+        const results = await Promise.all([first, second, third]);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        for (const result of results) {
+            expect(result.access_token).toBe(validationAccessToken);
+            expect(result.validation_failures).toBe(0);
+            expect(expectNumber(result.last_validated) + VALIDATION_INTERVAL).toBeGreaterThan(
+                Date.now(),
+            );
+        }
+
+        const later = await jwt({ token: validationDueToken(), user: null, account: null });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(later.access_token).toBe(validationAccessToken);
+        expect(later.validation_failures).toBe(0);
+    });
+
+    it("(f1) concurrent transient validation failures share one backend request and one backoff", async () => {
+        vi.spyOn(Math, "random").mockReturnValue(1.0);
+        const deferred = deferredValidationResponse();
+        const fetchMock = vi.fn().mockReturnValue(deferred.promise);
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const first = jwt({ token: validationDueToken(), user: null, account: null });
+        const second = jwt({ token: validationDueToken(), user: null, account: null });
+        const third = jwt({ token: validationDueToken(), user: null, account: null });
+
+        await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+        deferred.resolve(validationResponse({ detail: "rate limited" }, 429));
+
+        const results = await Promise.all([first, second, third]);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        for (const result of results) {
+            expect(result.access_token).toBe(validationAccessToken);
+            expect(result.refresh_token).toBe("valid-refresh");
+            expect(result.error).toBeUndefined();
+            expect(result.validation_failures).toBe(1);
+            const nextDue = expectNumber(result.last_validated) + VALIDATION_INTERVAL;
+            expect(nextDue).toBeGreaterThan(Date.now());
+            expect(nextDue).toBeLessThanOrEqual(Date.now() + VALIDATION_BACKOFF_BASE + 100);
+        }
+    });
+
+    it("(f2) elapsed transient memo retry keeps escalating when the JWT failure count is stale", async () => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-07-07T00:00:00.000Z"));
+        vi.spyOn(Math, "random").mockReturnValue(0.0);
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(validationResponse({ detail: "rate limited" }, 429));
+        vi.stubGlobal("fetch", fetchMock);
+
+        const jwt = getJwtCallback();
+        const first = await jwt({ token: validationDueToken(), user: null, account: null });
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(first.validation_failures).toBe(1);
+
+        vi.setSystemTime(Date.now() + 6_000);
+        const second = await jwt({
+            token: {
+                ...first,
+                validation_failures: undefined,
+                last_validated: Date.now() - VALIDATION_INTERVAL - 1000,
+            },
+            user: null,
+            account: null,
+        });
+
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        expect(second.access_token).toBe(validationAccessToken);
+        expect(second.validation_failures).toBe(2);
+    });
 
     it("(f) 429 on /auth/validate preserves session and backs off instead of retrying every request", async () => {
         const fetchMock = vi.fn().mockResolvedValue({
@@ -514,7 +645,7 @@ describe("jwt callback — token lifecycle", () => {
             account: null,
         });
 
-        expect(first.access_token).toBe("valid-access");
+        expect(first.access_token).toBe(validationAccessToken);
         expect(first.refresh_token).toBe("valid-refresh");
         expect(first.error).toBeUndefined();
         expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -527,7 +658,7 @@ describe("jwt callback — token lifecycle", () => {
         // Immediate follow-up callback must NOT re-fetch
         const second = await jwt({ token: first, user: null, account: null });
         expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(second.access_token).toBe("valid-access");
+        expect(second.access_token).toBe(validationAccessToken);
     });
 
     it("(g) network error on /auth/validate preserves session and backs off", async () => {
@@ -541,7 +672,7 @@ describe("jwt callback — token lifecycle", () => {
             account: null,
         });
 
-        expect(result.access_token).toBe("valid-access");
+        expect(result.access_token).toBe(validationAccessToken);
         expect(result.error).toBeUndefined();
         const nextDue = (result.last_validated as number) + VALIDATION_INTERVAL;
         expect(nextDue).toBeGreaterThan(Date.now());
@@ -565,7 +696,7 @@ describe("jwt callback — token lifecycle", () => {
         const result = await jwt({ token, user: null, account: null });
 
         expect(fetchMock).toHaveBeenCalledTimes(1);
-        expect(result.access_token).toBe("valid-access");
+        expect(result.access_token).toBe(validationAccessToken);
         expect(result.last_validated as number).toBeGreaterThanOrEqual(before);
     });
 
@@ -624,7 +755,7 @@ describe("jwt callback — token lifecycle", () => {
             account: null,
         });
 
-        expect(first.access_token).toBe("valid-access");
+        expect(first.access_token).toBe(validationAccessToken);
         expect(first.refresh_token).toBe("valid-refresh");
         expect(first.error).toBeUndefined();
         const nextDue = (first.last_validated as number) + VALIDATION_INTERVAL;
@@ -658,20 +789,24 @@ describe("jwt callback — token lifecycle", () => {
         const delay1 = (r1.last_validated as number) - (Date.now() - VALIDATION_INTERVAL);
         expect(delay1).toBeGreaterThanOrEqual(VALIDATION_BACKOFF_BASE - 100);
         expect(delay1).toBeLessThanOrEqual(VALIDATION_BACKOFF_BASE + 100);
+        await resetActiveValidationMemo();
 
         // Failure 2: cappedDelay = min(cap, base * 2^1) = 120s; random=1 → delay = 120s
         const t2 = {
             ...r1,
+            access_token: `${validationAccessToken}-retry-2`,
             last_validated: Date.now() - VALIDATION_INTERVAL - 1000,
         };
         const r2 = await jwt({ token: t2, user: null, account: null });
         expect(r2.validation_failures).toBe(2);
         const delay2 = (r2.last_validated as number) - (Date.now() - VALIDATION_INTERVAL);
         expect(delay2).toBeGreaterThan(delay1);
+        await resetActiveValidationMemo();
 
         // Failure 3: cappedDelay = min(cap, base * 2^2) = 240s; random=1 → delay = 240s
         const t3 = {
             ...r2,
+            access_token: `${validationAccessToken}-retry-3`,
             last_validated: Date.now() - VALIDATION_INTERVAL - 1000,
         };
         const r3 = await jwt({ token: t3, user: null, account: null });
@@ -702,10 +837,11 @@ describe("jwt callback — token lifecycle", () => {
         const tLow = validationDueToken();
         const rLow = await jwt({ token: tLow, user: null, account: null });
         const delayLow = (rLow.last_validated as number) - (Date.now() - VALIDATION_INTERVAL);
+        await resetActiveValidationMemo();
 
         // High random → delay near cappedDelay (60s)
         vi.spyOn(Math, "random").mockReturnValue(1.0);
-        const tHigh = validationDueToken();
+        const tHigh = validationDueToken({ access_token: `${validationAccessToken}-high` });
         const rHigh = await jwt({ token: tHigh, user: null, account: null });
         const delayHigh = (rHigh.last_validated as number) - (Date.now() - VALIDATION_INTERVAL);
 
@@ -735,7 +871,7 @@ describe("jwt callback — token lifecycle", () => {
         };
         const result = await jwt({ token, user: null, account: null });
 
-        expect(result.access_token).toBe("valid-access");
+        expect(result.access_token).toBe(validationAccessToken);
         expect(result.error).toBeUndefined();
         expect(result.validation_failures).toBe(0);
     });
@@ -757,7 +893,7 @@ describe("jwt callback — token lifecycle", () => {
         const result = await jwt({ token, user: null, account: null });
 
         // Session must remain recoverable — tokens preserved, no terminal error
-        expect(result.access_token).toBe("valid-access");
+        expect(result.access_token).toBe(validationAccessToken);
         expect(result.refresh_token).toBe("valid-refresh");
         expect(result.error).toBeUndefined();
         expect(result.validation_failures).toBe(10);
@@ -779,7 +915,7 @@ describe("jwt callback — token lifecycle", () => {
         const result = await jwt({ token, user: null, account: null });
 
         // Session must remain recoverable — tokens preserved, no terminal error
-        expect(result.access_token).toBe("valid-access");
+        expect(result.access_token).toBe(validationAccessToken);
         expect(result.refresh_token).toBe("valid-refresh");
         expect(result.error).toBeUndefined();
         expect(result.validation_failures).toBe(10);
@@ -801,16 +937,18 @@ describe("jwt callback — token lifecycle", () => {
             tok = await jwt({
                 token: {
                     ...tok,
+                    access_token: `${validationAccessToken}-failure-${i}`,
                     last_validated: Date.now() - VALIDATION_INTERVAL - 1000,
                 },
                 user: null,
                 account: null,
             });
             // Session must remain recoverable throughout
-            expect(tok.access_token).toBe("valid-access");
+            expect(tok.access_token).toBe(`${validationAccessToken}-failure-${i}`);
             expect(tok.refresh_token).toBe("valid-refresh");
             expect(tok.error).toBeUndefined();
             expect(tok.validation_failures).toBe(i);
+            await resetActiveValidationMemo();
         }
 
         // Backend recovers — next validation succeeds
@@ -824,6 +962,7 @@ describe("jwt callback — token lifecycle", () => {
         const recovered = await jwt({
             token: {
                 ...tok,
+                access_token: `${validationAccessToken}-recovered`,
                 last_validated: Date.now() - VALIDATION_INTERVAL - 1000,
             },
             user: null,
@@ -831,7 +970,7 @@ describe("jwt callback — token lifecycle", () => {
         });
 
         // Counter reset, normal 5-min cadence restored
-        expect(recovered.access_token).toBe("valid-access");
+        expect(recovered.access_token).toBe(`${validationAccessToken}-recovered`);
         expect(recovered.refresh_token).toBe("valid-refresh");
         expect(recovered.error).toBeUndefined();
         expect(recovered.validation_failures).toBe(0);

@@ -26,12 +26,15 @@ export const CTA_LABELS = {
     /** Reset filters back to defaults. */
     resetFilters: "Reset filters",
     selectAll: "Select All",
+    deselectAll: "Deselect All",
     clear: "Clear",
     cancel: "Cancel",
     addOneFirst: "Add one first",
     createOneNow: "Create One Now",
+    importSelected: "Import Selected",
     /** Copy the current selection / link to the clipboard. */
     copy: "Copy",
+    edit: "Edit",
     save: "Save",
     delete: "Delete",
     confirmDelete: "Confirm delete?",
@@ -84,30 +87,6 @@ export const CTA_LABELS = {
     darkTheme: "Dark",
     enabled: "Enabled",
     disabled: "Disabled",
-    /** Start the managed-sync connection flow from the provider mode-choice card (CHAOS-2714). */
-    setUpManagedSync: "Set up managed sync",
-    /** Start the customer-push source setup flow from the provider mode-choice card (CHAOS-2714). */
-    setUpCustomerPush: "Set up customer push",
-    /** Submit the customer-push source registration form (CHAOS-2714). */
-    createCustomerPushSource: "Create customer-push source",
-    /** Submit the customer-push ingest credential creation form (CHAOS-2714). */
-    createCredential: "Create credential",
-    /** Revoke a customer-push ingest credential (CHAOS-2714). */
-    revoke: "Revoke",
-    /** Rotate a customer-push ingest credential, issuing a new one-time token (CHAOS-2714). */
-    rotate: "Rotate",
-    /** Dismiss a one-time reveal / post-submit result panel (CHAOS-2714 D9, CHAOS-2796). */
-    done: "Done",
-    /** Jump from the token reveal panel to the runner setup examples (CHAOS-2714). */
-    viewSetupExamples: "View setup examples",
-    /** Submit the customer-push payload validation form (CHAOS-2714, validate-only in v1). */
-    validatePayload: "Validate payload",
-    /** Clear the active producer-bucket filter chip on the batch list (CHAOS-2714 D8). */
-    allProducers: "All producers",
-    /** Inline link to the Validate screen from the empty batch-list state (CHAOS-2714). */
-    goToValidate: "Validate",
-    /** Inline link to the runner setup examples from the empty batch-list state (CHAOS-2714). */
-    goToCiJob: "CI job",
     /** Edit a sync configuration from its detail page (CHAOS-2791). */
     editConfig: "Edit config",
     /** Generic backfill entry point from the coverage summary header (CHAOS-2791). */
@@ -125,6 +104,93 @@ export const CTA_LABELS = {
     runBackfill: "Run backfill",
     /** Dismiss the backfill wizard modal (CHAOS-2796). */
     closeWizard: "Close",
+    /** Dismiss the wizard's post-submit result step (CHAOS-2796). */
+    done: "Done",
+    addUser: "Add User",
+    addTeam: "Add Team",
+    importTeams: "Import Teams",
+    addIdentity: "Add Identity",
+    reviewIssues: "Review issues",
+    reviewSyncHealth: "Review sync health",
+    manageConnections: "Manage connections",
+    reviewIdentities: "Review identities",
+    openSyncStatus: "Open sync status",
+    /** Open the row-level detail surface for an audit-log event (CHAOS-2843). */
+    openDetails: "Open details",
+    /** Schedule the subscription to end at the current billing period's close (CHAOS-2839). */
+    cancelAtPeriodEnd: "Cancel at period end",
+    /** End the subscription right away, forfeiting remaining paid time (CHAOS-2839). */
+    cancelImmediately: "Cancel immediately",
+    /** Restore a subscription that was scheduled to cancel at period end (CHAOS-2839). */
+    reactivateSubscription: "Reactivate",
+    /** Generic affirmative action for the shared ConfirmDialog primitive (CHAOS-2845). */
+    confirm: "Confirm",
+    /** Submit the guided sync-config creation wizard's review step (CHAOS-2838). */
+    createConfiguration: "Create Configuration",
+    /** Submit the sync-config edit form (CHAOS-2838). */
+    updateConfiguration: "Update Configuration",
+    /** In-flight label while a sync-config create/update request is pending (CHAOS-2838). */
+    savingConfiguration: "Saving...",
+    /** Link to plan settings from a tier-gated/locked option's upgrade copy (CHAOS-2838). */
+    upgradePlan: "Upgrade plan",
+    /** Discoverable row-level remove action for a mapping entry (provider identity row, CHAOS-2841). */
+    remove: "Remove",
+    /** Add another provider identity row to the identity mapping form (CHAOS-2841). */
+    addProviderIdentity: "+ Add Identity",
+    /** Open the create-entry form on the IP allowlist admin page (CHAOS-2842). */
+    addIpAllowlistEntry: "Add IP Rule",
+    /** Open the create-policy form on the data retention admin page (CHAOS-2842). */
+    addRetentionPolicy: "Add Policy",
+    /** Turn on a currently-inactive IP rule or retention policy (CHAOS-2842). */
+    enableEntry: "Enable",
+    /** Turn off a currently-active IP rule or retention policy (CHAOS-2842). */
+    disableEntry: "Disable",
+    /** Trigger the dry-run-then-confirm manual retention run flow (CHAOS-2842). */
+    runPolicyNow: "Run Now",
+    /** Proceed with a safety-critical change despite an explicit lockout-risk warning (CHAOS-2842). */
+    acknowledgeAndSave: "Save anyway",
+    /** Open the guided Add Provider workflow (CHAOS-2837). */
+    addProvider: "Add Provider",
+    /** Advance the Add Provider wizard's provider-select step (CHAOS-2837). */
+    chooseProvider: "Choose provider",
+    /** Pick the recommended, one-click GitHub App auth method (CHAOS-2837). */
+    useGitHubApp: "Use GitHub App",
+    /** Secondary, manual-credential auth method path (CHAOS-2837). */
+    useManualToken: "Use a personal access token instead",
+    /** Row action opening the manage/edit modal for a healthy credential (CHAOS-2837). */
+    manageCredential: "Manage",
+    /** Row action opening the manage/edit modal for a failing/untested credential (CHAOS-2837). */
+    resolveCredential: "Resolve",
+    /** Row action re-running a connection test from the credentials table (CHAOS-2837). */
+    testCredential: "Test",
+    /** Submit the Add Provider wizard's verify-connection step (CHAOS-2837). */
+    verifyConnection: "Verify connection",
+    /** Submit the Add Provider wizard's final review step (CHAOS-2837). */
+    finishAddProvider: "Finish",
+    /** Finish-step follow-up: jump straight into creating a sync configuration (CHAOS-2837). */
+    createSyncConfig: "Create sync configuration",
+    /** Start the managed-sync connection flow from the provider mode-choice card (CHAOS-2714). */
+    setUpManagedSync: "Set up managed sync",
+    /** Start the customer-push source setup flow from the provider mode-choice card (CHAOS-2714). */
+    setUpCustomerPush: "Set up customer push",
+    /** Submit the customer-push source registration form (CHAOS-2714). */
+    createCustomerPushSource: "Create customer-push source",
+    /** Submit the customer-push ingest credential creation form (CHAOS-2714). */
+    createCredential: "Create credential",
+    /** Revoke a customer-push ingest credential (CHAOS-2714). */
+    revoke: "Revoke",
+    /** Rotate a customer-push ingest credential, issuing a new one-time token (CHAOS-2714). */
+    rotate: "Rotate",
+    /** Jump from the token reveal panel to the runner setup examples (CHAOS-2714). */
+    viewSetupExamples: "View setup examples",
+    /** Submit the customer-push payload validation form (CHAOS-2714, validate-only in v1). */
+    validatePayload: "Validate payload",
+    /** Clear the active producer-bucket filter chip on the batch list (CHAOS-2714 D8). */
+    allProducers: "All producers",
+    /** Inline link to the Validate screen from the empty batch-list state (CHAOS-2714). */
+    goToValidate: "Validate",
+    /** Inline link to the runner setup examples from the empty batch-list state (CHAOS-2714). */
+    goToCiJob: "CI job",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;

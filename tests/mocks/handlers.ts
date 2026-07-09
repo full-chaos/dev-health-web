@@ -1775,6 +1775,7 @@ function buildSetupStatus() {
         has_sync_config: false,
         sync_config_id: null,
         first_sync_started: false,
+        first_sync_completed: false,
         sync_status: "none",
         selected_repositories_count: 0,
         last_sync_error: null,
@@ -3383,6 +3384,17 @@ export const handlers = [
             team_id: teamId,
             name: body?.name ?? "Team",
             source: body?.source ?? "github",
+            description: body?.description ?? null,
+            repo_patterns: body?.repo_patterns ?? [],
+            project_keys: body?.project_keys ?? [],
+            extra_data: body?.extra_data ?? {},
+            managed_fields: body?.managed_fields ?? [],
+            sync_policy: body?.sync_policy ?? 0,
+            flagged_changes: null,
+            last_drift_sync_at: null,
+            is_active: true,
+            created_at: "2025-01-01T00:00:00Z",
+            updated_at: "2025-01-01T00:00:00Z",
         };
         MOCK_TEAMS.push(created);
         return HttpResponse.json(created);
@@ -3408,8 +3420,17 @@ export const handlers = [
 
     http.post("*/api/v1/admin/identities", async ({ request }) => {
         const body = (await request.json()) as Partial<MockIdentity> | null;
+        const identityId = body?.id ?? body?.canonical_id ?? `identity-${Date.now()}`;
         const created: MockIdentity = {
-            id: body?.id ?? `identity-${Date.now()}`,
+            id: identityId,
+            canonical_id: body?.canonical_id ?? identityId,
+            display_name: body?.display_name ?? null,
+            email: body?.email ?? null,
+            provider_identities: body?.provider_identities ?? {},
+            team_ids: body?.team_ids ?? [],
+            is_active: true,
+            created_at: "2025-01-01T00:00:00Z",
+            updated_at: "2025-01-01T00:00:00Z",
             provider: body?.provider ?? "github",
             external_id: body?.external_id ?? `external-${Date.now()}`,
             user_id: body?.user_id ?? "e2e-user-1",
@@ -3418,18 +3439,27 @@ export const handlers = [
         return HttpResponse.json(created);
     }),
 
+    // The real backend returns a bare User[] array (see src/lib/admin/types.ts
+    // User + adminApi.users.list). A paginated envelope here previously made
+    // /org/admin throw `users.filter is not a function` during RSC render.
     http.get("*/api/v1/admin/users", () =>
-        HttpResponse.json({
-            items: [
-                {
-                    id: "e2e-user-1",
-                    email: "test@example.com",
-                    role: "owner",
-                    is_active: true,
-                },
-            ],
-            total: 1,
-        }),
+        HttpResponse.json([
+            {
+                id: "e2e-user-1",
+                email: "test@example.com",
+                username: "e2e-user",
+                full_name: "E2E User",
+                avatar_url: null,
+                auth_provider: "local",
+                is_active: true,
+                is_verified: true,
+                is_superuser: false,
+                role: "owner",
+                last_login_at: null,
+                created_at: "2025-01-01T00:00:00Z",
+                updated_at: "2025-01-01T00:00:00Z",
+            },
+        ]),
     ),
 
     http.get("*/api/v1/admin/settings/categories", () =>
