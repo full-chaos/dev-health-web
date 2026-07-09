@@ -27,12 +27,12 @@ describe("GitHubAppConnect", () => {
         );
     });
 
-    it("invokes onInstallClick when the CTA is activated", () => {
-        const onInstallClick = vi.fn();
-        render(<GitHubAppConnect onInstallClick={onInstallClick} />);
+    it("invokes onInstallClickAction when the CTA is activated", () => {
+        const onInstallClickAction = vi.fn();
+        render(<GitHubAppConnect onInstallClickAction={onInstallClickAction} />);
 
         fireEvent.click(screen.getByRole("link", { name: "Connect GitHub App" }));
-        expect(onInstallClick).toHaveBeenCalledTimes(1);
+        expect(onInstallClickAction).toHaveBeenCalledTimes(1);
     });
 
     it("shows a success banner when the result is connected", () => {

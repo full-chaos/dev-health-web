@@ -20,7 +20,7 @@ type GitHubAppConnectProps = {
      * navigates away. Lets a host surface emit funnel telemetry without this
      * shared component knowing about any specific analytics vocabulary.
      */
-    onInstallClick?: () => void;
+    onInstallClickAction?: () => void;
     /**
      * `"card"` (default): banner + a bordered, shadowed CTA box — used as a
      * page-level call-to-action (GitHub integration page, onboarding step).
@@ -55,7 +55,7 @@ function buildInstallHref(returnTo?: string): string {
 export function GitHubAppConnect({
     result,
     returnTo,
-    onInstallClick,
+    onInstallClickAction,
     variant = "card",
 }: GitHubAppConnectProps) {
     const showCta = variant !== "banner-only";
@@ -100,7 +100,7 @@ export function GitHubAppConnect({
                         </div>
                         <a
                             href={buildInstallHref(returnTo)}
-                            onClick={onInstallClick}
+                            onClick={onInstallClickAction}
                             className="inline-flex shrink-0 items-center justify-center rounded-md bg-(--surface-inverted) px-4 py-2 text-sm font-medium text-(--ink-inverted) hover:bg-(--surface-inverted)/90 focus:outline-none focus:ring-2 focus:ring-(--surface-inverted) focus:ring-offset-2"
                         >
                             {CTA_LABELS.connectGitHubApp}

@@ -14,7 +14,7 @@ export class AdminApiError extends Error {
 function formatErrorDetail(raw: unknown): string | undefined {
     if (typeof raw === "string") return raw;
     if (raw == null) return undefined;
-    if (typeof raw === "object" && "error" in raw) {
+    if (typeof raw === "object") {
         const obj = raw as Record<string, unknown>;
         if (obj.error === "feature_not_licensed") {
             const tier = typeof obj.required_tier === "string" ? obj.required_tier : "a higher";
@@ -26,6 +26,13 @@ function formatErrorDetail(raw: unknown): string | undefined {
             const limit = typeof obj.limit === "string" ? obj.limit : "resource";
             return `Plan limit reached: ${limit} (${obj.current}/${obj.maximum}).`;
         }
+        // Covers both the legacy `{error, message}` shape above and other
+        // admin-plane `{code, message}` detail objects — e.g. the
+        // customer-push one-active-owner 409
+        // (`{"code": "source_owned_by_fullchaos_sync", "message": "..."}`,
+        // verified against api/admin/routers/customer_push.py). Any object
+        // carrying a string `message` should surface that prose, not raw
+        // JSON, regardless of whether it also has an `error` key.
         if (typeof obj.message === "string") return obj.message;
     }
     return JSON.stringify(raw);
