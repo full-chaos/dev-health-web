@@ -1,7 +1,14 @@
 import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { BackLink } from "@/components/shared/BackLink";
 import { CreateCustomerPushSourceForm } from "@/components/admin/integrations/customer-push/CreateCustomerPushSourceForm";
+import { CustomerPushLockedPreview } from "@/components/admin/integrations/customer-push/CustomerPushLockedPreview";
+import { getCustomerPushIngestEntitlement } from "@/lib/admin/server";
+import {
+    CUSTOMER_PUSH_INGEST_FEATURE,
+    CUSTOMER_PUSH_INGEST_REQUIRED_TIER,
+} from "@/lib/billing/features";
 
 const PROVIDER_NAMES: Record<string, string> = {
     github: "GitHub",
@@ -21,6 +28,21 @@ export default async function NewCustomerPushSourcePage({
 
     if (!providerName) {
         notFound();
+    }
+
+    const entitlement = await getCustomerPushIngestEntitlement();
+
+    if (entitlement.data?.enabled !== true) {
+        return (
+            <UpgradeGate
+                feature={CUSTOMER_PUSH_INGEST_FEATURE}
+                requiredTier={CUSTOMER_PUSH_INGEST_REQUIRED_TIER}
+                currentTier={entitlement.data?.tier ?? "community"}
+                features={entitlement.data?.features ?? {}}
+            >
+                <CustomerPushLockedPreview />
+            </UpgradeGate>
+        );
     }
 
     return (

@@ -1,13 +1,24 @@
 import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { ProviderCredentialsList } from "@/components/admin/integrations/ProviderCredentialsList";
 import {
     GitHubAppConnect,
     type GitHubAppConnectResult,
 } from "@/components/admin/integrations/GitHubAppConnect";
 import { ModeCards } from "@/components/admin/integrations/customer-push/ModeCards";
+import { CustomerPushLockedPreview } from "@/components/admin/integrations/customer-push/CustomerPushLockedPreview";
 import { CustomerPushSourceList } from "@/components/admin/integrations/customer-push/CustomerPushSourceList";
-import { listCredentials, listSyncConfigs, listCustomerPushSources } from "@/lib/admin/server";
+import {
+    listCredentials,
+    listSyncConfigs,
+    listCustomerPushSources,
+    getCustomerPushIngestEntitlement,
+} from "@/lib/admin/server";
+import {
+    CUSTOMER_PUSH_INGEST_FEATURE,
+    CUSTOMER_PUSH_INGEST_REQUIRED_TIER,
+} from "@/lib/billing/features";
 import type { Provider } from "@/lib/admin/types";
 
 // Intentionally drifted from `types.ts`'s `PROVIDERS`/`PROVIDER_LABELS` (see
@@ -48,11 +59,18 @@ export default async function IntegrationPage({
     const isCustomProvider = provider === "custom";
     const supportsCustomerPush = CUSTOMER_PUSH_ENABLED_PROVIDERS.has(provider);
 
-    const [credentialsResult, syncConfigsResult, customerPushSourcesResult] = await Promise.all([
-        listCredentials(),
-        listSyncConfigs(),
-        supportsCustomerPush ? listCustomerPushSources(provider) : Promise.resolve(undefined),
-    ]);
+    const [credentialsResult, syncConfigsResult, customerPushEntitlementResult] = await Promise.all(
+        [
+            listCredentials(),
+            listSyncConfigs(),
+            supportsCustomerPush ? getCustomerPushIngestEntitlement() : Promise.resolve(undefined),
+        ],
+    );
+    const customerPushEnabled =
+        supportsCustomerPush && customerPushEntitlementResult?.data?.enabled === true;
+    const customerPushSourcesResult = customerPushEnabled
+        ? await listCustomerPushSources(provider)
+        : undefined;
 
     const credentials = (credentialsResult.data ?? []).filter((c) => c.provider === provider);
     const syncConfigs = syncConfigsResult.data ?? [];
@@ -75,13 +93,17 @@ export default async function IntegrationPage({
                 </div>
             )}
 
-            {customerPushSourcesResult?.error && (
+            {provider === "github" && githubAppResult && (
+                <GitHubAppConnect result={githubAppResult} variant="banner-only" />
+            )}
+
+            {customerPushEnabled && customerPushSourcesResult?.error && (
                 <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
                     Failed to load customer-push sources: {customerPushSourcesResult.error}
                 </div>
             )}
 
-            {supportsCustomerPush && (
+            {supportsCustomerPush && customerPushEnabled && (
                 <ModeCards
                     provider={provider}
                     providerName={providerName}
@@ -90,10 +112,26 @@ export default async function IntegrationPage({
                 />
             )}
 
+            {supportsCustomerPush && !customerPushEnabled && (
+                <UpgradeGate
+                    feature={CUSTOMER_PUSH_INGEST_FEATURE}
+                    requiredTier={CUSTOMER_PUSH_INGEST_REQUIRED_TIER}
+                    currentTier={customerPushEntitlementResult?.data?.tier ?? "community"}
+                    features={customerPushEntitlementResult?.data?.features ?? {}}
+                >
+                    <CustomerPushLockedPreview />
+                </UpgradeGate>
+            )}
+
             {!isCustomProvider && (
                 <div id="managed-sync-credentials" className="space-y-8">
-                    {provider === "github" && <GitHubAppConnect result={githubAppResult} />}
-
+                    <ModeCards
+                        provider={provider}
+                        providerName={providerName}
+                        showManagedSync={true}
+                        showCustomerPush={false}
+                        customerPushSourceCount={0}
+                    />
                     <ProviderCredentialsList
                         provider={provider as Provider}
                         providerName={providerName}
@@ -103,7 +141,7 @@ export default async function IntegrationPage({
                 </div>
             )}
 
-            {supportsCustomerPush && (
+            {customerPushEnabled && (
                 <div className="mt-8">
                     <CustomerPushSourceList
                         provider={provider}

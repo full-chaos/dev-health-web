@@ -1,8 +1,9 @@
 "use server";
 
-import { adminApi } from "../api";
+import { adminApi, AdminApiError } from "../api";
 import { revalidatePath } from "next/cache";
-import type { ActionResult } from "@/lib/result";
+import type { Result } from "@/lib/result";
+import { CUSTOMER_PUSH_INGEST_FEATURE } from "@/lib/billing/features";
 import type {
     CustomerPushSource,
     CustomerPushSourceCreate,
@@ -19,6 +20,30 @@ import type {
 } from "../types";
 import { getSessionContext, withErrorHandling } from "./_shared";
 
+type CustomerPushIngestEntitlement = {
+    tier: string;
+    features: Record<string, boolean>;
+    enabled: boolean;
+};
+
+export async function getCustomerPushIngestEntitlement(): Promise<
+    Result<CustomerPushIngestEntitlement>
+> {
+    return withErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        if (!orgId) {
+            throw new AdminApiError(400, "Bad Request", "No organization ID in session");
+        }
+
+        const entitlements = await adminApi.licensing.entitlements(orgId, token, orgId);
+        return {
+            tier: entitlements.tier,
+            features: entitlements.features,
+            enabled: entitlements.features[CUSTOMER_PUSH_INGEST_FEATURE] === true,
+        };
+    });
+}
+
 /**
  * GET /customer-push/sources has no server-side `system` filter — filter
  * client-side here so every caller gets a correctly per-provider-scoped
@@ -26,7 +51,7 @@ import { getSessionContext, withErrorHandling } from "./_shared";
  */
 export async function listCustomerPushSources(
     system?: string,
-): Promise<ActionResult<CustomerPushSource[]>> {
+): Promise<Result<CustomerPushSource[]>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const sources = await adminApi.customerPush.listSources(token, orgId);
@@ -36,7 +61,7 @@ export async function listCustomerPushSources(
 
 export async function createCustomerPushSource(
     data: CustomerPushSourceCreate,
-): Promise<ActionResult<CustomerPushSource>> {
+): Promise<Result<CustomerPushSource>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.customerPush.createSource(data, token, orgId);
@@ -45,9 +70,7 @@ export async function createCustomerPushSource(
     });
 }
 
-export async function getCustomerPushSource(
-    sourceId: string,
-): Promise<ActionResult<CustomerPushSource>> {
+export async function getCustomerPushSource(sourceId: string): Promise<Result<CustomerPushSource>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.customerPush.getSource(sourceId, token, orgId);
@@ -57,7 +80,7 @@ export async function getCustomerPushSource(
 export async function updateCustomerPushSource(
     sourceId: string,
     data: CustomerPushSourceUpdate,
-): Promise<ActionResult<CustomerPushSource>> {
+): Promise<Result<CustomerPushSource>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.customerPush.updateSource(sourceId, data, token, orgId);
@@ -68,7 +91,7 @@ export async function updateCustomerPushSource(
 
 export async function listCustomerPushTokens(
     sourceId: string,
-): Promise<ActionResult<CustomerPushToken[]>> {
+): Promise<Result<CustomerPushToken[]>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.customerPush.listTokens(sourceId, token, orgId);
@@ -78,7 +101,7 @@ export async function listCustomerPushTokens(
 export async function createCustomerPushToken(
     sourceId: string,
     data: CustomerPushTokenCreate,
-): Promise<ActionResult<CustomerPushTokenCreateResponse>> {
+): Promise<Result<CustomerPushTokenCreateResponse>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.customerPush.createToken(sourceId, data, token, orgId);
@@ -89,7 +112,7 @@ export async function createCustomerPushToken(
 
 export async function rotateCustomerPushToken(
     tokenId: string,
-): Promise<ActionResult<CustomerPushTokenCreateResponse>> {
+): Promise<Result<CustomerPushTokenCreateResponse>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.customerPush.rotateToken(tokenId, token, orgId);
@@ -98,9 +121,7 @@ export async function rotateCustomerPushToken(
     });
 }
 
-export async function revokeCustomerPushToken(
-    tokenId: string,
-): Promise<ActionResult<CustomerPushToken>> {
+export async function revokeCustomerPushToken(tokenId: string): Promise<Result<CustomerPushToken>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.customerPush.revokeToken(tokenId, token, orgId);
@@ -112,7 +133,7 @@ export async function revokeCustomerPushToken(
 export async function listCustomerPushBatches(
     sourceId: string,
     params: CustomerPushBatchListParams = {},
-): Promise<ActionResult<CustomerPushBatchListResponse>> {
+): Promise<Result<CustomerPushBatchListResponse>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.customerPush.listBatches(sourceId, params, token, orgId);
@@ -121,16 +142,14 @@ export async function listCustomerPushBatches(
 
 export async function getCustomerPushBatch(
     ingestionId: string,
-): Promise<ActionResult<CustomerPushBatchDetail>> {
+): Promise<Result<CustomerPushBatchDetail>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.customerPush.getBatch(ingestionId, token, orgId);
     });
 }
 
-export async function listCustomerPushSchemas(): Promise<
-    ActionResult<CustomerPushSchemaListResponse>
-> {
+export async function listCustomerPushSchemas(): Promise<Result<CustomerPushSchemaListResponse>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.customerPush.listSchemas(token, orgId);
@@ -139,7 +158,7 @@ export async function listCustomerPushSchemas(): Promise<
 
 export async function getCustomerPushSchema(
     version: string,
-): Promise<ActionResult<CustomerPushSchemaDetailResponse>> {
+): Promise<Result<CustomerPushSchemaDetailResponse>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.customerPush.getSchema(version, token, orgId);
@@ -149,7 +168,7 @@ export async function getCustomerPushSchema(
 export async function validateCustomerPushPayload(
     sourceId: string,
     envelope: unknown,
-): Promise<ActionResult<CustomerPushValidateResponse>> {
+): Promise<Result<CustomerPushValidateResponse>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.customerPush.validate(sourceId, envelope, token, orgId);

@@ -136,7 +136,7 @@ export function OnboardIntegrationStep({
             <GitHubAppConnect
                 result={result}
                 returnTo={RETURN_TO}
-                onInstallClick={handleInstallStart}
+                onInstallClickAction={handleInstallStart}
             />
 
             <section aria-labelledby="onboard-secondary-providers" className="space-y-3">

@@ -1,9 +1,19 @@
 import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { BackLink } from "@/components/shared/BackLink";
 import { CustomerPushBatchList } from "@/components/admin/integrations/customer-push/CustomerPushBatchList";
-import { getCustomerPushSource, listCustomerPushBatches } from "@/lib/admin/server";
+import { CustomerPushLockedPreview } from "@/components/admin/integrations/customer-push/CustomerPushLockedPreview";
+import {
+    getCustomerPushIngestEntitlement,
+    getCustomerPushSource,
+    listCustomerPushBatches,
+} from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
+import {
+    CUSTOMER_PUSH_INGEST_FEATURE,
+    CUSTOMER_PUSH_INGEST_REQUIRED_TIER,
+} from "@/lib/billing/features";
 import type { CustomerPushBatchStatus } from "@/lib/admin/types";
 
 const STATUSES: CustomerPushBatchStatus[] = [
@@ -24,6 +34,20 @@ export default async function CustomerPushBatchesPage({
 }) {
     const { provider, source_id: sourceId } = await params;
     const filters = await searchParams;
+    const entitlement = await getCustomerPushIngestEntitlement();
+
+    if (entitlement.data?.enabled !== true) {
+        return (
+            <UpgradeGate
+                feature={CUSTOMER_PUSH_INGEST_FEATURE}
+                requiredTier={CUSTOMER_PUSH_INGEST_REQUIRED_TIER}
+                currentTier={entitlement.data?.tier ?? "community"}
+                features={entitlement.data?.features ?? {}}
+            >
+                <CustomerPushLockedPreview />
+            </UpgradeGate>
+        );
+    }
 
     const status =
         filters.status && (STATUSES as string[]).includes(filters.status)
