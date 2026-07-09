@@ -728,6 +728,21 @@ const MOCK_BILLING_PLANS: MockBillingPlan[] = [
     },
 ];
 
+const MOCK_ORG_ENTITLEMENTS = {
+    org_id: "org-e2e",
+    tier: "team",
+    licensed_users: null,
+    licensed_repos: null,
+    features: {
+        customer_push_ingest: true,
+    },
+    features_override: null,
+    limits_override: null,
+    expires_at: null,
+    is_valid: true,
+    limits: {},
+};
+
 const MOCK_CREDENTIALS: MockCredential[] = [
     {
         id: "cred-github-1",
@@ -2048,6 +2063,13 @@ export const handlers = [
 
     http.post("*/api/v1/billing/subscriptions/reactivate", () =>
         HttpResponse.json({ status: "reactivated" }),
+    ),
+
+    http.get("*/api/v1/licensing/entitlements/:orgId", ({ params }) =>
+        HttpResponse.json({
+            ...MOCK_ORG_ENTITLEMENTS,
+            org_id: String(params.orgId ?? MOCK_ORG_ENTITLEMENTS.org_id),
+        }),
     ),
 
     http.get("*/api/v1/billing/refunds", ({ request }) => {
