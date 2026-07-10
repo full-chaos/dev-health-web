@@ -115,6 +115,10 @@ All routes below require an active session. The `(app)` layout wraps them in `Se
 | `/superadmin/licensing` | `superadmin/licensing/page.tsx` | Licence management per org                                     |
 | `/superadmin/billing/*` | `superadmin/billing/*/page.tsx` | Billing views — subscriptions, invoices, plans, refunds, audit |
 
+The licensing surface consumes organization-scoped feature booleans; see the
+[Agent Context Runtime entitlement contract](agent-context-runtime-entitlement.md)
+for the hosted ACR-specific boundary.
+
 ### `(auth)` — Public Auth Flows
 
 | Route           | Page                    | Description                  |
