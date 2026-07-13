@@ -45,7 +45,10 @@ async function getServerAuthHeaders(): Promise<Record<string, string>> {
         if (session?.access_token) {
             return { Authorization: `Bearer ${session.access_token}` };
         }
-    } catch {}
+    } catch {
+        // The backend remains the authentication boundary and will return 401.
+        return {};
+    }
     return {};
 }
 
@@ -57,13 +60,6 @@ const request = async (
     params?: ApiQueryParams,
 ): Promise<Response> => {
     const url = buildUrl(path, params);
-    const cacheKey = `${init?.method ?? "GET"}:${url}`;
-
-    const existing = inflightRequests.get(cacheKey);
-    if (existing) {
-        return existing.then((r) => r.clone());
-    }
-
     const authHeaders = await getServerAuthHeaders();
 
     // Attach X-Request-ID for distributed tracing across the web → backend boundary.
@@ -80,8 +76,22 @@ const request = async (
             "X-Request-ID": requestId,
         },
     };
+    const method = (mergedInit.method ?? "GET").toUpperCase();
+    const hasAuthorization = new Headers(mergedInit.headers).has("Authorization");
+    const canDedupe = !hasAuthorization && (method === "GET" || method === "HEAD");
+    const cacheKey = `${method}:${url}`;
+
+    if (canDedupe) {
+        const existing = inflightRequests.get(cacheKey);
+        if (existing) {
+            return existing.then((response) => response.clone());
+        }
+    }
 
     const promise = fetch(url, mergedInit);
+    if (!canDedupe) {
+        return promise;
+    }
     inflightRequests.set(cacheKey, promise);
 
     try {

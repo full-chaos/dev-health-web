@@ -96,7 +96,8 @@ export default async function Home({ searchParams }: HomePageProps) {
     if (!health.ok) {
         return <ServiceUnavailable />;
     }
-    const lastIngestedAt = home?.freshness.last_ingested_at ?? null;
+    const lastUpdatedAt =
+        home?.freshness.latest_successful_sync_at ?? home?.freshness.last_ingested_at ?? null;
     // Reorder Monitoring Views based on active lens (cockpit surface priority).
     const viewPriority: Record<string, string[]> = {
         ic: ["flow", "throughput", "dora"],
@@ -141,9 +142,9 @@ export default async function Home({ searchParams }: HomePageProps) {
 
                             <div className="flex items-center justify-between">
                                 <BackendBanner meta={meta} />
-                                <p className="text-sm text-(--ink-muted)">
+                                <p className="text-body font-medium text-(--text-secondary)">
                                     <ClientTimestamp
-                                        value={lastIngestedAt}
+                                        value={lastUpdatedAt}
                                         prefix="Last updated: "
                                     />
                                 </p>

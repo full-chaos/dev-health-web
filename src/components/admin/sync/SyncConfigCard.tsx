@@ -85,8 +85,8 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
                 <SyncStatusBadge status={getStatus()} />
             </div>
 
-            <div className="mt-6 flex items-center justify-between border-t border-(--card-stroke) pt-4">
-                <div className="text-xs text-(--ink-muted)">
+            <div className="mt-6 flex flex-col gap-4 border-t border-(--card-stroke) pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="shrink-0 text-xs text-(--ink-muted)">
                     <ClientTimestamp
                         value={config.last_sync_at}
                         prefix="Last sync: "
@@ -94,7 +94,10 @@ export function SyncConfigCard({ config }: SyncConfigCardProps) {
                     />
                 </div>
 
-                <div className="flex items-center gap-2" onClick={(e) => e.preventDefault()}>
+                <div
+                    className="flex flex-wrap items-center gap-2"
+                    onClick={(e) => e.preventDefault()}
+                >
                     {showDeleteConfirm ? (
                         <div className="flex items-center gap-2">
                             <span className="text-xs text-red-500">Are you sure?</span>

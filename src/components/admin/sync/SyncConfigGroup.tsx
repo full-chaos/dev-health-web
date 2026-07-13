@@ -144,7 +144,7 @@ export function SyncConfigGroup({ parent, childConfigs }: SyncConfigGroupProps) 
 
             {/* Children */}
             {expanded && (
-                <div className="border-t border-(--card-stroke) p-4 grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 border-t border-(--card-stroke) p-4 xl:grid-cols-2">
                     {childConfigs.map((child) => (
                         <SyncConfigCard key={child.id} config={child} />
                     ))}

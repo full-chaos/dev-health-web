@@ -15,6 +15,7 @@ export type MetaResponse = {
 
 export type Freshness = {
     last_ingested_at: string | null;
+    latest_successful_sync_at?: string | null;
     sources: Record<string, "ok" | "degraded" | "down">;
     coverage: Coverage;
 };
