@@ -144,6 +144,22 @@ describe("SyncConfigGroup", () => {
         expect(expandToggle).toHaveAttribute("aria-expanded", "true");
     });
 
+    it("keeps child cards and their footers readable through tablet widths", async () => {
+        renderWithToaster(<SyncConfigGroup parent={parent} childConfigs={childConfigs} />);
+
+        await userEvent.click(screen.getByRole("button", { expanded: false }));
+
+        const childCard = screen.getByRole("link", { name: /chaos\/repo-a/ });
+        const childGrid = childCard.parentElement;
+        const timestamp = screen.getAllByText("Last sync: Never")[0];
+        const footer = timestamp.parentElement?.parentElement;
+
+        expect(childGrid).toHaveClass("xl:grid-cols-2");
+        expect(childGrid).not.toHaveClass("md:grid-cols-2");
+        expect(timestamp.parentElement).toHaveClass("shrink-0");
+        expect(footer).toHaveClass("flex-col", "sm:flex-row");
+    });
+
     it("uses singular copy for a single repo config", async () => {
         renderWithToaster(<SyncConfigGroup parent={parent} childConfigs={[childConfigs[0]]} />);
 

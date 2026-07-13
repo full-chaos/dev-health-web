@@ -72,7 +72,7 @@ export default async function SyncStatusPage() {
 
             {/* Standalone configs (no parent, no children) */}
             {standalones.length > 0 && (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-6 xl:grid-cols-2">
                     {standalones.map((config) => (
                         <SyncConfigCard key={config.id} config={config} />
                     ))}
