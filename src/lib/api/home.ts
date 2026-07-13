@@ -11,7 +11,7 @@ import { normalizeFilters, postJson } from "./_shared";
  */
 export const getHomeData = cache(async function getHomeData(filters: MetricFilter) {
     const normalized = normalizeFilters(filters);
-    return postJson<HomeResponse>("/api/v1/home", { filters: normalized }, 60, {
+    return postJson<HomeResponse>("/api/v1/home", { filters: normalized }, 0, {
         f: encodeFilterParam(normalized),
     });
 });
