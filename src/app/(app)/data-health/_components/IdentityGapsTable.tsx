@@ -1,22 +1,23 @@
 "use client";
 
-import { useQuery } from "urql";
+import { gql, useQuery } from "urql";
 import {
     DataHealthIdentityDocument,
     type DataHealthIdentityQuery,
+    type DataHealthIdentityQueryVariables,
 } from "@/lib/graphql/__generated__/graphql";
-import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { ProviderBadge } from "@/components/admin/identities/ProviderBadge";
 
 import { AliasSuggestionRow } from "./AliasSuggestionRow";
 
+const DATA_HEALTH_IDENTITY_QUERY = gql<DataHealthIdentityQuery, DataHealthIdentityQueryVariables>(
+    DataHealthIdentityDocument.toString(),
+);
+
 export function IdentityGapsTable() {
     const [result] = useQuery({
-        query: DataHealthIdentityDocument as unknown as TypedDocumentNode<
-            DataHealthIdentityQuery,
-            { team: string }
-        >,
+        query: DATA_HEALTH_IDENTITY_QUERY,
         variables: { team: "ALL" },
     });
 
@@ -78,6 +79,7 @@ export function IdentityGapsTable() {
                 </p>
                 <div className="rounded-xl border border-(--card-stroke) bg-card overflow-hidden">
                     <DataTable
+                        accessibleLabel="Unmapped identities"
                         data={health.unmappedIdentities}
                         columns={columns}
                         rowKeyAction={(r) => (r as { email?: string | null }).email ?? ""}

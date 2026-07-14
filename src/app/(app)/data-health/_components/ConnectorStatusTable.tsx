@@ -77,6 +77,7 @@ export function ConnectorStatusTable({ data, isPending }: ConnectorStatusTablePr
 
     return (
         <DataTable
+            accessibleLabel="Connector statuses"
             columns={columns}
             data={data}
             rowKeyAction={(row) => `${row.provider}-${row.scope}`}

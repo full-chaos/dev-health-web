@@ -94,6 +94,7 @@ export function OrgTable({ orgs }: OrgTableProps) {
 
     return (
         <DataTable
+            accessibleLabel="Organizations"
             columns={columns}
             data={orgs}
             rowKeyAction={(org) => org.id}

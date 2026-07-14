@@ -61,6 +61,7 @@ export function UserTable({ users }: UserTableProps) {
 
     return (
         <DataTable
+            accessibleLabel="Platform users"
             columns={[
                 {
                     key: "name",

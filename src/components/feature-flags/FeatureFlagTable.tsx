@@ -88,6 +88,7 @@ export function FeatureFlagTable({ initialData, fetchAction }: Props) {
 
     return (
         <DataTable<FeatureFlagListItem>
+            accessibleLabel="Feature flags"
             columns={columns}
             data={data.items}
             rowKeyAction={(row) => row.flagId}

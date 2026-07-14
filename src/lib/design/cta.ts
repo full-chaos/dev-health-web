@@ -169,6 +169,13 @@ export const CTA_LABELS = {
     finishAddProvider: "Finish",
     /** Finish-step follow-up: jump straight into creating a sync configuration (CHAOS-2837). */
     createSyncConfig: "Create sync configuration",
+    newSyncConfig: "New Config",
+    manageSyncConfig: "Manage",
+    pauseSync: "Pause",
+    resumeSync: "Resume",
+    syncNow: "Sync Now",
+    syncing: "Syncing...",
+    confirmDeleteSyncConfig: "Yes, Delete",
     /** Start the managed-sync connection flow from the provider mode-choice card (CHAOS-2714). */
     setUpManagedSync: "Set up managed sync",
     /** Start the customer-push source setup flow from the provider mode-choice card (CHAOS-2714). */

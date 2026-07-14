@@ -127,6 +127,7 @@ export function SubscriptionList({ initialData, initialOrgFilter = "" }: Subscri
 
     return (
         <DataTable
+            accessibleLabel="Subscriptions"
             columns={columns}
             data={data.items}
             rowKeyAction={(subscription) => subscription.id}
