@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export type DataTableColumn<T> = {
     key: string;
@@ -23,9 +24,11 @@ type DataTableSearch = {
 };
 
 type DataTableProps<T> = {
-    columns: DataTableColumn<T>[];
-    data: T[];
+    accessibleLabel: string;
+    columns: readonly DataTableColumn<T>[];
+    data: readonly T[];
     rowKeyAction: (row: T) => string;
+    renderRowAction?: (row: T) => ReactNode;
     emptyMessage: string;
     emptyColSpan?: number;
     pagination?: DataTablePagination;
@@ -39,9 +42,11 @@ type DataTableProps<T> = {
 };
 
 export function DataTable<T>({
+    accessibleLabel,
     columns,
     data,
     rowKeyAction,
+    renderRowAction,
     emptyMessage,
     emptyColSpan,
     pagination,
@@ -108,7 +113,12 @@ export function DataTable<T>({
                 </div>
             )}
 
-            <div className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)">
+            <div
+                role="region"
+                aria-label={accessibleLabel}
+                tabIndex={0}
+                className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)"
+            >
                 <table className="w-full text-left text-sm">
                     <thead className="border-b border-(--card-stroke) bg-(--card-70) text-(--ink-muted)">
                         <tr>
@@ -123,21 +133,24 @@ export function DataTable<T>({
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-(--card-stroke)">
-                        {data.map((row) => (
-                            <tr
-                                key={rowKeyAction(row)}
-                                className="transition-colors hover:bg-(--card-70)"
-                            >
-                                {columns.map((column) => (
-                                    <td
-                                        key={column.key}
-                                        className={column.className ?? "px-4 py-3"}
-                                    >
-                                        {column.render(row)}
-                                    </td>
-                                ))}
-                            </tr>
-                        ))}
+                        {data.map((row) => {
+                            const key = rowKeyAction(row);
+                            if (renderRowAction) {
+                                return <Fragment key={key}>{renderRowAction(row)}</Fragment>;
+                            }
+                            return (
+                                <tr className="transition-colors hover:bg-(--card-70)" key={key}>
+                                    {columns.map((column) => (
+                                        <td
+                                            key={column.key}
+                                            className={column.className ?? "px-4 py-3"}
+                                        >
+                                            {column.render(row)}
+                                        </td>
+                                    ))}
+                                </tr>
+                            );
+                        })}
                         {data.length === 0 && (
                             <tr>
                                 <td
@@ -162,7 +175,7 @@ export function DataTable<T>({
                         disabled={isPending || pagination.offset === 0}
                         className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-sm disabled:opacity-50"
                     >
-                        Previous
+                        {CTA_LABELS.previousPage}
                     </button>
                     <button
                         type="button"
@@ -170,7 +183,7 @@ export function DataTable<T>({
                         disabled={isPending || currentPage >= totalPages}
                         className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-sm disabled:opacity-50"
                     >
-                        Next
+                        {CTA_LABELS.nextPage}
                     </button>
                 </div>
             )}

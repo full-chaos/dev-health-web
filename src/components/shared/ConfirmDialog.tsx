@@ -104,6 +104,14 @@ export function ConfirmDialog({
         };
     }, [isOpen]);
 
+    useEffect(() => {
+        if (!isOpen || !isPending) return;
+        const container = dialogRef.current;
+        if (container && getFocusableElements(container).length === 0) {
+            container.focus();
+        }
+    }, [isOpen, isPending]);
+
     // Focus trap: Tab from the last focusable element wraps to the first,
     // and Shift+Tab from the first wraps to the last, so focus can never
     // escape past the backdrop while the dialog is open.
@@ -112,7 +120,11 @@ export function ConfirmDialog({
         const container = dialogRef.current;
         if (!container) return;
         const focusable = getFocusableElements(container);
-        if (focusable.length === 0) return;
+        if (focusable.length === 0) {
+            event.preventDefault();
+            container.focus();
+            return;
+        }
         const first = focusable[0];
         const last = focusable[focusable.length - 1];
         const active = document.activeElement;

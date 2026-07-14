@@ -152,6 +152,7 @@ export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps
 
     return (
         <DataTable
+            accessibleLabel="Identities"
             columns={columns}
             data={filteredIdentities}
             rowKeyAction={(identity) => identity.canonical_id}

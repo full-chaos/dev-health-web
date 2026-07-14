@@ -96,6 +96,7 @@ const COLUMNS: DataTableColumn<ProviderRow>[] = [
 export function ProviderTable({ providers }: ProviderTableProps) {
     return (
         <DataTable
+            accessibleLabel="Providers"
             columns={COLUMNS}
             data={providers}
             rowKeyAction={(row) => row.id}

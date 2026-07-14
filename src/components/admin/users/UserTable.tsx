@@ -120,6 +120,7 @@ export function UserTable({ users }: UserTableProps) {
 
     return (
         <DataTable
+            accessibleLabel="Users"
             columns={columns}
             data={filteredUsers}
             rowKeyAction={(user) => user.id}

@@ -231,6 +231,7 @@ export function InvoiceList({
     return (
         <>
             <DataTable
+                accessibleLabel="Invoices"
                 columns={columns}
                 data={data.items}
                 rowKeyAction={(invoice) => invoice.id}

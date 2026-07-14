@@ -124,6 +124,7 @@ export function TeamTable({ teams, onDeleteAction }: TeamTableProps) {
 
     return (
         <DataTable
+            accessibleLabel="Teams"
             columns={columns}
             data={filteredTeams}
             rowKeyAction={(team) => team.team_id}

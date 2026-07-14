@@ -109,6 +109,7 @@ export function RefundList({ initialData, initialOrgFilter = "" }: RefundListPro
 
     return (
         <DataTable
+            accessibleLabel="Refunds"
             columns={columns}
             data={data.items}
             rowKeyAction={(refund) => refund.id}

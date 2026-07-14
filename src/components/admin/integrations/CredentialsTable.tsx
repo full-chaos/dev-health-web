@@ -145,6 +145,7 @@ export function CredentialsTable({
     return (
         <>
             <DataTable
+                accessibleLabel={`${providerName} credentials`}
                 columns={columns}
                 data={credentials}
                 rowKeyAction={(row) => row.id}

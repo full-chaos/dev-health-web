@@ -31,6 +31,7 @@ describe("ProviderTable", () => {
         );
 
         expect(screen.getByRole("table")).toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Providers" })).toHaveAttribute("tabindex", "0");
         expect(screen.getAllByRole("row")).toHaveLength(3); // header + 2 providers
         expect(screen.getByText("GitHub")).toBeInTheDocument();
         expect(screen.getByText("GitLab")).toBeInTheDocument();
