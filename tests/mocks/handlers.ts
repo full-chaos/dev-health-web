@@ -2143,7 +2143,12 @@ export const handlers = [
             teams: ["core", "growth", "infra", "platform"],
             repos: ["dev-health-web", "dev-health-ops", "frontend-web"],
             services: ["web", "api", "analytics"],
-            developers: ["Alex Harper", "Jordan Lee", "metrics-owner", "dev-health-web"],
+            developers: [
+                "alex.harper@example.com",
+                "jordan.lee@example.com",
+                "metrics-owner@example.com",
+                "bot@users.noreply.github.com",
+            ],
             work_category: ["feature", "maintenance", "support"],
             issue_type: ["bug", "story", "task"],
             flow_stage: ["review", "build", "deploy"],

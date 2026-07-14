@@ -7,7 +7,7 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { act } from "@testing-library/react";
-import { render, screen, fireEvent, cleanup } from "@/test/utils";
+import { render, screen, fireEvent, cleanup, userEvent } from "@/test/utils";
 import { FilterBarClient, resolveVisibility, type FilterBarView } from "./FilterBarClient";
 import { encodeFilterParam } from "@/lib/filters/encode";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
@@ -228,7 +228,7 @@ describe("Active filter pills", () => {
     it("renders a FilterPill for each active repo/developer/work_category filter", async () => {
         const filtersWithSelections: MetricFilter = {
             ...defaultMetricFilter,
-            who: { developers: ["alice"] },
+            who: { developers: ["alice@example.com"] },
             what: { repos: ["org/api"] },
             why: { work_category: ["feature"] },
         };
@@ -237,12 +237,40 @@ describe("Active filter pills", () => {
         await renderFB(<FilterBarClient view="explore" />);
 
         expect(screen.getByText("org/api")).toBeInTheDocument();
-        expect(screen.getByText("alice")).toBeInTheDocument();
+        expect(screen.getByText("alice@example.com")).toBeInTheDocument();
         expect(screen.getByText("feature")).toBeInTheDocument();
 
         expect(screen.getByRole("button", { name: /remove repo filter/i })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /remove dev filter/i })).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /remove work filter/i })).toBeInTheDocument();
+    });
+
+    it("does not add non-email developer values from the advanced filter input", async () => {
+        setSearchParams({ f: encodeFilterParam(defaultMetricFilter) });
+
+        await renderFB(<FilterBarClient view="explore" />);
+
+        fireEvent.click(screen.getByRole("button", { name: /^filters$/i }));
+        fireEvent.change(screen.getByPlaceholderText(/alice@example\.com/i), {
+            target: { value: "github:octocat, alice@example.com" },
+        });
+
+        expect(screen.queryByText("github:octocat")).toBeNull();
+        expect(screen.getByText("alice@example.com")).toBeInTheDocument();
+    });
+
+    it("keeps a developer email draft visible while typing and commits it", async () => {
+        setSearchParams({ f: encodeFilterParam(defaultMetricFilter) });
+        const user = userEvent.setup();
+
+        await renderFB(<FilterBarClient view="explore" />);
+
+        await user.click(screen.getByRole("button", { name: /^filters$/i }));
+        const developerInput = screen.getByPlaceholderText(/alice@example\.com/i);
+        await user.type(developerInput, "alice@example.com");
+
+        expect(developerInput).toHaveValue("alice@example.com");
+        expect(screen.getByText("alice@example.com")).toBeInTheDocument();
     });
 
     it("renders no pills when filter is the default (no selections)", async () => {

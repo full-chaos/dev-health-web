@@ -1,6 +1,9 @@
+import { useState } from "react";
+
 type WhoSectionProps = {
     developers: string[];
     roles: string[];
+    toDeveloperList: (value: string) => string[];
     toList: (value: string) => string[];
     toValue: (value?: string[]) => string;
     updateDevelopers: (nextValues: string[]) => void;
@@ -10,11 +13,16 @@ type WhoSectionProps = {
 export function WhoSection({
     developers,
     roles,
+    toDeveloperList,
     toList,
     toValue,
     updateDevelopers,
     updateRoles,
 }: WhoSectionProps) {
+    const [developerDraft, setDeveloperDraft] = useState("");
+    const [developerEditing, setDeveloperEditing] = useState(false);
+    const developerValue = developerEditing ? developerDraft : toValue(developers);
+
     return (
         <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
             <summary className="cursor-pointer text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
@@ -25,9 +33,21 @@ export function WhoSection({
                     <span className="text-xs text-(--ink-muted)">Developers</span>
                     <input
                         className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2"
-                        placeholder="alice, bob"
-                        value={toValue(developers)}
-                        onChange={(event) => updateDevelopers(toList(event.target.value))}
+                        placeholder="alice@example.com, bob@example.com"
+                        value={developerValue}
+                        onFocus={() => {
+                            setDeveloperDraft(toValue(developers));
+                            setDeveloperEditing(true);
+                        }}
+                        onChange={(event) => {
+                            const nextDraft = event.target.value;
+                            setDeveloperDraft(nextDraft);
+                            updateDevelopers(toDeveloperList(nextDraft));
+                        }}
+                        onBlur={() => {
+                            setDeveloperDraft(toValue(toDeveloperList(developerDraft)));
+                            setDeveloperEditing(false);
+                        }}
                     />
                 </label>
                 <label className="flex flex-col gap-2">

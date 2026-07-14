@@ -64,11 +64,24 @@ describe("encodeFilterParam / decodeFilter round-trip", () => {
     it("survives a round-trip with developer filters", () => {
         const filter: MetricFilter = {
             ...defaultMetricFilter,
-            who: { ...defaultMetricFilter.who, developers: ["alice", "bob"] },
+            who: {
+                ...defaultMetricFilter.who,
+                developers: ["alice@example.com", "bob@example.com"],
+            },
         };
         const encoded = encodeFilterParam(filter);
         const decoded = decodeFilter(encoded);
-        expect(decoded.who.developers).toEqual(["alice", "bob"]);
+        expect(decoded.who.developers).toEqual(["alice@example.com", "bob@example.com"]);
+    });
+
+    it("preserves non-email developers decoded from existing URLs", () => {
+        const filter: MetricFilter = {
+            ...defaultMetricFilter,
+            who: { ...defaultMetricFilter.who, developers: ["github:octocat"] },
+        };
+        const decoded = decodeFilter(encodeFilterParam(filter));
+
+        expect(decoded.who.developers).toEqual(["github:octocat"]);
     });
 
     it("decodes null/undefined as the default filter", () => {

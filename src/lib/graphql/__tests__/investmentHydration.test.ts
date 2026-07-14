@@ -65,14 +65,14 @@ describe("buildInvestmentMixVariables", () => {
     it("includes who/what/why/how when their arrays are populated", () => {
         const vars = buildInvestmentMixVariables(
             baseFilters({
-                who: { developers: ["alice"] },
+                who: { developers: ["alice@example.com"] },
                 what: { repos: ["repo-a"] },
                 why: { work_category: ["roadmap"], issue_type: ["bug"] },
                 how: { flow_stage: ["in_progress"] },
             }),
             "org-1",
         );
-        expect(vars.batch.filters?.who).toEqual({ developers: ["alice"] });
+        expect(vars.batch.filters?.who).toEqual({ developers: ["alice@example.com"] });
         expect(vars.batch.filters?.what).toEqual({ repos: ["repo-a"] });
         expect(vars.batch.filters?.why).toEqual({
             workCategory: ["roadmap"],
