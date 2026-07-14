@@ -164,7 +164,7 @@ function ConfigTableRow({ row }: { readonly row: SyncConfigTableRowData }) {
                     </span>
                     <div className="flex flex-wrap items-center justify-end gap-2">
                         <Link
-                            href={`/org/admin/sync/${row.config.id}`}
+                            href={`/org/admin/sync/${encodeURIComponent(row.config.id)}`}
                             aria-label={`Manage ${row.config.name}`}
                             className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-xs font-medium text-foreground hover:bg-(--card-70)"
                         >
