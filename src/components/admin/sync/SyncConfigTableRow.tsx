@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { toggleSyncActive } from "@/lib/admin/server";
@@ -100,8 +100,10 @@ function GroupTableRow({ row, expanded, onToggleGroupAction }: SyncConfigTableRo
 function ConfigTableRow({ row }: { readonly row: SyncConfigTableRowData }) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
+    const [isDeleteBusy, setIsDeleteBusy] = useState(false);
     const { liveStatus, isSyncing, trigger } = useSyncTrigger(row.config.id);
     const status = liveStatus ?? persistedStatus(row.config);
+    const isRowBusy = isPending || isSyncing || isDeleteBusy;
 
     function handleToggleActive() {
         startTransition(async () => {
@@ -171,7 +173,7 @@ function ConfigTableRow({ row }: { readonly row: SyncConfigTableRowData }) {
                         <button
                             type="button"
                             onClick={handleToggleActive}
-                            disabled={isPending}
+                            disabled={isRowBusy}
                             aria-label={`${row.config.is_active ? "Pause" : "Resume"} ${row.config.name}`}
                             className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-xs font-medium text-foreground hover:bg-(--card-70) disabled:opacity-50"
                         >
@@ -180,13 +182,15 @@ function ConfigTableRow({ row }: { readonly row: SyncConfigTableRowData }) {
                         <SyncConfigDeleteControls
                             configId={row.config.id}
                             confirmMessage={`Delete ${row.config.name}?`}
+                            disabled={isPending || isSyncing}
+                            onBusyChangeAction={setIsDeleteBusy}
                             successMessage="Config deleted"
                             targetName={row.config.name}
                         />
                         <button
                             type="button"
                             onClick={trigger}
-                            disabled={isPending || isSyncing}
+                            disabled={isRowBusy}
                             aria-label={
                                 isSyncing
                                     ? `Syncing ${row.config.name}`

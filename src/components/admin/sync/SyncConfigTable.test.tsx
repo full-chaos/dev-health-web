@@ -127,9 +127,7 @@ describe("SyncConfigTable", () => {
     it("resumes a paused configuration from its Actions cell", async () => {
         renderTable();
         const row = within(rowFor("Linear sync"));
-
         await userEvent.click(row.getByRole("button", { name: "Resume Linear sync" }));
-
         await waitFor(() => {
             expect(mockToggleSyncActive).toHaveBeenCalledWith("linear-1", true);
             expect(mockRefresh).toHaveBeenCalled();
@@ -137,15 +135,37 @@ describe("SyncConfigTable", () => {
         });
     });
 
+    it("pauses an active configuration from its Actions cell", async () => {
+        renderTable([makeConfig({ id: "active-1", name: "Active sync" })]);
+        await userEvent.click(
+            within(rowFor("Active sync")).getByRole("button", { name: "Pause Active sync" }),
+        );
+        await waitFor(() => {
+            expect(mockToggleSyncActive).toHaveBeenCalledWith("active-1", false);
+            expect(screen.getByText("Sync paused")).toBeInTheDocument();
+        });
+    });
+
+    it.each([
+        ["a returned error", () => mockToggleSyncActive.mockResolvedValueOnce({ error: "Denied" })],
+        ["a thrown error", () => mockToggleSyncActive.mockRejectedValueOnce(new Error("Offline"))],
+    ])("does not refresh after %s while toggling", async (_case, configureFailure) => {
+        configureFailure();
+        renderTable([standalone]);
+        await userEvent.click(
+            within(rowFor("Linear sync")).getByRole("button", { name: "Resume Linear sync" }),
+        );
+        await waitFor(() => expect(mockRefresh).not.toHaveBeenCalled());
+        expect(screen.getByText(/Denied|Offline/)).toBeInTheDocument();
+    });
+
     it("confirms group deletion without expanding the group", async () => {
         renderTable();
         const groupRow = within(rowFor("chaos"));
-
         await userEvent.click(groupRow.getByRole("button", { name: "Delete chaos group" }));
-
         expect(screen.queryByRole("link", { name: "chaos/repo-a" })).not.toBeInTheDocument();
         expect(screen.getByText("Delete chaos group and 2 repo configs?")).toBeInTheDocument();
-        await userEvent.click(groupRow.getByRole("button", { name: "Yes, delete chaos group" }));
+        await userEvent.click(screen.getByRole("button", { name: "Yes, Delete" }));
 
         await waitFor(() => {
             expect(mockDeleteSyncConfig).toHaveBeenCalledWith("parent-1");
@@ -179,14 +199,43 @@ describe("SyncConfigTable", () => {
     it("cancels deletion without mutating the configuration", async () => {
         renderTable([standalone]);
         const row = within(rowFor("Linear sync"));
+        const deleteButton = row.getByRole("button", { name: "Delete Linear sync" });
+
+        await userEvent.click(deleteButton);
+
+        const dialog = screen.getByRole("dialog", { name: "Delete Linear sync?" });
+        expect(dialog).toHaveFocus();
+        expect(row.getByRole("button", { name: "Resume Linear sync" })).toBeDisabled();
+        expect(row.getByRole("button", { name: "Sync Linear sync now" })).toBeDisabled();
+        await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+        expect(
+            screen.queryByRole("dialog", { name: "Delete Linear sync?" }),
+        ).not.toBeInTheDocument();
+        expect(deleteButton).toHaveFocus();
+        expect(mockDeleteSyncConfig).not.toHaveBeenCalled();
+    });
+
+    it("keeps deletion modal and sibling actions locked while deletion is pending", async () => {
+        let resolveDelete: (value: object) => void = () => undefined;
+        mockDeleteSyncConfig.mockReturnValueOnce(
+            new Promise((resolve) => {
+                resolveDelete = resolve;
+            }),
+        );
+        renderTable([standalone]);
+        const row = within(rowFor("Linear sync"));
 
         await userEvent.click(row.getByRole("button", { name: "Delete Linear sync" }));
+        await userEvent.click(screen.getByRole("button", { name: "Yes, Delete" }));
+        await userEvent.keyboard("{Escape}");
 
-        expect(screen.getByText("Delete Linear sync?")).toBeInTheDocument();
-        await userEvent.click(row.getByRole("button", { name: "Cancel deleting Linear sync" }));
+        expect(screen.getByRole("dialog", { name: "Delete Linear sync?" })).toBeInTheDocument();
+        expect(row.getByRole("button", { name: "Resume Linear sync" })).toBeDisabled();
+        expect(row.getByRole("button", { name: "Sync Linear sync now" })).toBeDisabled();
 
-        expect(screen.queryByText("Delete Linear sync?")).not.toBeInTheDocument();
-        expect(mockDeleteSyncConfig).not.toHaveBeenCalled();
+        resolveDelete({});
+        await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
     });
 
     it("renders the empty state inside the table frame", () => {
