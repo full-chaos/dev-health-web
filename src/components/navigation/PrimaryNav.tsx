@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { BetaBadge } from "@/components/BetaBadge";
 import { OrgSwitcher } from "@/components/navigation/OrgSwitcher";
 
@@ -34,6 +35,7 @@ type PrimaryNavProps = {
 
 export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
     const pathname = usePathname();
+    const [mobileOpen, setMobileOpen] = useState(false);
     const selectedAreaId = selectedAreaIdForPathname(navAreas, pathname, active);
 
     const mainAreas = navAreas.filter((area) => area.placement === "main");
@@ -110,8 +112,20 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
 
     return (
         <aside className="w-full md:max-w-56 md:shrink-0">
+            <button
+                type="button"
+                aria-expanded={mobileOpen}
+                aria-controls="primary-navigation-panel"
+                onClick={() => setMobileOpen((open) => !open)}
+                className="w-full rounded-(--radius-sm) border border-(--card-stroke) bg-(--card-80) px-4 py-3 text-left text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50 md:hidden"
+            >
+                {mobileOpen ? "Hide navigation" : "Show navigation"}
+            </button>
             <div className="md:sticky md:top-6">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-4">
+                <div
+                    id="primary-navigation-panel"
+                    className={`${mobileOpen ? "mt-3 block" : "hidden"} max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl border border-(--card-stroke) bg-(--card-80) p-4 md:mt-0 md:block md:max-h-none md:overflow-visible`}
+                >
                     <div>
                         <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                             Full Chaos Dev Health Ops

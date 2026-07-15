@@ -1,5 +1,6 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { render } from "@/test/utils";
 import { PrimaryNav } from "./PrimaryNav";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -84,9 +85,25 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
         ]);
     });
 
-    it("renders no expand/collapse buttons — rows are links, not toggles", () => {
+    it("renders one compact mobile navigation control; rows remain links", () => {
         render(<PrimaryNav filters={makeFilter()} active="home" />);
-        expect(screen.queryAllByRole("button")).toHaveLength(0);
+        expect(screen.getByRole("button", { name: "Show navigation" })).toBeInTheDocument();
+    });
+
+    it("keeps the mobile navigation semantically collapsed until its keyboard control opens it", async () => {
+        const user = userEvent.setup();
+        render(<PrimaryNav filters={makeFilter()} active="home" />);
+        const control = screen.getByRole("button", { name: "Show navigation" });
+        const panel = screen.getByLabelText("Primary areas").parentElement;
+
+        expect(control).toHaveAttribute("aria-expanded", "false");
+        expect(panel).toHaveClass("hidden");
+
+        await user.tab();
+        await user.keyboard("{Enter}");
+
+        expect(control).toHaveAttribute("aria-expanded", "true");
+        expect(panel).not.toHaveClass("hidden");
     });
 
     it("expands ONLY the active area's children; inactive areas stay collapsed", () => {
@@ -97,6 +114,7 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
         expect(screen.getByTestId("nav-children-diagnose")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /^Flow$/i })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /^Bottlenecks$/i })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /^Context Packet$/i })).toBeInTheDocument();
 
         // Govern is NOT active → none of its children appear.
         expect(screen.queryByTestId("nav-children-govern")).toBeNull();

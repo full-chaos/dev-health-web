@@ -15,10 +15,13 @@
 export const CTA_LABELS = {
     /** Open the evidence trail behind a signal / metric / work unit. */
     openEvidence: "Open evidence",
+    generateContext: "Generate context",
     /** Inspect the associations (edges) linked to an entity. */
     inspectAssociations: "Inspect associations",
     /** Open a single artifact (flame diagram, PR, deployment, …). */
     openArtifact: "Open artifact",
+    /** Open the server-approved provenance URI for a sanitized evidence record. */
+    viewSafeSource: "View safe source",
     /** Export the current report. */
     exportReport: "Export report",
     /** Apply the staged filter selection. */

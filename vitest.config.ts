@@ -21,6 +21,7 @@ export default defineConfig({
                         "src/utils/**/__tests__/**/*.test.ts",
                         "src/data/**/__tests__/**/*.test.ts",
                         "src/components/**/*.test.ts",
+                        "src/app/**/*.test.ts",
                         "scripts/**/__tests__/**/*.test.mjs",
                     ],
                 },

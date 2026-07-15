@@ -151,6 +151,7 @@ export const navAreas: readonly NavArea[] = [
             "/cognitive-load",
             "/bottleneck",
             "/explore",
+            "/agent-context",
         ],
         legacyActiveIds: [
             "work",
@@ -267,6 +268,12 @@ export const navAreas: readonly NavArea[] = [
                 id: "bottleneck",
                 label: "Bottlenecks",
                 path: "/bottleneck",
+                navVisible: true,
+            },
+            {
+                id: "context-packet",
+                label: "Context Packet",
+                path: "/agent-context/context-packet",
                 navVisible: true,
             },
             { id: "people", label: "People", path: "/people", navVisible: true },
