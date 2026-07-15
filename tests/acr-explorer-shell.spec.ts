@@ -28,7 +28,7 @@ async function openExplorer(page: Page) {
     const faults = browserFaults(page);
     const requests = noAcrRequests(page);
     await page.goto("/agent-context/context-packet");
-    await expect(page.getByRole("heading", { name: "Context Packet", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Context Fabric", level: 1 })).toBeVisible();
     return { faults, requests };
 }
 
@@ -42,7 +42,14 @@ async function expectHealthyExplorer({
     expect(faults.failedRequests).toEqual([]);
 }
 
-test.describe("Context Packet Explorer", () => {
+test.describe("Context Fabric Explorer", () => {
+    test.beforeEach(async ({ request }) => {
+        const response = await request.post("http://127.0.0.1:8001/__test/entitlements", {
+            data: { scenario: "provisioned" },
+        });
+        expect(response.ok()).toBe(true);
+    });
+
     test("renders the deterministic sample packet and exposes its Diagnose navigation entry", async ({
         page,
     }) => {
@@ -50,13 +57,16 @@ test.describe("Context Packet Explorer", () => {
         const requests = noAcrRequests(page);
         await page.goto("/agent-context/context-packet");
 
-        await expect(page.getByRole("heading", { name: "Context Packet", level: 1 })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Context Fabric", level: 1 })).toBeVisible();
         await expect(page.getByRole("link", { name: "Diagnose", exact: true })).toHaveAttribute(
             "data-active",
             "true",
         );
         await expect(page.getByRole("heading", { name: "Pressure", level: 2 })).toBeVisible();
-        await expect(page.getByText("Packet status")).toBeVisible();
+        await expect(page.getByText("Context Fabric status")).toBeVisible();
+        await expect(
+            page.getByRole("region", { name: "Context Fabric diagnostics" }),
+        ).toBeVisible();
         await expect.poll(() => requests).toEqual([]);
         expect(faults.consoleErrors).toEqual([]);
         expect(faults.pageErrors).toEqual([]);
@@ -99,14 +109,17 @@ test.describe("Context Packet Explorer", () => {
         await expectHealthyExplorer(health);
     });
 
-    test("puts context content before navigation in the 375px tab order", async ({ page }) => {
+    test("puts mobile navigation before context content at 375px", async ({ page }) => {
         await page.setViewportSize({ width: 375, height: 812 });
         const health = await openExplorer(page);
+        const navigationControl = page.getByRole("button", { name: "Show navigation" });
+        const backLink = page.getByRole("link", { name: "Back to Diagnose" });
+        const [navigationBox, backLinkBox] = await Promise.all([
+            navigationControl.boundingBox(),
+            backLink.boundingBox(),
+        ]);
 
-        await page.keyboard.press("Tab");
-        await expect(page.getByRole("link", { name: "Back to Diagnose" })).toBeFocused();
-        await page.keyboard.press("Tab");
-        await expect(page.getByLabel(/Goal/)).toBeFocused();
+        expect(navigationBox?.y).toBeLessThan(backLinkBox?.y ?? Number.POSITIVE_INFINITY);
         await expectHealthyExplorer(health);
     });
 
