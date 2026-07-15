@@ -1,137 +1,137 @@
 {
-    "source_commit": "11c44ef812f9f9ae71a044d64f00ebae1ea1602f",
-    "files": [
-        {
-            "path": "examples/acr_client_credential.v1.json",
-            "sha256": "68e3167aa704f38c83d33babfc5154d34f277707a3b8808be3ee715789141caa"
-        },
-        {
-            "path": "examples/agent_episode.v1.json",
-            "sha256": "2dac6e5574e1b02dfc5f2953380ce000a4637e7451a1389d90f8e529c37faf57"
-        },
-        {
-            "path": "examples/agent_episode_create.v1.json",
-            "sha256": "fc01680091b8865c4b67d1cff61d829f8428bfe20f1486993afcd46cfbecf9f6"
-        },
-        {
-            "path": "examples/capabilities.v1.json",
-            "sha256": "dde8bf0553732ac64267dad0fbe83234f3e50b09fa6c2ff6585dd3c5d0dacdc5"
-        },
-        {
-            "path": "examples/context_packet.v1.json",
-            "sha256": "ef9786d6ebc66ce7cdd9bae2de885cc5379e33f79d50c4a47da458f80bac91ec"
-        },
-        {
-            "path": "examples/context_packet_item.v1.json",
-            "sha256": "1d29c9bf332b13523b6687fb2f573f842c4539cf51403b8259df64560c64cb55"
-        },
-        {
-            "path": "examples/context_packet_request.v1.json",
-            "sha256": "d8967a723b12232ecc9b17141395d6725fbef8c3337e74d2bf42c4148841930b"
-        },
-        {
-            "path": "examples/error.v1.json",
-            "sha256": "5022d3baf4ffce9b65489c1f2caf3c7174f73357c4773b39fc9af7c23449766f"
-        },
-        {
-            "path": "examples/evidence_ref.v1.json",
-            "sha256": "0e54284eca490a201c317b2259b12187b13d3a877fa5703af9f261e36f75082f"
-        },
-        {
-            "path": "examples/expanded_evidence.v1.json",
-            "sha256": "b42ad9b46682f2112964a2f0a4de7e453caf795b746ac4b7ad0377ca2369a26f"
-        },
-        {
-            "path": "examples/mcp_context_for_task_request.v1.json",
-            "sha256": "e30b5c615dc4c6d3b80abde7a6e8623a3d79fe6895d7a2f3e94f8983cf5e8df8"
-        },
-        {
-            "path": "examples/mcp_context_for_task_request_full.v1.json",
-            "sha256": "335ba4fe5a343f37c7f80253b657abb9a232c926fb0d4ef06a924110aae00f91"
-        },
-        {
-            "path": "examples/mcp_context_for_task_response.v1.json",
-            "sha256": "41bf506e2a28e3bf92a16a1af7697dd16503438ccccfe5a35e12685d6f1b5eb1"
-        },
-        {
-            "path": "examples/mcp_record_episode_request.v1.json",
-            "sha256": "70fbed8a13bcb0ab2198fc5c7dfd67837ed02d0db1a0688dbfb97f0fa5adea1b"
-        },
-        {
-            "path": "examples/mcp_record_episode_response.v1.json",
-            "sha256": "27286ccf2efa4c16c814333365ed7e9a929ca8bcfb485ff0d2ac88dc739c69e2"
-        },
-        {
-            "path": "examples/mcp_source_evidence_request.v1.json",
-            "sha256": "c7f17fa95ba53cd695fc5080c930d219e7b86db9c9e5b6396aa4ec824e8f9a2e"
-        },
-        {
-            "path": "examples/mcp_source_evidence_response.v1.json",
-            "sha256": "9c39d4096568244452dab1b5e199229d2331077d810d5b4c6b58ed1b94fe7e1e"
-        },
-        {
-            "path": "schemas/acr_client_credential.v1.schema.json",
-            "sha256": "9b71754f66263cc76456cad8178ef8677d468de9238b49320b29d12597339b16"
-        },
-        {
-            "path": "schemas/agent_episode.v1.schema.json",
-            "sha256": "6e41f2131f655c50fc0ae1dbe7701e93757a8b16bb9fc1d6006778761da7ccd8"
-        },
-        {
-            "path": "schemas/agent_episode_create.v1.schema.json",
-            "sha256": "461f5d9cfcbbe742df1820cbd40779b0d6d41f9a3b6ddbad34ec18c56ae84c29"
-        },
-        {
-            "path": "schemas/capabilities.v1.schema.json",
-            "sha256": "d48c1dd7b3e57a0d14482f6b4b98131eabacfe410698ca43abfa7b25b0e8d9b5"
-        },
-        {
-            "path": "schemas/context_packet.v1.schema.json",
-            "sha256": "8764cda55917878c4327b2ebc03b4000d4eaa7900fa24b498f48aa9bdc5f7849"
-        },
-        {
-            "path": "schemas/context_packet_item.v1.schema.json",
-            "sha256": "fd1dc43ffd77f8848dbcfe5938a8751196dec793fa29442225bec95eeca71e25"
-        },
-        {
-            "path": "schemas/context_packet_request.v1.schema.json",
-            "sha256": "716aa3746f1e2d4c6fab2e90bad830476c7511a057753690d5848b6ea84cd729"
-        },
-        {
-            "path": "schemas/error.v1.schema.json",
-            "sha256": "83eb433d1681249e1a836d6a1c034e8ee68772d2ad36c4fdd29ee59b00614cbb"
-        },
-        {
-            "path": "schemas/evidence_ref.v1.schema.json",
-            "sha256": "cda8e0ca967f3dba2bcc12b06bede4868a4104ffdfaf3219c7daecf40de60a82"
-        },
-        {
-            "path": "schemas/expanded_evidence.v1.schema.json",
-            "sha256": "00d9fc1262b621b9fa5472eeaf8c1b1581827aafb3ba185c8772b3622f3c81d7"
-        },
-        {
-            "path": "schemas/mcp_context_for_task_request.v1.schema.json",
-            "sha256": "ee087311bac23adc87ff2650f566b4ae9111ce2abea9c69bd13b6d9ad80d7685"
-        },
-        {
-            "path": "schemas/mcp_context_for_task_response.v1.schema.json",
-            "sha256": "d1dcd2bf5118afe502194b8ba5630a1a1de8531f722ed210b2fbd2f99b727125"
-        },
-        {
-            "path": "schemas/mcp_record_episode_request.v1.schema.json",
-            "sha256": "14379946b507c7fc723142e41a07d567d4da1f4ba491b3ce9ee514ea44acb02a"
-        },
-        {
-            "path": "schemas/mcp_record_episode_response.v1.schema.json",
-            "sha256": "924d50ed3565250b27ece743c5c449a1642cd1cbdcbb74f65870f9a6dd5b343f"
-        },
-        {
-            "path": "schemas/mcp_source_evidence_request.v1.schema.json",
-            "sha256": "306380ccb55277f53f69ec22b6a0b26d7e7dc30f866ab38f851aaa6bf63e1b7f"
-        },
-        {
-            "path": "schemas/mcp_source_evidence_response.v1.schema.json",
-            "sha256": "4cee2624c0738c0331bd6e068753ebf044d82b1be66b35804d6bc47b8ec6848a"
-        }
-    ]
+  "source_commit": "11c44ef812f9f9ae71a044d64f00ebae1ea1602f",
+  "files": [
+    {
+      "path": "examples/acr_client_credential.v1.json",
+      "sha256": "68e3167aa704f38c83d33babfc5154d34f277707a3b8808be3ee715789141caa"
+    },
+    {
+      "path": "examples/agent_episode.v1.json",
+      "sha256": "2dac6e5574e1b02dfc5f2953380ce000a4637e7451a1389d90f8e529c37faf57"
+    },
+    {
+      "path": "examples/agent_episode_create.v1.json",
+      "sha256": "fc01680091b8865c4b67d1cff61d829f8428bfe20f1486993afcd46cfbecf9f6"
+    },
+    {
+      "path": "examples/capabilities.v1.json",
+      "sha256": "dde8bf0553732ac64267dad0fbe83234f3e50b09fa6c2ff6585dd3c5d0dacdc5"
+    },
+    {
+      "path": "examples/context_packet.v1.json",
+      "sha256": "ef9786d6ebc66ce7cdd9bae2de885cc5379e33f79d50c4a47da458f80bac91ec"
+    },
+    {
+      "path": "examples/context_packet_item.v1.json",
+      "sha256": "1d29c9bf332b13523b6687fb2f573f842c4539cf51403b8259df64560c64cb55"
+    },
+    {
+      "path": "examples/context_packet_request.v1.json",
+      "sha256": "d8967a723b12232ecc9b17141395d6725fbef8c3337e74d2bf42c4148841930b"
+    },
+    {
+      "path": "examples/error.v1.json",
+      "sha256": "5022d3baf4ffce9b65489c1f2caf3c7174f73357c4773b39fc9af7c23449766f"
+    },
+    {
+      "path": "examples/evidence_ref.v1.json",
+      "sha256": "0e54284eca490a201c317b2259b12187b13d3a877fa5703af9f261e36f75082f"
+    },
+    {
+      "path": "examples/expanded_evidence.v1.json",
+      "sha256": "b42ad9b46682f2112964a2f0a4de7e453caf795b746ac4b7ad0377ca2369a26f"
+    },
+    {
+      "path": "examples/mcp_context_for_task_request.v1.json",
+      "sha256": "e30b5c615dc4c6d3b80abde7a6e8623a3d79fe6895d7a2f3e94f8983cf5e8df8"
+    },
+    {
+      "path": "examples/mcp_context_for_task_request_full.v1.json",
+      "sha256": "335ba4fe5a343f37c7f80253b657abb9a232c926fb0d4ef06a924110aae00f91"
+    },
+    {
+      "path": "examples/mcp_context_for_task_response.v1.json",
+      "sha256": "41bf506e2a28e3bf92a16a1af7697dd16503438ccccfe5a35e12685d6f1b5eb1"
+    },
+    {
+      "path": "examples/mcp_record_episode_request.v1.json",
+      "sha256": "70fbed8a13bcb0ab2198fc5c7dfd67837ed02d0db1a0688dbfb97f0fa5adea1b"
+    },
+    {
+      "path": "examples/mcp_record_episode_response.v1.json",
+      "sha256": "27286ccf2efa4c16c814333365ed7e9a929ca8bcfb485ff0d2ac88dc739c69e2"
+    },
+    {
+      "path": "examples/mcp_source_evidence_request.v1.json",
+      "sha256": "c7f17fa95ba53cd695fc5080c930d219e7b86db9c9e5b6396aa4ec824e8f9a2e"
+    },
+    {
+      "path": "examples/mcp_source_evidence_response.v1.json",
+      "sha256": "9c39d4096568244452dab1b5e199229d2331077d810d5b4c6b58ed1b94fe7e1e"
+    },
+    {
+      "path": "schemas/acr_client_credential.v1.schema.json",
+      "sha256": "9b71754f66263cc76456cad8178ef8677d468de9238b49320b29d12597339b16"
+    },
+    {
+      "path": "schemas/agent_episode.v1.schema.json",
+      "sha256": "6e41f2131f655c50fc0ae1dbe7701e93757a8b16bb9fc1d6006778761da7ccd8"
+    },
+    {
+      "path": "schemas/agent_episode_create.v1.schema.json",
+      "sha256": "461f5d9cfcbbe742df1820cbd40779b0d6d41f9a3b6ddbad34ec18c56ae84c29"
+    },
+    {
+      "path": "schemas/capabilities.v1.schema.json",
+      "sha256": "d48c1dd7b3e57a0d14482f6b4b98131eabacfe410698ca43abfa7b25b0e8d9b5"
+    },
+    {
+      "path": "schemas/context_packet.v1.schema.json",
+      "sha256": "8764cda55917878c4327b2ebc03b4000d4eaa7900fa24b498f48aa9bdc5f7849"
+    },
+    {
+      "path": "schemas/context_packet_item.v1.schema.json",
+      "sha256": "fd1dc43ffd77f8848dbcfe5938a8751196dec793fa29442225bec95eeca71e25"
+    },
+    {
+      "path": "schemas/context_packet_request.v1.schema.json",
+      "sha256": "716aa3746f1e2d4c6fab2e90bad830476c7511a057753690d5848b6ea84cd729"
+    },
+    {
+      "path": "schemas/error.v1.schema.json",
+      "sha256": "83eb433d1681249e1a836d6a1c034e8ee68772d2ad36c4fdd29ee59b00614cbb"
+    },
+    {
+      "path": "schemas/evidence_ref.v1.schema.json",
+      "sha256": "cda8e0ca967f3dba2bcc12b06bede4868a4104ffdfaf3219c7daecf40de60a82"
+    },
+    {
+      "path": "schemas/expanded_evidence.v1.schema.json",
+      "sha256": "00d9fc1262b621b9fa5472eeaf8c1b1581827aafb3ba185c8772b3622f3c81d7"
+    },
+    {
+      "path": "schemas/mcp_context_for_task_request.v1.schema.json",
+      "sha256": "ee087311bac23adc87ff2650f566b4ae9111ce2abea9c69bd13b6d9ad80d7685"
+    },
+    {
+      "path": "schemas/mcp_context_for_task_response.v1.schema.json",
+      "sha256": "d1dcd2bf5118afe502194b8ba5630a1a1de8531f722ed210b2fbd2f99b727125"
+    },
+    {
+      "path": "schemas/mcp_record_episode_request.v1.schema.json",
+      "sha256": "14379946b507c7fc723142e41a07d567d4da1f4ba491b3ce9ee514ea44acb02a"
+    },
+    {
+      "path": "schemas/mcp_record_episode_response.v1.schema.json",
+      "sha256": "924d50ed3565250b27ece743c5c449a1642cd1cbdcbb74f65870f9a6dd5b343f"
+    },
+    {
+      "path": "schemas/mcp_source_evidence_request.v1.schema.json",
+      "sha256": "306380ccb55277f53f69ec22b6a0b26d7e7dc30f866ab38f851aaa6bf63e1b7f"
+    },
+    {
+      "path": "schemas/mcp_source_evidence_response.v1.schema.json",
+      "sha256": "4cee2624c0738c0331bd6e068753ebf044d82b1be66b35804d6bc47b8ec6848a"
+    }
+  ]
 }
