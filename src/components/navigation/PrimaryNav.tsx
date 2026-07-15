@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { BetaBadge } from "@/components/BetaBadge";
+import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { OrgSwitcher } from "@/components/navigation/OrgSwitcher";
 
 import { withFilterParam } from "@/lib/filters/url";
@@ -33,13 +34,26 @@ type PrimaryNavProps = {
     role?: string;
 };
 
+function isVisibleChild(child: NavChildRoute, features: Record<string, boolean>): boolean {
+    return (
+        child.navVisible &&
+        (child.requiredFeature === undefined || features[child.requiredFeature] === true)
+    );
+}
+
 export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
+    const mobileNavControlRef = useRef<HTMLButtonElement>(null);
+    const { features } = useAdminTier();
     const selectedAreaId = selectedAreaIdForPathname(navAreas, pathname, active);
 
     const mainAreas = navAreas.filter((area) => area.placement === "main");
     const utilityAreas = navAreas.filter((area) => area.placement === "utility");
+    const closeMobileNavigation = () => {
+        setMobileOpen(false);
+        mobileNavControlRef.current?.focus();
+    };
 
     const renderChild = (child: NavChildRoute, activeChildId: string | undefined) => {
         const isActive = child.id === activeChildId;
@@ -70,9 +84,10 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
         // Exactly one row is highlighted.
         const visibleChildren =
             isActive && area.placement === "main"
-                ? area.children.filter((child) => child.navVisible)
+                ? area.children.filter((child) => isVisibleChild(child, features))
                 : [];
-        const activeChild = isActive ? selectedChildForPathname(area, pathname) : undefined;
+        const selectedChild = isActive ? selectedChildForPathname(area, pathname) : undefined;
+        const activeChild = visibleChildren.find((child) => child.id === selectedChild?.id);
         const areaRowIsSelected = isActive && (area.placement === "utility" || !activeChild);
         const activeChildId = activeChild?.id;
 
@@ -87,7 +102,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
                     // correct (the link to the current page) per PrimaryNav.test.tsx / A10.
                     data-active={isActive ? "true" : undefined}
                     className={`group relative flex items-center rounded-2xl border px-3 py-2 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/35 ${
-                        isActive
+                        areaRowIsSelected
                             ? "border-(--accent) bg-(--accent)/15 text-foreground before:absolute before:left-0 before:top-1/4 before:h-1/2 before:w-[3px] before:rounded-full before:bg-(--accent)"
                             : "border-transparent bg-(--card-70) text-(--ink-muted) hover:border-(--card-stroke) hover:bg-(--card-80) hover:text-foreground focus-visible:border-(--card-stroke) focus-visible:bg-(--card-80) focus-visible:text-foreground"
                     }`}
@@ -111,9 +126,18 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
     };
 
     return (
-        <aside className="w-full md:max-w-56 md:shrink-0">
+        <aside
+            className="w-full md:max-w-56 md:shrink-0"
+            onKeyDown={(event) => {
+                if (event.key === "Escape" && mobileOpen) {
+                    event.preventDefault();
+                    closeMobileNavigation();
+                }
+            }}
+        >
             <button
                 type="button"
+                ref={mobileNavControlRef}
                 aria-expanded={mobileOpen}
                 aria-controls="primary-navigation-panel"
                 onClick={() => setMobileOpen((open) => !open)}

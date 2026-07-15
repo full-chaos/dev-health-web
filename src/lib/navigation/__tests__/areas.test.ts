@@ -75,7 +75,7 @@ describe("navArea.children — locked child navigation", () => {
                 "Complexity",
                 "Cognitive Load",
                 "Bottlenecks",
-                "Context Packet",
+                "Context Fabric",
                 "People",
                 "Code",
             ],
@@ -305,7 +305,11 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/diagnose/work-graph")).toBe("Work Graph");
         expect(navTitleForPathname("/metrics")).toBe("Flow");
         expect(navTitleForPathname("/landscape")).toBe("Landscape");
-        expect(navTitleForPathname("/agent-context/context-packet")).toBe("Context Packet");
+        expect(navTitleForPathname("/agent-context/context-packet")).toBe("Context Fabric");
+        expect(navTrailForPathname("/agent-context/context-packet")).toEqual([
+            { label: "Diagnose", href: "/diagnose" },
+            { label: "Context Fabric" },
+        ]);
         expect(navTitleForPathname("/plan")).toBe("Overview");
         expect(navTitleForPathname("/plan/delivery-forecast")).toBe("Overview");
         expect(navTitleForPathname("/plan/capacity")).toBe("Completion Forecast");

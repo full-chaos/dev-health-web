@@ -125,7 +125,7 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
         <div className="flex flex-col gap-8">
             <header>
                 <p className="text-label-caps text-(--ink-muted)">Diagnose</p>
-                <h1 className="mt-2 text-h1 font-semibold text-foreground">Context Packet</h1>
+                <h1 className="mt-2 text-h1 font-semibold text-foreground">Context Fabric</h1>
                 <p className="mt-2 max-w-2xl text-body text-(--ink-muted)">
                     Inspect a scoped, evidence-backed context packet before you begin work.
                 </p>

@@ -8,7 +8,8 @@ describe("ContextPacketExplorer", () => {
     it("renders the deterministic sample packet in the prescribed category order", () => {
         render(<ContextPacketExplorer controlledState="sample" />);
 
-        expect(screen.getByRole("heading", { name: "Context Packet" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Context Fabric" })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: "Context Packet" })).not.toBeInTheDocument();
         expect(screen.getByLabelText(/Goal/)).toHaveValue("Add repository-scoped ACR credentials");
         expect(screen.getByLabelText(/Goal.*required/)).toBeRequired();
         expect(screen.getByLabelText(/Repository.*required/)).toBeRequired();
