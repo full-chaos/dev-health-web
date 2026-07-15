@@ -49,6 +49,7 @@ export default defineConfig({
                 /onboarding\.setup\.ts/,
                 /account-creation-journey\.spec\.ts/,
                 /auth-onboard-legacy\.spec\.ts/,
+                /acr-context-fabric\.production\.spec\.ts/,
             ],
             dependencies: ["auth-setup"],
             use: {
