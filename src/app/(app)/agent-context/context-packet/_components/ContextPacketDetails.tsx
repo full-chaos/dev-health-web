@@ -96,7 +96,7 @@ function CategoryItem({
                                             href={expanded.evidence.source.safe_uri}
                                             className="underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                                         >
-                                            View safe source
+                                            {CTA_LABELS.viewSafeSource}
                                         </a>
                                     )}
                                     {expanded.excerpt && <p>{expanded.excerpt}</p>}
