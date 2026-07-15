@@ -25,17 +25,14 @@ function controlledStateFrom(
 export default async function ContextPacketPage({ searchParams }: ContextPacketPageProps) {
     const params = (await searchParams) ?? {};
     const filters = filterFromQueryParams(params);
-    const testMode =
-        process.env.DEV_HEALTH_TEST_MODE === "true" ||
-        process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+    const testMode = process.env.DEV_HEALTH_TEST_MODE === "true";
     const org = await fetchOrNull(getCurrentOrg(), "agent-context/current-org");
     const entitlements = org?.data?.id
         ? await fetchOrNull(getOrgEntitlements(org.data.id), "agent-context/entitlements")
         : null;
     const enabled =
-        testMode ||
-        (entitlements?.data?.is_valid === true &&
-            entitlements.data.features["agent_context_runtime"] === true);
+        entitlements?.data?.is_valid === true &&
+        entitlements.data.features["agent_context_runtime"] === true;
 
     return (
         <div className="min-h-screen bg-background text-foreground">

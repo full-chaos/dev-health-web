@@ -28,7 +28,7 @@ export function ContextPacketDetails({
     return (
         <section
             ref={packetRef}
-            aria-label="Generated context packet"
+            aria-label="Generated Context Fabric response"
             className="flex flex-col gap-6"
             tabIndex={-1}
         >
@@ -60,7 +60,7 @@ function PacketHeader({ packet }: { readonly packet: ACRContextPacketV1 }) {
 
     return (
         <header className="rounded-(--radius-lg) border border-(--card-stroke) bg-(--card-80) p-6">
-            <p className="text-label-caps text-(--ink-muted)">Context Packet</p>
+            <p className="text-label-caps text-(--ink-muted)">Context Fabric</p>
             <h2 className="mt-2 text-h2 font-semibold text-foreground">{packet.goal}</h2>
             <p className="mt-2 text-body text-(--ink-muted)">{packet.summary}</p>
             <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-3">

@@ -85,4 +85,18 @@ describe("ContextPacketPage entitlement gate", () => {
             enabled: true,
         });
     });
+
+    it("does not authorize the direct route from a public test-mode variable", async () => {
+        vi.stubEnv("NEXT_PUBLIC_DEV_HEALTH_TEST_MODE", "true");
+        getOrgEntitlementsMock.mockResolvedValue({
+            data: { features: { agent_context_runtime: true }, is_valid: false },
+        });
+
+        render(await ContextPacketPage({}));
+
+        expect(contextPacketGatedBodySpy).toHaveBeenCalledWith({
+            controlledState: "sample",
+            enabled: false,
+        });
+    });
 });

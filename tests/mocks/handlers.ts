@@ -8,6 +8,7 @@
  */
 
 import { http, HttpResponse } from "msw";
+import { getEntitlementScenario } from "./entitlementScenario";
 
 import type {
     LoginResponseBody,
@@ -2065,12 +2066,24 @@ export const handlers = [
         HttpResponse.json({ status: "reactivated" }),
     ),
 
-    http.get("*/api/v1/licensing/entitlements/:orgId", ({ params }) =>
-        HttpResponse.json({
+    http.get("*/api/v1/licensing/entitlements/:orgId", ({ params }) => {
+        const orgId = String(params.orgId ?? MOCK_ORG_ENTITLEMENTS.org_id);
+        const scenario = getEntitlementScenario();
+        if (scenario === "error") {
+            return HttpResponse.json({ detail: "Entitlements unavailable" }, { status: 503 });
+        }
+        return HttpResponse.json({
             ...MOCK_ORG_ENTITLEMENTS,
-            org_id: String(params.orgId ?? MOCK_ORG_ENTITLEMENTS.org_id),
-        }),
-    ),
+            org_id: orgId,
+            is_valid: scenario !== "invalid",
+            features:
+                scenario === "provisioned"
+                    ? { ...MOCK_ORG_ENTITLEMENTS.features, agent_context_runtime: true }
+                    : MOCK_ORG_ENTITLEMENTS.features,
+        });
+    }),
+
+    http.post("*/api/v1/product-telemetry/events", () => new HttpResponse(null, { status: 204 })),
 
     http.get("*/api/v1/billing/refunds", ({ request }) => {
         const url = new URL(request.url);

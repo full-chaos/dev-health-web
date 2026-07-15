@@ -14,7 +14,7 @@
 
 ## 2. User Goals and Form Primitive
 
-The explorer helps an authenticated operator inspect one server-authorized context packet. The request form has four labeled fields:
+The explorer helps an authenticated operator inspect one server-authorized Context Fabric response. The request form has four labeled fields:
 
 1. **Goal** — required plain-language task objective.
 2. **Repository** — required repository slug selected from server-authorized repositories; it is not a trusted organization or repository identity claim.

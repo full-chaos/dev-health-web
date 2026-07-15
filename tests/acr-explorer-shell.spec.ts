@@ -43,6 +43,13 @@ async function expectHealthyExplorer({
 }
 
 test.describe("Context Fabric Explorer", () => {
+    test.beforeEach(async ({ request }) => {
+        const response = await request.post("http://127.0.0.1:8001/__test/entitlements", {
+            data: { scenario: "provisioned" },
+        });
+        expect(response.ok()).toBe(true);
+    });
+
     test("renders the deterministic sample packet and exposes its Diagnose navigation entry", async ({
         page,
     }) => {

@@ -128,6 +128,11 @@ run_e2e() {
     print_playwright_artifact_summary
     return 1
   fi
+  if ! run_pnpm_script test:e2e:context-fabric; then
+    echo "Context Fabric production E2E tests failed. Captured artifacts:" >&2
+    print_playwright_artifact_summary
+    return 1
+  fi
   print_playwright_artifact_summary
 }
 

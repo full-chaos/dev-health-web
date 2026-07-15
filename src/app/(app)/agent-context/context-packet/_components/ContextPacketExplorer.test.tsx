@@ -9,7 +9,7 @@ describe("ContextPacketExplorer", () => {
         render(<ContextPacketExplorer controlledState="sample" />);
 
         expect(screen.getByRole("heading", { name: "Context Fabric" })).toBeInTheDocument();
-        expect(screen.queryByRole("heading", { name: "Context Packet" })).not.toBeInTheDocument();
+        expect(screen.queryByText("Context Packet")).not.toBeInTheDocument();
         expect(screen.getByLabelText(/Goal/)).toHaveValue("Add repository-scoped ACR credentials");
         expect(screen.getByLabelText(/Goal.*required/)).toBeRequired();
         expect(screen.getByLabelText(/Repository.*required/)).toBeRequired();
@@ -34,7 +34,9 @@ describe("ContextPacketExplorer", () => {
 
         expect(goal).toHaveValue("Inspect repository access boundaries");
         await waitFor(() =>
-            expect(screen.getByRole("region", { name: "Generated context packet" })).toHaveFocus(),
+            expect(
+                screen.getByRole("region", { name: "Generated Context Fabric response" }),
+            ).toHaveFocus(),
         );
         expect(screen.getByRole("button", { name: "Generate context" })).toBeEnabled();
     });
@@ -110,9 +112,9 @@ describe("ContextPacketExplorer", () => {
             "Agent Context Runtime is not available for this organization",
             "data-state-not-entitled",
         ],
-        ["loading", "Preparing context packet", "data-state-loading"],
+        ["loading", "Preparing Context Fabric response", "data-state-loading"],
         ["empty", "No context matched this scope", "data-state-empty"],
-        ["error", "Context packet could not be generated", "data-state-error"],
+        ["error", "Context Fabric response could not be generated", "data-state-error"],
         ["degraded", "Partial context is available", "data-state-degraded"],
     ] as const)("renders the %s controlled state safely", (controlledState, title, testId) => {
         render(<ContextPacketExplorer controlledState={controlledState} />);
