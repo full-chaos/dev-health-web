@@ -16,7 +16,11 @@ describe("ContextPacketExplorer", () => {
         for (const category of ["State", "Pressure", "Cause", "Evidence", "Action"]) {
             expect(screen.getByRole("heading", { name: category, level: 2 })).toBeInTheDocument();
         }
-        expect(screen.getByText("Packet status")).toBeInTheDocument();
+        expect(screen.getByText("Context Fabric status")).toBeInTheDocument();
+        expect(screen.queryByText("Packet status")).not.toBeInTheDocument();
+        expect(
+            screen.getByRole("region", { name: "Context Fabric diagnostics" }),
+        ).toBeInTheDocument();
         expect(screen.getByText("Freshness")).toBeInTheDocument();
         expect(screen.getByText("Coverage")).toBeInTheDocument();
         expect(screen.getByText("Budget")).toBeInTheDocument();

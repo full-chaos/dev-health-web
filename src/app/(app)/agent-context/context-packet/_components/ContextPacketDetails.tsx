@@ -64,7 +64,7 @@ function PacketHeader({ packet }: { readonly packet: ACRContextPacketV1 }) {
             <h2 className="mt-2 text-h2 font-semibold text-foreground">{packet.goal}</h2>
             <p className="mt-2 text-body text-(--ink-muted)">{packet.summary}</p>
             <dl className="mt-5 grid gap-3 text-sm sm:grid-cols-2 xl:grid-cols-3">
-                <PacketMetadata label="Packet status">{packet.status}</PacketMetadata>
+                <PacketMetadata label="Context Fabric status">{packet.status}</PacketMetadata>
                 <PacketMetadata label="Repository">{packet.repository.slug}</PacketMetadata>
                 <PacketMetadata label="Resolved scope">{resolvedScope}</PacketMetadata>
                 <PacketMetadata label="Generated">

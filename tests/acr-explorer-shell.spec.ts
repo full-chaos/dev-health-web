@@ -63,7 +63,10 @@ test.describe("Context Fabric Explorer", () => {
             "true",
         );
         await expect(page.getByRole("heading", { name: "Pressure", level: 2 })).toBeVisible();
-        await expect(page.getByText("Packet status")).toBeVisible();
+        await expect(page.getByText("Context Fabric status")).toBeVisible();
+        await expect(
+            page.getByRole("region", { name: "Context Fabric diagnostics" }),
+        ).toBeVisible();
         await expect.poll(() => requests).toEqual([]);
         expect(faults.consoleErrors).toEqual([]);
         expect(faults.pageErrors).toEqual([]);

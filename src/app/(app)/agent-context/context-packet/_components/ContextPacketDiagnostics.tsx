@@ -6,7 +6,7 @@ export function ContextPacketDiagnostics({ packet }: { readonly packet: ACRConte
     return (
         <section
             className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4"
-            aria-label="Packet diagnostics"
+            aria-label="Context Fabric diagnostics"
         >
             <DiagnosticCard title="Freshness">
                 <p>
