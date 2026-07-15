@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AcrRuntimeError } from "../errors";
 import { loadAcrRuntimeConfig } from "../config";
 import { signWebAssertion } from "../assertion";
-import { fetchBoundedJson } from "../http";
+import { fetchBoundedJson, readRequestJson } from "../http";
 
 const temporaryPaths: string[] = [];
 
@@ -96,5 +96,17 @@ describe("ACR server runtime configuration", () => {
         expect(options?.cache).toBe("no-store");
         expect(options?.redirect).toBe("error");
         expect(options?.headers).toMatchObject({ "Cache-Control": "no-store" });
+    });
+
+    it("classifies an oversized inbound request body as a client payload error", async () => {
+        const request = new Request("https://web.example.test/api/agent-context", {
+            body: '{"context":"oversized"}',
+            method: "POST",
+        });
+
+        await expect(readRequestJson(request, 4)).rejects.toMatchObject({
+            code: "invalid_request",
+            status: 413,
+        });
     });
 });

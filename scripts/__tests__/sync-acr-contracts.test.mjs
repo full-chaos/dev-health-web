@@ -48,6 +48,7 @@ function createTemporaryProject() {
     const script = path.join(root, "scripts/sync-acr-contracts.mjs");
 
     fs.cpSync(ARTIFACT_ROOT, artifactRoot, { recursive: true });
+    fs.rmSync(path.join(artifactRoot, ".acr-contract-sync.lock"), { force: true });
     fs.mkdirSync(path.dirname(script), { recursive: true });
     fs.copyFileSync(SCRIPT, script);
     fs.copyFileSync(

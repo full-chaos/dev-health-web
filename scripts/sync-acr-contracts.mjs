@@ -84,11 +84,11 @@ function sourceFiles(sourceRoot, expectedCommit) {
 
 async function main() {
     const { allowWrite, mode, source, expectedCommit } = parseArguments(process.argv.slice(2));
-    if (mode === "generate") {
-        if (source === undefined) throw new Error("generate requires ACR_ROOT or --source");
-        if (!allowWrite) throw new Error("generate requires --allow-write");
-        const releaseLock = acquireArtifactLock(ARTIFACT_ROOT);
-        try {
+    const releaseLock = acquireArtifactLock(ARTIFACT_ROOT);
+    try {
+        if (mode === "generate") {
+            if (source === undefined) throw new Error("generate requires ACR_ROOT or --source");
+            if (!allowWrite) throw new Error("generate requires --allow-write");
             const inputs = sourceFiles(path.resolve(source), expectedCommit);
             const rawArtifacts = Object.fromEntries(
                 inputs.map((file) => [artifactPath(file.path), file.contents]),
@@ -103,29 +103,33 @@ async function main() {
                 }),
             );
             removeStaleArtifacts(ARTIFACT_ROOT, new Set(Object.keys(rawArtifacts)));
-        } finally {
-            releaseLock();
+            process.stdout.write("Generated ACR contract artifacts.\n");
+            return;
         }
-        process.stdout.write("Generated ACR contract artifacts.\n");
-        return;
+        if (
+            source === undefined &&
+            expectedCommit !== undefined &&
+            expectedCommit !== SOURCE_COMMIT
+        ) {
+            throw new Error(`committed source must equal expected commit ${expectedCommit}`);
+        }
+        const inputs =
+            source === undefined
+                ? currentArtifacts(ARTIFACT_ROOT, SOURCE_COMMIT)
+                : sourceFiles(path.resolve(source), expectedCommit);
+        assertCurrent(
+            ARTIFACT_ROOT,
+            await expectedArtifacts({
+                artifactRoot: ARTIFACT_ROOT,
+                sourceCommit: SOURCE_COMMIT,
+                sourceFiles: inputs,
+                prettierOptions: PRETTIER_OPTIONS,
+            }),
+        );
+        process.stdout.write("ACR contracts are current.\n");
+    } finally {
+        releaseLock();
     }
-    if (source === undefined && expectedCommit !== undefined && expectedCommit !== SOURCE_COMMIT) {
-        throw new Error(`committed source must equal expected commit ${expectedCommit}`);
-    }
-    const inputs =
-        source === undefined
-            ? currentArtifacts(ARTIFACT_ROOT, SOURCE_COMMIT)
-            : sourceFiles(path.resolve(source), expectedCommit);
-    assertCurrent(
-        ARTIFACT_ROOT,
-        await expectedArtifacts({
-            artifactRoot: ARTIFACT_ROOT,
-            sourceCommit: SOURCE_COMMIT,
-            sourceFiles: inputs,
-            prettierOptions: PRETTIER_OPTIONS,
-        }),
-    );
-    process.stdout.write("ACR contracts are current.\n");
 }
 
 main().catch((error) => fail(error instanceof Error ? error.message : "unexpected failure"));

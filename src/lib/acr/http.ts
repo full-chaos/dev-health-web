@@ -123,12 +123,16 @@ export async function readRequestJson(request: Request, maximumBytes: number): P
     } catch (error) {
         if (
             error instanceof AcrRuntimeError &&
-            error.code === acrRuntimeErrorCodes.malformedResponse
+            (error.code === acrRuntimeErrorCodes.malformedResponse ||
+                error.code === acrRuntimeErrorCodes.responseTooLarge)
         ) {
             throw new AcrRuntimeError(
                 acrRuntimeErrorCodes.invalidRequest,
                 "The context request is invalid.",
-                { cause: error, status: 400 },
+                {
+                    cause: error,
+                    status: error.code === acrRuntimeErrorCodes.responseTooLarge ? 413 : 400,
+                },
             );
         }
         throw error;

@@ -51,6 +51,7 @@ function createTemporaryProject() {
     const artifactRoot = path.join(root, "src/lib/acr/contracts");
     const script = path.join(root, "scripts/sync-acr-contracts.mjs");
     fs.cpSync(ARTIFACT_ROOT, artifactRoot, { recursive: true });
+    fs.rmSync(path.join(artifactRoot, ".acr-contract-sync.lock"), { force: true });
     fs.mkdirSync(path.dirname(script), { recursive: true });
     fs.copyFileSync(SCRIPT, script);
     fs.copyFileSync(
@@ -147,6 +148,21 @@ describe("ACR contract artifact filesystem boundaries", () => {
 
         expect(result.status).toBe(1);
         expect(result.stderr).toContain("unsafe artifact path");
+    });
+
+    it("reclaims a stale lock owned by a dead process before checking artifacts", () => {
+        const project = createTemporaryProject();
+        const lockPath = path.join(project.artifactRoot, ".acr-contract-sync.lock");
+        fs.writeFileSync(
+            lockPath,
+            `${JSON.stringify({ created_at: Date.now() - 10 * 60_000, pid: 999_999_999 })}\n`,
+            { mode: 0o600 },
+        );
+
+        const result = run(project, ["check"]);
+
+        expect(result.status).toBe(0);
+        expect(fs.existsSync(lockPath)).toBe(false);
     });
 
     const sourceTest = SOURCE === undefined ? it.skip : it;
