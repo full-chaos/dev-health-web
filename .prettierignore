@@ -18,6 +18,8 @@ output
 *.generated.*
 **/__generated__/
 src/lib/graphql/generated/
+# Exact copied ACR wire artifacts are source-controlled JSON, not web-formatted JSON.
+src/lib/acr/contracts/
 
 # pnpm lock (not worth formatting)
 pnpm-lock.yaml
