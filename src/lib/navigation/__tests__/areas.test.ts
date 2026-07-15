@@ -75,6 +75,7 @@ describe("navArea.children — locked child navigation", () => {
                 "Complexity",
                 "Cognitive Load",
                 "Bottlenecks",
+                "Context Packet",
                 "People",
                 "Code",
             ],
@@ -138,6 +139,7 @@ describe("selectedAreaIdForPathname", () => {
         { pathname: "/people/abc", expected: "diagnose" },
         { pathname: "/landscape", expected: "diagnose" },
         { pathname: "/explore", expected: "diagnose" },
+        { pathname: "/agent-context/context-packet", expected: "diagnose" },
         { pathname: "/plan", expected: "plan" },
         { pathname: "/plan/delivery-forecast", expected: "plan" },
         { pathname: "/capacity-planning", expected: "plan" },
@@ -202,6 +204,11 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
         { areaId: "diagnose", pathname: "/metrics", childId: "flow" },
         { areaId: "diagnose", pathname: "/investment", childId: "investment" },
         { areaId: "diagnose", pathname: "/landscape", childId: "landscape" },
+        {
+            areaId: "diagnose",
+            pathname: "/agent-context/context-packet",
+            childId: "context-packet",
+        },
         {
             areaId: "plan",
             pathname: "/plan",
@@ -298,6 +305,7 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/diagnose/work-graph")).toBe("Work Graph");
         expect(navTitleForPathname("/metrics")).toBe("Flow");
         expect(navTitleForPathname("/landscape")).toBe("Landscape");
+        expect(navTitleForPathname("/agent-context/context-packet")).toBe("Context Packet");
         expect(navTitleForPathname("/plan")).toBe("Overview");
         expect(navTitleForPathname("/plan/delivery-forecast")).toBe("Overview");
         expect(navTitleForPathname("/plan/capacity")).toBe("Completion Forecast");

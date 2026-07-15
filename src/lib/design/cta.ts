@@ -15,6 +15,7 @@
 export const CTA_LABELS = {
     /** Open the evidence trail behind a signal / metric / work unit. */
     openEvidence: "Open evidence",
+    generateContext: "Generate context",
     /** Inspect the associations (edges) linked to an entity. */
     inspectAssociations: "Inspect associations",
     /** Open a single artifact (flame diagram, PR, deployment, …). */
