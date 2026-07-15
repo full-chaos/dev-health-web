@@ -10,12 +10,6 @@ import contextPacketRequestSchema from "./contracts/schemas/context_packet_reque
 import errorSchema from "./contracts/schemas/error.v1.schema.json";
 import evidenceRefSchema from "./contracts/schemas/evidence_ref.v1.schema.json";
 import expandedEvidenceSchema from "./contracts/schemas/expanded_evidence.v1.schema.json";
-import mcpContextForTaskRequestSchema from "./contracts/schemas/mcp_context_for_task_request.v1.schema.json";
-import mcpContextForTaskResponseSchema from "./contracts/schemas/mcp_context_for_task_response.v1.schema.json";
-import mcpRecordEpisodeRequestSchema from "./contracts/schemas/mcp_record_episode_request.v1.schema.json";
-import mcpRecordEpisodeResponseSchema from "./contracts/schemas/mcp_record_episode_response.v1.schema.json";
-import mcpSourceEvidenceRequestSchema from "./contracts/schemas/mcp_source_evidence_request.v1.schema.json";
-import mcpSourceEvidenceResponseSchema from "./contracts/schemas/mcp_source_evidence_response.v1.schema.json";
 import acrClientCredentialExample from "./contracts/examples/acr_client_credential.v1.json";
 import agentEpisodeExample from "./contracts/examples/agent_episode.v1.json";
 import agentEpisodeCreateExample from "./contracts/examples/agent_episode_create.v1.json";
@@ -26,13 +20,6 @@ import contextPacketRequestExample from "./contracts/examples/context_packet_req
 import errorExample from "./contracts/examples/error.v1.json";
 import evidenceRefExample from "./contracts/examples/evidence_ref.v1.json";
 import expandedEvidenceExample from "./contracts/examples/expanded_evidence.v1.json";
-import mcpContextForTaskRequestExample from "./contracts/examples/mcp_context_for_task_request.v1.json";
-import mcpContextForTaskRequestFullExample from "./contracts/examples/mcp_context_for_task_request_full.v1.json";
-import mcpContextForTaskResponseExample from "./contracts/examples/mcp_context_for_task_response.v1.json";
-import mcpRecordEpisodeRequestExample from "./contracts/examples/mcp_record_episode_request.v1.json";
-import mcpRecordEpisodeResponseExample from "./contracts/examples/mcp_record_episode_response.v1.json";
-import mcpSourceEvidenceRequestExample from "./contracts/examples/mcp_source_evidence_request.v1.json";
-import mcpSourceEvidenceResponseExample from "./contracts/examples/mcp_source_evidence_response.v1.json";
 
 export const acrSchemas = {
     acrClientCredential: acrClientCredentialSchema,
@@ -45,12 +32,6 @@ export const acrSchemas = {
     error: errorSchema,
     evidenceRef: evidenceRefSchema,
     expandedEvidence: expandedEvidenceSchema,
-    mcpContextForTaskRequest: mcpContextForTaskRequestSchema,
-    mcpContextForTaskResponse: mcpContextForTaskResponseSchema,
-    mcpRecordEpisodeRequest: mcpRecordEpisodeRequestSchema,
-    mcpRecordEpisodeResponse: mcpRecordEpisodeResponseSchema,
-    mcpSourceEvidenceRequest: mcpSourceEvidenceRequestSchema,
-    mcpSourceEvidenceResponse: mcpSourceEvidenceResponseSchema,
 };
 
 const acrSchemaFiles = {
@@ -64,12 +45,6 @@ const acrSchemaFiles = {
     "error.v1.schema.json": errorSchema,
     "evidence_ref.v1.schema.json": evidenceRefSchema,
     "expanded_evidence.v1.schema.json": expandedEvidenceSchema,
-    "mcp_context_for_task_request.v1.schema.json": mcpContextForTaskRequestSchema,
-    "mcp_context_for_task_response.v1.schema.json": mcpContextForTaskResponseSchema,
-    "mcp_record_episode_request.v1.schema.json": mcpRecordEpisodeRequestSchema,
-    "mcp_record_episode_response.v1.schema.json": mcpRecordEpisodeResponseSchema,
-    "mcp_source_evidence_request.v1.schema.json": mcpSourceEvidenceRequestSchema,
-    "mcp_source_evidence_response.v1.schema.json": mcpSourceEvidenceResponseSchema,
 };
 
 export const acrExamples = [
@@ -83,31 +58,6 @@ export const acrExamples = [
     { schema: "error.v1.schema.json", value: errorExample },
     { schema: "evidence_ref.v1.schema.json", value: evidenceRefExample },
     { schema: "expanded_evidence.v1.schema.json", value: expandedEvidenceExample },
-    {
-        schema: "mcp_context_for_task_request.v1.schema.json",
-        value: mcpContextForTaskRequestExample,
-    },
-    {
-        schema: "mcp_context_for_task_request.v1.schema.json",
-        value: mcpContextForTaskRequestFullExample,
-    },
-    {
-        schema: "mcp_context_for_task_response.v1.schema.json",
-        value: mcpContextForTaskResponseExample,
-    },
-    { schema: "mcp_record_episode_request.v1.schema.json", value: mcpRecordEpisodeRequestExample },
-    {
-        schema: "mcp_record_episode_response.v1.schema.json",
-        value: mcpRecordEpisodeResponseExample,
-    },
-    {
-        schema: "mcp_source_evidence_request.v1.schema.json",
-        value: mcpSourceEvidenceRequestExample,
-    },
-    {
-        schema: "mcp_source_evidence_response.v1.schema.json",
-        value: mcpSourceEvidenceResponseExample,
-    },
 ] as const;
 
 const ajv = new Ajv2020({

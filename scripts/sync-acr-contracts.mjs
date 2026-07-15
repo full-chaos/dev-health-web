@@ -9,8 +9,6 @@ import { format } from "prettier";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ARTIFACT_ROOT = path.join(ROOT, "src/lib/acr/contracts");
-const DTO_PATH = path.join(ROOT, "src/lib/acr/generated.ts");
-const VALIDATOR_PATH = path.join(ROOT, "src/lib/acr/contracts.ts");
 const SOURCE_COMMIT = "11c44ef812f9f9ae71a044d64f00ebae1ea1602f";
 const PRETTIER_OPTIONS = Object.freeze({
     parser: "typescript",
@@ -21,7 +19,25 @@ const PRETTIER_OPTIONS = Object.freeze({
     trailingComma: "all",
     useTabs: false,
 });
-const SOURCE_DIRECTORIES = ["contracts/examples/v1", "contracts/jsonschema/v1"];
+// Todo 4 primary copy order. Dependency closure is appended, never merged into this list.
+const PRIMARY_SOURCE_PATHS = [
+    "contracts/openapi/acr-v1.json",
+    "contracts/jsonschema/v1/capabilities.v1.schema.json",
+    "contracts/jsonschema/v1/context_packet.v1.schema.json",
+    "contracts/jsonschema/v1/context_packet_item.v1.schema.json",
+    "contracts/jsonschema/v1/context_packet_request.v1.schema.json",
+    "contracts/jsonschema/v1/error.v1.schema.json",
+    "contracts/jsonschema/v1/evidence_ref.v1.schema.json",
+    "contracts/jsonschema/v1/expanded_evidence.v1.schema.json",
+    "contracts/examples/v1/context_packet.v1.json",
+    "contracts/examples/v1/expanded_evidence.v1.json",
+];
+// The copied OpenAPI document references these response schemas. Keep this closure explicit and ordered.
+const DEPENDENCY_CLOSURE_PATHS = [
+    "contracts/jsonschema/v1/agent_episode.v1.schema.json",
+    "contracts/jsonschema/v1/agent_episode_create.v1.schema.json",
+];
+const SOURCE_PATHS = [...PRIMARY_SOURCE_PATHS, ...DEPENDENCY_CLOSURE_PATHS];
 
 function command(commandName, args, cwd) {
     return execFileSync(commandName, args, { cwd, encoding: "utf8" });
@@ -59,23 +75,35 @@ function filesAtPinnedCommit(sourceRoot) {
     if (command("git", ["status", "--porcelain"], sourceRoot).trim() !== "") {
         throw new Error("source worktree must be clean");
     }
-    const files = command(
-        "git",
-        ["ls-tree", "-r", "--name-only", SOURCE_COMMIT, ...SOURCE_DIRECTORIES],
-        sourceRoot,
-    )
-        .split("\n")
-        .filter(Boolean)
-        .filter((file) => file.endsWith(".json"))
-        .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
-    if (files.length === 0) throw new Error("pinned source contains no contract JSON files");
-    return files.map((file) => ({
+    return SOURCE_PATHS.map((file) => ({
         path: file,
         contents: command("git", ["show", `${SOURCE_COMMIT}:${file}`], sourceRoot),
     }));
 }
 
+function filesFromFixture(sourceRoot) {
+    let overrides = 0;
+    const files = currentArtifacts().map((file) => {
+        const fixturePath = path.join(sourceRoot, file.path);
+        if (!fs.existsSync(fixturePath)) return file;
+        overrides += 1;
+        return { path: file.path, contents: fs.readFileSync(fixturePath, "utf8") };
+    });
+    if (overrides === 0) throw new Error("fixture source must override at least one REST artifact");
+    return files;
+}
+
+function sourceFiles(sourceRoot, mode) {
+    if (mode === "generate" || fs.existsSync(path.join(sourceRoot, ".git"))) {
+        return filesAtPinnedCommit(sourceRoot);
+    }
+    return filesFromFixture(sourceRoot);
+}
+
 function artifactPath(sourcePath) {
+    if (sourcePath.startsWith("contracts/openapi/")) {
+        return `openapi/${path.basename(sourcePath)}`;
+    }
     if (sourcePath.startsWith("contracts/jsonschema/v1/")) {
         return `schemas/${path.basename(sourcePath)}`;
     }
@@ -157,7 +185,9 @@ async function validatorModule(schemaFiles, exampleFiles) {
 }
 
 async function expectedArtifacts(sourceFiles) {
-    const schemaFiles = sourceFiles.filter((file) => file.path.startsWith("contracts/jsonschema/"));
+    const schemaFiles = sourceFiles
+        .filter((file) => file.path.startsWith("contracts/jsonschema/"))
+        .sort((left, right) => left.path.localeCompare(right.path));
     const exampleFiles = sourceFiles.filter((file) => file.path.startsWith("contracts/examples/"));
     const rawArtifacts = Object.fromEntries(
         sourceFiles.map((file) => [artifactPath(file.path), file.contents]),
@@ -199,7 +229,9 @@ function currentArtifacts() {
         if (sha256(contents) !== file.sha256) throw new Error(`digest drift: ${file.path}`);
         const prefix = file.path.startsWith("schemas/")
             ? "contracts/jsonschema/v1/"
-            : "contracts/examples/v1/";
+            : file.path.startsWith("openapi/")
+              ? "contracts/openapi/"
+              : "contracts/examples/v1/";
         return { path: `${prefix}${path.basename(file.path)}`, contents };
     });
 }
@@ -217,16 +249,24 @@ async function main() {
     const { mode, source } = parseArguments(process.argv.slice(2));
     if (mode === "generate") {
         if (source === undefined) throw new Error("generate requires ACR_ROOT or --source");
-        const sourceFiles = filesAtPinnedCommit(path.resolve(source));
-        writeArtifacts(
-            Object.fromEntries(sourceFiles.map((file) => [artifactPath(file.path), file.contents])),
+        const inputs = sourceFiles(path.resolve(source), mode);
+        const rawArtifacts = Object.fromEntries(
+            inputs.map((file) => [artifactPath(file.path), file.contents]),
         );
-        writeArtifacts(await expectedArtifacts(sourceFiles));
+        for (const directory of ["examples", "openapi", "schemas"]) {
+            for (const entry of fs.readdirSync(path.join(ARTIFACT_ROOT, directory))) {
+                const relativePath = `${directory}/${entry}`;
+                if (!Object.hasOwn(rawArtifacts, relativePath))
+                    fs.rmSync(path.join(ARTIFACT_ROOT, relativePath));
+            }
+        }
+        writeArtifacts(rawArtifacts);
+        writeArtifacts(await expectedArtifacts(inputs));
         process.stdout.write("Generated ACR contract artifacts.\n");
         return;
     }
     const inputs =
-        source === undefined ? currentArtifacts() : filesAtPinnedCommit(path.resolve(source));
+        source === undefined ? currentArtifacts() : sourceFiles(path.resolve(source), mode);
     assertCurrent(await expectedArtifacts(inputs));
     process.stdout.write("ACR contracts are current.\n");
 }

@@ -42,34 +42,6 @@
       "sha256": "b42ad9b46682f2112964a2f0a4de7e453caf795b746ac4b7ad0377ca2369a26f"
     },
     {
-      "path": "examples/mcp_context_for_task_request.v1.json",
-      "sha256": "e30b5c615dc4c6d3b80abde7a6e8623a3d79fe6895d7a2f3e94f8983cf5e8df8"
-    },
-    {
-      "path": "examples/mcp_context_for_task_request_full.v1.json",
-      "sha256": "335ba4fe5a343f37c7f80253b657abb9a232c926fb0d4ef06a924110aae00f91"
-    },
-    {
-      "path": "examples/mcp_context_for_task_response.v1.json",
-      "sha256": "41bf506e2a28e3bf92a16a1af7697dd16503438ccccfe5a35e12685d6f1b5eb1"
-    },
-    {
-      "path": "examples/mcp_record_episode_request.v1.json",
-      "sha256": "70fbed8a13bcb0ab2198fc5c7dfd67837ed02d0db1a0688dbfb97f0fa5adea1b"
-    },
-    {
-      "path": "examples/mcp_record_episode_response.v1.json",
-      "sha256": "27286ccf2efa4c16c814333365ed7e9a929ca8bcfb485ff0d2ac88dc739c69e2"
-    },
-    {
-      "path": "examples/mcp_source_evidence_request.v1.json",
-      "sha256": "c7f17fa95ba53cd695fc5080c930d219e7b86db9c9e5b6396aa4ec824e8f9a2e"
-    },
-    {
-      "path": "examples/mcp_source_evidence_response.v1.json",
-      "sha256": "9c39d4096568244452dab1b5e199229d2331077d810d5b4c6b58ed1b94fe7e1e"
-    },
-    {
       "path": "schemas/acr_client_credential.v1.schema.json",
       "sha256": "9b71754f66263cc76456cad8178ef8677d468de9238b49320b29d12597339b16"
     },
@@ -108,30 +80,6 @@
     {
       "path": "schemas/expanded_evidence.v1.schema.json",
       "sha256": "00d9fc1262b621b9fa5472eeaf8c1b1581827aafb3ba185c8772b3622f3c81d7"
-    },
-    {
-      "path": "schemas/mcp_context_for_task_request.v1.schema.json",
-      "sha256": "ee087311bac23adc87ff2650f566b4ae9111ce2abea9c69bd13b6d9ad80d7685"
-    },
-    {
-      "path": "schemas/mcp_context_for_task_response.v1.schema.json",
-      "sha256": "d1dcd2bf5118afe502194b8ba5630a1a1de8531f722ed210b2fbd2f99b727125"
-    },
-    {
-      "path": "schemas/mcp_record_episode_request.v1.schema.json",
-      "sha256": "14379946b507c7fc723142e41a07d567d4da1f4ba491b3ce9ee514ea44acb02a"
-    },
-    {
-      "path": "schemas/mcp_record_episode_response.v1.schema.json",
-      "sha256": "924d50ed3565250b27ece743c5c449a1642cd1cbdcbb74f65870f9a6dd5b343f"
-    },
-    {
-      "path": "schemas/mcp_source_evidence_request.v1.schema.json",
-      "sha256": "306380ccb55277f53f69ec22b6a0b26d7e7dc30f866ab38f851aaa6bf63e1b7f"
-    },
-    {
-      "path": "schemas/mcp_source_evidence_response.v1.schema.json",
-      "sha256": "4cee2624c0738c0331bd6e068753ebf044d82b1be66b35804d6bc47b8ec6848a"
     }
   ]
 }

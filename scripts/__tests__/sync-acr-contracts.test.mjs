@@ -6,18 +6,39 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const SCRIPT = path.join(ROOT, "scripts/sync-acr-contracts.mjs");
-const SOURCE = "/Users/chris/projects/full-chaos/dev-health/worktrees/acr/project-completion";
+const SOURCE = process.env.ACR_ROOT;
 const ARTIFACT_ROOT = path.join(ROOT, "src/lib/acr/contracts");
+const MUTATED_FIXTURE = path.join(ROOT, "tests/fixtures/acr-contracts-mutated");
 function run(args, environment = {}) {
+    const env = { ...process.env, ...environment };
+    for (const [key, value] of Object.entries(env)) {
+        if (value === undefined) delete env[key];
+    }
     return spawnSync(process.execPath, [SCRIPT, ...args], {
         cwd: ROOT,
         encoding: "utf8",
-        env: { ...process.env, ...environment },
+        env,
+    });
+}
+
+function committedArtifactSnapshot() {
+    const manifest = JSON.parse(fs.readFileSync(path.join(ARTIFACT_ROOT, "manifest.json"), "utf8"));
+    const paths = [
+        "manifest.json",
+        "../contracts.ts",
+        "../generated.ts",
+        ...manifest.files.map((file) => file.path),
+    ];
+    return paths.map((relativePath) => {
+        const filePath = path.resolve(ARTIFACT_ROOT, relativePath);
+        return [relativePath, fs.readFileSync(filePath, "utf8")];
     });
 }
 
 describe("sync-acr-contracts", () => {
-    it("generates byte-identical artifacts twice from the pinned ACR commit", () => {
+    const sourceTest = SOURCE === undefined || !fs.existsSync(SOURCE) ? it.skip : it;
+
+    sourceTest("generates byte-identical artifacts twice from the pinned ACR commit", () => {
         const first = run(["generate"], { ACR_ROOT: SOURCE });
         expect(first.status).toBe(0);
         const before = execFileSync("git", ["diff", "--binary", "--", "src/lib/acr"], {
@@ -36,10 +57,20 @@ describe("sync-acr-contracts", () => {
     });
 
     it("checks committed artifacts without requiring the sibling ACR checkout", () => {
-        const result = run(["check"]);
+        const result = run(["check"], { ACR_ROOT: undefined });
 
         expect(result.status).toBe(0);
         expect(result.stdout).toContain("ACR contracts are current");
+    });
+
+    it("rejects the tracked mutated source fixture without changing committed artifacts", () => {
+        const before = committedArtifactSnapshot();
+
+        const result = run(["check", "--source", MUTATED_FIXTURE]);
+
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain("artifact drift");
+        expect(committedArtifactSnapshot()).toEqual(before);
     });
 
     it("fails a mutated fixture without changing committed artifacts", () => {
@@ -48,7 +79,7 @@ describe("sync-acr-contracts", () => {
         fs.appendFileSync(fixture, "\n");
 
         try {
-            const result = run(["check"]);
+            const result = run(["check"], { ACR_ROOT: undefined });
 
             expect(result.status).toBe(1);
             expect(result.stderr).toContain("digest drift");
@@ -76,7 +107,7 @@ describe("sync-acr-contracts", () => {
         fs.writeFileSync(manifest, `${JSON.stringify(updatedManifest, null, 2)}\n`);
 
         try {
-            const result = run(["check"]);
+            const result = run(["check"], { ACR_ROOT: undefined });
 
             expect(result.status).toBe(1);
             expect(result.stderr).toContain("JSON");
