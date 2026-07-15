@@ -1,13 +1,14 @@
 #!/usr/bin/env node
-import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
     artifactPath,
+    acquireArtifactLock,
     assertCurrent,
     currentArtifacts,
     expectedArtifacts,
     readPinnedSourceFiles,
+    removeStaleArtifacts,
     writeArtifacts,
 } from "./acr-contract-artifacts.mjs";
 
@@ -86,30 +87,25 @@ async function main() {
     if (mode === "generate") {
         if (source === undefined) throw new Error("generate requires ACR_ROOT or --source");
         if (!allowWrite) throw new Error("generate requires --allow-write");
-        const inputs = sourceFiles(path.resolve(source), expectedCommit);
-        const rawArtifacts = Object.fromEntries(
-            inputs.map((file) => [artifactPath(file.path), file.contents]),
-        );
-        for (const directory of ["examples", "openapi", "schemas"]) {
-            const directoryPath = path.join(ARTIFACT_ROOT, directory);
-            if (!fs.existsSync(directoryPath)) continue;
-            for (const entry of fs.readdirSync(directoryPath)) {
-                const relativePath = `${directory}/${entry}`;
-                if (!Object.hasOwn(rawArtifacts, relativePath)) {
-                    fs.rmSync(path.join(directoryPath, entry));
-                }
-            }
+        const releaseLock = acquireArtifactLock(ARTIFACT_ROOT);
+        try {
+            const inputs = sourceFiles(path.resolve(source), expectedCommit);
+            const rawArtifacts = Object.fromEntries(
+                inputs.map((file) => [artifactPath(file.path), file.contents]),
+            );
+            writeArtifacts(
+                ARTIFACT_ROOT,
+                await expectedArtifacts({
+                    artifactRoot: ARTIFACT_ROOT,
+                    sourceCommit: SOURCE_COMMIT,
+                    sourceFiles: inputs,
+                    prettierOptions: PRETTIER_OPTIONS,
+                }),
+            );
+            removeStaleArtifacts(ARTIFACT_ROOT, new Set(Object.keys(rawArtifacts)));
+        } finally {
+            releaseLock();
         }
-        writeArtifacts(ARTIFACT_ROOT, rawArtifacts);
-        writeArtifacts(
-            ARTIFACT_ROOT,
-            await expectedArtifacts({
-                artifactRoot: ARTIFACT_ROOT,
-                sourceCommit: SOURCE_COMMIT,
-                sourceFiles: inputs,
-                prettierOptions: PRETTIER_OPTIONS,
-            }),
-        );
         process.stdout.write("Generated ACR contract artifacts.\n");
         return;
     }

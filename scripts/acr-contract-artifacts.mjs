@@ -1,88 +1,16 @@
-import { execFileSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import fs from "node:fs";
 import path from "node:path";
 import { compile } from "json-schema-to-typescript";
 import { format } from "prettier";
 
-function command(commandName, args, cwd) {
-    return execFileSync(commandName, args, { cwd, encoding: "utf8" });
-}
-
-function resolveSourceRoot(sourceRoot) {
-    let resolvedSourceRoot;
-    let gitRoot;
-    try {
-        resolvedSourceRoot = fs.realpathSync.native(sourceRoot);
-        gitRoot = fs.realpathSync.native(
-            command("git", ["rev-parse", "--show-toplevel"], resolvedSourceRoot).trim(),
-        );
-    } catch {
-        throw new Error("source must be a Git worktree root");
-    }
-    if (gitRoot !== resolvedSourceRoot) throw new Error("source must be a Git worktree root");
-    return resolvedSourceRoot;
-}
-
-function resolveFullRevision(sourceRoot, revision, label) {
-    if (!/^[a-f0-9]{40}$/iu.test(revision)) throw new Error(`${label} must be a full Git revision`);
-    let resolvedRevision;
-    try {
-        resolvedRevision = command(
-            "git",
-            ["rev-parse", "--verify", `${revision}^{commit}`],
-            sourceRoot,
-        ).trim();
-    } catch {
-        throw new Error(`${label} is unavailable`);
-    }
-    if (resolvedRevision !== revision) throw new Error(`${label} must resolve exactly`);
-    return resolvedRevision;
-}
-
-function copiedContents(sourcePath, contents) {
-    if (sourcePath !== "contracts/openapi/acr-v1.json") return contents;
-    return contents.replaceAll("../jsonschema/v1/", "../schemas/");
-}
-
-export function readPinnedSourceFiles({ sourceRoot, expectedCommit, sourceCommit, sourcePaths }) {
-    const verifiedSourceRoot = resolveSourceRoot(sourceRoot);
-    const pinnedCommit = resolveFullRevision(
-        verifiedSourceRoot,
-        sourceCommit,
-        "pinned source commit",
-    );
-    const headCommit = resolveFullRevision(
-        verifiedSourceRoot,
-        command("git", ["rev-parse", "--verify", "HEAD^{commit}"], verifiedSourceRoot).trim(),
-        "source HEAD",
-    );
-    if (headCommit !== pinnedCommit) throw new Error(`source HEAD must equal ${sourceCommit}`);
-    if (
-        expectedCommit !== undefined &&
-        resolveFullRevision(verifiedSourceRoot, expectedCommit, "expected commit") !== pinnedCommit
-    ) {
-        throw new Error(`expected commit must equal ${sourceCommit}`);
-    }
-    if (command("git", ["status", "--porcelain"], verifiedSourceRoot).trim() !== "") {
-        throw new Error("source worktree must be clean");
-    }
-    return sourcePaths.map((file) => ({
-        path: file,
-        contents: copiedContents(
-            file,
-            command("git", ["show", `${pinnedCommit}:${file}`], verifiedSourceRoot),
-        ),
-    }));
-}
-
-function stableJson(value) {
-    return `${JSON.stringify(value, null, 2)}\n`;
-}
-
-function sha256(value) {
-    return createHash("sha256").update(value).digest("hex");
-}
+export {
+    acquireArtifactLock,
+    assertCurrent,
+    currentArtifacts,
+    readPinnedSourceFiles,
+    removeStaleArtifacts,
+    writeArtifacts,
+} from "./acr-contract-filesystem.mjs";
+import { sha256 } from "./acr-contract-filesystem.mjs";
 
 export function artifactPath(sourcePath) {
     if (sourcePath.startsWith("contracts/openapi/")) return `openapi/${path.basename(sourcePath)}`;
@@ -90,6 +18,10 @@ export function artifactPath(sourcePath) {
         return `schemas/${path.basename(sourcePath)}`;
     }
     return `examples/${path.basename(sourcePath)}`;
+}
+
+function stableJson(value) {
+    return `${JSON.stringify(value, null, 2)}\n`;
 }
 
 function typeName(schemaPath) {
@@ -192,43 +124,4 @@ export async function expectedArtifacts({
         "../contracts.ts": await validatorModule(schemaFiles, exampleFiles, prettierOptions),
         "../generated.ts": await dtoModule(schemaFiles, artifactRoot, prettierOptions),
     };
-}
-
-export function writeArtifacts(artifactRoot, artifacts) {
-    for (const [relativePath, contents] of Object.entries(artifacts)) {
-        const destination = path.resolve(artifactRoot, relativePath);
-        fs.mkdirSync(path.dirname(destination), { recursive: true });
-        fs.writeFileSync(destination, contents);
-    }
-}
-
-export function currentArtifacts(artifactRoot, sourceCommit) {
-    const manifestPath = path.join(artifactRoot, "manifest.json");
-    if (!fs.existsSync(manifestPath)) throw new Error("committed artifacts are missing");
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
-    if (manifest.source_commit !== sourceCommit || !Array.isArray(manifest.files)) {
-        throw new Error("manifest is invalid");
-    }
-    return manifest.files.map((file) => {
-        if (typeof file.path !== "string" || typeof file.sha256 !== "string") {
-            throw new Error("manifest entry is invalid");
-        }
-        const contents = fs.readFileSync(path.join(artifactRoot, file.path), "utf8");
-        if (sha256(contents) !== file.sha256) throw new Error(`digest drift: ${file.path}`);
-        const prefix = file.path.startsWith("schemas/")
-            ? "contracts/jsonschema/v1/"
-            : file.path.startsWith("openapi/")
-              ? "contracts/openapi/"
-              : "contracts/examples/v1/";
-        return { path: `${prefix}${path.basename(file.path)}`, contents };
-    });
-}
-
-export function assertCurrent(artifactRoot, artifacts) {
-    for (const [relativePath, expected] of Object.entries(artifacts)) {
-        const destination = path.resolve(artifactRoot, relativePath);
-        if (!fs.existsSync(destination) || fs.readFileSync(destination, "utf8") !== expected) {
-            throw new Error(`artifact drift: ${relativePath}`);
-        }
-    }
 }

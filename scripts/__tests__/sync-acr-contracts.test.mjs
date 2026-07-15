@@ -55,6 +55,10 @@ function createTemporaryProject() {
         path.join(root, "scripts/acr-contract-artifacts.mjs"),
     );
     fs.copyFileSync(
+        path.join(ROOT, "scripts/acr-contract-filesystem.mjs"),
+        path.join(root, "scripts/acr-contract-filesystem.mjs"),
+    );
+    fs.copyFileSync(
         path.join(ROOT, "src/lib/acr/contracts.ts"),
         path.join(root, "src/lib/acr/contracts.ts"),
     );
