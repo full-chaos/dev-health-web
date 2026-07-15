@@ -538,8 +538,6 @@ export const navAreas: readonly NavArea[] = [
                 label: "Feature Flags",
                 path: "/feature-flags",
                 navVisible: true,
-                // R4 low-value surface — rendered visually secondary in the list.
-                demoted: true,
             },
             {
                 id: "risk-compounding",
