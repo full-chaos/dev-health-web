@@ -21,7 +21,7 @@
         "typecheck": "tsc --noEmit",
         "codegen": "graphql-codegen --config codegen.ts",
         "codegen:check": "graphql-codegen --config codegen.ts --check",
-        "acr:contracts:generate": "node scripts/sync-acr-contracts.mjs generate",
+        "acr:contracts:generate": "node scripts/sync-acr-contracts.mjs generate --allow-write",
         "acr:contracts:check": "node scripts/sync-acr-contracts.mjs check",
         "test:e2e": "playwright test",
         "test:e2e:onboarding": "playwright test -c playwright.onboarding.config.ts",
