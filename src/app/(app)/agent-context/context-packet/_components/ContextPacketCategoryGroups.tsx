@@ -149,7 +149,7 @@ function CategoryGroup({
 }) {
     return (
         <section>
-            <h2 className="text-h2 font-semibold text-foreground">{label}</h2>
+            <h2 className="text-h2 text-balance font-semibold text-foreground">{label}</h2>
             <div className="mt-3 flex flex-col gap-3">
                 {items.length > 0 ? (
                     items.map((item) => (

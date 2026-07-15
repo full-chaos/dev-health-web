@@ -77,13 +77,8 @@ export const SAMPLE_CONTEXT_PACKET: ACRContextPacketV1 = {
     },
     coverage: {
         sources_considered: ["linear", "github", "clickhouse_work_graph"],
-        sources_available: ["linear", "github"],
-        sources_unavailable: [
-            {
-                source: "clickhouse_work_graph",
-                reason: "Demo fixture does not include hosted ClickHouse",
-            },
-        ],
+        sources_available: ["linear", "github", "clickhouse_work_graph"],
+        sources_unavailable: [],
         partial: false,
         degraded_reasons: [],
     },
@@ -105,6 +100,31 @@ export const SAMPLE_CONTEXT_PACKET: ACRContextPacketV1 = {
             "context_packet_item.v1",
             "evidence_ref.v1",
         ],
+    },
+};
+
+export const SAMPLE_PARTIAL_CONTEXT_PACKET: ACRContextPacketV1 = {
+    ...SAMPLE_CONTEXT_PACKET,
+    status: "partial",
+    coverage: {
+        ...SAMPLE_CONTEXT_PACKET.coverage,
+        sources_available: ["linear", "github"],
+        sources_unavailable: [
+            {
+                source: "clickhouse_work_graph",
+                reason: "Demo fixture does not include hosted ClickHouse",
+            },
+        ],
+        partial: true,
+    },
+};
+
+export const SAMPLE_DEGRADED_CONTEXT_PACKET: ACRContextPacketV1 = {
+    ...SAMPLE_PARTIAL_CONTEXT_PACKET,
+    status: "degraded",
+    coverage: {
+        ...SAMPLE_PARTIAL_CONTEXT_PACKET.coverage,
+        degraded_reasons: ["Hosted evidence is unavailable in this demo fixture."],
     },
 };
 

@@ -2,6 +2,7 @@ export const CONTROLLED_PACKET_STATES = [
     "sample",
     "loading",
     "empty",
+    "partial",
     "degraded",
     "error",
     "not-entitled",

@@ -19,6 +19,7 @@ describe("ContextPacketExplorer", () => {
         expect(screen.getByText("Freshness")).toBeInTheDocument();
         expect(screen.getByText("Coverage")).toBeInTheDocument();
         expect(screen.getByText("Budget")).toBeInTheDocument();
+        expect(screen.getByText("Coverage is complete.")).toBeInTheDocument();
     });
 
     it("completes a sample request and restores focus to the generated packet", async () => {
@@ -117,5 +118,31 @@ describe("ContextPacketExplorer", () => {
 
         expect(screen.getByTestId(testId)).toBeInTheDocument();
         expect(screen.getByText(title)).toBeInTheDocument();
+    });
+
+    it("renders partial coverage, unavailable sources, and degraded reasons", () => {
+        render(<ContextPacketExplorer controlledState="degraded" />);
+
+        expect(screen.getByText("Coverage is partial.")).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /clickhouse_work_graph: Demo fixture does not include hosted ClickHouse/,
+            ),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText("Hosted evidence is unavailable in this demo fixture."),
+        ).toBeInTheDocument();
+    });
+
+    it("renders available packet groups with an explicit partial coverage explanation", () => {
+        render(<ContextPacketExplorer controlledState="partial" />);
+
+        expect(screen.getByRole("heading", { name: "Pressure", level: 2 })).toBeInTheDocument();
+        expect(screen.getByText("Coverage is partial.")).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                /clickhouse_work_graph: Demo fixture does not include hosted ClickHouse/,
+            ),
+        ).toBeInTheDocument();
     });
 });

@@ -37,9 +37,6 @@ export default async function ContextPacketPage({ searchParams }: ContextPacketP
     return (
         <div className="min-h-screen bg-background text-foreground">
             <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <div className="order-2 md:order-1">
-                    <PrimaryNav filters={filters} active="diagnose" />
-                </div>
                 <main className="order-1 min-w-0 flex-1 md:order-2">
                     <div className="mb-6">
                         <BackLink href="/diagnose" area="Diagnose" />
@@ -49,6 +46,9 @@ export default async function ContextPacketPage({ searchParams }: ContextPacketP
                         controlledState={controlledStateFrom(params.state, testMode)}
                     />
                 </main>
+                <div className="order-2 md:order-1">
+                    <PrimaryNav filters={filters} active="diagnose" />
+                </div>
             </div>
         </div>
     );

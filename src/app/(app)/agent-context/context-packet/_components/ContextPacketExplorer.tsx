@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ACRContextPacketV1 } from "@/lib/acr/generated";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { ContextPacketDetails } from "./ContextPacketDetails";
 import type { ControlledPacketState } from "./contextPacketStates";
-import { SAMPLE_CONTEXT_PACKET, SAMPLE_EXPANDED_EVIDENCE } from "./samplePacket";
+import { projectContextPacket, type ContextPacketRequestForm } from "./contextPacketProjection";
+import {
+    SAMPLE_CONTEXT_PACKET,
+    SAMPLE_DEGRADED_CONTEXT_PACKET,
+    SAMPLE_EXPANDED_EVIDENCE,
+    SAMPLE_PARTIAL_CONTEXT_PACKET,
+} from "./samplePacket";
 
 export type { ControlledPacketState } from "./contextPacketStates";
 
@@ -14,14 +19,7 @@ type ContextPacketExplorerProps = {
     readonly controlledState: ControlledPacketState;
 };
 
-type RequestForm = {
-    readonly goal: string;
-    readonly repository: string;
-    readonly branchOrCommit: string;
-    readonly taskReference: string;
-};
-
-const SAMPLE_REQUEST: RequestForm = {
+const SAMPLE_REQUEST: ContextPacketRequestForm = {
     goal: SAMPLE_CONTEXT_PACKET.goal,
     repository: SAMPLE_CONTEXT_PACKET.repository.slug,
     branchOrCommit: SAMPLE_CONTEXT_PACKET.resolved_scope.commit_sha ?? "",
@@ -30,25 +28,6 @@ const SAMPLE_REQUEST: RequestForm = {
 
 const AUTHORIZED_REPOSITORIES = [SAMPLE_CONTEXT_PACKET.repository.slug] as const;
 
-function projectPacket(form: RequestForm): ACRContextPacketV1 {
-    const { task_ref: _taskReference, ...requestedScope } = SAMPLE_CONTEXT_PACKET.requested_scope;
-    const { commit_sha: _commitSHA, ...resolvedScope } = SAMPLE_CONTEXT_PACKET.resolved_scope;
-    return {
-        ...SAMPLE_CONTEXT_PACKET,
-        goal: form.goal,
-        repository: { ...SAMPLE_CONTEXT_PACKET.repository, slug: form.repository },
-        requested_scope: {
-            ...requestedScope,
-            ...(form.taskReference ? { task_ref: form.taskReference } : {}),
-        },
-        resolved_scope: {
-            ...resolvedScope,
-            repo_slug: form.repository,
-            ...(form.branchOrCommit ? { commit_sha: form.branchOrCommit } : {}),
-        },
-    };
-}
-
 function ControlledState({
     state,
     focusPacket,
@@ -56,7 +35,7 @@ function ControlledState({
 }: {
     readonly state: ControlledPacketState;
     readonly focusPacket: boolean;
-    readonly packet: ACRContextPacketV1;
+    readonly packet: typeof SAMPLE_CONTEXT_PACKET;
 }) {
     switch (state) {
         case "loading":
@@ -97,8 +76,16 @@ function ControlledState({
         case "degraded":
             return (
                 <ContextPacketDetails
-                    packet={{ ...packet, status: "degraded" }}
+                    packet={SAMPLE_DEGRADED_CONTEXT_PACKET}
                     degraded
+                    autoFocus={focusPacket}
+                    evidenceByID={SAMPLE_EXPANDED_EVIDENCE}
+                />
+            );
+        case "partial":
+            return (
+                <ContextPacketDetails
+                    packet={SAMPLE_PARTIAL_CONTEXT_PACKET}
                     autoFocus={focusPacket}
                     evidenceByID={SAMPLE_EXPANDED_EVIDENCE}
                 />
@@ -118,7 +105,7 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
     const [form, setForm] = useState(SAMPLE_REQUEST);
     const [submitted, setSubmitted] = useState<ControlledPacketState | null>(null);
     const [goalError, setGoalError] = useState<string | null>(null);
-    const [packet, setPacket] = useState<ACRContextPacketV1>(SAMPLE_CONTEXT_PACKET);
+    const [packet, setPacket] = useState(SAMPLE_CONTEXT_PACKET);
     const goalRef = useRef<HTMLTextAreaElement>(null);
     const activeState =
         controlledState === "sample" && submitted !== null ? submitted : controlledState;
@@ -129,7 +116,7 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
         return () => cancelAnimationFrame(frame);
     }, [submitted]);
 
-    const updateField = (field: keyof RequestForm, value: string) => {
+    const updateField = (field: keyof ContextPacketRequestForm, value: string) => {
         setForm((current) => ({ ...current, [field]: value }));
         if (field === "goal" && value.trim()) setGoalError(null);
     };
@@ -154,7 +141,7 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
                         return;
                     }
                     setGoalError(null);
-                    setPacket(projectPacket(form));
+                    setPacket(projectContextPacket(form));
                     setSubmitted("loading");
                 }}
             >
@@ -176,7 +163,7 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
                         {goalError && (
                             <span
                                 id="context-goal-error"
-                                className="mt-1 block text-sm text-(--danger)"
+                                className="mt-1 block text-sm text-(--negative)"
                             >
                                 {goalError}
                             </span>

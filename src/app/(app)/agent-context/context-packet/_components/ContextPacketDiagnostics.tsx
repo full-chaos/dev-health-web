@@ -29,6 +29,9 @@ export function ContextPacketDiagnostics({ packet }: { readonly packet: ACRConte
                     {packet.coverage.sources_available.length} of{" "}
                     {packet.coverage.sources_considered.length} sources available.
                 </p>
+                <p className="mt-2">
+                    {packet.coverage.partial ? "Coverage is partial." : "Coverage is complete."}
+                </p>
                 <ul className="mt-2">
                     {packet.coverage.sources_unavailable.map((source) => (
                         <li key={source.source}>

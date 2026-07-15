@@ -99,6 +99,30 @@ test.describe("Context Packet Explorer", () => {
         await expectHealthyExplorer(health);
     });
 
+    test("puts context content before navigation in the 375px tab order", async ({ page }) => {
+        await page.setViewportSize({ width: 375, height: 812 });
+        const health = await openExplorer(page);
+
+        await page.keyboard.press("Tab");
+        await expect(page.getByRole("link", { name: "Back to Diagnose" })).toBeFocused();
+        await page.keyboard.press("Tab");
+        await expect(page.getByLabel(/Goal/)).toBeFocused();
+        await expectHealthyExplorer(health);
+    });
+
+    test("renders partial coverage with available context and no ACR request", async ({ page }) => {
+        const faults = browserFaults(page);
+        const requests = noAcrRequests(page);
+        await page.goto("/agent-context/context-packet?state=partial");
+
+        await expect(page.getByRole("heading", { name: "Pressure", level: 2 })).toBeVisible();
+        await expect(page.getByText("Coverage is partial.")).toBeVisible();
+        await expect.poll(() => requests).toEqual([]);
+        expect(faults.consoleErrors).toEqual([]);
+        expect(faults.pageErrors).toEqual([]);
+        expect(faults.failedRequests).toEqual([]);
+    });
+
     for (const scenario of [
         ["not-entitled", "data-state-not-entitled"],
         ["loading", "data-state-loading"],
