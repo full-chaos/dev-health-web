@@ -37,6 +37,40 @@ describe("ContextPacketExplorer", () => {
         expect(screen.getByRole("button", { name: "Generate context" })).toBeEnabled();
     });
 
+    it("validates required fields and renders the submitted goal in the packet", async () => {
+        const user = userEvent.setup();
+        render(<ContextPacketExplorer controlledState="sample" />);
+        const goal = screen.getByLabelText(/Goal/);
+        await user.clear(goal);
+        await user.click(screen.getByRole("button", { name: "Generate context" }));
+        expect(goal).toHaveFocus();
+        expect(goal).toHaveAttribute("aria-invalid", "true");
+        expect(screen.getByText("Goal is required.")).toBeInTheDocument();
+        await user.type(goal, "Review constrained credentials");
+        await user.click(screen.getByRole("button", { name: "Generate context" }));
+        await waitFor(() =>
+            expect(
+                screen.getByRole("heading", { name: "Review constrained credentials" }),
+            ).toBeInTheDocument(),
+        );
+    });
+
+    it("clears the associated goal error when the focused invalid field becomes valid", async () => {
+        const user = userEvent.setup();
+        render(<ContextPacketExplorer controlledState="sample" />);
+        const goal = screen.getByLabelText(/Goal/);
+
+        await user.clear(goal);
+        await user.click(screen.getByRole("button", { name: "Generate context" }));
+
+        expect(goal).toHaveAttribute("aria-describedby", "context-goal-error");
+        await user.type(goal, "Review the authorized repository scope");
+
+        expect(goal).toHaveAttribute("aria-invalid", "false");
+        expect(goal).not.toHaveAttribute("aria-describedby");
+        expect(screen.queryByText("Goal is required.")).not.toBeInTheDocument();
+    });
+
     it("limits repository selection to the server-authorized options", () => {
         render(<ContextPacketExplorer controlledState="sample" />);
 
@@ -51,7 +85,7 @@ describe("ContextPacketExplorer", () => {
     it("renders packet diagnostics, checks, and next steps without collapsing contract data", () => {
         render(<ContextPacketExplorer controlledState="sample" />);
 
-        expect(screen.getByText("linear: fresh")).toBeInTheDocument();
+        expect(screen.getByText(/linear: fresh/)).toBeInTheDocument();
         expect(screen.getByText(/4,?210 serialized bytes/)).toBeInTheDocument();
         expect(screen.getByText("Test cross-repository denial")).toBeInTheDocument();
         expect(screen.getByText("Implement hashed fcacr_ bearer tokens")).toBeInTheDocument();

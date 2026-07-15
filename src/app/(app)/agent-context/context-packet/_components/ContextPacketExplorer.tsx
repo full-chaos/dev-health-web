@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ACRContextPacketV1 } from "@/lib/acr/generated";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { ContextPacketDetails } from "./ContextPacketDetails";
@@ -29,12 +30,33 @@ const SAMPLE_REQUEST: RequestForm = {
 
 const AUTHORIZED_REPOSITORIES = [SAMPLE_CONTEXT_PACKET.repository.slug] as const;
 
+function projectPacket(form: RequestForm): ACRContextPacketV1 {
+    const { task_ref: _taskReference, ...requestedScope } = SAMPLE_CONTEXT_PACKET.requested_scope;
+    const { commit_sha: _commitSHA, ...resolvedScope } = SAMPLE_CONTEXT_PACKET.resolved_scope;
+    return {
+        ...SAMPLE_CONTEXT_PACKET,
+        goal: form.goal,
+        repository: { ...SAMPLE_CONTEXT_PACKET.repository, slug: form.repository },
+        requested_scope: {
+            ...requestedScope,
+            ...(form.taskReference ? { task_ref: form.taskReference } : {}),
+        },
+        resolved_scope: {
+            ...resolvedScope,
+            repo_slug: form.repository,
+            ...(form.branchOrCommit ? { commit_sha: form.branchOrCommit } : {}),
+        },
+    };
+}
+
 function ControlledState({
     state,
     focusPacket,
+    packet,
 }: {
     readonly state: ControlledPacketState;
     readonly focusPacket: boolean;
+    readonly packet: ACRContextPacketV1;
 }) {
     switch (state) {
         case "loading":
@@ -75,7 +97,7 @@ function ControlledState({
         case "degraded":
             return (
                 <ContextPacketDetails
-                    packet={{ ...SAMPLE_CONTEXT_PACKET, status: "degraded" }}
+                    packet={{ ...packet, status: "degraded" }}
                     degraded
                     autoFocus={focusPacket}
                     evidenceByID={SAMPLE_EXPANDED_EVIDENCE}
@@ -84,7 +106,7 @@ function ControlledState({
         case "sample":
             return (
                 <ContextPacketDetails
-                    packet={SAMPLE_CONTEXT_PACKET}
+                    packet={packet}
                     autoFocus={focusPacket}
                     evidenceByID={SAMPLE_EXPANDED_EVIDENCE}
                 />
@@ -95,6 +117,9 @@ function ControlledState({
 export function ContextPacketExplorer({ controlledState }: ContextPacketExplorerProps) {
     const [form, setForm] = useState(SAMPLE_REQUEST);
     const [submitted, setSubmitted] = useState<ControlledPacketState | null>(null);
+    const [goalError, setGoalError] = useState<string | null>(null);
+    const [packet, setPacket] = useState<ACRContextPacketV1>(SAMPLE_CONTEXT_PACKET);
+    const goalRef = useRef<HTMLTextAreaElement>(null);
     const activeState =
         controlledState === "sample" && submitted !== null ? submitted : controlledState;
 
@@ -104,8 +129,10 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
         return () => cancelAnimationFrame(frame);
     }, [submitted]);
 
-    const updateField = (field: keyof RequestForm, value: string) =>
+    const updateField = (field: keyof RequestForm, value: string) => {
         setForm((current) => ({ ...current, [field]: value }));
+        if (field === "goal" && value.trim()) setGoalError(null);
+    };
 
     return (
         <div className="flex flex-col gap-8">
@@ -118,8 +145,16 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
             </header>
             <form
                 className="rounded-(--radius-lg) border border-(--card-stroke) bg-(--card-80) p-6"
+                noValidate
                 onSubmit={(event) => {
                     event.preventDefault();
+                    if (!form.goal.trim()) {
+                        setGoalError("Goal is required.");
+                        goalRef.current?.focus();
+                        return;
+                    }
+                    setGoalError(null);
+                    setPacket(projectPacket(form));
                     setSubmitted("loading");
                 }}
             >
@@ -130,11 +165,22 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
                         </span>
                         <textarea
                             id="context-goal"
+                            ref={goalRef}
                             required
+                            aria-invalid={goalError !== null}
+                            aria-describedby={goalError ? "context-goal-error" : undefined}
                             value={form.goal}
                             onChange={(event) => updateField("goal", event.target.value)}
                             className="mt-2 min-h-24 w-full rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-body text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                         />
+                        {goalError && (
+                            <span
+                                id="context-goal-error"
+                                className="mt-1 block text-sm text-(--danger)"
+                            >
+                                {goalError}
+                            </span>
+                        )}
                     </label>
                     <label htmlFor="context-repository">
                         <span className="text-sm font-medium text-foreground">
@@ -189,7 +235,11 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
                 </p>
             )}
             <div>
-                <ControlledState state={activeState} focusPacket={submitted === "sample"} />
+                <ControlledState
+                    state={activeState}
+                    focusPacket={submitted === "sample"}
+                    packet={packet}
+                />
             </div>
         </div>
     );
