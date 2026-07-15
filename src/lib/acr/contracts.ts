@@ -1,62 +1,43 @@
 import Ajv2020 from "ajv/dist/2020";
 import addFormats from "ajv-formats";
-import acrClientCredentialSchema from "./contracts/schemas/acr_client_credential.v1.schema.json";
-import agentEpisodeSchema from "./contracts/schemas/agent_episode.v1.schema.json";
 import agentEpisodeCreateSchema from "./contracts/schemas/agent_episode_create.v1.schema.json";
+import agentEpisodeSchema from "./contracts/schemas/agent_episode.v1.schema.json";
 import capabilitiesSchema from "./contracts/schemas/capabilities.v1.schema.json";
-import contextPacketSchema from "./contracts/schemas/context_packet.v1.schema.json";
 import contextPacketItemSchema from "./contracts/schemas/context_packet_item.v1.schema.json";
 import contextPacketRequestSchema from "./contracts/schemas/context_packet_request.v1.schema.json";
+import contextPacketSchema from "./contracts/schemas/context_packet.v1.schema.json";
 import errorSchema from "./contracts/schemas/error.v1.schema.json";
 import evidenceRefSchema from "./contracts/schemas/evidence_ref.v1.schema.json";
 import expandedEvidenceSchema from "./contracts/schemas/expanded_evidence.v1.schema.json";
-import acrClientCredentialExample from "./contracts/examples/acr_client_credential.v1.json";
-import agentEpisodeExample from "./contracts/examples/agent_episode.v1.json";
-import agentEpisodeCreateExample from "./contracts/examples/agent_episode_create.v1.json";
-import capabilitiesExample from "./contracts/examples/capabilities.v1.json";
 import contextPacketExample from "./contracts/examples/context_packet.v1.json";
-import contextPacketItemExample from "./contracts/examples/context_packet_item.v1.json";
-import contextPacketRequestExample from "./contracts/examples/context_packet_request.v1.json";
-import errorExample from "./contracts/examples/error.v1.json";
-import evidenceRefExample from "./contracts/examples/evidence_ref.v1.json";
 import expandedEvidenceExample from "./contracts/examples/expanded_evidence.v1.json";
 
 export const acrSchemas = {
-    acrClientCredential: acrClientCredentialSchema,
-    agentEpisode: agentEpisodeSchema,
     agentEpisodeCreate: agentEpisodeCreateSchema,
+    agentEpisode: agentEpisodeSchema,
     capabilities: capabilitiesSchema,
-    contextPacket: contextPacketSchema,
     contextPacketItem: contextPacketItemSchema,
     contextPacketRequest: contextPacketRequestSchema,
+    contextPacket: contextPacketSchema,
     error: errorSchema,
     evidenceRef: evidenceRefSchema,
     expandedEvidence: expandedEvidenceSchema,
 };
 
 const acrSchemaFiles = {
-    "acr_client_credential.v1.schema.json": acrClientCredentialSchema,
-    "agent_episode.v1.schema.json": agentEpisodeSchema,
     "agent_episode_create.v1.schema.json": agentEpisodeCreateSchema,
+    "agent_episode.v1.schema.json": agentEpisodeSchema,
     "capabilities.v1.schema.json": capabilitiesSchema,
-    "context_packet.v1.schema.json": contextPacketSchema,
     "context_packet_item.v1.schema.json": contextPacketItemSchema,
     "context_packet_request.v1.schema.json": contextPacketRequestSchema,
+    "context_packet.v1.schema.json": contextPacketSchema,
     "error.v1.schema.json": errorSchema,
     "evidence_ref.v1.schema.json": evidenceRefSchema,
     "expanded_evidence.v1.schema.json": expandedEvidenceSchema,
 };
 
 export const acrExamples = [
-    { schema: "acr_client_credential.v1.schema.json", value: acrClientCredentialExample },
-    { schema: "agent_episode.v1.schema.json", value: agentEpisodeExample },
-    { schema: "agent_episode_create.v1.schema.json", value: agentEpisodeCreateExample },
-    { schema: "capabilities.v1.schema.json", value: capabilitiesExample },
     { schema: "context_packet.v1.schema.json", value: contextPacketExample },
-    { schema: "context_packet_item.v1.schema.json", value: contextPacketItemExample },
-    { schema: "context_packet_request.v1.schema.json", value: contextPacketRequestExample },
-    { schema: "error.v1.schema.json", value: errorExample },
-    { schema: "evidence_ref.v1.schema.json", value: evidenceRefExample },
     { schema: "expanded_evidence.v1.schema.json", value: expandedEvidenceExample },
 ] as const;
 

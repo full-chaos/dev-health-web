@@ -36,7 +36,12 @@ function committedArtifactSnapshot() {
 }
 
 describe("sync-acr-contracts", () => {
-    const sourceTest = SOURCE === undefined || !fs.existsSync(SOURCE) ? it.skip : it;
+    const sourceTest =
+        SOURCE === undefined ||
+        !fs.existsSync(path.join(SOURCE, ".git")) ||
+        !fs.existsSync(path.join(SOURCE, "contracts"))
+            ? it.skip
+            : it;
 
     sourceTest("generates byte-identical artifacts twice from the pinned ACR commit", () => {
         const first = run(["generate"], { ACR_ROOT: SOURCE });
@@ -61,6 +66,27 @@ describe("sync-acr-contracts", () => {
 
         expect(result.status).toBe(0);
         expect(result.stdout).toContain("ACR contracts are current");
+    });
+
+    it("records the exact Todo 4 primary order before the explicit OpenAPI schema closure", () => {
+        const manifest = JSON.parse(
+            fs.readFileSync(path.join(ARTIFACT_ROOT, "manifest.json"), "utf8"),
+        );
+
+        expect(manifest.files.map((file) => file.path)).toEqual([
+            "openapi/acr-v1.json",
+            "schemas/capabilities.v1.schema.json",
+            "schemas/context_packet.v1.schema.json",
+            "schemas/context_packet_item.v1.schema.json",
+            "schemas/context_packet_request.v1.schema.json",
+            "schemas/error.v1.schema.json",
+            "schemas/evidence_ref.v1.schema.json",
+            "schemas/expanded_evidence.v1.schema.json",
+            "examples/context_packet.v1.json",
+            "examples/expanded_evidence.v1.json",
+            "schemas/agent_episode.v1.schema.json",
+            "schemas/agent_episode_create.v1.schema.json",
+        ]);
     });
 
     it("rejects the tracked mutated source fixture without changing committed artifacts", () => {

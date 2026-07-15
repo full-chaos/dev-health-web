@@ -1,21 +1,50 @@
-export interface ACRClientCredentialMetadataV1 {
-    schema_version: "acr_client_credential.v1";
-    credential_id: string;
-    name: string;
-    token_prefix: string;
-    org_id: string;
-    repository_scopes: string[];
-    /**
-     * @minItems 1
-     */
-    scopes: [
-        "context:read" | "evidence:read" | "episode:write",
-        ...("context:read" | "evidence:read" | "episode:write")[],
-    ];
-    created_at: string;
-    expires_at: string | null;
-    revoked_at: string | null;
-    last_used_at: string | null;
+export interface ACRAgentEpisodeCreateV1 {
+    schema_version: "agent_episode_create.v1";
+    client_episode_id: string;
+    idempotency_key: string;
+    context_packet_id: string;
+    goal: string;
+    task_ref?: string;
+    repository: {
+        slug: string;
+        repo_id?: string;
+        remote_url?: string;
+    };
+    scope: {
+        branch?: string;
+        commit_sha?: string;
+    };
+    client: {
+        name: string;
+        version: string;
+        sidecar_version: string;
+        agent_name?: string;
+        model?: string;
+    };
+    started_at: string;
+    ended_at: string;
+    outcome: "succeeded" | "failed" | "abandoned" | "superseded" | "unknown";
+    summary: string;
+    artifacts: {
+        /**
+         * @maxItems 500
+         */
+        files_touched: string[];
+        /**
+         * @maxItems 100
+         */
+        artifact_uris: string[];
+        /**
+         * @maxItems 200
+         */
+        tests_run: string[];
+    };
+    transcript: {
+        mode: "none" | "opaque_ref" | "redacted_summary";
+        opaque_ref?: string;
+        redacted_summary?: string;
+    };
+    retention_class: "default_90d" | "short_30d" | "legal_hold" | "no_persist";
 }
 
 export interface ACRAgentEpisodeV1 {
@@ -71,55 +100,6 @@ export interface ACRAgentEpisodeV1 {
     duplicate?: boolean;
 }
 
-export interface ACRAgentEpisodeCreateV1 {
-    schema_version: "agent_episode_create.v1";
-    client_episode_id: string;
-    idempotency_key: string;
-    context_packet_id: string;
-    goal: string;
-    task_ref?: string;
-    repository: {
-        slug: string;
-        repo_id?: string;
-        remote_url?: string;
-    };
-    scope: {
-        branch?: string;
-        commit_sha?: string;
-    };
-    client: {
-        name: string;
-        version: string;
-        sidecar_version: string;
-        agent_name?: string;
-        model?: string;
-    };
-    started_at: string;
-    ended_at: string;
-    outcome: "succeeded" | "failed" | "abandoned" | "superseded" | "unknown";
-    summary: string;
-    artifacts: {
-        /**
-         * @maxItems 500
-         */
-        files_touched: string[];
-        /**
-         * @maxItems 100
-         */
-        artifact_uris: string[];
-        /**
-         * @maxItems 200
-         */
-        tests_run: string[];
-    };
-    transcript: {
-        mode: "none" | "opaque_ref" | "redacted_summary";
-        opaque_ref?: string;
-        redacted_summary?: string;
-    };
-    retention_class: "default_90d" | "short_30d" | "legal_hold" | "no_persist";
-}
-
 export interface ACRCapabilitiesV1 {
     schema_version: "capabilities.v1";
     service: "dev-health-acr";
@@ -144,6 +124,82 @@ export interface ACRCapabilitiesV1 {
         context_read: boolean;
         evidence_read: boolean;
         episode_write: boolean;
+    };
+}
+
+export type ACRContextPacketItemV1 = {
+    [k: string]: unknown | undefined;
+} & {
+    schema_version: "context_packet_item.v1";
+    packet_item_id: string;
+    category: "state" | "pressure" | "cause" | "evidence" | "action";
+    claim_kind: "observed" | "inferred" | "recommendation";
+    title: string;
+    summary: string;
+    why_included: string;
+    rule_id: string;
+    confidence: number;
+    severity: "info" | "warning" | "high" | "critical";
+    rank: number;
+    validity_scope: {
+        branch?: string;
+        commit_sha?: string;
+        valid_from?: string;
+        valid_to?: string;
+    };
+    flags: {
+        stale: boolean;
+        uncertain: boolean;
+        conflicting: boolean;
+        untrusted_content: boolean;
+    };
+    /**
+     * @maxItems 100
+     */
+    related_entities: {
+        type: string;
+        id: string;
+        label: string;
+        url?: string;
+    }[];
+    /**
+     * @maxItems 100
+     */
+    evidence_ref_ids: string[];
+};
+
+export interface ACRContextPacketRequestV1 {
+    schema_version: "context_packet_request.v1";
+    request_id: string;
+    goal: string;
+    repository: {
+        slug: string;
+        repo_id?: string;
+        remote_url?: string;
+    };
+    scope: {
+        branch?: string;
+        commit_sha?: string;
+        task_ref?: string;
+        /**
+         * @maxItems 200
+         */
+        files?: string[];
+        as_of?: string;
+        time_window_days?: number;
+    };
+    options: {
+        requested_categories?: ("state" | "pressure" | "cause" | "evidence" | "action")[];
+        max_items: number;
+        max_output_tokens: number;
+        max_serialized_bytes: number;
+        include_debug: boolean;
+        include_low_confidence: boolean;
+    };
+    client: {
+        name: string;
+        version: string;
+        sidecar_version?: string;
     };
 }
 
@@ -238,82 +294,6 @@ export interface ACRContextPacketV1 {
         supported_schema_versions: string[];
     };
     retrieval_debug_summary?: string;
-}
-
-export type ACRContextPacketItemV1 = {
-    [k: string]: unknown | undefined;
-} & {
-    schema_version: "context_packet_item.v1";
-    packet_item_id: string;
-    category: "state" | "pressure" | "cause" | "evidence" | "action";
-    claim_kind: "observed" | "inferred" | "recommendation";
-    title: string;
-    summary: string;
-    why_included: string;
-    rule_id: string;
-    confidence: number;
-    severity: "info" | "warning" | "high" | "critical";
-    rank: number;
-    validity_scope: {
-        branch?: string;
-        commit_sha?: string;
-        valid_from?: string;
-        valid_to?: string;
-    };
-    flags: {
-        stale: boolean;
-        uncertain: boolean;
-        conflicting: boolean;
-        untrusted_content: boolean;
-    };
-    /**
-     * @maxItems 100
-     */
-    related_entities: {
-        type: string;
-        id: string;
-        label: string;
-        url?: string;
-    }[];
-    /**
-     * @maxItems 100
-     */
-    evidence_ref_ids: string[];
-};
-
-export interface ACRContextPacketRequestV1 {
-    schema_version: "context_packet_request.v1";
-    request_id: string;
-    goal: string;
-    repository: {
-        slug: string;
-        repo_id?: string;
-        remote_url?: string;
-    };
-    scope: {
-        branch?: string;
-        commit_sha?: string;
-        task_ref?: string;
-        /**
-         * @maxItems 200
-         */
-        files?: string[];
-        as_of?: string;
-        time_window_days?: number;
-    };
-    options: {
-        requested_categories?: ("state" | "pressure" | "cause" | "evidence" | "action")[];
-        max_items: number;
-        max_output_tokens: number;
-        max_serialized_bytes: number;
-        include_debug: boolean;
-        include_low_confidence: boolean;
-    };
-    client: {
-        name: string;
-        version: string;
-        sidecar_version?: string;
-    };
 }
 
 export interface ACRErrorV1 {

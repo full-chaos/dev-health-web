@@ -69,6 +69,11 @@ function sha256(value) {
     return createHash("sha256").update(value).digest("hex");
 }
 
+function copiedContents(sourcePath, contents) {
+    if (sourcePath !== "contracts/openapi/acr-v1.json") return contents;
+    return contents.replaceAll("../jsonschema/v1/", "../schemas/");
+}
+
 function filesAtPinnedCommit(sourceRoot) {
     const commit = command("git", ["rev-parse", "HEAD"], sourceRoot).trim();
     if (commit !== SOURCE_COMMIT) throw new Error(`source HEAD must equal ${SOURCE_COMMIT}`);
@@ -77,7 +82,10 @@ function filesAtPinnedCommit(sourceRoot) {
     }
     return SOURCE_PATHS.map((file) => ({
         path: file,
-        contents: command("git", ["show", `${SOURCE_COMMIT}:${file}`], sourceRoot),
+        contents: copiedContents(
+            file,
+            command("git", ["show", `${SOURCE_COMMIT}:${file}`], sourceRoot),
+        ),
     }));
 }
 
@@ -87,7 +95,10 @@ function filesFromFixture(sourceRoot) {
         const fixturePath = path.join(sourceRoot, file.path);
         if (!fs.existsSync(fixturePath)) return file;
         overrides += 1;
-        return { path: file.path, contents: fs.readFileSync(fixturePath, "utf8") };
+        return {
+            path: file.path,
+            contents: copiedContents(file.path, fs.readFileSync(fixturePath, "utf8")),
+        };
     });
     if (overrides === 0) throw new Error("fixture source must override at least one REST artifact");
     return files;
@@ -254,10 +265,12 @@ async function main() {
             inputs.map((file) => [artifactPath(file.path), file.contents]),
         );
         for (const directory of ["examples", "openapi", "schemas"]) {
-            for (const entry of fs.readdirSync(path.join(ARTIFACT_ROOT, directory))) {
+            const directoryPath = path.join(ARTIFACT_ROOT, directory);
+            if (!fs.existsSync(directoryPath)) continue;
+            for (const entry of fs.readdirSync(directoryPath)) {
                 const relativePath = `${directory}/${entry}`;
                 if (!Object.hasOwn(rawArtifacts, relativePath))
-                    fs.rmSync(path.join(ARTIFACT_ROOT, relativePath));
+                    fs.rmSync(path.join(directoryPath, entry));
             }
         }
         writeArtifacts(rawArtifacts);
