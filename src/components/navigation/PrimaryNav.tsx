@@ -111,7 +111,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
     return (
         <aside className="w-full md:max-w-56 md:shrink-0">
             <div className="md:sticky md:top-6">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-4">
+                <div className="max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl border border-(--card-stroke) bg-(--card-80) p-4 md:max-h-none md:overflow-visible">
                     <div>
                         <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                             Full Chaos Dev Health Ops

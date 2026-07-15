@@ -97,6 +97,7 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
         expect(screen.getByTestId("nav-children-diagnose")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /^Flow$/i })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /^Bottlenecks$/i })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /^Context Packet$/i })).toBeInTheDocument();
 
         // Govern is NOT active → none of its children appear.
         expect(screen.queryByTestId("nav-children-govern")).toBeNull();

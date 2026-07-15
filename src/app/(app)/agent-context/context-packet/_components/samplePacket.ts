@@ -1,4 +1,4 @@
-import type { ACRContextPacketV1 } from "@/lib/acr/generated";
+import type { ACRContextPacketV1, ACRExpandedEvidenceV1 } from "@/lib/acr/generated";
 
 export const SAMPLE_CONTEXT_PACKET: ACRContextPacketV1 = {
     schema_version: "context_packet.v1",
@@ -105,5 +105,31 @@ export const SAMPLE_CONTEXT_PACKET: ACRContextPacketV1 = {
             "context_packet_item.v1",
             "evidence_ref.v1",
         ],
+    },
+};
+
+export const SAMPLE_EXPANDED_EVIDENCE: Record<string, ACRExpandedEvidenceV1> = {
+    ev_01J0ACR001: {
+        schema_version: "expanded_evidence.v1",
+        evidence: {
+            schema_version: "evidence_ref.v1",
+            evidence_ref_id: "ev_01J0ACR001",
+            source: {
+                system: "linear",
+                entity_type: "issue",
+                entity_id: "CHAOS-2924",
+                display_label: "Credential authorization review",
+                safe_uri: "https://linear.app/fullchaos/issue/CHAOS-2924",
+            },
+            provenance: "native",
+            confidence: 0.98,
+            citation: "Repository credential requirements",
+            observed_at: "2026-07-10T14:00:00Z",
+            availability: "available",
+        },
+        resolved_at: "2026-07-10T14:00:00Z",
+        availability: "available",
+        excerpt: "Repository-scoped credentials must be checked before evidence access.",
+        structured_fields: {},
     },
 };

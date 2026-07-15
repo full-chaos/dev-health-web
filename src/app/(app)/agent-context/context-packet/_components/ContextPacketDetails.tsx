@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CTA_LABELS } from "@/lib/design/cta";
-import type { ACRContextPacketItemV1, ACRContextPacketV1 } from "@/lib/acr/generated";
+import type {
+    ACRContextPacketItemV1,
+    ACRContextPacketV1,
+    ACRExpandedEvidenceV1,
+} from "@/lib/acr/generated";
 
 const CATEGORY_LABELS = [
     ["state", "State"],
@@ -15,6 +19,8 @@ const CATEGORY_LABELS = [
 type ContextPacketDetailsProps = {
     readonly packet: ACRContextPacketV1;
     readonly degraded?: boolean;
+    readonly autoFocus?: boolean;
+    readonly evidenceByID?: Readonly<Record<string, ACRExpandedEvidenceV1>>;
 };
 
 function displayTime(value: string) {
@@ -25,9 +31,23 @@ function displayTime(value: string) {
     }).format(new Date(value));
 }
 
-function CategoryItem({ item }: { readonly item: ACRContextPacketItemV1 }) {
+function displayNumber(value: number) {
+    return new Intl.NumberFormat("en-US").format(value);
+}
+
+function CategoryItem({
+    item,
+    evidenceByID,
+}: {
+    readonly item: ACRContextPacketItemV1;
+    readonly evidenceByID: Readonly<Record<string, ACRExpandedEvidenceV1>>;
+}) {
     const [evidenceOpen, setEvidenceOpen] = useState(false);
     const evidenceId = `evidence-${item.packet_item_id}`;
+    const evidence = item.evidence_ref_ids
+        .map((evidenceID) => evidenceByID[evidenceID])
+        .filter((value): value is ACRExpandedEvidenceV1 => value !== undefined);
+    const hasEvidence = evidence.length > 0;
 
     return (
         <article className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card-80) p-4">
@@ -45,7 +65,7 @@ function CategoryItem({ item }: { readonly item: ACRContextPacketItemV1 }) {
                 <span className="font-semibold">Why included: </span>
                 {item.why_included}
             </p>
-            {item.evidence_ref_ids.length > 0 && (
+            {hasEvidence && (
                 <div className="mt-4">
                     <button
                         type="button"
@@ -61,8 +81,30 @@ function CategoryItem({ item }: { readonly item: ACRContextPacketItemV1 }) {
                             id={evidenceId}
                             className="mt-3 rounded-(--radius-sm) bg-background/60 p-3 text-sm text-(--ink-muted)"
                         >
-                            Sanitized evidence detail is available when the authorized service is
-                            connected.
+                            {evidence.map((expanded) => (
+                                <div key={expanded.evidence.evidence_ref_id} className="space-y-2">
+                                    <p className="font-medium text-foreground">
+                                        {expanded.evidence.source.display_label}
+                                    </p>
+                                    <p>{expanded.evidence.citation}</p>
+                                    <p>
+                                        Evidence is {expanded.availability}. Observed{" "}
+                                        {displayTime(expanded.evidence.observed_at)}.
+                                    </p>
+                                    {expanded.evidence.source.safe_uri && (
+                                        <a
+                                            href={expanded.evidence.source.safe_uri}
+                                            className="underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                                        >
+                                            View safe source
+                                        </a>
+                                    )}
+                                    {expanded.excerpt && <p>{expanded.excerpt}</p>}
+                                    {expanded.redaction_reason && (
+                                        <p>Redaction: {expanded.redaction_reason}</p>
+                                    )}
+                                </div>
+                            ))}
                         </div>
                     )}
                 </div>
@@ -71,9 +113,25 @@ function CategoryItem({ item }: { readonly item: ACRContextPacketItemV1 }) {
     );
 }
 
-export function ContextPacketDetails({ packet, degraded = false }: ContextPacketDetailsProps) {
+export function ContextPacketDetails({
+    packet,
+    degraded = false,
+    autoFocus = false,
+    evidenceByID = {},
+}: ContextPacketDetailsProps) {
+    const packetRef = useRef<HTMLElement>(null);
+
+    useEffect(() => {
+        if (autoFocus) packetRef.current?.focus();
+    }, [autoFocus]);
+
     return (
-        <section aria-label="Generated context packet" className="flex flex-col gap-6">
+        <section
+            ref={packetRef}
+            aria-label="Generated context packet"
+            className="flex flex-col gap-6"
+            tabIndex={-1}
+        >
             {degraded && (
                 <div
                     data-testid="data-state-degraded"
@@ -142,7 +200,11 @@ export function ContextPacketDetails({ packet, degraded = false }: ContextPacket
                             <div className="mt-3 flex flex-col gap-3">
                                 {items.length > 0 ? (
                                     items.map((item) => (
-                                        <CategoryItem key={item.packet_item_id} item={item} />
+                                        <CategoryItem
+                                            key={item.packet_item_id}
+                                            item={item}
+                                            evidenceByID={evidenceByID}
+                                        />
                                     ))
                                 ) : (
                                     <p className="rounded-(--radius-md) border border-dashed border-(--card-stroke) p-4 text-sm text-(--ink-muted)">
@@ -164,6 +226,13 @@ export function ContextPacketDetails({ packet, degraded = false }: ContextPacket
                         As of {displayTime(packet.freshness.as_of)}. Refresh after{" "}
                         {Math.round(packet.freshness.stale_after_seconds / 3600)} hours.
                     </p>
+                    <ul className="mt-2 text-sm text-(--ink-muted)">
+                        {packet.freshness.watermarks.map((watermark) => (
+                            <li key={watermark.source}>
+                                {watermark.source}: {watermark.status}
+                            </li>
+                        ))}
+                    </ul>
                 </div>
                 <div className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card-80) p-4">
                     <h2 className="text-h3 font-semibold">Coverage</h2>
@@ -171,12 +240,25 @@ export function ContextPacketDetails({ packet, degraded = false }: ContextPacket
                         {packet.coverage.sources_available.length} of{" "}
                         {packet.coverage.sources_considered.length} sources available.
                     </p>
+                    {packet.coverage.sources_unavailable.length > 0 && (
+                        <ul className="mt-2 text-sm text-(--ink-muted)">
+                            {packet.coverage.sources_unavailable.map((source) => (
+                                <li key={source.source}>
+                                    {source.source}: {source.reason}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
                 <div className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card-80) p-4">
                     <h2 className="text-h3 font-semibold">Budget</h2>
                     <p className="mt-2 text-sm text-(--ink-muted)">
                         {packet.budget.items_used} of {packet.budget.max_items} items used ·{" "}
                         {packet.budget.estimated_tokens} estimated tokens.
+                    </p>
+                    <p className="mt-2 text-sm text-(--ink-muted)">
+                        {displayNumber(packet.budget.serialized_bytes)} serialized bytes ·{" "}
+                        {packet.budget.truncated ? "output truncated" : "output complete"}
                     </p>
                 </div>
                 <div className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card-80) p-4">
@@ -185,6 +267,16 @@ export function ContextPacketDetails({ packet, degraded = false }: ContextPacket
                         {packet.required_checks.length} required check and{" "}
                         {packet.recommended_next_steps.length} recommended next step.
                     </p>
+                    <ul className="mt-2 text-sm text-(--ink-muted)">
+                        {packet.required_checks.map((check) => (
+                            <li key={check.check_id}>{check.label}</li>
+                        ))}
+                    </ul>
+                    <ul className="mt-2 text-sm text-(--ink-muted)">
+                        {packet.recommended_next_steps.map((step) => (
+                            <li key={step.step_id}>{step.label}</li>
+                        ))}
+                    </ul>
                 </div>
             </section>
         </section>

@@ -20,7 +20,7 @@ describe("ContextPacketGatedBody", () => {
 
         expect(explorerSpy).not.toHaveBeenCalled();
         expect(screen.queryByTestId("context-packet-explorer")).not.toBeInTheDocument();
-        expect(screen.getByTestId("context-packet-preview-placeholder")).toBeInTheDocument();
+        expect(screen.queryByTestId("context-packet-preview-placeholder")).not.toBeInTheDocument();
     });
 
     it("mounts the packet explorer when the organization is entitled", () => {

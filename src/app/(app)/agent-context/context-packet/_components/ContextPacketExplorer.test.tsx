@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import userEvent from "@testing-library/user-event";
-import { render, screen } from "@/test/utils";
+import { render, screen, waitFor } from "@/test/utils";
 
 import { ContextPacketExplorer } from "./ContextPacketExplorer";
 
@@ -10,6 +10,8 @@ describe("ContextPacketExplorer", () => {
 
         expect(screen.getByRole("heading", { name: "Context Packet" })).toBeInTheDocument();
         expect(screen.getByLabelText(/Goal/)).toHaveValue("Add repository-scoped ACR credentials");
+        expect(screen.getByLabelText(/Goal.*required/)).toBeRequired();
+        expect(screen.getByLabelText(/Repository.*required/)).toBeRequired();
         for (const category of ["State", "Pressure", "Cause", "Evidence", "Action"]) {
             expect(screen.getByRole("heading", { name: category, level: 2 })).toBeInTheDocument();
         }
@@ -19,7 +21,7 @@ describe("ContextPacketExplorer", () => {
         expect(screen.getByText("Budget")).toBeInTheDocument();
     });
 
-    it("keeps editable values and announces a controlled loading transition without fetching", async () => {
+    it("completes a sample request and restores focus to the generated packet", async () => {
         const user = userEvent.setup();
         render(<ContextPacketExplorer controlledState="sample" />);
 
@@ -29,8 +31,41 @@ describe("ContextPacketExplorer", () => {
         await user.click(screen.getByRole("button", { name: "Generate context" }));
 
         expect(goal).toHaveValue("Inspect repository access boundaries");
-        expect(screen.getByTestId("data-state-loading")).toBeInTheDocument();
-        expect(screen.getByRole("status")).toHaveTextContent("Preparing context packet");
+        await waitFor(() =>
+            expect(screen.getByRole("region", { name: "Generated context packet" })).toHaveFocus(),
+        );
+        expect(screen.getByRole("button", { name: "Generate context" })).toBeEnabled();
+    });
+
+    it("limits repository selection to the server-authorized options", () => {
+        render(<ContextPacketExplorer controlledState="sample" />);
+
+        expect(screen.getByRole("combobox", { name: /Repository/ })).toHaveValue(
+            "full-chaos/dev-health-acr",
+        );
+        expect(
+            screen.getByRole("option", { name: "full-chaos/dev-health-acr" }),
+        ).toBeInTheDocument();
+    });
+
+    it("renders packet diagnostics, checks, and next steps without collapsing contract data", () => {
+        render(<ContextPacketExplorer controlledState="sample" />);
+
+        expect(screen.getByText("linear: fresh")).toBeInTheDocument();
+        expect(screen.getByText(/4,?210 serialized bytes/)).toBeInTheDocument();
+        expect(screen.getByText("Test cross-repository denial")).toBeInTheDocument();
+        expect(screen.getByText("Implement hashed fcacr_ bearer tokens")).toBeInTheDocument();
+    });
+
+    it("discloses the sanitized evidence fields for observed claims", async () => {
+        const user = userEvent.setup();
+        render(<ContextPacketExplorer controlledState="sample" />);
+
+        await user.click(screen.getByRole("button", { name: "Open evidence" }));
+
+        expect(screen.getByText("Credential authorization review")).toBeInTheDocument();
+        expect(screen.getByText("Repository credential requirements")).toBeInTheDocument();
+        expect(screen.getByText(/Evidence is available/)).toBeInTheDocument();
     });
 
     it.each([

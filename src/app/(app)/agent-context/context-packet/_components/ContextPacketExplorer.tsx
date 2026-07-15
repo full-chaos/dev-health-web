@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { ContextPacketDetails } from "./ContextPacketDetails";
 import type { ControlledPacketState } from "./contextPacketStates";
-import { SAMPLE_CONTEXT_PACKET } from "./samplePacket";
+import { SAMPLE_CONTEXT_PACKET, SAMPLE_EXPANDED_EVIDENCE } from "./samplePacket";
 
 export type { ControlledPacketState } from "./contextPacketStates";
 
@@ -27,7 +27,15 @@ const SAMPLE_REQUEST: RequestForm = {
     taskReference: SAMPLE_CONTEXT_PACKET.requested_scope.task_ref ?? "",
 };
 
-function ControlledState({ state }: { readonly state: ControlledPacketState }) {
+const AUTHORIZED_REPOSITORIES = [SAMPLE_CONTEXT_PACKET.repository.slug] as const;
+
+function ControlledState({
+    state,
+    focusPacket,
+}: {
+    readonly state: ControlledPacketState;
+    readonly focusPacket: boolean;
+}) {
     switch (state) {
         case "loading":
             return (
@@ -69,10 +77,18 @@ function ControlledState({ state }: { readonly state: ControlledPacketState }) {
                 <ContextPacketDetails
                     packet={{ ...SAMPLE_CONTEXT_PACKET, status: "degraded" }}
                     degraded
+                    autoFocus={focusPacket}
+                    evidenceByID={SAMPLE_EXPANDED_EVIDENCE}
                 />
             );
         case "sample":
-            return <ContextPacketDetails packet={SAMPLE_CONTEXT_PACKET} />;
+            return (
+                <ContextPacketDetails
+                    packet={SAMPLE_CONTEXT_PACKET}
+                    autoFocus={focusPacket}
+                    evidenceByID={SAMPLE_EXPANDED_EVIDENCE}
+                />
+            );
     }
 }
 
@@ -81,6 +97,12 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
     const [submitted, setSubmitted] = useState<ControlledPacketState | null>(null);
     const activeState =
         controlledState === "sample" && submitted !== null ? submitted : controlledState;
+
+    useEffect(() => {
+        if (submitted !== "loading") return;
+        const frame = requestAnimationFrame(() => setSubmitted("sample"));
+        return () => cancelAnimationFrame(frame);
+    }, [submitted]);
 
     const updateField = (field: keyof RequestForm, value: string) =>
         setForm((current) => ({ ...current, [field]: value }));
@@ -104,7 +126,7 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
                 <div className="grid gap-4 md:grid-cols-2">
                     <label htmlFor="context-goal" className="md:col-span-2">
                         <span className="text-sm font-medium text-foreground">
-                            Goal <span aria-hidden="true">*</span>
+                            Goal <span className="text-(--ink-muted)">(required)</span>
                         </span>
                         <textarea
                             id="context-goal"
@@ -116,15 +138,21 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
                     </label>
                     <label htmlFor="context-repository">
                         <span className="text-sm font-medium text-foreground">
-                            Repository <span aria-hidden="true">*</span>
+                            Repository <span className="text-(--ink-muted)">(required)</span>
                         </span>
-                        <input
+                        <select
                             id="context-repository"
                             required
                             value={form.repository}
                             onChange={(event) => updateField("repository", event.target.value)}
                             className="mt-2 w-full rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-body text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
-                        />
+                        >
+                            {AUTHORIZED_REPOSITORIES.map((repository) => (
+                                <option key={repository} value={repository}>
+                                    {repository}
+                                </option>
+                            ))}
+                        </select>
                     </label>
                     <label htmlFor="context-branch-or-commit">
                         <span className="text-sm font-medium text-foreground">
@@ -155,8 +183,13 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
                     {CTA_LABELS.generateContext}
                 </button>
             </form>
-            <div aria-live="polite">
-                <ControlledState state={activeState} />
+            {submitted === "sample" && (
+                <p role="status" className="sr-only">
+                    Context packet ready.
+                </p>
+            )}
+            <div>
+                <ControlledState state={activeState} focusPacket={submitted === "sample"} />
             </div>
         </div>
     );
