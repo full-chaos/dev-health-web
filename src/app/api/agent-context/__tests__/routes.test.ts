@@ -76,6 +76,25 @@ describe("agent-context API routes", () => {
         expect(await response.text()).not.toContain("credential=do-not-leak");
     });
 
+    it("sanitizes an unknown internal configuration failure from the packet response", async () => {
+        vi.mocked(createContextPacket).mockRejectedValue(
+            new Error(
+                "ACR_API_ORIGIN=https://private.example.test X-ACR-Web-Assertion=secret fcacr_secret",
+            ),
+        );
+        const response = await POST(
+            new Request("http://web.example.test/api/agent-context/context-packets", {
+                body: JSON.stringify({ goal: "Verify", repository: "full-chaos/dev-health-acr" }),
+                method: "POST",
+            }),
+        );
+        const responseBody = await response.text();
+
+        expect(response.status).toBe(503);
+        expect(responseBody).toContain("Agent Context Runtime is temporarily unavailable.");
+        expect(responseBody).not.toMatch(/ACR_API_ORIGIN|X-ACR-Web-Assertion|fcacr_secret/u);
+    });
+
     it("forwards only an evidence handle and repository selector into the narrowed evidence service", async () => {
         vi.mocked(getExpandedEvidence).mockResolvedValue({
             schema_version: "expanded_evidence.v1",
@@ -115,5 +134,22 @@ describe("agent-context API routes", () => {
 
         expect(response.status).toBe(404);
         expect(await response.text()).not.toContain("private repository name");
+    });
+
+    it("sanitizes an unknown internal configuration failure from the evidence response", async () => {
+        vi.mocked(getExpandedEvidence).mockRejectedValue(
+            new Error("ACR_WEB_ASSERTION_KEY_FILE=/secret/key BEGIN PRIVATE KEY"),
+        );
+        const response = await GET(
+            new Request(
+                "http://web.example.test/api/agent-context/evidence/evidence-123?repository=foreign%2Frepository",
+            ),
+            { params: Promise.resolve({ evidenceRefId: "evidence-123" }) },
+        );
+        const responseBody = await response.text();
+
+        expect(response.status).toBe(503);
+        expect(responseBody).toContain("Agent Context Runtime is temporarily unavailable.");
+        expect(responseBody).not.toMatch(/ACR_WEB_ASSERTION_KEY_FILE|BEGIN PRIVATE KEY/u);
     });
 });

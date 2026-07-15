@@ -31,6 +31,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             signal: request.signal,
         });
         return NextResponse.json(packet, { headers: responseHeaders() });
+        // Unknown internal failures, including configuration parsing, must not cross this browser boundary.
     } catch (error) {
         if (error instanceof AcrRuntimeError) return safeError(error);
         return safeError(
