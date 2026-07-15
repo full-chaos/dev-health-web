@@ -1,4 +1,4 @@
-import { chmodSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { generateKeyPairSync } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -51,6 +51,15 @@ describe("ACR server runtime configuration", () => {
     it("rejects a group-readable private key", () => {
         const keyFile = writeSigningKey(0o640);
         configure(keyFile);
+
+        expect(() => loadAcrRuntimeConfig()).toThrow(AcrRuntimeError);
+    });
+
+    it("rejects a symbolic-link assertion key before it can be opened", () => {
+        const keyFile = writeSigningKey();
+        const keyLink = `${keyFile}.link`;
+        symlinkSync(keyFile, keyLink);
+        configure(keyLink);
 
         expect(() => loadAcrRuntimeConfig()).toThrow(AcrRuntimeError);
     });

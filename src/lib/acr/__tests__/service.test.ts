@@ -173,13 +173,13 @@ function installAcrHappyResponses(): void {
                 });
                 const packetRequest = z
                     .object({
-                        options: z.object({ include_debug: z.literal(false) }).passthrough(),
+                        options: z.object({ include_debug: z.literal(false) }).loose(),
                         repository: z
                             .object({ slug: z.literal("full-chaos/dev-health-acr") })
                             .strict(),
                         scope: z.object({ commit_sha: z.string(), task_ref: z.string() }).strict(),
                     })
-                    .passthrough()
+                    .loose()
                     .parse(JSON.parse(body));
                 expect(packetRequest.scope.commit_sha).toBe("abcdef1");
                 return HttpResponse.json(contextPacket);
@@ -295,13 +295,13 @@ describe("ACR server-only runtime service", () => {
         ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.unavailable });
     });
 
-    it("requires compatible ACR capabilities before forwarding a packet", async () => {
+    it("fails closed on an ACR contract version drift before forwarding a packet", async () => {
         installOpsAuthorization();
         server.use(
             http.get("https://acr.example.test/api/v1/agent-context/capabilities", () =>
                 HttpResponse.json({
                     ...capabilities,
-                    entitlements: { agent_context_runtime: false },
+                    supported_schema_versions: ["context_packet.v1", "context_packet_request.v1"],
                 }),
             ),
         );

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { createPrivateKey, type KeyObject } from "node:crypto";
-import { lstatSync, readFileSync } from "node:fs";
+import { closeSync, constants, fstatSync, openSync, readFileSync } from "node:fs";
 import { z } from "zod";
 
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
@@ -56,32 +56,32 @@ function parseApiOrigin(rawOrigin: string): URL {
 
 function readPrivateKey(keyFile: string): KeyObject {
     try {
-        const metadata = lstatSync(keyFile);
-        if (
-            metadata.isSymbolicLink() ||
-            !metadata.isFile() ||
-            metadata.size < 1 ||
-            metadata.size > 16 * 1_024
-        ) {
-            throw new AcrRuntimeError(
-                acrRuntimeErrorCodes.configuration,
-                "Agent Context Runtime is not configured.",
-            );
+        const descriptor = openSync(keyFile, constants.O_RDONLY | constants.O_NOFOLLOW);
+        try {
+            const metadata = fstatSync(descriptor);
+            if (!metadata.isFile() || metadata.size < 1 || metadata.size > 16 * 1_024) {
+                throw new AcrRuntimeError(
+                    acrRuntimeErrorCodes.configuration,
+                    "Agent Context Runtime is not configured.",
+                );
+            }
+            if ((metadata.mode & 0o077) !== 0) {
+                throw new AcrRuntimeError(
+                    acrRuntimeErrorCodes.configuration,
+                    "Agent Context Runtime is not configured.",
+                );
+            }
+            const privateKey = createPrivateKey(readFileSync(descriptor, "utf8"));
+            if (privateKey.asymmetricKeyType !== "ed25519") {
+                throw new AcrRuntimeError(
+                    acrRuntimeErrorCodes.configuration,
+                    "Agent Context Runtime is not configured.",
+                );
+            }
+            return privateKey;
+        } finally {
+            closeSync(descriptor);
         }
-        if ((metadata.mode & 0o077) !== 0) {
-            throw new AcrRuntimeError(
-                acrRuntimeErrorCodes.configuration,
-                "Agent Context Runtime is not configured.",
-            );
-        }
-        const privateKey = createPrivateKey(readFileSync(keyFile, "utf8"));
-        if (privateKey.asymmetricKeyType !== "ed25519") {
-            throw new AcrRuntimeError(
-                acrRuntimeErrorCodes.configuration,
-                "Agent Context Runtime is not configured.",
-            );
-        }
-        return privateKey;
     } catch (error) {
         if (error instanceof AcrRuntimeError) throw error;
         throw new AcrRuntimeError(

@@ -14,7 +14,7 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ARTIFACT_ROOT = path.join(ROOT, "src/lib/acr/contracts");
-const SOURCE_COMMIT = "5e11b782ed6a4a13ca8d9530f0fdf5312508f883";
+const SOURCE_COMMIT = "b5a76c3c51c9ccd4f6f90031843de874aef1f1f4";
 const PRETTIER_OPTIONS = Object.freeze({
     parser: "typescript",
     printWidth: 100,
@@ -94,7 +94,7 @@ async function main() {
                 inputs.map((file) => [artifactPath(file.path), file.contents]),
             );
             writeArtifacts(
-                ARTIFACT_ROOT,
+                releaseLock,
                 await expectedArtifacts({
                     artifactRoot: ARTIFACT_ROOT,
                     sourceCommit: SOURCE_COMMIT,
@@ -102,7 +102,7 @@ async function main() {
                     prettierOptions: PRETTIER_OPTIONS,
                 }),
             );
-            removeStaleArtifacts(ARTIFACT_ROOT, new Set(Object.keys(rawArtifacts)));
+            removeStaleArtifacts(releaseLock, new Set(Object.keys(rawArtifacts)));
             process.stdout.write("Generated ACR contract artifacts.\n");
             return;
         }
@@ -115,10 +115,10 @@ async function main() {
         }
         const inputs =
             source === undefined
-                ? currentArtifacts(ARTIFACT_ROOT, SOURCE_COMMIT)
+                ? currentArtifacts(releaseLock, SOURCE_COMMIT)
                 : sourceFiles(path.resolve(source), expectedCommit);
         assertCurrent(
-            ARTIFACT_ROOT,
+            releaseLock,
             await expectedArtifacts({
                 artifactRoot: ARTIFACT_ROOT,
                 sourceCommit: SOURCE_COMMIT,

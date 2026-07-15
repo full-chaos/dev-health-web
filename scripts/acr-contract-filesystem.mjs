@@ -1,12 +1,13 @@
 import { spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
+import { hostname } from "node:os";
 import path from "node:path";
 
+// allow: SIZE_OK — atomic artifact transactions and their owner-verified lease protocol share one filesystem boundary.
 const ARTIFACT_DIRECTORIES = new Set(["examples", "openapi", "schemas"]);
 const ARTIFACT_SIBLINGS = new Set(["../contracts.ts", "../generated.ts"]);
 const LOCK_WAIT_MILLIS = 10;
-const LOCK_MAX_AGE_MILLIS = 5 * 60_000;
 const LOCK_TIMEOUT_MILLIS = 30_000;
 const LOCK_WAIT_STATE = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
 
@@ -72,15 +73,22 @@ function sourceHead(sourceRoot) {
 function regularBlobContents(sourceRoot, revision, sourcePath) {
     const entry = command(
         "git",
-        ["ls-tree", "--full-tree", revision, "--", sourcePath],
+        ["ls-tree", "-z", "--full-tree", revision, "--", sourcePath],
         sourceRoot,
-    ).trim();
-    const [metadata] = entry.split("\t", 1);
-    const [mode, type] = metadata?.split(" ") ?? [];
-    if ((mode !== "100644" && mode !== "100755") || type !== "blob") {
+    );
+    const records = entry.split("\0").filter(Boolean);
+    if (records.length !== 1) throw new Error(`pinned source path is ambiguous: ${sourcePath}`);
+    const [metadata, exactPath] = records[0].split("\t", 2);
+    const [mode, type, objectID] = metadata?.split(" ") ?? [];
+    if (
+        exactPath !== sourcePath ||
+        mode !== "100644" ||
+        type !== "blob" ||
+        !/^[a-f0-9]{40}$/iu.test(objectID)
+    ) {
         throw new Error(`pinned source path must be a regular blob: ${sourcePath}`);
     }
-    return command("git", ["show", `${revision}:${sourcePath}`], sourceRoot);
+    return command("git", ["cat-file", "blob", objectID], sourceRoot);
 }
 
 function copiedContents(sourcePath, contents) {
@@ -103,13 +111,7 @@ export function readPinnedSourceFiles({ sourceRoot, expectedCommit, sourceCommit
     ) {
         throw new Error(`expected commit must equal ${sourceCommit}`);
     }
-    if (
-        command(
-            "git",
-            ["status", "--porcelain", "--untracked-files=no"],
-            verifiedSourceRoot,
-        ).trim() !== ""
-    ) {
+    if (command("git", ["status", "--porcelain"], verifiedSourceRoot).trim() !== "") {
         throw new Error("source worktree must be clean");
     }
     const files = sourcePaths.map((file) => ({
@@ -147,6 +149,13 @@ function parseArtifactPath(relativePath) {
 function artifactRootDirectories(artifactRoot) {
     const root = requiredDirectory(artifactRoot, "unsafe artifact path");
     return { parent: requiredDirectory(path.dirname(root), "unsafe artifact path"), root };
+}
+
+function requireActiveLease(lease) {
+    if (typeof lease !== "function" || typeof lease.assert !== "function") {
+        throw new Error("active artifact lease is required");
+    }
+    return lease.assert();
 }
 
 function artifactDirectory(root, directory, create) {
@@ -194,16 +203,20 @@ function stageArtifact(destination, contents) {
     return temporary;
 }
 
-export function writeArtifacts(artifactRoot, artifacts) {
+export function writeArtifacts(lease, artifacts) {
+    const artifactRoot = requireActiveLease(lease);
     const staged = [];
     const replaced = [];
     let preserveRecoveryArtifacts = false;
+    let transactionError;
     try {
         for (const [relativePath, contents] of Object.entries(artifacts)) {
+            requireActiveLease(lease);
             const destination = artifactDestination(artifactRoot, relativePath, true);
             staged.push({ destination, temporary: stageArtifact(destination, contents) });
         }
         for (const entry of staged) {
+            requireActiveLease(lease);
             const backup = fs.existsSync(entry.destination)
                 ? `${entry.destination}.${randomUUID()}.backup`
                 : undefined;
@@ -217,6 +230,7 @@ export function writeArtifacts(artifactRoot, artifacts) {
         const restorationErrors = [];
         for (const entry of replaced.toReversed()) {
             try {
+                requireActiveLease(lease);
                 if (entry.backup === undefined) fs.rmSync(entry.destination, { force: true });
                 else fs.renameSync(entry.backup, entry.destination);
                 fsyncDirectory(path.dirname(entry.destination));
@@ -226,24 +240,61 @@ export function writeArtifacts(artifactRoot, artifacts) {
         }
         if (restorationErrors.length > 0) {
             preserveRecoveryArtifacts = true;
-            throw new AggregateError(
+            transactionError = new AggregateError(
                 [error, ...restorationErrors],
                 "artifact transaction restoration failed",
             );
+            throw transactionError;
         }
+        transactionError = error;
         throw error;
     } finally {
-        for (const entry of staged) fs.rmSync(entry.temporary, { force: true });
+        const cleanupErrors = [];
+        for (const entry of staged) {
+            try {
+                requireActiveLease(lease);
+                fs.rmSync(entry.temporary, { force: true });
+            } catch (error) {
+                cleanupErrors.push(error);
+            }
+        }
         if (!preserveRecoveryArtifacts) {
             for (const entry of replaced) {
-                if (entry.backup !== undefined) fs.rmSync(entry.backup, { force: true });
+                if (entry.backup !== undefined) {
+                    try {
+                        requireActiveLease(lease);
+                        fs.rmSync(entry.backup, { force: true });
+                    } catch (error) {
+                        cleanupErrors.push(error);
+                    }
+                }
             }
+        }
+        if (cleanupErrors.length > 0) {
+            throw new AggregateError(
+                transactionError === undefined
+                    ? cleanupErrors
+                    : [transactionError, ...cleanupErrors],
+                "artifact transaction cleanup failed",
+            );
         }
     }
 }
 
-function lockMetadata() {
-    return `${JSON.stringify({ created_at: Date.now(), pid: process.pid })}\n`;
+function processStartIdentity(pid) {
+    const result = spawnSync("ps", ["-o", "lstart=", "-p", String(pid)], { encoding: "utf8" });
+    return result.status === 0 && result.stdout.trim() !== "" ? result.stdout.trim() : undefined;
+}
+
+function lockMetadata(ownerToken) {
+    return `${JSON.stringify({
+        acquired_at: Date.now(),
+        host_hash: sha256(hostname()),
+        owner_token: ownerToken,
+        pid: process.pid,
+        process_start: processStartIdentity(process.pid),
+        schema_version: "acr_contract_lock.v1",
+    })}\n`;
 }
 
 function staleDeadLock(lockPath) {
@@ -253,69 +304,165 @@ function staleDeadLock(lockPath) {
     try {
         metadata = JSON.parse(fs.readFileSync(lockPath, "utf8"));
     } catch {
-        return Date.now() - stat.mtimeMs > LOCK_MAX_AGE_MILLIS;
+        return false;
     }
     if (
-        typeof metadata?.created_at !== "number" ||
-        !Number.isSafeInteger(metadata.created_at) ||
+        metadata?.schema_version !== "acr_contract_lock.v1" ||
+        metadata.host_hash !== sha256(hostname()) ||
+        typeof metadata.owner_token !== "string" ||
+        !/^[0-9a-f-]{36}$/iu.test(metadata.owner_token) ||
+        typeof metadata?.acquired_at !== "number" ||
+        !Number.isSafeInteger(metadata.acquired_at) ||
         typeof metadata?.pid !== "number" ||
         !Number.isSafeInteger(metadata.pid) ||
         metadata.pid <= 0 ||
-        Date.now() - metadata.created_at <= LOCK_MAX_AGE_MILLIS
+        typeof metadata.process_start !== "string" ||
+        metadata.process_start === ""
     ) {
         return false;
     }
     try {
         process.kill(metadata.pid, 0);
-        return false;
     } catch (error) {
         return error instanceof Error && "code" in error && error.code === "ESRCH";
+    }
+    const currentStart = processStartIdentity(metadata.pid);
+    if (currentStart === undefined) {
+        return false;
+    }
+    return currentStart !== metadata.process_start;
+}
+
+function acquireArtifactLease(lockPath, root) {
+    const ownerToken = randomUUID();
+    const temporary = `${lockPath}.${ownerToken}.tmp`;
+    const temporaryDescriptor = fs.openSync(temporary, "wx", 0o600);
+    try {
+        fs.writeFileSync(temporaryDescriptor, lockMetadata(ownerToken), "utf8");
+        fs.fsyncSync(temporaryDescriptor);
+    } finally {
+        fs.closeSync(temporaryDescriptor);
+    }
+    try {
+        fs.linkSync(temporary, lockPath);
+    } finally {
+        fs.rmSync(temporary, { force: true });
+    }
+    fsyncDirectory(root);
+    const descriptor = fs.openSync(lockPath, "r");
+    const lockStat = fs.fstatSync(descriptor);
+    const lease = () => {
+        try {
+            lease.assert();
+            fs.rmSync(lockPath, { force: true });
+            fsyncDirectory(root);
+        } finally {
+            fs.closeSync(descriptor);
+        }
+    };
+    lease.assert = () => {
+        const current = fs.statSync(lockPath);
+        if (current.dev !== lockStat.dev || current.ino !== lockStat.ino) {
+            throw new Error("active artifact lease was replaced");
+        }
+        const metadata = JSON.parse(fs.readFileSync(lockPath, "utf8"));
+        if (
+            metadata.schema_version !== "acr_contract_lock.v1" ||
+            metadata.owner_token !== ownerToken ||
+            metadata.host_hash !== sha256(hostname()) ||
+            metadata.pid !== process.pid ||
+            metadata.process_start !== processStartIdentity(process.pid) ||
+            !Number.isSafeInteger(metadata.acquired_at) ||
+            (current.mode & 0o777) !== 0o600
+        ) {
+            throw new Error("active artifact lease is invalid");
+        }
+        return root;
+    };
+    return lease;
+}
+
+function recoveryInProgress(recoveryPath, root) {
+    try {
+        const stat = fs.lstatSync(recoveryPath);
+        if (!stat.isFile() || stat.isSymbolicLink()) {
+            throw new Error("unsafe artifact generation recovery lock");
+        }
+        if (staleDeadLock(recoveryPath)) {
+            fs.rmSync(recoveryPath);
+            fsyncDirectory(root);
+            return false;
+        }
+        return true;
+    } catch (error) {
+        if (error instanceof Error && "code" in error && error.code === "ENOENT") return false;
+        throw error;
+    }
+}
+
+function recoverDeadLock(lockPath, recoveryPath, root) {
+    let releaseRecovery;
+    try {
+        releaseRecovery = acquireArtifactLease(recoveryPath, root);
+    } catch (error) {
+        if (error instanceof Error && "code" in error && error.code === "EEXIST") return false;
+        throw error;
+    }
+    try {
+        try {
+            if (!staleDeadLock(lockPath)) return false;
+        } catch (error) {
+            if (error instanceof Error && "code" in error && error.code === "ENOENT") return false;
+            throw error;
+        }
+        fs.rmSync(lockPath);
+        fsyncDirectory(root);
+        return true;
+    } finally {
+        releaseRecovery();
     }
 }
 
 export function acquireArtifactLock(artifactRoot) {
     const { root } = artifactRootDirectories(artifactRoot);
     const lockPath = path.join(root, ".acr-contract-sync.lock");
+    const recoveryPath = `${lockPath}.recovery`;
     const deadline = Date.now() + LOCK_TIMEOUT_MILLIS;
     while (true) {
+        if (recoveryInProgress(recoveryPath, root)) {
+            if (Date.now() >= deadline) throw new Error("artifact generation lock timed out");
+            Atomics.wait(LOCK_WAIT_STATE, 0, 0, LOCK_WAIT_MILLIS);
+            continue;
+        }
         try {
-            const descriptor = fs.openSync(lockPath, "wx", 0o600);
-            fs.writeFileSync(descriptor, lockMetadata(), "utf8");
-            fs.fsyncSync(descriptor);
-            fsyncDirectory(root);
-            return () => {
-                fs.closeSync(descriptor);
-                fs.rmSync(lockPath, { force: true });
-                fsyncDirectory(root);
-            };
+            return acquireArtifactLease(lockPath, root);
         } catch (error) {
             if (!(error instanceof Error) || !("code" in error) || error.code !== "EEXIST")
                 throw error;
-            if (staleDeadLock(lockPath)) {
-                fs.rmSync(lockPath);
-                fsyncDirectory(root);
-                continue;
-            }
+            if (recoverDeadLock(lockPath, recoveryPath, root)) continue;
             if (Date.now() >= deadline) throw new Error("artifact generation lock timed out");
             Atomics.wait(LOCK_WAIT_STATE, 0, 0, LOCK_WAIT_MILLIS);
         }
     }
 }
 
-export function removeStaleArtifacts(artifactRoot, expectedPaths) {
+export function removeStaleArtifacts(lease, expectedPaths) {
+    const artifactRoot = requireActiveLease(lease);
     const { root } = artifactRootDirectories(artifactRoot);
     for (const directory of ARTIFACT_DIRECTORIES) {
         const directoryPath = artifactDirectory(root, directory, false);
         for (const entry of fs.readdirSync(directoryPath)) {
             const relativePath = `${directory}/${entry}`;
             if (expectedPaths.has(relativePath)) continue;
+            requireActiveLease(lease);
             fs.rmSync(artifactDestination(root, relativePath, false));
             fsyncDirectory(directoryPath);
         }
     }
 }
 
-export function currentArtifacts(artifactRoot, sourceCommit) {
+export function currentArtifacts(lease, sourceCommit) {
+    const artifactRoot = requireActiveLease(lease);
     const manifestPath = artifactDestination(artifactRoot, "manifest.json", false);
     if (!fs.existsSync(manifestPath)) throw new Error("committed artifacts are missing");
     const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
@@ -323,6 +470,7 @@ export function currentArtifacts(artifactRoot, sourceCommit) {
         throw new Error("manifest is invalid");
     }
     return manifest.files.map((file) => {
+        requireActiveLease(lease);
         if (typeof file.path !== "string" || typeof file.sha256 !== "string") {
             throw new Error("manifest entry is invalid");
         }
@@ -340,8 +488,10 @@ export function currentArtifacts(artifactRoot, sourceCommit) {
     });
 }
 
-export function assertCurrent(artifactRoot, artifacts) {
+export function assertCurrent(lease, artifacts) {
+    const artifactRoot = requireActiveLease(lease);
     for (const [relativePath, expected] of Object.entries(artifacts)) {
+        requireActiveLease(lease);
         const destination = artifactDestination(artifactRoot, relativePath, false);
         if (!fs.existsSync(destination) || fs.readFileSync(destination, "utf8") !== expected) {
             throw new Error(`artifact drift: ${relativePath}`);
