@@ -49,6 +49,7 @@
         "react-dom": "19",
         "react-markdown": "^10.1.0",
         "remark-gfm": "^4.0.1",
+        "server-only": "0.0.1",
         "sonner": "^2",
         "urql": "^5",
         "web-vitals": "^5",

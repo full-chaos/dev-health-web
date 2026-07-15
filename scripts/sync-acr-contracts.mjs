@@ -9,7 +9,7 @@ import { format } from "prettier";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ARTIFACT_ROOT = path.join(ROOT, "src/lib/acr/contracts");
-const SOURCE_COMMIT = "11c44ef812f9f9ae71a044d64f00ebae1ea1602f";
+const SOURCE_COMMIT = "5e11b782ed6a4a13ca8d9530f0fdf5312508f883";
 const PRETTIER_OPTIONS = Object.freeze({
     parser: "typescript",
     printWidth: 100,
@@ -52,13 +52,19 @@ function parseArguments(argumentsList) {
     const [mode, ...rest] = argumentsList;
     if (mode !== "generate" && mode !== "check") throw new Error("use generate or check");
     let source;
+    let expectedCommit;
     for (let index = 0; index < rest.length; index += 1) {
-        if (rest[index] !== "--source") throw new Error(`unknown argument: ${rest[index]}`);
-        source = rest[index + 1];
-        if (source === undefined) throw new Error("--source requires a path");
+        const argument = rest[index];
+        const value = rest[index + 1];
+        if (argument !== "--source" && argument !== "--expected-commit") {
+            throw new Error(`unknown argument: ${argument}`);
+        }
+        if (value === undefined) throw new Error(`${argument} requires a value`);
+        if (argument === "--source") source = value;
+        if (argument === "--expected-commit") expectedCommit = value;
         index += 1;
     }
-    return { mode, source: source ?? process.env.ACR_ROOT };
+    return { mode, source: source ?? process.env.ACR_ROOT, expectedCommit };
 }
 
 function stableJson(value) {
@@ -74,9 +80,12 @@ function copiedContents(sourcePath, contents) {
     return contents.replaceAll("../jsonschema/v1/", "../schemas/");
 }
 
-function filesAtPinnedCommit(sourceRoot) {
+function filesAtPinnedCommit(sourceRoot, expectedCommit) {
     const commit = command("git", ["rev-parse", "HEAD"], sourceRoot).trim();
     if (commit !== SOURCE_COMMIT) throw new Error(`source HEAD must equal ${SOURCE_COMMIT}`);
+    if (expectedCommit !== undefined && commit !== expectedCommit) {
+        throw new Error(`source HEAD must equal expected commit ${expectedCommit}`);
+    }
     if (command("git", ["status", "--porcelain"], sourceRoot).trim() !== "") {
         throw new Error("source worktree must be clean");
     }
@@ -104,10 +113,11 @@ function filesFromFixture(sourceRoot) {
     return files;
 }
 
-function sourceFiles(sourceRoot, mode) {
+function sourceFiles(sourceRoot, mode, expectedCommit) {
     if (mode === "generate" || fs.existsSync(path.join(sourceRoot, ".git"))) {
-        return filesAtPinnedCommit(sourceRoot);
+        return filesAtPinnedCommit(sourceRoot, expectedCommit);
     }
+    if (expectedCommit !== undefined) throw new Error("fixtures cannot satisfy --expected-commit");
     return filesFromFixture(sourceRoot);
 }
 
@@ -257,10 +267,10 @@ function assertCurrent(artifacts) {
 }
 
 async function main() {
-    const { mode, source } = parseArguments(process.argv.slice(2));
+    const { mode, source, expectedCommit } = parseArguments(process.argv.slice(2));
     if (mode === "generate") {
         if (source === undefined) throw new Error("generate requires ACR_ROOT or --source");
-        const inputs = sourceFiles(path.resolve(source), mode);
+        const inputs = sourceFiles(path.resolve(source), mode, expectedCommit);
         const rawArtifacts = Object.fromEntries(
             inputs.map((file) => [artifactPath(file.path), file.contents]),
         );
@@ -278,8 +288,13 @@ async function main() {
         process.stdout.write("Generated ACR contract artifacts.\n");
         return;
     }
+    if (source === undefined && expectedCommit !== undefined && expectedCommit !== SOURCE_COMMIT) {
+        throw new Error(`committed source must equal expected commit ${expectedCommit}`);
+    }
     const inputs =
-        source === undefined ? currentArtifacts() : sourceFiles(path.resolve(source), mode);
+        source === undefined
+            ? currentArtifacts()
+            : sourceFiles(path.resolve(source), mode, expectedCommit);
     assertCurrent(await expectedArtifacts(inputs));
     process.stdout.write("ACR contracts are current.\n");
 }
