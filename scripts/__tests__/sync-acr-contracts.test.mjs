@@ -42,6 +42,7 @@ describe("sync-acr-contracts", () => {
         !fs.existsSync(path.join(SOURCE, "contracts"))
             ? it.skip
             : it;
+    const artifactMutationTest = SOURCE === undefined ? it : it.skip;
 
     sourceTest("generates byte-identical artifacts twice from the pinned ACR commit", () => {
         const first = run(["generate"], { ACR_ROOT: SOURCE });
@@ -99,7 +100,7 @@ describe("sync-acr-contracts", () => {
         expect(committedArtifactSnapshot()).toEqual(before);
     });
 
-    it("fails a mutated fixture without changing committed artifacts", () => {
+    artifactMutationTest("fails a mutated fixture without changing committed artifacts", () => {
         const fixture = path.join(ARTIFACT_ROOT, "examples/context_packet.v1.json");
         const before = fs.readFileSync(fixture, "utf8");
         fs.appendFileSync(fixture, "\n");
@@ -116,7 +117,7 @@ describe("sync-acr-contracts", () => {
         expect(fs.readFileSync(fixture, "utf8")).toBe(before);
     });
 
-    it("fails a malformed schema without rewriting committed artifacts", () => {
+    artifactMutationTest("fails a malformed schema without rewriting committed artifacts", () => {
         const schema = path.join(ARTIFACT_ROOT, "schemas/context_packet.v1.schema.json");
         const manifest = path.join(ARTIFACT_ROOT, "manifest.json");
         const schemaBefore = fs.readFileSync(schema, "utf8");
