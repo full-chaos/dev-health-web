@@ -33,7 +33,7 @@ const capabilitiesSchema = z
         service: z.literal("dev-health-acr"),
         supported_schema_versions: z.array(z.string()).min(1),
     })
-    .passthrough();
+    .loose();
 
 export type AcrCapabilities = z.infer<typeof capabilitiesSchema>;
 

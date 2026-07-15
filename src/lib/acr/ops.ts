@@ -17,9 +17,9 @@ const ACR_REPOSITORY_SCOPES_QUERY = `query ACRRepositoryScopes($orgId: String!) 
 
 const entitlementSchema = z
     .object({
-        features: z.object({ agent_context_runtime: z.boolean() }).passthrough(),
+        features: z.object({ agent_context_runtime: z.boolean() }).loose(),
     })
-    .passthrough();
+    .loose();
 
 const scopesSchema = z
     .object({
@@ -29,7 +29,7 @@ const scopesSchema = z
             }),
         }),
     })
-    .passthrough();
+    .loose();
 
 export type OpsAuthorization = {
     readonly orgId: string;
