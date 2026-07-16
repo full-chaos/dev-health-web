@@ -112,6 +112,12 @@ export const CTA_LABELS = {
     closeWizard: "Close",
     /** Dismiss the wizard's post-submit result step (CHAOS-2796). */
     done: "Done",
+    accountOptions: "Account options",
+    preferences: "Preferences",
+    signIn: "Sign In",
+    signOut: "Sign out",
+    platformAdmin: "Platform Admin",
+    adminPanel: "Admin Panel",
     addUser: "Add User",
     addTeam: "Add Team",
     importTeams: "Import Teams",

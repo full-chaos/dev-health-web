@@ -3,6 +3,7 @@
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export function UserMenu() {
     const { data: session, status } = useSession();
@@ -29,7 +30,7 @@ export function UserMenu() {
                 href="/auth/signin"
                 className="text-sm font-medium text-[var(--foreground)] hover:text-[var(--accent)] transition-colors"
             >
-                Sign In
+                {CTA_LABELS.signIn}
             </Link>
         );
     }
@@ -41,7 +42,7 @@ export function UserMenu() {
                 onClick={() => setIsOpen(!isOpen)}
                 aria-controls="account-options"
                 aria-expanded={isOpen}
-                aria-label="Account options"
+                aria-label={CTA_LABELS.accountOptions}
                 className="flex items-center gap-2 rounded-(--radius-pill) border border-(--card-stroke) bg-(--card) px-3 py-1.5 text-sm transition hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
             >
                 <div className="flex h-6 w-6 items-center justify-center rounded-(--radius-pill) bg-(--accent) text-xs font-bold text-white">
@@ -72,7 +73,7 @@ export function UserMenu() {
                                 className="block px-4 py-2 text-sm text-purple-400 hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                                 onClick={() => setIsOpen(false)}
                             >
-                                Platform Admin
+                                {CTA_LABELS.platformAdmin}
                             </Link>
                         )}
                         <Link
@@ -80,14 +81,14 @@ export function UserMenu() {
                             className="block px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                             onClick={() => setIsOpen(false)}
                         >
-                            Preferences
+                            {CTA_LABELS.preferences}
                         </Link>
                         <Link
                             href="/org/admin"
                             className="block px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                             onClick={() => setIsOpen(false)}
                         >
-                            Admin Panel
+                            {CTA_LABELS.adminPanel}
                         </Link>
                         <div className="border-t border-(--card-stroke)">
                             <button
@@ -95,7 +96,7 @@ export function UserMenu() {
                                 onClick={() => signOut()}
                                 className="block w-full px-4 py-2 text-left text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                             >
-                                Sign out
+                                {CTA_LABELS.signOut}
                             </button>
                         </div>
                     </div>

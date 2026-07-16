@@ -1,6 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 const { signOutMock, useSessionMock } = vi.hoisted(() => ({
     signOutMock: vi.fn(),
@@ -36,19 +37,19 @@ describe("UserMenu", () => {
         render(<UserMenu />);
 
         await user.tab();
-        const accountControl = screen.getByRole("button", { name: "Account options" });
+        const accountControl = screen.getByRole("button", { name: CTA_LABELS.accountOptions });
         expect(accountControl).toHaveFocus();
         expect(accountControl).toHaveAttribute("aria-expanded", "false");
 
         await user.keyboard("{Enter}");
         expect(accountControl).toHaveAttribute("aria-expanded", "true");
-        const preferences = screen.getByRole("link", { name: "Preferences" });
+        const preferences = screen.getByRole("link", { name: CTA_LABELS.preferences });
         expect(preferences).toHaveAttribute("href", "/settings");
-        expect(screen.getByRole("button", { name: "Sign out" })).toBeVisible();
+        expect(screen.getByRole("button", { name: CTA_LABELS.signOut })).toBeVisible();
 
         await user.tab();
         expect(preferences).toHaveFocus();
-        await user.click(screen.getByRole("button", { name: "Sign out" }));
+        await user.click(screen.getByRole("button", { name: CTA_LABELS.signOut }));
         expect(signOutMock).toHaveBeenCalledOnce();
     });
 });
