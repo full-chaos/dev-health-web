@@ -1,6 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 const AUTH_FILE = "test-results/.auth/state.json";
+const GRACEFUL_SHUTDOWN = { signal: "SIGTERM", timeout: 5_000 } as const;
 
 export default defineConfig({
     testDir: "./tests",
@@ -28,18 +29,20 @@ export default defineConfig({
     webServer: [
         {
             command:
-                "exec node scripts/run-owned-process.mjs pnpm exec tsx ./tests/mocks/http-server.ts",
+                "exec node scripts/run-owned-process.mjs node --import tsx ./tests/mocks/http-server.ts",
             url: "http://127.0.0.1:8012/health",
             reuseExistingServer: false,
+            gracefulShutdown: GRACEFUL_SHUTDOWN,
             timeout: 30_000,
             env: { MOCK_SERVER_PORT: "8012" },
         },
         {
             command:
-                "rm -rf test-results/context-fabric-keys && mkdir -p test-results/context-fabric-keys && openssl genpkey -algorithm ED25519 -out test-results/context-fabric-keys/web-assertion.key && chmod 600 test-results/context-fabric-keys/web-assertion.key && openssl req -x509 -newkey rsa:2048 -nodes -keyout test-results/context-fabric-keys/tls.key -out test-results/context-fabric-keys/tls.crt -subj /CN=127.0.0.1 -days 1 && exec node scripts/run-owned-process.mjs pnpm exec tsx tests/mocks/acr-server.ts",
+                "rm -rf test-results/context-fabric-keys && mkdir -p test-results/context-fabric-keys && openssl genpkey -algorithm ED25519 -out test-results/context-fabric-keys/web-assertion.key && chmod 600 test-results/context-fabric-keys/web-assertion.key && openssl req -x509 -newkey rsa:2048 -nodes -keyout test-results/context-fabric-keys/tls.key -out test-results/context-fabric-keys/tls.crt -subj /CN=127.0.0.1 -days 1 && exec node scripts/run-owned-process.mjs node --import tsx tests/mocks/acr-server.ts",
             url: "https://127.0.0.1:8013/health",
             ignoreHTTPSErrors: true,
             reuseExistingServer: false,
+            gracefulShutdown: GRACEFUL_SHUTDOWN,
             timeout: 30_000,
             env: {
                 ACR_MOCK_CERT_FILE: "test-results/context-fabric-keys/tls.crt",
@@ -52,6 +55,7 @@ export default defineConfig({
                 "rm -rf test-results/context-fabric-runtime && mkdir -p test-results/context-fabric-runtime/.next && cp -R .next/standalone/. test-results/context-fabric-runtime && cp -R .next/static test-results/context-fabric-runtime/.next/static && cp -R public scripts test-results/context-fabric-runtime && cd test-results/context-fabric-runtime && node scripts/write-runtime-config.mjs && HOSTNAME=127.0.0.1 PORT=3012 exec node scripts/run-owned-process.mjs node server.js",
             url: "http://127.0.0.1:3012",
             reuseExistingServer: false,
+            gracefulShutdown: GRACEFUL_SHUTDOWN,
             timeout: 120_000,
             env: {
                 BACKEND_URL: "http://127.0.0.1:8012",

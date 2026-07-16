@@ -167,7 +167,9 @@ test.describe("Context Fabric production entitlement boundary", () => {
             await page.keyboard.press("Enter");
 
             await expect(accountControl).toHaveAttribute("aria-expanded", "true");
+            const platformAdmin = page.getByRole("link", { name: "Platform Admin" });
             const preferences = page.getByRole("link", { name: "Preferences" });
+            await expect(platformAdmin).toBeVisible();
             await expect(preferences).toBeVisible();
             await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
             const accountNavigationBottom = await accountNavigation.evaluate(
@@ -177,6 +179,8 @@ test.describe("Context Fabric production entitlement boundary", () => {
                 .getByRole("heading", { name: "Context Fabric", level: 1 })
                 .evaluate((element) => element.getBoundingClientRect().top);
             expect(pageHeadingTop).toBeGreaterThanOrEqual(accountNavigationBottom);
+            await page.keyboard.press("Tab");
+            await expect(platformAdmin).toBeFocused();
             await page.keyboard.press("Tab");
             await expect(preferences).toBeFocused();
             await page.screenshot({
