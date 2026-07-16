@@ -9,6 +9,8 @@ const viewports = [
     { name: "375", width: 375, height: 812 },
 ] as const;
 
+const FULL_COMMIT_SHA = "4de2cb94aa8c10f9e6f4d7202bc11fd3e8508d8ce59d5c7059889b1a2f4a63d7";
+
 async function setEntitlementScenario(
     request: APIRequestContext,
     scenario: EntitlementScenario,
@@ -145,6 +147,24 @@ test.describe("Context Fabric production entitlement boundary", () => {
 
         await expect(navigationControl).toBeFocused();
         await expect(navigationControl).toHaveAttribute("aria-expanded", "false");
+        await expectHealthyBrowser(faults);
+    });
+
+    test("renders a full commit hash accessibly without truncating its tablet layout", async ({
+        page,
+    }, testInfo) => {
+        await setEntitlementScenario(page.request, "provisioned");
+        const faults = recordBrowserFaults(page);
+        await page.setViewportSize({ width: 768, height: 900 });
+        await page.goto("/prs/e2e-pr-detail");
+
+        const commit = page.getByLabel(`Full commit hash: ${FULL_COMMIT_SHA}`);
+        await expect(commit).toHaveText(FULL_COMMIT_SHA.slice(0, 8));
+        await expect(commit).toHaveAttribute("title", FULL_COMMIT_SHA);
+        await page.screenshot({
+            path: testInfo.outputPath("full-commit-768.png"),
+            fullPage: true,
+        });
         await expectHealthyBrowser(faults);
     });
 
