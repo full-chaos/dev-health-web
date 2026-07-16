@@ -6,23 +6,29 @@ import { describe, expect, it } from "vitest";
 const runner = fileURLToPath(new URL("../run-owned-process.mjs", import.meta.url));
 const listener = [
     'const server = require("node:http").createServer();',
-    'server.listen(0, "127.0.0.1", () => console.log(server.address().port));',
+    'server.listen(0, "127.0.0.1", () => console.log(`${process.pid}:${server.address().port}`));',
+].join("");
+const grandchildListener = [
+    'const { spawn } = require("node:child_process");',
+    `const listener = spawn(process.execPath, ["-e", ${JSON.stringify(listener)}], { stdio: ["ignore", "pipe", "inherit"] });`,
+    "listener.stdout.pipe(process.stdout);",
+    "setInterval(() => undefined, 1_000);",
 ].join("");
 
-function waitForPort(process) {
+function waitForListener(tree) {
     return new Promise((resolve, reject) => {
         let output = "";
-        process.stdout.on("data", (chunk) => {
+        tree.stdout.on("data", (chunk) => {
             output += chunk.toString();
-            const match = output.match(/\d+/);
-            if (match) resolve(Number(match[0]));
+            const match = output.match(/(\d+):(\d+)/);
+            if (match) resolve({ pid: Number(match[1]), port: Number(match[2]) });
         });
-        process.once("error", reject);
+        tree.once("error", reject);
     });
 }
 
-function waitForExit(process) {
-    return new Promise((resolve) => process.once("exit", resolve));
+function waitForExit(tree) {
+    return new Promise((resolve) => tree.once("exit", resolve));
 }
 
 function portIsReleased(port) {
@@ -37,15 +43,16 @@ function portIsReleased(port) {
 }
 
 describe("run-owned-process", () => {
-    it("releases a descendant listener when its exact owned process group stops", async () => {
-        const process = spawn("node", [runner, "node", "-e", listener], {
+    it("releases an exact owned grandchild listener when its process group stops", async () => {
+        const tree = spawn("node", [runner, "node", "-e", grandchildListener], {
             stdio: ["ignore", "pipe", "pipe"],
         });
-        const port = await waitForPort(process);
+        const listenerProcess = await waitForListener(tree);
 
-        process.kill("SIGTERM");
-        await waitForExit(process);
+        tree.kill("SIGTERM");
+        await waitForExit(tree);
 
-        expect(await portIsReleased(port)).toBe(true);
+        expect(await portIsReleased(listenerProcess.port)).toBe(true);
+        expect(() => process.kill(listenerProcess.pid, 0)).toThrow();
     });
 });

@@ -35,34 +35,41 @@ export function UserMenu() {
     }
 
     return (
-        <div className="relative" ref={menuRef}>
+        <div className="flex max-w-full flex-wrap justify-end gap-2" ref={menuRef}>
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="cursor-pointer flex items-center gap-2 rounded-full border border-[var(--card-stroke)] bg-[var(--card)] px-3 py-1.5 hover:bg-[var(--card-80)] transition-colors"
+                aria-controls="account-options"
+                aria-expanded={isOpen}
+                aria-label="Account options"
+                className="flex items-center gap-2 rounded-(--radius-pill) border border-(--card-stroke) bg-(--card) px-3 py-1.5 text-sm transition hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
             >
-                <div className="h-6 w-6 rounded-full bg-[var(--accent)] text-white flex items-center justify-center text-xs font-bold">
+                <div className="flex h-6 w-6 items-center justify-center rounded-(--radius-pill) bg-(--accent) text-xs font-bold text-white">
                     {session.user?.email?.[0]?.toUpperCase() || "U"}
                 </div>
-                <span className="text-sm font-medium text-[var(--foreground)] hidden sm:block">
+                <span className="font-medium text-foreground">Account</span>
+                <span className="hidden text-(--ink-muted) sm:block">
                     {session.user?.email?.split("@")[0]}
                 </span>
             </button>
 
             {isOpen && (
-                <div className="absolute right-0 mt-2 w-48 origin-top-right rounded-md border border-[var(--card-stroke)] bg-[var(--card)] shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+                <div
+                    className="basis-full min-w-48 rounded-(--radius-sm) border border-(--card-stroke) bg-(--card)"
+                    id="account-options"
+                >
                     <div className="py-1">
-                        <div className="px-4 py-2 text-xs text-[var(--ink-muted)] border-b border-[var(--card-stroke)]">
+                        <div className="border-b border-(--card-stroke) px-4 py-2 text-xs text-(--ink-muted)">
                             Signed in as
                             <br />
-                            <span className="font-medium text-[var(--foreground)] truncate block">
+                            <span className="block truncate font-medium text-foreground">
                                 {session.user?.email}
                             </span>
                         </div>
                         {session.user?.is_superuser && (
                             <Link
                                 href="/superadmin"
-                                className="cursor-pointer block px-4 py-2 text-sm text-purple-400 hover:bg-[var(--card-80)]"
+                                className="block px-4 py-2 text-sm text-purple-400 hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                                 onClick={() => setIsOpen(false)}
                             >
                                 Platform Admin
@@ -70,23 +77,23 @@ export function UserMenu() {
                         )}
                         <Link
                             href="/settings"
-                            className="cursor-pointer block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
+                            className="block px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                             onClick={() => setIsOpen(false)}
                         >
                             Preferences
                         </Link>
                         <Link
                             href="/org/admin"
-                            className="cursor-pointer block px-4 py-2 text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
+                            className="block px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                             onClick={() => setIsOpen(false)}
                         >
                             Admin Panel
                         </Link>
-                        <div className="border-t border-[var(--card-stroke)]">
+                        <div className="border-t border-(--card-stroke)">
                             <button
                                 type="button"
                                 onClick={() => signOut()}
-                                className="cursor-pointer block w-full px-4 py-2 text-left text-sm text-[var(--foreground)] hover:bg-[var(--card-80)]"
+                                className="block w-full px-4 py-2 text-left text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                             >
                                 Sign out
                             </button>

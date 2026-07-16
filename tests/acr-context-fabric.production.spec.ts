@@ -150,6 +150,44 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await expectHealthyBrowser(faults);
     });
 
+    test("keeps account controls in flow and keyboard reachable at every viewport", async ({
+        page,
+    }, testInfo) => {
+        await setEntitlementScenario(page.request, "provisioned");
+        const faults = recordBrowserFaults(page);
+
+        for (const viewport of viewports) {
+            await page.setViewportSize(viewport);
+            await gotoWithSessionReady(page, "/agent-context/context-packet");
+
+            const accountNavigation = page.getByRole("navigation", { name: "Account" });
+            const accountControl = page.getByRole("button", { name: "Account options" });
+            await expect(accountNavigation).toBeVisible();
+            await accountControl.focus();
+            await page.keyboard.press("Enter");
+
+            await expect(accountControl).toHaveAttribute("aria-expanded", "true");
+            const preferences = page.getByRole("link", { name: "Preferences" });
+            await expect(preferences).toBeVisible();
+            await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+            const accountNavigationBottom = await accountNavigation.evaluate(
+                (element) => element.getBoundingClientRect().bottom,
+            );
+            const pageHeadingTop = await page
+                .getByRole("heading", { name: "Context Fabric", level: 1 })
+                .evaluate((element) => element.getBoundingClientRect().top);
+            expect(pageHeadingTop).toBeGreaterThanOrEqual(accountNavigationBottom);
+            await page.keyboard.press("Tab");
+            await expect(preferences).toBeFocused();
+            await page.screenshot({
+                path: testInfo.outputPath(`account-controls-${viewport.name}.png`),
+                fullPage: true,
+            });
+        }
+
+        await expectHealthyBrowser(faults);
+    });
+
     test("renders a full commit hash accessibly without truncating its tablet layout", async ({
         page,
     }, testInfo) => {
@@ -158,9 +196,15 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await page.setViewportSize({ width: 768, height: 900 });
         await page.goto("/prs/e2e-pr-detail");
 
-        const commit = page.getByLabel(`Full commit hash: ${FULL_COMMIT_SHA}`);
-        await expect(commit).toHaveText(FULL_COMMIT_SHA.slice(0, 8));
-        await expect(commit).toHaveAttribute("title", FULL_COMMIT_SHA);
+        const commit = page.getByRole("button", {
+            name: `Full commit hash: ${FULL_COMMIT_SHA}. Activate to reveal.`,
+        });
+        await expect(commit).toContainText(FULL_COMMIT_SHA.slice(0, 8));
+        await expect(commit).toHaveAccessibleName(
+            `Full commit hash: ${FULL_COMMIT_SHA}. Activate to reveal.`,
+        );
+        await commit.press("Enter");
+        await expect(page.locator("code")).toHaveText(FULL_COMMIT_SHA);
         await page.screenshot({
             path: testInfo.outputPath("full-commit-768.png"),
             fullPage: true,

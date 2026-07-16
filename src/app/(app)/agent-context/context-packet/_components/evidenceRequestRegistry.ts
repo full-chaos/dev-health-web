@@ -10,8 +10,16 @@ type EvidenceLease = {
     readonly release: () => void;
 };
 
+type EvidenceRequestInput = {
+    readonly evidenceRefId: string;
+    readonly packetIdentity: string;
+    readonly repository: string;
+    readonly signal: AbortSignal;
+};
+
 type InFlightEvidence = {
     readonly controller: AbortController;
+    readonly generation: symbol;
     readonly promise: Promise<ACRExpandedEvidenceV1 | null>;
     subscribers: number;
 };
@@ -21,8 +29,8 @@ const inFlight = new Map<string, InFlightEvidence>();
 const queue: QueueJob[] = [];
 let activeRequests = 0;
 
-function cacheKey(repository: string, evidenceRefId: string): string {
-    return `${repository}\u0000${evidenceRefId}`;
+function cacheKey(packetIdentity: string, repository: string, evidenceRefId: string): string {
+    return `${packetIdentity}\u0000${repository}\u0000${evidenceRefId}`;
 }
 
 function startNextRequest(): void {
@@ -38,6 +46,11 @@ function enqueueEvidenceRequest(
 ): Promise<ACRExpandedEvidenceV1 | null> {
     return new Promise((resolve) => {
         const run = () => {
+            if (controller.signal.aborted) {
+                resolve(null);
+                startNextRequest();
+                return;
+            }
             activeRequests += 1;
             void fetch(
                 `/api/agent-context/evidence/${encodeURIComponent(evidenceRefId)}?repository=${encodeURIComponent(repository)}`,
@@ -58,23 +71,36 @@ function enqueueEvidenceRequest(
     });
 }
 
-function createLease(repository: string, evidenceRefId: string): EvidenceLease {
-    const key = cacheKey(repository, evidenceRefId);
+function createLease({
+    evidenceRefId,
+    packetIdentity,
+    repository,
+}: Omit<EvidenceRequestInput, "signal">): EvidenceLease {
+    const key = cacheKey(packetIdentity, repository, evidenceRefId);
     const cached = cache.get(key);
     if (cached) return { promise: Promise.resolve(cached), release: () => undefined };
 
     let request = inFlight.get(key);
     if (!request) {
         const controller = new AbortController();
+        const generation = Symbol(key);
         const promise = enqueueEvidenceRequest(repository, evidenceRefId, controller).then(
             (evidence) => {
-                if (evidence) cache.set(key, evidence);
+                if (
+                    evidence &&
+                    inFlight.get(key)?.generation === generation &&
+                    !controller.signal.aborted
+                ) {
+                    cache.set(key, evidence);
+                }
                 return evidence;
             },
         );
-        request = { controller, promise, subscribers: 0 };
+        request = { controller, generation, promise, subscribers: 0 };
         inFlight.set(key, request);
-        void promise.finally(() => inFlight.delete(key));
+        void promise.finally(() => {
+            if (inFlight.get(key)?.generation === generation) inFlight.delete(key);
+        });
     }
     request.subscribers += 1;
     let released = false;
@@ -84,18 +110,18 @@ function createLease(repository: string, evidenceRefId: string): EvidenceLease {
             if (released) return;
             released = true;
             request.subscribers -= 1;
-            if (request.subscribers === 0) request.controller.abort();
+            if (request.subscribers === 0) {
+                if (inFlight.get(key)?.generation === request.generation) inFlight.delete(key);
+                request.controller.abort();
+            }
         },
     };
 }
 
-export function requestEvidence(
-    repository: string,
-    evidenceRefId: string,
-    signal: AbortSignal,
-): EvidenceLease {
-    const lease = createLease(repository, evidenceRefId);
-    signal.addEventListener("abort", lease.release, { once: true });
+export function requestEvidence(input: EvidenceRequestInput): EvidenceLease {
+    if (input.signal.aborted) return { promise: Promise.resolve(null), release: () => undefined };
+    const lease = createLease(input);
+    input.signal.addEventListener("abort", lease.release, { once: true });
     return lease;
 }
 

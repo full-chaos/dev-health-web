@@ -90,7 +90,7 @@ describe("AppLayout entitlement wiring", () => {
         });
     });
 
-    it("does not render the fixed global user menu over application content", async () => {
+    it("renders account controls in an in-flow account navigation", async () => {
         getOrgEntitlementsMock.mockResolvedValue({
             data: {
                 features: {},
@@ -102,8 +102,9 @@ describe("AppLayout entitlement wiring", () => {
 
         render(await AppLayout({ children: <span>Context Fabric</span> }));
 
-        expect(screen.queryByTestId("global-user-menu")).not.toBeInTheDocument();
-        expect(userMenuSpy).not.toHaveBeenCalled();
+        const accountNavigation = screen.getByRole("navigation", { name: "Account" });
+        expect(accountNavigation).toContainElement(screen.getByTestId("global-user-menu"));
+        expect(userMenuSpy).toHaveBeenCalledOnce();
     });
 
     it.each([

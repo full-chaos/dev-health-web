@@ -1,5 +1,6 @@
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
 import { BackLink } from "@/components/shared/BackLink";
+import { CommitHashDisclosure } from "@/components/shared/CommitHashDisclosure";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
@@ -139,14 +140,8 @@ function PrDetailSummary({ pr }: { pr: PullRequestDetail }) {
                         <ul className="mt-3 space-y-2 text-sm text-(--ink-muted)">
                             {pr.commits.map((commit) => (
                                 <li key={commit.hash} className="min-w-0 break-words">
-                                    <span
-                                        aria-label={`Full commit hash: ${commit.hash}`}
-                                        className="text-foreground"
-                                        title={commit.hash}
-                                    >
-                                        {commit.hash.slice(0, 8)}
-                                    </span>{" "}
-                                    · {commit.message ?? "No message"}
+                                    <CommitHashDisclosure hash={commit.hash} /> ·{" "}
+                                    {commit.message ?? "No message"}
                                     {commit.provenance ? ` · ${commit.provenance}` : ""}
                                 </li>
                             ))}

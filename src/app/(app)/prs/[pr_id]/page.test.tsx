@@ -139,7 +139,11 @@ describe("PrDetailPage", () => {
         expect(screen.getByRole("heading", { name: "Wire PR detail" })).toBeInTheDocument();
         expect(screen.getByText("full-chaos/dev-health-web · #42")).toBeInTheDocument();
         expect(screen.getByText("reviewer@example.com")).toBeInTheDocument();
-        expect(screen.getByText(/abcdef12/)).toBeInTheDocument();
+        expect(
+            screen.getByRole("button", {
+                name: "Full commit hash: abcdef1234567890. Activate to reveal.",
+            }),
+        ).toBeInTheDocument();
         expect(getPrDetailViaGraphQLMock).toHaveBeenCalledWith({ orgId: "org-1", id: prId });
         expect(getAIWorkflowDrilldownViaGraphQLMock).toHaveBeenCalledWith({
             orgId: "org-1",
@@ -159,10 +163,11 @@ describe("PrDetailPage", () => {
 
         await renderPage();
 
-        const hash = screen.getByLabelText(`Full commit hash: ${fullHash}`);
-        expect(hash).toHaveTextContent("aaaaaaaa");
-        expect(hash).toHaveAttribute("title", fullHash);
-        expect(hash.closest("li")).toHaveClass("break-words");
+        const disclosure = screen.getByRole("button", {
+            name: `Full commit hash: ${fullHash}. Activate to reveal.`,
+        });
+        expect(disclosure).toHaveTextContent("aaaaaaaa");
+        expect(disclosure.closest("li")).toHaveClass("break-words");
     });
 
     it("renders honest empty state without requesting live related entities for a missing PR", async () => {

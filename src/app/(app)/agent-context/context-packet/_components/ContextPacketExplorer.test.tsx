@@ -229,6 +229,39 @@ describe("ContextPacketExplorer", () => {
         fetchSpy.mockRestore();
     });
 
+    it.each([
+        [
+            "a non-canonical item category",
+            {
+                ...SAMPLE_CONTEXT_PACKET,
+                items: [{ ...SAMPLE_CONTEXT_PACKET.items[0], category: "unsupported" }],
+            },
+        ],
+        [
+            "a malformed generated timestamp",
+            { ...SAMPLE_CONTEXT_PACKET, generated_at: "2026-02-30T12:00:00Z" },
+        ],
+    ])("renders a safe error state when a live response has %s", async (_description, packet) => {
+        const user = userEvent.setup();
+        const fetchSpy = vi
+            .spyOn(globalThis, "fetch")
+            .mockResolvedValue(new Response(JSON.stringify(packet), { status: 200 }));
+        render(
+            <ContextPacketExplorer
+                controlledState="sample"
+                live
+                repositories={["full-chaos/dev-health-acr"]}
+            />,
+        );
+
+        await user.type(screen.getByLabelText(/Goal/), "Reject malformed response");
+        await user.click(screen.getByRole("button", { name: "Generate context" }));
+
+        await waitFor(() => expect(screen.getByTestId("data-state-error")).toBeInTheDocument());
+        expect(screen.queryByText("Credential authorization review")).not.toBeInTheDocument();
+        fetchSpy.mockRestore();
+    });
+
     it("renders the validated live partial packet without injecting sample evidence", async () => {
         const user = userEvent.setup();
         const livePacket = {

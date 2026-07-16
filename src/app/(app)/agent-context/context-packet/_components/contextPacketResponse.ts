@@ -2,12 +2,50 @@ import type { ACRContextPacketV1, ACRExpandedEvidenceV1 } from "@/lib/acr/genera
 
 type UnknownRecord = Record<string, unknown>;
 
+const PACKET_CATEGORIES = ["state", "pressure", "cause", "evidence", "action"] as const;
+const CLAIM_KINDS = ["observed", "inferred", "recommendation"] as const;
+const SEVERITIES = ["info", "warning", "high", "critical"] as const;
+const PACKET_STATUSES = ["complete", "partial", "degraded", "empty"] as const;
+const RESOLVED_SCOPE_RESOLUTIONS = [
+    "exact_commit",
+    "branch_filtered",
+    "repo_fallback",
+    "unresolved",
+] as const;
+const WATERMARK_STATUSES = ["fresh", "stale", "missing", "unavailable"] as const;
+const EVIDENCE_AVAILABILITIES = [
+    "available",
+    "stale",
+    "redacted",
+    "deleted",
+    "unauthorized",
+] as const;
+const EVIDENCE_PROVENANCE = ["native", "explicit_text", "heuristic", "derived"] as const;
+const RFC3339_TIMESTAMP =
+    /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/;
+
 function isRecord(value: unknown): value is UnknownRecord {
     return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isString(value: unknown): value is string {
     return typeof value === "string";
+}
+
+function isCanonicalValue(value: unknown, allowed: readonly string[]): boolean {
+    return isString(value) && allowed.includes(value);
+}
+
+function isTimestamp(value: unknown): value is string {
+    if (!isString(value) || !RFC3339_TIMESTAMP.test(value)) return false;
+    const calendarDate = new Date(`${value.slice(0, 10)}T00:00:00.000Z`);
+    const timestamp = new Date(value);
+    return (
+        Number.isFinite(timestamp.valueOf()) &&
+        calendarDate.getUTCFullYear() === Number(value.slice(0, 4)) &&
+        calendarDate.getUTCMonth() + 1 === Number(value.slice(5, 7)) &&
+        calendarDate.getUTCDate() === Number(value.slice(8, 10))
+    );
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -20,6 +58,10 @@ function isFiniteNumber(value: unknown): value is number {
 
 function isOptionalString(value: unknown): boolean {
     return value === undefined || isString(value);
+}
+
+function isOptionalTimestamp(value: unknown): boolean {
+    return value === undefined || isTimestamp(value);
 }
 
 function isOptionalRecord(value: unknown): boolean {
@@ -41,20 +83,20 @@ function isPacketItem(value: unknown): boolean {
     return (
         value.schema_version === "context_packet_item.v1" &&
         isString(value.packet_item_id) &&
-        isString(value.category) &&
-        isString(value.claim_kind) &&
+        isCanonicalValue(value.category, PACKET_CATEGORIES) &&
+        isCanonicalValue(value.claim_kind, CLAIM_KINDS) &&
         isString(value.title) &&
         isString(value.summary) &&
         isString(value.why_included) &&
         isString(value.rule_id) &&
         isFiniteNumber(value.confidence) &&
-        isString(value.severity) &&
+        isCanonicalValue(value.severity, SEVERITIES) &&
         isFiniteNumber(value.rank) &&
         isRecord(value.validity_scope) &&
         isOptionalString(value.validity_scope.branch) &&
         isOptionalString(value.validity_scope.commit_sha) &&
-        isOptionalString(value.validity_scope.valid_from) &&
-        isOptionalString(value.validity_scope.valid_to) &&
+        isOptionalTimestamp(value.validity_scope.valid_from) &&
+        isOptionalTimestamp(value.validity_scope.valid_to) &&
         isRecord(value.flags) &&
         typeof value.flags.stale === "boolean" &&
         typeof value.flags.uncertain === "boolean" &&
@@ -73,7 +115,7 @@ function isRequestedScope(value: unknown): boolean {
         isOptionalString(value.commit_sha) &&
         isOptionalString(value.task_ref) &&
         (value.files === undefined || isStringArray(value.files)) &&
-        (value.as_of === undefined || isString(value.as_of)) &&
+        isOptionalTimestamp(value.as_of) &&
         (value.time_window_days === undefined || isFiniteNumber(value.time_window_days))
     );
 }
@@ -92,8 +134,8 @@ function isWatermark(value: unknown): boolean {
     return (
         isRecord(value) &&
         isString(value.source) &&
-        isOptionalString(value.last_ingested_at) &&
-        ["fresh", "stale", "missing", "unavailable"].includes(String(value.status))
+        isOptionalTimestamp(value.last_ingested_at) &&
+        isCanonicalValue(value.status, WATERMARK_STATUSES)
     );
 }
 
@@ -114,16 +156,14 @@ function isPacketSections(value: UnknownRecord): boolean {
         isString(value.resolved_scope.repo_slug) &&
         isOptionalString(value.resolved_scope.branch) &&
         isOptionalString(value.resolved_scope.commit_sha) &&
-        ["exact_commit", "branch_filtered", "repo_fallback", "unresolved"].includes(
-            String(value.resolved_scope.resolution),
-        ) &&
+        isCanonicalValue(value.resolved_scope.resolution, RESOLVED_SCOPE_RESOLUTIONS) &&
         isStringArray(value.resolved_scope.fallback_reasons) &&
         Array.isArray(value.required_checks) &&
         value.required_checks.every((check) => isCheck(check, "check_id")) &&
         Array.isArray(value.recommended_next_steps) &&
         value.recommended_next_steps.every((step) => isCheck(step, "step_id")) &&
         isRecord(value.freshness) &&
-        isString(value.freshness.as_of) &&
+        isTimestamp(value.freshness.as_of) &&
         isFiniteNumber(value.freshness.stale_after_seconds) &&
         Array.isArray(value.freshness.watermarks) &&
         value.freshness.watermarks.every(isWatermark) &&
@@ -157,8 +197,8 @@ export function isContextPacket(value: unknown): value is ACRContextPacketV1 {
         value.schema_version === "context_packet.v1" &&
         isString(value.context_packet_id) &&
         isString(value.request_id) &&
-        isString(value.generated_at) &&
-        ["complete", "partial", "degraded", "empty"].includes(String(value.status)) &&
+        isTimestamp(value.generated_at) &&
+        isCanonicalValue(value.status, PACKET_STATUSES) &&
         isString(value.goal) &&
         isString(value.query_version) &&
         isString(value.ranking_version) &&
@@ -176,10 +216,8 @@ export function isExpandedEvidence(value: unknown): value is ACRExpandedEvidence
         return false;
     return (
         value.schema_version === "expanded_evidence.v1" &&
-        isString(value.resolved_at) &&
-        ["available", "stale", "redacted", "deleted", "unauthorized"].includes(
-            String(value.availability),
-        ) &&
+        isTimestamp(value.resolved_at) &&
+        isCanonicalValue(value.availability, EVIDENCE_AVAILABILITIES) &&
         value.evidence.schema_version === "evidence_ref.v1" &&
         isString(value.evidence.evidence_ref_id) &&
         isRecord(value.evidence.source) &&
@@ -188,19 +226,15 @@ export function isExpandedEvidence(value: unknown): value is ACRExpandedEvidence
         isString(value.evidence.source.entity_id) &&
         isString(value.evidence.source.display_label) &&
         isOptionalString(value.evidence.source.safe_uri) &&
-        ["native", "explicit_text", "heuristic", "derived"].includes(
-            String(value.evidence.provenance),
-        ) &&
+        isCanonicalValue(value.evidence.provenance, EVIDENCE_PROVENANCE) &&
         isFiniteNumber(value.evidence.confidence) &&
         isString(value.evidence.citation) &&
-        isString(value.evidence.observed_at) &&
-        isOptionalString(value.evidence.event_at) &&
+        isTimestamp(value.evidence.observed_at) &&
+        isOptionalTimestamp(value.evidence.event_at) &&
         isOptionalString(value.evidence.source_version) &&
         isOptionalString(value.evidence.snapshot_hash) &&
         isOptionalString(value.evidence.content_digest) &&
-        ["available", "stale", "redacted", "deleted", "unauthorized"].includes(
-            String(value.evidence.availability),
-        ) &&
+        isCanonicalValue(value.evidence.availability, EVIDENCE_AVAILABILITIES) &&
         isOptionalRecord(value.evidence.metadata) &&
         isOptionalString(value.excerpt) &&
         isRecord(value.structured_fields) &&

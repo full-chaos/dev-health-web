@@ -57,7 +57,12 @@ export function CategoryItem({
         setEvidenceError(null);
         const leases = missingEvidenceIDs.map((evidenceRefId) => ({
             evidenceRefId,
-            lease: requestEvidence(repository, evidenceRefId, controller.signal),
+            lease: requestEvidence({
+                evidenceRefId,
+                packetIdentity,
+                repository,
+                signal: controller.signal,
+            }),
         }));
         const values = await Promise.all(
             leases.map(async ({ evidenceRefId, lease }) => ({

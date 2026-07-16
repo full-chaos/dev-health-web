@@ -66,4 +66,31 @@ describe("context packet response validation", () => {
             }),
         ).toBe(false);
     });
+
+    it("rejects non-canonical categories and malformed renderer timestamps", () => {
+        expect(
+            isContextPacket({
+                ...SAMPLE_CONTEXT_PACKET,
+                items: [{ ...SAMPLE_CONTEXT_PACKET.items[0], category: "unsupported" }],
+            }),
+        ).toBe(false);
+        expect(
+            isContextPacket({
+                ...SAMPLE_CONTEXT_PACKET,
+                generated_at: "2026-02-30T12:00:00Z",
+            }),
+        ).toBe(false);
+        expect(
+            isContextPacket({
+                ...SAMPLE_CONTEXT_PACKET,
+                freshness: { ...SAMPLE_CONTEXT_PACKET.freshness, as_of: "not-a-timestamp" },
+            }),
+        ).toBe(false);
+        expect(
+            isExpandedEvidence({
+                ...Object.values(SAMPLE_EXPANDED_EVIDENCE)[0],
+                resolved_at: "2026-01-01",
+            }),
+        ).toBe(false);
+    });
 });

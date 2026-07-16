@@ -1,4 +1,5 @@
 import { SessionProvider } from "@/components/auth/SessionProvider";
+import { UserMenu } from "@/components/auth/UserMenu";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { TrialBanner } from "@/components/billing/TrialBanner";
@@ -33,6 +34,14 @@ export default async function AppLayout({
                         <div className="min-h-screen bg-[image:var(--app-gradient)] bg-fixed">
                             <ImpersonationBanner />
                             <TrialBanner />
+                            <header className="border-b border-(--card-stroke) bg-(--card-80)">
+                                <nav
+                                    aria-label="Account"
+                                    className="flex min-h-14 items-center justify-end px-4 py-3 sm:px-6"
+                                >
+                                    <UserMenu />
+                                </nav>
+                            </header>
                             {children}
                             <BugReportButton />
                             <Toaster richColors position="top-right" theme="dark" />
