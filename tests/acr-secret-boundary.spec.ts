@@ -5,6 +5,13 @@ const secretPattern =
 const clientChunkForbiddenPattern =
     /ACR_API_ORIGIN|ACR_REQUEST_TIMEOUT_MS|ACR_WEB_ASSERTION_(?:KEY_FILE|KID|ISSUER|AUDIENCE)|BEGIN (?:EC |RSA )?PRIVATE KEY|fcacr_[A-Za-z0-9]|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/u;
 
+test.beforeEach(async ({ request }) => {
+    const response = await request.post("http://127.0.0.1:8001/__test/entitlements", {
+        data: { scenario: "provisioned" },
+    });
+    expect(response.ok()).toBe(true);
+});
+
 test("keeps ACR assertion material out of browser routes, network traffic, and client chunks", async ({
     page,
 }) => {
