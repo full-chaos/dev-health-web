@@ -24,6 +24,7 @@
         "acr:contracts:generate": "node scripts/sync-acr-contracts.mjs generate --allow-write",
         "acr:contracts:check": "node scripts/sync-acr-contracts.mjs check",
         "test:e2e": "playwright test",
+        "test:e2e:context-fabric": "NODE_ENV=production AUTH_SECRET=context-fabric-production-playwright BACKEND_URL=http://127.0.0.1:8012 pnpm build && playwright test -c playwright.context-fabric.config.ts",
         "test:e2e:onboarding": "playwright test -c playwright.onboarding.config.ts",
         "test:e2e:live": "playwright test -c playwright.live.config.ts",
         "test:unit": "vitest run",

@@ -70,6 +70,7 @@ export type NavChildRoute = {
     path: string;
     /** Rendered in the sidebar only when true. Preview routes stay false. */
     navVisible: boolean;
+    requiredFeature?: string;
     /** Phantom/not-yet-built route held for reference; never rendered. */
     preview?: boolean;
     /**
@@ -272,9 +273,10 @@ export const navAreas: readonly NavArea[] = [
             },
             {
                 id: "context-packet",
-                label: "Context Packet",
+                label: "Context Fabric",
                 path: "/agent-context/context-packet",
                 navVisible: true,
+                requiredFeature: "agent_context_runtime",
             },
             { id: "people", label: "People", path: "/people", navVisible: true },
             { id: "code", label: "Code", path: "/code", navVisible: true },

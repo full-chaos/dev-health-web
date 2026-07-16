@@ -2,6 +2,7 @@ import { beforeEach, describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { render } from "@/test/utils";
+import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { PrimaryNav } from "./PrimaryNav";
 import type { MetricFilter } from "@/lib/filters/types";
 
@@ -104,6 +105,12 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
 
         expect(control).toHaveAttribute("aria-expanded", "true");
         expect(panel).not.toHaveClass("hidden");
+
+        await user.keyboard("{Escape}");
+
+        expect(control).toHaveFocus();
+        expect(control).toHaveAttribute("aria-expanded", "false");
+        expect(panel).toHaveClass("hidden");
     });
 
     it("expands ONLY the active area's children; inactive areas stay collapsed", () => {
@@ -114,7 +121,7 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
         expect(screen.getByTestId("nav-children-diagnose")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /^Flow$/i })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /^Bottlenecks$/i })).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: /^Context Packet$/i })).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: /^Context Fabric$/i })).not.toBeInTheDocument();
 
         // Govern is NOT active → none of its children appear.
         expect(screen.queryByTestId("nav-children-govern")).toBeNull();
@@ -130,6 +137,41 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
         expect(screen.getByRole("link", { name: /^Opportunities$/i })).toBeInTheDocument();
         // Both Experiments (CHAOS-2219) and Automations (CHAOS-2220) are now navVisible:true.
         expect(screen.getByRole("link", { name: /^Experiments$/i })).toBeInTheDocument();
+    });
+
+    it("renders exactly one Context Fabric link when agent_context_runtime is provisioned", () => {
+        navigationMock.pathname = "/work";
+        render(
+            <AdminTierProvider
+                tier="enterprise"
+                features={{ agent_context_runtime: true }}
+                limits={{}}
+            >
+                <PrimaryNav filters={makeFilter()} active="work" />
+            </AdminTierProvider>,
+        );
+
+        const contextFabric = screen.getByRole("link", { name: /^Context Fabric$/i });
+        expect(contextFabric).toHaveAttribute(
+            "href",
+            expect.stringContaining("/agent-context/context-packet"),
+        );
+        expect(screen.getAllByRole("link", { name: /^Context Fabric$/i })).toHaveLength(1);
+    });
+
+    it.each([
+        ["missing", {}],
+        ["false", { agent_context_runtime: false }],
+    ] as const)("hides Context Fabric when the required feature is %s", (_state, features) => {
+        navigationMock.pathname = "/work";
+        render(
+            <AdminTierProvider tier="enterprise" features={features} limits={{}}>
+                <PrimaryNav filters={makeFilter()} active="work" />
+            </AdminTierProvider>,
+        );
+
+        expect(screen.queryByRole("link", { name: /^Context Fabric$/i })).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /^Flow$/i })).toBeInTheDocument();
     });
 
     it("renders Improve → Automations now that navVisible:true (CHAOS-2220)", () => {
@@ -235,6 +277,18 @@ describe("PrimaryNav — active child highlight (A10: one selected, distinct hov
             "aria-current",
             "page",
         );
+    });
+
+    it("keeps Diagnose as the sole current row when a hidden Context Fabric route is opened directly", () => {
+        navigationMock.pathname = "/agent-context/context-packet";
+        render(<PrimaryNav filters={makeFilter()} active="context-packet" />);
+
+        expect(screen.queryByRole("link", { name: /^Context Fabric$/i })).not.toBeInTheDocument();
+        expect(screen.getByRole("link", { name: /^Diagnose$/i })).toHaveAttribute(
+            "aria-current",
+            "page",
+        );
+        expect(currentPageLinks()).toHaveLength(1);
     });
 });
 

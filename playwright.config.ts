@@ -17,7 +17,12 @@ const AUTH_FILE = "test-results/.auth/state.json";
 // test:e2e:onboarding` (and CI) runs the guided config separately.
 export default defineConfig({
     testDir: "./tests",
-    testIgnore: ["live/**", "auth-onboard.spec.ts", "onboarding.setup.ts"],
+    testIgnore: [
+        "live/**",
+        "auth-onboard.spec.ts",
+        "onboarding.setup.ts",
+        "acr-context-fabric.production.spec.ts",
+    ],
     outputDir: "test-results/playwright",
     reporter: [
         ["list"],
@@ -44,6 +49,7 @@ export default defineConfig({
                 /onboarding\.setup\.ts/,
                 /account-creation-journey\.spec\.ts/,
                 /auth-onboard-legacy\.spec\.ts/,
+                /acr-context-fabric\.production\.spec\.ts/,
             ],
             dependencies: ["auth-setup"],
             use: {

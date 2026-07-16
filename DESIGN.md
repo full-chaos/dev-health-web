@@ -1,19 +1,20 @@
-# ACR Context Packet Explorer Design
+# Context Fabric Explorer Design
 
 ## 0. Research Log
 
-- The ACR PRD defines one web surface, Context Packet Explorer, with goal/repository/branch/task inputs; State, Pressure, Cause, Evidence, and Action groups; evidence expansion; and freshness, coverage, fallback, partial, and not-entitled states.
+- The ACR PRD defines one web surface, Context Fabric Explorer, with goal/repository/branch/task inputs; State, Pressure, Cause, Evidence, and Action groups; evidence expansion; and freshness, coverage, fallback, partial, and not-entitled states.
 - `docs/design-system.md` remains binding for existing Dev Health tokens and primitives. `docs/agent-context-runtime-entitlement.md` establishes that the web is an inspection surface, never an ACR authorization authority.
 
 ## 1. Route and Navigation
 
-- **Route:** `/agent-context/context-packet` is the sole Context Packet Explorer destination.
-- **Diagnose navigation placement:** it is a Diagnose child named **Context Packet**, positioned after Bottlenecks and before People. It is a destination, not a horizontal tab, so Diagnose remains the single active primary-navigation area even though the route pathname begins with `/agent-context`.
-- The page title, breadcrumb, and navigation label use the same “Context Packet” name. The only back link is `Back to Diagnose`.
+- **Route:** `/agent-context/context-packet` is the sole Context Fabric Explorer destination.
+- **Diagnose navigation placement:** it is a Diagnose child named **Context Fabric**, positioned after Bottlenecks and before People. It is a destination, not a horizontal tab, so Diagnose remains the single active primary-navigation area even though the route pathname begins with `/agent-context`.
+- **Provisioning rule:** the Diagnose child is rendered only when the current organization has a valid `agent_context_runtime` entitlement. Missing, false, invalid, or unavailable entitlements hide the child; the existing direct-route not-entitled state remains authoritative.
+- The page title, breadcrumb, and navigation label use the same “Context Fabric” name. The only back link is `Back to Diagnose`.
 
 ## 2. User Goals and Form Primitive
 
-The explorer helps an authenticated operator inspect one server-authorized context packet. The request form has four labeled fields:
+The explorer helps an authenticated operator inspect one server-authorized Context Fabric response. The request form has four labeled fields:
 
 1. **Goal** — required plain-language task objective.
 2. **Repository** — required repository slug selected from server-authorized repositories; it is not a trusted organization or repository identity claim.
