@@ -29,7 +29,7 @@ test("keeps ACR assertion material out of browser routes, network traffic, and c
     });
 
     await page.goto("/agent-context/context-packet");
-    await expect(page.getByRole("heading", { name: "Context Packet", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Context Fabric", level: 1 })).toBeVisible();
 
     const routeResult = await page.evaluate(async () => {
         const response = await fetch("/api/agent-context/context-packets", {

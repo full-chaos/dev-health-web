@@ -42,7 +42,7 @@ function ControlledState({
             return (
                 <DataState
                     variant="loading"
-                    title="Preparing context packet"
+                    title="Preparing Context Fabric response"
                     className="min-h-24"
                 />
             );
@@ -59,7 +59,7 @@ function ControlledState({
             return (
                 <DataState
                     variant="error"
-                    title="Context packet could not be generated"
+                    title="Context Fabric response could not be generated"
                     message="Try again when the service is available."
                     data-testid="data-state-error"
                 />
@@ -125,9 +125,9 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
         <div className="flex flex-col gap-8">
             <header>
                 <p className="text-label-caps text-(--ink-muted)">Diagnose</p>
-                <h1 className="mt-2 text-h1 font-semibold text-foreground">Context Packet</h1>
+                <h1 className="mt-2 text-h1 font-semibold text-foreground">Context Fabric</h1>
                 <p className="mt-2 max-w-2xl text-body text-(--ink-muted)">
-                    Inspect a scoped, evidence-backed context packet before you begin work.
+                    Inspect a scoped, evidence-backed Context Fabric response before you begin work.
                 </p>
             </header>
             <form
@@ -218,7 +218,7 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
             </form>
             {submitted === "sample" && (
                 <p role="status" className="sr-only">
-                    Context packet ready.
+                    Context Fabric response ready.
                 </p>
             )}
             <div>

@@ -28,7 +28,7 @@ async function openExplorer(page: Page) {
     const faults = browserFaults(page);
     const requests = noAcrRequests(page);
     await page.goto("/agent-context/context-packet");
-    await expect(page.getByRole("heading", { name: "Context Packet", level: 1 })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Context Fabric", level: 1 })).toBeVisible();
     return { faults, requests };
 }
 
@@ -42,7 +42,7 @@ async function expectHealthyExplorer({
     expect(faults.failedRequests).toEqual([]);
 }
 
-test.describe("Context Packet Explorer", () => {
+test.describe("Context Fabric Explorer", () => {
     test("renders the deterministic sample packet and exposes its Diagnose navigation entry", async ({
         page,
     }) => {
@@ -50,13 +50,13 @@ test.describe("Context Packet Explorer", () => {
         const requests = noAcrRequests(page);
         await page.goto("/agent-context/context-packet");
 
-        await expect(page.getByRole("heading", { name: "Context Packet", level: 1 })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Context Fabric", level: 1 })).toBeVisible();
         await expect(page.getByRole("link", { name: "Diagnose", exact: true })).toHaveAttribute(
             "data-active",
             "true",
         );
         await expect(page.getByRole("heading", { name: "Pressure", level: 2 })).toBeVisible();
-        await expect(page.getByText("Packet status")).toBeVisible();
+        await expect(page.getByText("Context Fabric status")).toBeVisible();
         await expect.poll(() => requests).toEqual([]);
         expect(faults.consoleErrors).toEqual([]);
         expect(faults.pageErrors).toEqual([]);
