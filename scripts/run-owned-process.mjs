@@ -3,14 +3,14 @@ import { spawn } from "node:child_process";
 const [command, ...args] = process.argv.slice(2);
 if (!command) throw new Error("Expected a command to supervise");
 
-const child = spawn(command, args, { detached: true, stdio: "inherit" });
+const child = spawn(command, args, { stdio: "inherit" });
 let stopping = false;
 
 function stopOwnedProcess(signal) {
     if (stopping || child.pid === undefined) return;
     stopping = true;
     try {
-        process.kill(-child.pid, signal);
+        child.kill(signal);
     } catch (error) {
         if (error && typeof error === "object" && "code" in error && error.code === "ESRCH") return;
         throw error;
