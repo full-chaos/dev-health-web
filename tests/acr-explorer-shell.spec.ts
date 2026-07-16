@@ -49,6 +49,7 @@ test.describe("Context Fabric Explorer", () => {
         });
         expect(response.ok()).toBe(true);
     });
+
     test("renders the deterministic sample packet and exposes its Diagnose navigation entry", async ({
         page,
     }) => {
