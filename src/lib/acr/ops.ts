@@ -40,7 +40,7 @@ export type OpsAuthorization = {
 type ResolveOpsAuthorizationInput = {
     readonly accessToken: string;
     readonly orgId: string;
-    readonly selectedRepository: string;
+    readonly selectedRepository?: string;
     readonly signal: AbortSignal;
     readonly subject: string;
 };
@@ -137,7 +137,10 @@ export async function resolveOpsAuthorization(
     const repositoryScopes = canonicalRepositoryScopes(
         parsedScopes.data.data.catalog.values.map((value) => value.value),
     );
-    if (!repositoryScopes.includes(input.selectedRepository)) {
+    if (
+        input.selectedRepository !== undefined &&
+        !repositoryScopes.includes(input.selectedRepository)
+    ) {
         throw new AcrRuntimeError(
             acrRuntimeErrorCodes.repositoryNotAvailable,
             "The selected repository is not available.",

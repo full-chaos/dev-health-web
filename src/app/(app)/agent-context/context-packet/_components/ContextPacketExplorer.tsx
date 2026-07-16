@@ -1,24 +1,20 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { DataState } from "@/components/ui/DataState";
 import type { ACRContextPacketV1 } from "@/lib/acr/generated";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { ContextPacketDetails } from "./ContextPacketDetails";
 import type { ControlledPacketState } from "./contextPacketStates";
+import { ContextPacketTerminalState } from "./ContextPacketTerminalState";
 import { projectContextPacket, type ContextPacketRequestForm } from "./contextPacketProjection";
-import {
-    SAMPLE_CONTEXT_PACKET,
-    SAMPLE_DEGRADED_CONTEXT_PACKET,
-    SAMPLE_EXPANDED_EVIDENCE,
-    SAMPLE_PARTIAL_CONTEXT_PACKET,
-} from "./samplePacket";
+import { isContextPacket } from "./contextPacketResponse";
+import { SAMPLE_CONTEXT_PACKET } from "./samplePacket";
 
 export type { ControlledPacketState } from "./contextPacketStates";
 
 type ContextPacketExplorerProps = {
     readonly controlledState: ControlledPacketState;
     readonly live?: boolean;
+    readonly repositories?: readonly string[];
     readonly showRetrievalDebug?: boolean;
 };
 
@@ -29,115 +25,26 @@ const SAMPLE_REQUEST: ContextPacketRequestForm = {
     taskReference: SAMPLE_CONTEXT_PACKET.requested_scope.task_ref ?? "",
 };
 
-const AUTHORIZED_REPOSITORIES = [SAMPLE_CONTEXT_PACKET.repository.slug] as const;
-
-function ControlledState({
-    state,
-    focusPacket,
-    packet,
-    showRetrievalDebug,
-}: {
-    readonly state: ControlledPacketState;
-    readonly focusPacket: boolean;
-    readonly packet: ACRContextPacketV1;
-    readonly showRetrievalDebug: boolean;
-}) {
-    switch (state) {
-        case "loading":
-            return (
-                <DataState
-                    variant="loading"
-                    title="Preparing Context Fabric response"
-                    className="min-h-24"
-                />
-            );
-        case "empty":
-            return (
-                <DataState
-                    variant="detector-enabled-no-findings"
-                    title="No context matched this scope"
-                    description="Refine the goal or scope and try again."
-                    data-testid="data-state-empty"
-                />
-            );
-        case "error":
-            return (
-                <DataState
-                    variant="error"
-                    title="Context Fabric response could not be generated"
-                    message="Try again when the service is available."
-                    data-testid="data-state-error"
-                />
-            );
-        case "not-entitled":
-            return (
-                <DataState
-                    variant="no-data-connected"
-                    title="Agent Context Runtime is not available for this organization"
-                    description="Ask an organization administrator to review product access."
-                    data-testid="data-state-not-entitled"
-                />
-            );
-        case "degraded":
-            return (
-                <ContextPacketDetails
-                    packet={SAMPLE_DEGRADED_CONTEXT_PACKET}
-                    degraded
-                    autoFocus={focusPacket}
-                    evidenceByID={SAMPLE_EXPANDED_EVIDENCE}
-                    showRetrievalDebug={showRetrievalDebug}
-                />
-            );
-        case "partial":
-            return (
-                <ContextPacketDetails
-                    packet={SAMPLE_PARTIAL_CONTEXT_PACKET}
-                    autoFocus={focusPacket}
-                    evidenceByID={SAMPLE_EXPANDED_EVIDENCE}
-                    showRetrievalDebug={showRetrievalDebug}
-                />
-            );
-        case "sample":
-            return (
-                <ContextPacketDetails
-                    packet={packet}
-                    autoFocus={focusPacket}
-                    evidenceByID={SAMPLE_EXPANDED_EVIDENCE}
-                    showRetrievalDebug={showRetrievalDebug}
-                />
-            );
-    }
-}
-
-function isContextPacket(value: unknown): value is ACRContextPacketV1 {
-    if (
-        typeof value !== "object" ||
-        value === null ||
-        Array.isArray(value) ||
-        !("schema_version" in value) ||
-        !("status" in value)
-    )
-        return false;
-    const packet = value;
-    return (
-        packet.schema_version === "context_packet.v1" &&
-        (packet.status === "complete" ||
-            packet.status === "partial" ||
-            packet.status === "degraded" ||
-            packet.status === "empty")
-    );
+function initialRequest(live: boolean, repositories: readonly string[]): ContextPacketRequestForm {
+    if (!live) return SAMPLE_REQUEST;
+    return { branchOrCommit: "", goal: "", repository: repositories[0] ?? "", taskReference: "" };
 }
 
 function packetState(packet: ACRContextPacketV1): ControlledPacketState {
-    return packet.status === "complete" ? "sample" : packet.status;
+    return packet.status === "complete" ? "complete" : packet.status;
+}
+
+function isTerminalState(state: ControlledPacketState): boolean {
+    return state !== "loading";
 }
 
 export function ContextPacketExplorer({
     controlledState,
     live = false,
+    repositories = live ? [] : [SAMPLE_CONTEXT_PACKET.repository.slug],
     showRetrievalDebug = false,
 }: ContextPacketExplorerProps) {
-    const [form, setForm] = useState(SAMPLE_REQUEST);
+    const [form, setForm] = useState(() => initialRequest(live, repositories));
     const [submitted, setSubmitted] = useState<ControlledPacketState | null>(null);
     const [goalError, setGoalError] = useState<string | null>(null);
     const [packet, setPacket] = useState(SAMPLE_CONTEXT_PACKET);
@@ -225,14 +132,14 @@ export function ContextPacketExplorer({
                             onChange={(event) => updateField("goal", event.target.value)}
                             className="mt-2 min-h-24 w-full rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-body text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                         />
-                        {goalError && (
+                        {goalError ? (
                             <span
                                 id="context-goal-error"
                                 className="mt-1 block text-sm text-(--negative)"
                             >
                                 {goalError}
                             </span>
-                        )}
+                        ) : null}
                     </label>
                     <label htmlFor="context-repository">
                         <span className="text-sm font-medium text-foreground">
@@ -241,11 +148,12 @@ export function ContextPacketExplorer({
                         <select
                             id="context-repository"
                             required
+                            disabled={repositories.length === 0}
                             value={form.repository}
                             onChange={(event) => updateField("repository", event.target.value)}
                             className="mt-2 w-full rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-body text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                         >
-                            {AUTHORIZED_REPOSITORIES.map((repository) => (
+                            {repositories.map((repository) => (
                                 <option key={repository} value={repository}>
                                     {repository}
                                 </option>
@@ -275,25 +183,22 @@ export function ContextPacketExplorer({
                 </div>
                 <button
                     type="submit"
-                    disabled={activeState === "loading"}
+                    disabled={activeState === "loading" || repositories.length === 0}
                     className="mt-5 rounded-(--radius-sm) bg-(--accent) px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50 disabled:cursor-wait disabled:opacity-60"
                 >
                     {CTA_LABELS.generateContext}
                 </button>
             </form>
-            {submitted === "sample" && (
-                <p role="status" className="sr-only">
-                    Context Fabric response ready.
-                </p>
-            )}
-            <div>
-                <ControlledState
-                    state={activeState}
-                    focusPacket={submitted === "sample"}
-                    packet={packet}
-                    showRetrievalDebug={showRetrievalDebug}
-                />
-            </div>
+            <ContextPacketTerminalState
+                autoFocus={
+                    isTerminalState(activeState) &&
+                    (submitted !== null || controlledState !== "sample")
+                }
+                packet={packet}
+                sampleMode={!live}
+                showRetrievalDebug={showRetrievalDebug}
+                state={activeState}
+            />
         </div>
     );
 }

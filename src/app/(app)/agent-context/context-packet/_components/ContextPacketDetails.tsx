@@ -39,7 +39,7 @@ export function ContextPacketDetails({
             <PacketHeader packet={packet} showRetrievalDebug={showRetrievalDebug} />
             <ContextPacketCategoryGroups packet={packet} evidenceByID={evidenceByID} />
             <ContextPacketDiagnostics packet={packet} />
-            <ContextPacketFeedback />
+            <ContextPacketFeedback key={packet.context_packet_id} />
         </section>
     );
 }
@@ -65,8 +65,9 @@ function PacketHeader({
     readonly packet: ACRContextPacketV1;
     readonly showRetrievalDebug: boolean;
 }) {
-    const resolvedScope =
-        packet.resolved_scope.commit_sha ?? packet.resolved_scope.branch ?? "Repository scope";
+    const resolvedScope = packet.resolved_scope.commit_sha
+        ? "Specific commit"
+        : (packet.resolved_scope.branch ?? "Repository scope");
 
     return (
         <header className="rounded-(--radius-lg) border border-(--card-stroke) bg-(--card-80) p-6">
@@ -80,8 +81,6 @@ function PacketHeader({
                 <PacketMetadata label="Generated">
                     {displayPacketTime(packet.generated_at)}
                 </PacketMetadata>
-                <PacketMetadata label="Query version">{packet.query_version}</PacketMetadata>
-                <PacketMetadata label="Ranking version">{packet.ranking_version}</PacketMetadata>
             </dl>
             {showRetrievalDebug && packet.retrieval_debug_summary ? (
                 <details className="mt-4 text-sm text-(--ink-muted)">

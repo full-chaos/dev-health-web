@@ -1,5 +1,6 @@
 export const CONTROLLED_PACKET_STATES = [
     "sample",
+    "complete",
     "loading",
     "empty",
     "partial",

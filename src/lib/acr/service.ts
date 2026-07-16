@@ -70,6 +70,26 @@ export async function createContextPacket(input: {
     });
 }
 
+export async function listAuthorizedRepositories(orgId: string): Promise<readonly string[]> {
+    const session = await auth();
+    const accessToken = session?.access_token;
+    const subject = session?.user?.id;
+    if (!accessToken || !subject) {
+        throw new AcrRuntimeError(
+            acrRuntimeErrorCodes.unauthenticated,
+            "Authentication is required.",
+            { status: 401 },
+        );
+    }
+    const authorization = await resolveOpsAuthorization({
+        accessToken,
+        orgId,
+        signal: new AbortController().signal,
+        subject,
+    });
+    return authorization.repositoryScopes;
+}
+
 export async function getExpandedEvidence(input: {
     readonly evidenceRefId: string;
     readonly repository: string | null;

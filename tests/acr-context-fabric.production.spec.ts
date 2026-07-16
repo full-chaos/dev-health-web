@@ -25,20 +25,40 @@ async function expectNoAcrRequests(request: APIRequestContext): Promise<void> {
     expect(await response.json()).toEqual({ count: 0 });
 }
 
+async function gotoWithSessionReady(page: Page, path: string): Promise<void> {
+    const sessionResponse = page.waitForResponse(
+        (response) =>
+            new URL(response.url()).pathname === "/api/auth/session" &&
+            response.request().method() === "GET",
+    );
+    await page.goto(path);
+    expect((await sessionResponse).status()).toBe(200);
+}
+
 function recordBrowserFaults(page: Page): {
     readonly consoleErrors: string[];
     readonly pageErrors: string[];
+    readonly sessionRequestFailures: string[];
 } {
     const consoleErrors: string[] = [];
     const pageErrors: string[] = [];
+    const sessionRequestFailures: string[] = [];
     page.on("console", (message) => {
         if (message.type() === "error") consoleErrors.push(message.text());
     });
+    page.on("requestfailed", (request) => {
+        if (new URL(request.url()).pathname === "/api/auth/session") {
+            sessionRequestFailures.push(
+                `${request.method()} ${request.url()} ${request.failure()?.errorText ?? ""}`,
+            );
+        }
+    });
     page.on("pageerror", (error) => pageErrors.push(error.message));
-    return { consoleErrors, pageErrors };
+    return { consoleErrors, pageErrors, sessionRequestFailures };
 }
 
 async function expectHealthyBrowser(faults: ReturnType<typeof recordBrowserFaults>): Promise<void> {
+    expect(faults.sessionRequestFailures).toEqual([]);
     await expect.poll(() => faults.consoleErrors).toEqual([]);
     expect(faults.pageErrors).toEqual([]);
 }
@@ -82,7 +102,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
             const scenarioViewports = scenario === "unprovisioned" ? viewports : [viewports[0]];
             for (const viewport of scenarioViewports) {
                 await page.setViewportSize(viewport);
-                await page.goto("/work");
+                await gotoWithSessionReady(page, "/work");
                 if (viewport.width < 768) {
                     await page.getByRole("button", { name: "Show navigation" }).click();
                 }
@@ -95,8 +115,14 @@ test.describe("Context Fabric production entitlement boundary", () => {
                 });
             }
 
-            await page.goto("/agent-context/context-packet");
+            await gotoWithSessionReady(page, "/agent-context/context-packet");
             await expect(page.getByTestId("data-state-not-entitled")).toBeVisible();
+            if (scenario === "unprovisioned") {
+                await page.screenshot({
+                    path: testInfo.outputPath("denied-unprovisioned-375.png"),
+                    fullPage: true,
+                });
+            }
             await expectNoAcrRequests(page.request);
             await expectHealthyBrowser(faults);
         });
@@ -121,4 +147,81 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await expect(navigationControl).toHaveAttribute("aria-expanded", "false");
         await expectHealthyBrowser(faults);
     });
+
+    test("submits through the BFF, renders a live partial packet, and expands server-owned evidence", async ({
+        page,
+    }, testInfo) => {
+        await setEntitlementScenario(page.request, "provisioned");
+        const browserRequests: string[] = [];
+        page.on("request", (request) => browserRequests.push(request.url()));
+        await page.goto("/agent-context/context-packet");
+
+        await page.getByLabel(/Goal/).fill("e2e partial");
+        const packetResponse = page.waitForResponse(
+            (response) =>
+                response.url().endsWith("/api/agent-context/context-packets") &&
+                response.request().method() === "POST",
+        );
+        await page.getByRole("button", { name: "Generate context" }).click();
+
+        const bffPacketResponse = await packetResponse;
+        expect({
+            body: await bffPacketResponse.json(),
+            contentType: bffPacketResponse.headers()["content-type"],
+            status: bffPacketResponse.status(),
+        }).toMatchObject({
+            body: { schema_version: "context_packet.v1" },
+            contentType: expect.stringContaining("application/json"),
+            status: 200,
+        });
+        await expect(page.getByRole("heading", { name: "e2e partial" })).toBeVisible();
+        await expect(page.getByText("partial", { exact: true })).toBeVisible();
+        await page.screenshot({
+            path: testInfo.outputPath("happy-packet-1280.png"),
+            fullPage: true,
+        });
+        await page.setViewportSize({ width: 768, height: 768 });
+        const evidenceResponse = page.waitForResponse(
+            (response) =>
+                new URL(response.url()).pathname.startsWith("/api/agent-context/evidence/") &&
+                response.request().method() === "GET",
+        );
+        await page.getByRole("button", { name: "Open evidence" }).click();
+        const bffEvidenceResponse = await evidenceResponse;
+        expect({
+            body: await bffEvidenceResponse.json(),
+            status: bffEvidenceResponse.status(),
+        }).toMatchObject({
+            body: { schema_version: "expanded_evidence.v1" },
+            status: 200,
+        });
+        await expect(
+            page.getByText(
+                "ACR Security: Implement scoped client credentials and repository authorization",
+            ),
+        ).toBeVisible();
+        expect(browserRequests.some((url) => url.includes(":8013"))).toBe(false);
+        await page.screenshot({
+            path: testInfo.outputPath("expanded-evidence-768.png"),
+            fullPage: true,
+        });
+    });
+
+    for (const [goal, expected] of [
+        ["e2e empty", "No context matched this scope"],
+        ["e2e degraded", "Partial context is available"],
+        ["e2e error", "Context Fabric response could not be generated"],
+    ] as const) {
+        test(`renders the live ${goal} terminal outcome`, async ({ page }) => {
+            await setEntitlementScenario(page.request, "provisioned");
+            await page.goto("/agent-context/context-packet");
+
+            await page.getByLabel(/Goal/).fill(goal);
+            await page.getByRole("button", { name: "Generate context" }).click();
+
+            const terminalState = page.getByRole("status");
+            await expect(terminalState).toContainText(expected);
+            await expect(terminalState).toBeFocused();
+        });
+    }
 });

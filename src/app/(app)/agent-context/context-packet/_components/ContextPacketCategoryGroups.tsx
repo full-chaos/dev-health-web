@@ -8,6 +8,7 @@ import type {
     ACRExpandedEvidenceV1,
 } from "@/lib/acr/generated";
 import { displayPacketTime } from "./contextPacketFormatters";
+import { isExpandedEvidence } from "./contextPacketResponse";
 import { SafePacketMarkdown, safeExternalHref } from "./SafePacketMarkdown";
 
 const CATEGORY_LABELS = [
@@ -17,8 +18,45 @@ const CATEGORY_LABELS = [
     ["evidence", "Evidence"],
     ["action", "Action"],
 ] as const;
+const MAX_CONCURRENT_EVIDENCE_REQUESTS = 8;
 
 type EvidenceByID = Readonly<Record<string, ACRExpandedEvidenceV1>>;
+
+type EvidenceLoadInput = {
+    readonly evidenceRefIds: readonly string[];
+    readonly repository: string;
+};
+
+async function loadEvidenceInBatches(input: EvidenceLoadInput): Promise<EvidenceByID> {
+    const retrieved: Record<string, ACRExpandedEvidenceV1> = {};
+
+    for (
+        let offset = 0;
+        offset < input.evidenceRefIds.length;
+        offset += MAX_CONCURRENT_EVIDENCE_REQUESTS
+    ) {
+        const batch = input.evidenceRefIds.slice(offset, offset + MAX_CONCURRENT_EVIDENCE_REQUESTS);
+        const results = await Promise.allSettled(
+            batch.map(async (evidenceRefId) => {
+                const response = await fetch(
+                    `/api/agent-context/evidence/${encodeURIComponent(evidenceRefId)}?repository=${encodeURIComponent(input.repository)}`,
+                    { cache: "no-store" },
+                );
+                const value: unknown = await response.json();
+                return response.ok && isExpandedEvidence(value)
+                    ? { evidence: value, evidenceRefId }
+                    : null;
+            }),
+        );
+        for (const result of results) {
+            if (result.status === "fulfilled" && result.value !== null) {
+                retrieved[result.value.evidenceRefId] = result.value.evidence;
+            }
+        }
+    }
+
+    return retrieved;
+}
 
 function CategoryItem({
     item,
@@ -39,26 +77,26 @@ function CategoryItem({
         .filter((value): value is ACRExpandedEvidenceV1 => value !== undefined);
 
     const requestEvidence = async () => {
-        const missingEvidenceID = item.evidence_ref_ids.find(
+        const missingEvidenceIDs = item.evidence_ref_ids.filter(
             (evidenceID) =>
                 loadedEvidence[evidenceID] === undefined && evidenceByID[evidenceID] === undefined,
         );
-        if (missingEvidenceID === undefined) return;
+        if (missingEvidenceIDs.length === 0) return;
         setLoadingEvidence(true);
         setEvidenceError(null);
-        try {
-            const response = await fetch(
-                `/api/agent-context/evidence/${encodeURIComponent(missingEvidenceID)}?repository=${encodeURIComponent(repository)}`,
-                { cache: "no-store" },
-            );
-            if (!response.ok) throw new Error("evidence unavailable");
-            const evidence = (await response.json()) as ACRExpandedEvidenceV1;
-            setLoadedEvidence((current) => ({ ...current, [missingEvidenceID]: evidence }));
-        } catch {
-            setEvidenceError("Evidence is unavailable. Try again when the service is available.");
-        } finally {
-            setLoadingEvidence(false);
+        const retrieved = await loadEvidenceInBatches({
+            evidenceRefIds: missingEvidenceIDs,
+            repository,
+        });
+        if (Object.keys(retrieved).length > 0) {
+            setLoadedEvidence((current) => ({ ...current, ...retrieved }));
         }
+        if (Object.keys(retrieved).length !== missingEvidenceIDs.length) {
+            setEvidenceError(
+                "Some evidence is unavailable. Open evidence again to retry missing references.",
+            );
+        }
+        setLoadingEvidence(false);
     };
 
     return (

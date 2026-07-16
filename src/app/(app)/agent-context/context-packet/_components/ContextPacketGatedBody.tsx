@@ -6,6 +6,7 @@ type ContextPacketGatedBodyProps = {
     readonly enabled: boolean;
     readonly controlledState: ControlledPacketState;
     readonly live?: boolean;
+    readonly repositories?: readonly string[];
     readonly showRetrievalDebug?: boolean;
 };
 
@@ -13,6 +14,7 @@ export function ContextPacketGatedBody({
     enabled,
     controlledState,
     live = false,
+    repositories,
     showRetrievalDebug = false,
 }: ContextPacketGatedBodyProps) {
     if (!enabled) {
@@ -22,6 +24,7 @@ export function ContextPacketGatedBody({
         <ContextPacketExplorer
             controlledState={controlledState}
             live={live}
+            repositories={repositories}
             showRetrievalDebug={showRetrievalDebug}
         />
     );

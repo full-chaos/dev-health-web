@@ -94,6 +94,7 @@
         "msw": "^2.14.6",
         "prettier": "3.9.4",
         "tailwindcss": "^4",
+        "tsx": "4.21.0",
         "typescript": "^6",
         "vitest": "^4.1.9"
     }

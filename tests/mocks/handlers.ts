@@ -1667,6 +1667,16 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         });
     }
 
+    if (query.includes("ACRRepositoryScopes")) {
+        return HttpResponse.json({
+            data: {
+                catalog: {
+                    values: [{ count: 1, value: "full-chaos/dev-health-acr" }],
+                },
+            },
+        });
+    }
+
     // Catalog dimension values for AI filter bar dropdowns.
     if (query.includes("CatalogValues") || query.includes("catalog(")) {
         const dim =

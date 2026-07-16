@@ -2,6 +2,8 @@ import { BackLink } from "@/components/shared/BackLink";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
 import { auth } from "@/lib/auth";
+import { listAuthorizedRepositories } from "@/lib/acr/service";
+import { AcrRuntimeError } from "@/lib/acr/errors";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { filterFromQueryParams } from "@/lib/filters/encode";
 import { ContextPacketGatedBody } from "./_components/ContextPacketGatedBody";
@@ -35,6 +37,15 @@ export default async function ContextPacketPage({ searchParams }: ContextPacketP
         entitlements?.data?.is_valid === true &&
         entitlements.data.features["agent_context_runtime"] === true;
     const session = await auth();
+    let repositories: readonly string[] | undefined;
+    if (enabled && !testMode && org?.data?.id) {
+        try {
+            repositories = await listAuthorizedRepositories(org.data.id);
+        } catch (error) {
+            if (!(error instanceof AcrRuntimeError)) throw error;
+            repositories = [];
+        }
+    }
 
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -47,6 +58,7 @@ export default async function ContextPacketPage({ searchParams }: ContextPacketP
                         enabled={enabled}
                         controlledState={controlledStateFrom(params.state, testMode)}
                         live={!testMode}
+                        repositories={repositories}
                         showRetrievalDebug={session?.user.is_superuser === true}
                     />
                 </main>

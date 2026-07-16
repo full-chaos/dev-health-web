@@ -41,11 +41,7 @@ describe("ContextPacketExplorer", () => {
         await user.click(screen.getByRole("button", { name: "Generate context" }));
 
         expect(goal).toHaveValue("Inspect repository access boundaries");
-        await waitFor(() =>
-            expect(
-                screen.getByRole("region", { name: "Generated Context Fabric response" }),
-            ).toHaveFocus(),
-        );
+        await waitFor(() => expect(screen.getByRole("status")).toHaveFocus());
         expect(screen.getByRole("button", { name: "Generate context" })).toBeEnabled();
     });
 
@@ -156,14 +152,20 @@ describe("ContextPacketExplorer", () => {
 
     it("uses the local server boundary for live packets and preserves partial coverage", async () => {
         const user = userEvent.setup();
-        const fetchSpy = vi
-            .spyOn(globalThis, "fetch")
-            .mockResolvedValue(
-                new Response(JSON.stringify({ ...SAMPLE_CONTEXT_PACKET, status: "partial" }), {
-                    status: 200,
-                }),
-            );
-        render(<ContextPacketExplorer controlledState="sample" live />);
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+            new Response(JSON.stringify({ ...SAMPLE_CONTEXT_PACKET, status: "partial" }), {
+                status: 200,
+            }),
+        );
+        render(
+            <ContextPacketExplorer
+                controlledState="sample"
+                live
+                repositories={["full-chaos/dev-health-acr"]}
+            />,
+        );
+
+        await user.type(screen.getByLabelText(/Goal/), "Preserve partial coverage");
 
         await user.click(screen.getByRole("button", { name: "Generate context" }));
 
@@ -173,6 +175,148 @@ describe("ContextPacketExplorer", () => {
             expect.objectContaining({ cache: "no-store", method: "POST" }),
         );
         fetchSpy.mockRestore();
+    });
+
+    it("uses only the server-authorized live repository catalog and never starts from sample values", () => {
+        render(
+            <ContextPacketExplorer
+                controlledState="sample"
+                live
+                repositories={["full-chaos/dev-health-acr", "full-chaos/dev-health-web"]}
+            />,
+        );
+
+        expect(screen.getByLabelText(/Goal/)).toHaveValue("");
+        expect(screen.getByRole("combobox", { name: /Repository/ })).toHaveValue(
+            "full-chaos/dev-health-acr",
+        );
+        expect(
+            screen.getByRole("option", { name: "full-chaos/dev-health-web" }),
+        ).toBeInTheDocument();
+    });
+
+    it("renders the validated live partial packet without injecting sample evidence", async () => {
+        const user = userEvent.setup();
+        const livePacket = {
+            ...SAMPLE_CONTEXT_PACKET,
+            context_packet_id: "packet-live-partial",
+            goal: "Inspect a live partial response",
+            items: [],
+            status: "partial" as const,
+        };
+        const fetchSpy = vi
+            .spyOn(globalThis, "fetch")
+            .mockResolvedValue(new Response(JSON.stringify(livePacket), { status: 200 }));
+        render(
+            <ContextPacketExplorer
+                controlledState="sample"
+                live
+                repositories={["full-chaos/dev-health-acr"]}
+            />,
+        );
+
+        await user.type(screen.getByLabelText(/Goal/), "Inspect a live partial response");
+        await user.click(screen.getByRole("button", { name: "Generate context" }));
+
+        await waitFor(() =>
+            expect(
+                screen.getByRole("heading", { name: "Inspect a live partial response" }),
+            ).toBeInTheDocument(),
+        );
+        expect(screen.queryByText("Credential authorization review")).not.toBeInTheDocument();
+        expect(screen.getByRole("status")).toHaveTextContent("partial");
+        fetchSpy.mockRestore();
+    });
+
+    it("focuses and announces every terminal controlled outcome", async () => {
+        for (const controlledState of ["empty", "error", "not-entitled"] as const) {
+            const { unmount } = render(<ContextPacketExplorer controlledState={controlledState} />);
+
+            await waitFor(() => expect(screen.getByRole("status")).toHaveFocus());
+            expect(screen.getByRole("status")).toHaveTextContent(
+                /Context Fabric|Agent Context Runtime/,
+            );
+            unmount();
+        }
+    });
+
+    it("loads every missing evidence reference in packet order and preserves successful results", async () => {
+        const user = userEvent.setup();
+        const evidenceIds = [
+            "ev_01J0ACR001",
+            "ev_01J0ACR002",
+            "ev_01J0ACR003",
+            "ev_01J0ACR004",
+            "ev_01J0ACR005",
+            "ev_01J0ACR006",
+            "ev_01J0ACR007",
+            "ev_01J0ACR008",
+            "ev_01J0ACR009",
+        ];
+        const packet = {
+            ...SAMPLE_CONTEXT_PACKET,
+            items: [
+                {
+                    ...SAMPLE_CONTEXT_PACKET.items[0],
+                    evidence_ref_ids: evidenceIds,
+                },
+            ],
+        };
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+            const url = String(input);
+            const evidenceRefId = evidenceIds.find((id) => url.includes(id)) ?? "";
+            return Promise.resolve(
+                new Response(
+                    JSON.stringify({
+                        ...SAMPLE_EXPANDED_EVIDENCE.ev_01J0ACR001,
+                        evidence: {
+                            ...SAMPLE_EXPANDED_EVIDENCE.ev_01J0ACR001.evidence,
+                            evidence_ref_id: evidenceRefId,
+                            source: {
+                                ...SAMPLE_EXPANDED_EVIDENCE.ev_01J0ACR001.evidence.source,
+                                display_label: `Evidence ${evidenceRefId}`,
+                            },
+                        },
+                    }),
+                    { status: 200 },
+                ),
+            );
+        });
+        render(<ContextPacketCategoryGroups packet={packet} evidenceByID={{}} />);
+
+        await user.click(screen.getByRole("button", { name: "Open evidence" }));
+
+        await waitFor(() => expect(screen.getByText("Evidence ev_01J0ACR009")).toBeInTheDocument());
+        expect(fetchSpy).toHaveBeenCalledTimes(evidenceIds.length);
+        expect(fetchSpy).toHaveBeenNthCalledWith(
+            1,
+            expect.stringContaining("ev_01J0ACR001"),
+            expect.anything(),
+        );
+        expect(fetchSpy).toHaveBeenNthCalledWith(
+            evidenceIds.length,
+            expect.stringContaining("ev_01J0ACR009"),
+            expect.anything(),
+        );
+        fetchSpy.mockRestore();
+    });
+
+    it("resets browser-only feedback when a new packet replaces the current packet", async () => {
+        const user = userEvent.setup();
+        const { rerender } = render(<ContextPacketDetails packet={SAMPLE_CONTEXT_PACKET} />);
+
+        await user.click(screen.getByRole("button", { name: "Mark context as incorrect" }));
+        expect(screen.getByText("Feedback recorded for this session only.")).toBeInTheDocument();
+
+        rerender(
+            <ContextPacketDetails
+                packet={{ ...SAMPLE_CONTEXT_PACKET, context_packet_id: "packet-regenerated" }}
+            />,
+        );
+
+        expect(
+            screen.queryByText("Feedback recorded for this session only."),
+        ).not.toBeInTheDocument();
     });
 
     it("reveals retrieval details only when the server authorizes an administrator", () => {
