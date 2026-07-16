@@ -47,7 +47,9 @@ export function ContextPacketExplorer({
     const [form, setForm] = useState(() => initialRequest(live, repositories));
     const [submitted, setSubmitted] = useState<ControlledPacketState | null>(null);
     const [goalError, setGoalError] = useState<string | null>(null);
-    const [packet, setPacket] = useState(SAMPLE_CONTEXT_PACKET);
+    const [packet, setPacket] = useState<ACRContextPacketV1 | null>(() =>
+        live ? null : SAMPLE_CONTEXT_PACKET,
+    );
     const goalRef = useRef<HTMLTextAreaElement>(null);
     const activeState =
         controlledState === "sample" && submitted !== null ? submitted : controlledState;

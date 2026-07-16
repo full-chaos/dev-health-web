@@ -150,6 +150,21 @@ describe("PrDetailPage", () => {
         expect(getWorkUnitInvestmentDistributionMock).not.toHaveBeenCalled();
     });
 
+    it("keeps a long commit readable while exposing its complete hash accessibly", async () => {
+        const fullHash = "a".repeat(64);
+        getPrDetailViaGraphQLMock.mockResolvedValue({
+            ...samplePr,
+            commits: [{ ...samplePr.commits[0], hash: fullHash, message: "A long commit message" }],
+        });
+
+        await renderPage();
+
+        const hash = screen.getByLabelText(`Full commit hash: ${fullHash}`);
+        expect(hash).toHaveTextContent("aaaaaaaa");
+        expect(hash).toHaveAttribute("title", fullHash);
+        expect(hash.closest("li")).toHaveClass("break-words");
+    });
+
     it("renders honest empty state without requesting live related entities for a missing PR", async () => {
         getPrDetailViaGraphQLMock.mockResolvedValue(null);
 

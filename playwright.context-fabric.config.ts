@@ -27,7 +27,8 @@ export default defineConfig({
     ],
     webServer: [
         {
-            command: "pnpm exec tsx ./tests/mocks/http-server.ts",
+            command:
+                "exec node scripts/run-owned-process.mjs pnpm exec tsx ./tests/mocks/http-server.ts",
             url: "http://127.0.0.1:8012/health",
             reuseExistingServer: false,
             timeout: 30_000,
@@ -35,7 +36,7 @@ export default defineConfig({
         },
         {
             command:
-                "rm -rf test-results/context-fabric-keys && mkdir -p test-results/context-fabric-keys && openssl genpkey -algorithm ED25519 -out test-results/context-fabric-keys/web-assertion.key && chmod 600 test-results/context-fabric-keys/web-assertion.key && openssl req -x509 -newkey rsa:2048 -nodes -keyout test-results/context-fabric-keys/tls.key -out test-results/context-fabric-keys/tls.crt -subj /CN=127.0.0.1 -days 1 && pnpm exec tsx ./tests/mocks/acr-server.ts",
+                "rm -rf test-results/context-fabric-keys && mkdir -p test-results/context-fabric-keys && openssl genpkey -algorithm ED25519 -out test-results/context-fabric-keys/web-assertion.key && chmod 600 test-results/context-fabric-keys/web-assertion.key && openssl req -x509 -newkey rsa:2048 -nodes -keyout test-results/context-fabric-keys/tls.key -out test-results/context-fabric-keys/tls.crt -subj /CN=127.0.0.1 -days 1 && exec node scripts/run-owned-process.mjs pnpm exec tsx tests/mocks/acr-server.ts",
             url: "https://127.0.0.1:8013/health",
             ignoreHTTPSErrors: true,
             reuseExistingServer: false,
@@ -48,7 +49,7 @@ export default defineConfig({
         },
         {
             command:
-                "rm -rf test-results/context-fabric-runtime && mkdir -p test-results/context-fabric-runtime/.next && cp -R .next/standalone/. test-results/context-fabric-runtime && cp -R .next/static test-results/context-fabric-runtime/.next/static && cp -R public scripts test-results/context-fabric-runtime && cd test-results/context-fabric-runtime && node scripts/write-runtime-config.mjs && HOSTNAME=127.0.0.1 PORT=3012 node server.js",
+                "rm -rf test-results/context-fabric-runtime && mkdir -p test-results/context-fabric-runtime/.next && cp -R .next/standalone/. test-results/context-fabric-runtime && cp -R .next/static test-results/context-fabric-runtime/.next/static && cp -R public scripts test-results/context-fabric-runtime && cd test-results/context-fabric-runtime && node scripts/write-runtime-config.mjs && HOSTNAME=127.0.0.1 PORT=3012 exec node scripts/run-owned-process.mjs node server.js",
             url: "http://127.0.0.1:3012",
             reuseExistingServer: false,
             timeout: 120_000,

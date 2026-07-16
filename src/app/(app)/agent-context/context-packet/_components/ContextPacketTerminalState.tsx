@@ -13,7 +13,7 @@ import {
 
 type ContextPacketTerminalStateProps = {
     readonly autoFocus: boolean;
-    readonly packet: ACRContextPacketV1;
+    readonly packet: ACRContextPacketV1 | null;
     readonly sampleMode: boolean;
     readonly showRetrievalDebug: boolean;
     readonly state: ControlledPacketState;
@@ -87,6 +87,7 @@ export function ContextPacketTerminalState({
     showRetrievalDebug,
     state,
 }: ContextPacketTerminalStateProps) {
+    if (state === "sample" && packet === null) return null;
     if (state === "loading") {
         return (
             <DataState
@@ -136,6 +137,7 @@ export function ContextPacketTerminalState({
         );
     }
 
+    if (packet === null) return null;
     const display = packetFor(state, packet, sampleMode);
     return (
         <FocusedState autoFocus={autoFocus} message={terminalMessages[state]}>

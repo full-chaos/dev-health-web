@@ -155,6 +155,11 @@ test.describe("Context Fabric production entitlement boundary", () => {
         const browserRequests: string[] = [];
         page.on("request", (request) => browserRequests.push(request.url()));
         await page.goto("/agent-context/context-packet");
+        await expect(page.getByText("Context Fabric status")).toHaveCount(0);
+        await page.screenshot({
+            path: testInfo.outputPath("happy-live-initial-1280.png"),
+            fullPage: true,
+        });
 
         await page.getByLabel(/Goal/).fill("e2e partial");
         const packetResponse = page.waitForResponse(

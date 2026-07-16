@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { render, screen, waitFor } from "@/test/utils";
 import type { ACRExpandedEvidenceV1 } from "@/lib/acr/generated";
@@ -6,9 +6,14 @@ import type { ACRExpandedEvidenceV1 } from "@/lib/acr/generated";
 import { ContextPacketCategoryGroups } from "./ContextPacketCategoryGroups";
 import { ContextPacketDetails } from "./ContextPacketDetails";
 import { ContextPacketExplorer } from "./ContextPacketExplorer";
+import { resetEvidenceRequestRegistryForTests } from "./evidenceRequestRegistry";
 import { SAMPLE_CONTEXT_PACKET, SAMPLE_EXPANDED_EVIDENCE } from "./samplePacket";
 
 describe("ContextPacketExplorer", () => {
+    afterEach(() => {
+        resetEvidenceRequestRegistryForTests();
+        vi.restoreAllMocks();
+    });
     it("renders the deterministic sample packet in the prescribed category order", () => {
         render(<ContextPacketExplorer controlledState="sample" />);
 
@@ -193,6 +198,35 @@ describe("ContextPacketExplorer", () => {
         expect(
             screen.getByRole("option", { name: "full-chaos/dev-health-web" }),
         ).toBeInTheDocument();
+        expect(screen.queryByText("Context Fabric status")).not.toBeInTheDocument();
+        expect(screen.queryByText("Credential authorization review")).not.toBeInTheDocument();
+    });
+
+    it("renders a safe error state when a successful live response is malformed", async () => {
+        const user = userEvent.setup();
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+            new Response(
+                JSON.stringify({
+                    ...SAMPLE_CONTEXT_PACKET,
+                    freshness: { ...SAMPLE_CONTEXT_PACKET.freshness, watermarks: null },
+                }),
+                { status: 200 },
+            ),
+        );
+        render(
+            <ContextPacketExplorer
+                controlledState="sample"
+                live
+                repositories={["full-chaos/dev-health-acr"]}
+            />,
+        );
+
+        await user.type(screen.getByLabelText(/Goal/), "Reject malformed response");
+        await user.click(screen.getByRole("button", { name: "Generate context" }));
+
+        await waitFor(() => expect(screen.getByTestId("data-state-error")).toBeInTheDocument());
+        expect(screen.queryByText("Credential authorization review")).not.toBeInTheDocument();
+        fetchSpy.mockRestore();
     });
 
     it("renders the validated live partial packet without injecting sample evidence", async () => {
@@ -298,7 +332,104 @@ describe("ContextPacketExplorer", () => {
             expect.stringContaining("ev_01J0ACR009"),
             expect.anything(),
         );
-        fetchSpy.mockRestore();
+    });
+
+    it("shares evidence requests and reuses completed evidence across reopened items", async () => {
+        const user = userEvent.setup();
+        const packet = {
+            ...SAMPLE_CONTEXT_PACKET,
+            items: [
+                SAMPLE_CONTEXT_PACKET.items[0],
+                { ...SAMPLE_CONTEXT_PACKET.items[0], packet_item_id: "second-item" },
+            ],
+        };
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+            new Response(JSON.stringify(SAMPLE_EXPANDED_EVIDENCE.ev_01J0ACR001), {
+                status: 200,
+            }),
+        );
+        render(<ContextPacketCategoryGroups packet={packet} evidenceByID={{}} />);
+
+        const buttons = screen.getAllByRole("button", { name: "Open evidence" });
+        await user.click(buttons[0]);
+        await user.click(buttons[1]);
+
+        await waitFor(() =>
+            expect(screen.getAllByText("Credential authorization review")).toHaveLength(2),
+        );
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+
+        await user.click(buttons[0]);
+        await user.click(buttons[0]);
+        expect(fetchSpy).toHaveBeenCalledTimes(1);
+    });
+
+    it("caps concurrent evidence requests across all expanded items", async () => {
+        const user = userEvent.setup();
+        const evidenceIds = Array.from({ length: 9 }, (_, index) => `ev-cap-${index}`);
+        const resolvers = new Map<string, (response: Response) => void>();
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+            const evidenceRefId = evidenceIds.find((id) => String(input).includes(id));
+            return new Promise<Response>((resolve) => {
+                if (evidenceRefId) resolvers.set(evidenceRefId, resolve);
+            });
+        });
+        const packet = {
+            ...SAMPLE_CONTEXT_PACKET,
+            items: [
+                { ...SAMPLE_CONTEXT_PACKET.items[0], evidence_ref_ids: evidenceIds.slice(0, 5) },
+                {
+                    ...SAMPLE_CONTEXT_PACKET.items[0],
+                    evidence_ref_ids: evidenceIds.slice(5),
+                    packet_item_id: "second-evidence-item",
+                },
+            ],
+        };
+        render(<ContextPacketCategoryGroups packet={packet} evidenceByID={{}} />);
+
+        for (const button of screen.getAllByRole("button", { name: "Open evidence" })) {
+            await user.click(button);
+        }
+        await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(8));
+        expect(resolvers.get("ev-cap-0")).toBeDefined();
+
+        resolvers.get("ev-cap-0")?.(
+            new Response(
+                JSON.stringify({
+                    ...SAMPLE_EXPANDED_EVIDENCE.ev_01J0ACR001,
+                    evidence: {
+                        ...SAMPLE_EXPANDED_EVIDENCE.ev_01J0ACR001.evidence,
+                        evidence_ref_id: "ev-cap-0",
+                    },
+                }),
+                { status: 200 },
+            ),
+        );
+        await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(9));
+    });
+
+    it("aborts an unneeded evidence request when its packet is replaced", async () => {
+        const user = userEvent.setup();
+        let signal: AbortSignal | undefined;
+        vi.spyOn(globalThis, "fetch").mockImplementation((_input, init) => {
+            signal = init?.signal ?? undefined;
+            return new Promise<Response>(() => undefined);
+        });
+        const { rerender } = render(
+            <ContextPacketCategoryGroups packet={SAMPLE_CONTEXT_PACKET} evidenceByID={{}} />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "Open evidence" }));
+        await waitFor(() => expect(signal).toBeDefined());
+        rerender(
+            <ContextPacketCategoryGroups
+                packet={{ ...SAMPLE_CONTEXT_PACKET, context_packet_id: "replacement-packet" }}
+                evidenceByID={{}}
+            />,
+        );
+
+        expect(signal?.aborted).toBe(true);
+        expect(screen.queryByText("Some evidence is unavailable")).not.toBeInTheDocument();
     });
 
     it("resets browser-only feedback when a new packet replaces the current packet", async () => {

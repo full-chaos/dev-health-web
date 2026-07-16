@@ -1,6 +1,5 @@
-import Link from "next/link";
-
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
+import { BackLink } from "@/components/shared/BackLink";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
@@ -139,8 +138,12 @@ function PrDetailSummary({ pr }: { pr: PullRequestDetail }) {
                     ) : (
                         <ul className="mt-3 space-y-2 text-sm text-(--ink-muted)">
                             {pr.commits.map((commit) => (
-                                <li key={commit.hash}>
-                                    <span className="text-foreground">
+                                <li key={commit.hash} className="min-w-0 break-words">
+                                    <span
+                                        aria-label={`Full commit hash: ${commit.hash}`}
+                                        className="text-foreground"
+                                        title={commit.hash}
+                                    >
                                         {commit.hash.slice(0, 8)}
                                     </span>{" "}
                                     · {commit.message ?? "No message"}
@@ -283,12 +286,7 @@ function PrHeader() {
                     Review persisted PR details, reviews, commits, and Work Graph evidence.
                 </p>
             </div>
-            <Link
-                href="/explore"
-                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-            >
-                Back to Explore
-            </Link>
+            <BackLink area="Explore" href="/explore" />
         </header>
     );
 }

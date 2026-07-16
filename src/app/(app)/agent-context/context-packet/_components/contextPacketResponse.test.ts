@@ -14,4 +14,56 @@ describe("context packet response validation", () => {
             isExpandedEvidence({ ...Object.values(SAMPLE_EXPANDED_EVIDENCE)[0], evidence: {} }),
         ).toBe(false);
     });
+
+    it("rejects malformed renderer-required nested packet fields", () => {
+        expect(
+            isContextPacket({
+                ...SAMPLE_CONTEXT_PACKET,
+                freshness: { ...SAMPLE_CONTEXT_PACKET.freshness, watermarks: null },
+            }),
+        ).toBe(false);
+        expect(
+            isContextPacket({
+                ...SAMPLE_CONTEXT_PACKET,
+                items: [
+                    {
+                        ...SAMPLE_CONTEXT_PACKET.items[0],
+                        confidence: Number.NaN,
+                        related_entities: [{ id: "entity", label: "Entity" }],
+                    },
+                ],
+            }),
+        ).toBe(false);
+        expect(
+            isContextPacket({
+                ...SAMPLE_CONTEXT_PACKET,
+                coverage: { ...SAMPLE_CONTEXT_PACKET.coverage, sources_unavailable: [{}] },
+            }),
+        ).toBe(false);
+        expect(
+            isContextPacket({
+                ...SAMPLE_CONTEXT_PACKET,
+                required_checks: [{ check_id: "check" }],
+            }),
+        ).toBe(false);
+    });
+
+    it("rejects malformed renderer-required expanded evidence fields", () => {
+        const evidence = Object.values(SAMPLE_EXPANDED_EVIDENCE)[0];
+        expect(
+            isExpandedEvidence({
+                ...evidence,
+                evidence: {
+                    ...evidence.evidence,
+                    source: { display_label: "Missing source fields" },
+                },
+            }),
+        ).toBe(false);
+        expect(
+            isExpandedEvidence({
+                ...evidence,
+                evidence: { ...evidence.evidence, confidence: Infinity },
+            }),
+        ).toBe(false);
+    });
 });
