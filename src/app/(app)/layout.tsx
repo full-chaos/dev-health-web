@@ -1,5 +1,4 @@
 import { SessionProvider } from "@/components/auth/SessionProvider";
-import { UserMenu } from "@/components/auth/UserMenu";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { TrialBanner } from "@/components/billing/TrialBanner";
@@ -32,9 +31,6 @@ export default async function AppLayout({
                 <GraphQLProvider orgId={session.user.org_id}>
                     <TelemetryProvider orgId={session.user.org_id} userId={session.user.id}>
                         <div className="min-h-screen bg-[image:var(--app-gradient)] bg-fixed">
-                            <div className="fixed right-6 top-6 z-50">
-                                <UserMenu />
-                            </div>
                             <ImpersonationBanner />
                             <TrialBanner />
                             {children}

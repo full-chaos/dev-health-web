@@ -4,11 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import AppLayout from "./layout";
 
-const { adminTierProviderSpy, getOrgEntitlementsMock, requireSessionMock } = vi.hoisted(() => ({
-    adminTierProviderSpy: vi.fn(),
-    getOrgEntitlementsMock: vi.fn(),
-    requireSessionMock: vi.fn(),
-}));
+const { adminTierProviderSpy, getOrgEntitlementsMock, requireSessionMock, userMenuSpy } =
+    vi.hoisted(() => ({
+        adminTierProviderSpy: vi.fn(),
+        getOrgEntitlementsMock: vi.fn(),
+        requireSessionMock: vi.fn(),
+        userMenuSpy: vi.fn(),
+    }));
 
 vi.mock("@/lib/auth", () => ({
     requireSession: requireSessionMock,
@@ -47,7 +49,12 @@ vi.mock("@/components/telemetry/TelemetryProvider", () => ({
     TelemetryProvider: ({ children }: { readonly children: ReactNode }) => <>{children}</>,
 }));
 
-vi.mock("@/components/auth/UserMenu", () => ({ UserMenu: () => null }));
+vi.mock("@/components/auth/UserMenu", () => ({
+    UserMenu: () => {
+        userMenuSpy();
+        return <div data-testid="global-user-menu" />;
+    },
+}));
 vi.mock("@/components/admin/ImpersonationBanner", () => ({ ImpersonationBanner: () => null }));
 vi.mock("@/components/billing/TrialBanner", () => ({ TrialBanner: () => null }));
 vi.mock("@/components/feedback/BugReportButton", () => ({ BugReportButton: () => null }));
@@ -56,6 +63,7 @@ vi.mock("sonner", () => ({ Toaster: () => null }));
 describe("AppLayout entitlement wiring", () => {
     beforeEach(() => {
         adminTierProviderSpy.mockClear();
+        userMenuSpy.mockClear();
         requireSessionMock.mockResolvedValue({
             user: { id: "user-1", org_id: "org-1", token: "secret-token" },
         });
@@ -80,6 +88,22 @@ describe("AppLayout entitlement wiring", () => {
             limits: { agent_context_runtime: 1 },
             tier: "enterprise",
         });
+    });
+
+    it("does not render the fixed global user menu over application content", async () => {
+        getOrgEntitlementsMock.mockResolvedValue({
+            data: {
+                features: {},
+                is_valid: true,
+                limits: {},
+                tier: "community",
+            },
+        });
+
+        render(await AppLayout({ children: <span>Context Fabric</span> }));
+
+        expect(screen.queryByTestId("global-user-menu")).not.toBeInTheDocument();
+        expect(userMenuSpy).not.toHaveBeenCalled();
     });
 
     it.each([
