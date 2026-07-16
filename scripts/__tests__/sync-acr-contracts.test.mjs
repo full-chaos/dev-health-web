@@ -1,28 +1,31 @@
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const SCRIPT = path.join(ROOT, "scripts/sync-acr-contracts.mjs");
 const SOURCE = process.env.ACR_ROOT;
 const ARTIFACT_ROOT = path.join(ROOT, "src/lib/acr/contracts");
 const MUTATED_FIXTURE = path.join(ROOT, "tests/fixtures/acr-contracts-mutated");
-function run(args, environment = {}) {
+const TEMPORARY_PROJECTS = new Set();
+
+function run(args, { cwd = ROOT, script = SCRIPT, environment = {} } = {}) {
     const env = { ...process.env, ...environment };
     for (const [key, value] of Object.entries(env)) {
         if (value === undefined) delete env[key];
     }
-    return spawnSync(process.execPath, [SCRIPT, ...args], {
-        cwd: ROOT,
+    return spawnSync(process.execPath, [script, ...args], {
+        cwd,
         encoding: "utf8",
         env,
     });
 }
 
-function committedArtifactSnapshot() {
-    const manifest = JSON.parse(fs.readFileSync(path.join(ARTIFACT_ROOT, "manifest.json"), "utf8"));
+function artifactSnapshot(artifactRoot) {
+    const manifest = JSON.parse(fs.readFileSync(path.join(artifactRoot, "manifest.json"), "utf8"));
     const paths = [
         "manifest.json",
         "../contracts.ts",
@@ -30,39 +33,83 @@ function committedArtifactSnapshot() {
         ...manifest.files.map((file) => file.path),
     ];
     return paths.map((relativePath) => {
-        const filePath = path.resolve(ARTIFACT_ROOT, relativePath);
+        const filePath = path.resolve(artifactRoot, relativePath);
         return [relativePath, fs.readFileSync(filePath, "utf8")];
     });
 }
 
+function committedArtifactSnapshot() {
+    return artifactSnapshot(ARTIFACT_ROOT);
+}
+
+function createTemporaryProject() {
+    const root = fs.mkdtempSync(path.join(ROOT, ".tmp-acr-contracts-"));
+    const artifactRoot = path.join(root, "src/lib/acr/contracts");
+    const script = path.join(root, "scripts/sync-acr-contracts.mjs");
+
+    fs.cpSync(ARTIFACT_ROOT, artifactRoot, { recursive: true });
+    fs.rmSync(path.join(artifactRoot, ".acr-contract-sync.lock"), { force: true });
+    fs.mkdirSync(path.dirname(script), { recursive: true });
+    fs.copyFileSync(SCRIPT, script);
+    fs.copyFileSync(
+        path.join(ROOT, "scripts/acr-contract-artifacts.mjs"),
+        path.join(root, "scripts/acr-contract-artifacts.mjs"),
+    );
+    fs.copyFileSync(
+        path.join(ROOT, "scripts/acr-contract-filesystem.mjs"),
+        path.join(root, "scripts/acr-contract-filesystem.mjs"),
+    );
+    fs.copyFileSync(
+        path.join(ROOT, "src/lib/acr/contracts.ts"),
+        path.join(root, "src/lib/acr/contracts.ts"),
+    );
+    fs.copyFileSync(
+        path.join(ROOT, "src/lib/acr/generated.ts"),
+        path.join(root, "src/lib/acr/generated.ts"),
+    );
+    TEMPORARY_PROJECTS.add(root);
+
+    return { artifactRoot, root, script };
+}
+
+function sha256(value) {
+    return createHash("sha256").update(value).digest("hex");
+}
+
+afterEach(() => {
+    for (const projectRoot of TEMPORARY_PROJECTS) {
+        fs.rmSync(projectRoot, { force: true, recursive: true });
+    }
+    TEMPORARY_PROJECTS.clear();
+});
+
 describe("sync-acr-contracts", () => {
-    const sourceTest =
-        SOURCE === undefined ||
-        !fs.existsSync(path.join(SOURCE, ".git")) ||
-        !fs.existsSync(path.join(SOURCE, "contracts"))
-            ? it.skip
-            : it;
+    const sourceTest = SOURCE === undefined ? it.skip : it;
 
-    sourceTest("generates byte-identical artifacts twice from the pinned ACR commit", () => {
-        const first = run(["generate"], { ACR_ROOT: SOURCE });
+    sourceTest("valid pinned ACR source generates byte-identical isolated artifacts twice", () => {
+        const project = createTemporaryProject();
+        const expectedCommit = JSON.parse(
+            fs.readFileSync(path.join(ARTIFACT_ROOT, "manifest.json"), "utf8"),
+        ).source_commit;
+        const options = {
+            cwd: project.root,
+            script: project.script,
+            environment: { ACR_ROOT: SOURCE },
+        };
+        const command = ["generate", "--allow-write", "--expected-commit", expectedCommit];
+
+        const first = run(command, options);
         expect(first.status).toBe(0);
-        const before = execFileSync("git", ["diff", "--binary", "--", "src/lib/acr"], {
-            cwd: ROOT,
-            encoding: "utf8",
-        });
+        const before = artifactSnapshot(project.artifactRoot);
 
-        const second = run(["generate"], { ACR_ROOT: SOURCE });
+        const second = run(command, options);
         expect(second.status).toBe(0);
-        const after = execFileSync("git", ["diff", "--binary", "--", "src/lib/acr"], {
-            cwd: ROOT,
-            encoding: "utf8",
-        });
 
-        expect(after).toBe(before);
+        expect(artifactSnapshot(project.artifactRoot)).toEqual(before);
     });
 
     it("checks committed artifacts without requiring the sibling ACR checkout", () => {
-        const result = run(["check"], { ACR_ROOT: undefined });
+        const result = run(["check"], { environment: { ACR_ROOT: undefined } });
 
         expect(result.status).toBe(0);
         expect(result.stdout).toContain("ACR contracts are current");
@@ -89,60 +136,66 @@ describe("sync-acr-contracts", () => {
         ]);
     });
 
-    it("rejects the tracked mutated source fixture without changing committed artifacts", () => {
-        const before = committedArtifactSnapshot();
-
-        const result = run(["check", "--source", MUTATED_FIXTURE]);
+    it("rejects an invalid defined ACR_ROOT instead of skipping required mutation tests", () => {
+        const result = run(["check"], { environment: { ACR_ROOT: MUTATED_FIXTURE } });
 
         expect(result.status).toBe(1);
-        expect(result.stderr).toContain("artifact drift");
+        expect(result.stderr).toContain("source must be a Git worktree root");
+    });
+
+    it("requires explicit write consent before generation and preserves committed artifacts", () => {
+        const before = committedArtifactSnapshot();
+        const project = createTemporaryProject();
+
+        const result = run(["generate", "--source", ROOT], {
+            cwd: project.root,
+            script: project.script,
+        });
+
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain("generate requires --allow-write");
         expect(committedArtifactSnapshot()).toEqual(before);
     });
 
-    it("fails a mutated fixture without changing committed artifacts", () => {
-        const fixture = path.join(ARTIFACT_ROOT, "examples/context_packet.v1.json");
-        const before = fs.readFileSync(fixture, "utf8");
+    it("fails an isolated digest mutation without changing committed artifacts", () => {
+        const before = committedArtifactSnapshot();
+        const project = createTemporaryProject();
+        const fixture = path.join(project.artifactRoot, "examples/context_packet.v1.json");
         fs.appendFileSync(fixture, "\n");
 
-        try {
-            const result = run(["check"], { ACR_ROOT: undefined });
+        const result = run(["check"], {
+            cwd: project.root,
+            script: project.script,
+            environment: { ACR_ROOT: undefined },
+        });
 
-            expect(result.status).toBe(1);
-            expect(result.stderr).toContain("digest drift");
-        } finally {
-            fs.writeFileSync(fixture, before);
-        }
-
-        expect(fs.readFileSync(fixture, "utf8")).toBe(before);
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain("digest drift");
+        expect(committedArtifactSnapshot()).toEqual(before);
     });
 
-    it("fails a malformed schema without rewriting committed artifacts", () => {
-        const schema = path.join(ARTIFACT_ROOT, "schemas/context_packet.v1.schema.json");
-        const manifest = path.join(ARTIFACT_ROOT, "manifest.json");
-        const schemaBefore = fs.readFileSync(schema, "utf8");
-        const manifestBefore = fs.readFileSync(manifest, "utf8");
+    it("fails an isolated malformed schema without rewriting committed artifacts", () => {
+        const before = committedArtifactSnapshot();
+        const project = createTemporaryProject();
+        const schema = path.join(project.artifactRoot, "schemas/context_packet.v1.schema.json");
+        const manifest = path.join(project.artifactRoot, "manifest.json");
         const malformed = "{\n";
-        const updatedManifest = JSON.parse(manifestBefore);
+        const updatedManifest = JSON.parse(fs.readFileSync(manifest, "utf8"));
         const entry = updatedManifest.files.find(
             (file) => file.path === "schemas/context_packet.v1.schema.json",
         );
-        entry.sha256 = execFileSync("shasum", ["-a", "256"], { encoding: "utf8", input: malformed })
-            .trim()
-            .split(/\s+/u)[0];
+        entry.sha256 = sha256(malformed);
         fs.writeFileSync(schema, malformed);
         fs.writeFileSync(manifest, `${JSON.stringify(updatedManifest, null, 2)}\n`);
 
-        try {
-            const result = run(["check"], { ACR_ROOT: undefined });
+        const result = run(["check"], {
+            cwd: project.root,
+            script: project.script,
+            environment: { ACR_ROOT: undefined },
+        });
 
-            expect(result.status).toBe(1);
-            expect(result.stderr).toContain("JSON");
-        } finally {
-            fs.writeFileSync(schema, schemaBefore);
-            fs.writeFileSync(manifest, manifestBefore);
-        }
-
-        expect(fs.readFileSync(schema, "utf8")).toBe(schemaBefore);
-        expect(fs.readFileSync(manifest, "utf8")).toBe(manifestBefore);
+        expect(result.status).toBe(1);
+        expect(result.stderr).toContain("JSON");
+        expect(committedArtifactSnapshot()).toEqual(before);
     });
 });
