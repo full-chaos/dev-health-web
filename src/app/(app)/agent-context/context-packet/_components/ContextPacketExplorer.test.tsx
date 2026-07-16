@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import userEvent from "@testing-library/user-event";
 import { render, screen, waitFor } from "@/test/utils";
+import type { ACRExpandedEvidenceV1 } from "@/lib/acr/generated";
 
+import { ContextPacketCategoryGroups } from "./ContextPacketCategoryGroups";
+import { ContextPacketDetails } from "./ContextPacketDetails";
 import { ContextPacketExplorer } from "./ContextPacketExplorer";
+import { SAMPLE_CONTEXT_PACKET, SAMPLE_EXPANDED_EVIDENCE } from "./samplePacket";
 
 describe("ContextPacketExplorer", () => {
     it("renders the deterministic sample packet in the prescribed category order", () => {
@@ -108,6 +112,79 @@ describe("ContextPacketExplorer", () => {
         expect(screen.getByText("Credential authorization review")).toBeInTheDocument();
         expect(screen.getByText("Repository credential requirements")).toBeInTheDocument();
         expect(screen.getByText(/Evidence is available/)).toBeInTheDocument();
+    });
+
+    it("renders retrieved markup as inert text and blocks unsafe evidence links", async () => {
+        const user = userEvent.setup();
+        const evidence: ACRExpandedEvidenceV1 = {
+            ...SAMPLE_EXPANDED_EVIDENCE.ev_01J0ACR001,
+            evidence: {
+                ...SAMPLE_EXPANDED_EVIDENCE.ev_01J0ACR001.evidence,
+                citation: "<img src=x onerror=alert(1)>",
+                source: {
+                    ...SAMPLE_EXPANDED_EVIDENCE.ev_01J0ACR001.evidence.source,
+                    safe_uri: "javascript:alert(1)",
+                },
+            },
+        };
+
+        render(
+            <ContextPacketCategoryGroups
+                packet={SAMPLE_CONTEXT_PACKET}
+                evidenceByID={{ ev_01J0ACR001: evidence }}
+            />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "Open evidence" }));
+
+        expect(screen.queryByRole("img")).not.toBeInTheDocument();
+        expect(screen.queryByText(/alert\(1\)/)).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "View safe source" })).not.toBeInTheDocument();
+    });
+
+    it("records feedback only in the current browser session", async () => {
+        const user = userEvent.setup();
+        const fetchSpy = vi.spyOn(globalThis, "fetch");
+        render(<ContextPacketExplorer controlledState="sample" />);
+
+        await user.click(screen.getByRole("button", { name: "Mark context as incorrect" }));
+
+        expect(screen.getByText("Feedback recorded for this session only.")).toBeInTheDocument();
+        expect(fetchSpy).not.toHaveBeenCalled();
+        fetchSpy.mockRestore();
+    });
+
+    it("uses the local server boundary for live packets and preserves partial coverage", async () => {
+        const user = userEvent.setup();
+        const fetchSpy = vi
+            .spyOn(globalThis, "fetch")
+            .mockResolvedValue(
+                new Response(JSON.stringify({ ...SAMPLE_CONTEXT_PACKET, status: "partial" }), {
+                    status: 200,
+                }),
+            );
+        render(<ContextPacketExplorer controlledState="sample" live />);
+
+        await user.click(screen.getByRole("button", { name: "Generate context" }));
+
+        await waitFor(() => expect(screen.getByText("partial")).toBeInTheDocument());
+        expect(fetchSpy).toHaveBeenCalledWith(
+            "/api/agent-context/context-packets",
+            expect.objectContaining({ cache: "no-store", method: "POST" }),
+        );
+        fetchSpy.mockRestore();
+    });
+
+    it("reveals retrieval details only when the server authorizes an administrator", () => {
+        const packet = {
+            ...SAMPLE_CONTEXT_PACKET,
+            retrieval_debug_summary: "Approved retrieval summary",
+        };
+        const { rerender } = render(<ContextPacketDetails packet={packet} />);
+
+        expect(screen.queryByText("Approved retrieval summary")).not.toBeInTheDocument();
+        rerender(<ContextPacketDetails packet={packet} showRetrievalDebug />);
+        expect(screen.getByText("Approved retrieval summary")).toBeInTheDocument();
     });
 
     it.each([

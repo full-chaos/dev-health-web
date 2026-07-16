@@ -5,13 +5,26 @@ import type { ControlledPacketState } from "./contextPacketStates";
 type ContextPacketGatedBodyProps = {
     readonly enabled: boolean;
     readonly controlledState: ControlledPacketState;
+    readonly live?: boolean;
+    readonly showRetrievalDebug?: boolean;
 };
 
-export function ContextPacketGatedBody({ enabled, controlledState }: ContextPacketGatedBodyProps) {
+export function ContextPacketGatedBody({
+    enabled,
+    controlledState,
+    live = false,
+    showRetrievalDebug = false,
+}: ContextPacketGatedBodyProps) {
     if (!enabled) {
         return <ContextPacketPreviewPlaceholder />;
     }
-    return <ContextPacketExplorer controlledState={controlledState} />;
+    return (
+        <ContextPacketExplorer
+            controlledState={controlledState}
+            live={live}
+            showRetrievalDebug={showRetrievalDebug}
+        />
+    );
 }
 
 function ContextPacketPreviewPlaceholder() {

@@ -1,16 +1,20 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@/test/utils";
 
-const { contextPacketGatedBodySpy, getCurrentOrgMock, getOrgEntitlementsMock } = vi.hoisted(() => ({
-    contextPacketGatedBodySpy: vi.fn(),
-    getCurrentOrgMock: vi.fn(),
-    getOrgEntitlementsMock: vi.fn(),
-}));
+const { authMock, contextPacketGatedBodySpy, getCurrentOrgMock, getOrgEntitlementsMock } =
+    vi.hoisted(() => ({
+        authMock: vi.fn(),
+        contextPacketGatedBodySpy: vi.fn(),
+        getCurrentOrgMock: vi.fn(),
+        getOrgEntitlementsMock: vi.fn(),
+    }));
 
 vi.mock("@/lib/admin/server", () => ({
     getCurrentOrg: getCurrentOrgMock,
     getOrgEntitlements: getOrgEntitlementsMock,
 }));
+
+vi.mock("@/lib/auth", () => ({ auth: authMock }));
 
 vi.mock("@/lib/fetchOrNull", () => ({
     fetchOrNull: async <T,>(result: Promise<T>) => result,
@@ -28,11 +32,15 @@ vi.mock("./_components/ContextPacketGatedBody", () => ({
     ContextPacketGatedBody: ({
         controlledState,
         enabled,
+        live,
+        showRetrievalDebug,
     }: {
         readonly controlledState: string;
         readonly enabled: boolean;
+        readonly live: boolean;
+        readonly showRetrievalDebug: boolean;
     }) => {
-        contextPacketGatedBodySpy({ controlledState, enabled });
+        contextPacketGatedBodySpy({ controlledState, enabled, live, showRetrievalDebug });
         return null;
     },
 }));
@@ -43,6 +51,7 @@ describe("ContextPacketPage entitlement gate", () => {
     beforeEach(() => {
         contextPacketGatedBodySpy.mockClear();
         getCurrentOrgMock.mockResolvedValue({ data: { id: "org-1" } });
+        authMock.mockResolvedValue({ user: { is_superuser: false } });
         vi.stubEnv("DEV_HEALTH_TEST_MODE", "false");
         vi.stubEnv("NEXT_PUBLIC_DEV_HEALTH_TEST_MODE", "false");
     });
@@ -70,6 +79,8 @@ describe("ContextPacketPage entitlement gate", () => {
         expect(contextPacketGatedBodySpy).toHaveBeenCalledWith({
             controlledState: "sample",
             enabled: false,
+            live: true,
+            showRetrievalDebug: false,
         });
     });
 
@@ -83,6 +94,8 @@ describe("ContextPacketPage entitlement gate", () => {
         expect(contextPacketGatedBodySpy).toHaveBeenCalledWith({
             controlledState: "sample",
             enabled: true,
+            live: true,
+            showRetrievalDebug: false,
         });
     });
 
@@ -97,6 +110,8 @@ describe("ContextPacketPage entitlement gate", () => {
         expect(contextPacketGatedBodySpy).toHaveBeenCalledWith({
             controlledState: "sample",
             enabled: false,
+            live: true,
+            showRetrievalDebug: false,
         });
     });
 });

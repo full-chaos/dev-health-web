@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { DataState } from "@/components/ui/DataState";
+import type { ACRContextPacketV1 } from "@/lib/acr/generated";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { ContextPacketDetails } from "./ContextPacketDetails";
 import type { ControlledPacketState } from "./contextPacketStates";
@@ -17,6 +18,8 @@ export type { ControlledPacketState } from "./contextPacketStates";
 
 type ContextPacketExplorerProps = {
     readonly controlledState: ControlledPacketState;
+    readonly live?: boolean;
+    readonly showRetrievalDebug?: boolean;
 };
 
 const SAMPLE_REQUEST: ContextPacketRequestForm = {
@@ -32,10 +35,12 @@ function ControlledState({
     state,
     focusPacket,
     packet,
+    showRetrievalDebug,
 }: {
     readonly state: ControlledPacketState;
     readonly focusPacket: boolean;
-    readonly packet: typeof SAMPLE_CONTEXT_PACKET;
+    readonly packet: ACRContextPacketV1;
+    readonly showRetrievalDebug: boolean;
 }) {
     switch (state) {
         case "loading":
@@ -80,6 +85,7 @@ function ControlledState({
                     degraded
                     autoFocus={focusPacket}
                     evidenceByID={SAMPLE_EXPANDED_EVIDENCE}
+                    showRetrievalDebug={showRetrievalDebug}
                 />
             );
         case "partial":
@@ -88,6 +94,7 @@ function ControlledState({
                     packet={SAMPLE_PARTIAL_CONTEXT_PACKET}
                     autoFocus={focusPacket}
                     evidenceByID={SAMPLE_EXPANDED_EVIDENCE}
+                    showRetrievalDebug={showRetrievalDebug}
                 />
             );
         case "sample":
@@ -96,12 +103,40 @@ function ControlledState({
                     packet={packet}
                     autoFocus={focusPacket}
                     evidenceByID={SAMPLE_EXPANDED_EVIDENCE}
+                    showRetrievalDebug={showRetrievalDebug}
                 />
             );
     }
 }
 
-export function ContextPacketExplorer({ controlledState }: ContextPacketExplorerProps) {
+function isContextPacket(value: unknown): value is ACRContextPacketV1 {
+    if (
+        typeof value !== "object" ||
+        value === null ||
+        Array.isArray(value) ||
+        !("schema_version" in value) ||
+        !("status" in value)
+    )
+        return false;
+    const packet = value;
+    return (
+        packet.schema_version === "context_packet.v1" &&
+        (packet.status === "complete" ||
+            packet.status === "partial" ||
+            packet.status === "degraded" ||
+            packet.status === "empty")
+    );
+}
+
+function packetState(packet: ACRContextPacketV1): ControlledPacketState {
+    return packet.status === "complete" ? "sample" : packet.status;
+}
+
+export function ContextPacketExplorer({
+    controlledState,
+    live = false,
+    showRetrievalDebug = false,
+}: ContextPacketExplorerProps) {
     const [form, setForm] = useState(SAMPLE_REQUEST);
     const [submitted, setSubmitted] = useState<ControlledPacketState | null>(null);
     const [goalError, setGoalError] = useState<string | null>(null);
@@ -111,14 +146,51 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
         controlledState === "sample" && submitted !== null ? submitted : controlledState;
 
     useEffect(() => {
-        if (submitted !== "loading") return;
+        if (live || submitted !== "loading") return;
         const frame = requestAnimationFrame(() => setSubmitted("sample"));
         return () => cancelAnimationFrame(frame);
-    }, [submitted]);
+    }, [live, submitted]);
 
     const updateField = (field: keyof ContextPacketRequestForm, value: string) => {
         setForm((current) => ({ ...current, [field]: value }));
         if (field === "goal" && value.trim()) setGoalError(null);
+    };
+
+    const submitContext = async () => {
+        if (!form.goal.trim()) {
+            setGoalError("Goal is required.");
+            goalRef.current?.focus();
+            return;
+        }
+        setGoalError(null);
+        if (!live) {
+            setPacket(projectContextPacket(form));
+            setSubmitted("loading");
+            return;
+        }
+        setSubmitted("loading");
+        try {
+            const response = await fetch("/api/agent-context/context-packets", {
+                body: JSON.stringify({
+                    branchOrCommit: form.branchOrCommit || undefined,
+                    goal: form.goal,
+                    repository: form.repository,
+                    taskReference: form.taskReference || undefined,
+                }),
+                cache: "no-store",
+                headers: { "Content-Type": "application/json" },
+                method: "POST",
+            });
+            const payload: unknown = await response.json();
+            if (!response.ok || !isContextPacket(payload)) {
+                setSubmitted(response.status === 403 ? "not-entitled" : "error");
+                return;
+            }
+            setPacket(payload);
+            setSubmitted(packetState(payload));
+        } catch {
+            setSubmitted("error");
+        }
     };
 
     return (
@@ -135,14 +207,7 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
                 noValidate
                 onSubmit={(event) => {
                     event.preventDefault();
-                    if (!form.goal.trim()) {
-                        setGoalError("Goal is required.");
-                        goalRef.current?.focus();
-                        return;
-                    }
-                    setGoalError(null);
-                    setPacket(projectContextPacket(form));
-                    setSubmitted("loading");
+                    void submitContext();
                 }}
             >
                 <div className="grid gap-4 md:grid-cols-2">
@@ -226,6 +291,7 @@ export function ContextPacketExplorer({ controlledState }: ContextPacketExplorer
                     state={activeState}
                     focusPacket={submitted === "sample"}
                     packet={packet}
+                    showRetrievalDebug={showRetrievalDebug}
                 />
             </div>
         </div>

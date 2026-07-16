@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import type { ACRContextPacketV1, ACRExpandedEvidenceV1 } from "@/lib/acr/generated";
 import { ContextPacketCategoryGroups } from "./ContextPacketCategoryGroups";
 import { ContextPacketDiagnostics } from "./ContextPacketDiagnostics";
+import { ContextPacketFeedback } from "./ContextPacketFeedback";
 import { displayPacketTime } from "./contextPacketFormatters";
 
 type ContextPacketDetailsProps = {
@@ -11,6 +12,7 @@ type ContextPacketDetailsProps = {
     readonly degraded?: boolean;
     readonly autoFocus?: boolean;
     readonly evidenceByID?: Readonly<Record<string, ACRExpandedEvidenceV1>>;
+    readonly showRetrievalDebug?: boolean;
 };
 
 export function ContextPacketDetails({
@@ -18,6 +20,7 @@ export function ContextPacketDetails({
     degraded = false,
     autoFocus = false,
     evidenceByID = {},
+    showRetrievalDebug = false,
 }: ContextPacketDetailsProps) {
     const packetRef = useRef<HTMLElement>(null);
 
@@ -33,9 +36,10 @@ export function ContextPacketDetails({
             tabIndex={-1}
         >
             {degraded ? <DegradedNotice /> : null}
-            <PacketHeader packet={packet} />
+            <PacketHeader packet={packet} showRetrievalDebug={showRetrievalDebug} />
             <ContextPacketCategoryGroups packet={packet} evidenceByID={evidenceByID} />
             <ContextPacketDiagnostics packet={packet} />
+            <ContextPacketFeedback />
         </section>
     );
 }
@@ -54,7 +58,13 @@ function DegradedNotice() {
     );
 }
 
-function PacketHeader({ packet }: { readonly packet: ACRContextPacketV1 }) {
+function PacketHeader({
+    packet,
+    showRetrievalDebug,
+}: {
+    readonly packet: ACRContextPacketV1;
+    readonly showRetrievalDebug: boolean;
+}) {
     const resolvedScope =
         packet.resolved_scope.commit_sha ?? packet.resolved_scope.branch ?? "Repository scope";
 
@@ -73,6 +83,14 @@ function PacketHeader({ packet }: { readonly packet: ACRContextPacketV1 }) {
                 <PacketMetadata label="Query version">{packet.query_version}</PacketMetadata>
                 <PacketMetadata label="Ranking version">{packet.ranking_version}</PacketMetadata>
             </dl>
+            {showRetrievalDebug && packet.retrieval_debug_summary ? (
+                <details className="mt-4 text-sm text-(--ink-muted)">
+                    <summary className="cursor-pointer font-medium text-foreground">
+                        Retrieval details
+                    </summary>
+                    <p className="mt-2">{packet.retrieval_debug_summary}</p>
+                </details>
+            ) : null}
         </header>
     );
 }

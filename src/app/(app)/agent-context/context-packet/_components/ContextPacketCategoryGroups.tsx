@@ -8,6 +8,7 @@ import type {
     ACRExpandedEvidenceV1,
 } from "@/lib/acr/generated";
 import { displayPacketTime } from "./contextPacketFormatters";
+import { SafePacketMarkdown, safeExternalHref } from "./SafePacketMarkdown";
 
 const CATEGORY_LABELS = [
     ["state", "State"],
@@ -22,15 +23,43 @@ type EvidenceByID = Readonly<Record<string, ACRExpandedEvidenceV1>>;
 function CategoryItem({
     item,
     evidenceByID,
+    repository,
 }: {
     readonly item: ACRContextPacketItemV1;
     readonly evidenceByID: EvidenceByID;
+    readonly repository: string;
 }) {
     const [evidenceOpen, setEvidenceOpen] = useState(false);
+    const [loadedEvidence, setLoadedEvidence] = useState<EvidenceByID>({});
+    const [evidenceError, setEvidenceError] = useState<string | null>(null);
+    const [loadingEvidence, setLoadingEvidence] = useState(false);
     const evidenceId = `evidence-${item.packet_item_id}`;
     const evidence = item.evidence_ref_ids
-        .map((evidenceID) => evidenceByID[evidenceID])
+        .map((evidenceID) => loadedEvidence[evidenceID] ?? evidenceByID[evidenceID])
         .filter((value): value is ACRExpandedEvidenceV1 => value !== undefined);
+
+    const requestEvidence = async () => {
+        const missingEvidenceID = item.evidence_ref_ids.find(
+            (evidenceID) =>
+                loadedEvidence[evidenceID] === undefined && evidenceByID[evidenceID] === undefined,
+        );
+        if (missingEvidenceID === undefined) return;
+        setLoadingEvidence(true);
+        setEvidenceError(null);
+        try {
+            const response = await fetch(
+                `/api/agent-context/evidence/${encodeURIComponent(missingEvidenceID)}?repository=${encodeURIComponent(repository)}`,
+                { cache: "no-store" },
+            );
+            if (!response.ok) throw new Error("evidence unavailable");
+            const evidence = (await response.json()) as ACRExpandedEvidenceV1;
+            setLoadedEvidence((current) => ({ ...current, [missingEvidenceID]: evidence }));
+        } catch {
+            setEvidenceError("Evidence is unavailable. Try again when the service is available.");
+        } finally {
+            setLoadingEvidence(false);
+        }
+    };
 
     return (
         <article className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card-80) p-4">
@@ -48,16 +77,43 @@ function CategoryItem({
                 <span className="font-semibold">Why included: </span>
                 {item.why_included}
             </p>
-            {evidence.length > 0 ? (
+            {item.related_entities.length > 0 ? (
+                <ul className="mt-3 flex flex-wrap gap-2 text-sm text-(--ink-muted)">
+                    {item.related_entities.map((entity) => {
+                        const href = safeExternalHref(entity.url);
+                        return (
+                            <li key={`${entity.type}-${entity.id}`}>
+                                {href ? (
+                                    <a
+                                        href={href}
+                                        rel="noreferrer"
+                                        target="_blank"
+                                        className="underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                                    >
+                                        {entity.label}
+                                    </a>
+                                ) : (
+                                    entity.label
+                                )}
+                            </li>
+                        );
+                    })}
+                </ul>
+            ) : null}
+            {item.evidence_ref_ids.length > 0 ? (
                 <div className="mt-4">
                     <button
                         type="button"
                         aria-controls={evidenceId}
                         aria-expanded={evidenceOpen}
-                        onClick={() => setEvidenceOpen((open) => !open)}
+                        onClick={() => {
+                            const nextOpen = !evidenceOpen;
+                            setEvidenceOpen(nextOpen);
+                            if (nextOpen) void requestEvidence();
+                        }}
                         className="rounded-(--radius-sm) border border-(--card-stroke) px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                     >
-                        {CTA_LABELS.openEvidence}
+                        {loadingEvidence ? "Loading evidence" : CTA_LABELS.openEvidence}
                     </button>
                     {evidenceOpen ? (
                         <div
@@ -66,25 +122,34 @@ function CategoryItem({
                             aria-label={`Evidence for ${item.title}`}
                             className="mt-3 rounded-(--radius-sm) bg-background/60 p-3 text-sm text-(--ink-muted)"
                         >
+                            {evidenceError ? <p role="status">{evidenceError}</p> : null}
                             {evidence.map((expanded) => (
                                 <div key={expanded.evidence.evidence_ref_id} className="space-y-2">
                                     <p className="font-medium text-foreground">
                                         {expanded.evidence.source.display_label}
                                     </p>
-                                    <p>{expanded.evidence.citation}</p>
+                                    <SafePacketMarkdown>
+                                        {expanded.evidence.citation}
+                                    </SafePacketMarkdown>
                                     <p>
                                         Evidence is {expanded.availability}. Observed{" "}
                                         {displayPacketTime(expanded.evidence.observed_at)}.
                                     </p>
-                                    {expanded.evidence.source.safe_uri ? (
+                                    {safeExternalHref(expanded.evidence.source.safe_uri) ? (
                                         <a
-                                            href={expanded.evidence.source.safe_uri}
+                                            href={safeExternalHref(
+                                                expanded.evidence.source.safe_uri,
+                                            )}
+                                            rel="noreferrer"
+                                            target="_blank"
                                             className="underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                                         >
                                             {CTA_LABELS.viewSafeSource}
                                         </a>
                                     ) : null}
-                                    {expanded.excerpt ? <p>{expanded.excerpt}</p> : null}
+                                    {expanded.excerpt ? (
+                                        <SafePacketMarkdown>{expanded.excerpt}</SafePacketMarkdown>
+                                    ) : null}
                                     {expanded.redaction_reason ? (
                                         <p>Redaction: {expanded.redaction_reason}</p>
                                     ) : null}
@@ -101,9 +166,11 @@ function CategoryItem({
 export function ContextPacketCategoryGroups({
     packet,
     evidenceByID,
+    repository = packet.repository.slug,
 }: {
     readonly packet: ACRContextPacketV1;
     readonly evidenceByID: EvidenceByID;
+    readonly repository?: string;
 }) {
     const groupedItems = new Map(
         CATEGORY_LABELS.map(([category]) => [category, [] as ACRContextPacketItemV1[]]),
@@ -121,6 +188,7 @@ export function ContextPacketCategoryGroups({
                         label={label}
                         items={groupedItems.get(category) ?? []}
                         evidenceByID={evidenceByID}
+                        repository={repository}
                     />
                 ))}
             </div>
@@ -131,6 +199,7 @@ export function ContextPacketCategoryGroups({
                         label={label}
                         items={groupedItems.get(category) ?? []}
                         evidenceByID={evidenceByID}
+                        repository={repository}
                     />
                 ))}
             </div>
@@ -142,10 +211,12 @@ function CategoryGroup({
     label,
     items,
     evidenceByID,
+    repository,
 }: {
     readonly label: string;
     readonly items: readonly ACRContextPacketItemV1[];
     readonly evidenceByID: EvidenceByID;
+    readonly repository: string;
 }) {
     return (
         <section>
@@ -157,6 +228,7 @@ function CategoryGroup({
                             key={item.packet_item_id}
                             item={item}
                             evidenceByID={evidenceByID}
+                            repository={repository}
                         />
                     ))
                 ) : (

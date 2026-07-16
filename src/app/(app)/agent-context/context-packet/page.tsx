@@ -1,6 +1,7 @@
 import { BackLink } from "@/components/shared/BackLink";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
+import { auth } from "@/lib/auth";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { filterFromQueryParams } from "@/lib/filters/encode";
 import { ContextPacketGatedBody } from "./_components/ContextPacketGatedBody";
@@ -33,6 +34,7 @@ export default async function ContextPacketPage({ searchParams }: ContextPacketP
     const enabled =
         entitlements?.data?.is_valid === true &&
         entitlements.data.features["agent_context_runtime"] === true;
+    const session = await auth();
 
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -44,6 +46,8 @@ export default async function ContextPacketPage({ searchParams }: ContextPacketP
                     <ContextPacketGatedBody
                         enabled={enabled}
                         controlledState={controlledStateFrom(params.state, testMode)}
+                        live={!testMode}
+                        showRetrievalDebug={session?.user.is_superuser === true}
                     />
                 </main>
                 <div className="order-1 md:order-1">
