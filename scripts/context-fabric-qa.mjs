@@ -1,7 +1,7 @@
-import { spawn } from "node:child_process";
-import { accessSync, constants } from "node:fs";
-import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { spawn } from "node:child_process";
+
+import { resolvePackageManagerCommand } from "./package-manager.mjs";
 
 const environment = {
     ...process.env,
@@ -9,45 +9,6 @@ const environment = {
     BACKEND_URL: "http://127.0.0.1:8012",
     NODE_ENV: "production",
 };
-
-function isReadable(filePath) {
-    try {
-        accessSync(filePath, constants.R_OK);
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-export function resolvePnpmCommand({
-    platform = process.platform,
-    npmExecPath = process.env.npm_execpath,
-    isReadable: checkReadable = isReadable,
-} = {}) {
-    if (typeof npmExecPath !== "string" || npmExecPath.length === 0) {
-        throw new Error(
-            "Context Fabric QA requires npm_execpath from the package manager; run this command through pnpm.",
-        );
-    }
-
-    const pathApi = platform === "win32" ? path.win32 : path.posix;
-    if (!pathApi.isAbsolute(npmExecPath)) {
-        throw new Error("Context Fabric QA requires an absolute npm_execpath JavaScript path.");
-    }
-
-    const extension = pathApi.extname(npmExecPath).toLowerCase();
-    if (extension !== ".js" && extension !== ".cjs") {
-        throw new Error(
-            "Context Fabric QA requires npm_execpath to reference a JavaScript (.js or .cjs) file.",
-        );
-    }
-
-    if (!checkReadable(npmExecPath)) {
-        throw new Error(`Context Fabric QA cannot read npm_execpath: ${npmExecPath}`);
-    }
-
-    return { command: process.execPath, args: [npmExecPath] };
-}
 
 export function run(
     command,
@@ -81,13 +42,13 @@ export async function main({
     runCommand = run,
     platform = process.platform,
     npmExecPath = process.env.npm_execpath,
-    isReadable: checkReadable = isReadable,
+    isReadable,
 } = {}) {
     await preflightOpenSSL({ runCommand });
-    const packageManager = resolvePnpmCommand({
+    const packageManager = resolvePackageManagerCommand({
         platform,
         npmExecPath,
-        isReadable: checkReadable,
+        isReadable,
     });
     if ((await runCommand(packageManager.command, [...packageManager.args, "build"])) === 0) {
         return runCommand(packageManager.command, [

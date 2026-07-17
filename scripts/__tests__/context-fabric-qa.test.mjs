@@ -3,7 +3,8 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { main, preflightOpenSSL, resolvePnpmCommand, run } from "../context-fabric-qa.mjs";
+import { main, preflightOpenSSL, run } from "../context-fabric-qa.mjs";
+import { resolvePackageManagerCommand } from "../package-manager.mjs";
 
 describe("Context Fabric QA launcher", () => {
     it("resolves an absolute readable POSIX package-manager script", () => {
@@ -11,7 +12,7 @@ describe("Context Fabric QA launcher", () => {
         const npmExecPath = join(directory, "pnpm entry.js");
         writeFileSync(npmExecPath, "#!/usr/bin/env node\n");
 
-        expect(resolvePnpmCommand({ platform: "darwin", npmExecPath })).toEqual({
+        expect(resolvePackageManagerCommand({ platform: "darwin", npmExecPath })).toEqual({
             command: process.execPath,
             args: [npmExecPath],
         });
@@ -21,7 +22,7 @@ describe("Context Fabric QA launcher", () => {
         const npmExecPath = "C:\\Program Files\\pnpm\\pnpm entry.cjs";
 
         expect(
-            resolvePnpmCommand({
+            resolvePackageManagerCommand({
                 platform: "win32",
                 npmExecPath,
                 isReadable: () => true,
@@ -36,7 +37,7 @@ describe("Context Fabric QA launcher", () => {
         ["/tmp/pnpm.js", "cannot read npm_execpath"],
     ])("rejects unsafe npm_execpath %j", (npmExecPath, message) => {
         expect(() =>
-            resolvePnpmCommand({
+            resolvePackageManagerCommand({
                 platform: "darwin",
                 npmExecPath,
                 isReadable: () => npmExecPath !== "/tmp/pnpm.js",
