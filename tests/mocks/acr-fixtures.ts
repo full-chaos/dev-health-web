@@ -6,6 +6,7 @@ type AcrMockControls = {
     readonly evidenceDelayMs: number;
     readonly evidenceReferenceCount: number;
     readonly malformedPacket: boolean;
+    readonly pausedGoals: readonly string[];
 };
 
 type AcrMockEvidenceStats = {
@@ -19,12 +20,14 @@ const DEFAULT_CONTROLS: AcrMockControls = {
     evidenceDelayMs: 0,
     evidenceReferenceCount: 1,
     malformedPacket: false,
+    pausedGoals: [],
 };
 const MAX_CONTROLLED_DELAY_MS = 60_000;
 const MAX_EVIDENCE_REFERENCES = 32;
 
 let controls = DEFAULT_CONTROLS;
 let evidenceStats: AcrMockEvidenceStats = { active: 0, count: 0, maxConcurrent: 0 };
+const pausedContextPacketWaiters = new Map<string, Set<() => void>>();
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -42,10 +45,23 @@ function isDelay(value: unknown): value is number {
 function parseDelayedGoals(value: unknown): Readonly<Record<string, number>> | null {
     if (value === undefined) return {};
     if (!isRecord(value)) return null;
-    const entries = Object.entries(value);
-    if (entries.some(([goal, delay]) => goal.length === 0 || goal.length > 200 || !isDelay(delay)))
+    const delayedGoals: Record<string, number> = {};
+    for (const [goal, delay] of Object.entries(value)) {
+        if (goal.length === 0 || goal.length > 200 || !isDelay(delay)) return null;
+        delayedGoals[goal] = delay;
+    }
+    return delayedGoals;
+}
+
+function parsePausedGoals(value: unknown): readonly string[] | null {
+    if (value === undefined) return [];
+    if (!Array.isArray(value)) return null;
+    if (
+        value.some((goal) => typeof goal !== "string" || goal.length === 0 || goal.length > 200) ||
+        new Set(value).size !== value.length
+    )
         return null;
-    return Object.fromEntries(entries);
+    return value;
 }
 
 function packetStatus(goal: string): "complete" | "degraded" | "empty" | "partial" {
@@ -104,6 +120,36 @@ export function getContextPacketDelay(goal: string): number {
     return controls.delayedGoals[goal] ?? 0;
 }
 
+export function waitForContextPacketRelease(goal: string): Promise<void> | null {
+    if (!controls.pausedGoals.includes(goal)) return null;
+    return new Promise((resolve) => {
+        const waiter = () => {
+            const waiters = pausedContextPacketWaiters.get(goal);
+            waiters?.delete(waiter);
+            if (waiters?.size === 0) pausedContextPacketWaiters.delete(goal);
+            resolve();
+        };
+        const waiters = pausedContextPacketWaiters.get(goal) ?? new Set<() => void>();
+        waiters.add(waiter);
+        pausedContextPacketWaiters.set(goal, waiters);
+    });
+}
+
+export function pausedContextPacketGoals(): readonly string[] {
+    return [...pausedContextPacketWaiters.keys()].sort((left, right) => left.localeCompare(right));
+}
+
+export function releasePausedContextPackets(goal: string): boolean {
+    const waiters = pausedContextPacketWaiters.get(goal);
+    if (waiters === undefined) return false;
+    for (const waiter of [...waiters]) waiter();
+    return true;
+}
+
+function releaseAllPausedContextPackets(): void {
+    for (const goal of pausedContextPacketGoals()) releasePausedContextPackets(goal);
+}
+
 export function getEvidenceDelay(): number {
     return controls.evidenceDelayMs;
 }
@@ -133,6 +179,7 @@ export function setAcrMockControls(input: unknown): boolean {
         "evidenceDelayMs",
         "evidenceReferenceCount",
         "malformedPacket",
+        "pausedGoals",
     ]);
     if (Object.keys(input).some((key) => !allowedKeys.has(key))) return false;
     if (input.malformedPacket !== undefined && typeof input.malformedPacket !== "boolean")
@@ -148,17 +195,22 @@ export function setAcrMockControls(input: unknown): boolean {
         return false;
     const delayedGoals = parseDelayedGoals(input.delayedGoals);
     if (delayedGoals === null) return false;
+    const pausedGoals = parsePausedGoals(input.pausedGoals);
+    if (pausedGoals === null) return false;
+    releaseAllPausedContextPackets();
     controls = {
         delayedGoals,
         evidenceDelayMs: input.evidenceDelayMs ?? 0,
         evidenceReferenceCount: input.evidenceReferenceCount ?? 1,
         malformedPacket: input.malformedPacket ?? false,
+        pausedGoals,
     };
     evidenceStats = { active: 0, count: 0, maxConcurrent: 0 };
     return true;
 }
 
 export function resetAcrMockControls(): void {
+    releaseAllPausedContextPackets();
     controls = DEFAULT_CONTROLS;
     evidenceStats = { active: 0, count: 0, maxConcurrent: 0 };
 }

@@ -161,6 +161,7 @@ export function ContextPacketExplorer({
             </header>
             <form
                 className="rounded-(--radius-lg) border border-(--card-stroke) bg-(--card-80) p-6"
+                data-testid="context-packet-form"
                 noValidate
                 onSubmit={(event) => {
                     event.preventDefault();

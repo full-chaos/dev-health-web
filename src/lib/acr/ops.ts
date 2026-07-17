@@ -62,7 +62,6 @@ function canonicalRepositoryScopes(values: readonly string[]): readonly string[]
     const canonical = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
     const sorted = [...values].sort((left, right) => left.localeCompare(right));
     if (
-        values.length === 0 ||
         values.some((value) => value !== value.toLowerCase() || !canonical.test(value)) ||
         values.some((value, index) => value !== sorted[index]) ||
         new Set(values).size !== values.length

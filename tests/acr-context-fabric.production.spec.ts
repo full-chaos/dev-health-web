@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 import { ACR_API_ORIGIN } from "../playwright.context-fabric.config";
 
 const ENTITLEMENT_SCENARIOS = ["provisioned", "unprovisioned", "invalid", "error"] as const;
@@ -8,11 +8,21 @@ type AcrMockControls = {
     readonly evidenceDelayMs?: number;
     readonly evidenceReferenceCount?: number;
     readonly malformedPacket?: boolean;
+    readonly pausedGoals?: readonly string[];
 };
 type EvidenceRequestStats = {
     readonly active: number;
     readonly count: number;
     readonly maxConcurrent: number;
+};
+type PausedPacketState = {
+    readonly goals: readonly string[];
+};
+type Rectangle = {
+    readonly bottom: number;
+    readonly left: number;
+    readonly right: number;
+    readonly top: number;
 };
 
 const viewports = [
@@ -58,12 +68,60 @@ function isEvidenceRequestStats(value: unknown): value is EvidenceRequestStats {
     );
 }
 
+function isPausedPacketState(value: unknown): value is PausedPacketState {
+    return (
+        isRecord(value) &&
+        Array.isArray(value.goals) &&
+        value.goals.every((goal) => typeof goal === "string")
+    );
+}
+
 async function evidenceRequestStats(request: APIRequestContext): Promise<EvidenceRequestStats> {
     const response = await request.get(`${ACR_API_ORIGIN}/__test/evidence-requests`);
     expect(response.ok()).toBe(true);
     const stats: unknown = await response.json();
     if (!isEvidenceRequestStats(stats)) throw new Error("Invalid ACR mock evidence request stats.");
     return stats;
+}
+
+async function pausedPacketState(request: APIRequestContext): Promise<PausedPacketState> {
+    const response = await request.get(`${ACR_API_ORIGIN}/__test/paused-context-packets`);
+    expect(response.ok()).toBe(true);
+    const state: unknown = await response.json();
+    if (!isPausedPacketState(state)) throw new Error("Invalid ACR mock paused packet state.");
+    return state;
+}
+
+async function releasePausedPacket(request: APIRequestContext, goal: string): Promise<void> {
+    const response = await request.post(`${ACR_API_ORIGIN}/__test/paused-context-packets/release`, {
+        data: { goal },
+    });
+    expect(response.status()).toBe(204);
+}
+
+async function rectangleFor(locator: Locator): Promise<Rectangle> {
+    const box = await locator.boundingBox();
+    if (box === null) throw new Error("Expected visible geometry test region.");
+    return { bottom: box.y + box.height, left: box.x, right: box.x + box.width, top: box.y };
+}
+
+function overlaps(first: Rectangle, second: Rectangle): boolean {
+    return (
+        first.left < second.right &&
+        first.right > second.left &&
+        first.top < second.bottom &&
+        first.bottom > second.top
+    );
+}
+
+async function expectNoControlOverlap(
+    control: Locator,
+    protectedRegions: readonly Locator[],
+): Promise<void> {
+    const controlBounds = await rectangleFor(control);
+    for (const protectedRegion of protectedRegions) {
+        expect(overlaps(controlBounds, await rectangleFor(protectedRegion))).toBe(false);
+    }
 }
 
 async function gotoWithSessionReady(page: Page, path: string): Promise<void> {
@@ -369,7 +427,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
         page,
     }) => {
         await setEntitlementScenario(page.request, "provisioned");
-        await setAcrMockControls(page.request, { delayedGoals: { "e2e stale response": 500 } });
+        await setAcrMockControls(page.request, { pausedGoals: ["e2e stale response"] });
         await page.route(`${ACR_API_ORIGIN}/**`, (route) => {
             throw new Error(`Browser attempted direct ACR access: ${route.request().url()}`);
         });
@@ -383,14 +441,50 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await page.getByLabel(/Goal/).fill("e2e stale response");
         await page.getByRole("button", { name: "Generate context" }).click();
         await expect(page.getByRole("button", { name: "Generate context" })).toBeEnabled();
+        await expect
+            .poll(async () => (await pausedPacketState(page.request)).goals)
+            .toContain("e2e stale response");
 
         await page.getByLabel(/Goal/).fill("e2e current response");
         await page.getByRole("button", { name: "Generate context" }).click();
         await expect(page.getByRole("heading", { name: "e2e current response" })).toBeVisible();
-        await staleResponse;
+        await releasePausedPacket(page.request, "e2e stale response");
+        const staleBffResponse = await staleResponse;
+        await staleBffResponse.finished();
 
         await expect(page.getByRole("heading", { name: "e2e current response" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "e2e stale response" })).toHaveCount(0);
+    });
+
+    test("keeps the issue-report control clear of Context Fabric form, terminal, and cards at every viewport", async ({
+        page,
+    }, testInfo) => {
+        await setEntitlementScenario(page.request, "provisioned");
+
+        for (const viewport of viewports) {
+            await page.setViewportSize(viewport);
+            await page.goto("/agent-context/context-packet");
+            await page.getByLabel(/Goal/).fill("e2e partial");
+            await page.getByRole("button", { name: "Generate context" }).click();
+            const terminal = page.getByRole("region", {
+                name: "Generated Context Fabric response",
+            });
+            await expect(terminal).toBeVisible();
+
+            const issueReportControl = page.getByRole("button", { name: "Report an issue" });
+            const categoryCards = page.locator("article");
+            await expect(categoryCards).toHaveCount(1);
+            await expectNoControlOverlap(issueReportControl, [
+                page.getByTestId("context-packet-form"),
+                terminal,
+                categoryCards.first(),
+                page.getByRole("region", { name: "Context Fabric feedback" }),
+            ]);
+            await page.screenshot({
+                path: testInfo.outputPath(`issue-report-layout-${viewport.name}.png`),
+                fullPage: true,
+            });
+        }
     });
 
     test("caps concurrent evidence fetches globally while retaining every server-owned reference", async ({
@@ -418,6 +512,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await firstEvidenceButton.click();
         await secondEvidenceButton.click();
 
+        await expect.poll(async () => (await evidenceRequestStats(page.request)).count).toBe(9);
         await expect.poll(async () => (await evidenceRequestStats(page.request)).active).toBe(0);
         const stats = await evidenceRequestStats(page.request);
         expect(stats.count).toBe(9);

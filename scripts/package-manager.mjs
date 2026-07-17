@@ -10,11 +10,9 @@ export function isReadable(filePath) {
     }
 }
 
-export function resolvePackageManagerCommand({
-    platform = process.platform,
-    npmExecPath = process.env.npm_execpath,
-    isReadable: checkReadable = isReadable,
-} = {}) {
+export function resolvePackageManagerCommand(options = {}) {
+    const { platform = process.platform, isReadable: checkReadable = isReadable } = options;
+    const npmExecPath = "npmExecPath" in options ? options.npmExecPath : process.env.npm_execpath;
     if (typeof npmExecPath !== "string" || npmExecPath.length === 0) {
         throw new Error(
             "Package-manager QA requires npm_execpath from the package manager; run this command through pnpm.",

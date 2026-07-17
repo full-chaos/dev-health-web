@@ -118,6 +118,19 @@ describe("ContextPacketPage entitlement gate", () => {
         });
     });
 
+    it("passes a valid empty repository catalog to the live explorer", async () => {
+        getOrgEntitlementsMock.mockResolvedValue({
+            data: { features: { agent_context_runtime: true }, is_valid: true },
+        });
+        listAuthorizedRepositoriesMock.mockResolvedValue([]);
+
+        render(await ContextPacketPage({}));
+
+        expect(contextPacketGatedBodySpy).toHaveBeenCalledWith(
+            expect.objectContaining({ repositoryCatalog: { kind: "empty" } }),
+        );
+    });
+
     it("passes a discovery error to the client instead of treating it as an empty catalog", async () => {
         getOrgEntitlementsMock.mockResolvedValue({
             data: { features: { agent_context_runtime: true }, is_valid: true },

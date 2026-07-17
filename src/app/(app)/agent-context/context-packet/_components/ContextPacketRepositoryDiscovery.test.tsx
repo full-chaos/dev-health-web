@@ -50,6 +50,7 @@ describe("ContextPacketExplorer repository discovery", () => {
         expect(screen.getByTestId("repository-discovery-empty")).toBeInTheDocument();
         expect(screen.getByText("No repositories are available")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Generate context" })).toBeDisabled();
+        expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
 
         await user.click(screen.getByRole("button", { name: "Generate context" }));
 

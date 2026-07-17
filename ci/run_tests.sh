@@ -19,12 +19,8 @@ export NODE_ENV=test
 export NEXT_TELEMETRY_DISABLED=1
 export FORCE_COLOR=0
 
-PLAYWRIGHT_RESULTS_DIR="${PLAYWRIGHT_RESULTS_DIR:-test-results/playwright}"
-PLAYWRIGHT_REPORT_DIR="${PLAYWRIGHT_REPORT_DIR:-${PLAYWRIGHT_RESULTS_DIR}-html}"
-PLAYWRIGHT_JUNIT_PATH="${PLAYWRIGHT_JUNIT_PATH:-${PLAYWRIGHT_RESULTS_DIR}/junit.xml}"
-
-export PLAYWRIGHT_HTML_REPORT="${PLAYWRIGHT_HTML_REPORT:-${PLAYWRIGHT_REPORT_DIR}}"
-export PLAYWRIGHT_JUNIT_OUTPUT_NAME="${PLAYWRIGHT_JUNIT_OUTPUT_NAME:-${PLAYWRIGHT_JUNIT_PATH}}"
+PLAYWRIGHT_RESULTS_ROOT="${PLAYWRIGHT_RESULTS_DIR:-test-results/playwright}"
+PLAYWRIGHT_REPORT_ROOT="${PLAYWRIGHT_REPORT_DIR:-${PLAYWRIGHT_RESULTS_ROOT}-html}"
 
 run_pnpm_script() {
   local script_name="$1"
@@ -54,30 +50,29 @@ print_e2e_diagnostics() {
   echo "==> e2e diagnostics"
   echo "CI=${CI:-false}"
   echo "NODE_ENV=${NODE_ENV}"
-  echo "PLAYWRIGHT_HTML_REPORT=${PLAYWRIGHT_HTML_REPORT}"
-  echo "PLAYWRIGHT_JUNIT_OUTPUT_NAME=${PLAYWRIGHT_JUNIT_OUTPUT_NAME}"
-  echo "PLAYWRIGHT_RESULTS_DIR=${PLAYWRIGHT_RESULTS_DIR}"
+  echo "PLAYWRIGHT_REPORT_ROOT=${PLAYWRIGHT_REPORT_ROOT}"
+  echo "PLAYWRIGHT_RESULTS_ROOT=${PLAYWRIGHT_RESULTS_ROOT}"
   echo "node $(node --version)"
   echo "pnpm $(pnpm --version)"
   echo "playwright $(npx playwright --version)"
 }
 
 prepare_playwright_artifacts() {
-  if [[ -z "${PLAYWRIGHT_HTML_REPORT}" || -z "${PLAYWRIGHT_RESULTS_DIR}" ]]; then
+  if [[ -z "${PLAYWRIGHT_REPORT_ROOT}" || -z "${PLAYWRIGHT_RESULTS_ROOT}" ]]; then
     echo "Playwright artifact directories must not be empty." >&2
     exit 1
   fi
 
-  rm -rf "${PLAYWRIGHT_HTML_REPORT}" "${PLAYWRIGHT_RESULTS_DIR}"
-  mkdir -p "${PLAYWRIGHT_HTML_REPORT}" "${PLAYWRIGHT_RESULTS_DIR}"
+  rm -rf "${PLAYWRIGHT_REPORT_ROOT}" "${PLAYWRIGHT_RESULTS_ROOT}"
+  mkdir -p "${PLAYWRIGHT_REPORT_ROOT}" "${PLAYWRIGHT_RESULTS_ROOT}"
 }
 
 print_playwright_artifact_summary() {
   echo "==> playwright artifact summary"
-  for artifact_path in "${PLAYWRIGHT_HTML_REPORT}" "${PLAYWRIGHT_RESULTS_DIR}"; do
+  for artifact_path in "${PLAYWRIGHT_REPORT_ROOT}" "${PLAYWRIGHT_RESULTS_ROOT}"; do
     if [[ -d "${artifact_path}" ]]; then
       echo "  ${artifact_path}"
-      find "${artifact_path}" -maxdepth 2 -type f | sort || true
+      find "${artifact_path}" -maxdepth 4 -type f | sort || true
     else
       echo "  ${artifact_path} (missing)"
     fi
@@ -116,24 +111,37 @@ run_e2e() {
   install_playwright_browser
   prepare_playwright_artifacts
   print_e2e_diagnostics
-  if ! run_pnpm_script test:e2e; then
+  if ! run_playwright_suite default test:e2e; then
     echo "E2E tests failed. Captured artifacts:" >&2
     print_playwright_artifact_summary
     return 1
   fi
   # Guided first-run onboarding runs in its own config so its flag-on dev server
   # never overlaps the default flag-off one (CHAOS-2670).
-  if ! run_pnpm_script test:e2e:onboarding; then
+  if ! run_playwright_suite onboarding test:e2e:onboarding; then
     echo "Onboarding E2E tests failed. Captured artifacts:" >&2
     print_playwright_artifact_summary
     return 1
   fi
-  if ! run_pnpm_script test:e2e:context-fabric; then
+  if ! run_playwright_suite context-fabric test:e2e:context-fabric; then
     echo "Context Fabric production E2E tests failed. Captured artifacts:" >&2
     print_playwright_artifact_summary
     return 1
   fi
   print_playwright_artifact_summary
+}
+
+run_playwright_suite() {
+  local suite_name="$1"
+  local script_name="$2"
+  local report_directory="${PLAYWRIGHT_REPORT_ROOT}/${suite_name}"
+  local results_directory="${PLAYWRIGHT_RESULTS_ROOT}/${suite_name}"
+
+  echo "==> pnpm ${script_name} (${suite_name})"
+  PLAYWRIGHT_HTML_REPORT="${report_directory}" \
+    PLAYWRIGHT_JUNIT_OUTPUT_NAME="${results_directory}/junit.xml" \
+    PLAYWRIGHT_RESULTS_DIR="${results_directory}" \
+    pnpm "${script_name}"
 }
 
 run_live_e2e() {

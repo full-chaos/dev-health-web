@@ -4,8 +4,11 @@ import {
     evidenceRequestStarted,
     getAcrMockEvidenceStats,
     getContextPacketDelay,
+    pausedContextPacketGoals,
+    releasePausedContextPackets,
     resetAcrMockControls,
     setAcrMockControls,
+    waitForContextPacketRelease,
 } from "./acr-fixtures";
 
 describe("ACR mock fixtures", () => {
@@ -35,6 +38,17 @@ describe("ACR mock fixtures", () => {
         finishSecond();
 
         expect(getAcrMockEvidenceStats()).toEqual({ active: 0, count: 2, maxConcurrent: 2 });
+    });
+
+    it("holds a configured packet until an explicit release control resolves it", async () => {
+        expect(setAcrMockControls({ pausedGoals: ["e2e stale response"] })).toBe(true);
+
+        const release = waitForContextPacketRelease("e2e stale response");
+
+        expect(pausedContextPacketGoals()).toEqual(["e2e stale response"]);
+        expect(releasePausedContextPackets("e2e stale response")).toBe(true);
+        await expect(release).resolves.toBeUndefined();
+        expect(pausedContextPacketGoals()).toEqual([]);
     });
 
     it("rejects unsafe test controls instead of accepting arbitrary values", () => {

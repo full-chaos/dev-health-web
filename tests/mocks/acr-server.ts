@@ -8,7 +8,10 @@ import {
     getAcrMockEvidenceStats,
     getContextPacketDelay,
     getEvidenceDelay,
+    pausedContextPacketGoals,
+    releasePausedContextPackets,
     setAcrMockControls,
+    waitForContextPacketRelease,
 } from "./acr-fixtures";
 
 const app = express();
@@ -40,6 +43,16 @@ const capabilities = {
     ],
 };
 
+function isPausedPacketRelease(value: unknown): value is { readonly goal: string } {
+    return (
+        typeof value === "object" &&
+        value !== null &&
+        !Array.isArray(value) &&
+        "goal" in value &&
+        typeof value.goal === "string"
+    );
+}
+
 app.use(express.json());
 app.get("/health", (_request, response) => response.json({ status: "ok" }));
 app.get("/api/v1/agent-context/capabilities", (_request, response) => response.json(capabilities));
@@ -53,7 +66,17 @@ app.post("/__test/controls", (request, response) => {
 app.get("/__test/evidence-requests", (_request, response) => {
     response.json(getAcrMockEvidenceStats());
 });
-app.post("/api/v1/agent-context/context-packets", (request, response) => {
+app.get("/__test/paused-context-packets", (_request, response) => {
+    response.json({ goals: pausedContextPacketGoals() });
+});
+app.post("/__test/paused-context-packets/release", (request, response) => {
+    if (!isPausedPacketRelease(request.body) || !releasePausedContextPackets(request.body.goal)) {
+        response.status(404).end();
+        return;
+    }
+    response.status(204).end();
+});
+app.post("/api/v1/agent-context/context-packets", async (request, response) => {
     const goal =
         typeof request.body.goal === "string"
             ? request.body.goal
@@ -63,6 +86,12 @@ app.post("/api/v1/agent-context/context-packets", (request, response) => {
     const delay = getContextPacketDelay(goal);
     if (delay > 0) {
         setTimeout(sendPacket, delay);
+        return;
+    }
+    const release = waitForContextPacketRelease(goal);
+    if (release !== null) {
+        await release;
+        if (!response.destroyed) sendPacket();
         return;
     }
     sendPacket();

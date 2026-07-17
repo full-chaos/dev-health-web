@@ -43,7 +43,9 @@ export default async function AppLayout({
                                 </nav>
                             </header>
                             {children}
-                            <BugReportButton />
+                            <div className="flex justify-end px-4 pb-6 sm:px-6">
+                                <BugReportButton />
+                            </div>
                             <Toaster richColors position="top-right" theme="dark" />
                         </div>
                     </TelemetryProvider>

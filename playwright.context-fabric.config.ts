@@ -6,9 +6,11 @@ export const OPS_MOCK_ORIGIN = "http://127.0.0.1:8012";
 export const ACR_API_ORIGIN = "https://127.0.0.1:8013";
 
 const AUTH_FILE = "test-results/.auth/state.json";
-const RESULTS_DIRECTORY = process.env.PLAYWRIGHT_RESULTS_DIR ?? "test-results/context-fabric";
+const RESULTS_DIRECTORY =
+    process.env.PLAYWRIGHT_RESULTS_DIR ?? "test-results/playwright/context-fabric";
 const JUNIT_PATH = process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? `${RESULTS_DIRECTORY}/junit.xml`;
-const HTML_REPORT_DIRECTORY = process.env.PLAYWRIGHT_HTML_REPORT ?? `${RESULTS_DIRECTORY}-html`;
+const HTML_REPORT_DIRECTORY =
+    process.env.PLAYWRIGHT_HTML_REPORT ?? "test-results/playwright-html/context-fabric";
 const PERSIST_TRACE = process.env.CI === "true" || process.env.CI === "1";
 const GRACEFUL_SHUTDOWN = {
     signal: "SIGTERM",

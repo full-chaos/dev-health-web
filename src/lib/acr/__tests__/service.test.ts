@@ -14,7 +14,7 @@ import { auth } from "@/lib/auth";
 import contextPacket from "../contracts/examples/context_packet.v1.json";
 import expandedEvidence from "../contracts/examples/expanded_evidence.v1.json";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "../errors";
-import { createContextPacket, getExpandedEvidence } from "../service";
+import { createContextPacket, getExpandedEvidence, listAuthorizedRepositories } from "../service";
 
 const server = setupServer();
 const temporaryPaths: string[] = [];
@@ -328,6 +328,12 @@ describe("ACR server-only runtime service", () => {
                 signal: new AbortController().signal,
             }),
         ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.unavailable });
+    });
+
+    it("returns an empty authorized repository catalog without treating it as unavailable", async () => {
+        installOpsAuthorization([]);
+
+        await expect(listAuthorizedRepositories("org-123")).resolves.toEqual([]);
     });
 
     it("fails closed on an ACR contract version drift before forwarding a packet", async () => {

@@ -48,6 +48,7 @@ export const CTA_LABELS = {
     viewGuide: "View guide",
     reset: "Reset",
     retry: "Retry",
+    reportIssue: "Report an issue",
     clearContext: "Clear context",
     clearTheme: "Clear theme",
     allThemes: "All themes",

@@ -1,9 +1,10 @@
 import { defineConfig } from "@playwright/test";
 
 const isCI = process.env.CI === "true" || process.env.CI === "1";
-const htmlOutputFolder = process.env.PLAYWRIGHT_HTML_REPORT ?? "playwright-report";
-const junitOutputFile =
-    process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? "test-results/playwright/junit.xml";
+const resultsDirectory = process.env.PLAYWRIGHT_RESULTS_DIR ?? "test-results/playwright/default";
+const htmlOutputFolder =
+    process.env.PLAYWRIGHT_HTML_REPORT ?? "test-results/playwright-html/default";
+const junitOutputFile = process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? `${resultsDirectory}/junit.xml`;
 
 const AUTH_FILE = "test-results/.auth/state.json";
 
@@ -17,13 +18,15 @@ const AUTH_FILE = "test-results/.auth/state.json";
 // test:e2e:onboarding` (and CI) runs the guided config separately.
 export default defineConfig({
     testDir: "./tests",
+    testMatch: /.*\.spec\.ts/,
     testIgnore: [
         "live/**",
+        "**/mocks/**",
         "auth-onboard.spec.ts",
         "onboarding.setup.ts",
         "acr-context-fabric.production.spec.ts",
     ],
-    outputDir: "test-results/playwright",
+    outputDir: resultsDirectory,
     reporter: [
         ["list"],
         ["html", { outputFolder: htmlOutputFolder, open: "never" }],
@@ -70,7 +73,7 @@ export default defineConfig({
     use: {
         baseURL: "http://127.0.0.1:3001",
         headless: true,
-        trace: "retain-on-failure",
+        trace: isCI ? "on" : "retain-on-failure",
         video: "retain-on-failure",
         screenshot: "only-on-failure",
     },

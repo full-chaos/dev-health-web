@@ -158,7 +158,7 @@ jobs:
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
               with:
                   name: playwright-report-${{ github.run_id }}-${{ github.run_attempt }}
-                  path: playwright-report/
+                  path: test-results/playwright-html/
                   if-no-files-found: warn
                   retention-days: 14
             - name: Upload Playwright raw results and JUnit
