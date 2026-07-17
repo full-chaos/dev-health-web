@@ -154,7 +154,7 @@ export async function waitForWindowsLaunch({
     throw new Error("Owned Windows process helper timed out before ownership was established.");
 }
 
-async function launchWindowsOwnedProcess(command, args) {
+async function launchWindowsOwnedProcess(command, args, onHelperExit) {
     const statusDirectory = await mkdtemp(join(tmpdir(), "owned-process-"));
     const statusPath = join(statusDirectory, "status.json");
     await writeFile(statusPath, JSON.stringify({ args, command }), { mode: 0o600 });
@@ -163,6 +163,7 @@ async function launchWindowsOwnedProcess(command, args) {
         ["-NoProfile", "-NonInteractive", "-File", windowsLauncher, statusPath],
         { stdio: "inherit", windowsHide: true },
     );
+    helper.once("exit", onHelperExit);
     try {
         const status = await waitForWindowsLaunch({ helper, statusPath });
         return { helper, statusDirectory, targetProcessId: status.targetProcessId };
@@ -182,6 +183,7 @@ export function createWindowsOwnedTreeController({
     listProcesses = listWindowsProcesses,
     launch = launchWindowsOwnedProcess,
     maximumPolls = Math.ceil(OWNED_PROCESS_ESCALATION_TIMEOUT_MS / POLL_INTERVAL_MS),
+    onHelperExit = () => undefined,
     taskkill: terminateTree = taskkill,
     terminate = terminateWindowsOwnedProcess,
     wait: waitForPoll = wait,
@@ -191,7 +193,7 @@ export function createWindowsOwnedTreeController({
 
     return {
         async start(command, args) {
-            launched = await launch(command, args);
+            launched = await launch(command, args, onHelperExit);
             return launched.helper ?? launched.process;
         },
         async track(rootProcessId) {

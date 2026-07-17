@@ -34,6 +34,7 @@ public static class OwnedWindowsProcess {
     [DllImport("kernel32.dll", SetLastError = true)] public static extern uint ResumeThread(IntPtr thread);
     [DllImport("kernel32.dll", SetLastError = true)] public static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
     [DllImport("kernel32.dll", SetLastError = true)] public static extern bool GetExitCodeProcess(IntPtr process, out uint exitCode);
+    [DllImport("kernel32.dll", SetLastError = true)] public static extern bool TerminateProcess(IntPtr process, uint exitCode);
     [DllImport("kernel32.dll", SetLastError = true)] public static extern bool CloseHandle(IntPtr handle);
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern bool MoveFileEx(string existingFileName, string newFileName, uint flags);
 
@@ -66,6 +67,8 @@ public static class OwnedWindowsProcess {
     }
     public static void ReplaceFileAtomically(string source, string destination) { Check(MoveFileEx(source, destination, MoveFileReplaceExisting | MoveFileWriteThrough)); }
     public static void WaitForProcess(IntPtr process) { Check(WaitForSingleObject(process, Infinite) == 0); }
+    public static void TerminateAndWait(IntPtr process) { TerminateAndWait(process, 1); }
+    public static void TerminateAndWait(IntPtr process, uint exitCode) { Check(TerminateProcess(process, exitCode)); WaitForProcess(process); uint observedExitCode; Check(GetExitCodeProcess(process, out observedExitCode)); if (observedExitCode == 259) throw new InvalidOperationException("Target process remained active after termination."); }
 }
 '@
 
@@ -86,8 +89,15 @@ function Publish-Status([hashtable]$status) {
 }
 try {
     $job = [OwnedWindowsProcess]::CreateKillOnCloseJob()
-    $process = [OwnedWindowsProcess]::CreateSuspended($manifest.command, [string[]]$manifest.args)
-    if (-not [OwnedWindowsProcess]::AssignProcessToJobObject($job, $process.hProcess)) { throw [ComponentModel.Win32Exception]::new([Runtime.InteropServices.Marshal]::GetLastWin32Error()) }
+    $commandInfo = Get-Command -Name $manifest.command -CommandType Application -ErrorAction Stop
+    $commandPath = [IO.Path]::GetFullPath($commandInfo.Path)
+    if (-not [string]::Equals([IO.Path]::GetExtension($commandPath), ".exe", [StringComparison]::OrdinalIgnoreCase)) { throw "Owned Windows target must resolve to an executable .exe file." }
+    $process = [OwnedWindowsProcess]::CreateSuspended($commandPath, [string[]]$manifest.args)
+    if (-not [OwnedWindowsProcess]::AssignProcessToJobObject($job, $process.hProcess)) {
+        $assignmentError = [ComponentModel.Win32Exception]::new([Runtime.InteropServices.Marshal]::GetLastWin32Error())
+        try { [OwnedWindowsProcess]::TerminateAndWait($process.hProcess) } catch { throw [InvalidOperationException]::new("Unable to terminate a target whose Job Object assignment failed.", $_.Exception) }
+        throw $assignmentError
+    }
     if ([OwnedWindowsProcess]::ResumeThread($process.hThread) -eq 0xffffffff) { throw [ComponentModel.Win32Exception]::new([Runtime.InteropServices.Marshal]::GetLastWin32Error()) }
     Publish-Status @{ state = "ready"; targetProcessId = $process.dwProcessId }
     [OwnedWindowsProcess]::WaitForProcess($process.hProcess)

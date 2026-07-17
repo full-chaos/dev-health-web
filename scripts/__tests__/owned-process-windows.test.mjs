@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
     createWindowsOwnedTreeController,
     waitForWindowsLaunch,
@@ -35,6 +35,42 @@ const grandchild = {
 };
 
 describe("Windows owned-process cleanup", () => {
+    it("resolves command names to absolute executables before CreateProcess", async () => {
+        const launcherSource = await readFile(windowsLauncher, "utf8");
+
+        expect(launcherSource).toContain(
+            "Get-Command -Name $manifest.command -CommandType Application",
+        );
+        expect(launcherSource).toContain("[IO.Path]::GetFullPath($commandInfo.Path)");
+        expect(launcherSource).toContain("CreateSuspended($commandPath, [string[]]$manifest.args)");
+        expect(launcherSource).toContain(".exe");
+    });
+
+    it("terminates and waits for a suspended target when Job Object assignment fails", async () => {
+        const launcherSource = await readFile(windowsLauncher, "utf8");
+        const assignment = launcherSource.indexOf("AssignProcessToJobObject");
+        const termination = launcherSource.indexOf("TerminateAndWait($process.hProcess)");
+
+        expect(assignment).toBeGreaterThan(-1);
+        expect(termination).toBeGreaterThan(assignment);
+        expect(launcherSource).toContain("public static void TerminateAndWait(IntPtr process)");
+    });
+
+    it("caches a helper exit that occurs while launch waits for ready", async () => {
+        const onHelperExit = vi.fn();
+        const controller = createWindowsOwnedTreeController({
+            launch: async (_command, _args, recordExit) => {
+                recordExit(23, null);
+                return { helper: { exitCode: 23, pid: 9001, signalCode: null } };
+            },
+            onHelperExit,
+        });
+
+        await controller.start("node", ["-e", "process.exit(23)"]);
+
+        expect(onHelperExit).toHaveBeenCalledWith(23, null);
+    });
+
     it("consumes a ready status before interpreting a fast helper exit", async () => {
         const helper = { exitCode: 1 };
 
@@ -71,7 +107,7 @@ describe("Windows owned-process cleanup", () => {
     });
 
     it.runIf(process.platform === "win32")(
-        "preserves spaces, quotes, backslashes, and Unicode in target arguments",
+        "resolves node from PATH and preserves spaces, quotes, backslashes, and Unicode in target arguments",
         async () => {
             const statusDirectory = await mkdtemp(join(tmpdir(), "owned-process-arguments-"));
             const statusPath = join(statusDirectory, "status.json");
@@ -82,10 +118,7 @@ describe("Windows owned-process cleanup", () => {
                 receivedArgumentsPath,
                 ...windowsArgumentCases,
             ];
-            await writeFile(
-                statusPath,
-                JSON.stringify({ args: targetArgs, command: process.execPath }),
-            );
+            await writeFile(statusPath, JSON.stringify({ args: targetArgs, command: "node" }));
             const helper = spawn(
                 "powershell.exe",
                 ["-NoProfile", "-NonInteractive", "-File", windowsLauncher, statusPath],
@@ -98,6 +131,29 @@ describe("Windows owned-process cleanup", () => {
                 expect(JSON.parse(await readFile(receivedArgumentsPath, "utf8"))).toEqual(
                     windowsArgumentCases,
                 );
+            } finally {
+                helper.kill();
+                await rm(statusDirectory, { force: true, recursive: true });
+            }
+        },
+    );
+    it.runIf(process.platform === "win32")(
+        "rejects a pnpm command shim before CreateProcess",
+        async () => {
+            const statusDirectory = await mkdtemp(join(tmpdir(), "owned-process-pnpm-"));
+            const statusPath = join(statusDirectory, "status.json");
+            await writeFile(statusPath, JSON.stringify({ args: ["--version"], command: "pnpm" }));
+            const helper = spawn(
+                "powershell.exe",
+                ["-NoProfile", "-NonInteractive", "-File", windowsLauncher, statusPath],
+                { windowsHide: true },
+            );
+
+            try {
+                await expect(waitForWindowsLaunch({ helper, statusPath })).rejects.toThrow(
+                    "could not establish ownership",
+                );
+                expect(await waitForExit(helper)).toBe(1);
             } finally {
                 helper.kill();
                 await rm(statusDirectory, { force: true, recursive: true });
