@@ -10,6 +10,26 @@ const grandchild = {
 };
 
 describe("Windows owned-process cleanup", () => {
+    it("establishes Job Object ownership before an immediately exiting parent can orphan a grandchild", async () => {
+        const events = [];
+        const helper = { pid: 9001 };
+        const controller = createWindowsOwnedTreeController({
+            launch: async () => {
+                events.push("assigned-before-resume");
+                return { process: helper, targetProcessId: 9002 };
+            },
+            terminate: async (owned) => {
+                events.push(`terminated-job:${owned.targetProcessId}`);
+            },
+        });
+
+        const process = await controller.start("node", ["-e", "process.exit(0)"]);
+        await controller.stop();
+
+        expect(process).toBe(helper);
+        expect(events).toEqual(["assigned-before-resume", "terminated-job:9002"]);
+    });
+
     it("terminates a tracked owned descendant when its parent exits before cleanup", async () => {
         const snapshots = [[root, child, grandchild], [child, grandchild], []];
         const terminated = [];

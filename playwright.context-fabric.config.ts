@@ -1,6 +1,10 @@
 import { defineConfig } from "@playwright/test";
 import { PLAYWRIGHT_GRACEFUL_SHUTDOWN_TIMEOUT_MS } from "./scripts/owned-process-lifecycle.mjs";
 
+export const BFF_ORIGIN = "http://127.0.0.1:3012";
+export const OPS_MOCK_ORIGIN = "http://127.0.0.1:8012";
+export const ACR_API_ORIGIN = "https://127.0.0.1:8013";
+
 const AUTH_FILE = "test-results/.auth/state.json";
 const GRACEFUL_SHUTDOWN = {
     signal: "SIGTERM",
@@ -14,7 +18,7 @@ export default defineConfig({
     workers: 1,
     reporter: [["list"]],
     use: {
-        baseURL: "http://127.0.0.1:3012",
+        baseURL: BFF_ORIGIN,
         headless: true,
         screenshot: "only-on-failure",
         trace: "retain-on-failure",
@@ -34,7 +38,7 @@ export default defineConfig({
         {
             command:
                 "exec node scripts/run-owned-process.mjs node --import tsx ./tests/mocks/http-server.ts",
-            url: "http://127.0.0.1:8012/health",
+            url: `${OPS_MOCK_ORIGIN}/health`,
             reuseExistingServer: false,
             gracefulShutdown: GRACEFUL_SHUTDOWN,
             timeout: 30_000,
@@ -43,7 +47,7 @@ export default defineConfig({
         {
             command:
                 "rm -rf test-results/context-fabric-keys && mkdir -p test-results/context-fabric-keys && openssl genpkey -algorithm ED25519 -out test-results/context-fabric-keys/web-assertion.key && chmod 600 test-results/context-fabric-keys/web-assertion.key && openssl req -x509 -newkey rsa:2048 -nodes -keyout test-results/context-fabric-keys/tls.key -out test-results/context-fabric-keys/tls.crt -subj /CN=127.0.0.1 -days 1 && exec node scripts/run-owned-process.mjs node --import tsx tests/mocks/acr-server.ts",
-            url: "https://127.0.0.1:8013/health",
+            url: `${ACR_API_ORIGIN}/health`,
             ignoreHTTPSErrors: true,
             reuseExistingServer: false,
             gracefulShutdown: GRACEFUL_SHUTDOWN,
@@ -57,15 +61,15 @@ export default defineConfig({
         {
             command:
                 "rm -rf test-results/context-fabric-runtime && mkdir -p test-results/context-fabric-runtime/.next && cp -R .next/standalone/. test-results/context-fabric-runtime && cp -R .next/static test-results/context-fabric-runtime/.next/static && cp -R public scripts test-results/context-fabric-runtime && cd test-results/context-fabric-runtime && node scripts/write-runtime-config.mjs && HOSTNAME=127.0.0.1 PORT=3012 exec node scripts/run-owned-process.mjs node server.js",
-            url: "http://127.0.0.1:3012",
+            url: BFF_ORIGIN,
             reuseExistingServer: false,
             gracefulShutdown: GRACEFUL_SHUTDOWN,
             timeout: 120_000,
             env: {
-                BACKEND_URL: "http://127.0.0.1:8012",
+                BACKEND_URL: OPS_MOCK_ORIGIN,
                 AUTH_SECRET: "context-fabric-production-playwright",
-                AUTH_URL: "http://127.0.0.1:3012",
-                ACR_API_ORIGIN: "https://127.0.0.1:8013",
+                AUTH_URL: BFF_ORIGIN,
+                ACR_API_ORIGIN,
                 ACR_WEB_ASSERTION_AUDIENCE: "dev-health-acr",
                 ACR_WEB_ASSERTION_ISSUER: "dev-health-web",
                 ACR_WEB_ASSERTION_KEY_FILE: "../context-fabric-keys/web-assertion.key",

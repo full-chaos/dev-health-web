@@ -1,27 +1,23 @@
 import { spawn } from "node:child_process";
-import { OWNED_PROCESS_ESCALATION_TIMEOUT_MS } from "./owned-process-lifecycle.mjs";
+import { OWNED_PROCESS_WAIT_TIMEOUT_MS } from "./owned-process-lifecycle.mjs";
 import { processGroupExists } from "./owned-process-posix.mjs";
 import { createWindowsOwnedTreeController } from "./owned-process-windows.mjs";
 
 const [command, ...args] = process.argv.slice(2);
 if (!command) throw new Error("Expected a command to supervise");
 
-const SHUTDOWN_TIMEOUT_MS = OWNED_PROCESS_ESCALATION_TIMEOUT_MS;
+const SHUTDOWN_TIMEOUT_MS = OWNED_PROCESS_WAIT_TIMEOUT_MS;
 const POLL_INTERVAL_MS = 25;
 const isWindows = process.platform === "win32";
-const child = spawn(command, args, {
-    detached: !isWindows,
-    stdio: "inherit",
-    windowsHide: true,
-});
 const windowsTree = isWindows ? createWindowsOwnedTreeController() : undefined;
-let windowsTrackingError;
-const windowsTreeTracked =
-    windowsTree === undefined || child.pid === undefined
-        ? Promise.resolve()
-        : windowsTree.track(child.pid).catch((error) => {
-              windowsTrackingError = error;
-          });
+const child =
+    windowsTree === undefined
+        ? spawn(command, args, {
+              detached: true,
+              stdio: "inherit",
+              windowsHide: true,
+          })
+        : await windowsTree.start(command, args);
 let stopping = false;
 let requestedSignal;
 let childExitCode;
@@ -60,9 +56,7 @@ async function stopOwnedTree(signal) {
     if (child.pid === undefined) throw new Error("Owned process did not expose a PID.");
 
     if (windowsTree !== undefined) {
-        await windowsTreeTracked;
-        if (windowsTrackingError !== undefined) throw windowsTrackingError;
-        await windowsTree.stop(child.pid);
+        await windowsTree.stop();
         return;
     }
 

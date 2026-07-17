@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from "@playwright/test";
+import { ACR_API_ORIGIN } from "../playwright.context-fabric.config";
 
 const ENTITLEMENT_SCENARIOS = ["provisioned", "unprovisioned", "invalid", "error"] as const;
 type EntitlementScenario = (typeof ENTITLEMENT_SCENARIOS)[number];
@@ -220,6 +221,9 @@ test.describe("Context Fabric production entitlement boundary", () => {
         page,
     }, testInfo) => {
         await setEntitlementScenario(page.request, "provisioned");
+        await page.route(`${ACR_API_ORIGIN}/**`, (route) => {
+            throw new Error(`Browser attempted direct ACR access: ${route.request().url()}`);
+        });
         const browserRequests: string[] = [];
         page.on("request", (request) => browserRequests.push(request.url()));
         await page.goto("/agent-context/context-packet");
@@ -273,7 +277,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
                 "ACR Security: Implement scoped client credentials and repository authorization",
             ),
         ).toBeVisible();
-        expect(browserRequests.some((url) => url.includes(":8013"))).toBe(false);
+        expect(browserRequests.filter((url) => new URL(url).origin === ACR_API_ORIGIN)).toEqual([]);
         await page.screenshot({
             path: testInfo.outputPath("expanded-evidence-768.png"),
             fullPage: true,
