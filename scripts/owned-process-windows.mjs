@@ -174,9 +174,42 @@ async function launchWindowsOwnedProcess(command, args, onHelperExit) {
     }
 }
 
-async function terminateWindowsOwnedProcess(owned) {
-    if (owned.helper.exitCode === null) owned.helper.kill();
-    await rm(owned.statusDirectory, { force: true, recursive: true });
+async function terminateWindowsOwnedProcess(
+    owned,
+    { listProcesses = listWindowsProcesses, maximumPolls, wait: waitForPoll },
+) {
+    const processes = await listProcesses();
+    const target = processes.find((processInfo) => processInfo.processId === owned.targetProcessId);
+    const expected = target === undefined ? [] : descendantsFrom([target], processes);
+
+    if (owned.helper.exitCode === null) {
+        let killResult;
+        try {
+            killResult = owned.helper.kill();
+        } catch (error) {
+            throw new Error("Unable to terminate the owned Windows process helper.", {
+                cause: error,
+            });
+        }
+        if (killResult === false)
+            throw new Error("Unable to terminate the owned Windows process helper.");
+    }
+    if (owned.statusDirectory !== undefined)
+        await rm(owned.statusDirectory, { force: true, recursive: true });
+
+    for (let poll = 0; poll < maximumPolls && owned.helper.exitCode === null; poll += 1) {
+        await waitForPoll(POLL_INTERVAL_MS);
+    }
+    if (owned.helper.exitCode === null)
+        throw new Error("Owned Windows process helper remained alive after termination.");
+
+    for (let poll = 0; poll < maximumPolls; poll += 1) {
+        const current = await listProcesses();
+        if (!expected.some((processInfo) => processByIdentity(current, processInfo) !== undefined))
+            return;
+        if (poll + 1 < maximumPolls) await waitForPoll(POLL_INTERVAL_MS);
+    }
+    throw new Error("Owned Windows process tree remained alive after Job Object cleanup.");
 }
 
 export function createWindowsOwnedTreeController({
@@ -207,7 +240,11 @@ export function createWindowsOwnedTreeController({
         },
         async stop(rootProcessId) {
             if (launched !== undefined) {
-                await terminate(launched);
+                await terminate(launched, {
+                    listProcesses,
+                    maximumPolls,
+                    wait: waitForPoll,
+                });
                 return;
             }
             const processes = await listProcesses();

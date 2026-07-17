@@ -212,4 +212,82 @@ describe("Windows owned-process cleanup", () => {
             "Owned Windows process tree remained alive after taskkill.",
         );
     });
+
+    it("fails when the Job Object helper refuses termination", async () => {
+        const controller = createWindowsOwnedTreeController({
+            launch: async () => ({
+                helper: { exitCode: null, kill: () => false },
+                targetProcessId: root.processId,
+            }),
+            listProcesses: async () => [],
+        });
+
+        await controller.start("node", []);
+
+        await expect(controller.stop()).rejects.toThrow("Unable to terminate");
+    });
+
+    it("waits for the helper to exit before declaring Job Object cleanup complete", async () => {
+        const helper = { exitCode: null, kill: vi.fn(() => true) };
+        const waits = [];
+        const controller = createWindowsOwnedTreeController({
+            launch: async () => ({ helper, targetProcessId: root.processId }),
+            listProcesses: async () => [],
+            maximumPolls: 2,
+            wait: async () => {
+                waits.push(true);
+                helper.exitCode = 0;
+            },
+        });
+
+        await controller.start("node", []);
+        await controller.stop();
+
+        expect(helper.kill).toHaveBeenCalledOnce();
+        expect(waits).toHaveLength(1);
+    });
+
+    it("fails when Job Object descendants remain after the helper exits", async () => {
+        const helper = { exitCode: 0, kill: vi.fn(() => true) };
+        const controller = createWindowsOwnedTreeController({
+            launch: async () => ({ helper, targetProcessId: root.processId }),
+            listProcesses: async () => [root, child],
+            maximumPolls: 1,
+            wait: async () => undefined,
+        });
+
+        await controller.start("node", []);
+
+        await expect(controller.stop()).rejects.toThrow(
+            "Owned Windows process tree remained alive after Job Object cleanup.",
+        );
+    });
+
+    it("releases the target tree without terminating unrelated processes", async () => {
+        const helper = {
+            exitCode: null,
+            kill: vi.fn(() => {
+                helper.exitCode = 0;
+                return true;
+            }),
+        };
+        const unrelated = {
+            createdAt: "2026-07-16T16:45:03.000Z",
+            parentProcessId: 1,
+            processId: 404,
+        };
+        const snapshots = [[root, child, grandchild, unrelated], [unrelated]];
+        const controller = createWindowsOwnedTreeController({
+            launch: async () => ({ helper, targetProcessId: root.processId }),
+            listProcesses: async () => snapshots.shift() ?? [unrelated],
+            maximumPolls: 2,
+            wait: async () => undefined,
+        });
+
+        await controller.start("node", []);
+        await controller.stop();
+
+        expect(helper.kill).toHaveBeenCalledOnce();
+        expect(snapshots).toHaveLength(0);
+    });
 });
