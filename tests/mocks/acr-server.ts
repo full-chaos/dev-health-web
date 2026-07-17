@@ -1,8 +1,15 @@
 import { readFileSync } from "node:fs";
 import { createServer } from "node:https";
 import express from "express";
-import contextPacket from "../../src/lib/acr/contracts/examples/context_packet.v1.json";
-import expandedEvidence from "../../src/lib/acr/contracts/examples/expanded_evidence.v1.json";
+import {
+    contextPacketForGoal,
+    evidenceRequestStarted,
+    expandedEvidenceForId,
+    getAcrMockEvidenceStats,
+    getContextPacketDelay,
+    getEvidenceDelay,
+    setAcrMockControls,
+} from "./acr-fixtures";
 
 const app = express();
 const port = Number(process.env.ACR_MOCK_PORT ?? 8013);
@@ -36,32 +43,44 @@ const capabilities = {
 app.use(express.json());
 app.get("/health", (_request, response) => response.json({ status: "ok" }));
 app.get("/api/v1/agent-context/capabilities", (_request, response) => response.json(capabilities));
+app.post("/__test/controls", (request, response) => {
+    if (!setAcrMockControls(request.body)) {
+        response.status(400).json({ error: "Invalid ACR mock controls" });
+        return;
+    }
+    response.status(204).end();
+});
+app.get("/__test/evidence-requests", (_request, response) => {
+    response.json(getAcrMockEvidenceStats());
+});
 app.post("/api/v1/agent-context/context-packets", (request, response) => {
-    const goal = typeof request.body.goal === "string" ? request.body.goal : contextPacket.goal;
+    const goal =
+        typeof request.body.goal === "string"
+            ? request.body.goal
+            : "Add repository-scoped ACR credentials";
     if (goal === "e2e error") return response.status(503).json({ error: "unavailable" });
-    const status =
-        goal === "e2e empty"
-            ? "empty"
-            : goal === "e2e degraded"
-              ? "degraded"
-              : goal === "e2e partial"
-                ? "partial"
-                : "complete";
-    const items = status === "empty" ? [] : contextPacket.items;
-    return response.json({
-        ...contextPacket,
-        context_packet_id: `e2e-${status}`,
-        goal,
-        items,
-        status,
-    });
+    const sendPacket = () => response.json(contextPacketForGoal(goal));
+    const delay = getContextPacketDelay(goal);
+    if (delay > 0) {
+        setTimeout(sendPacket, delay);
+        return;
+    }
+    sendPacket();
 });
 app.get("/api/v1/agent-context/evidence/:evidenceRefId", (request, response) => {
     if (request.params.evidenceRefId === "unknown-reference") return response.status(404).json({});
-    return response.json({
-        ...expandedEvidence,
-        evidence: { ...expandedEvidence.evidence, evidence_ref_id: request.params.evidenceRefId },
-    });
+    const finish = evidenceRequestStarted();
+    const sendEvidence = () => {
+        if (!response.destroyed) response.json(expandedEvidenceForId(request.params.evidenceRefId));
+        finish();
+    };
+    response.once("close", finish);
+    const delay = getEvidenceDelay();
+    if (delay > 0) {
+        setTimeout(sendEvidence, delay);
+        return;
+    }
+    sendEvidence();
 });
 
 createServer({ cert: readFileSync(certificateFile), key: readFileSync(keyFile) }, app).listen(

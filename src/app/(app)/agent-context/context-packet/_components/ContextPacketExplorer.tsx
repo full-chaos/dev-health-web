@@ -63,6 +63,7 @@ export function ContextPacketExplorer({
         live ? null : SAMPLE_CONTEXT_PACKET,
     );
     const goalRef = useRef<HTMLTextAreaElement>(null);
+    const liveRequestGeneration = useRef(0);
     const activeState =
         controlledState === "sample" && submitted !== null ? submitted : controlledState;
 
@@ -71,6 +72,12 @@ export function ContextPacketExplorer({
         const frame = requestAnimationFrame(() => setSubmitted("sample"));
         return () => cancelAnimationFrame(frame);
     }, [live, submitted]);
+
+    useEffect(() => {
+        return () => {
+            liveRequestGeneration.current += 1;
+        };
+    }, []);
 
     const updateField = (field: keyof ContextPacketRequestForm, value: string) => {
         setForm((current) => ({ ...current, [field]: value }));
@@ -90,6 +97,8 @@ export function ContextPacketExplorer({
             setSubmitted("loading");
             return;
         }
+        const requestGeneration = liveRequestGeneration.current + 1;
+        liveRequestGeneration.current = requestGeneration;
         setSubmitted("loading");
         try {
             const response = await fetch("/api/agent-context/context-packets", {
@@ -104,6 +113,7 @@ export function ContextPacketExplorer({
                 method: "POST",
             });
             const payload: unknown = await response.json();
+            if (requestGeneration !== liveRequestGeneration.current) return;
             if (!response.ok || !isContextPacket(payload)) {
                 setSubmitted(response.status === 403 ? "not-entitled" : "error");
                 return;
@@ -111,7 +121,7 @@ export function ContextPacketExplorer({
             setPacket(payload);
             setSubmitted(packetState(payload));
         } catch {
-            setSubmitted("error");
+            if (requestGeneration === liveRequestGeneration.current) setSubmitted("error");
         }
     };
 
@@ -228,7 +238,7 @@ export function ContextPacketExplorer({
                 </div>
                 <button
                     type="submit"
-                    disabled={activeState === "loading" || catalog.kind !== "ready"}
+                    disabled={catalog.kind !== "ready"}
                     className="mt-5 rounded-(--radius-sm) bg-(--accent) px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50 disabled:cursor-wait disabled:opacity-60"
                 >
                     {CTA_LABELS.generateContext}

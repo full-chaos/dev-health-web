@@ -3,6 +3,17 @@ import { ACR_API_ORIGIN } from "../playwright.context-fabric.config";
 
 const ENTITLEMENT_SCENARIOS = ["provisioned", "unprovisioned", "invalid", "error"] as const;
 type EntitlementScenario = (typeof ENTITLEMENT_SCENARIOS)[number];
+type AcrMockControls = {
+    readonly delayedGoals?: Readonly<Record<string, number>>;
+    readonly evidenceDelayMs?: number;
+    readonly evidenceReferenceCount?: number;
+    readonly malformedPacket?: boolean;
+};
+type EvidenceRequestStats = {
+    readonly active: number;
+    readonly count: number;
+    readonly maxConcurrent: number;
+};
 
 const viewports = [
     { name: "1280", width: 1280, height: 768 },
@@ -28,6 +39,33 @@ async function expectNoAcrRequests(request: APIRequestContext): Promise<void> {
     expect(await response.json()).toEqual({ count: 0 });
 }
 
+async function setAcrMockControls(
+    request: APIRequestContext,
+    controls: AcrMockControls = {},
+): Promise<void> {
+    const response = await request.post(`${ACR_API_ORIGIN}/__test/controls`, { data: controls });
+    expect(response.status()).toBe(204);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isEvidenceRequestStats(value: unknown): value is EvidenceRequestStats {
+    if (!isRecord(value)) return false;
+    return [value.active, value.count, value.maxConcurrent].every(
+        (count) => typeof count === "number" && Number.isInteger(count) && count >= 0,
+    );
+}
+
+async function evidenceRequestStats(request: APIRequestContext): Promise<EvidenceRequestStats> {
+    const response = await request.get(`${ACR_API_ORIGIN}/__test/evidence-requests`);
+    expect(response.ok()).toBe(true);
+    const stats: unknown = await response.json();
+    if (!isEvidenceRequestStats(stats)) throw new Error("Invalid ACR mock evidence request stats.");
+    return stats;
+}
+
 async function gotoWithSessionReady(page: Page, path: string): Promise<void> {
     const sessionResponse = page.waitForResponse(
         (response) =>
@@ -36,6 +74,7 @@ async function gotoWithSessionReady(page: Page, path: string): Promise<void> {
     );
     await page.goto(path);
     expect((await sessionResponse).status()).toBe(200);
+    await expect(page.getByRole("button", { name: "Account options" })).toBeVisible();
 }
 
 function recordBrowserFaults(page: Page): {
@@ -68,6 +107,10 @@ async function expectHealthyBrowser(faults: ReturnType<typeof recordBrowserFault
 
 test.describe("Context Fabric production entitlement boundary", () => {
     test.describe.configure({ mode: "serial" });
+
+    test.beforeEach(async ({ request }) => {
+        await setAcrMockControls(request);
+    });
 
     test("shows one current Context Fabric destination for a provisioned organization at every viewport", async ({
         page,
@@ -193,6 +236,27 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await expectHealthyBrowser(faults);
     });
 
+    test("activates Preferences and Sign out through local navigation and mock-safe auth", async ({
+        page,
+    }) => {
+        await setEntitlementScenario(page.request, "provisioned");
+        await page.route(`${ACR_API_ORIGIN}/**`, (route) => {
+            throw new Error(`Browser attempted direct ACR access: ${route.request().url()}`);
+        });
+        await gotoWithSessionReady(page, "/agent-context/context-packet");
+
+        await page.getByRole("button", { name: "Account options" }).click();
+        await page.getByRole("link", { name: "Preferences" }).click();
+        await expect(page).toHaveURL(/\/settings$/);
+        await expect(page.getByRole("heading", { name: "Preferences", level: 1 })).toBeVisible();
+
+        await page.getByRole("button", { name: "Account options" }).click();
+        await page.getByRole("button", { name: "Sign out" }).click();
+        await expect(page).toHaveURL(/\/$/);
+        await expect(page.getByRole("link", { name: "Sign In" })).toBeVisible();
+        await expect(page.getByRole("button", { name: "Account options" })).toHaveCount(0);
+    });
+
     test("renders a full commit hash accessibly without truncating its tablet layout", async ({
         page,
     }, testInfo) => {
@@ -282,6 +346,108 @@ test.describe("Context Fabric production entitlement boundary", () => {
             path: testInfo.outputPath("expanded-evidence-768.png"),
             fullPage: true,
         });
+    });
+
+    test("renders a safe terminal state when the local ACR fixture sends a malformed packet", async ({
+        page,
+    }) => {
+        await setEntitlementScenario(page.request, "provisioned");
+        await setAcrMockControls(page.request, { malformedPacket: true });
+        await page.route(`${ACR_API_ORIGIN}/**`, (route) => {
+            throw new Error(`Browser attempted direct ACR access: ${route.request().url()}`);
+        });
+        await page.goto("/agent-context/context-packet");
+
+        await page.getByLabel(/Goal/).fill("e2e malformed packet");
+        await page.getByRole("button", { name: "Generate context" }).click();
+
+        await expect(page.getByTestId("data-state-error")).toBeVisible();
+        await expect(page.getByRole("heading", { name: "e2e malformed packet" })).toHaveCount(0);
+    });
+
+    test("keeps the current packet when a delayed stale BFF response resolves last", async ({
+        page,
+    }) => {
+        await setEntitlementScenario(page.request, "provisioned");
+        await setAcrMockControls(page.request, { delayedGoals: { "e2e stale response": 500 } });
+        await page.route(`${ACR_API_ORIGIN}/**`, (route) => {
+            throw new Error(`Browser attempted direct ACR access: ${route.request().url()}`);
+        });
+        await page.goto("/agent-context/context-packet");
+
+        const staleResponse = page.waitForResponse(
+            (response) =>
+                response.url().endsWith("/api/agent-context/context-packets") &&
+                response.request().postData()?.includes("e2e stale response") === true,
+        );
+        await page.getByLabel(/Goal/).fill("e2e stale response");
+        await page.getByRole("button", { name: "Generate context" }).click();
+        await expect(page.getByRole("button", { name: "Generate context" })).toBeEnabled();
+
+        await page.getByLabel(/Goal/).fill("e2e current response");
+        await page.getByRole("button", { name: "Generate context" }).click();
+        await expect(page.getByRole("heading", { name: "e2e current response" })).toBeVisible();
+        await staleResponse;
+
+        await expect(page.getByRole("heading", { name: "e2e current response" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "e2e stale response" })).toHaveCount(0);
+    });
+
+    test("caps concurrent evidence fetches globally while retaining every server-owned reference", async ({
+        page,
+    }) => {
+        await setEntitlementScenario(page.request, "provisioned");
+        await setAcrMockControls(page.request, {
+            evidenceDelayMs: 1_000,
+            evidenceReferenceCount: 9,
+        });
+        await page.goto("/agent-context/context-packet");
+
+        await page.getByLabel(/Goal/).fill("e2e partial");
+        await page.getByRole("button", { name: "Generate context" }).click();
+        const evidenceButtons = page.getByRole("button", { name: "Open evidence" });
+        await expect(evidenceButtons).toHaveCount(2);
+        const firstEvidenceButton = page
+            .locator("article")
+            .filter({ hasText: "Credential scope must be repository constrained 1" })
+            .getByRole("button", { name: "Open evidence" });
+        const secondEvidenceButton = page
+            .locator("article")
+            .filter({ hasText: "Credential scope must be repository constrained 2" })
+            .getByRole("button", { name: "Open evidence" });
+        await firstEvidenceButton.click();
+        await secondEvidenceButton.click();
+
+        await expect.poll(async () => (await evidenceRequestStats(page.request)).active).toBe(0);
+        const stats = await evidenceRequestStats(page.request);
+        expect(stats.count).toBe(9);
+        expect(stats.maxConcurrent).toBeGreaterThan(1);
+        expect(stats.maxConcurrent).toBeLessThanOrEqual(8);
+    });
+
+    test("resets browser-only feedback after replacement without sending feedback over the network", async ({
+        page,
+    }) => {
+        await setEntitlementScenario(page.request, "provisioned");
+        const feedbackRequests: string[] = [];
+        page.on("request", (request) => {
+            if (new URL(request.url()).pathname === "/api/feedback")
+                feedbackRequests.push(request.url());
+        });
+        await page.goto("/agent-context/context-packet");
+
+        await page.getByLabel(/Goal/).fill("e2e feedback first packet");
+        await page.getByRole("button", { name: "Generate context" }).click();
+        await page.getByRole("button", { name: "Mark context as incorrect" }).click();
+        await expect(page.getByText("Feedback recorded for this session only.")).toBeVisible();
+
+        await page.getByLabel(/Goal/).fill("e2e feedback replacement packet");
+        await page.getByRole("button", { name: "Generate context" }).click();
+        await expect(
+            page.getByRole("heading", { name: "e2e feedback replacement packet" }),
+        ).toBeVisible();
+        await expect(page.getByText("Feedback recorded for this session only.")).toHaveCount(0);
+        expect(feedbackRequests).toEqual([]);
     });
 
     for (const [goal, expected] of [
