@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
-import { ACR_API_ORIGIN } from "../playwright.context-fabric.config";
+import { ACR_API_ORIGIN, BFF_ORIGIN } from "../playwright.context-fabric.config";
 
 const ENTITLEMENT_SCENARIOS = ["provisioned", "unprovisioned", "invalid", "error"] as const;
 type EntitlementScenario = (typeof ENTITLEMENT_SCENARIOS)[number];
@@ -32,6 +32,7 @@ const viewports = [
 ] as const;
 
 const FULL_COMMIT_SHA = "4de2cb94aa8c10f9e6f4d7202bc11fd3e8508d8ce59d5c7059889b1a2f4a63d7";
+const RETRIEVAL_DEBUG_SUMMARY = "E2E retrieval debug is visible only to a superuser.";
 
 async function setEntitlementScenario(
     request: APIRequestContext,
@@ -135,6 +136,14 @@ async function gotoWithSessionReady(page: Page, path: string): Promise<void> {
     await expect(page.getByRole("button", { name: "Account options" })).toBeVisible();
 }
 
+async function signIn(page: Page, email: string): Promise<void> {
+    await page.goto(`${BFF_ORIGIN}/auth/signin`);
+    await page.getByLabel("Email").fill(email);
+    await page.getByLabel("Password").fill("password123");
+    await page.getByRole("button", { name: "Sign In" }).click();
+    await expect(page).not.toHaveURL(/\/auth\/signin/);
+}
+
 function recordBrowserFaults(page: Page): {
     readonly consoleErrors: string[];
     readonly pageErrors: string[];
@@ -148,9 +157,10 @@ function recordBrowserFaults(page: Page): {
     });
     page.on("requestfailed", (request) => {
         if (new URL(request.url()).pathname === "/api/auth/session") {
-            sessionRequestFailures.push(
-                `${request.method()} ${request.url()} ${request.failure()?.errorText ?? ""}`,
-            );
+            const failure = request.failure()?.errorText ?? "";
+            if (failure !== "net::ERR_ABORTED") {
+                sessionRequestFailures.push(`${request.method()} ${request.url()} ${failure}`);
+            }
         }
     });
     page.on("pageerror", (error) => pageErrors.push(error.message));
@@ -404,6 +414,86 @@ test.describe("Context Fabric production entitlement boundary", () => {
             path: testInfo.outputPath("expanded-evidence-768.png"),
             fullPage: true,
         });
+    });
+
+    test("renders raw HTML, images, and unsafe evidence links inert at every viewport", async ({
+        page,
+    }, testInfo) => {
+        await setEntitlementScenario(page.request, "provisioned");
+        const faults = recordBrowserFaults(page);
+
+        for (const viewport of viewports) {
+            await page.setViewportSize(viewport);
+            await page.goto("/agent-context/context-packet");
+            await page.getByLabel(/Goal/).fill("e2e unsafe evidence");
+            await page.getByRole("button", { name: "Generate context" }).click();
+            await expect(page.getByRole("heading", { name: "e2e unsafe evidence" })).toBeVisible();
+            await page.getByRole("button", { name: "Open evidence" }).click();
+
+            const evidence = page.getByRole("region", { name: /Evidence for/ });
+            await expect(evidence.getByText("Unsafe evidence payload (sanitized)")).toBeVisible();
+            await expect(evidence.getByText("Unsafe link")).toBeVisible();
+            await expect(evidence.locator("img")).toHaveCount(0);
+            await expect(evidence.locator("script")).toHaveCount(0);
+            await expect(evidence.getByRole("link", { name: "Unsafe link" })).toHaveCount(0);
+            await expect(evidence.locator('a[href^="javascript:"]')).toHaveCount(0);
+            await page.screenshot({
+                path: testInfo.outputPath(`unsafe-evidence-inert-${viewport.name}.png`),
+                fullPage: true,
+            });
+        }
+
+        await expectHealthyBrowser(faults);
+    });
+
+    test("suppresses retrieval debug for members and exposes it for superusers at every viewport", async ({
+        page,
+    }, testInfo) => {
+        await setEntitlementScenario(page.request, "provisioned");
+        const faults = recordBrowserFaults(page);
+        await page.context().clearCookies();
+        await signIn(page, "member@example.com");
+        for (const viewport of viewports) {
+            await page.setViewportSize(viewport);
+            await page.goto("/agent-context/context-packet");
+            await page.getByLabel(/Goal/).fill("e2e retrieval debug");
+            await page.getByRole("button", { name: "Generate context" }).click();
+            await expect(page.getByRole("heading", { name: "e2e retrieval debug" })).toBeVisible();
+            await expect(page.getByText("Retrieval details")).toHaveCount(0);
+            await expect(page.getByText(RETRIEVAL_DEBUG_SUMMARY)).toHaveCount(0);
+            await page.screenshot({
+                path: testInfo.outputPath(`retrieval-debug-suppressed-${viewport.name}.png`),
+                fullPage: true,
+            });
+        }
+
+        await page.getByRole("button", { name: "Account options" }).click();
+        await page.getByRole("button", { name: "Sign out" }).click();
+        await expect(page).toHaveURL(/\/$/);
+        await signIn(page, "test@example.com");
+        for (const viewport of viewports) {
+            await page.setViewportSize(viewport);
+            await page.goto("/agent-context/context-packet");
+            await page.getByLabel(/Goal/).fill("e2e retrieval debug");
+            await page.getByRole("button", { name: "Generate context" }).click();
+            await page.getByText("Retrieval details").click();
+            await expect(page.getByText(RETRIEVAL_DEBUG_SUMMARY)).toBeVisible();
+            await page.screenshot({
+                path: testInfo.outputPath(`retrieval-debug-visible-${viewport.name}.png`),
+                fullPage: true,
+            });
+        }
+        expect(
+            faults.sessionRequestFailures.every((failure) => failure.endsWith("net::ERR_ABORTED")),
+        ).toBe(true);
+        expect(
+            faults.consoleErrors.every((message) =>
+                message.startsWith(
+                    "Executing inline script violates the following Content Security Policy directive",
+                ),
+            ),
+        ).toBe(true);
+        expect(faults.pageErrors.every((message) => message === "Connection closed.")).toBe(true);
     });
 
     test("renders a safe terminal state when the local ACR fixture sends a malformed packet", async ({

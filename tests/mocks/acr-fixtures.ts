@@ -77,13 +77,13 @@ function packetStatus(goal: string): "complete" | "degraded" | "empty" | "partia
     }
 }
 
-function evidenceItems(evidenceReferenceCount: number) {
+function evidenceItems(evidenceReferenceCount: number, prefix = "ev_e2e") {
     const baseItem = contextPacket.items[0];
     if (baseItem === undefined)
         throw new Error("The ACR packet fixture requires one evidence item.");
     const evidenceRefIds = Array.from(
         { length: evidenceReferenceCount },
-        (_, index) => `ev_e2e_${String(index + 1).padStart(2, "0")}`,
+        (_, index) => `${prefix}_${String(index + 1).padStart(2, "0")}`,
     );
     const splitAt = Math.ceil(evidenceRefIds.length / 2);
     return [evidenceRefIds.slice(0, splitAt), evidenceRefIds.slice(splitAt)]
@@ -102,14 +102,40 @@ export function contextPacketForGoal(goal: string) {
         ...contextPacket,
         context_packet_id: `e2e-${status}-${goal}`,
         goal,
-        items: status === "empty" ? [] : evidenceItems(controls.evidenceReferenceCount),
+        items:
+            status === "empty"
+                ? []
+                : evidenceItems(
+                      controls.evidenceReferenceCount,
+                      goal === "e2e unsafe evidence" ? "unsafe_evidence" : undefined,
+                  ),
         status,
+        ...(goal === "e2e retrieval debug"
+            ? { retrieval_debug_summary: "E2E retrieval debug is visible only to a superuser." }
+            : {}),
     };
     if (!controls.malformedPacket) return packet;
     return { ...packet, freshness: { ...packet.freshness, watermarks: null } };
 }
 
 export function expandedEvidenceForId(evidenceRefId: string) {
+    if (evidenceRefId.startsWith("unsafe_evidence_")) {
+        return {
+            ...expandedEvidence,
+            evidence: {
+                ...expandedEvidence.evidence,
+                citation:
+                    '<img src="https://unsafe.example/payload.png" alt="unsafe image"> [Unsafe link](javascript:alert(1))',
+                evidence_ref_id: evidenceRefId,
+                source: {
+                    ...expandedEvidence.evidence.source,
+                    display_label: "Unsafe evidence payload (sanitized)",
+                    safe_uri: "javascript:alert(1)",
+                },
+            },
+            excerpt: "<script>globalThis.unsafeEvidencePayload = true</script>",
+        };
+    }
     return {
         ...expandedEvidence,
         evidence: { ...expandedEvidence.evidence, evidence_ref_id: evidenceRefId },

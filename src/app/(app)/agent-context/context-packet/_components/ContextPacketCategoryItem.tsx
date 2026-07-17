@@ -22,15 +22,21 @@ export function CategoryItem({
     repository,
 }: CategoryItemProps) {
     const [evidenceOpen, setEvidenceOpen] = useState(false);
-    const [loadedEvidence, setLoadedEvidence] = useState<EvidenceByID>({});
+    const [loadedEvidenceByID, setLoadedEvidenceByID] = useState<
+        ReadonlyMap<string, ACRExpandedEvidenceV1>
+    >(() => new Map());
     const [evidenceError, setEvidenceError] = useState<string | null>(null);
     const [loadingEvidence, setLoadingEvidence] = useState(false);
     const requestGeneration = useRef(0);
     const packetIdentityRef = useRef(packetIdentity);
     const requestAbortController = useRef<AbortController | null>(null);
     const evidenceId = `evidence-${item.packet_item_id}`;
+    const providedEvidenceByID = new Map(Object.entries(evidenceByID));
     const evidence = item.evidence_ref_ids
-        .map((evidenceID) => loadedEvidence[evidenceID] ?? evidenceByID[evidenceID])
+        .map(
+            (evidenceID) =>
+                loadedEvidenceByID.get(evidenceID) ?? providedEvidenceByID.get(evidenceID),
+        )
         .filter((value): value is ACRExpandedEvidenceV1 => value !== undefined);
 
     useEffect(() => {
@@ -44,7 +50,7 @@ export function CategoryItem({
     const loadMissingEvidence = async () => {
         const missingEvidenceIDs = item.evidence_ref_ids.filter(
             (evidenceID) =>
-                loadedEvidence[evidenceID] === undefined && evidenceByID[evidenceID] === undefined,
+                !loadedEvidenceByID.has(evidenceID) && !providedEvidenceByID.has(evidenceID),
         );
         if (missingEvidenceIDs.length === 0) return;
 
@@ -77,15 +83,14 @@ export function CategoryItem({
         )
             return;
 
-        const retrieved = Object.fromEntries(
-            values.flatMap(({ evidenceRefId, evidence }) =>
-                evidence ? [[evidenceRefId, evidence]] : [],
-            ),
-        );
-        if (Object.keys(retrieved).length > 0) {
-            setLoadedEvidence((current) => ({ ...current, ...retrieved }));
+        const retrievedEvidenceByID = new Map<string, ACRExpandedEvidenceV1>();
+        for (const { evidenceRefId, evidence } of values) {
+            if (evidence) retrievedEvidenceByID.set(evidenceRefId, evidence);
         }
-        if (Object.keys(retrieved).length !== missingEvidenceIDs.length) {
+        if (retrievedEvidenceByID.size > 0) {
+            setLoadedEvidenceByID((current) => new Map([...current, ...retrievedEvidenceByID]));
+        }
+        if (retrievedEvidenceByID.size !== missingEvidenceIDs.length) {
             setEvidenceError(
                 "Some evidence is unavailable. Open evidence again to retry missing references.",
             );

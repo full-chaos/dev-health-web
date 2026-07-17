@@ -251,6 +251,40 @@ describe("ACR server-only runtime service", () => {
         expect(evidence).toEqual(expandedEvidence);
     });
 
+    it("accepts a contract-valid opaque evidence ID and encodes it in the evidence route", async () => {
+        installOpsAuthorization();
+        installAcrHappyResponses();
+        let requestPath: string | undefined;
+        server.use(
+            http.get(
+                "https://acr.example.test/api/v1/agent-context/evidence/:evidenceRefId",
+                ({ request }) => {
+                    requestPath = new URL(request.url).pathname;
+                    const assertion = request.headers.get("x-acr-web-assertion");
+                    expect(assertion).not.toBeNull();
+                    if (assertion === null)
+                        return HttpResponse.json(encodeError(401), { status: 401 });
+                    expect(decodeWebAssertion(assertion)).toMatchObject({
+                        method: "GET",
+                        path: "/api/v1/agent-context/evidence/linear%3ACHAOS-2911",
+                        permissions: ["evidence:read"],
+                    });
+                    return HttpResponse.json(expandedEvidence);
+                },
+            ),
+        );
+
+        await expect(
+            getExpandedEvidence({
+                evidenceRefId: "linear:CHAOS-2911",
+                repository: "full-chaos/dev-health-acr",
+                signal: new AbortController().signal,
+            }),
+        ).resolves.toEqual(expandedEvidence);
+
+        expect(requestPath).toBe("/api/v1/agent-context/evidence/linear%3ACHAOS-2911");
+    });
+
     it("fails closed when the organization entitlement is false", async () => {
         server.use(
             http.get("http://ops.example.test/api/v1/licensing/entitlements/:orgId", () =>

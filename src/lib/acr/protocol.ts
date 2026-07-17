@@ -29,12 +29,7 @@ const contextPacketFormSchema = z
 
 const evidenceSelectionSchema = z
     .object({
-        evidenceRefId: z
-            .string()
-            .trim()
-            .min(8)
-            .max(256)
-            .regex(/^[A-Za-z0-9._-]+$/u),
+        evidenceRefId: z.string().trim().min(8).max(256),
         repository: canonicalRepositorySlug,
     })
     .strict();

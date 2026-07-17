@@ -367,6 +367,47 @@ describe("ContextPacketExplorer", () => {
         );
     });
 
+    it("loads prototype-named evidence references as missing evidence", async () => {
+        const user = userEvent.setup();
+        const evidenceIds = ["__proto__", "constructor"];
+        const packet = {
+            ...SAMPLE_CONTEXT_PACKET,
+            items: [
+                {
+                    ...SAMPLE_CONTEXT_PACKET.items[0],
+                    evidence_ref_ids: evidenceIds,
+                },
+            ],
+        };
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+            const evidenceRefId = evidenceIds.find((id) => String(input).includes(id));
+            if (evidenceRefId === undefined) throw new Error("unexpected evidence request");
+            return Promise.resolve(
+                new Response(
+                    JSON.stringify({
+                        ...SAMPLE_EXPANDED_EVIDENCE.ev_01J0ACR001,
+                        evidence: {
+                            ...SAMPLE_EXPANDED_EVIDENCE.ev_01J0ACR001.evidence,
+                            evidence_ref_id: evidenceRefId,
+                            source: {
+                                ...SAMPLE_EXPANDED_EVIDENCE.ev_01J0ACR001.evidence.source,
+                                display_label: `Evidence ${evidenceRefId}`,
+                            },
+                        },
+                    }),
+                    { status: 200 },
+                ),
+            );
+        });
+        render(<ContextPacketCategoryGroups packet={packet} evidenceByID={{}} />);
+
+        await user.click(screen.getByRole("button", { name: "Open evidence" }));
+
+        await waitFor(() => expect(screen.getByText("Evidence __proto__")).toBeInTheDocument());
+        expect(screen.getByText("Evidence constructor")).toBeInTheDocument();
+        expect(fetchSpy).toHaveBeenCalledTimes(evidenceIds.length);
+    });
+
     it("shares evidence requests and reuses completed evidence across reopened items", async () => {
         const user = userEvent.setup();
         const packet = {

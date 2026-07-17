@@ -1869,6 +1869,23 @@ export const handlers = [
                 needs_onboarding: true,
             });
         }
+        if (body.email === "member@example.com" && body.password === "password123") {
+            return HttpResponse.json<LoginResponseBody>({
+                user: {
+                    id: "e2e-member-1",
+                    email: body.email,
+                    org_id: "org-e2e",
+                    role: "member",
+                    is_superuser: false,
+                    permissions: ["read"],
+                },
+                access_token: "mock-member-access-token-e2e",
+                refresh_token: "mock-member-refresh-token-e2e",
+                token_type: "bearer",
+                expires_in: 86400,
+                needs_onboarding: false,
+            });
+        }
         if (body.email !== "test@example.com" || body.password !== "password123") {
             return HttpResponse.json({ detail: "Invalid email or password" }, { status: 401 });
         }
