@@ -101,6 +101,33 @@ describe("evidence request registry", () => {
         cachedLease.release();
     });
 
+    it.each([" evidence-123 ", "evidence-😀-123"])(
+        "preserves opaque evidence ID %s byte-for-byte in the browser-to-BFF path",
+        async (evidenceRefId) => {
+            const repository = "full-chaos/dev-health-acr";
+            const fetchMock = vi
+                .spyOn(globalThis, "fetch")
+                .mockResolvedValue(
+                    jsonResponse(evidenceWithRefId(evidenceRefId, "Opaque evidence")),
+                );
+            const lease = requestEvidence({
+                evidenceRefId,
+                packetIdentity: `packet-${evidenceRefId}`,
+                repository,
+                signal: new AbortController().signal,
+            });
+
+            await expect(lease.promise).resolves.toMatchObject({
+                evidence: { evidence_ref_id: evidenceRefId },
+            });
+            expect(fetchMock).toHaveBeenCalledWith(
+                `/api/agent-context/evidence/${encodeURIComponent(evidenceRefId)}?repository=${encodeURIComponent(repository)}`,
+                expect.objectContaining({ cache: "no-store" }),
+            );
+            lease.release();
+        },
+    );
+
     it("starts a fresh generation when a replacement packet reuses an aborted evidence key", async () => {
         const staleResponse = deferredResponse();
         const freshResponse = deferredResponse();

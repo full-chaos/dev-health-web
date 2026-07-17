@@ -29,7 +29,10 @@ const contextPacketFormSchema = z
 
 const evidenceSelectionSchema = z
     .object({
-        evidenceRefId: z.string().trim().min(8).max(256),
+        evidenceRefId: z.string().refine((evidenceRefId) => {
+            const codePointLength = [...evidenceRefId].length;
+            return codePointLength >= 8 && codePointLength <= 256;
+        }),
         repository: canonicalRepositorySlug,
     })
     .strict();
