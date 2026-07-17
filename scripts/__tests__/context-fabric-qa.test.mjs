@@ -7,9 +7,9 @@ import { main, preflightOpenSSL, run } from "../context-fabric-qa.mjs";
 import { resolvePackageManagerCommand } from "../package-manager.mjs";
 
 describe("Context Fabric QA launcher", () => {
-    it("resolves an absolute readable POSIX package-manager script", () => {
+    it("resolves an absolute readable POSIX .mjs package-manager script", () => {
         const directory = mkdtempSync(join(tmpdir(), "context-fabric-qa-"));
-        const npmExecPath = join(directory, "pnpm entry.js");
+        const npmExecPath = join(directory, "pnpm entry.mjs");
         writeFileSync(npmExecPath, "#!/usr/bin/env node\n");
 
         expect(resolvePackageManagerCommand({ platform: "darwin", npmExecPath })).toEqual({
@@ -33,7 +33,6 @@ describe("Context Fabric QA launcher", () => {
     it.each([
         [undefined, "npm_execpath from the package manager"],
         ["relative/pnpm.js", "absolute"],
-        ["/tmp/pnpm.mjs", "JavaScript (.js or .cjs)"],
         ["/tmp/pnpm.js", "cannot read npm_execpath"],
     ])("rejects unsafe npm_execpath %j", (npmExecPath, message) => {
         expect(() =>
