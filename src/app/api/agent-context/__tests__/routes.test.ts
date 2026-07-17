@@ -103,6 +103,33 @@ describe("agent-context API routes", () => {
         expect(await response.text()).not.toContain("credential=do-not-leak");
     });
 
+    it("returns a safe gated response when an invalid entitlement blocks the service", async () => {
+        vi.mocked(createContextPacket).mockRejectedValue(
+            new AcrRuntimeError(
+                acrRuntimeErrorCodes.notEntitled,
+                "expired entitlement assertion is not valid",
+                { status: 403 },
+            ),
+        );
+
+        const response = await POST(
+            new Request("http://web.example.test/api/agent-context/context-packets", {
+                body: JSON.stringify({ goal: "Verify", repository: "full-chaos/dev-health-acr" }),
+                method: "POST",
+            }),
+        );
+
+        expect(response.status).toBe(403);
+        expect(await response.json()).toEqual({
+            error: {
+                code: acrRuntimeErrorCodes.notEntitled,
+                message: "Agent Context Runtime is not available for this organization.",
+                retryable: false,
+            },
+        });
+        expect(createContextPacket).toHaveBeenCalledTimes(1);
+    });
+
     it("strips retrieval debug information for a non-superuser browser response", async () => {
         vi.mocked(createContextPacket).mockResolvedValue({
             retrieval_debug_summary: "internal retrieval trace",

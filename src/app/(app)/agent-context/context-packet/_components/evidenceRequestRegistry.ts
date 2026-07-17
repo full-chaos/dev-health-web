@@ -58,7 +58,11 @@ function enqueueEvidenceRequest(
             )
                 .then(async (response) => {
                     const value: unknown = await response.json();
-                    return response.ok && isExpandedEvidence(value) ? value : null;
+                    return response.ok &&
+                        isExpandedEvidence(value) &&
+                        value.evidence.evidence_ref_id === evidenceRefId
+                        ? value
+                        : null;
                 })
                 .then(resolve, () => resolve(null))
                 .finally(() => {

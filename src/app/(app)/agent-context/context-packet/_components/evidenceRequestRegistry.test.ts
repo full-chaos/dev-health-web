@@ -41,6 +41,17 @@ function evidence(label: string): ACRExpandedEvidenceV1 {
     };
 }
 
+function evidenceWithRefId(evidenceRefId: string, label: string): ACRExpandedEvidenceV1 {
+    const value = evidence(label);
+    return {
+        ...value,
+        evidence: {
+            ...value.evidence,
+            evidence_ref_id: evidenceRefId,
+        },
+    };
+}
+
 function jsonResponse(value: ACRExpandedEvidenceV1): Response {
     return new Response(JSON.stringify(value), { status: 200 });
 }
@@ -51,6 +62,45 @@ afterEach(() => {
 });
 
 describe("evidence request registry", () => {
+    it("rejects a mismatched evidence response and retries without caching or displaying it", async () => {
+        const requestedEvidenceRefId = "ev_01J0ACR001";
+        const fetchMock = vi
+            .spyOn(globalThis, "fetch")
+            .mockResolvedValueOnce(
+                jsonResponse(evidenceWithRefId("ev_unexpected", "Mismatched evidence")),
+            )
+            .mockResolvedValueOnce(
+                jsonResponse(evidenceWithRefId(requestedEvidenceRefId, "Fresh evidence")),
+            );
+        const request = {
+            evidenceRefId: requestedEvidenceRefId,
+            packetIdentity: "packet-mismatch",
+            repository: "full-chaos/dev-health-acr",
+            signal: new AbortController().signal,
+        };
+
+        const rejectedLease = requestEvidence(request);
+        await expect(rejectedLease.promise).resolves.toBeNull();
+        rejectedLease.release();
+
+        const retryLease = requestEvidence(request);
+        await expect(retryLease.promise).resolves.toMatchObject({
+            evidence: {
+                evidence_ref_id: requestedEvidenceRefId,
+                source: { display_label: "Fresh evidence" },
+            },
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        retryLease.release();
+
+        const cachedLease = requestEvidence(request);
+        await expect(cachedLease.promise).resolves.toMatchObject({
+            evidence: { evidence_ref_id: requestedEvidenceRefId },
+        });
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+        cachedLease.release();
+    });
+
     it("starts a fresh generation when a replacement packet reuses an aborted evidence key", async () => {
         const staleResponse = deferredResponse();
         const freshResponse = deferredResponse();

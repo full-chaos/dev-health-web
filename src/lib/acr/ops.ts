@@ -18,6 +18,7 @@ const ACR_REPOSITORY_SCOPES_QUERY = `query ACRRepositoryScopes($orgId: String!) 
 const entitlementSchema = z
     .object({
         features: z.object({ agent_context_runtime: z.boolean() }).loose(),
+        is_valid: z.boolean(),
     })
     .loose();
 
@@ -101,7 +102,11 @@ export async function resolveOpsAuthorization(
         );
     }
     const parsedEntitlement = entitlementSchema.safeParse(entitlement.value);
-    if (!parsedEntitlement.success || !parsedEntitlement.data.features.agent_context_runtime) {
+    if (
+        !parsedEntitlement.success ||
+        !parsedEntitlement.data.is_valid ||
+        !parsedEntitlement.data.features.agent_context_runtime
+    ) {
         throw new AcrRuntimeError(
             acrRuntimeErrorCodes.notEntitled,
             "Agent Context Runtime is not available for this organization.",

@@ -1,7 +1,11 @@
 import { defineConfig } from "@playwright/test";
+import { PLAYWRIGHT_GRACEFUL_SHUTDOWN_TIMEOUT_MS } from "./scripts/owned-process-lifecycle.mjs";
 
 const AUTH_FILE = "test-results/.auth/state.json";
-const GRACEFUL_SHUTDOWN = { signal: "SIGTERM", timeout: 5_000 } as const;
+const GRACEFUL_SHUTDOWN = {
+    signal: "SIGTERM",
+    timeout: PLAYWRIGHT_GRACEFUL_SHUTDOWN_TIMEOUT_MS,
+} as const;
 
 export default defineConfig({
     testDir: "./tests",

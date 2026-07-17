@@ -14,6 +14,17 @@ const grandchildListener = [
     "listener.stdout.pipe(process.stdout);",
     "setInterval(() => undefined, 1_000);",
 ].join("");
+const stubbornListener = [
+    'process.on("SIGTERM", () => undefined);',
+    'const server = require("node:http").createServer();',
+    'server.listen(0, "127.0.0.1", () => console.log(process.pid + ":" + server.address().port));',
+].join("");
+const stubbornGrandchildListener = [
+    'const { spawn } = require("node:child_process");',
+    `const listener = spawn(process.execPath, ["-e", ${JSON.stringify(stubbornListener)}], { stdio: ["ignore", "pipe", "inherit"] });`,
+    "listener.stdout.pipe(process.stdout);",
+    "setInterval(() => undefined, 1_000);",
+].join("");
 
 function waitForListener(tree) {
     return new Promise((resolve, reject) => {
@@ -55,4 +66,19 @@ describe("run-owned-process", () => {
         expect(await portIsReleased(listenerProcess.port)).toBe(true);
         expect(() => process.kill(listenerProcess.pid, 0)).toThrow();
     });
+
+    it("kills a stubborn owned grandchild before the outer shutdown budget expires", async () => {
+        const tree = spawn("node", [runner, "node", "-e", stubbornGrandchildListener], {
+            stdio: ["ignore", "pipe", "pipe"],
+        });
+        const listenerProcess = await waitForListener(tree);
+        const startedAt = Date.now();
+
+        tree.kill("SIGTERM");
+        await waitForExit(tree);
+
+        expect(Date.now() - startedAt).toBeLessThan(10_000);
+        expect(await portIsReleased(listenerProcess.port)).toBe(true);
+        expect(() => process.kill(listenerProcess.pid, 0)).toThrow();
+    }, 15_000);
 });

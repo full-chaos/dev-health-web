@@ -7,6 +7,7 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { z } from "zod";
 
+// allow: SIZE_OK — cohesive ACR runtime boundary integration matrix shares one signed-assertion fixture.
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
 import { auth } from "@/lib/auth";
@@ -98,7 +99,7 @@ function installOpsAuthorization(scopes = ["full-chaos/dev-health-acr"]): void {
         http.get("http://ops.example.test/api/v1/licensing/entitlements/:orgId", ({ request }) => {
             expect(request.headers.get("authorization")).toBe("Bearer ops-session-token");
             expect(request.headers.get("cache-control")).toBe("no-store");
-            return HttpResponse.json({ features: { agent_context_runtime: true } });
+            return HttpResponse.json({ features: { agent_context_runtime: true }, is_valid: true });
         }),
         http.post("http://ops.example.test/graphql", async ({ request }) => {
             const body = await request.json();
@@ -253,7 +254,7 @@ describe("ACR server-only runtime service", () => {
     it("fails closed when the organization entitlement is false", async () => {
         server.use(
             http.get("http://ops.example.test/api/v1/licensing/entitlements/:orgId", () =>
-                HttpResponse.json({ features: { agent_context_runtime: false } }),
+                HttpResponse.json({ features: { agent_context_runtime: false }, is_valid: true }),
             ),
         );
 
@@ -264,6 +265,40 @@ describe("ACR server-only runtime service", () => {
             }),
         ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.notEntitled, status: 403 });
     });
+
+    it.each([
+        ["missing", { features: { agent_context_runtime: true } }],
+        ["false", { features: { agent_context_runtime: true }, is_valid: false }],
+        ["malformed", { features: { agent_context_runtime: true }, is_valid: "true" }],
+    ])(
+        "fails closed before scope or ACR requests when is_valid is %s",
+        async (_name, entitlement) => {
+            let acrRequests = 0;
+            let scopeRequests = 0;
+            server.use(
+                http.get("http://ops.example.test/api/v1/licensing/entitlements/:orgId", () =>
+                    HttpResponse.json(entitlement),
+                ),
+                http.post("http://ops.example.test/graphql", () => {
+                    scopeRequests += 1;
+                    return HttpResponse.json({ data: { catalog: { values: [] } } });
+                }),
+                http.all("https://acr.example.test/*", () => {
+                    acrRequests += 1;
+                    return HttpResponse.json(capabilities);
+                }),
+            );
+
+            await expect(
+                createContextPacket({
+                    body: { goal: "verify", repository: "full-chaos/dev-health-acr" },
+                    signal: new AbortController().signal,
+                }),
+            ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.notEntitled, status: 403 });
+            expect(scopeRequests).toBe(0);
+            expect(acrRequests).toBe(0);
+        },
+    );
 
     it("rejects a foreign repository selector before contacting ACR", async () => {
         installOpsAuthorization(["full-chaos/other-repository"]);
