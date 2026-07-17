@@ -29,8 +29,28 @@ function groupHasDescendants() {
         .some((pid) => pid !== process.pid);
 }
 
+function groupMemberIdentities() {
+    const result = spawnSync("pgrep", ["-g", String(process.pid)], { encoding: "utf8" });
+    if (result.status === 1) return [];
+    if (result.status !== 0)
+        throw new Error(`Unable to inspect owned process group: ${result.stderr}`);
+    return result.stdout
+        .split("\n")
+        .map((pid) => Number(pid))
+        .filter((pid) => pid !== process.pid)
+        .flatMap((pid) => {
+            const identity = processIdentity(pid);
+            return identity === undefined ? [] : [identity];
+        });
+}
+
+function publishLiveMembers() {
+    process.send?.({ members: groupMemberIdentities(), type: "members" });
+}
+
 function exitWhenGroupIsEmpty() {
     const waitForDescendants = () => {
+        publishLiveMembers();
         if (groupHasDescendants()) return;
         process.send?.({ type: "drained" });
         process.exit(childExit.code ?? (childExit.signal ? 1 : 0));
@@ -43,6 +63,8 @@ process.on("message", (message) => {
     if (message?.type !== "stop" || typeof message.signal !== "string") return;
     stop(message.signal);
 });
+
+setInterval(publishLiveMembers, 25);
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
     process.on(signal, () => {
@@ -59,4 +81,6 @@ child.once("exit", (code, signal) => {
     exitWhenGroupIsEmpty();
 });
 
-process.send?.({ guardianPid: process.pid, target: processIdentity(child.pid), type: "ready" });
+const target = processIdentity(child.pid);
+process.send?.({ guardianPid: process.pid, target, type: "ready" });
+publishLiveMembers();

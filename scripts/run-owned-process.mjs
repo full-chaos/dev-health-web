@@ -17,11 +17,27 @@ let requestedSignal;
 let childExitCode;
 let childExitSignal;
 let guardianDrained = false;
-let ownedGroupMember;
+const ownedGroupMembers = new Map();
 
 function cacheChildExit(code, signal) {
     childExitCode = code;
     childExitSignal = signal;
+}
+
+function retainOwnedGroupMember(member) {
+    if (
+        member === undefined ||
+        !Number.isSafeInteger(member.pid) ||
+        typeof member.startedAt !== "string"
+    )
+        return;
+    ownedGroupMembers.set(`${member.pid}:${member.startedAt}`, member);
+}
+
+function hasVerifiedOwnedGroupMember(groupId) {
+    return [...ownedGroupMembers.values()].some((member) =>
+        processGroupIsOwned({ groupId, member }),
+    );
 }
 
 function handleChildExit() {
@@ -54,8 +70,9 @@ cacheChildExit(child.exitCode, child.signalCode);
 if (windowsTree === undefined) {
     child.on("message", (message) => {
         if (message?.type === "drained") guardianDrained = true;
-        if (message?.type === "ready" && message.target !== undefined)
-            ownedGroupMember = message.target;
+        if (message?.type === "ready") retainOwnedGroupMember(message.target);
+        if (message?.type === "members" && Array.isArray(message.members))
+            message.members.forEach(retainOwnedGroupMember);
     });
 }
 
@@ -85,11 +102,7 @@ async function stopOwnedTree(signal) {
     }
 
     if (child.exitCode !== null || child.signalCode !== null) {
-        if (
-            child.pid === undefined ||
-            ownedGroupMember === undefined ||
-            !processGroupIsOwned({ groupId: child.pid, member: ownedGroupMember })
-        ) {
+        if (child.pid === undefined || !hasVerifiedOwnedGroupMember(child.pid)) {
             throw new Error(
                 "Unable to verify the exact owned POSIX process group after guardian exit.",
             );

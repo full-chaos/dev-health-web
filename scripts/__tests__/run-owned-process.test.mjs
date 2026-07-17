@@ -25,6 +25,12 @@ const stubbornGrandchildListener = [
     "listener.stdout.pipe(process.stdout);",
     "setInterval(() => undefined, 1_000);",
 ].join("");
+const targetExitsBeforeListener = [
+    'const { spawn } = require("node:child_process");',
+    `const listener = spawn(process.execPath, ["-e", ${JSON.stringify(listener)}], { stdio: ["ignore", "pipe", "inherit"] });`,
+    "listener.stdout.pipe(process.stdout);",
+    "setTimeout(() => process.exit(0), 100);",
+].join("");
 const unrelatedListener = [
     'const server = require("node:http").createServer();',
     'server.listen(0, "127.0.0.1", () => console.log(process.pid + ":" + server.address().port));',
@@ -113,6 +119,22 @@ describe("run-owned-process", () => {
             stdio: ["ignore", "pipe", "pipe"],
         });
         const listenerProcess = await waitForListener(tree);
+        const guardianProcessId = childProcessId(tree.pid);
+
+        process.kill(guardianProcessId, "SIGKILL");
+        const code = await waitForExit(tree);
+
+        expect(code).not.toBe(0);
+        expect(await portIsReleased(listenerProcess.port)).toBe(true);
+        expect(() => process.kill(listenerProcess.pid, 0)).toThrow();
+    }, 15_000);
+
+    it("cleans a descendant when its target exited before its guardian unexpectedly exits", async () => {
+        const tree = spawn("node", [runner, "node", "-e", targetExitsBeforeListener], {
+            stdio: ["ignore", "pipe", "pipe"],
+        });
+        const listenerProcess = await waitForListener(tree);
+        await new Promise((resolve) => setTimeout(resolve, 150));
         const guardianProcessId = childProcessId(tree.pid);
 
         process.kill(guardianProcessId, "SIGKILL");

@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import config, {
     ACR_API_ORIGIN,
     BFF_ORIGIN,
@@ -9,6 +11,7 @@ import {
     OWNED_PROCESS_ESCALATION_TIMEOUT_MS,
     OWNED_PROCESS_WAIT_TIMEOUT_MS,
     PLAYWRIGHT_GRACEFUL_SHUTDOWN_TIMEOUT_MS,
+    shouldForwardSupervisorSignal,
 } from "../owned-process-lifecycle.mjs";
 import { selectOwnedTreeController } from "../owned-process-controller.mjs";
 
@@ -69,6 +72,21 @@ describe("Context Fabric Playwright lifecycle budgets", () => {
         for (const server of webServers) {
             expect(server.command).not.toMatch(/&&|\bexec\b|\bmkdir\b|\brm\b|\bcp\b|\bchmod\b/);
         }
+    });
+
+    it("uses a Node environment launcher for the documented Context Fabric QA command", async () => {
+        const packagePath = fileURLToPath(new URL("../../package.json", import.meta.url));
+        const packageJson = JSON.parse(await readFile(packagePath, "utf8"));
+
+        expect(packageJson.scripts["test:e2e:context-fabric"]).toBe(
+            "node scripts/context-fabric-qa.mjs",
+        );
+    });
+
+    it("lets a POSIX process-group signal reach the supervisor exactly once", () => {
+        expect(shouldForwardSupervisorSignal("linux")).toBe(false);
+        expect(shouldForwardSupervisorSignal("darwin")).toBe(false);
+        expect(shouldForwardSupervisorSignal("win32")).toBe(true);
     });
 
     it("selects the Windows owned-process controller on win32", () => {

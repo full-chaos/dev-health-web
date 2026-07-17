@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
 import { generateKeyPairSync } from "node:crypto";
 import { join, resolve } from "node:path";
+import { shouldForwardSupervisorSignal } from "./owned-process-lifecycle.mjs";
 
 const rootDirectory = resolve(import.meta.dirname, "..");
 const resultsDirectory = join(rootDirectory, "test-results");
@@ -78,7 +79,9 @@ async function startOwned(command, args, options = {}) {
         ...options,
     });
     for (const signal of ["SIGINT", "SIGTERM"]) {
-        process.once(signal, () => child.kill(signal));
+        process.once(signal, () => {
+            if (shouldForwardSupervisorSignal()) child.kill(signal);
+        });
     }
     child.once("error", (error) => {
         throw error;

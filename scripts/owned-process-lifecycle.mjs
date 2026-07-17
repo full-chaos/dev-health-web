@@ -5,6 +5,10 @@ export const OWNED_PROCESS_WAIT_TIMEOUT_MS = Math.floor(
     (PLAYWRIGHT_GRACEFUL_SHUTDOWN_TIMEOUT_MS - OWNED_PROCESS_CLEANUP_SAFETY_MARGIN_MS) / 2,
 );
 
+export function shouldForwardSupervisorSignal(platform = process.platform) {
+    return platform === "win32";
+}
+
 if (
     OWNED_PROCESS_WAIT_TIMEOUT_MS * 2 + OWNED_PROCESS_CLEANUP_SAFETY_MARGIN_MS >
     PLAYWRIGHT_GRACEFUL_SHUTDOWN_TIMEOUT_MS
