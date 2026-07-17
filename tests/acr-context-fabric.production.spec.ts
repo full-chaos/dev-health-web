@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 import { ACR_API_ORIGIN, BFF_ORIGIN } from "../playwright.context-fabric.config";
+import { UNSAFE_EVIDENCE_RAW_PAYLOAD } from "./mocks/acr-fixtures";
 
 const ENTITLEMENT_SCENARIOS = ["provisioned", "unprovisioned", "invalid", "error"] as const;
 type EntitlementScenario = (typeof ENTITLEMENT_SCENARIOS)[number];
@@ -33,6 +34,12 @@ const viewports = [
 
 const FULL_COMMIT_SHA = "4de2cb94aa8c10f9e6f4d7202bc11fd3e8508d8ce59d5c7059889b1a2f4a63d7";
 const RETRIEVAL_DEBUG_SUMMARY = "E2E retrieval debug is visible only to a superuser.";
+const UNSAFE_EVIDENCE_RAW_SOURCE_TEXT = [
+    "Raw unsafe evidence source exercised by this production test:",
+    `citation: ${UNSAFE_EVIDENCE_RAW_PAYLOAD.citation}`,
+    `excerpt: ${UNSAFE_EVIDENCE_RAW_PAYLOAD.excerpt}`,
+    `source.safe_uri: ${UNSAFE_EVIDENCE_RAW_PAYLOAD.safeUri}`,
+].join("\n");
 
 async function setEntitlementScenario(
     request: APIRequestContext,
@@ -123,6 +130,29 @@ async function expectNoControlOverlap(
     for (const protectedRegion of protectedRegions) {
         expect(overlaps(controlBounds, await rectangleFor(protectedRegion))).toBe(false);
     }
+}
+
+async function showRawUnsafeEvidenceSource(evidence: Locator): Promise<void> {
+    await evidence.evaluate((region, rawSourceText) => {
+        const source = region.ownerDocument.createElement("section");
+        source.setAttribute("aria-label", "Test harness raw unsafe evidence source");
+        source.setAttribute("data-testid", "raw-unsafe-evidence-source");
+        source.setAttribute(
+            "style",
+            "border: 1px solid currentColor; border-radius: 0.5rem; display: grid; gap: 0.5rem; margin-bottom: 1rem; padding: 0.75rem;",
+        );
+
+        const title = region.ownerDocument.createElement("strong");
+        title.textContent = "Test-harness raw source (literal text; not rendered as HTML)";
+        const payload = region.ownerDocument.createElement("pre");
+        payload.setAttribute(
+            "style",
+            "margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; word-break: break-word;",
+        );
+        payload.textContent = rawSourceText;
+        source.append(title, payload);
+        region.prepend(source);
+    }, UNSAFE_EVIDENCE_RAW_SOURCE_TEXT);
 }
 
 async function gotoWithSessionReady(page: Page, path: string): Promise<void> {
@@ -433,6 +463,11 @@ test.describe("Context Fabric production entitlement boundary", () => {
             const evidence = page.getByRole("region", { name: /Evidence for/ });
             await expect(evidence.getByText("Unsafe evidence payload (sanitized)")).toBeVisible();
             await expect(evidence.getByText("Unsafe link")).toBeVisible();
+            await showRawUnsafeEvidenceSource(evidence);
+            const rawSource = evidence.getByTestId("raw-unsafe-evidence-source");
+            await expect(rawSource).toContainText(UNSAFE_EVIDENCE_RAW_PAYLOAD.citation);
+            await expect(rawSource).toContainText(UNSAFE_EVIDENCE_RAW_PAYLOAD.excerpt);
+            await expect(rawSource).toContainText(UNSAFE_EVIDENCE_RAW_PAYLOAD.safeUri);
             await expect(evidence.locator("img")).toHaveCount(0);
             await expect(evidence.locator("script")).toHaveCount(0);
             await expect(evidence.getByRole("link", { name: "Unsafe link" })).toHaveCount(0);

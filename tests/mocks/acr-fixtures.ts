@@ -25,6 +25,13 @@ const DEFAULT_CONTROLS: AcrMockControls = {
 const MAX_CONTROLLED_DELAY_MS = 60_000;
 const MAX_EVIDENCE_REFERENCES = 32;
 
+export const UNSAFE_EVIDENCE_RAW_PAYLOAD = {
+    citation:
+        '<img src="https://unsafe.example/payload.png" alt="unsafe image"> [Unsafe link](javascript:alert(1))',
+    excerpt: "<script>globalThis.unsafeEvidencePayload = true</script>",
+    safeUri: "javascript:alert(1)",
+} as const;
+
 let controls = DEFAULT_CONTROLS;
 let evidenceStats: AcrMockEvidenceStats = { active: 0, count: 0, maxConcurrent: 0 };
 const pausedContextPacketWaiters = new Map<string, Set<() => void>>();
@@ -124,16 +131,15 @@ export function expandedEvidenceForId(evidenceRefId: string) {
             ...expandedEvidence,
             evidence: {
                 ...expandedEvidence.evidence,
-                citation:
-                    '<img src="https://unsafe.example/payload.png" alt="unsafe image"> [Unsafe link](javascript:alert(1))',
+                citation: UNSAFE_EVIDENCE_RAW_PAYLOAD.citation,
                 evidence_ref_id: evidenceRefId,
                 source: {
                     ...expandedEvidence.evidence.source,
                     display_label: "Unsafe evidence payload (sanitized)",
-                    safe_uri: "javascript:alert(1)",
+                    safe_uri: UNSAFE_EVIDENCE_RAW_PAYLOAD.safeUri,
                 },
             },
-            excerpt: "<script>globalThis.unsafeEvidencePayload = true</script>",
+            excerpt: UNSAFE_EVIDENCE_RAW_PAYLOAD.excerpt,
         };
     }
     return {
