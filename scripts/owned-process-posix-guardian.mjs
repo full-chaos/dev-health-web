@@ -1,4 +1,5 @@
 import { spawn, spawnSync } from "node:child_process";
+import { processIdentity } from "./owned-process-posix.mjs";
 
 const [command, ...args] = process.argv.slice(2);
 if (!command) throw new Error("Expected a command for the process-group guardian");
@@ -31,6 +32,7 @@ function groupHasDescendants() {
 function exitWhenGroupIsEmpty() {
     const waitForDescendants = () => {
         if (groupHasDescendants()) return;
+        process.send?.({ type: "drained" });
         process.exit(childExit.code ?? (childExit.signal ? 1 : 0));
     };
     waitForDescendants();
@@ -57,4 +59,4 @@ child.once("exit", (code, signal) => {
     exitWhenGroupIsEmpty();
 });
 
-process.send?.({ pid: process.pid, type: "ready" });
+process.send?.({ guardianPid: process.pid, target: processIdentity(child.pid), type: "ready" });

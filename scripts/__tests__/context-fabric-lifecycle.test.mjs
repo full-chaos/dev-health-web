@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import config, {
     ACR_API_ORIGIN,
     BFF_ORIGIN,
@@ -10,6 +10,7 @@ import {
     OWNED_PROCESS_WAIT_TIMEOUT_MS,
     PLAYWRIGHT_GRACEFUL_SHUTDOWN_TIMEOUT_MS,
 } from "../owned-process-lifecycle.mjs";
+import { selectOwnedTreeController } from "../owned-process-controller.mjs";
 
 describe("Context Fabric Playwright lifecycle budgets", () => {
     it("leaves the owned-process supervisor enough time to escalate before Playwright stops it", () => {
@@ -53,5 +54,30 @@ describe("Context Fabric Playwright lifecycle budgets", () => {
             ACR_API_ORIGIN,
             BACKEND_URL: OPS_MOCK_ORIGIN,
         });
+    });
+
+    it("uses Node launchers that work without a POSIX shell", () => {
+        const webServers = config.webServer;
+        if (!Array.isArray(webServers))
+            throw new Error("Context Fabric requires individual web servers.");
+
+        expect(webServers.map((server) => server.command)).toEqual([
+            "node scripts/context-fabric-launch.mjs ops-mock",
+            "node scripts/context-fabric-launch.mjs acr-mock",
+            "node scripts/context-fabric-launch.mjs bff",
+        ]);
+        for (const server of webServers) {
+            expect(server.command).not.toMatch(/&&|\bexec\b|\bmkdir\b|\brm\b|\bcp\b|\bchmod\b/);
+        }
+    });
+
+    it("selects the Windows owned-process controller on win32", () => {
+        const controller = { start: vi.fn(), stop: vi.fn() };
+        const createWindowsTree = vi.fn(() => controller);
+
+        expect(selectOwnedTreeController({ createWindowsTree, platform: "win32" })).toBe(
+            controller,
+        );
+        expect(createWindowsTree).toHaveBeenCalledOnce();
     });
 });

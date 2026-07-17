@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { OWNED_PROCESS_WAIT_TIMEOUT_MS } from "./owned-process-lifecycle.mjs";
-import { createWindowsOwnedTreeController } from "./owned-process-windows.mjs";
+import { selectOwnedTreeController } from "./owned-process-controller.mjs";
+import { processGroupExists, processGroupIsOwned } from "./owned-process-posix.mjs";
 
 const [command, ...args] = process.argv.slice(2);
 if (!command) throw new Error("Expected a command to supervise");
@@ -15,6 +16,8 @@ let stopping = false;
 let requestedSignal;
 let childExitCode;
 let childExitSignal;
+let guardianDrained = false;
+let ownedGroupMember;
 
 function cacheChildExit(code, signal) {
     childExitCode = code;
@@ -23,7 +26,9 @@ function cacheChildExit(code, signal) {
 
 function handleChildExit() {
     if (windowsTree === undefined && !stopping) {
-        process.exit(exitCodeAfterCleanup());
+        if (guardianDrained) process.exit(exitCodeAfterCleanup());
+        void stopOwnedProcess("SIGKILL", false);
+        return;
     }
     void stopOwnedProcess("SIGTERM", false);
 }
@@ -33,9 +38,10 @@ function recordWindowsHelperExit(code, signal) {
     if (child !== undefined) handleChildExit();
 }
 
-const windowsTree = isWindows
-    ? createWindowsOwnedTreeController({ onHelperExit: recordWindowsHelperExit })
-    : undefined;
+const windowsTree = selectOwnedTreeController({
+    onHelperExit: recordWindowsHelperExit,
+    platform: isWindows ? "win32" : "posix",
+});
 child =
     windowsTree === undefined
         ? spawn(process.execPath, [posixGuardian, command, ...args], {
@@ -45,6 +51,13 @@ child =
           })
         : await windowsTree.start(command, args);
 cacheChildExit(child.exitCode, child.signalCode);
+if (windowsTree === undefined) {
+    child.on("message", (message) => {
+        if (message?.type === "drained") guardianDrained = true;
+        if (message?.type === "ready" && message.target !== undefined)
+            ownedGroupMember = message.target;
+    });
+}
 
 function errorMessage(error) {
     return error instanceof Error ? error.message : String(error);
@@ -68,6 +81,26 @@ async function stopOwnedTree(signal) {
 
     if (windowsTree !== undefined) {
         await windowsTree.stop();
+        return;
+    }
+
+    if (child.exitCode !== null || child.signalCode !== null) {
+        if (
+            child.pid === undefined ||
+            ownedGroupMember === undefined ||
+            !processGroupIsOwned({ groupId: child.pid, member: ownedGroupMember })
+        ) {
+            throw new Error(
+                "Unable to verify the exact owned POSIX process group after guardian exit.",
+            );
+        }
+        process.kill(-child.pid, signal);
+        const deadline = Date.now() + SHUTDOWN_TIMEOUT_MS;
+        while (processGroupExists(child.pid)) {
+            if (Date.now() >= deadline)
+                throw new Error("Verified owned POSIX process group remained alive after cleanup.");
+            await wait(POLL_INTERVAL_MS);
+        }
         return;
     }
 

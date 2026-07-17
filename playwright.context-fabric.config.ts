@@ -36,8 +36,7 @@ export default defineConfig({
     ],
     webServer: [
         {
-            command:
-                "exec node scripts/run-owned-process.mjs node --import tsx ./tests/mocks/http-server.ts",
+            command: "node scripts/context-fabric-launch.mjs ops-mock",
             url: `${OPS_MOCK_ORIGIN}/health`,
             reuseExistingServer: false,
             gracefulShutdown: GRACEFUL_SHUTDOWN,
@@ -45,8 +44,7 @@ export default defineConfig({
             env: { MOCK_SERVER_PORT: "8012" },
         },
         {
-            command:
-                "rm -rf test-results/context-fabric-keys && mkdir -p test-results/context-fabric-keys && openssl genpkey -algorithm ED25519 -out test-results/context-fabric-keys/web-assertion.key && chmod 600 test-results/context-fabric-keys/web-assertion.key && openssl req -x509 -newkey rsa:2048 -nodes -keyout test-results/context-fabric-keys/tls.key -out test-results/context-fabric-keys/tls.crt -subj /CN=127.0.0.1 -days 1 && exec node scripts/run-owned-process.mjs node --import tsx tests/mocks/acr-server.ts",
+            command: "node scripts/context-fabric-launch.mjs acr-mock",
             url: `${ACR_API_ORIGIN}/health`,
             ignoreHTTPSErrors: true,
             reuseExistingServer: false,
@@ -59,8 +57,7 @@ export default defineConfig({
             },
         },
         {
-            command:
-                "rm -rf test-results/context-fabric-runtime && mkdir -p test-results/context-fabric-runtime/.next && cp -R .next/standalone/. test-results/context-fabric-runtime && cp -R .next/static test-results/context-fabric-runtime/.next/static && cp -R public scripts test-results/context-fabric-runtime && cd test-results/context-fabric-runtime && node scripts/write-runtime-config.mjs && HOSTNAME=127.0.0.1 PORT=3012 exec node scripts/run-owned-process.mjs node server.js",
+            command: "node scripts/context-fabric-launch.mjs bff",
             url: BFF_ORIGIN,
             reuseExistingServer: false,
             gracefulShutdown: GRACEFUL_SHUTDOWN,
