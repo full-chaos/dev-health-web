@@ -1,4 +1,6 @@
 import { spawn } from "node:child_process";
+import { accessSync, constants } from "node:fs";
+import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const environment = {
@@ -8,8 +10,43 @@ const environment = {
     NODE_ENV: "production",
 };
 
-export function resolvePnpmCommand(platform = process.platform) {
-    return platform === "win32" ? "pnpm.cmd" : "pnpm";
+function isReadable(filePath) {
+    try {
+        accessSync(filePath, constants.R_OK);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+export function resolvePnpmCommand({
+    platform = process.platform,
+    npmExecPath = process.env.npm_execpath,
+    isReadable: checkReadable = isReadable,
+} = {}) {
+    if (typeof npmExecPath !== "string" || npmExecPath.length === 0) {
+        throw new Error(
+            "Context Fabric QA requires npm_execpath from the package manager; run this command through pnpm.",
+        );
+    }
+
+    const pathApi = platform === "win32" ? path.win32 : path.posix;
+    if (!pathApi.isAbsolute(npmExecPath)) {
+        throw new Error("Context Fabric QA requires an absolute npm_execpath JavaScript path.");
+    }
+
+    const extension = pathApi.extname(npmExecPath).toLowerCase();
+    if (extension !== ".js" && extension !== ".cjs") {
+        throw new Error(
+            "Context Fabric QA requires npm_execpath to reference a JavaScript (.js or .cjs) file.",
+        );
+    }
+
+    if (!checkReadable(npmExecPath)) {
+        throw new Error(`Context Fabric QA cannot read npm_execpath: ${npmExecPath}`);
+    }
+
+    return { command: process.execPath, args: [npmExecPath] };
 }
 
 export function run(
@@ -21,6 +58,7 @@ export function run(
         const child = spawnImplementation(command, args, {
             env: spawnEnvironment,
             stdio: "inherit",
+            shell: false,
         });
         child.once("error", reject);
         child.once("exit", (code) => resolvePromise(code ?? 1));
@@ -39,11 +77,21 @@ export async function preflightOpenSSL({ runCommand = run } = {}) {
     }
 }
 
-export async function main({ runCommand = run, platform = process.platform } = {}) {
+export async function main({
+    runCommand = run,
+    platform = process.platform,
+    npmExecPath = process.env.npm_execpath,
+    isReadable: checkReadable = isReadable,
+} = {}) {
     await preflightOpenSSL({ runCommand });
-    const packageManager = resolvePnpmCommand(platform);
-    if ((await runCommand(packageManager, ["build"])) === 0) {
-        return runCommand(packageManager, [
+    const packageManager = resolvePnpmCommand({
+        platform,
+        npmExecPath,
+        isReadable: checkReadable,
+    });
+    if ((await runCommand(packageManager.command, [...packageManager.args, "build"])) === 0) {
+        return runCommand(packageManager.command, [
+            ...packageManager.args,
             "exec",
             "playwright",
             "test",

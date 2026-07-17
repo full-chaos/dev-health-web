@@ -1,11 +1,47 @@
 import { EventEmitter } from "node:events";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import { main, preflightOpenSSL, resolvePnpmCommand, run } from "../context-fabric-qa.mjs";
 
 describe("Context Fabric QA launcher", () => {
-    it("uses the Windows pnpm command shim without enabling a shell", () => {
-        expect(resolvePnpmCommand("win32")).toBe("pnpm.cmd");
-        expect(resolvePnpmCommand("darwin")).toBe("pnpm");
+    it("resolves an absolute readable POSIX package-manager script", () => {
+        const directory = mkdtempSync(join(tmpdir(), "context-fabric-qa-"));
+        const npmExecPath = join(directory, "pnpm entry.js");
+        writeFileSync(npmExecPath, "#!/usr/bin/env node\n");
+
+        expect(resolvePnpmCommand({ platform: "darwin", npmExecPath })).toEqual({
+            command: process.execPath,
+            args: [npmExecPath],
+        });
+    });
+
+    it("resolves a readable Windows CJS path with spaces without a cmd shim", () => {
+        const npmExecPath = "C:\\Program Files\\pnpm\\pnpm entry.cjs";
+
+        expect(
+            resolvePnpmCommand({
+                platform: "win32",
+                npmExecPath,
+                isReadable: () => true,
+            }),
+        ).toEqual({ command: process.execPath, args: [npmExecPath] });
+    });
+
+    it.each([
+        [undefined, "npm_execpath from the package manager"],
+        ["relative/pnpm.js", "absolute"],
+        ["/tmp/pnpm.mjs", "JavaScript (.js or .cjs)"],
+        ["/tmp/pnpm.js", "cannot read npm_execpath"],
+    ])("rejects unsafe npm_execpath %j", (npmExecPath, message) => {
+        expect(() =>
+            resolvePnpmCommand({
+                platform: "darwin",
+                npmExecPath,
+                isReadable: () => npmExecPath !== "/tmp/pnpm.js",
+            }),
+        ).toThrow(message);
     });
 
     it("preserves spaced arguments and environment through direct spawning", async () => {
@@ -21,6 +57,7 @@ describe("Context Fabric QA launcher", () => {
         expect(spawnImplementation).toHaveBeenCalledWith("pnpm.cmd", args, {
             env: environment,
             stdio: "inherit",
+            shell: false,
         });
     });
 
@@ -33,14 +70,36 @@ describe("Context Fabric QA launcher", () => {
         expect(runCommand).toHaveBeenCalledWith("openssl", ["version"]);
     });
 
-    it("uses the Windows shim for both package-manager phases", async () => {
+    it("uses the npm package-manager entrypoint for both package-manager phases", async () => {
         const commands = [];
-        const runCommand = vi.fn(async (command) => {
-            commands.push(command);
+        const npmExecPath = "C:\\Program Files\\pnpm\\pnpm.cjs";
+        const runCommand = vi.fn(async (command, args) => {
+            commands.push([command, args]);
             return 0;
         });
 
-        await expect(main({ platform: "win32", runCommand })).resolves.toBe(0);
-        expect(commands).toEqual(["openssl", "pnpm.cmd", "pnpm.cmd"]);
+        await expect(
+            main({
+                platform: "win32",
+                npmExecPath,
+                isReadable: () => true,
+                runCommand,
+            }),
+        ).resolves.toBe(0);
+        expect(commands).toEqual([
+            ["openssl", ["version"]],
+            [process.execPath, [npmExecPath, "build"]],
+            [
+                process.execPath,
+                [
+                    npmExecPath,
+                    "exec",
+                    "playwright",
+                    "test",
+                    "-c",
+                    "playwright.context-fabric.config.ts",
+                ],
+            ],
+        ]);
     });
 });
