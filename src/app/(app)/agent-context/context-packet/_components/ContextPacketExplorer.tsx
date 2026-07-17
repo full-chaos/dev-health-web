@@ -7,6 +7,12 @@ import type { ControlledPacketState } from "./contextPacketStates";
 import { ContextPacketTerminalState } from "./ContextPacketTerminalState";
 import { projectContextPacket, type ContextPacketRequestForm } from "./contextPacketProjection";
 import { isContextPacket } from "./contextPacketResponse";
+import { RepositoryDiscoveryState } from "./RepositoryDiscoveryState";
+import {
+    parseRepositoryCatalog,
+    repositoryCatalogFrom,
+    type RepositoryCatalog,
+} from "./repositoryCatalog";
 import { SAMPLE_CONTEXT_PACKET } from "./samplePacket";
 
 export type { ControlledPacketState } from "./contextPacketStates";
@@ -15,6 +21,7 @@ type ContextPacketExplorerProps = {
     readonly controlledState: ControlledPacketState;
     readonly live?: boolean;
     readonly repositories?: readonly string[];
+    readonly repositoryCatalog?: RepositoryCatalog;
     readonly showRetrievalDebug?: boolean;
 };
 
@@ -42,9 +49,14 @@ export function ContextPacketExplorer({
     controlledState,
     live = false,
     repositories = live ? [] : [SAMPLE_CONTEXT_PACKET.repository.slug],
+    repositoryCatalog,
     showRetrievalDebug = false,
 }: ContextPacketExplorerProps) {
-    const [form, setForm] = useState(() => initialRequest(live, repositories));
+    const initialRepositoryCatalog = repositoryCatalog ?? repositoryCatalogFrom(repositories);
+    const [catalog, setCatalog] = useState(initialRepositoryCatalog);
+    const [isRetryingCatalog, setIsRetryingCatalog] = useState(false);
+    const availableRepositories = catalog.kind === "ready" ? catalog.repositories : [];
+    const [form, setForm] = useState(() => initialRequest(live, availableRepositories));
     const [submitted, setSubmitted] = useState<ControlledPacketState | null>(null);
     const [goalError, setGoalError] = useState<string | null>(null);
     const [packet, setPacket] = useState<ACRContextPacketV1 | null>(() =>
@@ -72,6 +84,7 @@ export function ContextPacketExplorer({
             return;
         }
         setGoalError(null);
+        if (live && catalog.kind !== "ready") return;
         if (!live) {
             setPacket(projectContextPacket(form));
             setSubmitted("loading");
@@ -99,6 +112,31 @@ export function ContextPacketExplorer({
             setSubmitted(packetState(payload));
         } catch {
             setSubmitted("error");
+        }
+    };
+
+    const retryRepositoryDiscovery = async () => {
+        setIsRetryingCatalog(true);
+        try {
+            const response = await fetch("/api/agent-context/repositories", {
+                cache: "no-store",
+                method: "GET",
+            });
+            const payload: unknown = await response.json();
+            const nextCatalog: RepositoryCatalog = response.ok
+                ? parseRepositoryCatalog(payload)
+                : { kind: "error" };
+            setCatalog(nextCatalog);
+            if (nextCatalog.kind === "ready") {
+                setForm((current) => ({
+                    ...current,
+                    repository: nextCatalog.repositories[0] ?? "",
+                }));
+            }
+        } catch {
+            setCatalog({ kind: "error" });
+        } finally {
+            setIsRetryingCatalog(false);
         }
     };
 
@@ -150,12 +188,12 @@ export function ContextPacketExplorer({
                         <select
                             id="context-repository"
                             required
-                            disabled={repositories.length === 0}
+                            disabled={catalog.kind !== "ready"}
                             value={form.repository}
                             onChange={(event) => updateField("repository", event.target.value)}
                             className="mt-2 w-full rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-body text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                         >
-                            {repositories.map((repository) => (
+                            {availableRepositories.map((repository) => (
                                 <option key={repository} value={repository}>
                                     {repository}
                                 </option>
@@ -182,10 +220,15 @@ export function ContextPacketExplorer({
                             className="mt-2 w-full rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-body text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                         />
                     </label>
+                    <RepositoryDiscoveryState
+                        catalog={catalog}
+                        isRetrying={isRetryingCatalog}
+                        onRetry={() => void retryRepositoryDiscovery()}
+                    />
                 </div>
                 <button
                     type="submit"
-                    disabled={activeState === "loading" || repositories.length === 0}
+                    disabled={activeState === "loading" || catalog.kind !== "ready"}
                     className="mt-5 rounded-(--radius-sm) bg-(--accent) px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50 disabled:cursor-wait disabled:opacity-60"
                 >
                     {CTA_LABELS.generateContext}

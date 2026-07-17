@@ -8,6 +8,7 @@ const { authMock, contextPacketGatedBodySpy, getCurrentOrgMock, getOrgEntitlemen
         getCurrentOrgMock: vi.fn(),
         getOrgEntitlementsMock: vi.fn(),
     }));
+const listAuthorizedRepositoriesMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/admin/server", () => ({
     getCurrentOrg: getCurrentOrgMock,
@@ -15,6 +16,10 @@ vi.mock("@/lib/admin/server", () => ({
 }));
 
 vi.mock("@/lib/auth", () => ({ auth: authMock }));
+
+vi.mock("@/lib/acr/service", () => ({
+    listAuthorizedRepositories: listAuthorizedRepositoriesMock,
+}));
 
 vi.mock("@/lib/fetchOrNull", () => ({
     fetchOrNull: async <T,>(result: Promise<T>) => result,
@@ -33,25 +38,35 @@ vi.mock("./_components/ContextPacketGatedBody", () => ({
         controlledState,
         enabled,
         live,
+        repositoryCatalog,
         showRetrievalDebug,
     }: {
         readonly controlledState: string;
         readonly enabled: boolean;
         readonly live: boolean;
+        readonly repositoryCatalog?: { readonly kind: string };
         readonly showRetrievalDebug: boolean;
     }) => {
-        contextPacketGatedBodySpy({ controlledState, enabled, live, showRetrievalDebug });
+        contextPacketGatedBodySpy({
+            controlledState,
+            enabled,
+            live,
+            ...(repositoryCatalog ? { repositoryCatalog } : {}),
+            showRetrievalDebug,
+        });
         return null;
     },
 }));
 
 import ContextPacketPage from "./page";
+import { AcrRuntimeError, acrRuntimeErrorCodes } from "@/lib/acr/errors";
 
 describe("ContextPacketPage entitlement gate", () => {
     beforeEach(() => {
         contextPacketGatedBodySpy.mockClear();
         getCurrentOrgMock.mockResolvedValue({ data: { id: "org-1" } });
         authMock.mockResolvedValue({ user: { is_superuser: false } });
+        listAuthorizedRepositoriesMock.mockResolvedValue(["full-chaos/dev-health-acr"]);
         vi.stubEnv("DEV_HEALTH_TEST_MODE", "false");
         vi.stubEnv("NEXT_PUBLIC_DEV_HEALTH_TEST_MODE", "false");
     });
@@ -95,8 +110,29 @@ describe("ContextPacketPage entitlement gate", () => {
             controlledState: "sample",
             enabled: true,
             live: true,
+            repositoryCatalog: {
+                kind: "ready",
+                repositories: ["full-chaos/dev-health-acr"],
+            },
             showRetrievalDebug: false,
         });
+    });
+
+    it("passes a discovery error to the client instead of treating it as an empty catalog", async () => {
+        getOrgEntitlementsMock.mockResolvedValue({
+            data: { features: { agent_context_runtime: true }, is_valid: true },
+        });
+        listAuthorizedRepositoriesMock.mockRejectedValue(
+            new AcrRuntimeError(acrRuntimeErrorCodes.upstream, "credential=do-not-leak", {
+                retryable: true,
+            }),
+        );
+
+        render(await ContextPacketPage({}));
+
+        expect(contextPacketGatedBodySpy).toHaveBeenCalledWith(
+            expect.objectContaining({ repositoryCatalog: { kind: "error" } }),
+        );
     });
 
     it("does not authorize the direct route from a public test-mode variable", async () => {
