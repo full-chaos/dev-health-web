@@ -13,6 +13,8 @@ public static class OwnedWindowsProcess {
     const uint JobObjectExtendedLimitInformation = 9;
     const uint JobObjectLimitKillOnClose = 0x00002000;
     const uint Infinite = 0xffffffff;
+    const uint MoveFileReplaceExisting = 0x00000001;
+    const uint MoveFileWriteThrough = 0x00000008;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     public struct StartupInfo { public int cb; public string lpReserved; public string lpDesktop; public string lpTitle; public int dwX; public int dwY; public int dwXSize; public int dwYSize; public int dwXCountChars; public int dwYCountChars; public int dwFillAttribute; public int dwFlags; public short wShowWindow; public short cbReserved2; public IntPtr lpReserved2; public IntPtr hStdInput; public IntPtr hStdOutput; public IntPtr hStdError; }
@@ -33,9 +35,24 @@ public static class OwnedWindowsProcess {
     [DllImport("kernel32.dll", SetLastError = true)] public static extern uint WaitForSingleObject(IntPtr handle, uint milliseconds);
     [DllImport("kernel32.dll", SetLastError = true)] public static extern bool GetExitCodeProcess(IntPtr process, out uint exitCode);
     [DllImport("kernel32.dll", SetLastError = true)] public static extern bool CloseHandle(IntPtr handle);
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)] static extern bool MoveFileEx(string existingFileName, string newFileName, uint flags);
 
     static void Check(bool success) { if (!success) throw new Win32Exception(Marshal.GetLastWin32Error()); }
-    static string Quote(string value) { return "\"" + value.Replace("\\", "\\\\").Replace("\"", "\\\"") + "\""; }
+    static void AppendQuotedArgument(StringBuilder commandLine, string argument) {
+        commandLine.Append('"');
+        int slashCount = 0;
+        foreach (char character in argument) {
+            if (character == '\\') { slashCount++; continue; }
+            if (character == '"') {
+                commandLine.Append('\\', slashCount * 2 + 1).Append(character);
+                slashCount = 0;
+                continue;
+            }
+            commandLine.Append('\\', slashCount).Append(character);
+            slashCount = 0;
+        }
+        commandLine.Append('\\', slashCount * 2).Append('"');
+    }
     public static IntPtr CreateKillOnCloseJob() {
         IntPtr job = CreateJobObject(IntPtr.Zero, null); if (job == IntPtr.Zero) throw new Win32Exception(Marshal.GetLastWin32Error());
         var limits = new ExtendedLimitInformation(); limits.BasicLimitInformation.LimitFlags = JobObjectLimitKillOnClose;
@@ -44,26 +61,40 @@ public static class OwnedWindowsProcess {
     }
     public static ProcessInformation CreateSuspended(string command, string[] args) {
         var startupInfo = new StartupInfo(); startupInfo.cb = Marshal.SizeOf(startupInfo);
-        var commandLine = new StringBuilder(Quote(command)); foreach (string arg in args) commandLine.Append(" ").Append(Quote(arg));
-        ProcessInformation processInformation; Check(CreateProcess(null, commandLine, IntPtr.Zero, IntPtr.Zero, true, CreateSuspended, IntPtr.Zero, null, ref startupInfo, out processInformation)); return processInformation;
+        var commandLine = new StringBuilder(); AppendQuotedArgument(commandLine, command); foreach (string arg in args) { commandLine.Append(' '); AppendQuotedArgument(commandLine, arg); }
+        ProcessInformation processInformation; Check(CreateProcess(command, commandLine, IntPtr.Zero, IntPtr.Zero, true, CreateSuspended, IntPtr.Zero, null, ref startupInfo, out processInformation)); return processInformation;
     }
+    public static void ReplaceFileAtomically(string source, string destination) { Check(MoveFileEx(source, destination, MoveFileReplaceExisting | MoveFileWriteThrough)); }
     public static void WaitForProcess(IntPtr process) { Check(WaitForSingleObject(process, Infinite) == 0); }
 }
 '@
 
 $job = [IntPtr]::Zero
 $process = $null
+function Publish-Status([hashtable]$status) {
+    $temporaryPath = "$StatusPath.$PID.$([Guid]::NewGuid().ToString('N')).tmp"
+    $stream = $null
+    try {
+        $bytes = [System.Text.UTF8Encoding]::new($false).GetBytes(($status | ConvertTo-Json -Compress))
+        $stream = [IO.File]::Open($temporaryPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+        $stream.Write($bytes, 0, $bytes.Length)
+        $stream.Flush($true)
+    } finally {
+        if ($null -ne $stream) { $stream.Dispose() }
+    }
+    [OwnedWindowsProcess]::ReplaceFileAtomically($temporaryPath, $StatusPath)
+}
 try {
     $job = [OwnedWindowsProcess]::CreateKillOnCloseJob()
     $process = [OwnedWindowsProcess]::CreateSuspended($manifest.command, [string[]]$manifest.args)
     if (-not [OwnedWindowsProcess]::AssignProcessToJobObject($job, $process.hProcess)) { throw [ComponentModel.Win32Exception]::new([Runtime.InteropServices.Marshal]::GetLastWin32Error()) }
     if ([OwnedWindowsProcess]::ResumeThread($process.hThread) -eq 0xffffffff) { throw [ComponentModel.Win32Exception]::new([Runtime.InteropServices.Marshal]::GetLastWin32Error()) }
-    @{ state = "ready"; targetProcessId = $process.dwProcessId } | ConvertTo-Json -Compress | Set-Content -LiteralPath $StatusPath -NoNewline
+    Publish-Status @{ state = "ready"; targetProcessId = $process.dwProcessId }
     [OwnedWindowsProcess]::WaitForProcess($process.hProcess)
     $exitCode = 1; [OwnedWindowsProcess]::GetExitCodeProcess($process.hProcess, [ref]$exitCode) | Out-Null
     exit $exitCode
 } catch {
-    @{ state = "failed" } | ConvertTo-Json -Compress | Set-Content -LiteralPath $StatusPath -NoNewline
+    Publish-Status @{ state = "failed" }
     exit 1
 } finally {
     if ($null -ne $process) { [OwnedWindowsProcess]::CloseHandle($process.hThread) | Out-Null; [OwnedWindowsProcess]::CloseHandle($process.hProcess) | Out-Null }

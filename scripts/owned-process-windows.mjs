@@ -122,25 +122,34 @@ async function taskkill(processId) {
     return { status: result.status };
 }
 
-async function waitForWindowsLaunch(statusPath, helper) {
+function isMissingStatusFile(error) {
+    return error instanceof Error && "code" in error && error.code === "ENOENT";
+}
+
+export async function waitForWindowsLaunch({
+    helper,
+    readStatus = readFile,
+    statusPath,
+    wait: waitForPoll = wait,
+}) {
     const deadline = Date.now() + WINDOWS_LAUNCH_TIMEOUT_MS;
     while (Date.now() < deadline) {
-        if (helper.exitCode !== null)
-            throw new Error(
-                "Owned Windows process helper exited before ownership was established.",
-            );
         try {
-            const status = JSON.parse(await readFile(statusPath, "utf8"));
+            const status = JSON.parse(await readStatus(statusPath, "utf8"));
             if (status.state === "ready" && Number.isSafeInteger(status.targetProcessId))
                 return status;
             if (status.state === "failed")
                 throw new Error("Owned Windows process helper could not establish ownership.");
         } catch (error) {
-            if (error instanceof SyntaxError) throw error;
             if (error instanceof Error && error.message.includes("could not establish"))
                 throw error;
+            if (!(error instanceof SyntaxError) && !isMissingStatusFile(error)) throw error;
         }
-        await wait(POLL_INTERVAL_MS);
+        if (helper.exitCode !== null)
+            throw new Error(
+                "Owned Windows process helper exited before ownership was established.",
+            );
+        await waitForPoll(POLL_INTERVAL_MS);
     }
     throw new Error("Owned Windows process helper timed out before ownership was established.");
 }
@@ -155,7 +164,7 @@ async function launchWindowsOwnedProcess(command, args) {
         { stdio: "inherit", windowsHide: true },
     );
     try {
-        const status = await waitForWindowsLaunch(statusPath, helper);
+        const status = await waitForWindowsLaunch({ helper, statusPath });
         return { helper, statusDirectory, targetProcessId: status.targetProcessId };
     } catch (error) {
         helper.kill();
