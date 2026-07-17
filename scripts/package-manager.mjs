@@ -1,10 +1,10 @@
-import { accessSync, constants } from "node:fs";
+import { accessSync, constants, statSync } from "node:fs";
 import path from "node:path";
 
 export function isReadable(filePath) {
     try {
         accessSync(filePath, constants.R_OK);
-        return true;
+        return statSync(filePath).isFile();
     } catch {
         return false;
     }
@@ -27,9 +27,9 @@ export function resolvePackageManagerCommand({
     }
 
     const extension = pathApi.extname(npmExecPath).toLowerCase();
-    if (extension !== ".js" && extension !== ".cjs") {
+    if (extension !== ".js" && extension !== ".cjs" && extension !== ".mjs") {
         throw new Error(
-            "Package-manager QA requires npm_execpath to reference a JavaScript (.js or .cjs) file.",
+            "Package-manager QA requires npm_execpath to reference a JavaScript (.js, .cjs, or .mjs) file.",
         );
     }
 
