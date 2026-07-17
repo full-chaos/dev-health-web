@@ -25,6 +25,11 @@ const stubbornGrandchildListener = [
     "listener.stdout.pipe(process.stdout);",
     "setInterval(() => undefined, 1_000);",
 ].join("");
+const unrelatedListener = [
+    'const server = require("node:http").createServer();',
+    'server.listen(0, "127.0.0.1", () => console.log(process.pid + ":" + server.address().port));',
+    "setInterval(() => undefined, 1_000);",
+].join("");
 
 function waitForListener(tree) {
     return new Promise((resolve, reject) => {
@@ -54,6 +59,16 @@ function portIsReleased(port) {
 }
 
 describe("run-owned-process", () => {
+    it("returns the owned command exit code after its guardian has drained the group", async () => {
+        const tree = spawn("node", [runner, "node", "-e", "process.exit(7)"], {
+            stdio: ["ignore", "pipe", "pipe"],
+        });
+
+        const code = await waitForExit(tree);
+
+        expect(code).toBe(7);
+    });
+
     it("releases an exact owned grandchild listener when its process group stops", async () => {
         const tree = spawn("node", [runner, "node", "-e", grandchildListener], {
             stdio: ["ignore", "pipe", "pipe"],
@@ -65,7 +80,7 @@ describe("run-owned-process", () => {
 
         expect(await portIsReleased(listenerProcess.port)).toBe(true);
         expect(() => process.kill(listenerProcess.pid, 0)).toThrow();
-    });
+    }, 15_000);
 
     it("kills a stubborn owned grandchild before the outer shutdown budget expires", async () => {
         const tree = spawn("node", [runner, "node", "-e", stubbornGrandchildListener], {
@@ -80,5 +95,24 @@ describe("run-owned-process", () => {
         expect(Date.now() - startedAt).toBeLessThan(10_000);
         expect(await portIsReleased(listenerProcess.port)).toBe(true);
         expect(() => process.kill(listenerProcess.pid, 0)).toThrow();
+    }, 15_000);
+
+    it("keeps an unrelated process alive while the guardian escalates its owned group", async () => {
+        const unrelated = spawn("node", ["-e", unrelatedListener], {
+            stdio: ["ignore", "pipe", "pipe"],
+        });
+        const unrelatedProcess = await waitForListener(unrelated);
+        const tree = spawn("node", [runner, "node", "-e", stubbornGrandchildListener], {
+            stdio: ["ignore", "pipe", "pipe"],
+        });
+        const ownedListener = await waitForListener(tree);
+
+        tree.kill("SIGTERM");
+        await waitForExit(tree);
+
+        expect(await portIsReleased(ownedListener.port)).toBe(true);
+        expect(await portIsReleased(unrelatedProcess.port)).toBe(false);
+        unrelated.kill("SIGKILL");
+        await waitForExit(unrelated);
     }, 15_000);
 });

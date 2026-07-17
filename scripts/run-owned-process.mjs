@@ -1,6 +1,6 @@
 import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import { OWNED_PROCESS_WAIT_TIMEOUT_MS } from "./owned-process-lifecycle.mjs";
-import { processGroupExists } from "./owned-process-posix.mjs";
 import { createWindowsOwnedTreeController } from "./owned-process-windows.mjs";
 
 const [command, ...args] = process.argv.slice(2);
@@ -9,12 +9,13 @@ if (!command) throw new Error("Expected a command to supervise");
 const SHUTDOWN_TIMEOUT_MS = OWNED_PROCESS_WAIT_TIMEOUT_MS;
 const POLL_INTERVAL_MS = 25;
 const isWindows = process.platform === "win32";
+const posixGuardian = fileURLToPath(new URL("./owned-process-posix-guardian.mjs", import.meta.url));
 const windowsTree = isWindows ? createWindowsOwnedTreeController() : undefined;
 const child =
     windowsTree === undefined
-        ? spawn(command, args, {
+        ? spawn(process.execPath, [posixGuardian, command, ...args], {
               detached: true,
-              stdio: "inherit",
+              stdio: ["ignore", "inherit", "inherit", "ipc"],
               windowsHide: true,
           })
         : await windowsTree.start(command, args);
@@ -22,10 +23,6 @@ let stopping = false;
 let requestedSignal;
 let childExitCode;
 let childExitSignal;
-
-function isMissingProcess(error) {
-    return error && typeof error === "object" && "code" in error && error.code === "ESRCH";
-}
 
 function errorMessage(error) {
     return error instanceof Error ? error.message : String(error);
@@ -35,21 +32,13 @@ function wait(milliseconds) {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function waitForProcessGroupExit(pid) {
+async function waitForGuardianExit() {
     const deadline = Date.now() + SHUTDOWN_TIMEOUT_MS;
-    while (processGroupExists(pid)) {
+    while (child.exitCode === null && child.signalCode === null) {
         if (Date.now() >= deadline) return false;
         await wait(POLL_INTERVAL_MS);
     }
     return true;
-}
-
-function signalProcessGroup(pid, signal) {
-    try {
-        process.kill(-pid, signal);
-    } catch (error) {
-        if (!isMissingProcess(error)) throw error;
-    }
 }
 
 async function stopOwnedTree(signal) {
@@ -60,11 +49,11 @@ async function stopOwnedTree(signal) {
         return;
     }
 
-    signalProcessGroup(child.pid, signal);
-    if (await waitForProcessGroupExit(child.pid)) return;
+    child.send({ signal, type: "stop" });
+    if (await waitForGuardianExit()) return;
 
-    signalProcessGroup(child.pid, "SIGKILL");
-    if (!(await waitForProcessGroupExit(child.pid))) {
+    child.send({ signal: "SIGKILL", type: "stop" });
+    if (!(await waitForGuardianExit())) {
         throw new Error("Owned process group remained alive after SIGKILL.");
     }
 }
@@ -101,5 +90,8 @@ child.once("error", (error) => {
 child.once("exit", (code, signal) => {
     childExitCode = code;
     childExitSignal = signal;
+    if (windowsTree === undefined && !stopping) {
+        process.exit(exitCodeAfterCleanup());
+    }
     void stopOwnedProcess("SIGTERM", false);
 });
