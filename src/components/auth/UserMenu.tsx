@@ -36,7 +36,7 @@ export function UserMenu() {
     }
 
     return (
-        <div className="flex max-w-full flex-wrap justify-end gap-2" ref={menuRef}>
+        <div className="relative flex max-w-full justify-end" ref={menuRef}>
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
@@ -56,7 +56,7 @@ export function UserMenu() {
 
             {isOpen && (
                 <div
-                    className="basis-full min-w-48 rounded-(--radius-sm) border border-(--card-stroke) bg-(--card)"
+                    className="absolute right-0 top-full z-50 mt-2 w-48 rounded-(--radius-sm) border border-(--card-stroke) bg-(--card) shadow-lg"
                     id="account-options"
                 >
                     <div className="py-1">

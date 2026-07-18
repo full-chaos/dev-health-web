@@ -292,7 +292,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await expectHealthyBrowser(faults);
     });
 
-    test("keeps account controls in flow and keyboard reachable at every viewport", async ({
+    test("keeps account controls floating above page content and keyboard reachable at every viewport", async ({
         page,
     }, testInfo) => {
         await setEntitlementScenario(page.request, "provisioned");
@@ -305,22 +305,49 @@ test.describe("Context Fabric production entitlement boundary", () => {
             const accountNavigation = page.getByRole("navigation", { name: "Account" });
             const accountControl = page.getByRole("button", { name: "Account options" });
             await expect(accountNavigation).toBeVisible();
+            expect(
+                await accountNavigation.evaluate((element) =>
+                    element.parentElement ? getComputedStyle(element.parentElement).zIndex : "",
+                ),
+            ).toBe("40");
+            const accountNavigationBottomBeforeOpen = await accountNavigation.evaluate(
+                (element) => element.getBoundingClientRect().bottom,
+            );
             await accountControl.focus();
             await page.keyboard.press("Enter");
 
             await expect(accountControl).toHaveAttribute("aria-expanded", "true");
             const platformAdmin = page.getByRole("link", { name: "Platform Admin" });
             const preferences = page.getByRole("link", { name: "Preferences" });
+            const adminPanel = page.getByRole("link", { name: "Admin Panel" });
+            const signOut = page.getByRole("button", { name: "Sign out" });
             await expect(platformAdmin).toBeVisible();
             await expect(preferences).toBeVisible();
-            await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
-            const accountNavigationBottom = await accountNavigation.evaluate(
+            await expect(adminPanel).toBeVisible();
+            await expect(signOut).toBeVisible();
+            const accountNavigationBottomAfterOpen = await accountNavigation.evaluate(
                 (element) => element.getBoundingClientRect().bottom,
             );
             const pageHeadingTop = await page
                 .getByRole("heading", { name: "Context Fabric", level: 1 })
                 .evaluate((element) => element.getBoundingClientRect().top);
-            expect(pageHeadingTop).toBeGreaterThanOrEqual(accountNavigationBottom);
+            expect(accountNavigationBottomAfterOpen).toBe(accountNavigationBottomBeforeOpen);
+            const menu = page.locator("#account-options");
+            await expect(menu).toBeVisible();
+            const menuTop = await menu.evaluate((element) => element.getBoundingClientRect().top);
+            expect(menuTop).toBeLessThan(pageHeadingTop);
+            for (const menuItem of [platformAdmin, preferences, adminPanel, signOut]) {
+                expect(
+                    await menuItem.evaluate((element) => {
+                        const bounds = element.getBoundingClientRect();
+                        const topmostElement = document.elementFromPoint(
+                            bounds.left + bounds.width / 2,
+                            bounds.top + bounds.height / 2,
+                        );
+                        return topmostElement === element || element.contains(topmostElement);
+                    }),
+                ).toBe(true);
+            }
             await page.keyboard.press("Tab");
             await expect(platformAdmin).toBeFocused();
             await page.keyboard.press("Tab");
@@ -331,10 +358,28 @@ test.describe("Context Fabric production entitlement boundary", () => {
             });
         }
 
+        await page.setViewportSize({ width: 1280, height: 768 });
+        await gotoWithSessionReady(page, "/diagnose");
+        const accountControl = page.getByRole("button", { name: "Account options" });
+        await accountControl.click();
+        const globalContextBar = page.getByTestId("global-context-bar");
+        const signOut = page.getByRole("button", { name: "Sign out" });
+        await expect(globalContextBar).toBeVisible();
+        await expect(signOut).toBeVisible();
+        expect(
+            await signOut.evaluate((element) => {
+                const bounds = element.getBoundingClientRect();
+                const topmostElement = document.elementFromPoint(
+                    bounds.left + bounds.width / 2,
+                    bounds.top + bounds.height / 2,
+                );
+                return topmostElement === element || element.contains(topmostElement);
+            }),
+        ).toBe(true);
         await expectHealthyBrowser(faults);
     });
 
-    test("activates Preferences and Sign out through local navigation and mock-safe auth", async ({
+    test("activates Preferences, Admin Panel, and Sign out through local navigation and mock-safe auth", async ({
         page,
     }) => {
         await setEntitlementScenario(page.request, "provisioned");
@@ -347,6 +392,10 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await page.getByRole("link", { name: "Preferences" }).click();
         await expect(page).toHaveURL(/\/settings$/);
         await expect(page.getByRole("heading", { name: "Preferences", level: 1 })).toBeVisible();
+
+        await page.getByRole("button", { name: "Account options" }).click();
+        await page.getByRole("link", { name: "Admin Panel" }).click();
+        await expect(page).toHaveURL(/\/org\/admin$/);
 
         await page.getByRole("button", { name: "Account options" }).click();
         await page.getByRole("button", { name: "Sign out" }).click();

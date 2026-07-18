@@ -2226,17 +2226,23 @@ export type WorkGraphEdgeResult = {
 };
 
 export type WorkGraphEdgeType =
+  | 'ASSIGNED_TO'
   | 'BLOCKS'
   | 'CHILD_OF'
   | 'CONFIG_CHANGED_BY'
   | 'CONTAINS'
   | 'DEPLOYS'
   | 'DUPLICATES'
+  | 'ESCALATES_WITH'
   | 'FIXES'
   | 'GENERATES'
   | 'GUARDS'
   | 'HAS_AI_WORKFLOW'
+  | 'HAS_ALERT'
+  | 'HAS_INCIDENT'
+  | 'HAS_RESPONDER'
   | 'HAS_REVIEW_OUTCOME'
+  | 'HAS_TIMELINE_EVENT'
   | 'IMPACTS'
   | 'IMPLEMENTS'
   | 'INTRODUCED_BY'
@@ -2244,9 +2250,11 @@ export type WorkGraphEdgeType =
   | 'IS_DUPLICATE_OF'
   | 'IS_RELATED_TO'
   | 'LINKED_INCIDENT'
+  | 'MAPS_TO_REPOSITORY'
   | 'PARENT_OF'
   | 'REFERENCES'
   | 'RELATES'
+  | 'REMEDIATED_BY'
   | 'TOUCHES';
 
 export type WorkGraphEdgeTypeInput =
@@ -2305,13 +2313,21 @@ export type WorkGraphNodeType =
   | 'COMMIT'
   | 'DEPLOYMENT'
   | 'DIFF'
+  | 'ESCALATION_POLICY'
   | 'FEATURE_FLAG'
   | 'FILE'
   | 'INCIDENT'
+  | 'INCIDENT_RESPONDER'
+  | 'INCIDENT_TIMELINE_EVENT'
   | 'ISSUE'
+  | 'OPERATIONAL_ALERT'
+  | 'OPERATIONAL_SERVICE'
   | 'PR'
   | 'RELEASE'
-  | 'REVIEW_OUTCOME';
+  | 'REPOSITORY'
+  | 'REVIEW_OUTCOME'
+  | 'TEAM'
+  | 'USER';
 
 export type WorkGraphNodeTypeInput =
   | 'AI_WORKFLOW_RUN'
