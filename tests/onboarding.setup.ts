@@ -1,18 +1,47 @@
 import { test as setup, expect } from "@playwright/test";
 
 const ONBOARDING_AUTH_FILE = "test-results/.auth/onboarding-state.json";
+const ONBOARDING_EMAIL = "newuser@example.com";
+const ONBOARDING_PASSWORD = "password123";
 
-// Runs on the guided dev server (NEXT_PUBLIC_GUIDED_ONBOARDING on). Signing in
-// as the orgless newuser redirects through /auth/onboard to the workspace step;
-// the regex below matches either the entry route or /auth/onboard/workspace.
+function sessionEmail(session: unknown): string | undefined {
+    if (typeof session !== "object" || session === null) return undefined;
+
+    const user = Reflect.get(session, "user");
+    if (typeof user !== "object" || user === null) return undefined;
+
+    const email = Reflect.get(user, "email");
+    return typeof email === "string" ? email : undefined;
+}
+
 setup("authenticate as onboarding user", async ({ page }) => {
+    const initialSessionResponse = page.waitForResponse(
+        (response) =>
+            new URL(response.url()).pathname === "/api/auth/session" &&
+            response.request().method() === "GET",
+    );
     await page.goto("/auth/signin");
-    await page.getByLabel("Email").fill("newuser@example.com");
-    await page.getByLabel("Password").fill("password123");
-    await page.getByRole("button", { name: "Sign In" }).click();
+    expect((await initialSessionResponse).ok()).toBeTruthy();
 
-    // newuser gets needs_onboarding: true, should redirect to /auth/onboard
-    await expect(page).toHaveURL(/\/auth\/onboard/, { timeout: 10000 });
+    await page.getByLabel("Email").fill(ONBOARDING_EMAIL);
+    await page.getByLabel("Password").fill(ONBOARDING_PASSWORD);
+
+    const credentialsCallbackResponse = page.waitForResponse(
+        (response) =>
+            new URL(response.url()).pathname === "/api/auth/callback/credentials" &&
+            response.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: "Sign In" }).click();
+    expect((await credentialsCallbackResponse).ok()).toBeTruthy();
+
+    await expect
+        .poll(async () => {
+            const response = await page.request.get("/api/auth/session");
+            if (!response.ok()) return undefined;
+
+            return sessionEmail(await response.json());
+        })
+        .toBe(ONBOARDING_EMAIL);
 
     await page.context().storageState({ path: ONBOARDING_AUTH_FILE });
 });

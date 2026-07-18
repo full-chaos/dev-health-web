@@ -73,7 +73,7 @@ export default defineConfig({
     use: {
         baseURL: "http://127.0.0.1:3001",
         headless: true,
-        trace: isCI ? "on" : "retain-on-failure",
+        trace: "retain-on-failure",
         video: "retain-on-failure",
         screenshot: "only-on-failure",
     },

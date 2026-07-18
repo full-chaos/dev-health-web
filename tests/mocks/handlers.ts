@@ -1825,11 +1825,12 @@ export const handlers = [
         if (!body?.email || !body?.password) {
             return HttpResponse.json({ detail: "Missing credentials" }, { status: 400 });
         }
-        // Two canonical e2e users with DELIBERATELY distinct purposes:
+        // Canonical e2e users with DELIBERATELY distinct purposes:
+        //   admin@devhealth.example — shared authenticated product setup account.
         //   newuser@example.com — ORGLESS new signup (org_id null,
         //     needs_onboarding true). Drives the first-run onboarding journey.
-        //   test@example.com    — already ONBOARDED owner (org_id org-e2e,
-        //     needs_onboarding false). Drives the authenticated product suite.
+        //   test@example.com    — legacy already-ONBOARDED owner fixture used
+        //     by focused authentication specs.
         if (body.email === "newuser@example.com" && body.password === "password123") {
             return HttpResponse.json<LoginResponseBody>({
                 user: {
@@ -1886,7 +1887,11 @@ export const handlers = [
                 needs_onboarding: false,
             });
         }
-        if (body.email !== "test@example.com" || body.password !== "password123") {
+        const isCanonicalAdmin =
+            body.email === "admin@devhealth.example" && body.password === "devhealth123";
+        const isLegacyProductUser =
+            body.email === "test@example.com" && body.password === "password123";
+        if (!isCanonicalAdmin && !isLegacyProductUser) {
             return HttpResponse.json({ detail: "Invalid email or password" }, { status: 401 });
         }
         return HttpResponse.json<LoginResponseBody>({
