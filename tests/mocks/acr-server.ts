@@ -18,7 +18,6 @@ const app = express();
 const port = Number(process.env.ACR_MOCK_PORT ?? 8013);
 const certificateFile = process.env.ACR_MOCK_CERT_FILE;
 const keyFile = process.env.ACR_MOCK_KEY_FILE;
-const MIN_RESPONSE_TIMER_DELAY_MS = 0;
 const MAX_RESPONSE_TIMER_DELAY_MS = 60_000;
 
 if (!certificateFile || !keyFile) throw new Error("ACR mock TLS files are required");
@@ -55,11 +54,6 @@ function isPausedPacketRelease(value: unknown): value is { readonly goal: string
     );
 }
 
-function boundedResponseTimerDelay(delay: number): number {
-    if (!Number.isFinite(delay)) return MIN_RESPONSE_TIMER_DELAY_MS;
-    return Math.min(Math.max(delay, MIN_RESPONSE_TIMER_DELAY_MS), MAX_RESPONSE_TIMER_DELAY_MS);
-}
-
 app.use(express.json());
 app.get("/health", (_request, response) => response.json({ status: "ok" }));
 app.get("/api/v1/agent-context/capabilities", (_request, response) => response.json(capabilities));
@@ -91,8 +85,8 @@ app.post("/api/v1/agent-context/context-packets", async (request, response) => {
     if (goal === "e2e error") return response.status(503).json({ error: "unavailable" });
     const sendPacket = () => response.json(contextPacketForGoal(goal));
     const delay = getContextPacketDelay(goal);
-    if (delay > 0) {
-        setTimeout(sendPacket, boundedResponseTimerDelay(delay));
+    if (delay > 0 && delay <= MAX_RESPONSE_TIMER_DELAY_MS) {
+        setTimeout(sendPacket, delay);
         return;
     }
     const release = waitForContextPacketRelease(goal);
@@ -112,8 +106,8 @@ app.get("/api/v1/agent-context/evidence/:evidenceRefId", (request, response) => 
     };
     response.once("close", finish);
     const delay = getEvidenceDelay();
-    if (delay > 0) {
-        setTimeout(sendEvidence, boundedResponseTimerDelay(delay));
+    if (delay > 0 && delay <= MAX_RESPONSE_TIMER_DELAY_MS) {
+        setTimeout(sendEvidence, delay);
         return;
     }
     sendEvidence();
