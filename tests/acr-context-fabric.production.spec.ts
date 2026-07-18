@@ -305,6 +305,11 @@ test.describe("Context Fabric production entitlement boundary", () => {
             const accountNavigation = page.getByRole("navigation", { name: "Account" });
             const accountControl = page.getByRole("button", { name: "Account options" });
             await expect(accountNavigation).toBeVisible();
+            expect(
+                await accountNavigation.evaluate((element) =>
+                    element.parentElement ? getComputedStyle(element.parentElement).zIndex : "",
+                ),
+            ).toBe("40");
             const accountNavigationBottomBeforeOpen = await accountNavigation.evaluate(
                 (element) => element.getBoundingClientRect().bottom,
             );
@@ -353,6 +358,24 @@ test.describe("Context Fabric production entitlement boundary", () => {
             });
         }
 
+        await page.setViewportSize({ width: 1280, height: 768 });
+        await gotoWithSessionReady(page, "/diagnose");
+        const accountControl = page.getByRole("button", { name: "Account options" });
+        await accountControl.click();
+        const globalContextBar = page.getByTestId("global-context-bar");
+        const signOut = page.getByRole("button", { name: "Sign out" });
+        await expect(globalContextBar).toBeVisible();
+        await expect(signOut).toBeVisible();
+        expect(
+            await signOut.evaluate((element) => {
+                const bounds = element.getBoundingClientRect();
+                const topmostElement = document.elementFromPoint(
+                    bounds.left + bounds.width / 2,
+                    bounds.top + bounds.height / 2,
+                );
+                return topmostElement === element || element.contains(topmostElement);
+            }),
+        ).toBe(true);
         await expectHealthyBrowser(faults);
     });
 
