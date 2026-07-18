@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { main, preflightOpenSSL, run } from "../context-fabric-qa.mjs";
+import { main, preflightOpenSSL, removeGuidedBuildOutput, run } from "../context-fabric-qa.mjs";
 import { resolvePackageManagerCommand } from "../package-manager.mjs";
 
 describe("Context Fabric QA launcher", () => {
@@ -77,6 +77,9 @@ describe("Context Fabric QA launcher", () => {
             commands.push([command, args]);
             return 0;
         });
+        const cleanGuidedBuildOutput = vi.fn(async () => {
+            commands.push(["clean-guided-build-output", []]);
+        });
 
         await expect(
             main({
@@ -84,10 +87,12 @@ describe("Context Fabric QA launcher", () => {
                 npmExecPath,
                 isReadable: () => true,
                 runCommand,
+                cleanGuidedBuildOutput,
             }),
         ).resolves.toBe(0);
         expect(commands).toEqual([
             ["openssl", ["version"]],
+            ["clean-guided-build-output", []],
             [process.execPath, [npmExecPath, "build"]],
             [
                 process.execPath,
@@ -101,5 +106,17 @@ describe("Context Fabric QA launcher", () => {
                 ],
             ],
         ]);
+    });
+
+    it("removes the ignored guided build output before building", async () => {
+        const rmImplementation = vi.fn(async () => {});
+        await removeGuidedBuildOutput({
+            rmImplementation,
+            guidedDir: "/repo/.next-guided",
+        });
+        expect(rmImplementation).toHaveBeenCalledWith("/repo/.next-guided", {
+            recursive: true,
+            force: true,
+        });
     });
 });
