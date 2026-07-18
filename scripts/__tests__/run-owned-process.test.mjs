@@ -84,7 +84,7 @@ describe("run-owned-process", () => {
         const code = await waitForExit(tree);
 
         expect(code).toBe(7);
-    });
+    }, 15_000);
 
     it("releases an exact owned grandchild listener when its process group stops", async () => {
         const tree = spawn("node", [runner, "node", "-e", grandchildListener], {

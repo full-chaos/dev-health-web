@@ -53,6 +53,7 @@ describe("ACR mock fixtures", () => {
 
     it("rejects unsafe test controls instead of accepting arbitrary values", () => {
         expect(setAcrMockControls({ evidenceDelayMs: -1 })).toBe(false);
+        expect(setAcrMockControls({ evidenceDelayMs: 60_001 })).toBe(false);
         expect(setAcrMockControls({ delayedGoals: { "e2e stale response": 60_001 } })).toBe(false);
         expect(setAcrMockControls({ malformedPacket: "yes" })).toBe(false);
     });
