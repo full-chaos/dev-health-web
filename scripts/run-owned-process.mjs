@@ -16,7 +16,6 @@ let stopping = false;
 let requestedSignal;
 let childExitCode;
 let childExitSignal;
-let guardianDrained = false;
 const ownedGroupMembers = new Map();
 
 function cacheChildExit(code, signal) {
@@ -42,7 +41,8 @@ function hasVerifiedOwnedGroupMember(groupId) {
 
 function handleChildExit() {
     if (windowsTree === undefined && !stopping) {
-        if (guardianDrained) process.exit(exitCodeAfterCleanup());
+        if (child.pid === undefined || !processGroupExists(child.pid))
+            process.exit(exitCodeAfterCleanup());
         void stopOwnedProcess("SIGKILL", false);
         return;
     }
@@ -69,7 +69,6 @@ child =
 cacheChildExit(child.exitCode, child.signalCode);
 if (windowsTree === undefined) {
     child.on("message", (message) => {
-        if (message?.type === "drained") guardianDrained = true;
         if (message?.type === "ready") retainOwnedGroupMember(message.target);
         if (message?.type === "members" && Array.isArray(message.members))
             message.members.forEach(retainOwnedGroupMember);

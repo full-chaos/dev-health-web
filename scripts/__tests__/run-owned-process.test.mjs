@@ -4,6 +4,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 const runner = fileURLToPath(new URL("../run-owned-process.mjs", import.meta.url));
+const dropGuardianDrainedMessage = fileURLToPath(
+    new URL("./fixtures/drop-guardian-drained-message.cjs", import.meta.url),
+);
 const listener = [
     'const server = require("node:http").createServer();',
     'server.listen(0, "127.0.0.1", () => console.log(`${process.pid}:${server.address().port}`));',
@@ -53,6 +56,15 @@ function waitForExit(tree) {
     return new Promise((resolve) => tree.once("exit", resolve));
 }
 
+function withDroppedGuardianDrainedMessage() {
+    return {
+        ...process.env,
+        NODE_OPTIONS: [process.env.NODE_OPTIONS, `--require=${dropGuardianDrainedMessage}`]
+            .filter(Boolean)
+            .join(" "),
+    };
+}
+
 function portIsReleased(port) {
     return new Promise((resolve) => {
         const socket = net.connect({ host: "127.0.0.1", port });
@@ -85,6 +97,17 @@ describe("run-owned-process", () => {
 
         expect(code).toBe(7);
     }, 15_000);
+
+    it("returns the owned command exit code when its guardian drain IPC message is unavailable", async () => {
+        const tree = spawn("node", [runner, "node", "-e", "process.exit(7)"], {
+            env: withDroppedGuardianDrainedMessage(),
+            stdio: ["ignore", "pipe", "pipe"],
+        });
+
+        const code = await waitForExit(tree);
+
+        expect(code).toBe(7);
+    }, 5_000);
 
     it("releases an exact owned grandchild listener when its process group stops", async () => {
         const tree = spawn("node", [runner, "node", "-e", grandchildListener], {
