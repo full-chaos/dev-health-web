@@ -260,4 +260,20 @@ describe("PrDetailPage", () => {
             useDemoFallback: false,
         });
     });
+
+    it("decodes a URL-encoded colon PR route before requesting persisted detail", async () => {
+        const colonId = "11111111-1111-1111-1111-111111111111:42";
+        const encodedColonId = "11111111-1111-1111-1111-111111111111%3A42";
+        getPrDetailViaGraphQLMock.mockResolvedValue({ ...samplePr, id: colonId });
+
+        await renderPage(encodedColonId);
+
+        expect(getPrDetailViaGraphQLMock).toHaveBeenCalledWith({ orgId: "org-1", id: colonId });
+        expect(getAIWorkflowDrilldownViaGraphQLMock).toHaveBeenCalledWith({
+            orgId: "org-1",
+            rootType: "PR",
+            rootId: colonId,
+            useDemoFallback: false,
+        });
+    });
 });
