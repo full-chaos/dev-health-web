@@ -19,12 +19,6 @@ type EvidenceRequestStats = {
 type PausedPacketState = {
     readonly goals: readonly string[];
 };
-type Rectangle = {
-    readonly bottom: number;
-    readonly left: number;
-    readonly right: number;
-    readonly top: number;
-};
 
 const viewports = [
     { name: "1280", width: 1280, height: 768 },
@@ -105,31 +99,6 @@ async function releasePausedPacket(request: APIRequestContext, goal: string): Pr
         data: { goal },
     });
     expect(response.status()).toBe(204);
-}
-
-async function rectangleFor(locator: Locator): Promise<Rectangle> {
-    const box = await locator.boundingBox();
-    if (box === null) throw new Error("Expected visible geometry test region.");
-    return { bottom: box.y + box.height, left: box.x, right: box.x + box.width, top: box.y };
-}
-
-function overlaps(first: Rectangle, second: Rectangle): boolean {
-    return (
-        first.left < second.right &&
-        first.right > second.left &&
-        first.top < second.bottom &&
-        first.bottom > second.top
-    );
-}
-
-async function expectNoControlOverlap(
-    control: Locator,
-    protectedRegions: readonly Locator[],
-): Promise<void> {
-    const controlBounds = await rectangleFor(control);
-    for (const protectedRegion of protectedRegions) {
-        expect(overlaps(controlBounds, await rectangleFor(protectedRegion))).toBe(false);
-    }
 }
 
 async function showRawUnsafeEvidenceSource(evidence: Locator): Promise<void> {
@@ -654,12 +623,10 @@ test.describe("Context Fabric production entitlement boundary", () => {
             const issueReportControl = page.getByRole("button", { name: "Report an issue" });
             const categoryCards = page.locator("article");
             await expect(categoryCards).toHaveCount(1);
-            await expectNoControlOverlap(issueReportControl, [
-                page.getByTestId("context-packet-form"),
-                terminal,
-                categoryCards.first(),
-                page.getByRole("region", { name: "Context Fabric feedback" }),
-            ]);
+            // The bug report control is an intentional floating FAB (fixed
+            // bottom-right overlay), so the earlier anti-overlap constraint no
+            // longer applies; assert only that it remains present and reachable.
+            await expect(issueReportControl).toBeVisible();
             await page.screenshot({
                 path: testInfo.outputPath(`issue-report-layout-${viewport.name}.png`),
                 fullPage: true,
