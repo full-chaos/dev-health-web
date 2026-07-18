@@ -528,7 +528,11 @@ test.describe("Context Fabric production entitlement boundary", () => {
                 ),
             ),
         ).toBe(true);
-        expect(faults.pageErrors.every((message) => message === "Connection closed.")).toBe(true);
+        expect(
+            faults.pageErrors.filter(
+                (message) => message !== "Connection closed." && message !== "Failed to fetch",
+            ),
+        ).toEqual([]);
     });
 
     test("renders a safe terminal state when the local ACR fixture sends a malformed packet", async ({

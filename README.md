@@ -178,7 +178,7 @@ MSW mock handlers in `tests/mocks/handlers.ts` are typed with interfaces from `t
 ### E2E Reliability Hardening (Phase 3)
 
 - CI runs with Playwright retries enabled (`retries=2` when `CI=true`).
-- Failure artifacts are always retained: video (`video: retain-on-failure`) and screenshots (`screenshot: only-on-failure`). All E2E suites persist traces on successful CI runs and Context Fabric also writes named 1280/768/375 screenshots.
+- Failure artifacts are always retained: video (`video: retain-on-failure`) and screenshots (`screenshot: only-on-failure`). The default E2E suite retains traces only on failure; Context Fabric persists traces on successful CI runs and writes named 1280/768/375 screenshots.
 - Every suite writes its JUnit output beneath `test-results/playwright/<suite>/junit.xml`.
 - Every suite writes its HTML report beneath `test-results/playwright-html/<suite>/`; CI uploads both roots, while certificates and auth state remain outside them.
 - `ci/run_tests.sh e2e` clears and recreates artifact directories before each run and prints diagnostic context (Node/npm/Playwright versions + artifact paths).
