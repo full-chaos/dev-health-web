@@ -1,9 +1,13 @@
 services:
     web-dev:
-        image: node:25
+        build:
+            context: .
+            target: dev
         environment:
             BACKEND_URL: http://0.0.0.0:8000
+            CI: "true"
         working_dir: /app
         volumes:
             - .:/app
-        command: npm run dev
+            - /app/node_modules
+        command: sh -c "pnpm install --frozen-lockfile && pnpm run dev"

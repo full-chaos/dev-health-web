@@ -34,7 +34,7 @@ export default async function AppLayout({
                         <div className="min-h-screen bg-[image:var(--app-gradient)] bg-fixed">
                             <ImpersonationBanner />
                             <TrialBanner />
-                            <header className="border-b border-(--card-stroke) bg-(--card-80)">
+                            <header className="relative z-30 border-b border-(--card-stroke) bg-(--card-80)">
                                 <nav
                                     aria-label="Account"
                                     className="flex min-h-14 items-center justify-end px-4 py-3 sm:px-6"
