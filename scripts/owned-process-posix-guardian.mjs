@@ -1,5 +1,6 @@
 import { spawn, spawnSync } from "node:child_process";
 import { processIdentity } from "./owned-process-posix.mjs";
+import { groupHasDescendants, groupMemberIdentities } from "./owned-process-posix-group.mjs";
 
 const [command, ...args] = process.argv.slice(2);
 if (!command) throw new Error("Expected a command for the process-group guardian");
@@ -7,6 +8,8 @@ if (!command) throw new Error("Expected a command for the process-group guardian
 const child = spawn(command, args, { stdio: "inherit", windowsHide: true });
 let stopping = false;
 let childExit;
+let memberPoll;
+let drainPoll;
 
 function errorMessage(error) {
     return error instanceof Error ? error.message : String(error);
@@ -18,45 +21,39 @@ function stop(signal) {
     process.kill(-process.pid, signal);
 }
 
-function groupHasDescendants() {
-    const result = spawnSync("pgrep", ["-g", String(process.pid)], { encoding: "utf8" });
-    if (result.status === 1) return false;
-    if (result.status !== 0)
-        throw new Error(`Unable to inspect owned process group: ${result.stderr}`);
-    return result.stdout
-        .split("\n")
-        .map((pid) => Number(pid))
-        .some((pid) => pid !== process.pid);
-}
-
-function groupMemberIdentities() {
-    const result = spawnSync("pgrep", ["-g", String(process.pid)], { encoding: "utf8" });
-    if (result.status === 1) return [];
-    if (result.status !== 0)
-        throw new Error(`Unable to inspect owned process group: ${result.stderr}`);
-    return result.stdout
-        .split("\n")
-        .map((pid) => Number(pid))
-        .filter((pid) => pid !== process.pid)
-        .flatMap((pid) => {
-            const identity = processIdentity(pid);
-            return identity === undefined ? [] : [identity];
-        });
-}
-
 function publishLiveMembers() {
-    process.send?.({ members: groupMemberIdentities(), type: "members" });
+    process.send?.({
+        members: groupMemberIdentities(process.pid, process.pid, spawnSync, processIdentity),
+        type: "members",
+    });
+}
+
+function stopPolling() {
+    if (memberPoll !== undefined) clearInterval(memberPoll);
+    if (drainPoll !== undefined) clearInterval(drainPoll);
+}
+
+function publishDrained(message) {
+    if (typeof process.send !== "function" || !process.connected) return;
+    try {
+        process.send(message, () => {
+            if (process.connected) process.disconnect();
+        });
+    } catch {
+        if (process.connected) process.disconnect();
+    }
 }
 
 function exitWhenGroupIsEmpty() {
     const waitForDescendants = () => {
         publishLiveMembers();
-        if (groupHasDescendants()) return;
-        process.send?.({ code: childExit.code, signal: childExit.signal, type: "drained" });
-        process.exit(childExit.code ?? (childExit.signal ? 1 : 0));
+        if (groupHasDescendants(process.pid, process.pid, spawnSync)) return;
+        stopPolling();
+        process.exitCode = childExit.code ?? (childExit.signal ? 1 : 0);
+        publishDrained({ code: childExit.code, signal: childExit.signal, type: "drained" });
     };
+    drainPoll = setInterval(waitForDescendants, 25);
     waitForDescendants();
-    setInterval(waitForDescendants, 25);
 }
 
 process.on("message", (message) => {
@@ -64,7 +61,7 @@ process.on("message", (message) => {
     stop(message.signal);
 });
 
-setInterval(publishLiveMembers, 25);
+memberPoll = setInterval(publishLiveMembers, 25);
 
 for (const signal of ["SIGINT", "SIGTERM"]) {
     process.on(signal, () => {

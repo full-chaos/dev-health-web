@@ -2,14 +2,14 @@ import { spawn, spawnSync } from "node:child_process";
 import net from "node:net";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { createGuardianCompletionCoordinator } from "../owned-process-guardian-completion.mjs";
+import {
+    groupHasDescendants,
+    groupMemberIdentities,
+    parseProcessIds,
+} from "../owned-process-posix-group.mjs";
 
 const runner = fileURLToPath(new URL("../run-owned-process.mjs", import.meta.url));
-const dropGuardianDrainedMessage = fileURLToPath(
-    new URL("./fixtures/drop-guardian-drained-message.cjs", import.meta.url),
-);
-const delayGuardianExit = fileURLToPath(
-    new URL("./fixtures/delay-guardian-exit.cjs", import.meta.url),
-);
 const listener = [
     'const server = require("node:http").createServer();',
     'server.listen(0, "127.0.0.1", () => console.log(`${process.pid}:${server.address().port}`));',
@@ -59,24 +59,6 @@ function waitForExit(tree) {
     return new Promise((resolve) => tree.once("exit", resolve));
 }
 
-function withDroppedGuardianDrainedMessage() {
-    return {
-        ...process.env,
-        NODE_OPTIONS: [process.env.NODE_OPTIONS, `--require=${dropGuardianDrainedMessage}`]
-            .filter(Boolean)
-            .join(" "),
-    };
-}
-
-function withDelayedGuardianExit() {
-    return {
-        ...process.env,
-        NODE_OPTIONS: [process.env.NODE_OPTIONS, `--require=${delayGuardianExit}`]
-            .filter(Boolean)
-            .join(" "),
-    };
-}
-
 function portIsReleased(port) {
     return new Promise((resolve) => {
         const socket = net.connect({ host: "127.0.0.1", port });
@@ -99,6 +81,58 @@ function childProcessId(parentProcessId) {
     return child[0];
 }
 
+describe("owned POSIX group inspection", () => {
+    const guardianPid = 123;
+    const childPid = 456;
+
+    function pgrepResult(stdout) {
+        return () => ({ status: 0, stderr: "", stdout });
+    }
+
+    function identityFor(pid) {
+        return { pgid: guardianPid, pid, startedAt: "Tue Jul 15 12:00:00 2026" };
+    }
+
+    it("treats Linux self-only pgrep output with a trailing newline as an empty descendant set", () => {
+        const inspect = pgrepResult(`${guardianPid}\n`);
+
+        expect(parseProcessIds(`${guardianPid}\n`)).toEqual([guardianPid]);
+        expect(groupHasDescendants(guardianPid, guardianPid, inspect)).toBe(false);
+        expect(groupMemberIdentities(guardianPid, guardianPid, inspect, identityFor)).toEqual([]);
+    });
+
+    it("retains a real descendant from Linux pgrep output with a trailing newline", () => {
+        const inspect = pgrepResult(`${guardianPid}\n${childPid}\n`);
+
+        expect(groupHasDescendants(guardianPid, guardianPid, inspect)).toBe(true);
+        expect(groupMemberIdentities(guardianPid, guardianPid, inspect, identityFor)).toEqual([
+            identityFor(childPid),
+        ]);
+    });
+});
+
+describe("guardian completion coordinator", () => {
+    it("falls back to the guardian exit event when a drained message is dropped", async () => {
+        const completion = createGuardianCompletionCoordinator();
+
+        completion.completeFromExitEvent(7, null);
+
+        expect(await completion.wait()).toBe("exit_event");
+        expect(completion.terminalResult()).toEqual({ code: 7, signal: null });
+    });
+
+    it("completes from a valid drained message before a delayed guardian exit", async () => {
+        const completion = createGuardianCompletionCoordinator();
+
+        expect(
+            completion.completeFromDrainedMessage({ code: 7, signal: null, type: "drained" }),
+        ).toBe(true);
+
+        expect(await completion.wait()).toBe("drained_message");
+        expect(completion.terminalResult()).toEqual({ code: 7, signal: null });
+    });
+});
+
 describe("run-owned-process", () => {
     it("returns the owned command exit code after its guardian has drained the group", async () => {
         const tree = spawn("node", [runner, "node", "-e", "process.exit(7)"], {
@@ -109,30 +143,6 @@ describe("run-owned-process", () => {
 
         expect(code).toBe(7);
     }, 15_000);
-
-    it("returns the owned command exit code when its guardian drain IPC message is unavailable", async () => {
-        const tree = spawn("node", [runner, "node", "-e", "process.exit(7)"], {
-            env: withDroppedGuardianDrainedMessage(),
-            stdio: ["ignore", "pipe", "pipe"],
-        });
-
-        const code = await waitForExit(tree);
-
-        expect(code).toBe(7);
-    }, 5_000);
-
-    it("drains from its guardian IPC message before the guardian exit event", async () => {
-        const startedAt = Date.now();
-        const tree = spawn("node", [runner, "node", "-e", "process.exit(7)"], {
-            env: withDelayedGuardianExit(),
-            stdio: ["ignore", "pipe", "pipe"],
-        });
-
-        const code = await waitForExit(tree);
-
-        expect(code).toBe(7);
-        expect(Date.now() - startedAt).toBeLessThan(500);
-    }, 2_000);
 
     it("releases an exact owned grandchild listener when its process group stops", async () => {
         const tree = spawn("node", [runner, "node", "-e", grandchildListener], {

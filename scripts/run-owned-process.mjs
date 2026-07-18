@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { OWNED_PROCESS_WAIT_TIMEOUT_MS } from "./owned-process-lifecycle.mjs";
 import { selectOwnedTreeController } from "./owned-process-controller.mjs";
+import { createGuardianCompletionCoordinator } from "./owned-process-guardian-completion.mjs";
 import { processGroupExists, processGroupIsOwned } from "./owned-process-posix.mjs";
 
 const [command, ...args] = process.argv.slice(2);
@@ -14,25 +15,8 @@ const posixGuardian = fileURLToPath(new URL("./owned-process-posix-guardian.mjs"
 let child;
 let stopping = false;
 let requestedSignal;
-let childExitCode;
-let childExitSignal;
-let guardianDrainSource;
-let resolveGuardianDrain;
 const ownedGroupMembers = new Map();
-const guardianDrain = new Promise((resolve) => {
-    resolveGuardianDrain = resolve;
-});
-
-function cacheChildExit(code, signal) {
-    childExitCode = code;
-    childExitSignal = signal;
-}
-
-function completeGuardianDrain(source) {
-    if (guardianDrainSource !== undefined) return;
-    guardianDrainSource = source;
-    resolveGuardianDrain(source);
-}
+const guardianCompletion = createGuardianCompletionCoordinator();
 
 function retainOwnedGroupMember(member) {
     if (
@@ -61,7 +45,7 @@ function handleChildExit() {
 }
 
 function recordWindowsHelperExit(code, signal) {
-    cacheChildExit(code, signal);
+    guardianCompletion.completeFromExitEvent(code, signal);
     if (child !== undefined) handleChildExit();
 }
 
@@ -77,25 +61,16 @@ child =
               windowsHide: true,
           })
         : await windowsTree.start(command, args);
-cacheChildExit(child.exitCode, child.signalCode);
 if (windowsTree === undefined) {
     child.on("message", (message) => {
         if (message?.type === "ready") retainOwnedGroupMember(message.target);
         if (message?.type === "members" && Array.isArray(message.members))
             message.members.forEach(retainOwnedGroupMember);
-        if (
-            message?.type === "drained" &&
-            (Number.isInteger(message.code) || message.code === null) &&
-            (typeof message.signal === "string" || message.signal === null)
-        ) {
-            cacheChildExit(message.code, message.signal);
-            completeGuardianDrain("drained_message");
-            if (!stopping) process.exit(exitCodeAfterCleanup());
-        }
+        if (guardianCompletion.completeFromDrainedMessage(message) && !stopping)
+            process.exit(exitCodeAfterCleanup());
     });
     child.once("exit", (code, signal) => {
-        cacheChildExit(code, signal);
-        completeGuardianDrain("exit_event");
+        guardianCompletion.completeFromExitEvent(code, signal);
         handleChildExit();
     });
 }
@@ -113,7 +88,7 @@ function waitForGuardianDrain() {
         const timeout = setTimeout(() => {
             resolve(undefined);
         }, SHUTDOWN_TIMEOUT_MS);
-        guardianDrain.then((source) => {
+        guardianCompletion.wait().then((source) => {
             clearTimeout(timeout);
             resolve(source);
         });
@@ -156,7 +131,8 @@ async function stopOwnedTree(signal) {
 
 function exitCodeAfterCleanup() {
     if (requestedSignal !== undefined) return 0;
-    return childExitCode ?? (childExitSignal ? 1 : 0);
+    const { code, signal } = guardianCompletion.terminalResult();
+    return code ?? (signal ? 1 : 0);
 }
 
 async function stopOwnedProcess(signal, fromSignal) {
@@ -183,7 +159,7 @@ child.once("error", (error) => {
     console.error(`Owned process failed to start: ${errorMessage(error)}`);
     process.exit(1);
 });
-if (childExitCode !== null || childExitSignal !== null) {
-    completeGuardianDrain("already_exited");
+if (child.exitCode !== null || child.signalCode !== null) {
+    guardianCompletion.completeFromExitEvent(child.exitCode, child.signalCode);
     handleChildExit();
 }

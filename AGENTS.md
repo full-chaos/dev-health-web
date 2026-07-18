@@ -43,6 +43,7 @@ lint (eslint src) · design-lint · typecheck (tsc --noEmit) · codegen (graphql
 - **Test mode:** Playwright sets `DEV_HEALTH_TEST_MODE` / `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE` — components must render sample data without live APIs. Default suite ignores `live/**`; live backend suite is `playwright.live.config.ts` (`tests/live/`, self-bootstrapping).
 - **ESLint:** `react-hooks/set-state-in-effect` + `exhaustive-deps` enforced — derive sample data via memo + computed loading, never sync `setState` in effects.
 - **Schema drift:** `live-e2e.yml` exports the ops schema and diffs `src/lib/graphql/schema.graphql`. Never invent GraphQL fields.
+- **Timeout-fallback masquerade (debugging):** a vitest/Playwright test whose duration ≈ its configured timeout (e.g. `2000`/`5000`/`15000` ms) is running on a timeout _fallback_, not the real completion event — it passes locally but hangs on slower CI. After **2 identical timeout failures, STOP** re-running or raising the timeout; run the **full harness locally** with debug logging (not the isolated test) and timestamp each event/timeout branch to find the signal that never fires. Make fallbacks loud (log when a timeout wins a `race(event, timeout)`) and assert completion arrived via the real event (e.g. a fixture that delays the fallback trigger). Cross-process handshakes (`process.send`/IPC) must flush before exit — un-awaited sends race process teardown differently on Linux CI than macOS.
 
 ## Hooks (lefthook)
 
