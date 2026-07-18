@@ -159,7 +159,8 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
         return <ServiceUnavailable />;
     }
 
-    const { pr_id: prId } = await params;
+    const { pr_id: encodedPrId } = await params;
+    const prId = decodeURIComponent(encodedPrId);
     const session = await requireSession();
     const orgId = session.user.org_id ?? "default-org";
     const demoMode = isExplicitDemoMode();
