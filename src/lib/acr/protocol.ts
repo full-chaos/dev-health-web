@@ -29,12 +29,10 @@ const contextPacketFormSchema = z
 
 const evidenceSelectionSchema = z
     .object({
-        evidenceRefId: z
-            .string()
-            .trim()
-            .min(8)
-            .max(256)
-            .regex(/^[A-Za-z0-9._-]+$/u),
+        evidenceRefId: z.string().refine((evidenceRefId) => {
+            const codePointLength = [...evidenceRefId].length;
+            return codePointLength >= 8 && codePointLength <= 256;
+        }),
         repository: canonicalRepositorySlug,
     })
     .strict();
@@ -67,7 +65,11 @@ export function parseEvidenceSelection(value: unknown): EvidenceSelection {
     return parseAtBoundary(evidenceSelectionSchema, value);
 }
 
-export function contextPacketRequest(form: ContextPacketForm, limits: PacketLimits): object {
+export function contextPacketRequest(
+    form: ContextPacketForm,
+    limits: PacketLimits,
+    includeDebug = false,
+): object {
     const implicitCommit = /^[0-9a-f]{7,64}$/iu.test(form.branchOrCommit ?? "")
         ? form.branchOrCommit
         : undefined;
@@ -78,7 +80,7 @@ export function contextPacketRequest(form: ContextPacketForm, limits: PacketLimi
         client: { name: "dev-health-web", version: "0.1.0" },
         goal: form.goal,
         options: {
-            include_debug: false,
+            include_debug: includeDebug,
             include_low_confidence: false,
             max_items: Math.min(30, limits.max_items),
             max_output_tokens: Math.min(4_000, limits.max_output_tokens),

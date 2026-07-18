@@ -7,13 +7,14 @@ import { http, HttpResponse } from "msw";
 import { setupServer } from "msw/node";
 import { z } from "zod";
 
+// allow: SIZE_OK — cohesive ACR runtime boundary integration matrix shares one signed-assertion fixture.
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
 import { auth } from "@/lib/auth";
 import contextPacket from "../contracts/examples/context_packet.v1.json";
 import expandedEvidence from "../contracts/examples/expanded_evidence.v1.json";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "../errors";
-import { createContextPacket, getExpandedEvidence } from "../service";
+import { createContextPacket, getExpandedEvidence, listAuthorizedRepositories } from "../service";
 
 const server = setupServer();
 const temporaryPaths: string[] = [];
@@ -98,7 +99,7 @@ function installOpsAuthorization(scopes = ["full-chaos/dev-health-acr"]): void {
         http.get("http://ops.example.test/api/v1/licensing/entitlements/:orgId", ({ request }) => {
             expect(request.headers.get("authorization")).toBe("Bearer ops-session-token");
             expect(request.headers.get("cache-control")).toBe("no-store");
-            return HttpResponse.json({ features: { agent_context_runtime: true } });
+            return HttpResponse.json({ features: { agent_context_runtime: true }, is_valid: true });
         }),
         http.post("http://ops.example.test/graphql", async ({ request }) => {
             const body = await request.json();
@@ -250,10 +251,48 @@ describe("ACR server-only runtime service", () => {
         expect(evidence).toEqual(expandedEvidence);
     });
 
+    it.each([" evidence-123 ", `${"e".repeat(255)}😀`])(
+        "preserves opaque evidence ID %s byte-for-byte in the BFF-to-ACR path",
+        async (evidenceRefId) => {
+            installOpsAuthorization();
+            installAcrHappyResponses();
+            const expectedPath = `/api/v1/agent-context/evidence/${encodeURIComponent(evidenceRefId)}`;
+            let requestPath: string | undefined;
+            server.use(
+                http.get(
+                    "https://acr.example.test/api/v1/agent-context/evidence/:evidenceRefId",
+                    ({ request }) => {
+                        requestPath = new URL(request.url).pathname;
+                        const assertion = request.headers.get("x-acr-web-assertion");
+                        expect(assertion).not.toBeNull();
+                        if (assertion === null)
+                            return HttpResponse.json(encodeError(401), { status: 401 });
+                        expect(decodeWebAssertion(assertion)).toMatchObject({
+                            method: "GET",
+                            path: expectedPath,
+                            permissions: ["evidence:read"],
+                        });
+                        return HttpResponse.json(expandedEvidence);
+                    },
+                ),
+            );
+
+            await expect(
+                getExpandedEvidence({
+                    evidenceRefId,
+                    repository: "full-chaos/dev-health-acr",
+                    signal: new AbortController().signal,
+                }),
+            ).resolves.toEqual(expandedEvidence);
+
+            expect(requestPath).toBe(expectedPath);
+        },
+    );
+
     it("fails closed when the organization entitlement is false", async () => {
         server.use(
             http.get("http://ops.example.test/api/v1/licensing/entitlements/:orgId", () =>
-                HttpResponse.json({ features: { agent_context_runtime: false } }),
+                HttpResponse.json({ features: { agent_context_runtime: false }, is_valid: true }),
             ),
         );
 
@@ -264,6 +303,40 @@ describe("ACR server-only runtime service", () => {
             }),
         ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.notEntitled, status: 403 });
     });
+
+    it.each([
+        ["missing", { features: { agent_context_runtime: true } }],
+        ["false", { features: { agent_context_runtime: true }, is_valid: false }],
+        ["malformed", { features: { agent_context_runtime: true }, is_valid: "true" }],
+    ])(
+        "fails closed before scope or ACR requests when is_valid is %s",
+        async (_name, entitlement) => {
+            let acrRequests = 0;
+            let scopeRequests = 0;
+            server.use(
+                http.get("http://ops.example.test/api/v1/licensing/entitlements/:orgId", () =>
+                    HttpResponse.json(entitlement),
+                ),
+                http.post("http://ops.example.test/graphql", () => {
+                    scopeRequests += 1;
+                    return HttpResponse.json({ data: { catalog: { values: [] } } });
+                }),
+                http.all("https://acr.example.test/*", () => {
+                    acrRequests += 1;
+                    return HttpResponse.json(capabilities);
+                }),
+            );
+
+            await expect(
+                createContextPacket({
+                    body: { goal: "verify", repository: "full-chaos/dev-health-acr" },
+                    signal: new AbortController().signal,
+                }),
+            ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.notEntitled, status: 403 });
+            expect(scopeRequests).toBe(0);
+            expect(acrRequests).toBe(0);
+        },
+    );
 
     it("rejects a foreign repository selector before contacting ACR", async () => {
         installOpsAuthorization(["full-chaos/other-repository"]);
@@ -293,6 +366,12 @@ describe("ACR server-only runtime service", () => {
                 signal: new AbortController().signal,
             }),
         ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.unavailable });
+    });
+
+    it("returns an empty authorized repository catalog without treating it as unavailable", async () => {
+        installOpsAuthorization([]);
+
+        await expect(listAuthorizedRepositories("org-123")).resolves.toEqual([]);
     });
 
     it("fails closed on an ACR contract version drift before forwarding a packet", async () => {

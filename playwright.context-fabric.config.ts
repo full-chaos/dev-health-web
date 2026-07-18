@@ -1,18 +1,39 @@
 import { defineConfig } from "@playwright/test";
+import { PLAYWRIGHT_GRACEFUL_SHUTDOWN_TIMEOUT_MS } from "./scripts/owned-process-lifecycle.mjs";
+
+export const BFF_ORIGIN = "http://127.0.0.1:3012";
+export const OPS_MOCK_ORIGIN = "http://127.0.0.1:8012";
+export const ACR_API_ORIGIN = "https://127.0.0.1:8013";
 
 const AUTH_FILE = "test-results/.auth/state.json";
+const RESULTS_DIRECTORY =
+    process.env.PLAYWRIGHT_RESULTS_DIR ?? "test-results/playwright/context-fabric";
+const JUNIT_PATH = process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? `${RESULTS_DIRECTORY}/junit.xml`;
+const HTML_REPORT_DIRECTORY =
+    process.env.PLAYWRIGHT_HTML_REPORT ?? "test-results/playwright-html/context-fabric";
+const PERSIST_TRACE = process.env.CI === "true" || process.env.CI === "1";
+const GRACEFUL_SHUTDOWN = {
+    signal: "SIGTERM",
+    timeout: PLAYWRIGHT_GRACEFUL_SHUTDOWN_TIMEOUT_MS,
+} as const;
 
 export default defineConfig({
     testDir: "./tests",
     testMatch: /acr-context-fabric\.production\.spec\.ts/,
     fullyParallel: false,
     workers: 1,
-    reporter: [["list"]],
+    outputDir: RESULTS_DIRECTORY,
+    reporter: [
+        ["list"],
+        ["junit", { outputFile: JUNIT_PATH }],
+        ["html", { open: "never", outputFolder: HTML_REPORT_DIRECTORY }],
+    ],
     use: {
-        baseURL: "http://127.0.0.1:3012",
+        baseURL: BFF_ORIGIN,
         headless: true,
+        ignoreHTTPSErrors: true,
         screenshot: "only-on-failure",
-        trace: "retain-on-failure",
+        trace: PERSIST_TRACE ? "on" : "retain-on-failure",
     },
     projects: [
         {
@@ -27,22 +48,43 @@ export default defineConfig({
     ],
     webServer: [
         {
-            command: "npx tsx ./tests/mocks/http-server.ts",
-            url: "http://127.0.0.1:8012/health",
+            command: "node scripts/context-fabric-launch.mjs ops-mock",
+            url: `${OPS_MOCK_ORIGIN}/health`,
             reuseExistingServer: false,
+            gracefulShutdown: GRACEFUL_SHUTDOWN,
             timeout: 30_000,
             env: { MOCK_SERVER_PORT: "8012" },
         },
         {
-            command:
-                "rm -rf test-results/context-fabric-runtime && mkdir -p test-results/context-fabric-runtime/.next && cp -R .next/standalone/. test-results/context-fabric-runtime && cp -R .next/static test-results/context-fabric-runtime/.next/static && cp -R public scripts test-results/context-fabric-runtime && cd test-results/context-fabric-runtime && node scripts/write-runtime-config.mjs && HOSTNAME=127.0.0.1 PORT=3012 node server.js",
-            url: "http://127.0.0.1:3012",
+            command: "node scripts/context-fabric-launch.mjs acr-mock",
+            url: `${ACR_API_ORIGIN}/health`,
+            ignoreHTTPSErrors: true,
             reuseExistingServer: false,
+            gracefulShutdown: GRACEFUL_SHUTDOWN,
+            timeout: 30_000,
+            env: {
+                ACR_MOCK_CERT_FILE: "test-results/context-fabric-keys/tls.crt",
+                ACR_MOCK_KEY_FILE: "test-results/context-fabric-keys/tls.key",
+                ACR_MOCK_PORT: "8013",
+            },
+        },
+        {
+            command: "node scripts/context-fabric-launch.mjs bff",
+            url: BFF_ORIGIN,
+            reuseExistingServer: false,
+            gracefulShutdown: GRACEFUL_SHUTDOWN,
             timeout: 120_000,
             env: {
-                BACKEND_URL: "http://127.0.0.1:8012",
+                BACKEND_URL: OPS_MOCK_ORIGIN,
                 AUTH_SECRET: "context-fabric-production-playwright",
+                AUTH_URL: BFF_ORIGIN,
+                ACR_API_ORIGIN,
+                ACR_WEB_ASSERTION_AUDIENCE: "dev-health-acr",
+                ACR_WEB_ASSERTION_ISSUER: "dev-health-web",
+                ACR_WEB_ASSERTION_KEY_FILE: "../context-fabric-keys/web-assertion.key",
+                ACR_WEB_ASSERTION_KID: "context-fabric-e2e",
                 NODE_ENV: "production",
+                NODE_TLS_REJECT_UNAUTHORIZED: "0",
             },
         },
     ],

@@ -1,0 +1,45 @@
+const fullCommitHash = "4de2cb94aa8c10f9e6f4d7202bc11fd3e8508d8ce59d5c7059889b1a2f4a63d7";
+
+export const prDetailGraphQLResponse = {
+    data: {
+        pr: {
+            id: "e2e-pr-detail",
+            orgId: "org-e2e",
+            repoId: "repo-e2e",
+            repoName: "full-chaos/dev-health-web",
+            number: 2911,
+            title: "Context Fabric browser verification",
+            body: "",
+            state: "MERGED",
+            authorName: "Test User",
+            authorEmail: "test@example.com",
+            createdAt: "2026-07-16T00:00:00Z",
+            mergedAt: "2026-07-16T01:00:00Z",
+            closedAt: null,
+            headBranch: "feat/chaos-2911-live-context-fabric",
+            baseBranch: "main",
+            additions: 12,
+            deletions: 3,
+            changedFiles: 4,
+            firstReviewAt: "2026-07-16T00:30:00Z",
+            firstCommentAt: null,
+            changesRequestedCount: 0,
+            reviewsCount: 1,
+            commentsCount: 0,
+            reviews: [],
+            commits: [
+                {
+                    hash: fullCommitHash,
+                    message: "Keep commit hashes accessible in PR details",
+                    authorName: "Test User",
+                    authorEmail: "test@example.com",
+                    authorWhen: "2026-07-16T00:15:00Z",
+                    confidence: 1,
+                    provenance: "NATIVE",
+                    evidence: "mock-pr-detail",
+                },
+            ],
+            linkedIssues: [],
+        },
+    },
+} as const;

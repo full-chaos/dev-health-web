@@ -285,6 +285,7 @@ async function handleRequest(request: NextRequest) {
         pathname === "/graphql" ||
         (pathname.startsWith("/api/") &&
             !pathname.startsWith("/api/auth") &&
+            !pathname.startsWith("/api/agent-context") &&
             !pathname.startsWith("/api/v1/llm-proxy"));
 
     if (!shouldProxy) {

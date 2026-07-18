@@ -1,9 +1,13 @@
 import { BackLink } from "@/components/shared/BackLink";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
+import { auth } from "@/lib/auth";
+import { listAuthorizedRepositories } from "@/lib/acr/service";
+import { AcrRuntimeError } from "@/lib/acr/errors";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { filterFromQueryParams } from "@/lib/filters/encode";
 import { ContextPacketGatedBody } from "./_components/ContextPacketGatedBody";
+import { repositoryCatalogFrom, type RepositoryCatalog } from "./_components/repositoryCatalog";
 import {
     CONTROLLED_PACKET_STATES,
     type ControlledPacketState,
@@ -33,6 +37,18 @@ export default async function ContextPacketPage({ searchParams }: ContextPacketP
     const enabled =
         entitlements?.data?.is_valid === true &&
         entitlements.data.features["agent_context_runtime"] === true;
+    const session = await auth();
+    let repositoryCatalog: RepositoryCatalog | undefined;
+    if (enabled && !testMode && org?.data?.id) {
+        try {
+            repositoryCatalog = repositoryCatalogFrom(
+                await listAuthorizedRepositories(org.data.id),
+            );
+        } catch (error) {
+            if (!(error instanceof AcrRuntimeError)) throw error;
+            repositoryCatalog = { kind: "error" };
+        }
+    }
 
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -44,6 +60,9 @@ export default async function ContextPacketPage({ searchParams }: ContextPacketP
                     <ContextPacketGatedBody
                         enabled={enabled}
                         controlledState={controlledStateFrom(params.state, testMode)}
+                        live={!testMode}
+                        repositoryCatalog={repositoryCatalog}
+                        showRetrievalDebug={session?.user.is_superuser === true}
                     />
                 </main>
                 <div className="order-1 md:order-1">

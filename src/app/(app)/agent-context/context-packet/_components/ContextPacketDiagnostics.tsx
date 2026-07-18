@@ -53,10 +53,6 @@ export function ContextPacketDiagnostics({ packet }: { readonly packet: ACRConte
                     {packet.budget.truncated ? "output truncated" : "output complete"}
                 </p>
             </DiagnosticCard>
-            <DiagnosticCard title="Compatibility">
-                Service {packet.compatibility.service_version}; minimum sidecar{" "}
-                {packet.compatibility.minimum_sidecar_version}.
-            </DiagnosticCard>
             <DiagnosticCard title="Checks and next steps">
                 <p>
                     {packet.required_checks.length} required check and{" "}

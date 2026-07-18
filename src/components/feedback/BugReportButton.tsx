@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import type { FeedbackPayload, FeedbackResponse, FeedbackType } from "@/components/feedback/types";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 const inputClassName =
     "w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground placeholder:text-(--ink-muted) focus:border-(--accent) focus:outline-none";
@@ -101,18 +102,20 @@ export function BugReportButton() {
         <>
             <button
                 type="button"
-                className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-(--accent-highlight) bg-(--card-80) text-foreground shadow-xl transition hover:border-(--accent) hover:text-(--accent)"
+                data-testid="bug-report-control"
+                className="inline-flex h-10 items-center justify-center gap-2 rounded-(--radius-sm) border border-(--accent-highlight) bg-(--card-80) px-3 text-sm font-semibold text-foreground shadow-(--elevation-card) transition hover:border-(--accent) hover:text-(--accent)"
                 onClick={() => setIsOpen(true)}
-                aria-label="Report an issue"
+                aria-label={CTA_LABELS.reportIssue}
             >
                 <BugIcon />
+                <span>{CTA_LABELS.reportIssue}</span>
             </button>
 
             {isOpen ? (
                 <>
                     <button
                         type="button"
-                        aria-label="Close issue report panel"
+                        aria-label={CTA_LABELS.closePanel}
                         className="fixed inset-0 z-50 bg-black/50"
                         onClick={closePanel}
                     />
@@ -134,7 +137,7 @@ export function BugReportButton() {
                                     type="button"
                                     className="rounded-md p-2 text-(--ink-muted) transition hover:text-foreground"
                                     onClick={closePanel}
-                                    aria-label="Close"
+                                    aria-label={CTA_LABELS.closePanel}
                                 >
                                     <svg
                                         viewBox="0 0 24 24"

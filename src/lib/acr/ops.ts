@@ -18,6 +18,7 @@ const ACR_REPOSITORY_SCOPES_QUERY = `query ACRRepositoryScopes($orgId: String!) 
 const entitlementSchema = z
     .object({
         features: z.object({ agent_context_runtime: z.boolean() }).loose(),
+        is_valid: z.boolean(),
     })
     .loose();
 
@@ -40,7 +41,7 @@ export type OpsAuthorization = {
 type ResolveOpsAuthorizationInput = {
     readonly accessToken: string;
     readonly orgId: string;
-    readonly selectedRepository: string;
+    readonly selectedRepository?: string;
     readonly signal: AbortSignal;
     readonly subject: string;
 };
@@ -61,7 +62,6 @@ function canonicalRepositoryScopes(values: readonly string[]): readonly string[]
     const canonical = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
     const sorted = [...values].sort((left, right) => left.localeCompare(right));
     if (
-        values.length === 0 ||
         values.some((value) => value !== value.toLowerCase() || !canonical.test(value)) ||
         values.some((value, index) => value !== sorted[index]) ||
         new Set(values).size !== values.length
@@ -101,7 +101,11 @@ export async function resolveOpsAuthorization(
         );
     }
     const parsedEntitlement = entitlementSchema.safeParse(entitlement.value);
-    if (!parsedEntitlement.success || !parsedEntitlement.data.features.agent_context_runtime) {
+    if (
+        !parsedEntitlement.success ||
+        !parsedEntitlement.data.is_valid ||
+        !parsedEntitlement.data.features.agent_context_runtime
+    ) {
         throw new AcrRuntimeError(
             acrRuntimeErrorCodes.notEntitled,
             "Agent Context Runtime is not available for this organization.",
@@ -137,7 +141,10 @@ export async function resolveOpsAuthorization(
     const repositoryScopes = canonicalRepositoryScopes(
         parsedScopes.data.data.catalog.values.map((value) => value.value),
     );
-    if (!repositoryScopes.includes(input.selectedRepository)) {
+    if (
+        input.selectedRepository !== undefined &&
+        !repositoryScopes.includes(input.selectedRepository)
+    ) {
         throw new AcrRuntimeError(
             acrRuntimeErrorCodes.repositoryNotAvailable,
             "The selected repository is not available.",

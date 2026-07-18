@@ -16,6 +16,9 @@ export const CTA_LABELS = {
     /** Open the evidence trail behind a signal / metric / work unit. */
     openEvidence: "Open evidence",
     generateContext: "Generate context",
+    markContextIncorrect: "Mark context as incorrect",
+    markContextStale: "Mark context as stale",
+    markContextIrrelevant: "Mark context as irrelevant",
     /** Inspect the associations (edges) linked to an entity. */
     inspectAssociations: "Inspect associations",
     /** Open a single artifact (flame diagram, PR, deployment, …). */
@@ -45,6 +48,7 @@ export const CTA_LABELS = {
     viewGuide: "View guide",
     reset: "Reset",
     retry: "Retry",
+    reportIssue: "Report an issue",
     clearContext: "Clear context",
     clearTheme: "Clear theme",
     allThemes: "All themes",
@@ -109,6 +113,12 @@ export const CTA_LABELS = {
     closeWizard: "Close",
     /** Dismiss the wizard's post-submit result step (CHAOS-2796). */
     done: "Done",
+    accountOptions: "Account options",
+    preferences: "Preferences",
+    signIn: "Sign In",
+    signOut: "Sign out",
+    platformAdmin: "Platform Admin",
+    adminPanel: "Admin Panel",
     addUser: "Add User",
     addTeam: "Add Team",
     importTeams: "Import Teams",

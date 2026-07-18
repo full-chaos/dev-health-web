@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "node:child_process";
+import { resolvePackageManagerCommand } from "./package-manager.mjs";
 
 const prettierManagedPath =
     /(?:^\.prettier(?:rc|ignore)?$|\.(?:ts|tsx|js|mjs|cjs|jsx|json|md|css|ya?ml)$)/;
@@ -71,8 +72,15 @@ if (changedFiles.length === 0) {
 }
 
 console.log(`Checking ${changedFiles.length} changed Prettier-managed file(s).`);
-const prettier = spawnSync("pnpm", ["exec", "prettier", "--check", ...changedFiles], {
-    stdio: "inherit",
-});
+const packageManager = resolvePackageManagerCommand();
+const prettier = spawnSync(
+    packageManager.command,
+    [...packageManager.args, "exec", "prettier", "--check", ...changedFiles],
+    {
+        env: process.env,
+        shell: false,
+        stdio: "inherit",
+    },
+);
 
 process.exit(prettier.status ?? 1);

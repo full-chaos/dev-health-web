@@ -24,6 +24,7 @@ export default defineConfig({
                         "src/components/**/*.test.ts",
                         "src/app/**/*.test.ts",
                         "scripts/**/__tests__/**/*.test.mjs",
+                        "tests/mocks/**/*.test.ts",
                     ],
                 },
             },

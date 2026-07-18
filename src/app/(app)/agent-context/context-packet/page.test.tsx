@@ -1,15 +1,24 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@/test/utils";
 
-const { contextPacketGatedBodySpy, getCurrentOrgMock, getOrgEntitlementsMock } = vi.hoisted(() => ({
-    contextPacketGatedBodySpy: vi.fn(),
-    getCurrentOrgMock: vi.fn(),
-    getOrgEntitlementsMock: vi.fn(),
-}));
+const { authMock, contextPacketGatedBodySpy, getCurrentOrgMock, getOrgEntitlementsMock } =
+    vi.hoisted(() => ({
+        authMock: vi.fn(),
+        contextPacketGatedBodySpy: vi.fn(),
+        getCurrentOrgMock: vi.fn(),
+        getOrgEntitlementsMock: vi.fn(),
+    }));
+const listAuthorizedRepositoriesMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/admin/server", () => ({
     getCurrentOrg: getCurrentOrgMock,
     getOrgEntitlements: getOrgEntitlementsMock,
+}));
+
+vi.mock("@/lib/auth", () => ({ auth: authMock }));
+
+vi.mock("@/lib/acr/service", () => ({
+    listAuthorizedRepositories: listAuthorizedRepositoriesMock,
 }));
 
 vi.mock("@/lib/fetchOrNull", () => ({
@@ -28,21 +37,36 @@ vi.mock("./_components/ContextPacketGatedBody", () => ({
     ContextPacketGatedBody: ({
         controlledState,
         enabled,
+        live,
+        repositoryCatalog,
+        showRetrievalDebug,
     }: {
         readonly controlledState: string;
         readonly enabled: boolean;
+        readonly live: boolean;
+        readonly repositoryCatalog?: { readonly kind: string };
+        readonly showRetrievalDebug: boolean;
     }) => {
-        contextPacketGatedBodySpy({ controlledState, enabled });
+        contextPacketGatedBodySpy({
+            controlledState,
+            enabled,
+            live,
+            ...(repositoryCatalog ? { repositoryCatalog } : {}),
+            showRetrievalDebug,
+        });
         return null;
     },
 }));
 
 import ContextPacketPage from "./page";
+import { AcrRuntimeError, acrRuntimeErrorCodes } from "@/lib/acr/errors";
 
 describe("ContextPacketPage entitlement gate", () => {
     beforeEach(() => {
         contextPacketGatedBodySpy.mockClear();
         getCurrentOrgMock.mockResolvedValue({ data: { id: "org-1" } });
+        authMock.mockResolvedValue({ user: { is_superuser: false } });
+        listAuthorizedRepositoriesMock.mockResolvedValue(["full-chaos/dev-health-acr"]);
         vi.stubEnv("DEV_HEALTH_TEST_MODE", "false");
         vi.stubEnv("NEXT_PUBLIC_DEV_HEALTH_TEST_MODE", "false");
     });
@@ -70,6 +94,8 @@ describe("ContextPacketPage entitlement gate", () => {
         expect(contextPacketGatedBodySpy).toHaveBeenCalledWith({
             controlledState: "sample",
             enabled: false,
+            live: true,
+            showRetrievalDebug: false,
         });
     });
 
@@ -83,7 +109,43 @@ describe("ContextPacketPage entitlement gate", () => {
         expect(contextPacketGatedBodySpy).toHaveBeenCalledWith({
             controlledState: "sample",
             enabled: true,
+            live: true,
+            repositoryCatalog: {
+                kind: "ready",
+                repositories: ["full-chaos/dev-health-acr"],
+            },
+            showRetrievalDebug: false,
         });
+    });
+
+    it("passes a valid empty repository catalog to the live explorer", async () => {
+        getOrgEntitlementsMock.mockResolvedValue({
+            data: { features: { agent_context_runtime: true }, is_valid: true },
+        });
+        listAuthorizedRepositoriesMock.mockResolvedValue([]);
+
+        render(await ContextPacketPage({}));
+
+        expect(contextPacketGatedBodySpy).toHaveBeenCalledWith(
+            expect.objectContaining({ repositoryCatalog: { kind: "empty" } }),
+        );
+    });
+
+    it("passes a discovery error to the client instead of treating it as an empty catalog", async () => {
+        getOrgEntitlementsMock.mockResolvedValue({
+            data: { features: { agent_context_runtime: true }, is_valid: true },
+        });
+        listAuthorizedRepositoriesMock.mockRejectedValue(
+            new AcrRuntimeError(acrRuntimeErrorCodes.upstream, "credential=do-not-leak", {
+                retryable: true,
+            }),
+        );
+
+        render(await ContextPacketPage({}));
+
+        expect(contextPacketGatedBodySpy).toHaveBeenCalledWith(
+            expect.objectContaining({ repositoryCatalog: { kind: "error" } }),
+        );
     });
 
     it("does not authorize the direct route from a public test-mode variable", async () => {
@@ -97,6 +159,8 @@ describe("ContextPacketPage entitlement gate", () => {
         expect(contextPacketGatedBodySpy).toHaveBeenCalledWith({
             controlledState: "sample",
             enabled: false,
+            live: true,
+            showRetrievalDebug: false,
         });
     });
 });

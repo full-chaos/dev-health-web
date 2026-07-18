@@ -15,20 +15,22 @@ import { defineConfig } from "@playwright/test";
  */
 
 const isCI = process.env.CI === "true" || process.env.CI === "1";
+const resultsDirectory = process.env.PLAYWRIGHT_RESULTS_DIR ?? "test-results/playwright/onboarding";
+const htmlReportDirectory =
+    process.env.PLAYWRIGHT_HTML_REPORT ?? "test-results/playwright-html/onboarding";
 
 const ONBOARDING_AUTH_FILE = "test-results/.auth/onboarding-state.json";
 const GUIDED_BASE_URL = "http://127.0.0.1:3003";
 
 export default defineConfig({
     testDir: "./tests",
-    outputDir: "test-results/playwright-onboarding",
+    outputDir: resultsDirectory,
     reporter: [
         ["list"],
         [
             "html",
             {
-                outputFolder:
-                    process.env.PLAYWRIGHT_ONBOARDING_HTML_REPORT ?? "playwright-report-onboarding",
+                outputFolder: htmlReportDirectory,
                 open: "never",
             },
         ],
@@ -36,8 +38,7 @@ export default defineConfig({
             "junit",
             {
                 outputFile:
-                    process.env.PLAYWRIGHT_ONBOARDING_JUNIT_OUTPUT_NAME ??
-                    "test-results/playwright-onboarding/junit.xml",
+                    process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? `${resultsDirectory}/junit.xml`,
             },
         ],
     ],
@@ -60,7 +61,7 @@ export default defineConfig({
     use: {
         baseURL: GUIDED_BASE_URL,
         headless: true,
-        trace: "retain-on-failure",
+        trace: isCI ? "on" : "retain-on-failure",
         video: "retain-on-failure",
         screenshot: "only-on-failure",
     },

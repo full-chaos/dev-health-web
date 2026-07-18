@@ -11,6 +11,7 @@ type WebSession = {
     readonly accessToken: string;
     readonly orgId: string;
     readonly subject: string;
+    readonly isAdmin: boolean;
 };
 
 function sessionOrError(session: Awaited<ReturnType<typeof auth>>): WebSession {
@@ -26,7 +27,7 @@ function sessionOrError(session: Awaited<ReturnType<typeof auth>>): WebSession {
             },
         );
     }
-    return { accessToken, orgId, subject };
+    return { accessToken, isAdmin: session.user.is_superuser === true, orgId, subject };
 }
 
 async function authorizedRuntime(input: {
@@ -35,6 +36,7 @@ async function authorizedRuntime(input: {
 }): Promise<{
     readonly client: AcrRuntimeClient;
     readonly authorization: Awaited<ReturnType<typeof resolveOpsAuthorization>>;
+    readonly isAdmin: boolean;
 }> {
     const session = sessionOrError(await auth());
     const authorization = await resolveOpsAuthorization({
@@ -44,7 +46,11 @@ async function authorizedRuntime(input: {
         signal: input.signal,
         subject: session.subject,
     });
-    return { authorization, client: new AcrRuntimeClient(loadAcrRuntimeConfig()) };
+    return {
+        authorization,
+        client: new AcrRuntimeClient(loadAcrRuntimeConfig()),
+        isAdmin: session.isAdmin,
+    };
 }
 
 export async function createContextPacket(input: {
@@ -59,9 +65,29 @@ export async function createContextPacket(input: {
     });
     return runtime.client.contextPacket({
         authorization: runtime.authorization,
-        body: JSON.stringify(contextPacketRequest(form, capabilities.limits)),
+        body: JSON.stringify(contextPacketRequest(form, capabilities.limits, runtime.isAdmin)),
         signal: input.signal,
     });
+}
+
+export async function listAuthorizedRepositories(orgId: string): Promise<readonly string[]> {
+    const session = await auth();
+    const accessToken = session?.access_token;
+    const subject = session?.user?.id;
+    if (!accessToken || !subject) {
+        throw new AcrRuntimeError(
+            acrRuntimeErrorCodes.unauthenticated,
+            "Authentication is required.",
+            { status: 401 },
+        );
+    }
+    const authorization = await resolveOpsAuthorization({
+        accessToken,
+        orgId,
+        signal: new AbortController().signal,
+        subject,
+    });
+    return authorization.repositoryScopes;
 }
 
 export async function getExpandedEvidence(input: {

@@ -248,6 +248,14 @@ describe("proxy rate limiting", () => {
         expect(mockCheckRateLimit).not.toHaveBeenCalled();
     });
 
+    it("keeps Context Fabric BFF routes local instead of rewriting them to the backend", async () => {
+        mockAuth.mockResolvedValue(session);
+
+        const res = await proxy(makeRequest("/api/agent-context/context-packets"));
+
+        expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+    });
+
     it("bypasses proxy limiter in non-production test mode", async () => {
         vi.stubEnv("DEV_HEALTH_TEST_MODE", "true");
         vi.stubEnv("NODE_ENV", "test");

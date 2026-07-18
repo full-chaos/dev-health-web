@@ -2,6 +2,7 @@ import express from "express";
 import { createMiddleware } from "@mswjs/http-middleware";
 import { setEntitlementScenario } from "./entitlementScenario";
 import { handlers } from "./handlers";
+import { prDetailGraphQLResponse } from "./prDetailResponse";
 
 const app = express();
 const port = Number(process.env.MOCK_SERVER_PORT ?? 8000);
@@ -25,6 +26,14 @@ app.post("/__test/entitlements", (req, res) => {
 });
 app.get("/__test/acr-requests", (_req, res) => {
     res.json({ count: acrRequestCount });
+});
+app.use("/graphql", (req, res, next) => {
+    const query = req.method === "GET" ? req.query.query : req.body?.query;
+    if (typeof query !== "string" || !query.includes("PrDetail")) {
+        next();
+        return;
+    }
+    res.json(prDetailGraphQLResponse);
 });
 app.use(createMiddleware(...handlers));
 

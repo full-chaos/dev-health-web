@@ -4,14 +4,22 @@ vi.mock("@/lib/acr/service", () => ({
     createContextPacket: vi.fn(),
     getExpandedEvidence: vi.fn(),
 }));
+vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "@/lib/acr/errors";
+import { auth } from "@/lib/auth";
 import { createContextPacket, getExpandedEvidence } from "@/lib/acr/service";
 import { POST } from "../context-packets/route";
 import { GET } from "../evidence/[evidenceRefId]/route";
 
 describe("agent-context API routes", () => {
-    beforeEach(() => vi.clearAllMocks());
+    beforeEach(() => {
+        vi.clearAllMocks();
+        vi.mocked(auth).mockResolvedValue({
+            expires: "2026-07-16T00:00:00.000Z",
+            user: { id: "user-1", is_superuser: false },
+        });
+    });
 
     it("passes a narrow packet form to the server-only service and returns no-store data", async () => {
         vi.mocked(createContextPacket).mockResolvedValue({ schema_version: "context_packet.v1" });
@@ -93,6 +101,72 @@ describe("agent-context API routes", () => {
 
         expect(response.status).toBe(503);
         expect(await response.text()).not.toContain("credential=do-not-leak");
+    });
+
+    it("returns a safe gated response when an invalid entitlement blocks the service", async () => {
+        vi.mocked(createContextPacket).mockRejectedValue(
+            new AcrRuntimeError(
+                acrRuntimeErrorCodes.notEntitled,
+                "expired entitlement assertion is not valid",
+                { status: 403 },
+            ),
+        );
+
+        const response = await POST(
+            new Request("http://web.example.test/api/agent-context/context-packets", {
+                body: JSON.stringify({ goal: "Verify", repository: "full-chaos/dev-health-acr" }),
+                method: "POST",
+            }),
+        );
+
+        expect(response.status).toBe(403);
+        expect(await response.json()).toEqual({
+            error: {
+                code: acrRuntimeErrorCodes.notEntitled,
+                message: "Agent Context Runtime is not available for this organization.",
+                retryable: false,
+            },
+        });
+        expect(createContextPacket).toHaveBeenCalledTimes(1);
+    });
+
+    it("strips retrieval debug information for a non-superuser browser response", async () => {
+        vi.mocked(createContextPacket).mockResolvedValue({
+            retrieval_debug_summary: "internal retrieval trace",
+            schema_version: "context_packet.v1",
+        });
+
+        const response = await POST(
+            new Request("http://web.example.test/api/agent-context/context-packets", {
+                body: JSON.stringify({ goal: "Verify", repository: "full-chaos/dev-health-acr" }),
+                method: "POST",
+            }),
+        );
+
+        expect(await response.json()).toEqual({ schema_version: "context_packet.v1" });
+    });
+
+    it("retains retrieval debug information only for a server-authorized superuser", async () => {
+        vi.mocked(auth).mockResolvedValue({
+            expires: "2026-07-16T00:00:00.000Z",
+            user: { id: "user-1", is_superuser: true },
+        });
+        vi.mocked(createContextPacket).mockResolvedValue({
+            retrieval_debug_summary: "internal retrieval trace",
+            schema_version: "context_packet.v1",
+        });
+
+        const response = await POST(
+            new Request("http://web.example.test/api/agent-context/context-packets", {
+                body: JSON.stringify({ goal: "Verify", repository: "full-chaos/dev-health-acr" }),
+                method: "POST",
+            }),
+        );
+
+        expect(await response.json()).toEqual({
+            retrieval_debug_summary: "internal retrieval trace",
+            schema_version: "context_packet.v1",
+        });
     });
 
     it("sanitizes an unknown internal configuration failure from the packet response", async () => {
