@@ -16,11 +16,22 @@ let stopping = false;
 let requestedSignal;
 let childExitCode;
 let childExitSignal;
+let guardianDrainSource;
+let resolveGuardianDrain;
 const ownedGroupMembers = new Map();
+const guardianDrain = new Promise((resolve) => {
+    resolveGuardianDrain = resolve;
+});
 
 function cacheChildExit(code, signal) {
     childExitCode = code;
     childExitSignal = signal;
+}
+
+function completeGuardianDrain(source) {
+    if (guardianDrainSource !== undefined) return;
+    guardianDrainSource = source;
+    resolveGuardianDrain(source);
 }
 
 function retainOwnedGroupMember(member) {
@@ -72,6 +83,20 @@ if (windowsTree === undefined) {
         if (message?.type === "ready") retainOwnedGroupMember(message.target);
         if (message?.type === "members" && Array.isArray(message.members))
             message.members.forEach(retainOwnedGroupMember);
+        if (
+            message?.type === "drained" &&
+            (Number.isInteger(message.code) || message.code === null) &&
+            (typeof message.signal === "string" || message.signal === null)
+        ) {
+            cacheChildExit(message.code, message.signal);
+            completeGuardianDrain("drained_message");
+            if (!stopping) process.exit(exitCodeAfterCleanup());
+        }
+    });
+    child.once("exit", (code, signal) => {
+        cacheChildExit(code, signal);
+        completeGuardianDrain("exit_event");
+        handleChildExit();
     });
 }
 
@@ -83,13 +108,16 @@ function wait(milliseconds) {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
-async function waitForGuardianExit() {
-    const deadline = Date.now() + SHUTDOWN_TIMEOUT_MS;
-    while (child.exitCode === null && child.signalCode === null) {
-        if (Date.now() >= deadline) return false;
-        await wait(POLL_INTERVAL_MS);
-    }
-    return true;
+function waitForGuardianDrain() {
+    return new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+            resolve(undefined);
+        }, SHUTDOWN_TIMEOUT_MS);
+        guardianDrain.then((source) => {
+            clearTimeout(timeout);
+            resolve(source);
+        });
+    });
 }
 
 async function stopOwnedTree(signal) {
@@ -117,10 +145,11 @@ async function stopOwnedTree(signal) {
     }
 
     child.send({ signal, type: "stop" });
-    if (await waitForGuardianExit()) return;
+    const drainSource = await waitForGuardianDrain();
+    if (drainSource !== undefined) return;
 
     child.send({ signal: "SIGKILL", type: "stop" });
-    if (!(await waitForGuardianExit())) {
+    if ((await waitForGuardianDrain()) === undefined) {
         throw new Error("Owned process group remained alive after SIGKILL.");
     }
 }
@@ -154,9 +183,7 @@ child.once("error", (error) => {
     console.error(`Owned process failed to start: ${errorMessage(error)}`);
     process.exit(1);
 });
-if (childExitCode !== null || childExitSignal !== null) handleChildExit();
-else if (windowsTree === undefined)
-    child.once("exit", (code, signal) => {
-        cacheChildExit(code, signal);
-        handleChildExit();
-    });
+if (childExitCode !== null || childExitSignal !== null) {
+    completeGuardianDrain("already_exited");
+    handleChildExit();
+}

@@ -7,6 +7,9 @@ const runner = fileURLToPath(new URL("../run-owned-process.mjs", import.meta.url
 const dropGuardianDrainedMessage = fileURLToPath(
     new URL("./fixtures/drop-guardian-drained-message.cjs", import.meta.url),
 );
+const delayGuardianExit = fileURLToPath(
+    new URL("./fixtures/delay-guardian-exit.cjs", import.meta.url),
+);
 const listener = [
     'const server = require("node:http").createServer();',
     'server.listen(0, "127.0.0.1", () => console.log(`${process.pid}:${server.address().port}`));',
@@ -65,6 +68,15 @@ function withDroppedGuardianDrainedMessage() {
     };
 }
 
+function withDelayedGuardianExit() {
+    return {
+        ...process.env,
+        NODE_OPTIONS: [process.env.NODE_OPTIONS, `--require=${delayGuardianExit}`]
+            .filter(Boolean)
+            .join(" "),
+    };
+}
+
 function portIsReleased(port) {
     return new Promise((resolve) => {
         const socket = net.connect({ host: "127.0.0.1", port });
@@ -108,6 +120,19 @@ describe("run-owned-process", () => {
 
         expect(code).toBe(7);
     }, 5_000);
+
+    it("drains from its guardian IPC message before the guardian exit event", async () => {
+        const startedAt = Date.now();
+        const tree = spawn("node", [runner, "node", "-e", "process.exit(7)"], {
+            env: withDelayedGuardianExit(),
+            stdio: ["ignore", "pipe", "pipe"],
+        });
+
+        const code = await waitForExit(tree);
+
+        expect(code).toBe(7);
+        expect(Date.now() - startedAt).toBeLessThan(500);
+    }, 2_000);
 
     it("releases an exact owned grandchild listener when its process group stops", async () => {
         const tree = spawn("node", [runner, "node", "-e", grandchildListener], {

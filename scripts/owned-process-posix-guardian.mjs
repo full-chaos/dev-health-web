@@ -52,7 +52,7 @@ function exitWhenGroupIsEmpty() {
     const waitForDescendants = () => {
         publishLiveMembers();
         if (groupHasDescendants()) return;
-        process.send?.({ type: "drained" });
+        process.send?.({ code: childExit.code, signal: childExit.signal, type: "drained" });
         process.exit(childExit.code ?? (childExit.signal ? 1 : 0));
     };
     waitForDescendants();
