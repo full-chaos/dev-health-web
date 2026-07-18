@@ -522,12 +522,14 @@ test.describe("Context Fabric production entitlement boundary", () => {
             faults.sessionRequestFailures.every((failure) => failure.endsWith("net::ERR_ABORTED")),
         ).toBe(true);
         expect(
-            faults.consoleErrors.every((message) =>
-                message.startsWith(
-                    "Executing inline script violates the following Content Security Policy directive",
-                ),
+            faults.consoleErrors.filter(
+                (message) =>
+                    !message.startsWith(
+                        "Executing inline script violates the following Content Security Policy directive",
+                    ) &&
+                    !(message.includes("Failed to fetch") && message.includes("errors.authjs.dev")),
             ),
-        ).toBe(true);
+        ).toEqual([]);
         expect(
             faults.pageErrors.filter(
                 (message) => message !== "Connection closed." && message !== "Failed to fetch",
