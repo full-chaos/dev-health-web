@@ -15,12 +15,14 @@ import { llmSettingsApi } from "./api/llm-settings";
 import { platformApi, impersonationApi } from "./api/platform";
 import { setupApi } from "./api/setup";
 import { customerPushApi } from "./api/customer-push";
+import { pagerDutyApi } from "./api/pagerduty";
 
 export const adminApi = {
     settings: settingsApi,
     credentials: credentialsApi,
     syncConfigs: syncConfigsApi,
     customerPush: customerPushApi,
+    pagerDuty: pagerDutyApi,
     identities: identitiesApi,
     teams: teamsApi,
     users: usersApi,

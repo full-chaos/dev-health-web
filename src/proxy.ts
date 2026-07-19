@@ -132,7 +132,7 @@ function generateNonce(): string {
 function buildCspHeader(nonce: string): string {
     return [
         "default-src 'self'",
-        `script-src 'self' 'nonce-${nonce}'`,
+        `script-src 'self' 'nonce-${nonce}'${process.env.DEV_HEALTH_TEST_MODE === "true" ? " 'unsafe-eval'" : ""}`,
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",

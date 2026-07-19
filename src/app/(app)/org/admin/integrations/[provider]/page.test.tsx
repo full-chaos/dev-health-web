@@ -20,6 +20,14 @@ vi.mock("@/components/admin/integrations/ProviderCredentialsList", () => ({
     ProviderCredentialsList: () => <div data-testid="provider-credentials-list" />,
 }));
 
+vi.mock("@/components/admin/integrations/PagerDutySetup", () => ({
+    PagerDutySetup: ({ credentials }: { credentials: readonly IntegrationCredential[] }) => (
+        <div data-testid="pagerduty-setup">
+            {credentials.map((credential) => credential.name).join(", ")}
+        </div>
+    ),
+}));
+
 import IntegrationPage from "./page";
 
 function makeGitHubAppCredential(): IntegrationCredential {
@@ -29,6 +37,21 @@ function makeGitHubAppCredential(): IntegrationCredential {
         name: "github-app",
         is_active: true,
         config: { auth_mode: "github_app" },
+        last_test_at: null,
+        last_test_success: null,
+        last_test_error: null,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+    };
+}
+
+function makePagerDutyCredential(): IntegrationCredential {
+    return {
+        id: "cred-pagerduty",
+        provider: "pagerduty",
+        name: "production",
+        is_active: true,
+        config: {},
         last_test_at: null,
         last_test_success: null,
         last_test_error: null,
@@ -142,6 +165,22 @@ describe("IntegrationPage ([provider]) — CHAOS-2837 blocker 3", () => {
         expect(screen.getByTestId("provider-credentials-list")).toBeInTheDocument();
     });
 
+    it("renders the dedicated PagerDuty setup instead of the generic credential wizard", async () => {
+        vi.mocked(listCredentials).mockResolvedValue({ data: [makePagerDutyCredential()] });
+        vi.mocked(listSyncConfigs).mockResolvedValue({ data: [] });
+
+        render(
+            await IntegrationPage({
+                params: Promise.resolve({ provider: "pagerduty" }),
+                searchParams: Promise.resolve({}),
+            }),
+        );
+
+        expect(screen.getByTestId("pagerduty-setup")).toBeInTheDocument();
+        expect(screen.getByTestId("pagerduty-setup")).toHaveTextContent("production");
+        expect(screen.queryByTestId("provider-credentials-list")).not.toBeInTheDocument();
+    });
+
     it("locks customer-push mode and skips source loading when customer_push_ingest is disabled", async () => {
         vi.mocked(listCredentials).mockResolvedValue({ data: [] });
         vi.mocked(listSyncConfigs).mockResolvedValue({ data: [] });
@@ -154,7 +193,12 @@ describe("IntegrationPage ([provider]) — CHAOS-2837 blocker 3", () => {
         );
 
         expect(listCustomerPushSources).not.toHaveBeenCalled();
-        expect(screen.getByText(/unlock customer push ingest/i)).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Feature unavailable" })).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                "Contact an administrator to enable customer push ingest for this plan.",
+            ),
+        ).toBeInTheDocument();
     });
 
     it("renders customer-push sources when customer_push_ingest is enabled", async () => {

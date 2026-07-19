@@ -15,8 +15,8 @@ export function FormSection({ title, description, children }: FormSectionProps) 
     return (
         <section className="rounded-xl border border-(--card-stroke) bg-(--card) p-5">
             <div className="mb-4">
-                <h2 className="text-sm font-semibold text-(--foreground)">{title}</h2>
-                {description && <p className="mt-1 text-xs text-(--ink-muted)">{description}</p>}
+                <h2 className="text-h2 text-foreground">{title}</h2>
+                {description && <p className="mt-1 text-body text-(--ink-muted)">{description}</p>}
             </div>
             <div className="space-y-4">{children}</div>
         </section>

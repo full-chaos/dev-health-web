@@ -50,18 +50,22 @@ function syncConfigCell(row: ProviderRow): ReactNode {
     return row.syncConfigCount;
 }
 
+function providerIdentity(row: ProviderRow): ReactNode {
+    return (
+        <div className="flex min-w-0 items-center gap-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-(--card-70)">
+                {row.icon}
+            </div>
+            <span className="truncate font-medium text-foreground">{row.name}</span>
+        </div>
+    );
+}
+
 const COLUMNS: DataTableColumn<ProviderRow>[] = [
     {
         key: "provider",
         header: "Provider",
-        render: (row) => (
-            <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-(--card-70)">
-                    {row.icon}
-                </div>
-                <span className="font-medium text-foreground">{row.name}</span>
-            </div>
-        ),
+        render: providerIdentity,
     },
     { key: "credential", header: "Credential", render: credentialCell },
     { key: "authMethod", header: "Auth method", render: authMethodCell },
@@ -95,12 +99,41 @@ const COLUMNS: DataTableColumn<ProviderRow>[] = [
  */
 export function ProviderTable({ providers }: ProviderTableProps) {
     return (
-        <DataTable
-            accessibleLabel="Providers"
-            columns={COLUMNS}
-            data={providers}
-            rowKeyAction={(row) => row.id}
-            emptyMessage="No providers configured yet."
-        />
+        <>
+            <ul
+                aria-label="Providers"
+                className="space-y-3 lg:hidden"
+                data-testid="provider-mobile-list"
+            >
+                {providers.map((provider) => (
+                    <li
+                        key={provider.id}
+                        className="rounded-lg border border-(--card-stroke) bg-(--card-80) p-4"
+                    >
+                        <div className="flex min-w-0 items-center justify-between gap-3">
+                            {providerIdentity(provider)}
+                            <div className="shrink-0" data-testid="provider-mobile-status">
+                                <ConnectionStatus status={provider.status} />
+                            </div>
+                        </div>
+                        <Link
+                            href={`/org/admin/integrations/${provider.id}`}
+                            className="mt-3 inline-flex w-full items-center justify-center rounded-md border border-(--card-stroke) px-3 py-1.5 text-xs font-medium text-foreground hover:bg-(--card-70)"
+                        >
+                            {CTA_LABELS.manageCredential}
+                        </Link>
+                    </li>
+                ))}
+            </ul>
+            <div className="hidden lg:block">
+                <DataTable
+                    accessibleLabel="Providers"
+                    columns={COLUMNS}
+                    data={providers}
+                    rowKeyAction={(row) => row.id}
+                    emptyMessage="No providers configured yet."
+                />
+            </div>
+        </>
     );
 }

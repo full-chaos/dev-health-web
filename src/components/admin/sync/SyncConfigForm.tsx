@@ -41,6 +41,12 @@ import {
 import type { SyncFormSnapshot } from "./config-form/formDiff";
 import { CreateSyncConfigWizard } from "./config-form/CreateSyncConfigWizard";
 import { EditSyncConfigForm } from "./config-form/EditSyncConfigForm";
+import type { PagerDutyMappingValidity } from "./config-form/PagerDutyServiceMappings";
+import {
+    mergePagerDutyAdminMappings,
+    readPagerDutyAdminMappings,
+} from "./config-form/pagerDutyMappingOptions";
+import type { ServiceRepositoryMappings } from "@/lib/admin/pagerduty";
 
 type SyncConfigFormProps = {
     initialData?: SyncConfig;
@@ -75,6 +81,7 @@ function buildInitialFormValues(
         repos: initialRepositorySelection?.repos || ([] as string[]),
         gitlab_url: (initialData?.sync_options?.gitlab_url as string) || "",
         auto_import_teams: (initialData?.sync_options?.auto_import_teams as boolean) ?? false,
+        serviceRepositoryMappings: readPagerDutyAdminMappings(initialData?.sync_options),
     };
 }
 
@@ -108,6 +115,8 @@ export function SyncConfigForm({
     const [showCredentialModal, setShowCredentialModal] = useState(false);
     const [showDestructiveConfirm, setShowDestructiveConfirm] = useState(false);
     const [localCredentials, setLocalCredentials] = useState(credentials);
+    const [serviceRepositoryMappingsValidity, setServiceRepositoryMappingsValidity] =
+        useState<PagerDutyMappingValidity>({ valid: true });
     const { tier, minSyncIntervalHours, limits } = useAdminTier();
     const maxRepos = (limits?.licensed_repos as number | null | undefined) ?? undefined;
     const [syncAllRepos, setSyncAllRepos] = useState(
@@ -190,8 +199,10 @@ export function SyncConfigForm({
                     owner: "",
                     repos: [],
                     gitlab_url: "",
+                    serviceRepositoryMappings: {},
                 }));
                 setSyncAllRepos(false);
+                setServiceRepositoryMappingsValidity({ valid: true });
             } else if (name === "owner" || name === "credential_id") {
                 setFormData((prev) => ({
                     ...prev,
@@ -203,6 +214,17 @@ export function SyncConfigForm({
             }
         },
         [handleBaseChange, setFormData, setSyncAllRepos],
+    );
+
+    const handleServiceRepositoryMappingsValidityChange = useCallback(
+        (validity: PagerDutyMappingValidity) => setServiceRepositoryMappingsValidity(validity),
+        [],
+    );
+
+    const handleServiceRepositoryMappingsChange = useCallback(
+        (serviceRepositoryMappings: ServiceRepositoryMappings) =>
+            setFormData((previous) => ({ ...previous, serviceRepositoryMappings })),
+        [setFormData],
     );
 
     const handleActiveChange = useCallback(
@@ -226,8 +248,20 @@ export function SyncConfigForm({
         [setFormData],
     );
 
+    const handleOpenCreateCredential = useCallback(() => {
+        if (formData.provider === "pagerduty") {
+            router.push("/org/admin/integrations/pagerduty");
+            return;
+        }
+        setShowCredentialModal(true);
+    }, [formData.provider, router]);
+
     const handleTargetChange = useCallback(
         (targetId: string, checked: boolean) => {
+            if (!checked && targetId === "operational" && formData.provider === "pagerduty") {
+                setFormData((previous) => ({ ...previous, serviceRepositoryMappings: {} }));
+                setServiceRepositoryMappingsValidity({ valid: true });
+            }
             setFormData((prev) => {
                 const newTargets = checked
                     ? [...prev.sync_targets, targetId]
@@ -235,7 +269,7 @@ export function SyncConfigForm({
                 return { ...prev, sync_targets: newTargets };
             });
         },
-        [setFormData],
+        [formData.provider, setFormData],
     );
 
     const handleReposChange = useCallback(
@@ -266,13 +300,20 @@ export function SyncConfigForm({
         } else {
             delete opts.auto_import_teams;
         }
-        return opts;
+        return mergePagerDutyAdminMappings(
+            opts,
+            formData.provider === "pagerduty" && formData.sync_targets.includes("operational")
+                ? formData.serviceRepositoryMappings
+                : {},
+        );
     }, [
         initialData,
         formData.owner,
         formData.provider,
+        formData.sync_targets,
         formData.gitlab_url,
         formData.auto_import_teams,
+        formData.serviceRepositoryMappings,
     ]);
 
     const performUpdate = useCallback(async () => {
@@ -398,6 +439,14 @@ export function SyncConfigForm({
     const handleSubmit = useCallback(
         (e: SyntheticEvent<HTMLFormElement>) => {
             e.preventDefault();
+            if (
+                formData.provider === "pagerduty" &&
+                formData.sync_targets.includes("operational") &&
+                !serviceRepositoryMappingsValidity.valid
+            ) {
+                document.getElementById("pagerduty-service-repository-mappings")?.focus();
+                return;
+            }
             if (initialData) {
                 if (combinedDestructiveWarnings.length > 0) {
                     setShowDestructiveConfirm(true);
@@ -408,7 +457,15 @@ export function SyncConfigForm({
                 startTransition(performCreate);
             }
         },
-        [initialData, combinedDestructiveWarnings, performUpdate, performCreate],
+        [
+            initialData,
+            combinedDestructiveWarnings,
+            formData.provider,
+            formData.sync_targets,
+            serviceRepositoryMappingsValidity,
+            performUpdate,
+            performCreate,
+        ],
     );
 
     const handleConfirmDestructive = useCallback(() => {
@@ -430,6 +487,11 @@ export function SyncConfigForm({
                     maxRepos={maxRepos}
                     repoScopeWarnings={repoScopeWarnings}
                     datasetWarnings={datasetWarnings}
+                    serviceRepositoryMappings={formData.serviceRepositoryMappings}
+                    onServiceRepositoryMappingsChangeAction={handleServiceRepositoryMappingsChange}
+                    onServiceRepositoryMappingsValidityChangeAction={
+                        handleServiceRepositoryMappingsValidityChange
+                    }
                     tier={tier}
                     minSyncIntervalHours={minSyncIntervalHours}
                     onChangeAction={handleChange}
@@ -439,7 +501,7 @@ export function SyncConfigForm({
                     onScheduleChangeAction={handleScheduleChange}
                     onActiveChangeAction={handleActiveChange}
                     onAutoImportChangeAction={handleAutoImportChange}
-                    onOpenCreateCredentialModalAction={() => setShowCredentialModal(true)}
+                    onOpenCreateCredentialModalAction={handleOpenCreateCredential}
                     onSubmitAction={handleSubmit}
                     isPending={isPending}
                 />
@@ -454,6 +516,12 @@ export function SyncConfigForm({
                     maxRepos={maxRepos}
                     tier={tier}
                     minSyncIntervalHours={minSyncIntervalHours}
+                    serviceRepositoryMappings={formData.serviceRepositoryMappings}
+                    serviceRepositoryMappingsValidity={serviceRepositoryMappingsValidity}
+                    onServiceRepositoryMappingsChangeAction={handleServiceRepositoryMappingsChange}
+                    onServiceRepositoryMappingsValidityChangeAction={
+                        handleServiceRepositoryMappingsValidityChange
+                    }
                     onChangeAction={handleChange}
                     onTargetChangeAction={handleTargetChange}
                     onReposChangeAction={handleReposChange}
@@ -461,7 +529,7 @@ export function SyncConfigForm({
                     onScheduleChangeAction={handleScheduleChange}
                     onActiveChangeAction={handleActiveChange}
                     onAutoImportChangeAction={handleAutoImportChange}
-                    onOpenCreateCredentialModalAction={() => setShowCredentialModal(true)}
+                    onOpenCreateCredentialModalAction={handleOpenCreateCredential}
                     onSubmitAction={handleSubmit}
                     isPending={isPending}
                 />

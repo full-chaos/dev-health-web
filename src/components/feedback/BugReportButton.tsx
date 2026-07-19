@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import type { FeedbackPayload, FeedbackResponse, FeedbackType } from "@/components/feedback/types";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 const inputClassName =
     "w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground placeholder:text-(--ink-muted) focus:border-(--accent) focus:outline-none";
@@ -49,6 +50,18 @@ export function BugReportButton() {
     const [isOpen, setIsOpen] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [formState, setFormState] = useState<FeedbackFormState>(initialFormState);
+    const openerRef = useRef<HTMLButtonElement | null>(null);
+    const titleInputRef = useRef<HTMLInputElement>(null);
+
+    useEffect(() => {
+        if (isOpen) titleInputRef.current?.focus();
+        else openerRef.current?.focus();
+    }, [isOpen]);
+
+    const openPanel = (event: React.MouseEvent<HTMLButtonElement>) => {
+        openerRef.current = event.currentTarget;
+        setIsOpen(true);
+    };
 
     const closePanel = () => {
         if (isLoading) {
@@ -56,6 +69,28 @@ export function BugReportButton() {
         }
 
         setIsOpen(false);
+    };
+
+    const handleDialogKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+        if (event.key === "Escape") {
+            event.preventDefault();
+            closePanel();
+            return;
+        }
+        if (event.key !== "Tab") return;
+        const focusable = event.currentTarget.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])',
+        );
+        const first = focusable.item(0);
+        const last = focusable.item(focusable.length - 1);
+        if (!first || !last) return;
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
     };
 
     const handleSubmit = async (event: React.SyntheticEvent<HTMLFormElement>) => {
@@ -99,11 +134,23 @@ export function BugReportButton() {
 
     return (
         <>
+            <div className="px-4 pb-6 sm:hidden">
+                <button
+                    type="button"
+                    data-testid="bug-report-mobile-trigger"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-3 text-sm font-medium text-foreground"
+                    onClick={openPanel}
+                >
+                    <BugIcon />
+                    {CTA_LABELS.reportIssue}
+                </button>
+            </div>
             <button
                 type="button"
-                className="fixed bottom-6 right-6 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-(--accent-highlight) bg-(--card-80) text-foreground shadow-xl transition hover:border-(--accent) hover:text-(--accent)"
-                onClick={() => setIsOpen(true)}
-                aria-label="Report an issue"
+                data-testid="bug-report-desktop-trigger"
+                className="fixed right-6 bottom-6 z-50 hidden h-12 w-12 items-center justify-center rounded-full border border-(--accent-highlight) bg-(--card-80) text-foreground shadow-xl transition hover:border-(--accent) hover:text-(--accent) sm:flex"
+                onClick={openPanel}
+                aria-label={CTA_LABELS.reportIssue}
             >
                 <BugIcon />
             </button>
@@ -112,7 +159,7 @@ export function BugReportButton() {
                 <>
                     <button
                         type="button"
-                        aria-label="Close issue report panel"
+                        aria-label={CTA_LABELS.closeIssueReportPanel}
                         className="fixed inset-0 z-50 bg-black/50"
                         onClick={closePanel}
                     />
@@ -121,6 +168,7 @@ export function BugReportButton() {
                         role="dialog"
                         aria-modal="true"
                         aria-labelledby="bug-report-title"
+                        onKeyDown={handleDialogKeyDown}
                     >
                         <div className="flex h-full flex-col">
                             <div className="flex items-center justify-between border-b border-(--card-stroke) px-5 py-4">
@@ -128,13 +176,13 @@ export function BugReportButton() {
                                     id="bug-report-title"
                                     className="font-(--font-display) text-lg text-foreground"
                                 >
-                                    Report an Issue
+                                    {CTA_LABELS.reportIssue}
                                 </h2>
                                 <button
                                     type="button"
                                     className="rounded-md p-2 text-(--ink-muted) transition hover:text-foreground"
                                     onClick={closePanel}
-                                    aria-label="Close"
+                                    aria-label={CTA_LABELS.close}
                                 >
                                     <svg
                                         viewBox="0 0 24 24"
@@ -157,6 +205,7 @@ export function BugReportButton() {
                                 <label className="space-y-2">
                                     <span className="text-sm text-foreground">Title</span>
                                     <input
+                                        ref={titleInputRef}
                                         type="text"
                                         required
                                         placeholder="Brief summary..."

@@ -1,6 +1,6 @@
 import { publicEnv } from "@/lib/config";
 import { getReplayRoutePrefixes, shouldLoadReplayForPath } from "@/lib/sentry/replay";
-import { attachBeforeSend } from "@/lib/sentry/scrubber";
+import { attachBeforeSend, scrubReplayRecordingEvent } from "@/lib/sentry/scrubber";
 
 import * as Sentry from "@sentry/nextjs";
 
@@ -29,6 +29,7 @@ import * as Sentry from "@sentry/nextjs";
  */
 function shouldLoadReplay(): boolean {
     if (typeof window === "undefined") return false;
+    if (window.location.pathname.endsWith("/callback")) return false;
     return shouldLoadReplayForPath(
         window.location.pathname,
         getReplayRoutePrefixes(process.env.NEXT_PUBLIC_SENTRY_REPLAY_ROUTES),
@@ -50,7 +51,9 @@ if (shouldLoadReplay()) {
     void Sentry.lazyLoadIntegration("replayIntegration")
         .then((replayIntegration) => {
             if (replayIntegration) {
-                Sentry.addIntegration(replayIntegration());
+                Sentry.addIntegration(
+                    replayIntegration({ beforeAddRecordingEvent: scrubReplayRecordingEvent }),
+                );
             }
         })
         .catch((error) => {

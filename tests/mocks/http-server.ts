@@ -2,6 +2,7 @@ import express from "express";
 import { createMiddleware } from "@mswjs/http-middleware";
 import { setEntitlementScenario } from "./entitlementScenario";
 import { handlers } from "./handlers";
+import { pagerDutyObservations, setPagerDutyScenario } from "./pagerdutyScenario";
 import { prDetailGraphQLResponse } from "./prDetailResponse";
 
 const app = express();
@@ -26,6 +27,16 @@ app.post("/__test/entitlements", (req, res) => {
 });
 app.get("/__test/acr-requests", (_req, res) => {
     res.json({ count: acrRequestCount });
+});
+app.post("/__test/pagerduty", (req, res) => {
+    if (!setPagerDutyScenario(req.body?.scenario)) {
+        res.status(400).json({ error: "Unknown PagerDuty scenario" });
+        return;
+    }
+    res.status(204).end();
+});
+app.get("/__test/pagerduty/observations", (_req, res) => {
+    res.json(pagerDutyObservations());
 });
 app.use("/graphql", (req, res, next) => {
     const query = req.method === "GET" ? req.query.query : req.body?.query;

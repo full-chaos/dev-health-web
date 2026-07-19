@@ -40,6 +40,12 @@ const LaunchDarklyIcon = () => (
     </svg>
 );
 
+const PagerDutyIcon = () => (
+    <svg viewBox="0 0 24 24" className="h-8 w-8 fill-current text-(--accent)" aria-hidden="true">
+        <path d="M4 3h8.4a5.6 5.6 0 1 1 0 11.2H8.2V21H4V3Zm4.2 3.8v3.6h4.2a1.8 1.8 0 1 0 0-3.6H8.2Z" />
+    </svg>
+);
+
 const PROVIDER_META: Record<string, { name: string; description: string; icon: React.ReactNode }> =
     {
         github: {
@@ -67,6 +73,12 @@ const PROVIDER_META: Record<string, { name: string; description: string; icon: R
             description:
                 "Connect to LaunchDarkly to sync feature flag definitions and rollout signals.",
             icon: <LaunchDarklyIcon />,
+        },
+        pagerduty: {
+            name: "PagerDuty",
+            description:
+                "Connect PagerDuty to sync operational services, incidents, and on-call data.",
+            icon: <PagerDutyIcon />,
         },
     };
 

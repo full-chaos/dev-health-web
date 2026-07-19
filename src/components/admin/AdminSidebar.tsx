@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useRef, useState } from "react";
 import { OrgSwitcher } from "@/components/navigation/OrgSwitcher";
 
 type NavItem = {
@@ -99,6 +100,8 @@ function isNavItemActive(pathname: string, item: NavItem): boolean {
 
 export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
     const pathname = usePathname();
+    const [mobileOpen, setMobileOpen] = useState(false);
+    const mobileNavControlRef = useRef<HTMLButtonElement>(null);
 
     const filteredNavItems = navItems.filter((item) => {
         if (isSuperuser && item.id === "organization") {
@@ -110,10 +113,37 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
         return true;
     });
 
+    const closeMobileNavigation = () => {
+        setMobileOpen(false);
+        mobileNavControlRef.current?.focus();
+    };
+
     return (
-        <aside className="w-full md:max-w-56 md:shrink-0">
+        <aside
+            className="w-full md:max-w-56 md:shrink-0"
+            onKeyDown={(event) => {
+                if (event.key === "Escape" && mobileOpen) {
+                    event.preventDefault();
+                    closeMobileNavigation();
+                }
+            }}
+        >
+            <button
+                type="button"
+                ref={mobileNavControlRef}
+                aria-controls="admin-navigation-panel"
+                aria-expanded={mobileOpen}
+                onClick={() => setMobileOpen((open) => !open)}
+                className="w-full rounded-(--radius-sm) border border-(--card-stroke) bg-(--card-80) px-4 py-3 text-left text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50 md:hidden"
+            >
+                {mobileOpen ? "Hide admin navigation" : "Show admin navigation"}
+            </button>
             <div className="md:sticky md:top-6">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                <div
+                    id="admin-navigation-panel"
+                    data-testid="admin-navigation-panel"
+                    className={`${mobileOpen ? "mt-3 block" : "hidden"} max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 md:mt-0 md:block md:max-h-none md:overflow-visible`}
+                >
                     <div>
                         <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                             Full Chaos Dev Health Ops
@@ -130,7 +160,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                     </div>
 
                     <OrgSwitcher />
-                    <nav className="mt-5 space-y-2 text-sm">
+                    <nav className="mt-5 space-y-2 text-sm" aria-label="Admin navigation">
                         {filteredNavItems.map((item) => {
                             const isActive = isNavItemActive(pathname, item);
                             return (

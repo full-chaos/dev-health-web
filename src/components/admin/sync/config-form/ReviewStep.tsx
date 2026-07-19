@@ -1,5 +1,6 @@
 import { CTA_LABELS } from "@/lib/design/cta";
 import { ReviewSummary, type ReviewSummaryRow } from "@/components/shared/ReviewSummary";
+import type { ServiceRepositoryMappings } from "@/lib/admin/pagerduty";
 
 type ReviewStepProps = {
     name: string;
@@ -16,6 +17,8 @@ type ReviewStepProps = {
     scheduleLabel: string;
     timezone: string | null;
     isActive: boolean;
+    serviceRepositoryMappings: ServiceRepositoryMappings;
+    pagerDutyServiceDisplayNames: Readonly<Record<string, string>>;
     isPending: boolean;
     onBackAction: () => void;
 };
@@ -30,6 +33,23 @@ function repoScopeValue(syncAllRepos: boolean, owner: string, repoCount: number)
         return `${repoCount} repositor${repoCount === 1 ? "y" : "ies"} selected${owner ? ` in ${owner}` : ""}`;
     }
     return owner ? `No repositories selected yet in ${owner}` : "No repositories selected yet";
+}
+
+function serviceRepositoryMappingsValue(
+    mappings: ServiceRepositoryMappings,
+    displayNames: Readonly<Record<string, string>>,
+): string {
+    const entries = Object.entries(mappings);
+    if (entries.length === 0) return "No service mappings configured";
+    return entries
+        .map(([serviceExternalId, repositories]) => {
+            const displayName = displayNames[serviceExternalId] ?? "Unavailable PagerDuty service";
+            const targets = repositories
+                .map((repository) => `${repository.provider}:${repository.full_name}`)
+                .join(", ");
+            return `${displayName}: ${targets}`;
+        })
+        .join("; ");
 }
 
 /**
@@ -52,6 +72,8 @@ export function ReviewStep({
     scheduleLabel,
     timezone,
     isActive,
+    serviceRepositoryMappings,
+    pagerDutyServiceDisplayNames,
     isPending,
     onBackAction,
 }: ReviewStepProps) {
@@ -81,6 +103,15 @@ export function ReviewStep({
     }
 
     rows.push({ label: "Initial depth", value: depthLabel });
+    if (providerLabel === "PagerDuty") {
+        rows.push({
+            label: "Service repository mappings",
+            value: serviceRepositoryMappingsValue(
+                serviceRepositoryMappings,
+                pagerDutyServiceDisplayNames,
+            ),
+        });
+    }
     rows.push({
         label: "Schedule",
         value: isActive ? `${scheduleLabel}${timezone ? ` (${timezone})` : ""}` : "Sync disabled",
@@ -100,7 +131,7 @@ export function ReviewStep({
                 <button
                     type="submit"
                     disabled={isPending}
-                    className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 disabled:opacity-50"
+                    className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-foreground) hover:bg-(--accent)/90 disabled:opacity-50"
                 >
                     {isPending ? CTA_LABELS.savingConfiguration : CTA_LABELS.createConfiguration}
                 </button>

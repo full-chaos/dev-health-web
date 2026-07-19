@@ -20,7 +20,7 @@ function makeRow(overrides: Partial<ProviderRow> = {}): ProviderRow {
 }
 
 describe("ProviderTable", () => {
-    it("renders one row per provider as a table, not a card grid", () => {
+    it("renders mobile cards and the desktop table for every provider", () => {
         render(
             <ProviderTable
                 providers={[
@@ -33,8 +33,9 @@ describe("ProviderTable", () => {
         expect(screen.getByRole("table")).toBeInTheDocument();
         expect(screen.getByRole("region", { name: "Providers" })).toHaveAttribute("tabindex", "0");
         expect(screen.getAllByRole("row")).toHaveLength(3); // header + 2 providers
-        expect(screen.getByText("GitHub")).toBeInTheDocument();
-        expect(screen.getByText("GitLab")).toBeInTheDocument();
+        expect(screen.getByTestId("provider-mobile-list")).toHaveClass("lg:hidden");
+        expect(screen.getAllByText("GitHub")).toHaveLength(2);
+        expect(screen.getAllByText("GitLab")).toHaveLength(2);
     });
 
     it("shows the single credential's name and auth method when exactly one exists", () => {
@@ -55,7 +56,7 @@ describe("ProviderTable", () => {
 
         expect(screen.getByText("Production Token")).toBeInTheDocument();
         expect(screen.getByText("Personal access token")).toBeInTheDocument();
-        expect(screen.getByText("Connected")).toBeInTheDocument();
+        expect(screen.getAllByText("Connected")).toHaveLength(2);
         expect(screen.getByText("2")).toBeInTheDocument();
     });
 
@@ -86,7 +87,8 @@ describe("ProviderTable", () => {
     it("links each row's Manage action to that provider's detail page", () => {
         render(<ProviderTable providers={[makeRow({ id: "linear", name: "Linear" })]} />);
 
-        const link = screen.getByRole("link", { name: "Manage" });
-        expect(link).toHaveAttribute("href", "/org/admin/integrations/linear");
+        for (const link of screen.getAllByRole("link", { name: "Manage" })) {
+            expect(link).toHaveAttribute("href", "/org/admin/integrations/linear");
+        }
     });
 });

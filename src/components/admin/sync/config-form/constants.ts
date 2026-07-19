@@ -37,6 +37,12 @@ export const ALL_SYNC_TARGETS = [
         label: "Feature Flags",
         description: "Pulls feature-flag state and evaluation activity for rollout tracking.",
     },
+    {
+        id: "operational",
+        label: "PagerDuty operational data",
+        description:
+            "Pulls PagerDuty services, incidents, responders, schedules, and operational history.",
+    },
 ];
 
 export const DATASET_LABELS: Record<string, string> = Object.fromEntries(

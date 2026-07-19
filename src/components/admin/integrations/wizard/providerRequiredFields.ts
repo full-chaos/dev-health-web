@@ -14,6 +14,7 @@ export const PROVIDER_PRIMARY_FIELD: Record<Provider, string> = {
     jira: "token",
     linear: "apiKey",
     launchdarkly: "api_key",
+    pagerduty: "api_token",
 };
 
 /**

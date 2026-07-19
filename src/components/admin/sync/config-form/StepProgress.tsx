@@ -2,7 +2,7 @@ import type { SyncConfigStep } from "./wizardSteps";
 
 type StepProgressProps = {
     steps: SyncConfigStep[];
-    currentIndex: number;
+    currentStepId: SyncConfigStep["id"];
     /** Revisit an already-completed step; forward-skipping is never allowed. */
     onStepClickAction: (index: number) => void;
 };
@@ -12,7 +12,9 @@ type StepProgressProps = {
  * Deliberately not styled as a filter pill (Part A3 reserves pills for
  * filters/scope/status) — a bordered numbered breadcrumb instead.
  */
-export function StepProgress({ steps, currentIndex, onStepClickAction }: StepProgressProps) {
+export function StepProgress({ steps, currentStepId, onStepClickAction }: StepProgressProps) {
+    const currentIndex = steps.findIndex((step) => step.id === currentStepId);
+
     return (
         <ol className="flex flex-wrap items-center gap-2">
             {steps.map((step, index) => {

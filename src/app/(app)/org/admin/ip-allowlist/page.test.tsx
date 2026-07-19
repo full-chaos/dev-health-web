@@ -71,7 +71,12 @@ describe("IPAllowlistPage", () => {
 
         render(<IPAllowlistPage />);
 
-        expect(await screen.findByText(/unlock ip allowlist/i)).toBeInTheDocument();
+        expect(
+            await screen.findByRole("heading", { name: "Feature unavailable" }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText("Contact an administrator to enable ip allowlist for this plan."),
+        ).toBeInTheDocument();
     });
 
     it("loads and renders entries on mount when the gate is open", async () => {

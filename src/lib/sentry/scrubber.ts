@@ -1,81 +1,120 @@
-/**
- * Sentry PII scrubber — centralised `beforeSend` logic.
- *
- * Exports:
- *   scrubEvent(event)          — pure transformation; no side-effects.
- *   attachBeforeSend(config)   — merges `beforeSend` into a Sentry.init() options object.
- *
- * PII rules applied (in order):
- *   1. Remove request.cookies.
- *   2. Remove request.headers.authorization.
- *   3. Remove request.headers['x-csrf-token'].
- *   4. Drop request.data for events whose request.url matches /(auth|admin\/credentials)/.
- *   5. Strip event.user.ip_address in production unless SENTRY_INCLUDE_IP=true.
- */
-
 import * as Sentry from "@sentry/nextjs";
-import type { ErrorEvent, EventHint } from "@sentry/nextjs";
+import type { Breadcrumb, BreadcrumbHint, ErrorEvent, EventHint } from "@sentry/nextjs";
+import {
+    isSensitiveQueryParameterName,
+    scrubTelemetryPayload,
+    scrubTelemetryText,
+} from "./scrubber-value";
 
-/** URLs that must have their POST body dropped entirely. */
+export { scrubTelemetryUrl } from "./scrubber-value";
+
 const SENSITIVE_URL_PATTERN = /\/(auth|admin\/credentials)/;
+const SENSITIVE_REQUEST_HEADER_NAMES = ["authorization", "cookie", "x-csrf-token"] as const;
 
-/**
- * Scrub PII from a Sentry event.
- * Returns the mutated event (mutation-in-place is safe; Sentry always provides
- * a fresh object per call) or `null` to drop the event.
- */
+function isSensitiveRequestHeaderName(value: string): boolean {
+    return SENSITIVE_REQUEST_HEADER_NAMES.some((name) => name === value.toLowerCase());
+}
+
+type QueryString = NonNullable<NonNullable<ErrorEvent["request"]>["query_string"]>;
+
+function scrubQueryString(queryString: QueryString): QueryString {
+    if (typeof queryString === "string") return scrubTelemetryText(queryString);
+
+    if (Array.isArray(queryString)) {
+        const scrubbed: Array<[string, string]> = [];
+        for (const [key, value] of queryString) {
+            scrubbed.push([
+                key,
+                isSensitiveQueryParameterName(key) ? "[Filtered]" : scrubTelemetryText(value),
+            ]);
+        }
+        return scrubbed;
+    }
+
+    return Object.fromEntries(
+        Object.entries(queryString).map(([key, value]) => [
+            key,
+            isSensitiveQueryParameterName(key) ? "[Filtered]" : scrubTelemetryText(value),
+        ]),
+    );
+}
+
+export function scrubBreadcrumb(breadcrumb: Breadcrumb): Breadcrumb {
+    return scrubTelemetryPayload(breadcrumb);
+}
+
+export function scrubReplayRecordingEvent<RecordingEvent extends object>(
+    event: RecordingEvent,
+): RecordingEvent {
+    return scrubTelemetryPayload(event);
+}
+
 export function scrubEvent(event: ErrorEvent, _hint?: EventHint): ErrorEvent | null {
     if (event.request) {
-        // 1. Remove cookies
         delete event.request.cookies;
-
-        // 2 & 3. Remove sensitive headers
         if (event.request.headers) {
-            // Work on a shallow copy of headers to avoid mutating across references
-            const headers = { ...event.request.headers } as Record<string, string>;
-            delete headers["authorization"];
-            delete headers["x-csrf-token"];
-            event.request.headers = headers;
+            event.request.headers = Object.fromEntries(
+                Object.entries(event.request.headers).filter(
+                    ([key]) => !isSensitiveRequestHeaderName(key),
+                ),
+            );
         }
-
-        // 4. Drop body for auth / credential endpoints
-        const url = event.request.url ?? "";
-        if (SENSITIVE_URL_PATTERN.test(url)) {
+        if (event.request.query_string)
+            event.request.query_string = scrubQueryString(event.request.query_string);
+        if (SENSITIVE_URL_PATTERN.test(event.request.url ?? "")) {
             delete event.request.data;
         }
     }
 
-    // 5. Strip IP in production unless opt-in flag is set
     const isProduction = process.env.NODE_ENV === "production";
     const includeIp = process.env.SENTRY_INCLUDE_IP === "true";
     if (isProduction && !includeIp && event.user) {
         delete event.user.ip_address;
     }
 
-    return event;
+    return scrubTelemetryPayload(event);
 }
 
 type SentryInitOptions = Parameters<typeof Sentry.init>[0];
+type SentryTransactionEvent = Parameters<
+    NonNullable<SentryInitOptions["beforeSendTransaction"]>
+>[0];
+type SentrySpan = Parameters<NonNullable<SentryInitOptions["beforeSendSpan"]>>[0];
 
-/**
- * Attach the `beforeSend` scrubber to an existing Sentry.init() options
- * object and return the merged configuration.
- *
- * If the caller has already supplied a `beforeSend`, the scrubber runs first;
- * if it returns null the caller's handler is skipped.
- *
- * @example
- *   Sentry.init(attachBeforeSend({ dsn: publicEnv.NEXT_PUBLIC_SENTRY_DSN }));
- */
+function scrubTransaction(event: SentryTransactionEvent): SentryTransactionEvent {
+    return scrubTelemetryPayload(event);
+}
+
+function scrubSpan(span: SentrySpan): SentrySpan {
+    return scrubTelemetryPayload(span);
+}
+
 export function attachBeforeSend(config: SentryInitOptions): SentryInitOptions {
-    const existing = config?.beforeSend;
+    const existingBeforeSend = config.beforeSend;
+    const existingBeforeSendTransaction = config.beforeSendTransaction;
+    const existingBeforeBreadcrumb = config.beforeBreadcrumb;
+    const existingBeforeSendSpan = config.beforeSendSpan;
+
     return {
         ...config,
         beforeSend(event: ErrorEvent, hint: EventHint) {
             const scrubbed = scrubEvent(event, hint);
             if (scrubbed === null) return null;
-            if (existing) return existing(scrubbed, hint);
-            return scrubbed;
+            return existingBeforeSend ? existingBeforeSend(scrubbed, hint) : scrubbed;
+        },
+        beforeSendTransaction(event: SentryTransactionEvent, hint: EventHint) {
+            const scrubbed = scrubTransaction(event);
+            return existingBeforeSendTransaction
+                ? existingBeforeSendTransaction(scrubbed, hint)
+                : scrubbed;
+        },
+        beforeSendSpan(span: SentrySpan) {
+            const scrubbed = scrubSpan(span);
+            return existingBeforeSendSpan ? existingBeforeSendSpan(scrubbed) : scrubbed;
+        },
+        beforeBreadcrumb(breadcrumb: Breadcrumb, hint?: BreadcrumbHint) {
+            const scrubbed = scrubBreadcrumb(breadcrumb);
+            return existingBeforeBreadcrumb ? existingBeforeBreadcrumb(scrubbed, hint) : scrubbed;
         },
     };
 }

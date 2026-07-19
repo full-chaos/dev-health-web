@@ -856,9 +856,16 @@ export interface LLMSettingsStatusResponse {
 }
 // ---- Provider types ----
 
-export type Provider = "github" | "gitlab" | "jira" | "linear" | "launchdarkly";
+export type Provider = "github" | "gitlab" | "jira" | "linear" | "launchdarkly" | "pagerduty";
 
-export const PROVIDERS: Provider[] = ["github", "gitlab", "jira", "linear", "launchdarkly"];
+export const PROVIDERS: Provider[] = [
+    "github",
+    "gitlab",
+    "jira",
+    "linear",
+    "launchdarkly",
+    "pagerduty",
+];
 
 export const PROVIDER_LABELS: Record<Provider, string> = {
     github: "GitHub",
@@ -866,6 +873,7 @@ export const PROVIDER_LABELS: Record<Provider, string> = {
     jira: "Jira",
     linear: "Linear",
     launchdarkly: "LaunchDarkly",
+    pagerduty: "PagerDuty",
 };
 
 export const PROVIDER_SYNC_TARGETS: Record<Provider, string[]> = {
@@ -874,6 +882,7 @@ export const PROVIDER_SYNC_TARGETS: Record<Provider, string[]> = {
     jira: ["work-items"],
     linear: ["work-items"],
     launchdarkly: ["feature-flags"],
+    pagerduty: ["operational"],
 };
 
 // ---- Platform Stats ----

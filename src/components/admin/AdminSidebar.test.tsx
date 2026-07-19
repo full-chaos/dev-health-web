@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@/test/utils";
+import { render, screen, userEvent } from "@/test/utils";
 
 import { AdminSidebar } from "./AdminSidebar";
 
@@ -79,6 +79,30 @@ describe("AdminSidebar", () => {
         expect(
             screen.queryByRole("link", { name: /ip allowlistnetwork access/i }),
         ).not.toBeInTheDocument();
+    });
+
+    it("keeps mobile navigation collapsed until its keyboard control opens it", async () => {
+        const user = userEvent.setup();
+        render(<AdminSidebar />);
+
+        const control = screen.getByRole("button", { name: "Show admin navigation" });
+        const panel = screen.getByTestId("admin-navigation-panel");
+
+        expect(control).toHaveAttribute("aria-expanded", "false");
+        expect(panel).toHaveClass("hidden");
+
+        await user.tab();
+        expect(control).toHaveFocus();
+        await user.keyboard("{Enter}");
+
+        expect(control).toHaveAttribute("aria-expanded", "true");
+        expect(panel).not.toHaveClass("hidden");
+
+        await user.keyboard("{Escape}");
+
+        expect(control).toHaveFocus();
+        expect(control).toHaveAttribute("aria-expanded", "false");
+        expect(panel).toHaveClass("hidden");
     });
 
     it.each([
