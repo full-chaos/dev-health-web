@@ -152,10 +152,15 @@ function installAcrHappyResponses(): void {
                 body_sha256: createHash("sha256").update("").digest("base64url"),
                 method: "GET",
                 path: "/api/v1/agent-context/capabilities",
-                permissions: ["context:read"],
+                permissions: ["context:read", "evidence:read"],
                 repository_scopes: ["full-chaos/dev-health-acr"],
             });
-            return HttpResponse.json(capabilities);
+            const evidenceRead = payload.permissions.includes("evidence:read");
+            return HttpResponse.json({
+                ...capabilities,
+                enabled_tools: evidenceRead ? capabilities.enabled_tools : ["context_for_task"],
+                permissions: { ...capabilities.permissions, evidence_read: evidenceRead },
+            });
         }),
         http.post(
             "https://acr.example.test/api/v1/agent-context/context-packets",

@@ -42,7 +42,7 @@ type AcrRequest = {
     readonly body?: string;
     readonly method: "GET" | "POST";
     readonly path: string;
-    readonly permission: "context:read" | "evidence:read";
+    readonly permissions: readonly ("context:read" | "evidence:read")[];
     readonly signal: AbortSignal;
 };
 
@@ -131,13 +131,13 @@ export class AcrRuntimeClient {
     constructor(private readonly config: AcrRuntimeConfig) {}
 
     async capabilities(
-        input: Omit<AcrRequest, "body" | "method" | "path" | "permission">,
+        input: Omit<AcrRequest, "body" | "method" | "path" | "permissions">,
     ): Promise<AcrCapabilities> {
         const value = await this.request({
             ...input,
             method: "GET",
             path: "/api/v1/agent-context/capabilities",
-            permission: "context:read",
+            permissions: ["context:read", "evidence:read"],
         });
         if (!validateAcrContract("capabilities.v1.schema.json", value).valid) {
             throw new AcrRuntimeError(
@@ -161,7 +161,7 @@ export class AcrRuntimeClient {
             ...input,
             method: "POST",
             path: "/api/v1/agent-context/context-packets",
-            permission: "context:read",
+            permissions: ["context:read"],
         });
         if (!validateAcrContract("context_packet.v1.schema.json", value).valid) {
             throw new AcrRuntimeError(
@@ -177,7 +177,7 @@ export class AcrRuntimeClient {
             ...input,
             method: "GET",
             path: `/api/v1/agent-context/evidence/${encodeURIComponent(input.evidenceRefId)}`,
-            permission: "evidence:read",
+            permissions: ["evidence:read"],
         });
         if (!validateAcrContract("expanded_evidence.v1.schema.json", value).valid) {
             throw new AcrRuntimeError(
@@ -202,7 +202,7 @@ export class AcrRuntimeClient {
                     method: input.method,
                     orgId: input.authorization.orgId,
                     path: input.path,
-                    permissions: [input.permission],
+                    permissions: input.permissions,
                     privateKey: this.config.privateKey,
                     repositoryScopes: input.authorization.repositoryScopes,
                     subject: input.authorization.subject,
