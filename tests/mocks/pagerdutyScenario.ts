@@ -26,6 +26,11 @@ const PAGERDUTY_CREDENTIAL: MockCredential = {
     id: "cred-pagerduty-1",
     provider: "pagerduty",
     name: "PagerDuty operations",
+    config: {
+        auth_mode: "oauth",
+        region: "us",
+        subdomain: "operations",
+    },
     created_at: "2026-07-19T00:00:00.000Z",
 };
 

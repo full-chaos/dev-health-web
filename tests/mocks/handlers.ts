@@ -756,6 +756,7 @@ const MOCK_CREDENTIALS: MockCredential[] = [
         id: "cred-github-1",
         provider: "github",
         name: "GitHub Token",
+        config: {},
         created_at: "2026-01-15T00:00:00.000Z",
     },
 ];
@@ -2962,6 +2963,7 @@ export const handlers = [
             id: body?.id ?? `cred-${Date.now()}`,
             provider: body?.provider ?? "github",
             name: body?.name ?? "Credential",
+            config: body?.config ?? {},
             created_at: body?.created_at ?? new Date().toISOString(),
         };
         MOCK_CREDENTIALS.push(created);

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|integration|e2e|live-e2e|design-lint|ci>" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|integration|e2e|pagerduty-final-qa|live-e2e|design-lint|ci>" >&2
 }
 
 if [[ $# -ne 1 ]]; then
@@ -131,6 +131,18 @@ run_e2e() {
   print_playwright_artifact_summary
 }
 
+run_pagerduty_final_qa() {
+  install_playwright_browser
+  prepare_playwright_artifacts
+  print_e2e_diagnostics
+  if ! run_playwright_suite pagerduty-final-qa test:e2e:pagerduty-final-qa:smoke; then
+    echo "PagerDuty final QA smoke test failed. Captured artifacts:" >&2
+    print_playwright_artifact_summary
+    return 1
+  fi
+  print_playwright_artifact_summary
+}
+
 run_playwright_suite() {
   local suite_name="$1"
   local script_name="$2"
@@ -167,6 +179,9 @@ case "${tier}" in
     ;;
   e2e)
     run_e2e
+    ;;
+  pagerduty-final-qa)
+    run_pagerduty_final_qa
     ;;
   live-e2e)
     run_live_e2e

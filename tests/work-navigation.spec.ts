@@ -68,8 +68,11 @@ test.describe("Diagnose navigation", () => {
             }),
             /\/investment(?:[?#].*)?$/,
         );
-        await expect(page.getByRole("heading", { name: "Unlock investment view" })).toBeVisible();
-        await expect(page.getByRole("link", { name: "Upgrade to Team" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Feature unavailable" })).toBeVisible();
+        await expect(
+            page.getByText("Contact an administrator to enable investment view for this plan."),
+        ).toBeVisible();
+        await expect(page.getByRole("link", { name: "Upgrade to Team" })).toHaveCount(0);
 
         await page.goto("/diagnose");
         await clickUntilUrl(

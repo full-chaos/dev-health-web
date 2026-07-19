@@ -102,6 +102,7 @@ export interface MockCredential {
     id: string;
     provider: string;
     name: string;
+    config: Record<string, unknown>;
     created_at: string;
 }
 
