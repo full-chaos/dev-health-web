@@ -2,15 +2,26 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|integration|e2e|live-e2e|design-lint|ci>" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|integration|e2e|e2e-default|e2e-onboarding|e2e-context-fabric|live-e2e|design-lint|ci> [current/total]" >&2
 }
 
-if [[ $# -ne 1 ]]; then
+if [[ $# -lt 1 || $# -gt 2 ]]; then
   usage
   exit 1
 fi
 
 tier="$1"
+
+if [[ "${tier}" == "e2e-default" ]]; then
+  if [[ $# -ne 2 ]]; then
+    echo "e2e-default requires a shard in current/total form." >&2
+    usage
+    exit 1
+  fi
+elif [[ $# -ne 1 ]]; then
+  usage
+  exit 1
+fi
 
 export TZ=UTC
 export LANG=C.UTF-8
@@ -26,6 +37,23 @@ run_pnpm_script() {
   local script_name="$1"
   echo "==> pnpm ${script_name}"
   pnpm "${script_name}"
+}
+
+run_timed() {
+  local phase="$1"
+  shift
+  local started_at="${SECONDS}"
+  local status
+
+  echo "==> ${phase} started"
+  if "$@"; then
+    echo "==> ${phase} passed in $((SECONDS - started_at))s"
+    return 0
+  else
+    status=$?
+    echo "==> ${phase} failed in $((SECONDS - started_at))s (exit ${status})" >&2
+    return "${status}"
+  fi
 }
 
 is_ci() {
@@ -57,10 +85,23 @@ print_e2e_diagnostics() {
   echo "playwright $(npx playwright --version)"
 }
 
+validate_playwright_artifact_root() {
+  local artifact_root="$1"
+
+  if [[ ! "${artifact_root}" =~ ^test-results/[A-Za-z0-9._/-]+$ ]] ||
+    [[ "/${artifact_root}/" == *"/../"* ]] ||
+    [[ "/${artifact_root}/" == *"/./"* ]]; then
+    echo "Playwright artifact root '${artifact_root}' must be a safe subdirectory of test-results." >&2
+    return 1
+  fi
+}
+
 prepare_playwright_artifacts() {
-  if [[ -z "${PLAYWRIGHT_REPORT_ROOT}" || -z "${PLAYWRIGHT_RESULTS_ROOT}" ]]; then
-    echo "Playwright artifact directories must not be empty." >&2
-    exit 1
+  validate_playwright_artifact_root "${PLAYWRIGHT_REPORT_ROOT}" || return
+  validate_playwright_artifact_root "${PLAYWRIGHT_RESULTS_ROOT}" || return
+  if [[ "${PLAYWRIGHT_REPORT_ROOT}" == "${PLAYWRIGHT_RESULTS_ROOT}" ]]; then
+    echo "Playwright report and result roots must be different directories." >&2
+    return 1
   fi
 
   rm -rf "${PLAYWRIGHT_REPORT_ROOT}" "${PLAYWRIGHT_RESULTS_ROOT}"
@@ -79,14 +120,6 @@ print_playwright_artifact_summary() {
   done
 }
 
-run_unit() {
-  run_pnpm_script test:unit
-}
-
-run_format() {
-  run_pnpm_script format:check:changed
-}
-
 run_quality() {
   echo "==> pnpm audit --audit-level=high --prod"
   pnpm audit --audit-level=high --prod
@@ -95,45 +128,38 @@ run_quality() {
   run_pnpm_script typecheck
 }
 
-run_build() {
-  run_pnpm_script build
-}
-
-run_design_lint() {
-  run_pnpm_script design-lint
-}
-
-run_integration() {
-  run_pnpm_script test:integration
-}
-
 run_e2e() {
-  install_playwright_browser
-  prepare_playwright_artifacts
+  run_timed "e2e artifact preparation" prepare_playwright_artifacts
+  run_timed "e2e browser installation" install_playwright_browser
   print_e2e_diagnostics
-  if ! run_playwright_suite default test:e2e; then
+  local status
+  run_timed "e2e default suite" run_playwright_suite default test:e2e || {
+    status=$?
     echo "E2E tests failed. Captured artifacts:" >&2
     print_playwright_artifact_summary
-    return 1
-  fi
+    return "${status}"
+  }
   # Guided first-run onboarding runs in its own config so its flag-on dev server
   # never overlaps the default flag-off one (CHAOS-2670).
-  if ! run_playwright_suite onboarding test:e2e:onboarding; then
+  run_timed "e2e onboarding suite" run_playwright_suite onboarding test:e2e:onboarding || {
+    status=$?
     echo "Onboarding E2E tests failed. Captured artifacts:" >&2
     print_playwright_artifact_summary
-    return 1
-  fi
-  if ! run_playwright_suite context-fabric test:e2e:context-fabric; then
+    return "${status}"
+  }
+  run_timed "e2e context-fabric suite" run_playwright_suite context-fabric test:e2e:context-fabric || {
+    status=$?
     echo "Context Fabric production E2E tests failed. Captured artifacts:" >&2
     print_playwright_artifact_summary
-    return 1
-  fi
+    return "${status}"
+  }
   print_playwright_artifact_summary
 }
 
 run_playwright_suite() {
   local suite_name="$1"
   local script_name="$2"
+  shift 2
   local report_directory="${PLAYWRIGHT_REPORT_ROOT}/${suite_name}"
   local results_directory="${PLAYWRIGHT_RESULTS_ROOT}/${suite_name}"
 
@@ -141,7 +167,61 @@ run_playwright_suite() {
   PLAYWRIGHT_HTML_REPORT="${report_directory}" \
     PLAYWRIGHT_JUNIT_OUTPUT_NAME="${results_directory}/junit.xml" \
     PLAYWRIGHT_RESULTS_DIR="${results_directory}" \
-    pnpm "${script_name}"
+    pnpm "${script_name}" "$@"
+}
+
+validate_playwright_shard() {
+  local shard="$1"
+  local current
+  local total
+
+  if [[ ! "${shard}" =~ ^([1-9][0-9]*)/([1-9][0-9]*)$ ]]; then
+    echo "Invalid Playwright shard '${shard}'; expected current/total with positive integers." >&2
+    return 1
+  fi
+
+  current="${BASH_REMATCH[1]}"
+  total="${BASH_REMATCH[2]}"
+  if (( current > total )); then
+    echo "Invalid Playwright shard '${shard}'; current must not exceed total." >&2
+    return 1
+  fi
+}
+
+run_isolated_e2e_suite() {
+  local suite_name="$1"
+  local script_name="$2"
+  shift 2
+  local status
+
+  run_timed "${suite_name} artifact preparation" prepare_playwright_artifacts
+  run_timed "${suite_name} browser installation" install_playwright_browser
+  print_e2e_diagnostics
+  if run_timed "${suite_name} suite" run_playwright_suite "${suite_name}" "${script_name}" "$@"; then
+    print_playwright_artifact_summary
+    return 0
+  else
+    status=$?
+    echo "${suite_name} E2E tests failed. Captured artifacts:" >&2
+    print_playwright_artifact_summary
+    return "${status}"
+  fi
+}
+
+run_e2e_default() {
+  local shard="$1"
+  local artifact_suite="default-${shard//\//-}"
+
+  validate_playwright_shard "${shard}"
+  run_isolated_e2e_suite "${artifact_suite}" test:e2e --shard "${shard}"
+}
+
+run_e2e_onboarding() {
+  run_isolated_e2e_suite onboarding test:e2e:onboarding
+}
+
+run_e2e_context_fabric() {
+  run_isolated_e2e_suite context-fabric test:e2e:context-fabric
 }
 
 run_live_e2e() {
@@ -151,36 +231,45 @@ run_live_e2e() {
 
 case "${tier}" in
   format)
-    run_format
+    run_pnpm_script format:check:changed
     ;;
   quality)
     run_quality
     ;;
   build)
-    run_build
+    run_pnpm_script build
     ;;
   unit)
-    run_unit
+    run_pnpm_script test:unit
     ;;
   integration)
-    run_integration
+    run_pnpm_script test:integration
     ;;
   e2e)
     run_e2e
+    ;;
+  e2e-default)
+    run_e2e_default "$2"
+    ;;
+  e2e-onboarding)
+    run_e2e_onboarding
+    ;;
+  e2e-context-fabric)
+    run_e2e_context_fabric
     ;;
   live-e2e)
     run_live_e2e
     ;;
   design-lint)
-    run_design_lint
+    run_pnpm_script design-lint
     ;;
   ci)
     export CI=true
-    run_format
+    run_pnpm_script format:check:changed
     run_quality
-    run_build
-    run_unit
-    run_integration
+    run_pnpm_script build
+    run_pnpm_script test:unit
+    run_pnpm_script test:integration
     run_e2e
     ;;
   *)
