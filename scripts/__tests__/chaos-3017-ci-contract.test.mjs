@@ -1,10 +1,23 @@
-import { spawnSync } from "node:child_process";
-import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
+import {
+    ROOT,
+    NON_SUCCESS_RESULTS,
+    REQUIRED_STAGE_GROUPS,
+    contents,
+    executeWorkflowRun,
+    expectSuccessfulProcess,
+    intersection,
+    job,
+    listDefaultPlaywrightTests,
+    matrixShardLabels,
+    normalizePlaywrightTestIdentity,
+    runHarness,
+    step,
+    stepRun,
+} from "./chaos-3017-ci-contract-helpers.mjs";
+
 const TESTS_WORKFLOW = path.join(ROOT, ".github/workflows/tests.yml");
 const STATIC_WORKFLOW = path.join(ROOT, ".github/workflows/build-static.yml");
 const BUILD_WORKFLOW = path.join(ROOT, ".github/workflows/build.yml");
@@ -12,26 +25,6 @@ const DOCKER_WORKFLOW = path.join(ROOT, ".github/workflows/build-docker.yml");
 const LIVE_E2E_WORKFLOW = path.join(ROOT, ".github/workflows/live-e2e.yml");
 const HARNESS = path.join(ROOT, "ci/run_tests.sh");
 const DEFAULT_PLAYWRIGHT_CONFIG = path.join(ROOT, "playwright.config.ts");
-
-function contents(file) {
-    return fs.readFileSync(file, "utf8");
-}
-
-function runHarness(args, environment = {}) {
-    return spawnSync("bash", [HARNESS, ...args], {
-        cwd: ROOT,
-        encoding: "utf8",
-        env: { ...process.env, ...environment },
-    });
-}
-
-function job(workflow, id) {
-    const match = workflow.match(
-        new RegExp(`^    ${id}:\\n([\\s\\S]*?)(?=^    [A-Za-z0-9-]+:|$(?![\\s\\S]))`, "m"),
-    );
-    expect(match, `missing ${id} job`).not.toBeNull();
-    return match[0];
-}
 
 describe("CHAOS-3017 CI contracts", () => {
     it("preserves the required Build Static Assets and test check names", () => {
@@ -45,35 +38,103 @@ describe("CHAOS-3017 CI contracts", () => {
         expect(aggregator).toMatch(
             /needs: \[changes, format, quality, build, unit, integration, e2e-default, e2e-onboarding, e2e-context-fabric\]/,
         );
+        expect(aggregator).toMatch(/^        if: always\(\)$/mu);
         expect(aggregator).not.toContain("toJson(needs)");
-        for (const stage of [
-            "format",
-            "quality",
-            "build",
-            "unit",
-            "integration",
-            "e2e-default",
-            "e2e-onboarding",
-            "e2e-context-fabric",
-        ]) {
-            expect(aggregator).toContain(`needs.${stage}.result`);
-        }
+        expect(aggregator).not.toContain("continue-on-error:");
+        expect(step(aggregator, "Check general test stages")).toMatch(
+            /^              if: needs\.changes\.result == 'success' && needs\.changes\.outputs\.code == 'true'$/mu,
+        );
+        expect(step(aggregator, "Check E2E test stages")).toMatch(
+            /^              if: needs\.changes\.result == 'success' && needs\.changes\.outputs\.e2e == 'true'$/mu,
+        );
     });
+
+    it.each(REQUIRED_STAGE_GROUPS)(
+        "executes the %s aggregator check and rejects every non-success result",
+        (_, stepName, stages) => {
+            const script = stepRun(job(contents(TESTS_WORKFLOW), "test"), stepName);
+            const successResults = Object.fromEntries(stages.map((stage) => [stage, "success"]));
+            const success = executeWorkflowRun(script, successResults);
+
+            expectSuccessfulProcess(success);
+
+            for (const stage of stages) {
+                for (const result of NON_SUCCESS_RESULTS) {
+                    const failed = executeWorkflowRun(script, {
+                        ...successResults,
+                        [stage]: result,
+                    });
+                    expect(failed.error).toBeUndefined();
+                    expect(failed.signal).toBeNull();
+                    expect(failed.status, `${stage}=${result}`).not.toBeNull();
+                    expect(failed.status, `${stage}=${result}`).not.toBe(0);
+                }
+            }
+        },
+    );
 
     it("fans default E2E into three independent shards and dedicated suites", () => {
         const workflow = contents(TESTS_WORKFLOW);
         const defaultE2e = job(workflow, "e2e-default");
 
         expect(defaultE2e).toMatch(/fail-fast: false/);
-        expect(defaultE2e).toMatch(/shard: \[1, 2, 3\]/);
+        expect(matrixShardLabels(defaultE2e)).toEqual(["1/3", "2/3", "3/3"]);
+        expect(defaultE2e).not.toMatch(/^\s+(?:exclude|include):/mu);
+        expect(defaultE2e).toMatch(/^        if: needs\.changes\.outputs\.e2e == 'true'$/mu);
         expect(defaultE2e).toMatch(
-            /bash ci\/run_tests\.sh e2e-default \$\{\{ matrix\.shard \}\}\/3/,
+            /^            - run: bash ci\/run_tests\.sh e2e-default \$\{\{ matrix\.shard \}\}\/3$/mu,
         );
-        expect(job(workflow, "e2e-onboarding")).toContain("bash ci/run_tests.sh e2e-onboarding");
-        expect(job(workflow, "e2e-context-fabric")).toContain(
-            "bash ci/run_tests.sh e2e-context-fabric",
+        expect(job(workflow, "e2e-onboarding")).toMatch(
+            /^            - run: bash ci\/run_tests\.sh e2e-onboarding$/mu,
+        );
+        expect(job(workflow, "e2e-context-fabric")).toMatch(
+            /^            - run: bash ci\/run_tests\.sh e2e-context-fabric$/mu,
         );
     });
+
+    it("compares Playwright tests by stable identity instead of source coordinates", () => {
+        const original =
+            "[authenticated] › app-shell.spec.ts:3:5 › app shell renders chart sections";
+        const shifted =
+            "[authenticated] › app-shell.spec.ts:40:16 › app shell renders chart sections";
+
+        expect(normalizePlaywrightTestIdentity(original)).toBe(
+            normalizePlaywrightTestIdentity(shifted),
+        );
+    });
+
+    it("keeps default E2E shards non-empty, exhaustive, and disjoint outside setup dependencies", async () => {
+        const controller = new AbortController();
+        const shardLabels = matrixShardLabels(job(contents(TESTS_WORKFLOW), "e2e-default"));
+        const [full, ...shards] = await Promise.all(
+            [undefined, ...shardLabels].map((shard) =>
+                listDefaultPlaywrightTests(shard, controller.signal).catch((error) => {
+                    controller.abort();
+                    throw error;
+                }),
+            ),
+        );
+
+        expect(full.length).toBeGreaterThan(0);
+        expect(new Set(full).size).toBe(full.length);
+        for (const shard of shards) {
+            expect(shard.length).toBeGreaterThan(0);
+            expect(new Set(shard).size).toBe(shard.length);
+        }
+
+        const setup = full.filter((entry) => entry.startsWith("[auth-setup] › "));
+        const setupSet = new Set(setup);
+        expect(setup.length).toBeGreaterThan(0);
+        for (const shard of shards) {
+            expect(shard.filter((entry) => setupSet.has(entry))).toEqual(setup);
+        }
+
+        const payloads = shards.map((shard) => shard.filter((entry) => !setupSet.has(entry)));
+        expect(intersection(payloads[0], payloads[1])).toEqual([]);
+        expect(intersection(payloads[0], payloads[2])).toEqual([]);
+        expect(intersection(payloads[1], payloads[2])).toEqual([]);
+        expect(new Set(shards.flat())).toEqual(new Set(full));
+    }, 20_000);
 
     it("isolates E2E artifacts by suite and shard", () => {
         const workflow = contents(TESTS_WORKFLOW);

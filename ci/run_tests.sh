@@ -128,6 +128,11 @@ run_quality() {
   run_pnpm_script typecheck
 }
 
+run_unit() {
+  echo "==> pnpm exec vitest run"
+  pnpm exec vitest run
+}
+
 run_e2e() {
   run_timed "e2e artifact preparation" prepare_playwright_artifacts
   run_timed "e2e browser installation" install_playwright_browser
@@ -240,7 +245,7 @@ case "${tier}" in
     run_pnpm_script build
     ;;
   unit)
-    run_pnpm_script test:unit
+    run_unit
     ;;
   integration)
     run_pnpm_script test:integration
@@ -268,7 +273,7 @@ case "${tier}" in
     run_pnpm_script format:check:changed
     run_quality
     run_pnpm_script build
-    run_pnpm_script test:unit
+    run_unit
     run_pnpm_script test:integration
     run_e2e
     ;;
