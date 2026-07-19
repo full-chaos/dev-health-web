@@ -110,6 +110,7 @@ export default defineConfig({
                 PLAYWRIGHT_TEST: "true",
                 DEV_HEALTH_TEST_MODE: "true",
                 NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: "true",
+                NEXT_PUBLIC_GUIDED_ONBOARDING: "false",
                 BACKEND_URL: "http://127.0.0.1:8001",
             },
         },

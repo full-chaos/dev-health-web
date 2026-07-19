@@ -50,14 +50,16 @@ jobs:
                       code:
                           - 'src/**'
                           - 'public/**'
+                          - '.github/workflows/build-docker.yml'
                           - 'package.json'
-                          - 'package-lock.json'
+                          - 'pnpm-lock.yaml'
                           - 'tsconfig.json'
                           - 'next.config.*'
                           - 'Dockerfile'
                           - 'docker-compose.yml'
                           - 'compose.dev.yml'
                           - '.dockerignore'
+                          - '.github/scripts/generate-version-tag.sh'
 
     build:
         name: Build Image
