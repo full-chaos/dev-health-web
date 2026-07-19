@@ -33,6 +33,7 @@ export default defineConfig({
         ["junit", { outputFile: junitOutputFile }],
     ],
     retries: isCI ? 2 : 0,
+    workers: isCI ? 6 : undefined,
     forbidOnly: isCI,
     projects: [
         {

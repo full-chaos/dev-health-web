@@ -226,4 +226,8 @@ describe("CHAOS-3017 CI contracts", () => {
             'NEXT_PUBLIC_GUIDED_ONBOARDING: "false"',
         );
     });
+
+    it("caps default CI Playwright concurrency at six workers", () => {
+        expect(contents(DEFAULT_PLAYWRIGHT_CONFIG)).toContain("workers: isCI ? 6 : undefined");
+    });
 });
