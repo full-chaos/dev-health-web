@@ -1,6 +1,13 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
 import { ACR_API_ORIGIN, BFF_ORIGIN } from "../playwright.context-fabric.config";
 import { UNSAFE_EVIDENCE_RAW_PAYLOAD } from "./mocks/acr-fixtures";
+import {
+    EMPTY_BROWSER_FAULTS,
+    rawBrowserFaults,
+    recordBrowserFaults,
+    settledBrowserFaults,
+    type BrowserFaultLog,
+} from "./mocks/context-fabric-browser-faults";
 
 const ENTITLEMENT_SCENARIOS = ["provisioned", "unprovisioned", "invalid", "error"] as const;
 type EntitlementScenario = (typeof ENTITLEMENT_SCENARIOS)[number];
@@ -143,33 +150,8 @@ async function signIn(page: Page, email: string): Promise<void> {
     await expect(page).not.toHaveURL(/\/auth\/signin/);
 }
 
-function recordBrowserFaults(page: Page): {
-    readonly consoleErrors: string[];
-    readonly pageErrors: string[];
-    readonly sessionRequestFailures: string[];
-} {
-    const consoleErrors: string[] = [];
-    const pageErrors: string[] = [];
-    const sessionRequestFailures: string[] = [];
-    page.on("console", (message) => {
-        if (message.type() === "error") consoleErrors.push(message.text());
-    });
-    page.on("requestfailed", (request) => {
-        if (new URL(request.url()).pathname === "/api/auth/session") {
-            const failure = request.failure()?.errorText ?? "";
-            if (failure !== "net::ERR_ABORTED") {
-                sessionRequestFailures.push(`${request.method()} ${request.url()} ${failure}`);
-            }
-        }
-    });
-    page.on("pageerror", (error) => pageErrors.push(error.message));
-    return { consoleErrors, pageErrors, sessionRequestFailures };
-}
-
-async function expectHealthyBrowser(faults: ReturnType<typeof recordBrowserFaults>): Promise<void> {
-    expect(faults.sessionRequestFailures).toEqual([]);
-    await expect.poll(() => faults.consoleErrors).toEqual([]);
-    expect(faults.pageErrors).toEqual([]);
+async function expectHealthyBrowser(faults: BrowserFaultLog): Promise<void> {
+    await expect.poll(() => settledBrowserFaults(faults)).toEqual(EMPTY_BROWSER_FAULTS);
 }
 
 test.describe("Context Fabric production entitlement boundary", () => {
@@ -536,11 +518,12 @@ test.describe("Context Fabric production entitlement boundary", () => {
                 fullPage: true,
             });
         }
+        const rawFaults = rawBrowserFaults(faults.events);
         expect(
-            faults.sessionRequestFailures.every((failure) => failure.endsWith("net::ERR_ABORTED")),
+            rawFaults.sessionRequestFailures.every((failure) => failure === "net::ERR_ABORTED"),
         ).toBe(true);
         expect(
-            faults.consoleErrors.filter(
+            rawFaults.consoleErrors.filter(
                 (message) =>
                     !message.startsWith(
                         "Executing inline script violates the following Content Security Policy directive",
@@ -549,7 +532,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
             ),
         ).toEqual([]);
         expect(
-            faults.pageErrors.filter(
+            rawFaults.pageErrors.filter(
                 (message) => message !== "Connection closed." && message !== "Failed to fetch",
             ),
         ).toEqual([]);
