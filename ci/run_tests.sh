@@ -75,11 +75,14 @@ install_playwright_browser() {
 }
 
 print_e2e_diagnostics() {
+  local report_root="${1:-${PLAYWRIGHT_REPORT_ROOT}}"
+  local results_root="${2:-${PLAYWRIGHT_RESULTS_ROOT}}"
+
   echo "==> e2e diagnostics"
   echo "CI=${CI:-false}"
   echo "NODE_ENV=${NODE_ENV}"
-  echo "PLAYWRIGHT_REPORT_ROOT=${PLAYWRIGHT_REPORT_ROOT}"
-  echo "PLAYWRIGHT_RESULTS_ROOT=${PLAYWRIGHT_RESULTS_ROOT}"
+  echo "PLAYWRIGHT_REPORT_ROOT=${report_root}"
+  echo "PLAYWRIGHT_RESULTS_ROOT=${results_root}"
   echo "node $(node --version)"
   echo "pnpm $(pnpm --version)"
   echo "playwright $(npx playwright --version)"
@@ -109,8 +112,11 @@ prepare_playwright_artifacts() {
 }
 
 print_playwright_artifact_summary() {
+  local report_root="${1:-${PLAYWRIGHT_REPORT_ROOT}}"
+  local results_root="${2:-${PLAYWRIGHT_RESULTS_ROOT}}"
+
   echo "==> playwright artifact summary"
-  for artifact_path in "${PLAYWRIGHT_REPORT_ROOT}" "${PLAYWRIGHT_RESULTS_ROOT}"; do
+  for artifact_path in "${report_root}" "${results_root}"; do
     if [[ -d "${artifact_path}" ]]; then
       echo "  ${artifact_path}"
       find "${artifact_path}" -maxdepth 4 -type f | sort || true
@@ -162,7 +168,12 @@ run_e2e() {
 }
 
 run_pagerduty_final_qa() {
-  run_isolated_e2e_suite pagerduty-final-qa test:e2e:pagerduty-final-qa:smoke
+  local report_root="${1:-${PLAYWRIGHT_REPORT_ROOT}}"
+  local results_root="${2:-${PLAYWRIGHT_RESULTS_ROOT}}"
+
+  PLAYWRIGHT_REPORT_ROOT="${report_root}" \
+    PLAYWRIGHT_RESULTS_ROOT="${results_root}" \
+    run_isolated_e2e_suite pagerduty-final-qa test:e2e:pagerduty-final-qa:smoke
 }
 
 run_playwright_suite() {
@@ -283,6 +294,7 @@ case "${tier}" in
     run_unit
     run_pnpm_script test:integration
     run_e2e
+    run_pagerduty_final_qa "${PLAYWRIGHT_REPORT_ROOT}/pagerduty-final-qa" "${PLAYWRIGHT_RESULTS_ROOT}/pagerduty-final-qa"
     ;;
   *)
     usage
