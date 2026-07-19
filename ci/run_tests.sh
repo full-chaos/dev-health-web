@@ -47,29 +47,38 @@ install_playwright_browser() {
 }
 
 print_e2e_diagnostics() {
+  local report_root="${1:-${PLAYWRIGHT_REPORT_ROOT}}"
+  local results_root="${2:-${PLAYWRIGHT_RESULTS_ROOT}}"
+
   echo "==> e2e diagnostics"
   echo "CI=${CI:-false}"
   echo "NODE_ENV=${NODE_ENV}"
-  echo "PLAYWRIGHT_REPORT_ROOT=${PLAYWRIGHT_REPORT_ROOT}"
-  echo "PLAYWRIGHT_RESULTS_ROOT=${PLAYWRIGHT_RESULTS_ROOT}"
+  echo "PLAYWRIGHT_REPORT_ROOT=${report_root}"
+  echo "PLAYWRIGHT_RESULTS_ROOT=${results_root}"
   echo "node $(node --version)"
   echo "pnpm $(pnpm --version)"
   echo "playwright $(npx playwright --version)"
 }
 
 prepare_playwright_artifacts() {
-  if [[ -z "${PLAYWRIGHT_REPORT_ROOT}" || -z "${PLAYWRIGHT_RESULTS_ROOT}" ]]; then
+  local report_root="${1:-${PLAYWRIGHT_REPORT_ROOT}}"
+  local results_root="${2:-${PLAYWRIGHT_RESULTS_ROOT}}"
+
+  if [[ -z "${report_root}" || -z "${results_root}" ]]; then
     echo "Playwright artifact directories must not be empty." >&2
     exit 1
   fi
 
-  rm -rf "${PLAYWRIGHT_REPORT_ROOT}" "${PLAYWRIGHT_RESULTS_ROOT}"
-  mkdir -p "${PLAYWRIGHT_REPORT_ROOT}" "${PLAYWRIGHT_RESULTS_ROOT}"
+  rm -rf "${report_root}" "${results_root}"
+  mkdir -p "${report_root}" "${results_root}"
 }
 
 print_playwright_artifact_summary() {
+  local report_root="${1:-${PLAYWRIGHT_REPORT_ROOT}}"
+  local results_root="${2:-${PLAYWRIGHT_RESULTS_ROOT}}"
+
   echo "==> playwright artifact summary"
-  for artifact_path in "${PLAYWRIGHT_REPORT_ROOT}" "${PLAYWRIGHT_RESULTS_ROOT}"; do
+  for artifact_path in "${report_root}" "${results_root}"; do
     if [[ -d "${artifact_path}" ]]; then
       echo "  ${artifact_path}"
       find "${artifact_path}" -maxdepth 4 -type f | sort || true
@@ -132,22 +141,25 @@ run_e2e() {
 }
 
 run_pagerduty_final_qa() {
+  local report_root="${1:-${PLAYWRIGHT_REPORT_ROOT}}"
+  local results_root="${2:-${PLAYWRIGHT_RESULTS_ROOT}}"
+
   install_playwright_browser
-  prepare_playwright_artifacts
-  print_e2e_diagnostics
-  if ! run_playwright_suite pagerduty-final-qa test:e2e:pagerduty-final-qa:smoke; then
+  prepare_playwright_artifacts "${report_root}" "${results_root}"
+  print_e2e_diagnostics "${report_root}" "${results_root}"
+  if ! run_playwright_suite pagerduty-final-qa test:e2e:pagerduty-final-qa:smoke "${report_root}" "${results_root}"; then
     echo "PagerDuty final QA smoke test failed. Captured artifacts:" >&2
-    print_playwright_artifact_summary
+    print_playwright_artifact_summary "${report_root}" "${results_root}"
     return 1
   fi
-  print_playwright_artifact_summary
+  print_playwright_artifact_summary "${report_root}" "${results_root}"
 }
 
 run_playwright_suite() {
   local suite_name="$1"
   local script_name="$2"
-  local report_directory="${PLAYWRIGHT_REPORT_ROOT}/${suite_name}"
-  local results_directory="${PLAYWRIGHT_RESULTS_ROOT}/${suite_name}"
+  local report_directory="${3:-${PLAYWRIGHT_REPORT_ROOT}/${suite_name}}"
+  local results_directory="${4:-${PLAYWRIGHT_RESULTS_ROOT}/${suite_name}}"
 
   echo "==> pnpm ${script_name} (${suite_name})"
   PLAYWRIGHT_HTML_REPORT="${report_directory}" \
@@ -197,6 +209,7 @@ case "${tier}" in
     run_unit
     run_integration
     run_e2e
+    run_pagerduty_final_qa "${PLAYWRIGHT_REPORT_ROOT}/pagerduty-final-qa" "${PLAYWRIGHT_RESULTS_ROOT}/pagerduty-final-qa"
     ;;
   *)
     usage

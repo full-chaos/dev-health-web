@@ -10,6 +10,10 @@ const testsWorkflow = readFileSync(
     new URL("../../.github/workflows/tests.yml", import.meta.url),
     "utf8",
 );
+const staticBuildWorkflow = readFileSync(
+    new URL("../../.github/workflows/build-static.yml", import.meta.url),
+    "utf8",
+);
 
 describe("default Playwright web servers", () => {
     it("does not reuse a listener from another worktree", () => {
@@ -68,5 +72,15 @@ describe("default Playwright web servers", () => {
             /pagerduty-final-qa:\n        name: PagerDuty final QA smoke/,
         );
         expect(testsWorkflow).toContain("bash ci/run_tests.sh pagerduty-final-qa");
+        expect(testsWorkflow).toContain(
+            'jq -e \'all(.[]; .result != "failure" and .result != "cancelled")\'',
+        );
+        expect(ciRunner).toContain(
+            'run_pagerduty_final_qa "${PLAYWRIGHT_REPORT_ROOT}/pagerduty-final-qa" "${PLAYWRIGHT_RESULTS_ROOT}/pagerduty-final-qa"',
+        );
+        expect(staticBuildWorkflow).toContain("bash ci/run_tests.sh pagerduty-final-qa");
+        expect(staticBuildWorkflow).toContain(
+            "PLAYWRIGHT_RESULTS_DIR=test-results/playwright/pagerduty-final-qa",
+        );
     });
 });

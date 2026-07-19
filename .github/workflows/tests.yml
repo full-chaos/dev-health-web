@@ -240,6 +240,6 @@ jobs:
               run: |
                   results='${{ toJson(needs) }}'
                   echo "${results}"
-                  if [[ "${results}" == *'"result":"failure"'* || "${results}" == *'"result":"cancelled"'* ]]; then
+                  if ! jq -e 'all(.[]; .result != "failure" and .result != "cancelled")' <<<"${results}"; then
                     exit 1
                   fi
