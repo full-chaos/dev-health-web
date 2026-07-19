@@ -1,0 +1,175 @@
+name: Documentation inventory export
+
+on:
+  push:
+    branches:
+      - agent/docs-inventory-export
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Inventory documentation sources and entry points
+        run: |
+          python - <<'PY'
+          from __future__ import annotations
+
+          import csv
+          import json
+          import os
+          import re
+          from collections import Counter
+          from pathlib import Path
+
+          root = Path('.').resolve()
+          output = root / 'inventory-output'
+          output.mkdir(exist_ok=True)
+
+          ignored = {
+              '.git', '.next', '.turbo', '.vercel', 'node_modules', 'dist',
+              'build', 'coverage', '.cache', '.pnpm-store', 'vendor',
+          }
+          text_suffixes = {
+              '.md', '.mdx', '.txt', '.json', '.jsonc', '.yml', '.yaml',
+              '.toml', '.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs', '.env',
+          }
+          image_suffixes = {'.png', '.jpg', '.jpeg', '.webp', '.svg', '.gif'}
+          entry_names = {
+              'README.md', 'CONTRIBUTING.md', 'AGENTS.md', 'SECURITY.md',
+              'package.json', 'next.config.js', 'next.config.mjs',
+              'next.config.ts', 'wrangler.toml',
+          }
+          signal_patterns = {
+              'docs-env': re.compile(r'NEXT_PUBLIC_DOCS_URL|DOCS_URL'),
+              'docs-domain': re.compile(r'docs\.fullchaos|dev-health-docs\.fullchaos'),
+              'help-link': re.compile(r'(?i)(help|documentation|docs)[-_ /]?(url|link|href)?'),
+              'github-pages': re.compile(r'(?i)github[- ]?pages|pages\.github\.io'),
+              'static-demo': re.compile(r'(?i)static[-_ /]?demo|demo[-_ /]?export'),
+          }
+
+          rows = []
+          for path in sorted(root.rglob('*')):
+              if not path.is_file():
+                  continue
+              rel = path.relative_to(root)
+              if any(part in ignored for part in rel.parts):
+                  continue
+              rel_text = rel.as_posix()
+              lower_parts = {part.lower() for part in rel.parts}
+              suffix = path.suffix.lower()
+              signals = []
+              artifact_type = None
+              notes = ''
+
+              in_docs_tree = bool({'docs', 'documentation'} & lower_parts)
+              in_public_or_visual_tree = bool(
+                  {'public', 'screenshots', 'fixtures', 'demo', 'static'} & lower_parts
+              )
+
+              if suffix in {'.md', '.mdx'} and in_docs_tree:
+                  artifact_type = 'documentation-page'
+              elif suffix in image_suffixes and (in_docs_tree or in_public_or_visual_tree):
+                  artifact_type = 'visual-or-static-asset'
+              elif rel.name in entry_names:
+                  artifact_type = 'repository-entry-or-config'
+              elif rel.parts[:2] == ('.github', 'workflows') and any(
+                  token in rel.name.lower() for token in ('docs', 'pages', 'demo')
+              ):
+                  artifact_type = 'publication-workflow'
+
+              text = ''
+              if suffix in text_suffixes and path.stat().st_size <= 2_000_000:
+                  try:
+                      text = path.read_text(encoding='utf-8', errors='replace')
+                  except OSError:
+                      text = ''
+                  for name, pattern in signal_patterns.items():
+                      if pattern.search(text):
+                          signals.append(name)
+
+              if signals and artifact_type is None:
+                  artifact_type = 'documentation-entry-point'
+              if artifact_type is None:
+                  continue
+
+              if in_docs_tree:
+                  notes = 'Documentation source tree.'
+              elif signals:
+                  notes = 'Contains documentation/help/publication signal.'
+
+              rows.append({
+                  'repository': 'full-chaos/dev-health-web',
+                  'source_path': rel_text,
+                  'artifact_type': artifact_type,
+                  'suffix': suffix,
+                  'size_bytes': path.stat().st_size,
+                  'signals': ' | '.join(sorted(signals)),
+                  'notes': notes,
+                  'review_status': 'unreviewed',
+              })
+
+          fields = [
+              'repository', 'source_path', 'artifact_type', 'suffix',
+              'size_bytes', 'signals', 'notes', 'review_status',
+          ]
+          with (output / 'dev-health-web-inventory.tsv').open(
+              'w', encoding='utf-8', newline=''
+          ) as handle:
+              writer = csv.DictWriter(handle, fieldnames=fields, delimiter='\t')
+              writer.writeheader()
+              writer.writerows(rows)
+
+          payload = {
+              'schema_version': 1,
+              'repository': 'full-chaos/dev-health-web',
+              'generated_from': os.environ.get('GITHUB_SHA', 'unknown'),
+              'row_count': len(rows),
+              'rows': rows,
+          }
+          (output / 'dev-health-web-inventory.json').write_text(
+              json.dumps(payload, indent=2) + '\n', encoding='utf-8'
+          )
+
+          by_type = Counter(row['artifact_type'] for row in rows)
+          by_signal = Counter(
+              signal
+              for row in rows
+              for signal in row['signals'].split(' | ')
+              if signal
+          )
+          summary = [
+              '# dev-health-web documentation inventory',
+              '',
+              f"Generated from `{payload['generated_from']}`.",
+              '',
+              f'- Review-relevant rows: **{len(rows)}**',
+              '',
+              '## Artifact types',
+              '',
+          ]
+          summary.extend(f'- `{name}`: {count}' for name, count in sorted(by_type.items()))
+          summary.extend(['', '## Signals', ''])
+          summary.extend(f'- `{name}`: {count}' for name, count in sorted(by_signal.items()))
+          summary.extend(['', '## Source paths', ''])
+          summary.extend(f"- `{row['source_path']}` — {row['artifact_type']}" for row in rows)
+          (output / 'dev-health-web-inventory-summary.md').write_text(
+              '\n'.join(summary) + '\n', encoding='utf-8'
+          )
+          PY
+
+      - name: Upload inventory
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: dev-health-web-documentation-inventory
+          path: inventory-output/**
+          if-no-files-found: error
+          retention-days: 7
