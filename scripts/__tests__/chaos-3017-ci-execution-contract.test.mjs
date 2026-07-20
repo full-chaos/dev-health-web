@@ -81,8 +81,8 @@ const E2E_HARNESS_CASES = [
     },
     {
         args: ["pagerduty-final-qa"],
-        expectedCommand: "test:e2e:pagerduty-final-qa:smoke",
-        failScript: "test:e2e:pagerduty-final-qa:smoke",
+        expectedCommand: "test:e2e:pagerduty-final-qa",
+        failScript: "test:e2e:pagerduty-final-qa",
         name: "PagerDuty final QA",
     },
 ];

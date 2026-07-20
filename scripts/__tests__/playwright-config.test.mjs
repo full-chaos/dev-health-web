@@ -62,14 +62,14 @@ describe("default Playwright web servers", () => {
         );
     });
 
-    it("runs the dedicated PagerDuty smoke separately in CI", () => {
+    it("runs the complete dedicated PagerDuty matrix separately in CI", () => {
         expect(ciRunner).toContain("run_pagerduty_final_qa()");
         expect(ciRunner).toContain(
-            "run_isolated_e2e_suite pagerduty-final-qa test:e2e:pagerduty-final-qa:smoke",
+            "run_isolated_e2e_suite pagerduty-final-qa test:e2e:pagerduty-final-qa",
         );
         expect(ciRunner).toMatch(/pagerduty-final-qa\)\n    run_pagerduty_final_qa/);
         expect(testsWorkflow).toMatch(
-            /pagerduty-final-qa:\n        name: PagerDuty final QA smoke/,
+            /pagerduty-final-qa:\n        name: PagerDuty final QA matrix/,
         );
         expect(testsWorkflow).toContain("bash ci/run_tests.sh pagerduty-final-qa");
         expect(ciRunner).toContain(

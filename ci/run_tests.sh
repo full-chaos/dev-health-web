@@ -173,7 +173,7 @@ run_pagerduty_final_qa() {
 
   PLAYWRIGHT_REPORT_ROOT="${report_root}" \
     PLAYWRIGHT_RESULTS_ROOT="${results_root}" \
-    run_isolated_e2e_suite pagerduty-final-qa test:e2e:pagerduty-final-qa:smoke
+    run_isolated_e2e_suite pagerduty-final-qa test:e2e:pagerduty-final-qa
 }
 
 run_playwright_suite() {

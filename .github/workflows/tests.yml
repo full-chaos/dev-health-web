@@ -255,7 +255,7 @@ jobs:
                   retention-days: 14
 
     pagerduty-final-qa:
-        name: PagerDuty final QA smoke
+        name: PagerDuty final QA matrix
         needs: [changes]
         if: needs.changes.outputs.code == 'true'
         runs-on: ubuntu-latest
@@ -337,7 +337,7 @@ jobs:
                   if [[ "${{ needs.e2e-default.result }}" != 'skipped' || "${{ needs.e2e-onboarding.result }}" != 'skipped' || "${{ needs.e2e-context-fabric.result }}" != 'skipped' ]]; then
                     exit 1
                   fi
-            - name: Check PagerDuty smoke stage
+            - name: Check PagerDuty final QA matrix
               if: needs.changes.result == 'success' && needs.changes.outputs.code == 'true'
               run: |
                   if [[ "${{ needs.pagerduty-final-qa.result }}" != 'success' ]]; then
