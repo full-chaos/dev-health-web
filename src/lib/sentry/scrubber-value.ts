@@ -229,6 +229,5 @@ export function scrubTelemetryPayload<Payload extends object>(payload: Payload):
         nodes: 0,
         characters: 0,
     });
-    if (isRecord(scrubbed)) Object.assign(payload, scrubbed);
-    return payload;
+    return isRecord(scrubbed) ? { ...payload, ...scrubbed } : payload;
 }
