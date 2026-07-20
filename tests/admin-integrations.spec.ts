@@ -91,6 +91,18 @@ test("Linear Add Provider wizard renders manual credential fields immediately", 
     await expect(page.locator("#linear-teams")).toBeVisible();
 });
 
+test("PagerDuty setup exposes OAuth first with supported manual fallbacks", async ({ page }) => {
+    await page.goto("/org/admin/integrations/pagerduty");
+
+    await expect(page.getByRole("heading", { name: "Connect PagerDuty" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "OAuth (recommended)" })).toBeVisible();
+    await page.getByRole("button", { name: "Client credentials" }).click();
+    await expect(page.getByLabel("Client ID")).toBeVisible();
+    await expect(page.getByLabel("Client secret")).toBeVisible();
+    await page.getByRole("button", { name: "Use API token instead" }).click();
+    await expect(page.getByLabel("API token")).toBeVisible();
+});
+
 test("unknown provider returns 404", async ({ page }) => {
     await page.goto("/org/admin/integrations/unknown");
 

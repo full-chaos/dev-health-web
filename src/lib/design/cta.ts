@@ -49,6 +49,8 @@ export const CTA_LABELS = {
     reset: "Reset",
     retry: "Retry",
     reportIssue: "Report an issue",
+    closeIssueReportPanel: "Close issue report panel",
+    close: "Close",
     clearContext: "Clear context",
     clearTheme: "Clear theme",
     allThemes: "All themes",
@@ -82,6 +84,10 @@ export const CTA_LABELS = {
     backToCockpit: "Back to Cockpit",
     /** Start the frictionless one-click GitHub App install (CHAOS-2235). */
     connectGitHubApp: "Connect GitHub App",
+    connectPagerDuty: "Connect PagerDuty",
+    checkConnectionStatus: "Check connection status",
+    disconnect: "Disconnect",
+    runPreflight: "Run preflight",
     /** Advance to the next step of the guided onboarding flow (CHAOS-2675). */
     continueStep: "Continue",
     /** Continue the guided first-run setup from the dashboard (CHAOS-2678). */
@@ -150,6 +156,9 @@ export const CTA_LABELS = {
     remove: "Remove",
     /** Add another provider identity row to the identity mapping form (CHAOS-2841). */
     addProviderIdentity: "+ Add Identity",
+    addServiceMapping: "Add service mapping",
+    addRepositoryTarget: "Add repository target",
+    removeServiceMapping: "Remove service",
     /** Open the create-entry form on the IP allowlist admin page (CHAOS-2842). */
     addIpAllowlistEntry: "Add IP Rule",
     /** Open the create-policy form on the data retention admin page (CHAOS-2842). */
@@ -223,6 +232,10 @@ export type CtaLabel = (typeof CTA_LABELS)[CtaKey];
  */
 export function backToArea(area: string): string {
     return `Back to ${area}`;
+}
+
+export function upgradeToPlan(plan: string): string {
+    return `Upgrade to ${plan}`;
 }
 
 /**

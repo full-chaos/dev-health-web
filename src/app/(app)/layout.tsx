@@ -44,7 +44,20 @@ export default async function AppLayout({
                             </header>
                             {children}
                             <BugReportButton />
-                            <Toaster richColors position="top-right" theme="dark" />
+                            <Toaster
+                                containerAriaLabel="Notifications"
+                                position="top-right"
+                                richColors
+                                offset={{
+                                    top: "var(--toast-offset-top)",
+                                    right: "var(--toast-offset-inline)",
+                                }}
+                                mobileOffset={{
+                                    top: "var(--toast-offset-top)",
+                                    left: "var(--toast-offset-inline)",
+                                    right: "var(--toast-offset-inline)",
+                                }}
+                            />
                         </div>
                     </TelemetryProvider>
                 </GraphQLProvider>

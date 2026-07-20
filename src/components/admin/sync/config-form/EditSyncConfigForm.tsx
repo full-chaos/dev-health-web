@@ -12,6 +12,11 @@ import { DatasetsSection } from "./DatasetsSection";
 import { InitialDepthSection } from "./InitialDepthSection";
 import { ScheduleSection } from "./ScheduleSection";
 import { AdvancedSection } from "./AdvancedSection";
+import {
+    PagerDutyServiceMappings,
+    type PagerDutyMappingValidity,
+} from "./PagerDutyServiceMappings";
+import type { ServiceRepositoryMappings } from "@/lib/admin/pagerduty";
 
 type EditSyncConfigFormData = {
     name: string;
@@ -39,6 +44,9 @@ type EditSyncConfigFormProps = {
     maxRepos?: number;
     repoScopeWarnings: string[];
     datasetWarnings: string[];
+    serviceRepositoryMappings: ServiceRepositoryMappings;
+    onServiceRepositoryMappingsChangeAction: (mappings: ServiceRepositoryMappings) => void;
+    onServiceRepositoryMappingsValidityChangeAction: (validity: PagerDutyMappingValidity) => void;
     /** Current account tier (serializable data, not a function prop). */
     tier: string;
     minSyncIntervalHours?: number;
@@ -73,6 +81,9 @@ export function EditSyncConfigForm({
     maxRepos,
     repoScopeWarnings,
     datasetWarnings,
+    serviceRepositoryMappings,
+    onServiceRepositoryMappingsChangeAction,
+    onServiceRepositoryMappingsValidityChangeAction,
     tier,
     minSyncIntervalHours,
     onChangeAction,
@@ -145,6 +156,15 @@ export function EditSyncConfigForm({
                 onTargetChange={onTargetChangeAction}
                 destructiveWarnings={datasetWarnings}
             />
+
+            {formData.provider === "pagerduty" && formData.sync_targets.includes("operational") ? (
+                <PagerDutyServiceMappings
+                    credentialName={credentialName}
+                    mappings={serviceRepositoryMappings}
+                    onChangeAction={onServiceRepositoryMappingsChangeAction}
+                    onValidityChangeAction={onServiceRepositoryMappingsValidityChangeAction}
+                />
+            ) : null}
 
             <InitialDepthSection
                 value={formData.initial_sync_depth}

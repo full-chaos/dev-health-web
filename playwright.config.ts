@@ -7,6 +7,7 @@ const htmlOutputFolder =
 const junitOutputFile = process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? `${resultsDirectory}/junit.xml`;
 
 const AUTH_FILE = "test-results/.auth/state.json";
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3001";
 
 // The guided first-run onboarding journey (auth-onboard.spec.ts) runs with
 // NEXT_PUBLIC_GUIDED_ONBOARDING enabled and therefore lives in its own config
@@ -40,6 +41,18 @@ export default defineConfig({
             testMatch: /auth\.setup\.ts/,
         },
         {
+            // These specs select a process-global MSW scenario through the mock
+            // control endpoint. One worker prevents one file from replacing
+            // another file's scenario while preserving normal-suite parallelism.
+            name: "pagerduty-final-qa",
+            testMatch: /pagerduty-final-qa-p[012]\.spec\.ts/,
+            dependencies: ["auth-setup"],
+            workers: 1,
+            use: {
+                storageState: AUTH_FILE,
+            },
+        },
+        {
             name: "authenticated",
             testIgnore: [
                 /auth-signin\.spec\.ts/,
@@ -53,6 +66,7 @@ export default defineConfig({
                 /account-creation-journey\.spec\.ts/,
                 /auth-onboard-legacy\.spec\.ts/,
                 /acr-context-fabric\.production\.spec\.ts/,
+                /pagerduty-final-qa-p[012]\.spec\.ts/,
             ],
             dependencies: ["auth-setup"],
             use: {
@@ -71,7 +85,7 @@ export default defineConfig({
         },
     ],
     use: {
-        baseURL: "http://127.0.0.1:3001",
+        baseURL,
         headless: true,
         trace: "retain-on-failure",
         video: "retain-on-failure",
@@ -81,7 +95,7 @@ export default defineConfig({
         {
             command: "npx tsx ./tests/mocks/http-server.ts",
             url: "http://127.0.0.1:8001/health",
-            reuseExistingServer: !process.env.CI,
+            reuseExistingServer: false,
             timeout: 30_000,
             env: {
                 MOCK_SERVER_PORT: "8001",
@@ -90,7 +104,7 @@ export default defineConfig({
         {
             command: "npm run dev -- --hostname 127.0.0.1 --port 3001",
             url: "http://127.0.0.1:3001",
-            reuseExistingServer: !process.env.CI,
+            reuseExistingServer: false,
             timeout: 120_000,
             env: {
                 PLAYWRIGHT_TEST: "true",

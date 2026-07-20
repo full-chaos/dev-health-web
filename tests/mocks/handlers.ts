@@ -9,6 +9,13 @@
 
 import { http, HttpResponse } from "msw";
 import { getEntitlementScenario } from "./entitlementScenario";
+import {
+    getPagerDutySyncConfig,
+    pagerDutyHandlers,
+    updatePagerDutySyncConfig,
+    withPagerDutyCredentials,
+    withPagerDutySyncConfigs,
+} from "./pagerdutyScenario";
 
 import type {
     LoginResponseBody,
@@ -749,6 +756,7 @@ const MOCK_CREDENTIALS: MockCredential[] = [
         id: "cred-github-1",
         provider: "github",
         name: "GitHub Token",
+        config: {},
         created_at: "2026-01-15T00:00:00.000Z",
     },
 ];
@@ -1816,6 +1824,7 @@ function buildSetupStatus() {
 // ---------------------------------------------------------------------------
 
 export const handlers = [
+    ...pagerDutyHandlers,
     // ---- Auth (for e2e test authentication) ----
     http.post("*/api/v1/auth/login", async ({ request }) => {
         const body = (await request.json()) as {
@@ -2914,7 +2923,7 @@ export const handlers = [
     ),
 
     http.get("*/api/v1/admin/credentials", () =>
-        HttpResponse.json<MockCredential[]>(MOCK_CREDENTIALS),
+        HttpResponse.json<MockCredential[]>([...withPagerDutyCredentials(MOCK_CREDENTIALS)]),
     ),
 
     http.get("*/api/v1/admin/credentials/:id/repos", ({ request }) => {
@@ -2954,6 +2963,7 @@ export const handlers = [
             id: body?.id ?? `cred-${Date.now()}`,
             provider: body?.provider ?? "github",
             name: body?.name ?? "Credential",
+            config: body?.config ?? {},
             created_at: body?.created_at ?? new Date().toISOString(),
         };
         MOCK_CREDENTIALS.push(created);
@@ -2972,11 +2982,13 @@ export const handlers = [
     ),
 
     http.get("*/api/v1/admin/sync-configs", () =>
-        HttpResponse.json<MockSyncConfig[]>(MOCK_SYNC_CONFIGS),
+        HttpResponse.json<MockSyncConfig[]>([...withPagerDutySyncConfigs(MOCK_SYNC_CONFIGS)]),
     ),
 
     http.get("*/api/v1/admin/sync-configs/:id", ({ params }) => {
         const syncConfigId = params.id as string;
+        const pagerDutyConfig = getPagerDutySyncConfig(syncConfigId);
+        if (pagerDutyConfig) return HttpResponse.json<MockSyncConfig>(pagerDutyConfig);
         const syncConfig = MOCK_SYNC_CONFIGS.find((item) => item.id === syncConfigId);
         if (!syncConfig) {
             return HttpResponse.json({ detail: "Sync config not found" }, { status: 404 });
@@ -2986,7 +2998,9 @@ export const handlers = [
 
     http.get("*/api/v1/admin/sync-configs/:id/repositories", ({ params }) => {
         const syncConfigId = params.id as string;
-        const syncConfig = MOCK_SYNC_CONFIGS.find((item) => item.id === syncConfigId);
+        const syncConfig =
+            getPagerDutySyncConfig(syncConfigId) ??
+            MOCK_SYNC_CONFIGS.find((item) => item.id === syncConfigId);
         if (!syncConfig) {
             return HttpResponse.json({ detail: "Sync config not found" }, { status: 404 });
         }
@@ -3082,6 +3096,8 @@ export const handlers = [
     http.patch("*/api/v1/admin/sync-configs/:id", async ({ params, request }) => {
         const syncConfigId = params.id as string;
         const body = (await request.json()) as Partial<MockSyncConfig> | null;
+        const pagerDutyConfig = updatePagerDutySyncConfig(syncConfigId, body);
+        if (pagerDutyConfig) return HttpResponse.json<MockSyncConfig>(pagerDutyConfig);
         const syncConfig = MOCK_SYNC_CONFIGS.find((item) => item.id === syncConfigId);
         if (!syncConfig) {
             return HttpResponse.json({ detail: "Sync config not found" }, { status: 404 });

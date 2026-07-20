@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CredentialsTable } from "./CredentialsTable";
 import { AddProviderWizard } from "./wizard/AddProviderWizard";
+import { PagerDutySetup } from "./PagerDutySetup";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { IntegrationCredential, Provider } from "@/lib/admin/types";
 
@@ -30,6 +31,10 @@ export function ProviderCredentialsList({
 }: ProviderCredentialsListProps) {
     const router = useRouter();
     const [isWizardOpen, setIsWizardOpen] = useState(credentials.length === 0);
+
+    if (provider === "pagerduty") {
+        return <PagerDutySetup />;
+    }
 
     const handleCreated = () => {
         router.refresh();

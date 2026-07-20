@@ -112,4 +112,34 @@ describe("getAuthMethodLabel", () => {
             getAuthMethodLabel("launchdarkly", makeCredential({ provider: "launchdarkly" })),
         ).toBe("Service token");
     });
+
+    it("derives PagerDuty auth labels from the persisted descriptor auth mode", () => {
+        expect(
+            getAuthMethodLabel(
+                "pagerduty",
+                makeCredential({ provider: "pagerduty", config: { auth_mode: "oauth" } }),
+            ),
+        ).toBe("OAuth");
+        expect(
+            getAuthMethodLabel(
+                "pagerduty",
+                makeCredential({
+                    provider: "pagerduty",
+                    config: { auth_mode: "client_credentials" },
+                }),
+            ),
+        ).toBe("Client credentials");
+        expect(
+            getAuthMethodLabel(
+                "pagerduty",
+                makeCredential({ provider: "pagerduty", config: { auth_mode: "api_token" } }),
+            ),
+        ).toBe("API token");
+    });
+
+    it("uses an honest fallback when a PagerDuty auth mode was not persisted", () => {
+        expect(getAuthMethodLabel("pagerduty", makeCredential({ provider: "pagerduty" }))).toBe(
+            "Not recorded",
+        );
+    });
 });

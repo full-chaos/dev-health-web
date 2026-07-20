@@ -63,6 +63,23 @@ describe("AddProviderWizard", () => {
         expect(screen.getByLabelText("Personal access token")).toBeInTheDocument();
     });
 
+    it("routes PagerDuty from the global picker to its dedicated setup page", () => {
+        renderWithToaster(
+            <AddProviderWizard
+                credentials={[]}
+                onCloseAction={vi.fn()}
+                onCreatedAction={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByRole("link", { name: "PagerDuty" })).toHaveAttribute(
+            "href",
+            "/org/admin/integrations/pagerduty",
+        );
+        expect(screen.queryByRole("radio", { name: "PagerDuty" })).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("API token")).not.toBeInTheDocument();
+    });
+
     it("runs the full manual create flow: fill token \u2192 verify \u2192 finish \u2192 persists credential", async () => {
         vi.mocked(testConnection).mockResolvedValue({
             data: { success: true, error: null, details: null },

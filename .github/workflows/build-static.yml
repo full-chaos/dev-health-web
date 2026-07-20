@@ -212,6 +212,12 @@ jobs:
             - name: Run E2E tests
               run: bash ci/run_tests.sh e2e
 
+            - name: Run PagerDuty final QA matrix
+              run: >-
+                  PLAYWRIGHT_REPORT_DIR=test-results/playwright-html/pagerduty-final-qa
+                  PLAYWRIGHT_RESULTS_DIR=test-results/playwright/pagerduty-final-qa
+                  bash ci/run_tests.sh pagerduty-final-qa
+
             - name: Upload Playwright report
               if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

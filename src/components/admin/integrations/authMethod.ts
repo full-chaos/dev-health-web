@@ -40,11 +40,26 @@ const MANUAL_AUTH_METHOD_LABEL: Record<Provider, string> = {
     jira: "API token",
     linear: "API key",
     launchdarkly: "Service token",
+    pagerduty: "Not recorded",
 };
+
+function getPagerDutyAuthMethodLabel(credential: IntegrationCredential): string {
+    switch (credential.config.auth_mode) {
+        case "oauth":
+            return "OAuth";
+        case "client_credentials":
+            return "Client credentials";
+        case "api_token":
+            return "API token";
+        default:
+            return MANUAL_AUTH_METHOD_LABEL.pagerduty;
+    }
+}
 
 /** Customer-safe auth-method label for a credential (provider table / rows). */
 export function getAuthMethodLabel(provider: Provider, credential: IntegrationCredential): string {
     if (isGitHubAppCredential(credential)) return "GitHub App";
+    if (provider === "pagerduty") return getPagerDutyAuthMethodLabel(credential);
     return MANUAL_AUTH_METHOD_LABEL[provider];
 }
 

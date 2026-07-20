@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
     fireEvent,
     render,
@@ -25,6 +25,7 @@ const mockBatchCreateSyncConfigs = vi.fn();
 const mockListReposForCredential = vi.fn();
 const mockTestConnection = vi.fn();
 const mockCreateCredential = vi.fn();
+const mockGetPagerDutyServices = vi.fn();
 vi.mock("@/lib/admin/server", () => ({
     createSyncConfig: (...args: unknown[]) => mockCreateSyncConfig(...args),
     updateSyncConfig: (...args: unknown[]) => mockUpdateSyncConfig(...args),
@@ -33,6 +34,7 @@ vi.mock("@/lib/admin/server", () => ({
     listReposForCredential: (...args: unknown[]) => mockListReposForCredential(...args),
     testConnection: (...args: unknown[]) => mockTestConnection(...args),
     createCredential: (...args: unknown[]) => mockCreateCredential(...args),
+    getPagerDutyServices: (...args: unknown[]) => mockGetPagerDutyServices(...args),
 }));
 
 const mockUseAdminTier = vi.fn(() => ({
@@ -126,6 +128,28 @@ async function clickBack() {
 }
 
 describe("SyncConfigForm", () => {
+    beforeEach(() => {
+        mockGetPagerDutyServices.mockResolvedValue({
+            data: {
+                credential_name: "PagerDuty token",
+                services: [
+                    {
+                        external_id: "service-api",
+                        display_name: "API service",
+                        name_resolved: true,
+                        status: "active",
+                    },
+                    {
+                        external_id: "service-worker",
+                        display_name: "Worker service",
+                        name_resolved: true,
+                        status: "active",
+                    },
+                ],
+            },
+        });
+    });
+
     afterEach(() => {
         mockPush.mockReset();
         mockRefresh.mockReset();
@@ -139,6 +163,7 @@ describe("SyncConfigForm", () => {
         });
         mockTestConnection.mockReset();
         mockCreateCredential.mockReset();
+        mockGetPagerDutyServices.mockReset();
         mockUseAdminTier.mockReset();
         mockUseAdminTier.mockReturnValue({
             tier: "community",
@@ -286,7 +311,7 @@ describe("SyncConfigForm", () => {
             expect(ninetyDayButton).toBeDisabled();
             expect(screen.getAllByText("Team").length).toBeGreaterThan(0);
             expect(screen.getByRole("link", { name: "Upgrade plan" })).toBeInTheDocument();
-            expect(screen.getByText("Team Plan Feature")).toBeInTheDocument();
+            expect(screen.getByText(/Team plan feature/i)).toBeInTheDocument();
             expect(
                 screen.queryByRole("radio", { name: "Manual only (no schedule)" }),
             ).not.toBeInTheDocument();
@@ -796,6 +821,115 @@ describe("SyncConfigForm", () => {
             expect(screen.getByText("Enabled")).toBeInTheDocument();
             expect(screen.getByText("90 days")).toBeInTheDocument();
         });
+
+        it("places PagerDuty service mappings in the operational wizard step and reviews them", async () => {
+            // Given: a PagerDuty credential available to a new sync configuration.
+            const pagerDutyCredential: IntegrationCredential = {
+                id: "cred-pagerduty",
+                provider: "pagerduty",
+                name: "PagerDuty token",
+                is_active: true,
+                config: {},
+                last_test_at: null,
+                last_test_success: null,
+                last_test_error: null,
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+            };
+            render(<SyncConfigForm credentials={[...mockCredentials, pagerDutyCredential]} />);
+
+            // When: the services dataset is selected and its mapping is completed in the wizard.
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "PagerDuty Services");
+            await userEvent.selectOptions(screen.getByLabelText("Provider"), "pagerduty");
+            await clickContinue();
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-pagerduty");
+            await clickContinue();
+            await userEvent.click(screen.getByLabelText("PagerDuty operational data"));
+            expect(screen.getByText("Service repository mappings")).toBeInTheDocument();
+            const addMapping = screen.getByRole("button", { name: "Add service mapping" });
+            await waitFor(() => expect(addMapping).toBeEnabled());
+            await userEvent.click(addMapping);
+            await userEvent.selectOptions(
+                screen.getByLabelText("PagerDuty service"),
+                "service-api",
+            );
+            await userEvent.type(
+                screen.getByLabelText("Repository full name 1.1"),
+                "full-chaos/api",
+            );
+            expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
+            await clickContinue();
+            await clickContinue();
+
+            // Then: review precedes submit and summarizes the staged repository target safely.
+            expect(screen.getByText("Service repository mappings")).toBeInTheDocument();
+            expect(screen.getByText("API service: github:full-chaos/api")).toBeInTheDocument();
+            expect(screen.queryByText("service-api")).not.toBeInTheDocument();
+        });
+
+        it("keeps duplicate PagerDuty mapping validation in the dataset step", async () => {
+            // Given: a PagerDuty services configuration with duplicate service IDs.
+            const pagerDutyCredential: IntegrationCredential = {
+                id: "cred-pagerduty",
+                provider: "pagerduty",
+                name: "PagerDuty token",
+                is_active: true,
+                config: {},
+                last_test_at: null,
+                last_test_success: null,
+                last_test_error: null,
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+            };
+            renderWithToaster(
+                <SyncConfigForm credentials={[...mockCredentials, pagerDutyCredential]} />,
+            );
+            await userEvent.type(
+                screen.getByLabelText("Configuration Name"),
+                "PagerDuty duplicate",
+            );
+            await userEvent.selectOptions(screen.getByLabelText("Provider"), "pagerduty");
+            await clickContinue();
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-pagerduty");
+            await clickContinue();
+            await userEvent.click(screen.getByLabelText("PagerDuty operational data"));
+            const addMapping = screen.getByRole("button", { name: "Add service mapping" });
+            await waitFor(() => expect(addMapping).toBeEnabled());
+            await userEvent.click(addMapping);
+            await userEvent.selectOptions(
+                screen.getByLabelText("PagerDuty service"),
+                "service-api",
+            );
+            await userEvent.type(
+                screen.getByLabelText("Repository full name 1.1"),
+                "full-chaos/api",
+            );
+            await userEvent.click(addMapping);
+            await userEvent.selectOptions(
+                screen.getAllByLabelText("PagerDuty service")[1],
+                "service-api",
+            );
+            await userEvent.type(
+                screen.getByLabelText("Repository full name 2.1"),
+                "full-chaos/api-mirror",
+            );
+
+            // When: duplicate validation updates the mapping editor.
+            await waitFor(() => {
+                expect(screen.getByRole("alert")).toHaveTextContent(
+                    "Each PagerDuty service can be mapped only once.",
+                );
+            });
+
+            // Then: the invalid editor remains visible, and the flow cannot progress or submit.
+            const mappingEditor = document.getElementById("pagerduty-service-repository-mappings");
+            expect(mappingEditor).toBeInTheDocument();
+            expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+            expect(
+                screen.queryByRole("button", { name: "Create Configuration" }),
+            ).not.toBeInTheDocument();
+            expect(mockCreateSyncConfig).not.toHaveBeenCalled();
+        });
     });
 
     describe("edit mode", () => {
@@ -1013,7 +1147,7 @@ describe("SyncConfigForm", () => {
             };
             render(<SyncConfigForm initialData={initialData} credentials={mockCredentials} />);
 
-            expect(screen.getByText("Team Plan Feature")).toBeInTheDocument();
+            expect(screen.getByText(/Team plan feature/i)).toBeInTheDocument();
             expect(
                 screen.queryByRole("radio", { name: "Manual only (no schedule)" }),
             ).not.toBeInTheDocument();
@@ -1274,7 +1408,8 @@ describe("SyncConfigForm", () => {
                 expect(screen.getByText("Immutable Config")).toBeInTheDocument();
                 expect(screen.getByText("GitHub")).toBeInTheDocument();
                 expect(screen.getByText("My GitHub Token")).toBeInTheDocument();
-                expect(screen.getAllByText("🔒 locked").length).toBeGreaterThanOrEqual(3);
+                expect(screen.getAllByText("Locked")).toHaveLength(3);
+                expect(screen.getAllByTestId("immutable-field-lock-icon")).toHaveLength(3);
                 expect(
                     screen.getByText(/name can't be changed after creation/i),
                 ).toBeInTheDocument();
@@ -1584,6 +1719,148 @@ describe("SyncConfigForm", () => {
             expect(
                 screen.queryByLabelText("Auto-import teams, projects & members"),
             ).not.toBeInTheDocument();
+        });
+
+        it("blocks a PagerDuty save for duplicate service IDs and focuses the mapping editor", async () => {
+            // Given: a valid persisted PagerDuty services mapping.
+            const initialData: SyncConfig = {
+                id: "cfg-pagerduty-duplicates",
+                name: "PagerDuty Services",
+                provider: "pagerduty",
+                credential_id: "cred-pagerduty",
+                sync_targets: ["operational"],
+                sync_options: {
+                    service_repository_mappings: {
+                        admin: {
+                            "service-api": [{ provider: "github", full_name: "full-chaos/api" }],
+                        },
+                    },
+                },
+                is_active: true,
+                schedule_cron: null,
+                timezone: null,
+                last_sync_at: null,
+                last_sync_success: null,
+                last_sync_error: null,
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+                parent_id: null,
+            };
+            render(
+                <SyncConfigForm
+                    initialData={initialData}
+                    credentials={[
+                        ...mockCredentials,
+                        {
+                            id: "cred-pagerduty",
+                            provider: "pagerduty",
+                            name: "PagerDuty token",
+                            is_active: true,
+                            config: {},
+                            last_test_at: null,
+                            last_test_success: null,
+                            last_test_error: null,
+                            created_at: "2024-01-01",
+                            updated_at: "2024-01-01",
+                        },
+                    ]}
+                />,
+            );
+
+            // When: a second complete row repeats the existing service ID and is submitted.
+            const addMapping = screen.getByRole("button", { name: "Add service mapping" });
+            await waitFor(() => expect(addMapping).toBeEnabled());
+            await userEvent.click(addMapping);
+            await userEvent.selectOptions(
+                screen.getAllByLabelText("PagerDuty service")[1],
+                "service-api",
+            );
+            await userEvent.type(
+                screen.getByLabelText("Repository full name 2.1"),
+                "full-chaos/api-mirror",
+            );
+            await waitFor(() => {
+                expect(screen.getByRole("alert")).toHaveTextContent(
+                    "Each PagerDuty service can be mapped only once.",
+                );
+            });
+            await userEvent.click(screen.getByRole("button", { name: "Update Configuration" }));
+
+            // Then: the parent blocks persistence and directs keyboard focus to the invalid editor.
+            expect(mockUpdateSyncConfig).not.toHaveBeenCalled();
+            expect(document.activeElement).toBe(
+                document.getElementById("pagerduty-service-repository-mappings"),
+            );
+        });
+
+        it("preserves non-admin mapping namespaces when a non-PagerDuty config is saved", async () => {
+            // Given: a GitHub configuration containing mappings from several independent sources.
+            mockUpdateSyncConfig.mockResolvedValue(undefined);
+            const initialData: SyncConfig = {
+                id: "cfg-github-preserve-mappings",
+                name: "GitHub Delivery",
+                provider: "github",
+                credential_id: "cred-1",
+                sync_targets: ["git"],
+                sync_options: {
+                    service_repository_mappings: {
+                        admin: {
+                            "service-old": [{ provider: "github", full_name: "full-chaos/old" }],
+                        },
+                        compass: {
+                            "service-catalog": [
+                                { provider: "github", full_name: "full-chaos/catalog" },
+                            ],
+                        },
+                        heuristic: {
+                            "service-heuristic": [
+                                { provider: "gitlab", full_name: "full-chaos/heuristic" },
+                            ],
+                        },
+                    },
+                },
+                is_active: true,
+                schedule_cron: null,
+                timezone: null,
+                last_sync_at: null,
+                last_sync_success: null,
+                last_sync_error: null,
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+                parent_id: null,
+            };
+            renderWithToaster(
+                <SyncConfigForm initialData={initialData} credentials={mockCredentials} />,
+            );
+
+            // When: the unrelated provider configuration is saved.
+            await userEvent.click(screen.getByRole("button", { name: "Update Configuration" }));
+
+            // Then: only the web-owned admin namespace clears from the payload.
+            await waitFor(() => {
+                expect(mockUpdateSyncConfig).toHaveBeenCalledWith("cfg-github-preserve-mappings", {
+                    sync_targets: ["git"],
+                    is_active: true,
+                    schedule_cron: null,
+                    timezone: null,
+                    initial_sync_depth: 30,
+                    sync_options: {
+                        auto_import_teams: false,
+                        service_repository_mappings: {
+                            compass: {
+                                "service-catalog": [
+                                    { provider: "github", full_name: "full-chaos/catalog" },
+                                ],
+                            },
+                            heuristic: {
+                                "service-heuristic": [
+                                    { provider: "gitlab", full_name: "full-chaos/heuristic" },
+                                ],
+                            },
+                        },
+                    },
+                });
+            });
         });
     });
 });

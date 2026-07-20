@@ -2,6 +2,7 @@ import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createCredential, testConnection } from "@/lib/admin/server";
 import type { IntegrationCredential, Provider } from "@/lib/admin/types";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type CreateCredentialModalProps = {
     isOpen: boolean;
@@ -34,6 +35,7 @@ const PROVIDER_FIELDS: Record<Provider, ProviderField[]> = {
         { key: "project_key", label: "Project Key", type: "text", required: true },
         { key: "environment", label: "Environment Key", type: "text", required: true },
     ],
+    pagerduty: [{ key: "api_token", label: "API token", type: "password", required: true }],
 };
 
 function getInitialCredentials(provider: Provider): Record<string, string> {
@@ -48,6 +50,9 @@ function getInitialCredentials(provider: Provider): Record<string, string> {
     }
     if (provider === "launchdarkly") {
         return { api_key: "", project_key: "", environment: "production" };
+    }
+    if (provider === "pagerduty") {
+        return { api_token: "" };
     }
     return { token: "" };
 }
@@ -152,7 +157,7 @@ export function CreateCredentialModal({
                         onClick={handleClose}
                         className="rounded-md px-2 py-1 text-(--ink-muted) hover:bg-(--card-80)"
                     >
-                        Close
+                        {CTA_LABELS.closeWizard}
                     </button>
                 </div>
 
@@ -209,7 +214,7 @@ export function CreateCredentialModal({
                             onClick={handleClose}
                             className="rounded-md border border-(--card-stroke) px-4 py-2 text-sm"
                         >
-                            Cancel
+                            {CTA_LABELS.cancel}
                         </button>
                         <button
                             type="button"

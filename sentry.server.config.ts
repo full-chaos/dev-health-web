@@ -6,6 +6,7 @@ Sentry.init(
     attachBeforeSend({
         dsn: publicEnv.NEXT_PUBLIC_SENTRY_DSN,
         environment: process.env.NODE_ENV,
+        integrations: [Sentry.httpIntegration({ maxIncomingRequestBodySize: "none" })],
         tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
         sendDefaultPii: false,
     }),

@@ -62,7 +62,20 @@ export default function AuthLayout({
                 </div>
             </nav>
             <main>{children}</main>
-            <Toaster richColors position="top-right" theme="dark" />
+            <Toaster
+                containerAriaLabel="Notifications"
+                position="top-right"
+                richColors={false}
+                offset={{
+                    top: "var(--toast-offset-top)",
+                    right: "var(--toast-offset-inline)",
+                }}
+                mobileOffset={{
+                    top: "var(--toast-offset-top)",
+                    left: "var(--toast-offset-inline)",
+                    right: "var(--toast-offset-inline)",
+                }}
+            />
         </SessionProvider>
     );
 }

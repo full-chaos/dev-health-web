@@ -128,7 +128,7 @@ describe("UpgradeGate", () => {
             <UpgradeGate
                 feature="advanced_insights"
                 requiredTier="team"
-                currentTier="enterprise"
+                currentTier="free"
                 features={{ advanced_insights: false }}
             >
                 <p>hidden</p>
@@ -136,6 +136,44 @@ describe("UpgradeGate", () => {
         );
 
         expect(screen.getByText(/current plan/i)).toBeInTheDocument();
-        expect(screen.getByText("enterprise")).toBeInTheDocument();
+        expect(screen.getByText("free")).toBeInTheDocument();
+    });
+
+    it("renders a same-tier unavailable state without an impossible upgrade action", () => {
+        renderWithToaster(
+            <UpgradeGate
+                feature="scheduled_jobs"
+                requiredTier="team"
+                currentTier="team"
+                features={{ scheduled_jobs: false }}
+            >
+                <p>Schedule controls</p>
+            </UpgradeGate>,
+        );
+
+        expect(screen.getByRole("heading", { name: "Feature unavailable" })).toBeVisible();
+        expect(
+            screen.getByText("Contact an administrator to enable scheduled jobs for this plan."),
+        ).toBeVisible();
+        expect(screen.queryByRole("link", { name: /upgrade/i })).not.toBeInTheDocument();
+    });
+
+    it("renders a higher-tier unavailable state without a downgrade action", () => {
+        renderWithToaster(
+            <UpgradeGate
+                feature="scheduled_jobs"
+                requiredTier="team"
+                currentTier="enterprise"
+                features={{ scheduled_jobs: false }}
+            >
+                <p>Schedule controls</p>
+            </UpgradeGate>,
+        );
+
+        expect(screen.getByRole("heading", { name: "Feature unavailable" })).toBeVisible();
+        expect(
+            screen.getByText("Contact an administrator to enable scheduled jobs for this plan."),
+        ).toBeVisible();
+        expect(screen.queryByRole("link", { name: /upgrade/i })).not.toBeInTheDocument();
     });
 });

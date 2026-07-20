@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { PROVIDERS, PROVIDER_LABELS, type Provider } from "@/lib/admin/types";
 
 type ProviderSelectStepProps = {
@@ -20,26 +21,39 @@ export function ProviderSelectStep({ provider, onChangeAction }: ProviderSelectS
                 </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
-                {PROVIDERS.map((p) => (
-                    <label
-                        key={p}
-                        className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
-                            provider === p
-                                ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
-                                : "border-(--card-stroke) text-foreground hover:bg-(--card-70)"
-                        }`}
-                    >
-                        <input
-                            type="radio"
-                            name="provider"
-                            value={p}
-                            checked={provider === p}
-                            onChange={() => onChangeAction(p)}
-                            className="sr-only"
-                        />
-                        {PROVIDER_LABELS[p]}
-                    </label>
-                ))}
+                {PROVIDERS.map((p) => {
+                    if (p === "pagerduty") {
+                        return (
+                            <Link
+                                href="/org/admin/integrations/pagerduty"
+                                key={p}
+                                className="flex items-center gap-2 rounded-lg border border-(--card-stroke) px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-(--card-70)"
+                            >
+                                {PROVIDER_LABELS[p]}
+                            </Link>
+                        );
+                    }
+                    return (
+                        <label
+                            key={p}
+                            className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                                provider === p
+                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                                    : "border-(--card-stroke) text-foreground hover:bg-(--card-70)"
+                            }`}
+                        >
+                            <input
+                                type="radio"
+                                name="provider"
+                                value={p}
+                                checked={provider === p}
+                                onChange={() => onChangeAction(p)}
+                                className="sr-only"
+                            />
+                            {PROVIDER_LABELS[p]}
+                        </label>
+                    );
+                })}
             </div>
         </div>
     );

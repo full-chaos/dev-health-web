@@ -77,7 +77,12 @@ describe("RetentionPolicyPage", () => {
 
         render(<RetentionPolicyPage />);
 
-        expect(await screen.findByText(/unlock custom retention/i)).toBeInTheDocument();
+        expect(
+            await screen.findByRole("heading", { name: "Feature unavailable" }),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText("Contact an administrator to enable custom retention for this plan."),
+        ).toBeInTheDocument();
     });
 
     it("loads and renders policies on mount when the gate is open", async () => {

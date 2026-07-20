@@ -79,6 +79,12 @@ const E2E_HARNESS_CASES = [
         failScript: "test:e2e:context-fabric",
         name: "Context Fabric",
     },
+    {
+        args: ["pagerduty-final-qa"],
+        expectedCommand: "test:e2e:pagerduty-final-qa",
+        failScript: "test:e2e:pagerduty-final-qa",
+        name: "PagerDuty final QA",
+    },
 ];
 
 describe("CHAOS-3017 executable CI boundaries", () => {
@@ -155,7 +161,9 @@ describe("CHAOS-3017 executable CI boundaries", () => {
     it("binds every E2E job and harness path to its real package script", () => {
         const workflow = contents(TESTS_WORKFLOW);
         const scripts = JSON.parse(contents(PACKAGE_JSON)).scripts;
-        expect(scripts["test:e2e"]).toBe("playwright test");
+        expect(scripts["test:e2e"]).toBe(
+            "playwright test --project=authenticated --project=unauthenticated",
+        );
         expect(scripts["test:e2e:onboarding"]).toBe(
             "playwright test -c playwright.onboarding.config.ts",
         );
@@ -176,6 +184,12 @@ describe("CHAOS-3017 executable CI boundaries", () => {
                 `            - run: ${workflowCommand}`,
             );
         }
+
+        const pagerDutyJob = job(workflow, "pagerduty-final-qa");
+        expect(pagerDutyJob).toMatch(/^        if: needs\.changes\.outputs\.code == 'true'$/mu);
+        expect(runStep(pagerDutyJob, "bash ci/run_tests.sh pagerduty-final-qa")).toBe(
+            "            - run: bash ci/run_tests.sh pagerduty-final-qa",
+        );
     });
 
     it.each(E2E_HARNESS_CASES)(

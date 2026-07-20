@@ -1,6 +1,11 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
 import type { ErrorEvent } from "@sentry/nextjs";
-import { scrubEvent, attachBeforeSend } from "../scrubber";
+import {
+    attachBeforeSend,
+    scrubBreadcrumb,
+    scrubEvent,
+    scrubReplayRecordingEvent,
+} from "../scrubber";
 
 // Helpers
 function makeEvent(overrides: Partial<ErrorEvent> = {}): ErrorEvent {
@@ -78,8 +83,8 @@ describe("scrubEvent", () => {
         expect(result?.request?.data).toBeUndefined();
     });
 
-    it("passes through request.data for non-sensitive URLs", () => {
-        const payload = JSON.stringify({ metric: "build_time", value: 42 });
+    it("scrubs request.data for non-sensitive URLs", () => {
+        const payload = { metric: "build_time", value: 42, apiToken: "secret-token" };
         const event = makeEvent({
             request: {
                 url: "https://example.com/api/metrics",
@@ -87,7 +92,11 @@ describe("scrubEvent", () => {
             },
         });
         const result = scrubEvent(event);
-        expect(result?.request?.data).toBe(payload);
+        expect(result?.request?.data).toEqual({
+            metric: "build_time",
+            value: 42,
+            apiToken: "[Filtered]",
+        });
     });
 
     it("strips user.ip_address in production", () => {
@@ -130,6 +139,40 @@ describe("scrubEvent", () => {
         const result = scrubEvent(event);
         expect(result).not.toBeNull();
         expect(result?.message).toBe("standalone error");
+    });
+
+    it("removes OAuth query values from event URLs and provider callback breadcrumbs", () => {
+        const event = makeEvent({
+            request: {
+                url: "https://app.example.test/org/admin/integrations/pagerduty/callback?code=secret-code&state=secret-state&error=access_denied",
+            },
+        });
+
+        const result = scrubEvent(event);
+        expect(result?.request?.url).toBe(
+            "https://app.example.test/org/admin/integrations/pagerduty/callback",
+        );
+
+        const breadcrumb = scrubBreadcrumb({
+            category: "navigation",
+            data: {
+                to: "/org/admin/integrations/github-app/callback?installation_id=123&state=signed-state",
+            },
+        });
+        expect(breadcrumb.data?.to).toBe("/org/admin/integrations/github-app/callback");
+    });
+
+    it("removes OAuth query values from Replay recording events", () => {
+        const recordingEvent = scrubReplayRecordingEvent({
+            data: {
+                url: "https://app.example.test/org/admin/integrations/pagerduty/callback?code=secret-code&state=secret-state",
+            },
+            type: 5,
+        });
+
+        expect(recordingEvent.data.url).toBe(
+            "https://app.example.test/org/admin/integrations/pagerduty/callback",
+        );
     });
 });
 

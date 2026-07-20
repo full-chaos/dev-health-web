@@ -14,6 +14,10 @@ import { StepProgress } from "./StepProgress";
 import { StepNav } from "./StepNav";
 import { ReviewStep } from "./ReviewStep";
 import {
+    PagerDutyServiceMappings,
+    type PagerDutyMappingValidity,
+} from "./PagerDutyServiceMappings";
+import {
     formatDepthLabel,
     formatScheduleLabel,
     DATASET_LABELS,
@@ -22,6 +26,7 @@ import {
 import { getVisibleSteps, getStepBlockReason, isRepoScopedProvider } from "./wizardSteps";
 import { PROVIDER_LABELS, type Provider } from "@/lib/admin/types";
 import type { IntegrationCredential } from "@/lib/admin/types";
+import type { ServiceRepositoryMappings } from "@/lib/admin/pagerduty";
 
 type CreateSyncConfigWizardFormData = {
     name: string;
@@ -49,6 +54,10 @@ type CreateSyncConfigWizardProps = {
     /** Current account tier (serializable data, not a function prop). */
     tier: string;
     minSyncIntervalHours?: number;
+    serviceRepositoryMappings: ServiceRepositoryMappings;
+    serviceRepositoryMappingsValidity: PagerDutyMappingValidity;
+    onServiceRepositoryMappingsChangeAction: (mappings: ServiceRepositoryMappings) => void;
+    onServiceRepositoryMappingsValidityChangeAction: (validity: PagerDutyMappingValidity) => void;
     onChangeAction: (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
     onTargetChangeAction: (targetId: string, checked: boolean) => void;
     onReposChangeAction: (repos: string[]) => void;
@@ -77,6 +86,10 @@ export function CreateSyncConfigWizard({
     maxRepos,
     tier,
     minSyncIntervalHours,
+    serviceRepositoryMappings,
+    serviceRepositoryMappingsValidity,
+    onServiceRepositoryMappingsChangeAction,
+    onServiceRepositoryMappingsValidityChangeAction,
     onChangeAction,
     onTargetChangeAction,
     onReposChangeAction,
@@ -90,13 +103,23 @@ export function CreateSyncConfigWizard({
 }: CreateSyncConfigWizardProps) {
     const visibleSteps = useMemo(() => getVisibleSteps(formData.provider), [formData.provider]);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [pagerDutyServiceDisplayNames, setPagerDutyServiceDisplayNames] = useState<
+        Readonly<Record<string, string>>
+    >({});
     const clampedIndex = Math.min(currentIndex, visibleSteps.length - 1);
     const currentStep = visibleSteps[clampedIndex];
 
-    const blockReason = getStepBlockReason(currentStep.id, {
+    const prerequisiteBlockReason = getStepBlockReason(currentStep.id, {
         name: formData.name,
         credentialId: formData.credential_id,
     });
+    const blockReason =
+        currentStep.id === "datasets" &&
+        formData.provider === "pagerduty" &&
+        formData.sync_targets.includes("operational") &&
+        !serviceRepositoryMappingsValidity.valid
+            ? serviceRepositoryMappingsValidity.message
+            : prerequisiteBlockReason;
 
     function goToStep(index: number) {
         if (index <= clampedIndex) setCurrentIndex(index);
@@ -132,7 +155,7 @@ export function CreateSyncConfigWizard({
             <div className="flex items-center justify-between gap-4">
                 <StepProgress
                     steps={visibleSteps}
-                    currentIndex={clampedIndex}
+                    currentStepId={currentStep.id}
                     onStepClickAction={goToStep}
                 />
                 <Link
@@ -195,6 +218,18 @@ export function CreateSyncConfigWizard({
                             autoImportTeams={formData.auto_import_teams}
                             onChange={onAutoImportChangeAction}
                         />
+                        {formData.provider === "pagerduty" &&
+                        formData.sync_targets.includes("operational") ? (
+                            <PagerDutyServiceMappings
+                                credentialName={credentialName}
+                                mappings={serviceRepositoryMappings}
+                                onChangeAction={onServiceRepositoryMappingsChangeAction}
+                                onValidityChangeAction={
+                                    onServiceRepositoryMappingsValidityChangeAction
+                                }
+                                onServiceDisplayNamesChangeAction={setPagerDutyServiceDisplayNames}
+                            />
+                        ) : null}
                     </>
                 )}
 
@@ -234,6 +269,8 @@ export function CreateSyncConfigWizard({
                         scheduleLabel={formatScheduleLabel(formData.schedule_cron)}
                         timezone={formData.timezone}
                         isActive={formData.is_active}
+                        serviceRepositoryMappings={serviceRepositoryMappings}
+                        pagerDutyServiceDisplayNames={pagerDutyServiceDisplayNames}
                         isPending={isPending}
                         onBackAction={goBack}
                     />

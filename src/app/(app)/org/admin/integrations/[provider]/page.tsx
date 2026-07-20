@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { ProviderCredentialsList } from "@/components/admin/integrations/ProviderCredentialsList";
+import { PagerDutySetup } from "@/components/admin/integrations/PagerDutySetup";
 import {
     GitHubAppConnect,
     type GitHubAppConnectResult,
@@ -31,6 +32,7 @@ const PROVIDERS: Record<string, string> = {
     jira: "Jira",
     linear: "Linear",
     launchdarkly: "LaunchDarkly",
+    pagerduty: "PagerDuty",
     custom: "Custom",
 };
 
@@ -129,7 +131,9 @@ export default async function IntegrationPage({
                 </UpgradeGate>
             )}
 
-            {!isCustomProvider && (
+            {provider === "pagerduty" ? (
+                <PagerDutySetup credentials={credentials} />
+            ) : !isCustomProvider ? (
                 <div id="managed-sync-credentials" className="space-y-8">
                     <ProviderCredentialsList
                         provider={provider as Provider}
@@ -138,7 +142,7 @@ export default async function IntegrationPage({
                         syncConfigs={syncConfigs}
                     />
                 </div>
-            )}
+            ) : null}
 
             {customerPushEnabled && (
                 <div className="mt-8">
