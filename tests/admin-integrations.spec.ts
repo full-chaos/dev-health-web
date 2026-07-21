@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { setPagerDutyEntitlement } from "./pagerduty-final-qa.helpers";
 
 test("providers page renders a provider management table", async ({ page }) => {
     await page.goto("/org/admin/integrations");
@@ -91,7 +92,11 @@ test("Linear Add Provider wizard renders manual credential fields immediately", 
     await expect(page.locator("#linear-teams")).toBeVisible();
 });
 
-test("PagerDuty setup exposes OAuth first with supported manual fallbacks", async ({ page }) => {
+test("PagerDuty setup exposes OAuth first with supported manual fallbacks", async ({
+    page,
+    request,
+}) => {
+    await setPagerDutyEntitlement(request, "canonical-enabled");
     await page.goto("/org/admin/integrations/pagerduty");
 
     await expect(page.getByRole("heading", { name: "Connect PagerDuty" })).toBeVisible();

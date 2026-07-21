@@ -9,6 +9,7 @@ import type {
     TestConnectionResponse,
 } from "../types";
 import { getSessionContext, withErrorHandling } from "./_shared";
+import { requirePagerDutyCreationEntitlement } from "./canonicalIncidentIngestion";
 
 export async function listCredentials(): Promise<ActionResult<IntegrationCredential[]>> {
     return withErrorHandling(async () => {
@@ -21,6 +22,9 @@ export async function createCredential(
     data: IntegrationCredentialCreate,
 ): Promise<ActionResult<IntegrationCredential>> {
     return withErrorHandling(async () => {
+        if (data.provider === "pagerduty") {
+            await requirePagerDutyCreationEntitlement();
+        }
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.credentials.create(data, token, orgId);
         revalidatePath("/org/admin/integrations", "page");

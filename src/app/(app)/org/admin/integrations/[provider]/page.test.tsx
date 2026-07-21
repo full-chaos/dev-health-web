@@ -9,7 +9,10 @@ import {
 } from "@/lib/admin/server";
 import type { CustomerPushSource, IntegrationCredential } from "@/lib/admin/types";
 
+const mockGetCanonicalIncidentIngestionEntitlement = vi.hoisted(() => vi.fn());
+
 vi.mock("@/lib/admin/server", () => ({
+    getCanonicalIncidentIngestionEntitlement: mockGetCanonicalIncidentIngestionEntitlement,
     getCustomerPushIngestEntitlement: vi.fn(),
     listCredentials: vi.fn(),
     listCustomerPushSources: vi.fn(),
@@ -21,8 +24,14 @@ vi.mock("@/components/admin/integrations/ProviderCredentialsList", () => ({
 }));
 
 vi.mock("@/components/admin/integrations/PagerDutySetup", () => ({
-    PagerDutySetup: ({ credentials }: { credentials: readonly IntegrationCredential[] }) => (
-        <div data-testid="pagerduty-setup">
+    PagerDutySetup: ({
+        canCreatePagerDuty,
+        credentials,
+    }: {
+        canCreatePagerDuty: boolean;
+        credentials: readonly IntegrationCredential[];
+    }) => (
+        <div data-can-create={String(canCreatePagerDuty)} data-testid="pagerduty-setup">
             {credentials.map((credential) => credential.name).join(", ")}
         </div>
     ),
@@ -79,6 +88,10 @@ function makeCustomerPushSource(): CustomerPushSource {
 
 describe("IntegrationPage ([provider]) — CHAOS-2837 blocker 3", () => {
     beforeEach(() => {
+        mockGetCanonicalIncidentIngestionEntitlement.mockReset();
+        mockGetCanonicalIncidentIngestionEntitlement.mockResolvedValue({
+            data: { enabled: false },
+        });
         vi.mocked(getCustomerPushIngestEntitlement).mockResolvedValue({
             data: {
                 tier: "team",
@@ -179,6 +192,59 @@ describe("IntegrationPage ([provider]) — CHAOS-2837 blocker 3", () => {
         expect(screen.getByTestId("pagerduty-setup")).toBeInTheDocument();
         expect(screen.getByTestId("pagerduty-setup")).toHaveTextContent("production");
         expect(screen.queryByTestId("provider-credentials-list")).not.toBeInTheDocument();
+    });
+
+    it("fails closed for a direct PagerDuty route when an older Ops response has no entitlement", async () => {
+        mockGetCanonicalIncidentIngestionEntitlement.mockResolvedValue({
+            error: "Feature metadata unavailable",
+        });
+        vi.mocked(listCredentials).mockResolvedValue({ data: [makePagerDutyCredential()] });
+        vi.mocked(listSyncConfigs).mockResolvedValue({ data: [] });
+
+        render(
+            await IntegrationPage({
+                params: Promise.resolve({ provider: "pagerduty" }),
+                searchParams: Promise.resolve({}),
+            }),
+        );
+
+        expect(mockGetCanonicalIncidentIngestionEntitlement).toHaveBeenCalledOnce();
+        expect(screen.getByTestId("pagerduty-setup")).toHaveAttribute("data-can-create", "false");
+        expect(screen.getByTestId("pagerduty-setup")).toHaveTextContent("production");
+    });
+
+    it("keeps a direct PagerDuty route manage-only when the entitlement is false", async () => {
+        mockGetCanonicalIncidentIngestionEntitlement.mockResolvedValue({
+            data: { enabled: false },
+        });
+        vi.mocked(listCredentials).mockResolvedValue({ data: [makePagerDutyCredential()] });
+        vi.mocked(listSyncConfigs).mockResolvedValue({ data: [] });
+
+        render(
+            await IntegrationPage({
+                params: Promise.resolve({ provider: "pagerduty" }),
+                searchParams: Promise.resolve({}),
+            }),
+        );
+
+        expect(screen.getByTestId("pagerduty-setup")).toHaveAttribute("data-can-create", "false");
+    });
+
+    it("allows direct PagerDuty setup only for an explicit true entitlement", async () => {
+        mockGetCanonicalIncidentIngestionEntitlement.mockResolvedValue({
+            data: { enabled: true },
+        });
+        vi.mocked(listCredentials).mockResolvedValue({ data: [] });
+        vi.mocked(listSyncConfigs).mockResolvedValue({ data: [] });
+
+        render(
+            await IntegrationPage({
+                params: Promise.resolve({ provider: "pagerduty" }),
+                searchParams: Promise.resolve({}),
+            }),
+        );
+
+        expect(screen.getByTestId("pagerduty-setup")).toHaveAttribute("data-can-create", "true");
     });
 
     it("locks customer-push mode and skips source loading when customer_push_ingest is disabled", async () => {

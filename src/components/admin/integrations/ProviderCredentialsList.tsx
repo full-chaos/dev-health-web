@@ -33,7 +33,7 @@ export function ProviderCredentialsList({
     const [isWizardOpen, setIsWizardOpen] = useState(credentials.length === 0);
 
     if (provider === "pagerduty") {
-        return <PagerDutySetup />;
+        return <PagerDutySetup canCreatePagerDuty={false} credentials={credentials} />;
     }
 
     const handleCreated = () => {

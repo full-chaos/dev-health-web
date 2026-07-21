@@ -1,9 +1,12 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SyncConfigForm } from "@/components/admin/sync/SyncConfigForm";
-import { listCredentials } from "@/lib/admin/server";
+import { getCanonicalIncidentIngestionEntitlement, listCredentials } from "@/lib/admin/server";
 
 export default async function NewSyncConfigPage() {
-    const credentialsResult = await listCredentials();
+    const [credentialsResult, incidentEntitlementResult] = await Promise.all([
+        listCredentials(),
+        getCanonicalIncidentIngestionEntitlement(),
+    ]);
     const credentials = credentialsResult.data || [];
 
     return (
@@ -13,7 +16,10 @@ export default async function NewSyncConfigPage() {
                 description="Configure a new data synchronization source."
             />
 
-            <SyncConfigForm credentials={credentials} />
+            <SyncConfigForm
+                canCreatePagerDuty={incidentEntitlementResult.data?.enabled === true}
+                credentials={credentials}
+            />
         </div>
     );
 }

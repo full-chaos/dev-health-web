@@ -16,6 +16,7 @@ import type {
     PagerDutyStatusResponse,
 } from "../pagerduty";
 import { getSessionContext, withErrorHandling } from "./_shared";
+import { requirePagerDutyCreationEntitlement } from "./canonicalIncidentIngestion";
 
 type StartPagerDutyOAuthInput = {
     readonly credentialName: string;
@@ -28,6 +29,7 @@ export async function startPagerDutyOAuth(
     input: StartPagerDutyOAuthInput,
 ): Promise<Result<PagerDutyAuthorizeResponse>> {
     return withErrorHandling(async () => {
+        await requirePagerDutyCreationEntitlement();
         const { token, orgId } = await getSessionContext();
         return adminApi.pagerDuty.authorize(
             {
@@ -48,6 +50,9 @@ export async function completePagerDutyOAuth(input: {
     readonly error?: string;
 }): Promise<Result<PagerDutyOAuthCallbackConnectedResponse>> {
     return withErrorHandling(async () => {
+        // Ops created the one-time, organization-scoped state during authorization and
+        // remains the authority that consumes it. Completion must not re-check the
+        // creation entitlement: it may have changed while the user was at PagerDuty.
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.pagerDuty.callback(input, token, orgId);
         revalidatePath("/org/admin/integrations", "page");
@@ -102,6 +107,7 @@ export async function connectPagerDutyClientCredentials(input: {
     readonly region: PagerDutyRegion;
 }): Promise<Result<PagerDutyClientCredentialsConnectedResponse>> {
     return withErrorHandling(async () => {
+        await requirePagerDutyCreationEntitlement();
         const { token, orgId } = await getSessionContext();
         return adminApi.pagerDuty.clientCredentials(
             {
@@ -124,6 +130,7 @@ export async function connectPagerDutyApiToken(input: {
     readonly region: PagerDutyRegion;
 }): Promise<Result<PagerDutyApiTokenConnectedResponse>> {
     return withErrorHandling(async () => {
+        await requirePagerDutyCreationEntitlement();
         const { token, orgId } = await getSessionContext();
         return adminApi.pagerDuty.apiToken(
             {

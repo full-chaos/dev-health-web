@@ -44,6 +44,7 @@ type CreateSyncConfigWizardFormData = {
 };
 
 type CreateSyncConfigWizardProps = {
+    canCreatePagerDuty: boolean;
     formData: CreateSyncConfigWizardFormData;
     credentialName: string | null;
     filteredCredentials: IntegrationCredential[];
@@ -77,6 +78,7 @@ type CreateSyncConfigWizardProps = {
  * steps rather than reimplementing their field logic.
  */
 export function CreateSyncConfigWizard({
+    canCreatePagerDuty,
     formData,
     credentialName,
     filteredCredentials,
@@ -169,6 +171,7 @@ export function CreateSyncConfigWizard({
             <div className="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
                 {currentStep.id === "provider" && (
                     <IdentitySection
+                        canCreatePagerDuty={canCreatePagerDuty}
                         isEdit={false}
                         name={formData.name}
                         provider={formData.provider}

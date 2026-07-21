@@ -5,6 +5,7 @@ import { FormSection } from "./FormSection";
 import { ImmutableField } from "./ImmutableField";
 
 type IdentitySectionProps = {
+    canCreatePagerDuty: boolean;
     isEdit: boolean;
     name: string;
     provider: string;
@@ -13,7 +14,13 @@ type IdentitySectionProps = {
 
 /** Configuration name + provider. Both are immutable once created (the
  * update API never accepts `name`/`provider` — see SyncConfigUpdate). */
-export function IdentitySection({ isEdit, name, provider, onChange }: IdentitySectionProps) {
+export function IdentitySection({
+    canCreatePagerDuty,
+    isEdit,
+    name,
+    provider,
+    onChange,
+}: IdentitySectionProps) {
     return (
         <FormSection title="Identity" description="Name and provider that identify this sync.">
             {isEdit ? (
@@ -58,7 +65,9 @@ export function IdentitySection({ isEdit, name, provider, onChange }: IdentitySe
                         onChange={onChange}
                         className={`${inputClass} text-sm`}
                     >
-                        {PROVIDERS.map((p) => (
+                        {PROVIDERS.filter(
+                            (candidate) => candidate !== "pagerduty" || canCreatePagerDuty,
+                        ).map((p) => (
                             <option key={p} value={p}>
                                 {PROVIDER_LABELS[p]}
                             </option>

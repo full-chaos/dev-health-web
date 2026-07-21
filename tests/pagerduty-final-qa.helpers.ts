@@ -5,8 +5,10 @@ import { scrubTelemetryText } from "@/lib/sentry/scrubber-value";
 
 export const EVIDENCE_ROOT = path.resolve(".qa-evidence/pagerduty-final-postremediation");
 export const PAGERDUTY_SYNC_CONFIG_EDIT_PATH = "/org/admin/sync/sync-config-pagerduty-1/edit";
-const MOCK_ORIGIN = process.env.PAGERDUTY_QA_MOCK_ORIGIN ?? "http://127.0.0.1:8001";
-const NEXT_DEV_OVERLAY_CAPTURE_STYLE = "nextjs-portal { display: none !important; }";
+const MOCK_ORIGIN =
+    process.env.PAGERDUTY_QA_MOCK_ORIGIN ??
+    `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
+export const NEXT_DEV_OVERLAY_CAPTURE_STYLE = "nextjs-portal { display: none !important; }";
 
 export type QaScenario = {
     readonly id: string;
@@ -14,6 +16,9 @@ export type QaScenario = {
     readonly title: string;
     readonly viewport: "desktop" | "mobile";
 };
+
+export type PagerDutyEntitlementScenario =
+    "canonical-absent" | "canonical-disabled" | "canonical-enabled";
 
 type BrowserSignals = {
     readonly console: string[];
@@ -72,6 +77,17 @@ export async function setPagerDutyScenario(
     scenario: string,
 ): Promise<void> {
     const response = await request.post(`${MOCK_ORIGIN}/__test/pagerduty`, { data: { scenario } });
+    expect(response.status()).toBe(204);
+    await setPagerDutyEntitlement(request, "canonical-enabled");
+}
+
+export async function setPagerDutyEntitlement(
+    request: APIRequestContext,
+    scenario: PagerDutyEntitlementScenario,
+): Promise<void> {
+    const response = await request.post(`${MOCK_ORIGIN}/__test/entitlements`, {
+        data: { scenario },
+    });
     expect(response.status()).toBe(204);
 }
 
@@ -217,7 +233,7 @@ async function toastOverlappingInteractiveControls(page: Page) {
     });
 }
 
-async function waitForCaptureReadiness(
+export async function waitForCaptureReadiness(
     page: Page,
     viewport: QaScenario["viewport"],
 ): Promise<CaptureReadiness> {

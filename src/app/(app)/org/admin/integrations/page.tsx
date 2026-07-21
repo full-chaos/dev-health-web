@@ -1,7 +1,11 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ProvidersPage } from "@/components/admin/integrations/ProvidersPage";
 import type { ProviderRow } from "@/components/admin/integrations/ProviderTable";
-import { listCredentials, listSyncConfigs } from "@/lib/admin/server";
+import {
+    getCanonicalIncidentIngestionEntitlement,
+    listCredentials,
+    listSyncConfigs,
+} from "@/lib/admin/server";
 import {
     CREDENTIAL_STATUS_PRIORITY,
     deriveCredentialStatus,
@@ -83,12 +87,14 @@ const PROVIDER_META: Record<string, { name: string; description: string; icon: R
     };
 
 export default async function IntegrationsPage() {
-    const [credentialsResult, syncConfigsResult] = await Promise.all([
+    const [credentialsResult, syncConfigsResult, incidentEntitlementResult] = await Promise.all([
         listCredentials(),
         listSyncConfigs(),
+        getCanonicalIncidentIngestionEntitlement(),
     ]);
     const credentials = credentialsResult.data ?? [];
     const syncConfigs = syncConfigsResult.data ?? [];
+    const canCreatePagerDuty = incidentEntitlementResult.data?.enabled === true;
 
     const getStatus = (providerId: string): ConnectionStatusType => {
         const creds = credentials.filter((c) => c.provider === providerId);
@@ -97,37 +103,45 @@ export default async function IntegrationsPage() {
         return CREDENTIAL_STATUS_PRIORITY.find((status) => statuses.has(status)) ?? "inactive";
     };
 
-    const providers: ProviderRow[] = Object.entries(PROVIDER_META).map(([id, meta]) => {
-        const providerCredentials = credentials.filter((c) => c.provider === id);
-        const lastTestedAt =
-            providerCredentials
-                .map((c) => c.last_test_at)
-                .filter((v): v is string => v !== null)
-                .sort()
-                .at(-1) ?? null;
-        const syncConfigCount = syncConfigs.filter(
-            (sc) =>
-                sc.credential_id !== null &&
-                providerCredentials.some((c) => c.id === sc.credential_id),
-        ).length;
-        const authMethods = new Set(
-            providerCredentials.map((c) => getAuthMethodLabel(id as Provider, c)),
-        );
+    const providers: ProviderRow[] = Object.entries(PROVIDER_META)
+        .filter(
+            ([id]) =>
+                id !== "pagerduty" ||
+                canCreatePagerDuty ||
+                credentials.some((credential) => credential.provider === id) ||
+                syncConfigs.some((config) => config.provider === id),
+        )
+        .map(([id, meta]) => {
+            const providerCredentials = credentials.filter((c) => c.provider === id);
+            const lastTestedAt =
+                providerCredentials
+                    .map((c) => c.last_test_at)
+                    .filter((v): v is string => v !== null)
+                    .sort()
+                    .at(-1) ?? null;
+            const syncConfigCount = syncConfigs.filter(
+                (sc) =>
+                    sc.credential_id !== null &&
+                    providerCredentials.some((c) => c.id === sc.credential_id),
+            ).length;
+            const authMethods = new Set(
+                providerCredentials.map((c) => getAuthMethodLabel(id as Provider, c)),
+            );
 
-        return {
-            id: id as Provider,
-            name: meta.name,
-            description: meta.description,
-            icon: meta.icon,
-            status: getStatus(id),
-            credentialCount: providerCredentials.length,
-            singleCredentialName:
-                providerCredentials.length === 1 ? providerCredentials[0].name : null,
-            authMethodLabel: authMethods.size === 1 ? [...authMethods][0] : null,
-            lastTestedAt,
-            syncConfigCount,
-        };
-    });
+            return {
+                id: id as Provider,
+                name: meta.name,
+                description: meta.description,
+                icon: meta.icon,
+                status: getStatus(id),
+                credentialCount: providerCredentials.length,
+                singleCredentialName:
+                    providerCredentials.length === 1 ? providerCredentials[0].name : null,
+                authMethodLabel: authMethods.size === 1 ? [...authMethods][0] : null,
+                lastTestedAt,
+                syncConfigCount,
+            };
+        });
 
     return (
         <div className="space-y-6">
@@ -142,7 +156,11 @@ export default async function IntegrationsPage() {
                 </div>
             )}
 
-            <ProvidersPage providers={providers} credentials={credentials} />
+            <ProvidersPage
+                canCreatePagerDuty={canCreatePagerDuty}
+                providers={providers}
+                credentials={credentials}
+            />
         </div>
     );
 }

@@ -8,6 +8,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import type { IntegrationCredential } from "@/lib/admin/types";
 
 type ProvidersPageProps = {
+    canCreatePagerDuty: boolean;
     providers: ProviderRow[];
     credentials: IntegrationCredential[];
 };
@@ -18,13 +19,14 @@ type ProvidersPageProps = {
  * card grid. The provider isn't locked here — the wizard's first step lets
  * the user choose which provider to connect.
  */
-export function ProvidersPage({ providers, credentials }: ProvidersPageProps) {
+export function ProvidersPage({ canCreatePagerDuty, providers, credentials }: ProvidersPageProps) {
     const router = useRouter();
     const [isWizardOpen, setIsWizardOpen] = useState(false);
 
     if (isWizardOpen) {
         return (
             <AddProviderWizard
+                canCreatePagerDuty={canCreatePagerDuty}
                 credentials={credentials}
                 onCloseAction={() => setIsWizardOpen(false)}
                 onCreatedAction={() => router.refresh()}
@@ -43,7 +45,18 @@ export function ProvidersPage({ providers, credentials }: ProvidersPageProps) {
                     {CTA_LABELS.addProvider}
                 </button>
             </div>
-            <ProviderTable providers={providers} />
+            <ProviderTable
+                providers={
+                    canCreatePagerDuty
+                        ? providers
+                        : providers.filter(
+                              (provider) =>
+                                  provider.id !== "pagerduty" ||
+                                  provider.credentialCount > 0 ||
+                                  provider.syncConfigCount > 0,
+                          )
+                }
+            />
         </div>
     );
 }

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { PROVIDERS, PROVIDER_LABELS, type Provider } from "@/lib/admin/types";
 
 type ProviderSelectStepProps = {
+    canCreatePagerDuty: boolean;
     provider: Provider | "";
     onChangeAction: (provider: Provider) => void;
 };
@@ -11,7 +12,11 @@ type ProviderSelectStepProps = {
  * to connect. Skipped entirely when the wizard is launched from a specific
  * provider's detail page (see `getVisibleAddProviderSteps`'s `lockProvider`).
  */
-export function ProviderSelectStep({ provider, onChangeAction }: ProviderSelectStepProps) {
+export function ProviderSelectStep({
+    canCreatePagerDuty,
+    provider,
+    onChangeAction,
+}: ProviderSelectStepProps) {
     return (
         <div className="space-y-3">
             <div>
@@ -21,7 +26,9 @@ export function ProviderSelectStep({ provider, onChangeAction }: ProviderSelectS
                 </p>
             </div>
             <div className="grid gap-2 sm:grid-cols-2">
-                {PROVIDERS.map((p) => {
+                {PROVIDERS.filter(
+                    (candidate) => candidate !== "pagerduty" || canCreatePagerDuty,
+                ).map((p) => {
                     if (p === "pagerduty") {
                         return (
                             <Link

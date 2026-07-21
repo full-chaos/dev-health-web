@@ -20,6 +20,7 @@ import type {
     SyncRunUnitSummary,
     SyncCoverageSummary,
 } from "../types";
+import { requirePagerDutyCreationEntitlement } from "./canonicalIncidentIngestion";
 import { getSessionContext, withErrorHandling } from "./_shared";
 
 export async function listSyncConfigs(): Promise<ActionResult<SyncConfig[]>> {
@@ -31,6 +32,9 @@ export async function listSyncConfigs(): Promise<ActionResult<SyncConfig[]>> {
 
 export async function createSyncConfig(data: SyncConfigCreate): Promise<ActionResult<SyncConfig>> {
     return withErrorHandling(async () => {
+        if (data.provider === "pagerduty") {
+            await requirePagerDutyCreationEntitlement();
+        }
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.syncConfigs.create(data, token, orgId);
         revalidatePath("/org/admin/sync");
@@ -56,6 +60,9 @@ export async function batchCreateSyncConfigs(
         // Normalize: accept both flat { name, provider, repos } and nested { base: {...}, repos }
         const normalized: SyncConfigBatchCreate =
             "base" in data ? { ...data.base, repos: data.repos } : data;
+        if (normalized.provider === "pagerduty") {
+            await requirePagerDutyCreationEntitlement();
+        }
         const result = await adminApi.syncConfigs.batchCreate(normalized, token, orgId);
         revalidatePath("/org/admin/sync");
         return result;

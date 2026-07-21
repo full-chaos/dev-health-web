@@ -26,6 +26,7 @@ const ERROR_COPY = {
 
 type PagerDutySetupDiagnosticsProps = {
     readonly authMode: PagerDutyAuthMode;
+    readonly canCreatePagerDuty: boolean;
     readonly status: PagerDutyStatusResponse | null;
     readonly preflight: PagerDutyPreflightResponse | null;
     readonly error: PagerDutyDiagnosticError | null;
@@ -80,6 +81,7 @@ function expiryMessage(expiresAt: string | null): string {
 
 export function PagerDutySetupDiagnostics({
     authMode,
+    canCreatePagerDuty,
     status,
     preflight,
     error,
@@ -105,16 +107,20 @@ export function PagerDutySetupDiagnostics({
     return (
         <>
             <div className="flex flex-wrap gap-3">
-                <button
-                    type="button"
-                    disabled={isPending}
-                    onClick={authMode === "oauth" ? onConnectAction : onSaveManualCredentialAction}
-                    className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-foreground) disabled:opacity-50"
-                >
-                    {authMode === "oauth"
-                        ? CTA_LABELS.connectPagerDuty
-                        : CTA_LABELS.createCredential}
-                </button>
+                {canCreatePagerDuty ? (
+                    <button
+                        type="button"
+                        disabled={isPending}
+                        onClick={
+                            authMode === "oauth" ? onConnectAction : onSaveManualCredentialAction
+                        }
+                        className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-foreground) disabled:opacity-50"
+                    >
+                        {authMode === "oauth"
+                            ? CTA_LABELS.connectPagerDuty
+                            : CTA_LABELS.createCredential}
+                    </button>
+                ) : null}
                 <button
                     type="button"
                     disabled={isPending}
@@ -133,12 +139,14 @@ export function PagerDutySetupDiagnostics({
                         >
                             {CTA_LABELS.runPreflight}
                         </button>
-                        <Link
-                            href={SYNC_CONFIG_NEW_PATH}
-                            className="rounded-lg border border-(--card-stroke) px-4 py-2 text-sm font-medium text-foreground"
-                        >
-                            {CTA_LABELS.createSyncConfig}
-                        </Link>
+                        {canCreatePagerDuty ? (
+                            <Link
+                                href={SYNC_CONFIG_NEW_PATH}
+                                className="rounded-lg border border-(--card-stroke) px-4 py-2 text-sm font-medium text-foreground"
+                            >
+                                {CTA_LABELS.createSyncConfig}
+                            </Link>
+                        ) : null}
                         <button
                             type="button"
                             disabled={isPending}
