@@ -206,6 +206,30 @@ describe("SyncConfigForm", () => {
             ).not.toBeInTheDocument();
         });
 
+        it("hides PagerDuty from a new sync configuration when canonical incident ingestion is unavailable", () => {
+            const pagerDutyCredential: IntegrationCredential = {
+                id: "cred-pagerduty",
+                provider: "pagerduty",
+                name: "PagerDuty token",
+                is_active: true,
+                config: {},
+                last_test_at: null,
+                last_test_success: null,
+                last_test_error: null,
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+            };
+
+            render(
+                <SyncConfigForm
+                    canCreatePagerDuty={false}
+                    credentials={[...mockCredentials, pagerDutyCredential]}
+                />,
+            );
+
+            expect(screen.queryByRole("option", { name: "PagerDuty" })).not.toBeInTheDocument();
+        });
+
         it("credential step blocks Continue until a credential is chosen, and offers Create Credential when none exist for the provider", async () => {
             render(<SyncConfigForm credentials={mockCredentials} />);
 
@@ -836,7 +860,12 @@ describe("SyncConfigForm", () => {
                 created_at: "2024-01-01",
                 updated_at: "2024-01-01",
             };
-            render(<SyncConfigForm credentials={[...mockCredentials, pagerDutyCredential]} />);
+            render(
+                <SyncConfigForm
+                    canCreatePagerDuty
+                    credentials={[...mockCredentials, pagerDutyCredential]}
+                />,
+            );
 
             // When: the services dataset is selected and its mapping is completed in the wizard.
             await userEvent.type(screen.getByLabelText("Configuration Name"), "PagerDuty Services");
@@ -882,7 +911,10 @@ describe("SyncConfigForm", () => {
                 updated_at: "2024-01-01",
             };
             renderWithToaster(
-                <SyncConfigForm credentials={[...mockCredentials, pagerDutyCredential]} />,
+                <SyncConfigForm
+                    canCreatePagerDuty
+                    credentials={[...mockCredentials, pagerDutyCredential]}
+                />,
             );
             await userEvent.type(
                 screen.getByLabelText("Configuration Name"),

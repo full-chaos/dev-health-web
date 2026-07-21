@@ -66,6 +66,7 @@ describe("AddProviderWizard", () => {
     it("routes PagerDuty from the global picker to its dedicated setup page", () => {
         renderWithToaster(
             <AddProviderWizard
+                canCreatePagerDuty
                 credentials={[]}
                 onCloseAction={vi.fn()}
                 onCreatedAction={vi.fn()}
@@ -78,6 +79,19 @@ describe("AddProviderWizard", () => {
         );
         expect(screen.queryByRole("radio", { name: "PagerDuty" })).not.toBeInTheDocument();
         expect(screen.queryByLabelText("API token")).not.toBeInTheDocument();
+    });
+
+    it("removes PagerDuty from the global picker when canonical incident ingestion is unavailable", () => {
+        renderWithToaster(
+            <AddProviderWizard
+                canCreatePagerDuty={false}
+                credentials={[]}
+                onCloseAction={vi.fn()}
+                onCreatedAction={vi.fn()}
+            />,
+        );
+
+        expect(screen.queryByRole("link", { name: "PagerDuty" })).not.toBeInTheDocument();
     });
 
     it("runs the full manual create flow: fill token \u2192 verify \u2192 finish \u2192 persists credential", async () => {

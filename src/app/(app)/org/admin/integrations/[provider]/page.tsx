@@ -11,6 +11,7 @@ import { ModeCards } from "@/components/admin/integrations/customer-push/ModeCar
 import { CustomerPushLockedPreview } from "@/components/admin/integrations/customer-push/CustomerPushLockedPreview";
 import { CustomerPushSourceList } from "@/components/admin/integrations/customer-push/CustomerPushSourceList";
 import {
+    getCanonicalIncidentIngestionEntitlement,
     getCustomerPushIngestEntitlement,
     listCredentials,
     listCustomerPushSources,
@@ -61,15 +62,22 @@ export default async function IntegrationPage({
     const isCustomProvider = provider === "custom";
     const supportsCustomerPush = CUSTOMER_PUSH_ENABLED_PROVIDERS.has(provider);
 
-    const [credentialsResult, syncConfigsResult, customerPushEntitlementResult] = await Promise.all(
-        [
-            listCredentials(),
-            listSyncConfigs(),
-            supportsCustomerPush ? getCustomerPushIngestEntitlement() : Promise.resolve(undefined),
-        ],
-    );
+    const [
+        credentialsResult,
+        syncConfigsResult,
+        customerPushEntitlementResult,
+        canonicalIncidentIngestionEntitlementResult,
+    ] = await Promise.all([
+        listCredentials(),
+        listSyncConfigs(),
+        supportsCustomerPush ? getCustomerPushIngestEntitlement() : Promise.resolve(undefined),
+        provider === "pagerduty"
+            ? getCanonicalIncidentIngestionEntitlement()
+            : Promise.resolve(undefined),
+    ]);
     const customerPushEnabled =
         supportsCustomerPush && customerPushEntitlementResult?.data?.enabled === true;
+    const canCreatePagerDuty = canonicalIncidentIngestionEntitlementResult?.data?.enabled === true;
     const customerPushSourcesResult = customerPushEnabled
         ? await listCustomerPushSources(provider)
         : undefined;
@@ -132,7 +140,7 @@ export default async function IntegrationPage({
             )}
 
             {provider === "pagerduty" ? (
-                <PagerDutySetup credentials={credentials} />
+                <PagerDutySetup canCreatePagerDuty={canCreatePagerDuty} credentials={credentials} />
             ) : !isCustomProvider ? (
                 <div id="managed-sync-credentials" className="space-y-8">
                     <ProviderCredentialsList

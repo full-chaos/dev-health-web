@@ -49,6 +49,7 @@ import {
 import type { ServiceRepositoryMappings } from "@/lib/admin/pagerduty";
 
 type SyncConfigFormProps = {
+    canCreatePagerDuty?: boolean;
     initialData?: SyncConfig;
     initialRepositorySelection?: SyncConfigRepositorySelection;
     credentials: IntegrationCredential[];
@@ -104,6 +105,7 @@ function toSnapshot(
 }
 
 export function SyncConfigForm({
+    canCreatePagerDuty = false,
     initialData,
     initialRepositorySelection,
     credentials,
@@ -507,6 +509,7 @@ export function SyncConfigForm({
                 />
             ) : (
                 <CreateSyncConfigWizard
+                    canCreatePagerDuty={canCreatePagerDuty}
                     formData={formData}
                     credentialName={credentialName}
                     filteredCredentials={filteredCredentials}

@@ -30,6 +30,7 @@ import {
     listRetentionResourceTypes,
     getOrgEntitlements,
     createSyncConfig,
+    batchCreateSyncConfigs,
     getSyncCoverage,
     getSyncJobs,
     triggerBackfill,
@@ -189,6 +190,44 @@ describe("admin/server sync config actions", () => {
             });
             expect(result.data).toBeDefined();
             expect(revalidatePath).toHaveBeenCalledWith("/org/admin/sync");
+            fetchSpy.mockRestore();
+        });
+
+        it.each([{}, { canonical_incident_ingestion: false }])(
+            "rejects PagerDuty creation when the entitlement is unavailable",
+            async (features) => {
+                mockSession();
+                const fetchSpy = vi
+                    .spyOn(global, "fetch")
+                    .mockResolvedValue(new Response(JSON.stringify({ features }), { status: 200 }));
+
+                const result = await createSyncConfig({
+                    name: "PagerDuty incidents",
+                    provider: "pagerduty",
+                });
+
+                expect(result.error).toBe("PagerDuty connections are currently unavailable.");
+                expect(fetchSpy).toHaveBeenCalledTimes(1);
+                fetchSpy.mockRestore();
+            },
+        );
+    });
+
+    describe("batchCreateSyncConfigs", () => {
+        it("rejects PagerDuty batch creation when the entitlement is unavailable", async () => {
+            mockSession();
+            const fetchSpy = vi
+                .spyOn(global, "fetch")
+                .mockResolvedValue(new Response(JSON.stringify({ features: {} }), { status: 200 }));
+
+            const result = await batchCreateSyncConfigs({
+                name: "PagerDuty incidents",
+                provider: "pagerduty",
+                repos: ["service-api"],
+            });
+
+            expect(result.error).toBe("PagerDuty connections are currently unavailable.");
+            expect(fetchSpy).toHaveBeenCalledTimes(1);
             fetchSpy.mockRestore();
         });
     });

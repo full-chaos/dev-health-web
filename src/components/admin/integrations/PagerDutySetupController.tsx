@@ -24,12 +24,15 @@ import {
     type PagerDutyDiagnosticError,
 } from "./PagerDutySetupDiagnostics";
 import { PagerDutySetupFields } from "./PagerDutySetupFields";
+import { DataState } from "@/components/ui/DataState";
 
 type PagerDutySetupProps = {
+    readonly canCreatePagerDuty: boolean;
     readonly credentials?: readonly IntegrationCredential[];
 };
 
-export function PagerDutySetup({ credentials = [] }: PagerDutySetupProps) {
+export function PagerDutySetup({ canCreatePagerDuty, credentials = [] }: PagerDutySetupProps) {
+    const canManagePagerDuty = canCreatePagerDuty || credentials.length > 0;
     const [credentialName, setCredentialName] = useState("default");
     const [authMode, setAuthMode] = useState<PagerDutyAuthMode>("oauth");
     const [clientId, setClientId] = useState("");
@@ -249,43 +252,66 @@ export function PagerDutySetup({ credentials = [] }: PagerDutySetupProps) {
     return (
         <section className="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
             <div>
-                <h2 className="text-h2 text-foreground">Connect PagerDuty</h2>
+                <h2 className="text-h2 text-foreground">
+                    {canCreatePagerDuty ? "Connect PagerDuty" : "Manage PagerDuty"}
+                </h2>
                 <p className="mt-1 text-body text-(--ink-muted)">
-                    Connect with read-only OAuth. Dev Health never asks you to paste a hosted OAuth
-                    token.
+                    {canCreatePagerDuty
+                        ? "Connect with read-only OAuth. Dev Health never asks you to paste a hosted OAuth token."
+                        : "Review connection status or remove an existing PagerDuty credential."}
                 </p>
             </div>
-            <PagerDutySetupFields
-                credentials={credentials}
-                credentialName={credentialName}
-                authMode={authMode}
-                clientId={clientId}
-                clientSecret={clientSecret}
-                apiToken={apiToken}
-                subdomain={subdomain}
-                region={region}
-                datasets={datasets}
-                onCredentialNameChangeAction={changeCredentialName}
-                onAuthModeChangeAction={changeAuthMode}
-                onClientIdChangeAction={setClientId}
-                onClientSecretChangeAction={setClientSecret}
-                onApiTokenChangeAction={setApiToken}
-                onSubdomainChangeAction={setSubdomain}
-                onRegionChangeAction={changeRegion}
-                onDatasetChangeAction={toggleDataset}
-            />
-            <PagerDutySetupDiagnostics
-                authMode={authMode}
-                status={status}
-                preflight={preflight}
-                error={diagnosticError}
-                isPending={isPending}
-                onConnectAction={connect}
-                onSaveManualCredentialAction={saveManualCredential}
-                onRefreshStatusAction={refreshStatus}
-                onRunPreflightAction={runPreflight}
-                onDisconnectAction={disconnect}
-            />
+            {!canCreatePagerDuty && credentials.length === 0 ? (
+                <DataState
+                    variant="no-data-connected"
+                    title="PagerDuty setup is unavailable"
+                    description="New PagerDuty connections are unavailable for this organization."
+                />
+            ) : null}
+            {!canCreatePagerDuty && credentials.length > 0 ? (
+                <DataState
+                    variant="detector-unavailable"
+                    title="PagerDuty setup is unavailable"
+                    description="New PagerDuty connections are unavailable. Existing credentials remain available for status checks and removal."
+                />
+            ) : null}
+            {canManagePagerDuty ? (
+                <>
+                    <PagerDutySetupFields
+                        canCreatePagerDuty={canCreatePagerDuty}
+                        credentials={credentials}
+                        credentialName={credentialName}
+                        authMode={authMode}
+                        clientId={clientId}
+                        clientSecret={clientSecret}
+                        apiToken={apiToken}
+                        subdomain={subdomain}
+                        region={region}
+                        datasets={datasets}
+                        onCredentialNameChangeAction={changeCredentialName}
+                        onAuthModeChangeAction={changeAuthMode}
+                        onClientIdChangeAction={setClientId}
+                        onClientSecretChangeAction={setClientSecret}
+                        onApiTokenChangeAction={setApiToken}
+                        onSubdomainChangeAction={setSubdomain}
+                        onRegionChangeAction={changeRegion}
+                        onDatasetChangeAction={toggleDataset}
+                    />
+                    <PagerDutySetupDiagnostics
+                        authMode={authMode}
+                        canCreatePagerDuty={canCreatePagerDuty}
+                        status={status}
+                        preflight={preflight}
+                        error={diagnosticError}
+                        isPending={isPending}
+                        onConnectAction={connect}
+                        onSaveManualCredentialAction={saveManualCredential}
+                        onRefreshStatusAction={refreshStatus}
+                        onRunPreflightAction={runPreflight}
+                        onDisconnectAction={disconnect}
+                    />
+                </>
+            ) : null}
         </section>
     );
 }

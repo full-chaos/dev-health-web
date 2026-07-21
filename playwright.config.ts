@@ -6,8 +6,11 @@ const htmlOutputFolder =
     process.env.PLAYWRIGHT_HTML_REPORT ?? "test-results/playwright-html/default";
 const junitOutputFile = process.env.PLAYWRIGHT_JUNIT_OUTPUT_NAME ?? `${resultsDirectory}/junit.xml`;
 
-const AUTH_FILE = "test-results/.auth/state.json";
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3001";
+const authFile = "test-results/.auth/state.json";
+const mockServerPort = Number(process.env.PLAYWRIGHT_MOCK_PORT ?? "8001");
+const webServerPort = Number(process.env.PLAYWRIGHT_WEB_PORT ?? "3001");
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${webServerPort}`;
+const mockServerUrl = `http://127.0.0.1:${mockServerPort}`;
 
 // The guided first-run onboarding journey (auth-onboard.spec.ts) runs with
 // NEXT_PUBLIC_GUIDED_ONBOARDING enabled and therefore lives in its own config
@@ -45,11 +48,11 @@ export default defineConfig({
             // control endpoint. One worker prevents one file from replacing
             // another file's scenario while preserving normal-suite parallelism.
             name: "pagerduty-final-qa",
-            testMatch: /pagerduty-final-qa-p[012]\.spec\.ts/,
+            testMatch: /pagerduty-final-qa-p[0-3]\.spec\.ts/,
             dependencies: ["auth-setup"],
             workers: 1,
             use: {
-                storageState: AUTH_FILE,
+                storageState: authFile,
             },
         },
         {
@@ -66,11 +69,11 @@ export default defineConfig({
                 /account-creation-journey\.spec\.ts/,
                 /auth-onboard-legacy\.spec\.ts/,
                 /acr-context-fabric\.production\.spec\.ts/,
-                /pagerduty-final-qa-p[012]\.spec\.ts/,
+                /pagerduty-final-qa-p[0-3]\.spec\.ts/,
             ],
             dependencies: ["auth-setup"],
             use: {
-                storageState: AUTH_FILE,
+                storageState: authFile,
             },
         },
         {
@@ -94,16 +97,16 @@ export default defineConfig({
     webServer: [
         {
             command: "npx tsx ./tests/mocks/http-server.ts",
-            url: "http://127.0.0.1:8001/health",
+            url: `${mockServerUrl}/health`,
             reuseExistingServer: false,
             timeout: 30_000,
             env: {
-                MOCK_SERVER_PORT: "8001",
+                MOCK_SERVER_PORT: String(mockServerPort),
             },
         },
         {
-            command: "npm run dev -- --hostname 127.0.0.1 --port 3001",
-            url: "http://127.0.0.1:3001",
+            command: `npm run dev -- --hostname 127.0.0.1 --port ${webServerPort}`,
+            url: baseURL,
             reuseExistingServer: false,
             timeout: 120_000,
             env: {
@@ -111,7 +114,7 @@ export default defineConfig({
                 DEV_HEALTH_TEST_MODE: "true",
                 NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: "true",
                 NEXT_PUBLIC_GUIDED_ONBOARDING: "false",
-                BACKEND_URL: "http://127.0.0.1:8001",
+                BACKEND_URL: mockServerUrl,
             },
         },
     ],

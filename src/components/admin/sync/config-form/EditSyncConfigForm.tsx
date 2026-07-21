@@ -117,6 +117,7 @@ export function EditSyncConfigForm({
             }
         >
             <IdentitySection
+                canCreatePagerDuty={false}
                 isEdit
                 name={formData.name}
                 provider={formData.provider}

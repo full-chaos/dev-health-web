@@ -78,6 +78,7 @@ describe("PagerDutySetup", () => {
         const user = userEvent.setup();
         render(
             <PagerDutySetup
+                canCreatePagerDuty
                 credentials={[
                     makePagerDutyCredential("production"),
                     makePagerDutyCredential("staging"),
@@ -111,7 +112,7 @@ describe("PagerDutySetup", () => {
 
     it("checks the named connection status", async () => {
         const user = userEvent.setup();
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await user.click(screen.getByRole("button", { name: "Check connection status" }));
 
@@ -119,10 +120,43 @@ describe("PagerDutySetup", () => {
         expect(screen.getByRole("status")).toHaveTextContent("Not connected");
     });
 
+    it("keeps an existing connection manageable while blocking new PagerDuty setup", async () => {
+        const user = userEvent.setup();
+        actions.getPagerDutyStatus.mockResolvedValue({ data: connectedStatus });
+        render(
+            <PagerDutySetup
+                canCreatePagerDuty={false}
+                credentials={[makePagerDutyCredential("production")]}
+            />,
+        );
+
+        expect(screen.getByText("PagerDuty setup is unavailable")).toBeVisible();
+        expect(screen.queryByRole("button", { name: "Connect PagerDuty" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Create credential" })).not.toBeInTheDocument();
+
+        await user.selectOptions(screen.getByLabelText("Saved credentials"), "production");
+        await user.click(screen.getByRole("button", { name: "Check connection status" }));
+
+        expect(await screen.findByRole("button", { name: "Disconnect" })).toBeVisible();
+        expect(
+            screen.queryByRole("link", { name: "Create sync configuration" }),
+        ).not.toBeInTheDocument();
+    });
+
+    it("shows only the unavailable state when no PagerDuty credential exists", () => {
+        render(<PagerDutySetup canCreatePagerDuty={false} />);
+
+        expect(screen.getByText("PagerDuty setup is unavailable")).toBeVisible();
+        expect(screen.queryByLabelText("Saved credentials")).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: "Check connection status" }),
+        ).not.toBeInTheDocument();
+    });
+
     it("keeps a failed OAuth start visible with a retry action", async () => {
         const user = userEvent.setup();
         actions.startPagerDutyOAuth.mockResolvedValue({ error: "PagerDuty authorization failed." });
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await user.type(screen.getByLabelText("Account subdomain"), "acme");
         await user.click(screen.getByRole("button", { name: "Connect PagerDuty" }));
@@ -139,7 +173,7 @@ describe("PagerDutySetup", () => {
     it("keeps a failed manual credential save visible with a retry action", async () => {
         const user = userEvent.setup();
         actions.connectPagerDutyApiToken.mockResolvedValue({ error: "Credential save failed." });
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await user.click(screen.getByRole("button", { name: "Use API token instead" }));
         await user.type(screen.getByLabelText("Account subdomain"), "acme");
@@ -155,7 +189,7 @@ describe("PagerDutySetup", () => {
 
     it("marks the selected authentication method with visible text as well as aria-pressed", async () => {
         const user = userEvent.setup();
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         const oauth = screen.getByRole("button", { name: "OAuth (recommended)" });
         expect(oauth).toHaveAttribute("aria-pressed", "true");
@@ -182,7 +216,7 @@ describe("PagerDutySetup", () => {
                 has_refresh_token: true,
             },
         });
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await user.click(screen.getByRole("button", { name: "Check connection status" }));
 
@@ -211,7 +245,7 @@ describe("PagerDutySetup", () => {
         actions.getPagerDutyStatus.mockResolvedValue({
             data: { ...connectedStatus, expires_at: "2020-01-01T00:00:00Z" },
         });
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await user.click(screen.getByRole("button", { name: "Check connection status" }));
 
@@ -222,7 +256,12 @@ describe("PagerDutySetup", () => {
     it("clears connected controls when returning to a custom credential name", async () => {
         const user = userEvent.setup();
         actions.getPagerDutyStatus.mockResolvedValue({ data: connectedStatus });
-        render(<PagerDutySetup credentials={[makePagerDutyCredential("production")]} />);
+        render(
+            <PagerDutySetup
+                canCreatePagerDuty
+                credentials={[makePagerDutyCredential("production")]}
+            />,
+        );
 
         const savedCredentials = screen.getByLabelText("Saved credentials");
         await user.selectOptions(savedCredentials, "production");
@@ -242,7 +281,7 @@ describe("PagerDutySetup", () => {
     it("refreshes canonical status after saving client credentials", async () => {
         const user = userEvent.setup();
         actions.getPagerDutyStatus.mockResolvedValue({ data: connectedStatus });
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await user.click(screen.getByRole("button", { name: "Client credentials" }));
         await user.clear(screen.getByLabelText("Credential name"));
@@ -275,7 +314,7 @@ describe("PagerDutySetup", () => {
         actions.getPagerDutyStatus.mockResolvedValue({
             data: { ...connectedStatus, auth_mode: "api_token" as const },
         });
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await user.click(screen.getByRole("button", { name: "Use API token instead" }));
         await user.clear(screen.getByLabelText("Credential name"));
@@ -303,7 +342,7 @@ describe("PagerDutySetup", () => {
     it("does not claim a manual credential is connected when the status refresh fails", async () => {
         const user = userEvent.setup();
         actions.getPagerDutyStatus.mockResolvedValue({ error: "PagerDuty status is unavailable." });
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await user.click(screen.getByRole("button", { name: "Use API token instead" }));
         await user.clear(screen.getByLabelText("Credential name"));
@@ -324,7 +363,7 @@ describe("PagerDutySetup", () => {
         const user = userEvent.setup();
         actions.getPagerDutyStatus.mockResolvedValue({ data: connectedStatus });
         actions.disconnectPagerDuty.mockResolvedValue({ error: "Disconnect failed" });
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await user.click(screen.getByRole("button", { name: "Check connection status" }));
         await waitFor(() =>
@@ -347,6 +386,7 @@ describe("PagerDutySetup", () => {
         actions.getPagerDutyStatus.mockResolvedValue({ data: connectedStatus });
         render(
             <PagerDutySetup
+                canCreatePagerDuty
                 credentials={[
                     makePagerDutyCredential("production"),
                     makePagerDutyCredential("staging"),
@@ -387,7 +427,12 @@ describe("PagerDutySetup", () => {
         });
         actions.connectPagerDutyApiToken.mockReturnValueOnce(pendingSave);
         actions.getPagerDutyStatus.mockResolvedValue({ data: connectedStatus });
-        render(<PagerDutySetup credentials={[makePagerDutyCredential("production")]} />);
+        render(
+            <PagerDutySetup
+                canCreatePagerDuty
+                credentials={[makePagerDutyCredential("production")]}
+            />,
+        );
 
         await user.click(screen.getByRole("button", { name: "Use API token instead" }));
         await user.clear(screen.getByLabelText("Credential name"));
@@ -428,7 +473,7 @@ describe("PagerDutySetup", () => {
                     account_display: "Staging PagerDuty",
                 },
             });
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await user.clear(screen.getByLabelText("Credential name"));
         await user.type(screen.getByLabelText("Credential name"), "production");
@@ -461,7 +506,7 @@ describe("PagerDutySetup", () => {
         });
         actions.preflightPagerDuty.mockResolvedValue({ data: { datasets: [] } });
         actions.disconnectPagerDuty.mockResolvedValue({ data: undefined });
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await user.clear(screen.getByLabelText("Credential name"));
         await user.type(screen.getByLabelText("Credential name"), "production");

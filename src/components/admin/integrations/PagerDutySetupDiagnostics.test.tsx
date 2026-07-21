@@ -77,7 +77,7 @@ describe("PagerDutySetup diagnostics", () => {
                 has_refresh_token: true,
             },
         });
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await loadConnectedStatus(user);
 
@@ -94,7 +94,7 @@ describe("PagerDutySetup diagnostics", () => {
                 has_refresh_token: false,
             },
         });
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await loadConnectedStatus(user);
 
@@ -104,7 +104,7 @@ describe("PagerDutySetup diagnostics", () => {
 
     it("renders ready preflight datasets persistently", async () => {
         const user = userEvent.setup();
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await loadConnectedStatus(user);
         await renderPreflight(user);
@@ -129,7 +129,7 @@ describe("PagerDutySetup diagnostics", () => {
                 ],
             },
         });
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await loadConnectedStatus(user);
         await renderPreflight(user);
@@ -144,7 +144,7 @@ describe("PagerDutySetup diagnostics", () => {
         actions.preflightPagerDuty
             .mockResolvedValueOnce({ error: "PagerDuty preflight failed." })
             .mockResolvedValueOnce({ data: readyPreflight });
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await loadConnectedStatus(user);
         await user.click(screen.getByRole("button", { name: "Run preflight" }));
@@ -162,7 +162,7 @@ describe("PagerDutySetup diagnostics", () => {
 
     it("clears preflight diagnostics when credential, mode, or datasets change", async () => {
         const user = userEvent.setup();
-        render(<PagerDutySetup />);
+        render(<PagerDutySetup canCreatePagerDuty />);
 
         await loadConnectedStatus(user);
         await renderPreflight(user);

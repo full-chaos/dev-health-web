@@ -24,6 +24,7 @@ const DATASET_LABELS: Record<PagerDutyPlannerDataset, string> = {
 const CUSTOM_CREDENTIAL_VALUE = "__custom__";
 
 type PagerDutySetupFieldsProps = {
+    readonly canCreatePagerDuty: boolean;
     readonly credentials: readonly IntegrationCredential[];
     readonly credentialName: string;
     readonly authMode: PagerDutyAuthMode;
@@ -44,6 +45,7 @@ type PagerDutySetupFieldsProps = {
 };
 
 export function PagerDutySetupFields({
+    canCreatePagerDuty,
     credentials,
     credentialName,
     authMode,
@@ -92,122 +94,134 @@ export function PagerDutySetupFields({
                         ))}
                     </select>
                 </label>
-                <label className="text-sm font-medium text-foreground">
-                    Credential name
-                    <input
-                        className="mt-1 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2"
-                        value={credentialName}
-                        onChange={(event) => onCredentialNameChangeAction(event.target.value)}
-                    />
-                </label>
-                <label className="text-sm font-medium text-foreground">
-                    Account subdomain
-                    <input
-                        className="mt-1 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2"
-                        value={subdomain}
-                        onChange={(event) => onSubdomainChangeAction(event.target.value)}
-                    />
-                </label>
-                <label className="text-sm font-medium text-foreground">
-                    Region
-                    <select
-                        className="mt-1 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2"
-                        value={region}
-                        onChange={(event) => onRegionChangeAction(event.target.value)}
-                    >
-                        {PAGERDUTY_REGIONS.map((option) => (
-                            <option key={option} value={option}>
-                                {option.toUpperCase()}
-                            </option>
-                        ))}
-                    </select>
-                </label>
-            </div>
-            <fieldset className="space-y-3">
-                <legend className="text-sm font-medium text-foreground">
-                    Authentication method
-                </legend>
-                <div className="flex flex-wrap gap-2">
-                    {(["oauth", "client_credentials", "api_token"] as const).map((mode) => (
-                        <button
-                            key={mode}
-                            type="button"
-                            aria-pressed={authMode === mode}
-                            onClick={() => onAuthModeChangeAction(mode)}
-                            className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) ${authMode === mode ? "border-(--accent) bg-(--accent)/10 text-(--accent)" : "border-(--card-stroke) text-foreground"}`}
-                        >
-                            <span>
-                                {mode === "oauth"
-                                    ? "OAuth (recommended)"
-                                    : mode === "client_credentials"
-                                      ? "Client credentials"
-                                      : "Use API token instead"}
-                            </span>
-                            {authMode === mode ? (
-                                <span
-                                    aria-hidden="true"
-                                    className="text-label-caps font-semibold uppercase"
-                                >
-                                    Selected
-                                </span>
-                            ) : null}
-                        </button>
-                    ))}
-                </div>
-                {authMode === "client_credentials" ? (
-                    <div className="grid gap-4 sm:grid-cols-2">
+                {canCreatePagerDuty ? (
+                    <>
                         <label className="text-sm font-medium text-foreground">
-                            Client ID
+                            Credential name
                             <input
-                                type="text"
                                 className="mt-1 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2"
-                                value={clientId}
-                                onChange={(event) => onClientIdChangeAction(event.target.value)}
+                                value={credentialName}
+                                onChange={(event) =>
+                                    onCredentialNameChangeAction(event.target.value)
+                                }
                             />
                         </label>
                         <label className="text-sm font-medium text-foreground">
-                            Client secret
+                            Account subdomain
+                            <input
+                                className="mt-1 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2"
+                                value={subdomain}
+                                onChange={(event) => onSubdomainChangeAction(event.target.value)}
+                            />
+                        </label>
+                        <label className="text-sm font-medium text-foreground">
+                            Region
+                            <select
+                                className="mt-1 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2"
+                                value={region}
+                                onChange={(event) => onRegionChangeAction(event.target.value)}
+                            >
+                                {PAGERDUTY_REGIONS.map((option) => (
+                                    <option key={option} value={option}>
+                                        {option.toUpperCase()}
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    </>
+                ) : null}
+            </div>
+            {canCreatePagerDuty ? (
+                <fieldset className="space-y-3">
+                    <legend className="text-sm font-medium text-foreground">
+                        Authentication method
+                    </legend>
+                    <div className="flex flex-wrap gap-2">
+                        {(["oauth", "client_credentials", "api_token"] as const).map((mode) => (
+                            <button
+                                key={mode}
+                                type="button"
+                                aria-pressed={authMode === mode}
+                                onClick={() => onAuthModeChangeAction(mode)}
+                                className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent) ${authMode === mode ? "border-(--accent) bg-(--accent)/10 text-(--accent)" : "border-(--card-stroke) text-foreground"}`}
+                            >
+                                <span>
+                                    {mode === "oauth"
+                                        ? "OAuth (recommended)"
+                                        : mode === "client_credentials"
+                                          ? "Client credentials"
+                                          : "Use API token instead"}
+                                </span>
+                                {authMode === mode ? (
+                                    <span
+                                        aria-hidden="true"
+                                        className="text-label-caps font-semibold uppercase"
+                                    >
+                                        Selected
+                                    </span>
+                                ) : null}
+                            </button>
+                        ))}
+                    </div>
+                    {authMode === "client_credentials" ? (
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <label className="text-sm font-medium text-foreground">
+                                Client ID
+                                <input
+                                    type="text"
+                                    className="mt-1 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2"
+                                    value={clientId}
+                                    onChange={(event) => onClientIdChangeAction(event.target.value)}
+                                />
+                            </label>
+                            <label className="text-sm font-medium text-foreground">
+                                Client secret
+                                <input
+                                    type="password"
+                                    className="mt-1 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2"
+                                    value={clientSecret}
+                                    onChange={(event) =>
+                                        onClientSecretChangeAction(event.target.value)
+                                    }
+                                />
+                            </label>
+                        </div>
+                    ) : null}
+                    {authMode === "api_token" ? (
+                        <label className="block text-sm font-medium text-foreground">
+                            API token
                             <input
                                 type="password"
                                 className="mt-1 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2"
-                                value={clientSecret}
-                                onChange={(event) => onClientSecretChangeAction(event.target.value)}
+                                value={apiToken}
+                                onChange={(event) => onApiTokenChangeAction(event.target.value)}
                             />
                         </label>
+                    ) : null}
+                </fieldset>
+            ) : null}
+            {canCreatePagerDuty ? (
+                <fieldset>
+                    <legend className="text-sm font-medium text-foreground">Datasets</legend>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                        {PAGERDUTY_PLANNER_DATASETS.map((dataset) => (
+                            <label
+                                key={dataset}
+                                className="flex items-center gap-2 rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 text-sm text-foreground"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={datasets.includes(dataset)}
+                                    onChange={(event) =>
+                                        onDatasetChangeAction(dataset, event.target.checked)
+                                    }
+                                />
+                                {DATASET_LABELS[dataset]}
+                            </label>
+                        ))}
                     </div>
-                ) : null}
-                {authMode === "api_token" ? (
-                    <label className="block text-sm font-medium text-foreground">
-                        API token
-                        <input
-                            type="password"
-                            className="mt-1 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2"
-                            value={apiToken}
-                            onChange={(event) => onApiTokenChangeAction(event.target.value)}
-                        />
-                    </label>
-                ) : null}
-            </fieldset>
-            <fieldset>
-                <legend className="text-sm font-medium text-foreground">Datasets</legend>
-                <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                    {PAGERDUTY_PLANNER_DATASETS.map((dataset) => (
-                        <label
-                            key={dataset}
-                            className="flex items-center gap-2 rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 text-sm text-foreground"
-                        >
-                            <input
-                                type="checkbox"
-                                checked={datasets.includes(dataset)}
-                                onChange={(event) =>
-                                    onDatasetChangeAction(dataset, event.target.checked)
-                                }
-                            />
-                            {DATASET_LABELS[dataset]}
-                        </label>
-                    ))}
-                </div>
-            </fieldset>
+                </fieldset>
+            ) : null}
         </>
     );
 }

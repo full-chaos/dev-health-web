@@ -24,6 +24,7 @@ import { VerifyConnectionStep } from "./VerifyConnectionStep";
 import { FinishStep } from "./FinishStep";
 
 type AddProviderWizardProps = {
+    canCreatePagerDuty?: boolean;
     /** Set when launched from a specific provider's detail page — skips the provider-select step. */
     lockedProvider?: Provider;
     /** All credentials, used only to detect an existing GitHub App connection. */
@@ -67,6 +68,7 @@ function initialMethod(provider: Provider | "", hasGitHubApp: boolean): AddProvi
  * so it can never re-enable Finish for inputs it didn't test.
  */
 export function AddProviderWizard({
+    canCreatePagerDuty = false,
     lockedProvider,
     credentials,
     onCloseAction,
@@ -212,7 +214,11 @@ export function AddProviderWizard({
 
             <div className="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
                 {currentStep.id === "provider" && (
-                    <ProviderSelectStep provider={provider} onChangeAction={handleProviderChange} />
+                    <ProviderSelectStep
+                        canCreatePagerDuty={canCreatePagerDuty}
+                        provider={provider}
+                        onChangeAction={handleProviderChange}
+                    />
                 )}
                 {currentStep.id === "method" && (
                     <AuthMethodStep method={method} onChooseAction={handleMethodChange} />

@@ -2120,7 +2120,11 @@ export const handlers = [
             features:
                 scenario === "provisioned"
                     ? { ...MOCK_ORG_ENTITLEMENTS.features, agent_context_runtime: true }
-                    : MOCK_ORG_ENTITLEMENTS.features,
+                    : scenario === "canonical-enabled"
+                      ? { ...MOCK_ORG_ENTITLEMENTS.features, canonical_incident_ingestion: true }
+                      : scenario === "canonical-disabled"
+                        ? { ...MOCK_ORG_ENTITLEMENTS.features, canonical_incident_ingestion: false }
+                        : MOCK_ORG_ENTITLEMENTS.features,
         });
     }),
 
