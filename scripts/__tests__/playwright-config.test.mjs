@@ -44,9 +44,9 @@ describe("default Playwright web servers", () => {
             name: "pagerduty-final-qa",
             workers: 1,
         });
-        expect(pagerDutyProject?.testMatch).toEqual(/pagerduty-final-qa-p[012]\.spec\.ts/);
+        expect(pagerDutyProject?.testMatch).toEqual(/pagerduty-final-qa-p[0-3]\.spec\.ts/);
         expect(authenticatedProject?.testIgnore).toContainEqual(
-            /pagerduty-final-qa-p[012]\.spec\.ts/,
+            /pagerduty-final-qa-p[0-3]\.spec\.ts/,
         );
     });
 
