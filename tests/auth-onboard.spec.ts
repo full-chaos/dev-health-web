@@ -142,7 +142,9 @@ test.describe("guided first-run onboarding", () => {
         await page.getByRole("button", { name: "Create Workspace" }).click();
         await expect(page).toHaveURL(/\/auth\/onboard\/integration/, { timeout: 30_000 });
 
-        await page.getByRole("button", { name: "Skip for now" }).click();
+        const skipButton = page.getByRole("button", { name: "Skip for now" });
+        await expect(page.locator('[data-onboarding-interactive="true"]')).toBeVisible();
+        await skipButton.click();
         await expect(page).toHaveURL(/\/auth\/onboard\/complete/, { timeout: 30_000 });
         await expect(page.getByRole("heading", { name: "You're all set" })).toBeVisible();
 
@@ -196,7 +198,9 @@ test.describe("guided first-run journey (fresh signup)", () => {
         await expect(page).toHaveURL(/\/auth\/onboard\/integration/, { timeout: 30_000 });
 
         // 5. Skip the integration → completion step.
-        await page.getByRole("button", { name: "Skip for now" }).click();
+        const skipButton = page.getByRole("button", { name: "Skip for now" });
+        await expect(page.locator('[data-onboarding-interactive="true"]')).toBeVisible();
+        await skipButton.click();
         await expect(page).toHaveURL(/\/auth\/onboard\/complete/, { timeout: 30_000 });
 
         // 6. Continue into the product.

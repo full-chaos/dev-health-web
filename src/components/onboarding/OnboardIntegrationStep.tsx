@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 
 import {
@@ -58,10 +58,15 @@ export function OnboardIntegrationStep({
     const { data: session } = useSession();
     const [skipping, setSkipping] = useState(false);
     const [skipError, setSkipError] = useState<string | null>(null);
+    const stepRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         trackOnboardingEventOnce("integration_step_viewed", { orgId });
     }, [orgId]);
+
+    useEffect(() => {
+        stepRef.current?.setAttribute("data-onboarding-interactive", "true");
+    }, []);
 
     const completeHref = trialIntent
         ? "/auth/onboard/complete?plan=team&trial=true"
@@ -100,7 +105,7 @@ export function OnboardIntegrationStep({
 
     if (isConnected) {
         return (
-            <div className="space-y-6">
+            <div ref={stepRef} className="space-y-6">
                 <div
                     role="status"
                     className="rounded-lg border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-700"
@@ -116,7 +121,7 @@ export function OnboardIntegrationStep({
     }
 
     return (
-        <div className="space-y-6">
+        <div ref={stepRef} className="space-y-6">
             <p className="text-sm text-[var(--ink-muted)]">
                 Connect at least one source so Dev Health can measure pull-request flow, review
                 load, delivery, and engineering-health signals. Until a tool is connected these
