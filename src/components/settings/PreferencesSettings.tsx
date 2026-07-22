@@ -15,6 +15,8 @@ type Palette =
     | "fullchaos-cosmic-nebula"
     | "fullchaos-infinity-knot"
     | "fullchaos-infinity-knot-redux"
+    | "fullchaos-infinity-ember"
+    | "fullchaos-infinity-tide"
     | "flat";
 type Listener = () => void;
 
@@ -46,6 +48,8 @@ const normalizePalette = (value: string | null): Palette | null => {
         "fullchaos-cosmic-nebula",
         "fullchaos-infinity-knot",
         "fullchaos-infinity-knot-redux",
+        "fullchaos-infinity-ember",
+        "fullchaos-infinity-tide",
         "flat",
     ];
     return valid.includes(value as Palette) ? (value as Palette) : null;
@@ -98,6 +102,8 @@ const getPaletteServerSnapshot = (): Palette => "fullchaos-infinity-knot-redux";
 const getTelemetrySnapshot = (): boolean => (isServer ? false : isTelemetryOptedOut());
 const getTelemetryServerSnapshot = (): boolean => false;
 
+// FC Infinity Ember and Tide remain supported by the theme runtime for internal
+// previews, but stay out of the user-facing chooser pending further design work.
 const PALETTES: { value: Palette; label: string }[] = [
     { value: "fullchaos", label: "Full Chaos" },
     { value: "fullchaos-cosmic-train", label: "Cosmic Train" },

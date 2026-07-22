@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import "./fc-infinity-themes.css";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { getServerEnv } from "@/lib/config";
 
