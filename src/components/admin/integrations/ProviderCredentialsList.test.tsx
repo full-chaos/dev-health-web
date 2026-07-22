@@ -118,8 +118,8 @@ describe("ProviderCredentialsList", () => {
 
         expect(screen.getByRole("button", { name: "Add credential" })).toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: "Add credential" }));
-        expect(screen.getByText("OAuth (recommended)")).toBeInTheDocument();
-        await user.click(screen.getByText("OAuth (recommended)"));
+        expect(screen.getByText("OAuth authorization")).toBeInTheDocument();
+        await user.click(screen.getByText("OAuth authorization"));
 
         await waitFor(() => {
             expect(startPagerDutyOAuth).toHaveBeenCalledWith();
@@ -151,8 +151,8 @@ describe("ProviderCredentialsList", () => {
         );
 
         await user.click(screen.getByRole("button", { name: "Add credential" }));
-        const oauthChoice = screen.getByRole("button", { name: /^OAuth \(recommended\)/ });
-        expect(oauthChoice).toHaveAttribute("aria-pressed", "true");
+        const oauthChoice = screen.getByRole("button", { name: /^OAuth authorization/ });
+        expect(oauthChoice).toHaveAttribute("aria-pressed", "false");
         await user.click(oauthChoice);
 
         expect(screen.queryByText("2. Credential")).not.toBeInTheDocument();
@@ -183,7 +183,7 @@ describe("ProviderCredentialsList", () => {
         );
 
         await user.click(screen.getByRole("button", { name: "Add credential" }));
-        await user.click(screen.getByRole("button", { name: /^Client credentials/ }));
+        await user.click(screen.getByRole("button", { name: /^Private app credentials/ }));
         await user.click(screen.getByRole("button", { name: "Continue" }));
 
         expect(screen.getByText("2. Credential")).toBeInTheDocument();
@@ -219,12 +219,12 @@ describe("ProviderCredentialsList", () => {
         );
 
         await user.click(screen.getByRole("button", { name: "Add credential" }));
-        await user.click(screen.getByRole("button", { name: /^OAuth \(recommended\)/ }));
+        await user.click(screen.getByRole("button", { name: /^OAuth authorization/ }));
         expect(
             await screen.findByText("PagerDuty authorization could not be started."),
         ).toBeVisible();
 
-        await user.click(screen.getByRole("button", { name: /^OAuth \(recommended\)/ }));
+        await user.click(screen.getByRole("button", { name: /^OAuth authorization/ }));
         await waitFor(() => {
             expect(startPagerDutyOAuth).toHaveBeenCalledTimes(2);
             expect(locationAssign).toHaveBeenCalledWith("https://pagerduty.example/authorize");

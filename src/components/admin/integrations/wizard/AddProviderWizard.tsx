@@ -41,7 +41,7 @@ type TestResult = {
 
 function initialMethod(provider: Provider | "", hasGitHubApp: boolean): AddProviderMethod | null {
     if (!provider) return null;
-    if (provider === "pagerduty") return "pagerduty_oauth";
+    if (provider === "pagerduty") return null;
     return providerHasAuthMethodChoice(provider, hasGitHubApp) ? null : "manual";
 }
 

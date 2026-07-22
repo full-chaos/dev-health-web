@@ -82,8 +82,8 @@ test("P3 exposes PagerDuty creation only when the entitlement is explicitly true
 
     await page.goto("/org/admin/integrations/pagerduty");
     await expect(page.getByRole("heading", { name: "Auth method" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "OAuth (recommended)" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Client credentials" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "OAuth authorization" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Private app credentials" })).toBeVisible();
     await waitForCaptureReadiness(page, "desktop");
     await captureArtifact(page, "on-create-path-1280", consoleMessages);
 });

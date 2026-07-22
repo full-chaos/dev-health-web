@@ -80,9 +80,19 @@ describe("AddProviderWizard", () => {
         await userEvent.click(screen.getByRole("button", { name: "Continue" }));
 
         expect(screen.queryByRole("link", { name: "PagerDuty" })).not.toBeInTheDocument();
-        expect(screen.getByText("OAuth (recommended)")).toBeInTheDocument();
-        expect(screen.getByText("Client credentials")).toBeInTheDocument();
+        expect(screen.getByText("OAuth authorization")).toBeInTheDocument();
+        expect(screen.getByText(/browser using PKCE/i)).toBeInTheDocument();
+        expect(screen.getByText("Private app credentials")).toBeInTheDocument();
+        expect(screen.getByText(/without a browser callback/i)).toBeInTheDocument();
         expect(screen.getByText("Use API token instead")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /^OAuth authorization/ })).toHaveAttribute(
+            "aria-pressed",
+            "false",
+        );
+        expect(screen.getByRole("button", { name: /^Private app credentials/ })).toHaveAttribute(
+            "aria-pressed",
+            "false",
+        );
     });
 
     it("removes PagerDuty from the global picker when canonical incident ingestion is unavailable", () => {

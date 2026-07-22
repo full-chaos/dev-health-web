@@ -36,8 +36,8 @@ test("P0 global Add Provider routes PagerDuty through the shared wizard", async 
     await page.getByText("PagerDuty", { exact: true }).click();
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: "Auth method" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "OAuth (recommended)" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Client credentials" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "OAuth authorization" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Private app credentials" })).toBeVisible();
     await captureScenario(page, testInfo, scenario, signals);
     const receipt = JSON.parse(
         await readFile(
@@ -81,7 +81,7 @@ test("P0 PagerDuty credential page exposes shared-wizard auth methods", async ({
     const signals = collectBrowserSignals(page);
     await page.goto("/org/admin/integrations/pagerduty");
     await expect(page.getByRole("heading", { name: "Auth method" })).toBeVisible();
-    await page.getByRole("button", { name: "Client credentials" }).click();
+    await page.getByRole("button", { name: "Private app credentials" }).click();
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByLabel("Client ID")).toBeVisible();
     await page.getByRole("button", { name: "Back" }).click();
@@ -196,7 +196,7 @@ test("P0 EU client credentials persist through the shared wizard", async ({
     await resizeForScenario(page, scenario.viewport);
     const signals = collectBrowserSignals(page);
     await page.goto("/org/admin/integrations/pagerduty");
-    await page.getByRole("button", { name: "Client credentials" }).click();
+    await page.getByRole("button", { name: "Private app credentials" }).click();
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByLabel("Credential Name").fill("EU Operations");
     await page.getByLabel("Account subdomain").fill("eu-operations");

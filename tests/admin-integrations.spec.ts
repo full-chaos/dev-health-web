@@ -103,7 +103,7 @@ test("PagerDuty OAuth starts immediately without credential fields", async ({ pa
     await setPagerDutyEntitlement(request, "canonical-enabled");
     await page.goto("/org/admin/integrations/pagerduty");
 
-    const oauth = page.getByRole("button", { name: "OAuth (recommended)" });
+    const oauth = page.getByRole("button", { name: "OAuth authorization" });
     await expect(oauth).toBeVisible();
     await oauth.click();
 
@@ -119,8 +119,8 @@ test("PagerDuty setup retains generic manual credential fallbacks", async ({ pag
     await setPagerDutyEntitlement(request, "canonical-enabled");
     await page.goto("/org/admin/integrations/pagerduty");
 
-    await expect(page.getByRole("button", { name: "OAuth (recommended)" })).toBeVisible();
-    await page.getByRole("button", { name: "Client credentials" }).click();
+    await expect(page.getByRole("button", { name: "OAuth authorization" })).toBeVisible();
+    await page.getByRole("button", { name: "Private app credentials" }).click();
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByLabel("Client ID")).toBeVisible();
     await expect(page.getByLabel("Client secret")).toBeVisible();

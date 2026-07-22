@@ -180,6 +180,8 @@ export const CTA_LABELS = {
     useGitHubApp: "Use GitHub App",
     /** Secondary, manual-credential auth method path (CHAOS-2837). */
     useManualToken: "Use a personal access token instead",
+    /** PagerDuty fallback for accounts using a REST API token. */
+    usePagerDutyApiToken: "Use API token instead",
     /** Row action opening the manage/edit modal for a healthy credential (CHAOS-2837). */
     manageCredential: "Manage",
     /** Row action opening the manage/edit modal for a failing/untested credential (CHAOS-2837). */
