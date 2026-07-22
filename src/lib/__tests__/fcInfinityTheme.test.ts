@@ -1,10 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
-const themeCss = readFileSync(
-    new URL("../../app/fc-infinity-themes.css", import.meta.url),
-    "utf8",
-);
+const themeCss = readFileSync(new URL("../../app/fc-infinity-themes.css", import.meta.url), "utf8");
 
 type Rgb = readonly [number, number, number];
 
@@ -47,14 +44,10 @@ const mixSrgb = (first: Rgb, second: Rgb, firstWeight: number): Rgb => {
 const relativeLuminance = (color: Rgb) => {
     const linearize = (channel: number) => {
         const normalized = channel / 255;
-        return normalized <= 0.04045
-            ? normalized / 12.92
-            : ((normalized + 0.055) / 1.055) ** 2.4;
+        return normalized <= 0.04045 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
     };
     return (
-        linearize(color[0]) * 0.2126 +
-        linearize(color[1]) * 0.7152 +
-        linearize(color[2]) * 0.0722
+        linearize(color[0]) * 0.2126 + linearize(color[1]) * 0.7152 + linearize(color[2]) * 0.0722
     );
 };
 
