@@ -11,6 +11,8 @@ describe("SuperadminSidebar", () => {
     it("links to product telemetry from platform admin", () => {
         render(<SuperadminSidebar />);
 
+        expect(screen.getByText("Superadmin")).toBeInTheDocument();
+        expect(screen.queryByText("Full Chaos Dev Health Ops")).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: /product telemetryusage/i })).toHaveAttribute(
             "href",
             "/superadmin/product-telemetry",
