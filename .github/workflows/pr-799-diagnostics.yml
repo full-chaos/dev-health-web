@@ -7,7 +7,7 @@ permissions:
     contents: read
 
 jobs:
-    format-artifact:
+    audit-fix-artifact:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -19,15 +19,18 @@ jobs:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
-            - name: Format failing files
-              run: |
-                  pnpm exec prettier --write src/components/settings/PreferencesSettings.test.tsx
-                  pnpm exec prettier --write src/lib/__tests__/fcInfinityTheme.test.ts
-            - name: Upload formatted files
+            - name: Apply audit remediation
+              run: pnpm audit --fix
+            - name: Verify high-severity audit gate
+              run: pnpm audit --audit-level=high --prod
+            - name: Verify build
+              run: pnpm build
+            - name: Upload dependency remediation
+              if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
               with:
-                  name: pr-799-formatted-files
+                  name: pr-799-audit-fix
                   path: |
-                      src/components/settings/PreferencesSettings.test.tsx
-                      src/lib/__tests__/fcInfinityTheme.test.ts
+                      package.json
+                      pnpm-lock.yaml
                   retention-days: 1
