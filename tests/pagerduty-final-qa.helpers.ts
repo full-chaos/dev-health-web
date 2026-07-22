@@ -14,7 +14,7 @@ export type QaScenario = {
     readonly id: string;
     readonly priority: "P0" | "P1" | "P2";
     readonly title: string;
-    readonly viewport: "desktop" | "mobile";
+    readonly viewport: "desktop" | "mobile" | "responsive";
 };
 
 export type PagerDutyEntitlementScenario =
@@ -104,7 +104,11 @@ export async function resizeForScenario(
     viewport: QaScenario["viewport"],
 ): Promise<void> {
     await page.setViewportSize(
-        viewport === "desktop" ? { width: 1440, height: 900 } : { width: 390, height: 844 },
+        viewport === "desktop"
+            ? { width: 1440, height: 900 }
+            : viewport === "responsive"
+              ? { width: 768, height: 1024 }
+              : { width: 390, height: 844 },
     );
 }
 
@@ -254,7 +258,6 @@ export async function waitForCaptureReadiness(
     const pendingActionNames = [
         "Connect PagerDuty",
         "Create credential",
-        "Check connection status",
         "Run preflight",
         "Disconnect",
         "Update Configuration",
@@ -296,7 +299,10 @@ export async function captureScenario(
         style: NEXT_DEV_OVERLAY_CAPTURE_STYLE,
     });
     const capturedAt = new Date().toISOString();
-    const layout = scenario.viewport === "mobile" ? await mobileLayoutMetrics(page) : undefined;
+    const layout =
+        scenario.viewport === "mobile" || scenario.viewport === "responsive"
+            ? await mobileLayoutMetrics(page)
+            : undefined;
     if (layout) {
         expect(layout.horizontalOverflow).toBe(false);
     }

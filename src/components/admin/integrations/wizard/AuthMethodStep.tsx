@@ -1,20 +1,87 @@
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { AddProviderMethod } from "../addProviderWizardSteps";
+import type { Provider } from "@/lib/admin/types";
 
 type AuthMethodStepProps = {
+    provider: Provider;
     method: AddProviderMethod | null;
+    isPending?: boolean;
+    error?: string | null;
     onChooseAction: (method: AddProviderMethod) => void;
 };
 
-/**
- * Auth-method choice for GitHub (CHAOS-2837 AC5/AC6): the one-click GitHub
- * App install is the recommended, visually primary path; the manual
- * personal-access-token path is a plainly secondary link underneath it, not
- * a second equally-weighted card. Only rendered when no GitHub App is
- * connected yet (`providerHasAuthMethodChoice`) — otherwise this step is
- * skipped entirely and the flow goes straight to the manual credential step.
- */
-export function AuthMethodStep({ method, onChooseAction }: AuthMethodStepProps) {
+export function AuthMethodStep({
+    provider,
+    method,
+    isPending = false,
+    error,
+    onChooseAction,
+}: AuthMethodStepProps) {
+    if (provider === "pagerduty") {
+        return (
+            <div className="space-y-4">
+                <div>
+                    <h2 className="text-sm font-semibold text-foreground">Auth method</h2>
+                    <p className="mt-1 text-xs text-(--ink-muted)">
+                        Choose how Dev Health connects to PagerDuty.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => onChooseAction("pagerduty_oauth")}
+                    aria-pressed={method === "pagerduty_oauth"}
+                    className={`w-full rounded-xl border p-4 text-left transition-colors ${
+                        method === "pagerduty_oauth"
+                            ? "border-(--accent) bg-(--accent)/10"
+                            : "border-(--card-stroke) hover:bg-(--card-70)"
+                    }`}
+                >
+                    <p className="text-sm font-semibold text-foreground">OAuth (recommended)</p>
+                    <p className="mt-1 text-xs text-(--ink-muted)">
+                        Authorize read-only PagerDuty access in a new browser window.
+                    </p>
+                </button>
+
+                {error ? (
+                    <p role="alert" className="text-sm text-(--negative)">
+                        {error}
+                    </p>
+                ) : null}
+
+                <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => onChooseAction("pagerduty_client_credentials")}
+                    aria-pressed={method === "pagerduty_client_credentials"}
+                    className={`w-full rounded-xl border p-4 text-left transition-colors ${
+                        method === "pagerduty_client_credentials"
+                            ? "border-(--accent) bg-(--accent)/10"
+                            : "border-(--card-stroke) hover:bg-(--card-70)"
+                    }`}
+                >
+                    <p className="text-sm font-semibold text-foreground">Client credentials</p>
+                    <p className="mt-1 text-xs text-(--ink-muted)">
+                        Connect with a PagerDuty OAuth client ID and secret.
+                    </p>
+                </button>
+
+                <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => onChooseAction("pagerduty_api_token")}
+                    aria-pressed={method === "pagerduty_api_token"}
+                    className={`text-xs font-medium underline-offset-2 hover:underline ${
+                        method === "pagerduty_api_token" ? "text-(--accent)" : "text-(--ink-muted)"
+                    }`}
+                >
+                    Use API token instead
+                </button>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-4">
             <div>

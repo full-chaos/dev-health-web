@@ -1,10 +1,10 @@
 import { expect, test } from "@playwright/test";
 
-test("sync page renders empty state with new config link", async ({ page }) => {
+test("sync page renders empty state with add sync config link", async ({ page }) => {
     await page.goto("/org/admin/sync");
 
     await expect(page.getByRole("heading", { name: /sync/i })).toBeVisible();
-    await expect(page.getByRole("link", { name: "New Config" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Add sync config" })).toBeVisible();
 });
 
 test("new sync config form starts at the guided provider step", async ({ page }) => {
@@ -156,10 +156,10 @@ test("sync target checkboxes toggle", async ({ page }) => {
     await expect(checkbox).not.toBeChecked();
 });
 
-test("new config link navigates to creation form", async ({ page }) => {
+test("add sync config link navigates to creation form", async ({ page }) => {
     await page.goto("/org/admin/sync");
 
-    await page.getByRole("link", { name: "New Config" }).click();
+    await page.getByRole("link", { name: "Add sync config" }).click();
 
     await expect(page).toHaveURL(/\/org\/admin\/sync\/new/);
 });

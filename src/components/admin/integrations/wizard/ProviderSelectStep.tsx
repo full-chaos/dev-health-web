@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { PROVIDERS, PROVIDER_LABELS, type Provider } from "@/lib/admin/types";
 
 type ProviderSelectStepProps = {
@@ -29,17 +28,6 @@ export function ProviderSelectStep({
                 {PROVIDERS.filter(
                     (candidate) => candidate !== "pagerduty" || canCreatePagerDuty,
                 ).map((p) => {
-                    if (p === "pagerduty") {
-                        return (
-                            <Link
-                                href="/org/admin/integrations/pagerduty"
-                                key={p}
-                                className="flex items-center gap-2 rounded-lg border border-(--card-stroke) px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-(--card-70)"
-                            >
-                                {PROVIDER_LABELS[p]}
-                            </Link>
-                        );
-                    }
                     return (
                         <label
                             key={p}

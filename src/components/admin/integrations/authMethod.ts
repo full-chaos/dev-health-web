@@ -12,6 +12,7 @@
  * fabricated field.
  */
 import type { IntegrationCredential, Provider } from "@/lib/admin/types";
+import type { AddProviderMethod } from "./addProviderWizardSteps";
 
 /** True when a credential is the one-click GitHub App installation credential. */
 export function isGitHubAppCredential(credential: IntegrationCredential): boolean {
@@ -68,6 +69,21 @@ export function getAuthMethodLabel(provider: Provider, credential: IntegrationCr
  * needing a credential instance — used by the Add Provider wizard's review
  * step while the credential hasn't been created yet.
  */
-export function getManualAuthMethodLabel(provider: Provider): string {
+export function getManualAuthMethodLabel(
+    provider: Provider,
+    method?: AddProviderMethod | null,
+): string {
+    if (provider === "pagerduty") {
+        switch (method) {
+            case "pagerduty_oauth":
+                return "OAuth";
+            case "pagerduty_client_credentials":
+                return "Client credentials";
+            case "pagerduty_api_token":
+                return "API token";
+            default:
+                return MANUAL_AUTH_METHOD_LABEL.pagerduty;
+        }
+    }
     return MANUAL_AUTH_METHOD_LABEL[provider];
 }

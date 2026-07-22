@@ -20,18 +20,20 @@ vi.mock("@/lib/admin/server", () => ({
 }));
 
 vi.mock("@/components/admin/integrations/ProviderCredentialsList", () => ({
-    ProviderCredentialsList: () => <div data-testid="provider-credentials-list" />,
-}));
-
-vi.mock("@/components/admin/integrations/PagerDutySetup", () => ({
-    PagerDutySetup: ({
-        canCreatePagerDuty,
+    ProviderCredentialsList: ({
+        provider,
         credentials,
+        canCreateCredential,
     }: {
-        canCreatePagerDuty: boolean;
+        provider: string;
         credentials: readonly IntegrationCredential[];
+        canCreateCredential?: boolean;
     }) => (
-        <div data-can-create={String(canCreatePagerDuty)} data-testid="pagerduty-setup">
+        <div
+            data-can-create={String(canCreateCredential)}
+            data-provider={provider}
+            data-testid="provider-credentials-list"
+        >
             {credentials.map((credential) => credential.name).join(", ")}
         </div>
     ),
@@ -178,7 +180,7 @@ describe("IntegrationPage ([provider]) — CHAOS-2837 blocker 3", () => {
         expect(screen.getByTestId("provider-credentials-list")).toBeInTheDocument();
     });
 
-    it("renders the dedicated PagerDuty setup instead of the generic credential wizard", async () => {
+    it("routes PagerDuty through the generic credential list", async () => {
         vi.mocked(listCredentials).mockResolvedValue({ data: [makePagerDutyCredential()] });
         vi.mocked(listSyncConfigs).mockResolvedValue({ data: [] });
 
@@ -189,9 +191,15 @@ describe("IntegrationPage ([provider]) — CHAOS-2837 blocker 3", () => {
             }),
         );
 
-        expect(screen.getByTestId("pagerduty-setup")).toBeInTheDocument();
-        expect(screen.getByTestId("pagerduty-setup")).toHaveTextContent("production");
-        expect(screen.queryByTestId("provider-credentials-list")).not.toBeInTheDocument();
+        expect(screen.getByTestId("provider-credentials-list")).toHaveAttribute(
+            "data-provider",
+            "pagerduty",
+        );
+        expect(screen.getByTestId("provider-credentials-list")).toHaveAttribute(
+            "data-can-create",
+            "false",
+        );
+        expect(screen.getByTestId("provider-credentials-list")).toHaveTextContent("production");
     });
 
     it("fails closed for a direct PagerDuty route when an older Ops response has no entitlement", async () => {
@@ -209,25 +217,10 @@ describe("IntegrationPage ([provider]) — CHAOS-2837 blocker 3", () => {
         );
 
         expect(mockGetCanonicalIncidentIngestionEntitlement).toHaveBeenCalledOnce();
-        expect(screen.getByTestId("pagerduty-setup")).toHaveAttribute("data-can-create", "false");
-        expect(screen.getByTestId("pagerduty-setup")).toHaveTextContent("production");
-    });
-
-    it("keeps a direct PagerDuty route manage-only when the entitlement is false", async () => {
-        mockGetCanonicalIncidentIngestionEntitlement.mockResolvedValue({
-            data: { enabled: false },
-        });
-        vi.mocked(listCredentials).mockResolvedValue({ data: [makePagerDutyCredential()] });
-        vi.mocked(listSyncConfigs).mockResolvedValue({ data: [] });
-
-        render(
-            await IntegrationPage({
-                params: Promise.resolve({ provider: "pagerduty" }),
-                searchParams: Promise.resolve({}),
-            }),
+        expect(screen.getByTestId("provider-credentials-list")).toHaveAttribute(
+            "data-can-create",
+            "false",
         );
-
-        expect(screen.getByTestId("pagerduty-setup")).toHaveAttribute("data-can-create", "false");
     });
 
     it("allows direct PagerDuty setup only for an explicit true entitlement", async () => {
@@ -244,7 +237,10 @@ describe("IntegrationPage ([provider]) — CHAOS-2837 blocker 3", () => {
             }),
         );
 
-        expect(screen.getByTestId("pagerduty-setup")).toHaveAttribute("data-can-create", "true");
+        expect(screen.getByTestId("provider-credentials-list")).toHaveAttribute(
+            "data-can-create",
+            "true",
+        );
     });
 
     it("locks customer-push mode and skips source loading when customer_push_ingest is disabled", async () => {

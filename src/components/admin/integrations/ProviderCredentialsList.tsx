@@ -4,7 +4,6 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CredentialsTable } from "./CredentialsTable";
 import { AddProviderWizard } from "./wizard/AddProviderWizard";
-import { PagerDutySetup } from "./PagerDutySetup";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { IntegrationCredential, Provider } from "@/lib/admin/types";
 
@@ -13,6 +12,7 @@ type ProviderCredentialsListProps = {
     providerName: string;
     credentials: IntegrationCredential[];
     syncConfigs: { credential_id: string | null }[];
+    canCreateCredential?: boolean;
 };
 
 /**
@@ -28,13 +28,12 @@ export function ProviderCredentialsList({
     providerName,
     credentials,
     syncConfigs,
+    canCreateCredential = true,
 }: ProviderCredentialsListProps) {
     const router = useRouter();
-    const [isWizardOpen, setIsWizardOpen] = useState(credentials.length === 0);
-
-    if (provider === "pagerduty") {
-        return <PagerDutySetup canCreatePagerDuty={false} credentials={credentials} />;
-    }
+    const [isWizardOpen, setIsWizardOpen] = useState(
+        credentials.length === 0 && canCreateCredential,
+    );
 
     const handleCreated = () => {
         router.refresh();
@@ -43,6 +42,7 @@ export function ProviderCredentialsList({
     if (isWizardOpen) {
         return (
             <AddProviderWizard
+                canCreatePagerDuty={canCreateCredential}
                 lockedProvider={provider}
                 credentials={credentials}
                 onCloseAction={() => setIsWizardOpen(false)}
@@ -55,27 +55,31 @@ export function ProviderCredentialsList({
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <h2 className="text-sm font-semibold text-foreground">Credentials</h2>
-                <button
-                    type="button"
-                    onClick={() => setIsWizardOpen(true)}
-                    className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
-                >
-                    {CTA_LABELS.addProvider}
-                </button>
-            </div>
-
-            {credentials.length === 0 ? (
-                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-(--card-stroke) py-12 text-center">
-                    <p className="mb-4 text-sm text-(--ink-muted)">
-                        Connect your first {providerName} account to get started.
-                    </p>
+                {canCreateCredential ? (
                     <button
                         type="button"
                         onClick={() => setIsWizardOpen(true)}
                         className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
                     >
-                        {CTA_LABELS.addProvider}
+                        {CTA_LABELS.addCredential}
                     </button>
+                ) : null}
+            </div>
+
+            {credentials.length === 0 ? (
+                <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-(--card-stroke) py-12 text-center">
+                    <p className="mb-4 text-sm text-(--ink-muted)">
+                        No {providerName} credentials yet.
+                    </p>
+                    {canCreateCredential ? (
+                        <button
+                            type="button"
+                            onClick={() => setIsWizardOpen(true)}
+                            className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
+                        >
+                            {CTA_LABELS.addCredential}
+                        </button>
+                    ) : null}
                 </div>
             ) : (
                 <CredentialsTable

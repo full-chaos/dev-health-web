@@ -26,10 +26,17 @@ async function openAddProviderWizard(page: import("@playwright/test").Page, prov
     }
 }
 
+async function openGitHubAddProviderWizard(page: import("@playwright/test").Page) {
+    await page.goto("/org/admin/integrations");
+    await page.getByRole("button", { name: "Add Provider" }).click();
+    await page.getByText("GitHub", { exact: true }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
+}
+
 test("GitHub Add Provider wizard offers GitHub App first, then a manual token credential step", async ({
     page,
 }) => {
-    await openAddProviderWizard(page, "github");
+    await openGitHubAddProviderWizard(page);
 
     // Auth-method step only renders when no GitHub App is connected yet.
     const manualLink = page.getByText("Use a personal access token instead");
@@ -38,12 +45,12 @@ test("GitHub Add Provider wizard offers GitHub App first, then a manual token cr
         await page.getByRole("button", { name: "Continue" }).click();
     }
 
-    await expect(page.locator("#github-token")).toBeVisible();
-    await expect(page.locator("#github-org")).toBeVisible();
+    await expect(page.getByLabel("Personal access token", { exact: true })).toBeVisible();
+    await expect(page.getByLabel("Organization / Owner", { exact: true })).toBeVisible();
 });
 
 test("GitHub manual credential flow: fill token -> verify -> finish", async ({ page }) => {
-    await openAddProviderWizard(page, "github");
+    await openGitHubAddProviderWizard(page);
 
     const manualLink = page.getByText("Use a personal access token instead");
     if (await manualLink.isVisible({ timeout: 2_000 }).catch(() => false)) {
@@ -51,8 +58,8 @@ test("GitHub manual credential flow: fill token -> verify -> finish", async ({ p
         await page.getByRole("button", { name: "Continue" }).click();
     }
 
-    await page.locator("#github-token").fill("ghp_test123");
-    await page.locator("#github-org").fill("test-org");
+    await page.getByLabel("Personal access token", { exact: true }).fill("ghp_test123");
+    await page.getByLabel("Organization / Owner", { exact: true }).fill("test-org");
     await page.getByRole("button", { name: "Continue" }).click();
 
     await page.getByRole("button", { name: "Verify connection", exact: true }).click();
@@ -92,19 +99,35 @@ test("Linear Add Provider wizard renders manual credential fields immediately", 
     await expect(page.locator("#linear-teams")).toBeVisible();
 });
 
-test("PagerDuty setup exposes OAuth first with supported manual fallbacks", async ({
-    page,
-    request,
-}) => {
+test("PagerDuty OAuth starts immediately without credential fields", async ({ page, request }) => {
     await setPagerDutyEntitlement(request, "canonical-enabled");
     await page.goto("/org/admin/integrations/pagerduty");
 
-    await expect(page.getByRole("heading", { name: "Connect PagerDuty" })).toBeVisible();
+    const oauth = page.getByRole("button", { name: "OAuth (recommended)" });
+    await expect(oauth).toBeVisible();
+    await oauth.click();
+
+    await expect(page.getByRole("button", { name: "Continue" })).toHaveCount(0);
+    await expect(page.getByLabel("Credential Name")).toHaveCount(0);
+    await expect(page.getByLabel("Account subdomain")).toHaveCount(0);
+    await expect(page.getByLabel("Client ID")).toHaveCount(0);
+    await expect(page.getByLabel("Client secret")).toHaveCount(0);
+    await expect(page.getByLabel("API token")).toHaveCount(0);
+});
+
+test("PagerDuty setup retains generic manual credential fallbacks", async ({ page, request }) => {
+    await setPagerDutyEntitlement(request, "canonical-enabled");
+    await page.goto("/org/admin/integrations/pagerduty");
+
     await expect(page.getByRole("button", { name: "OAuth (recommended)" })).toBeVisible();
     await page.getByRole("button", { name: "Client credentials" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByLabel("Client ID")).toBeVisible();
     await expect(page.getByLabel("Client secret")).toBeVisible();
+
+    await page.getByRole("button", { name: "Back" }).click();
     await page.getByRole("button", { name: "Use API token instead" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByLabel("API token")).toBeVisible();
 });
 

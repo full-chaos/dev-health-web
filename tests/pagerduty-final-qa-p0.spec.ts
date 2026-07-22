@@ -18,14 +18,14 @@ test.beforeAll(async () => {
     await resetEvidence();
 });
 
-test("P0 global Add Provider routes PagerDuty to the dedicated setup", async ({
+test("P0 global Add Provider routes PagerDuty through the shared wizard", async ({
     page,
     request,
 }, testInfo) => {
     const scenario: QaScenario = {
         id: "01-global-add-provider-routing",
         priority: "P0",
-        title: "Global Add Provider routes PagerDuty to dedicated setup",
+        title: "Global Add Provider routes PagerDuty through the shared wizard",
         viewport: "desktop",
     };
     await setPagerDutyScenario(request, "not-connected");
@@ -33,8 +33,11 @@ test("P0 global Add Provider routes PagerDuty to the dedicated setup", async ({
     const signals = collectBrowserSignals(page);
     await page.goto("/org/admin/integrations");
     await page.getByRole("button", { name: "Add Provider" }).click();
-    await page.getByRole("link", { name: "PagerDuty" }).click();
-    await expect(page.getByRole("heading", { name: "Connect PagerDuty" })).toBeVisible();
+    await page.getByText("PagerDuty", { exact: true }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByRole("heading", { name: "Auth method" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "OAuth (recommended)" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Client credentials" })).toBeVisible();
     await captureScenario(page, testInfo, scenario, signals);
     const receipt = JSON.parse(
         await readFile(
@@ -63,20 +66,27 @@ test("P0 global Add Provider routes PagerDuty to the dedicated setup", async ({
     );
 });
 
-test("P0 direct setup exposes OAuth and both manual modes", async ({ page, request }, testInfo) => {
+test("P0 PagerDuty credential page exposes shared-wizard auth methods", async ({
+    page,
+    request,
+}, testInfo) => {
     const scenario: QaScenario = {
         id: "02-direct-setup-modes",
         priority: "P0",
-        title: "Direct setup exposes OAuth, client credentials, and API token",
+        title: "Shared wizard exposes OAuth, client credentials, and API token",
         viewport: "desktop",
     };
     await setPagerDutyScenario(request, "not-connected");
     await resizeForScenario(page, scenario.viewport);
     const signals = collectBrowserSignals(page);
     await page.goto("/org/admin/integrations/pagerduty");
+    await expect(page.getByRole("heading", { name: "Auth method" })).toBeVisible();
     await page.getByRole("button", { name: "Client credentials" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByLabel("Client ID")).toBeVisible();
+    await page.getByRole("button", { name: "Back" }).click();
     await page.getByRole("button", { name: "Use API token instead" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByLabel("API token")).toBeVisible();
     await captureScenario(page, testInfo, scenario, signals);
 });
@@ -95,9 +105,6 @@ test("P0 OAuth callback succeeds once and removes callback query values", async 
     await resizeForScenario(page, scenario.viewport);
     const signals = collectBrowserSignals(page);
     await page.goto("/org/admin/integrations/pagerduty/callback?state=mock-state&code=mock-code");
-    await expect(
-        page.getByText("PagerDuty is connected. You can now configure the datasets to sync."),
-    ).toBeVisible();
     await expect
         .poll(async () => {
             const callbackUrl = new URL(page.url());
@@ -175,61 +182,58 @@ test("P0 incomplete callback preserves a focused error recovery state", async ({
     await captureScenario(page, testInfo, scenario, signals);
 });
 
-test("P0 EU client credentials persists then renders connected status", async ({
+test("P0 EU client credentials persist through the shared wizard", async ({
     page,
     request,
 }, testInfo) => {
     const scenario: QaScenario = {
         id: "06-client-credentials-eu",
         priority: "P0",
-        title: "EU client credentials saves through the real server-action boundary",
+        title: "EU client credentials save through the shared wizard boundary",
         viewport: "desktop",
     };
-    await setPagerDutyScenario(request, "connected-eu");
+    await setPagerDutyScenario(request, "not-connected");
     await resizeForScenario(page, scenario.viewport);
     const signals = collectBrowserSignals(page);
     await page.goto("/org/admin/integrations/pagerduty");
+    await page.getByRole("button", { name: "Client credentials" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByLabel("Credential Name").fill("EU Operations");
     await page.getByLabel("Account subdomain").fill("eu-operations");
     await page.getByLabel("Region").selectOption("eu");
-    await page.getByRole("button", { name: "Client credentials" }).click();
     await page.getByLabel("Client ID").fill("qa-client-id");
     await page.getByLabel("Client secret").fill("redacted");
-    await page.getByRole("button", { name: "Create credential" }).click();
-    const status = page.getByRole("status");
-    await expect(status).toContainText("EU Operations");
-    await expect(status.getByText("Client credentials", { exact: true })).toBeVisible();
-    await expect(status.getByText("No scopes reported")).toBeVisible();
-    await expect(status.getByText("No expiry reported")).toBeVisible();
-    await expect(status.getByText("Refresh token unavailable")).toBeVisible();
-    await expect(page.getByText("Refresh token available")).toHaveCount(0);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Verify connection", exact: true }).click();
+    await expect(page.getByText("Connection successful")).toBeVisible();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Finish" }).click();
+    await expect(page.getByRole("status")).toContainText("PagerDuty credential saved.");
+    await expect(page.getByRole("link", { name: "Create sync configuration" })).toBeVisible();
     await captureScenario(page, testInfo, scenario, signals);
 });
 
-test("P0 US API token persists and exposes connection controls", async ({
-    page,
-    request,
-}, testInfo) => {
+test("P0 US API token persists through the shared wizard", async ({ page, request }, testInfo) => {
     const scenario: QaScenario = {
         id: "07-api-token-us",
         priority: "P0",
-        title: "US API token setup exposes status, preflight, and disconnect",
+        title: "US API token setup saves through the shared wizard",
         viewport: "desktop",
     };
-    await setPagerDutyScenario(request, "connected-us");
+    await setPagerDutyScenario(request, "not-connected");
     await resizeForScenario(page, scenario.viewport);
     const signals = collectBrowserSignals(page);
     await page.goto("/org/admin/integrations/pagerduty");
-    await page.getByLabel("Account subdomain").fill("operations");
     await page.getByRole("button", { name: "Use API token instead" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByLabel("Credential Name").fill("US Operations");
+    await page.getByLabel("Account subdomain").fill("operations");
     await page.getByLabel("API token").fill("redacted");
-    await page.getByRole("button", { name: "Create credential" }).click();
-    const status = page.getByRole("status");
-    await expect(status.getByText("API token", { exact: true })).toBeVisible();
-    await expect(status.getByText("No scopes reported")).toBeVisible();
-    await expect(status.getByText("No expiry reported")).toBeVisible();
-    await expect(status.getByText("Refresh token unavailable")).toBeVisible();
-    await expect(page.getByText("Refresh token available")).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Run preflight" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Disconnect" })).toBeVisible();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Verify connection", exact: true }).click();
+    await expect(page.getByText("Connection successful")).toBeVisible();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.getByRole("button", { name: "Finish" }).click();
+    await expect(page.getByRole("status")).toContainText("PagerDuty credential saved.");
     await captureScenario(page, testInfo, scenario, signals);
 });

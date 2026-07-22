@@ -173,6 +173,7 @@ export const CTA_LABELS = {
     acknowledgeAndSave: "Save anyway",
     /** Open the guided Add Provider workflow (CHAOS-2837). */
     addProvider: "Add Provider",
+    addCredential: "Add credential",
     /** Advance the Add Provider wizard's provider-select step (CHAOS-2837). */
     chooseProvider: "Choose provider",
     /** Pick the recommended, one-click GitHub App auth method (CHAOS-2837). */
@@ -191,7 +192,7 @@ export const CTA_LABELS = {
     finishAddProvider: "Finish",
     /** Finish-step follow-up: jump straight into creating a sync configuration (CHAOS-2837). */
     createSyncConfig: "Create sync configuration",
-    newSyncConfig: "New Config",
+    newSyncConfig: "Add sync config",
     manageSyncConfig: "Manage",
     pauseSync: "Pause",
     resumeSync: "Resume",

@@ -4,20 +4,12 @@ import type {
     PagerDutyAuthorizeResponse,
     PagerDutyClientCredentialsConnectedResponse,
     PagerDutyDisconnectResponse,
-    PagerDutyOAuthDataset,
     PagerDutyOAuthCallbackConnectedResponse,
     PagerDutyPreflightResponse,
     PagerDutyRegion,
     PagerDutyServicesResponse,
     PagerDutyStatusResponse,
 } from "../pagerduty";
-
-type PagerDutyOAuthAuthorizeInput = {
-    readonly credential_name: string;
-    readonly enabled_datasets: readonly PagerDutyOAuthDataset[];
-    readonly region: PagerDutyRegion;
-    readonly subdomain: string;
-};
 
 type PagerDutyOAuthCallbackInput = {
     readonly state: string;
@@ -26,10 +18,10 @@ type PagerDutyOAuthCallbackInput = {
 };
 
 export const pagerDutyApi = {
-    authorize: (input: PagerDutyOAuthAuthorizeInput, token?: string, orgId?: string) =>
+    authorize: (token?: string, orgId?: string) =>
         request<PagerDutyAuthorizeResponse>(
             "/integrations/pagerduty/authorize",
-            { method: "POST", body: JSON.stringify(input) },
+            { method: "POST", body: JSON.stringify({}) },
             token,
             orgId,
         ),

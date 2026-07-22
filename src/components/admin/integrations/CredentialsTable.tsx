@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { Button } from "@/components/shared/Button";
 import { ConnectionStatus } from "./ConnectionStatus";
 import { EditCredentialModal } from "./EditCredentialModal";
 import { deriveCredentialStatus } from "./credentialStatus";
@@ -18,6 +19,9 @@ type CredentialsTableProps = {
     providerName: string;
     credentials: IntegrationCredential[];
     syncConfigs: { credential_id: string | null }[];
+    onManageCredentialAction?: (credential: IntegrationCredential) => void;
+    manageCredentialLabel?: string;
+    showManageAction?: boolean;
 };
 
 /**
@@ -31,6 +35,9 @@ export function CredentialsTable({
     providerName,
     credentials,
     syncConfigs,
+    onManageCredentialAction,
+    manageCredentialLabel,
+    showManageAction = true,
 }: CredentialsTableProps) {
     const [testingId, setTestingId] = useState<string | null>(null);
     const [isTesting, startTesting] = useTransition();
@@ -110,32 +117,37 @@ export function CredentialsTable({
                 const isGitHubApp = isGitHubAppCredential(row);
                 return (
                     <div className="flex items-center gap-2">
-                        <button
-                            type="button"
+                        <Button
+                            size="sm"
                             onClick={() => handleTest(row)}
                             disabled={isTesting && testingId === row.id}
-                            className="rounded-md border border-(--card-stroke) px-2.5 py-1 text-xs font-medium text-foreground hover:bg-(--card-70) disabled:opacity-50"
                         >
                             {isTesting && testingId === row.id
                                 ? "Testing…"
                                 : CTA_LABELS.testCredential}
-                        </button>
-                        {!isGitHubApp && (
-                            <button
-                                type="button"
-                                onClick={() => setManaging(row)}
-                                className="rounded-md border border-(--card-stroke) px-2.5 py-1 text-xs font-medium text-foreground hover:bg-(--card-70)"
+                        </Button>
+                        {!isGitHubApp && showManageAction && (
+                            <Button
+                                size="sm"
+                                onClick={() => {
+                                    if (onManageCredentialAction) {
+                                        onManageCredentialAction(row);
+                                        return;
+                                    }
+                                    setManaging(row);
+                                }}
                             >
-                                {manageLabel}
-                            </button>
+                                {manageCredentialLabel ?? manageLabel}
+                            </Button>
                         )}
-                        <button
-                            type="button"
+                        <Button
+                            variant="ghost"
+                            size="sm"
                             onClick={() => setDeleting(row)}
-                            className="rounded-md border border-(--negative)/30 px-2.5 py-1 text-xs font-medium text-(--negative) hover:bg-(--negative)/10"
+                            className="border border-(--negative)/30 text-(--negative) hover:bg-(--negative)/10"
                         >
                             {CTA_LABELS.delete}
-                        </button>
+                        </Button>
                     </div>
                 );
             },

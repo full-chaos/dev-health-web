@@ -21,18 +21,13 @@ const ALL_STEPS: AddProviderStep[] = [
     { id: "review", label: "Review" },
 ];
 
-/** The two supported auth methods for a credential-creating provider step. */
-export type AddProviderMethod = "github_app" | "manual";
+export type PagerDutyAddProviderMethod =
+    "pagerduty_oauth" | "pagerduty_client_credentials" | "pagerduty_api_token";
 
-/**
- * Only GitHub ever offers a real auth-method choice (one-click GitHub App
- * vs a manual personal access token) — and only while no GitHub App
- * credential is connected yet. Once one exists, `Connect GitHub App` is a
- * hard non-goal to re-offer (CHAOS-2837 AC4/AC5), so the choice collapses
- * to "manual" and the step is skipped entirely.
- */
+export type AddProviderMethod = "github_app" | "manual" | PagerDutyAddProviderMethod;
+
 export function providerHasAuthMethodChoice(provider: string, hasGitHubApp: boolean): boolean {
-    return provider === "github" && !hasGitHubApp;
+    return (provider === "github" && !hasGitHubApp) || provider === "pagerduty";
 }
 
 /**
@@ -57,6 +52,7 @@ export function getVisibleAddProviderSteps(
     return ALL_STEPS.filter((step) => {
         if (step.id === "provider") return !lockProvider;
         if (step.id === "method") return providerHasAuthMethodChoice(provider, hasGitHubApp);
+        if (method === "pagerduty_oauth") return false;
         if (step.id === "verify" || step.id === "review") return !isRedirectMethod(method);
         return true;
     });
@@ -70,14 +66,18 @@ export type AddProviderStepGateContext = {
     verified: boolean;
 };
 
-/**
- * The GitHub App one-click install is a full-page redirect to GitHub and
- * back (dev-health-ops `install-url` / `install-callback`); the backend
- * activates the credential atomically on that round trip, so this wizard
- * never runs its own manual verify step for that method.
- */
 export function isRedirectMethod(method: AddProviderMethod | null): boolean {
-    return method === "github_app";
+    return method === "github_app" || method === "pagerduty_oauth";
+}
+
+export function isPagerDutyAddProviderMethod(
+    method: AddProviderMethod | null,
+): method is PagerDutyAddProviderMethod {
+    return (
+        method === "pagerduty_oauth" ||
+        method === "pagerduty_client_credentials" ||
+        method === "pagerduty_api_token"
+    );
 }
 
 /**
