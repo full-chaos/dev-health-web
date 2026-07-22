@@ -9,16 +9,41 @@ private key.
 
 ### MCP service and bundled client plugins
 
-Start the isolated service fixture from a sibling `dev-health-ops` checkout:
+Keep `dev-health-{ops,acr,web}` as sibling checkouts. For the complete Docker
+service and plugin fixture, run from Ops:
 
 ```bash
 cd ../dev-health-ops
 bash scripts/context-fabric-local.sh
 ```
 
-That fixture is for `acr-api`, host-local `acr-mcp`, and the OpenCode, Claude
-Code, Codex, and Cursor packages. It intentionally does not copy a Web assertion
-key into this checkout or launch the Web application.
+The launcher renders the real Ops `compose.yml`, layers the canonical ACR
+Compose services and generated TLS configuration, runs `acr-api` in Docker, and
+builds the host-local `acr-mcp` for OpenCode, Claude Code, Codex, and Cursor. It
+uses a unique project and does not replace the Ops Compose stack.
+
+To run the ACR service in Kubernetes instead, use the Ops-owned Helm lifecycle:
+
+```bash
+cd ../dev-health-ops
+bash scripts/context-fabric-kubernetes.sh render \
+  --image "$ACR_IMAGE" \
+  --entitlement-url "$OPS_HTTPS_ORIGIN"
+
+bash scripts/context-fabric-kubernetes.sh apply \
+  --image "$ACR_IMAGE" \
+  --entitlement-url "$OPS_HTTPS_ORIGIN"
+```
+
+Kubernetes requires existing ACR Secrets, TLS PostgreSQL, TLS-native ClickHouse,
+and an HTTPS Ops entitlement origin. The host plugin reaches the ACR ClusterIP
+through the documented loopback port-forward; `acr-mcp` is not deployed as a
+Pod.
+
+Neither service path copies a Web assertion key into this checkout or launches
+the Web application. The complete setup and client-package commands are in
+`dev-health-ops/docs/context-fabric-local.md` and
+`dev-health-acr/docs/local-development.md`.
 
 ### Web UI and BFF behavior
 
