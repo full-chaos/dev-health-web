@@ -39,14 +39,9 @@ describe("PagerDuty server actions", () => {
                 new Response(JSON.stringify(entitlementWithoutFeature), { status: 200 }),
             );
 
-        await expect(
-            startPagerDutyOAuth({
-                credentialName: "production",
-                datasets: ["services"],
-                region: "us",
-                subdomain: "acme",
-            }),
-        ).resolves.toEqual({ error: "PagerDuty connections are currently unavailable." });
+        await expect(startPagerDutyOAuth()).resolves.toEqual({
+            error: "PagerDuty connections are currently unavailable.",
+        });
 
         expect(fetchSpy).toHaveBeenCalledTimes(1);
         expect(fetchSpy.mock.calls[0]?.[0]).toBe(
@@ -135,14 +130,9 @@ describe("PagerDuty server actions", () => {
                 ),
             );
 
-        await expect(
-            startPagerDutyOAuth({
-                credentialName: "production",
-                datasets: ["services"],
-                region: "us",
-                subdomain: "acme",
-            }),
-        ).resolves.toEqual({ data: { authorize_url: "https://pagerduty.example/authorize" } });
+        await expect(startPagerDutyOAuth()).resolves.toEqual({
+            data: { authorize_url: "https://pagerduty.example/authorize" },
+        });
 
         expect(fetchSpy).toHaveBeenCalledTimes(2);
         fetchSpy.mockRestore();
@@ -194,14 +184,9 @@ describe("PagerDuty server actions", () => {
             throw new Error(`Unexpected request: ${url}`);
         });
 
-        await expect(
-            startPagerDutyOAuth({
-                credentialName: "production",
-                datasets: ["services"],
-                region: "us",
-                subdomain: "acme",
-            }),
-        ).resolves.toEqual({ data: { authorize_url: "https://pagerduty.example/authorize" } });
+        await expect(startPagerDutyOAuth()).resolves.toEqual({
+            data: { authorize_url: "https://pagerduty.example/authorize" },
+        });
 
         entitlementEnabled = false;
 

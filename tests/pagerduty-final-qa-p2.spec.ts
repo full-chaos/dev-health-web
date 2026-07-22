@@ -392,43 +392,25 @@ test("P1 create wizard carries mappings into ReviewStep", async ({ page, request
     await captureScenario(page, testInfo, scenario, signals);
 });
 
-test("P2 mobile setup reaches named PagerDuty controls by keyboard at 390 by 844", async ({
+test("P2 mobile PagerDuty credentials use generic row actions", async ({
     page,
     request,
 }, testInfo) => {
     const scenario: QaScenario = {
-        id: "21-mobile-setup-keyboard-focus",
+        id: "21-mobile-generic-credential-row-actions",
         priority: "P2",
-        title: "Mobile setup layout retains keyboard focus and controls",
+        title: "Mobile PagerDuty credentials use generic row actions",
         viewport: "mobile",
     };
-    await setPagerDutyScenario(request, "connected-us");
+    await setPagerDutyScenario(request, "mapping-fixture");
     await resizeForScenario(page, scenario.viewport);
     const signals = collectBrowserSignals(page);
     await page.goto("/org/admin/integrations/pagerduty");
-    const connectButton = page.getByRole("button", { name: "Connect PagerDuty" });
-    const statusButton = page.getByRole("button", { name: "Check connection status" });
-    for (let tabCount = 0; tabCount < 64; tabCount += 1) {
-        await page.keyboard.press("Tab");
-        if (await statusButton.evaluate((button) => button === document.activeElement)) break;
-    }
-    await expect(statusButton).toBeFocused();
-    await expect(statusButton).toBeVisible();
-    await expect
-        .poll(async () =>
-            statusButton.evaluate((button) => {
-                const style = window.getComputedStyle(button);
-                return (
-                    button.matches(":focus-visible") &&
-                    (style.outlineStyle !== "none" || style.boxShadow !== "none")
-                );
-            }),
-        )
-        .toBe(true);
-    await page.keyboard.press("Shift+Tab");
-    await expect(connectButton).toBeFocused();
-    await page.keyboard.press("Tab");
-    await expect(statusButton).toBeFocused();
+    const credentialsRegion = page.getByRole("region", { name: "PagerDuty credentials" });
+    await expect(credentialsRegion.getByRole("table")).toBeVisible();
+    await expect(credentialsRegion.getByRole("button", { name: "Manage" })).toBeVisible();
+    await expect(credentialsRegion.getByRole("button", { name: "Test" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Check connection status" })).toHaveCount(0);
     await captureScenario(page, testInfo, scenario, signals);
 });
 

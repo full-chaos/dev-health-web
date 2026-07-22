@@ -52,6 +52,7 @@ export function getVisibleAddProviderSteps(
     return ALL_STEPS.filter((step) => {
         if (step.id === "provider") return !lockProvider;
         if (step.id === "method") return providerHasAuthMethodChoice(provider, hasGitHubApp);
+        if (method === "pagerduty_oauth") return false;
         if (step.id === "verify" || step.id === "review") return !isRedirectMethod(method);
         return true;
     });

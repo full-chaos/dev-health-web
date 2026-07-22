@@ -3,11 +3,7 @@ import {
     connectPagerDutyClientCredentials,
     startPagerDutyOAuth,
 } from "@/lib/admin/server";
-import {
-    PAGERDUTY_PLANNER_DATASETS,
-    pagerDutyOAuthDatasets,
-    type PagerDutyRegion,
-} from "@/lib/admin/pagerduty";
+import type { PagerDutyRegion } from "@/lib/admin/pagerduty";
 
 type PagerDutyCredentialInput = {
     readonly credentialName: string;
@@ -18,13 +14,8 @@ function region(fields: Readonly<Record<string, string>>): PagerDutyRegion {
     return fields.region === "eu" ? "eu" : "us";
 }
 
-export function startPagerDutyOAuthCredential(input: PagerDutyCredentialInput) {
-    return startPagerDutyOAuth({
-        credentialName: input.credentialName || "default",
-        datasets: pagerDutyOAuthDatasets(PAGERDUTY_PLANNER_DATASETS),
-        region: region(input.fields),
-        subdomain: input.fields.subdomain?.trim() ?? "",
-    });
+export function startPagerDutyOAuthCredential() {
+    return startPagerDutyOAuth();
 }
 
 export function savePagerDutyClientCredentials(input: PagerDutyCredentialInput) {

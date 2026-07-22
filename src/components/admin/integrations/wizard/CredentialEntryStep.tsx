@@ -1,5 +1,4 @@
 import type { ChangeEvent, ReactNode } from "react";
-import { Button } from "@/components/shared/Button";
 import { GitHubForm, GitLabForm, JiraForm, LinearForm, LaunchDarklyForm } from "../ProviderForms";
 import { GitHubAppConnect } from "../GitHubAppConnect";
 import { PagerDutyCredentialFields } from "../PagerDutyCredentialFields";
@@ -10,11 +9,8 @@ type CredentialEntryStepProps = {
     provider: Provider;
     method: AddProviderMethod | null;
     credentialName: string;
-    isPending: boolean;
-    isPagerDutyOAuthReady: boolean;
     onCredentialNameChangeAction: (name: string) => void;
     onFieldChangeAction: (name: string, value: string) => void;
-    onStartPagerDutyOAuthAction: () => void;
 };
 
 function renderProviderFields(provider: Provider, method: AddProviderMethod | null): ReactNode {
@@ -50,11 +46,8 @@ export function CredentialEntryStep({
     provider,
     method,
     credentialName,
-    isPending,
-    isPagerDutyOAuthReady,
     onCredentialNameChangeAction,
     onFieldChangeAction,
-    onStartPagerDutyOAuthAction,
 }: CredentialEntryStepProps) {
     if (method === "github_app") {
         return (
@@ -102,15 +95,6 @@ export function CredentialEntryStep({
             <div onChange={handleFieldChange} className="space-y-4">
                 {renderProviderFields(provider, method)}
             </div>
-            {method === "pagerduty_oauth" ? (
-                <Button
-                    variant="primary"
-                    disabled={isPending || !isPagerDutyOAuthReady}
-                    onClick={onStartPagerDutyOAuthAction}
-                >
-                    Connect PagerDuty
-                </Button>
-            ) : null}
         </div>
     );
 }

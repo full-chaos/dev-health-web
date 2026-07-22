@@ -141,18 +141,9 @@ describe("PagerDuty admin API", () => {
             return new Response(JSON.stringify(response), { status: 200 });
         });
 
-        await expect(
-            pagerDutyApi.authorize(
-                {
-                    credential_name: "operations",
-                    enabled_datasets: ["incidents"],
-                    region: "eu",
-                    subdomain: "acme",
-                },
-                "token-1",
-                "org-1",
-            ),
-        ).resolves.toEqual(authorizeResponse);
+        await expect(pagerDutyApi.authorize("token-1", "org-1")).resolves.toEqual(
+            authorizeResponse,
+        );
         await expect(
             pagerDutyApi.callback(
                 { state: "callback-state", code: "callback-code" },
@@ -203,14 +194,7 @@ describe("PagerDuty admin API", () => {
         expect(calls[0]?.[0]).toBe(
             "http://test-ops:8000/api/v1/admin/integrations/pagerduty/authorize",
         );
-        expect(calls[0]?.[1]?.body).toBe(
-            JSON.stringify({
-                credential_name: "operations",
-                enabled_datasets: ["incidents"],
-                region: "eu",
-                subdomain: "acme",
-            }),
-        );
+        expect(calls[0]?.[1]?.body).toBe(JSON.stringify({}));
         expect(calls[1]?.[0]).toBe(
             "http://test-ops:8000/api/v1/admin/integrations/pagerduty/callback",
         );

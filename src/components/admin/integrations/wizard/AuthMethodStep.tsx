@@ -5,10 +5,18 @@ import type { Provider } from "@/lib/admin/types";
 type AuthMethodStepProps = {
     provider: Provider;
     method: AddProviderMethod | null;
+    isPending?: boolean;
+    error?: string | null;
     onChooseAction: (method: AddProviderMethod) => void;
 };
 
-export function AuthMethodStep({ provider, method, onChooseAction }: AuthMethodStepProps) {
+export function AuthMethodStep({
+    provider,
+    method,
+    isPending = false,
+    error,
+    onChooseAction,
+}: AuthMethodStepProps) {
     if (provider === "pagerduty") {
         return (
             <div className="space-y-4">
@@ -21,6 +29,7 @@ export function AuthMethodStep({ provider, method, onChooseAction }: AuthMethodS
 
                 <button
                     type="button"
+                    disabled={isPending}
                     onClick={() => onChooseAction("pagerduty_oauth")}
                     aria-pressed={method === "pagerduty_oauth"}
                     className={`w-full rounded-xl border p-4 text-left transition-colors ${
@@ -35,8 +44,15 @@ export function AuthMethodStep({ provider, method, onChooseAction }: AuthMethodS
                     </p>
                 </button>
 
+                {error ? (
+                    <p role="alert" className="text-sm text-(--negative)">
+                        {error}
+                    </p>
+                ) : null}
+
                 <button
                     type="button"
+                    disabled={isPending}
                     onClick={() => onChooseAction("pagerduty_client_credentials")}
                     aria-pressed={method === "pagerduty_client_credentials"}
                     className={`w-full rounded-xl border p-4 text-left transition-colors ${
@@ -53,6 +69,7 @@ export function AuthMethodStep({ provider, method, onChooseAction }: AuthMethodS
 
                 <button
                     type="button"
+                    disabled={isPending}
                     onClick={() => onChooseAction("pagerduty_api_token")}
                     aria-pressed={method === "pagerduty_api_token"}
                     className={`text-xs font-medium underline-offset-2 hover:underline ${

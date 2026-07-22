@@ -92,19 +92,35 @@ test("Linear Add Provider wizard renders manual credential fields immediately", 
     await expect(page.locator("#linear-teams")).toBeVisible();
 });
 
-test("PagerDuty setup exposes OAuth first with supported manual fallbacks", async ({
-    page,
-    request,
-}) => {
+test("PagerDuty OAuth starts immediately without credential fields", async ({ page, request }) => {
     await setPagerDutyEntitlement(request, "canonical-enabled");
     await page.goto("/org/admin/integrations/pagerduty");
 
-    await expect(page.getByRole("heading", { name: "Connect PagerDuty" })).toBeVisible();
+    const oauth = page.getByRole("button", { name: "OAuth (recommended)" });
+    await expect(oauth).toBeVisible();
+    await oauth.click();
+
+    await expect(page.getByRole("button", { name: "Continue" })).toHaveCount(0);
+    await expect(page.getByLabel("Credential Name")).toHaveCount(0);
+    await expect(page.getByLabel("Account subdomain")).toHaveCount(0);
+    await expect(page.getByLabel("Client ID")).toHaveCount(0);
+    await expect(page.getByLabel("Client secret")).toHaveCount(0);
+    await expect(page.getByLabel("API token")).toHaveCount(0);
+});
+
+test("PagerDuty setup retains generic manual credential fallbacks", async ({ page, request }) => {
+    await setPagerDutyEntitlement(request, "canonical-enabled");
+    await page.goto("/org/admin/integrations/pagerduty");
+
     await expect(page.getByRole("button", { name: "OAuth (recommended)" })).toBeVisible();
     await page.getByRole("button", { name: "Client credentials" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByLabel("Client ID")).toBeVisible();
     await expect(page.getByLabel("Client secret")).toBeVisible();
+
+    await page.getByRole("button", { name: "Back" }).click();
     await page.getByRole("button", { name: "Use API token instead" }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByLabel("API token")).toBeVisible();
 });
 

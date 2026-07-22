@@ -62,11 +62,12 @@ test("P3 keeps a pre-existing PagerDuty connection manageable when the entitleme
     const consoleMessages = collectConsole(page);
 
     await page.goto("/org/admin/integrations/pagerduty");
-    await expect(page.getByRole("table", { name: "PagerDuty credentials" })).toBeVisible();
+    const credentialsRegion = page.getByRole("region", { name: "PagerDuty credentials" });
+    await expect(credentialsRegion.getByRole("table")).toBeVisible();
     await expect(page.getByRole("button", { name: "Add credential" })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Test" })).toBeVisible();
+    await expect(credentialsRegion.getByRole("button", { name: "Test" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Create sync configuration" })).toHaveCount(0);
-    await waitForCaptureReadiness(page, "desktop");
+    await waitForCaptureReadiness(page, "responsive");
     await captureArtifact(page, "off-existing-manage-only-768", consoleMessages);
 });
 

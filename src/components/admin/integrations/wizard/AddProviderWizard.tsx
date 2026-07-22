@@ -41,7 +41,7 @@ type TestResult = {
 
 function initialMethod(provider: Provider | "", hasGitHubApp: boolean): AddProviderMethod | null {
     if (!provider) return null;
-    if (provider === "pagerduty") return null;
+    if (provider === "pagerduty") return "pagerduty_oauth";
     return providerHasAuthMethodChoice(provider, hasGitHubApp) ? null : "manual";
 }
 
@@ -62,6 +62,7 @@ export function AddProviderWizard({
     const [testResult, setTestResult] = useState<TestResult | null>(null);
     const [submitted, setSubmitted] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [authorizationError, setAuthorizationError] = useState<string | null>(null);
     const [isPending, startPending] = useTransition();
 
     const visibleSteps = useMemo(
@@ -94,7 +95,6 @@ export function AddProviderWizard({
         credentialFieldsComplete: hasPrimaryCredentialField(resolvedProvider, fieldValues, method),
         verified: isVerified,
     });
-    const isPagerDutyOAuthReady = hasPrimaryCredentialField(resolvedProvider, fieldValues, method);
 
     function goToStep(index: number) {
         if (index <= clampedIndex) setCurrentIndex(index);
@@ -112,10 +112,13 @@ export function AddProviderWizard({
         setMethod(initialMethod(next, next === "github" ? hasGitHubApp : false));
         setFieldValues({});
         setCredentialName("");
+        setAuthorizationError(null);
     }
     function handleMethodChange(next: AddProviderMethod) {
         setMethod(next);
         setFieldValues({});
+        setAuthorizationError(null);
+        if (next === "pagerduty_oauth") handleStartPagerDutyOAuth();
     }
     function handleFieldChange(name: string, value: string) {
         setFieldValues((prev) => ({ ...prev, [name]: value }));
@@ -148,15 +151,12 @@ export function AddProviderWizard({
     }
 
     function handleStartPagerDutyOAuth() {
-        if (method !== "pagerduty_oauth" || !isPagerDutyOAuthReady) return;
-
         startPending(async () => {
-            const result = await startPagerDutyOAuthCredential({
-                credentialName,
-                fields: fieldValues,
-            });
+            const result = await startPagerDutyOAuthCredential();
             if (result.error || !result.data) {
-                toast.error(result.error ?? "PagerDuty authorization could not be started.");
+                setAuthorizationError(
+                    result.error ?? "PagerDuty authorization could not be started.",
+                );
                 return;
             }
             window.location.assign(result.data.authorize_url);
@@ -210,6 +210,8 @@ export function AddProviderWizard({
                     <AuthMethodStep
                         provider={resolvedProvider}
                         method={method}
+                        isPending={isPending}
+                        error={authorizationError}
                         onChooseAction={handleMethodChange}
                     />
                 )}
@@ -218,11 +220,8 @@ export function AddProviderWizard({
                         provider={resolvedProvider}
                         method={method}
                         credentialName={credentialName}
-                        isPending={isPending}
-                        isPagerDutyOAuthReady={isPagerDutyOAuthReady}
                         onCredentialNameChangeAction={setCredentialName}
                         onFieldChangeAction={handleFieldChange}
-                        onStartPagerDutyOAuthAction={handleStartPagerDutyOAuth}
                     />
                 )}
                 {currentStep.id === "verify" && (
@@ -247,13 +246,18 @@ export function AddProviderWizard({
                 )}
             </div>
 
-            {!(redirect && currentStep.id === "credential") && currentStep.id !== "review" && (
-                <StepNav
-                    onBackAction={clampedIndex > 0 ? goBack : undefined}
-                    onContinueAction={goNext}
-                    blockReason={blockReason}
-                />
-            )}
+            {!(
+                redirect &&
+                (currentStep.id === "credential" ||
+                    (method === "pagerduty_oauth" && currentStep.id === "method"))
+            ) &&
+                currentStep.id !== "review" && (
+                    <StepNav
+                        onBackAction={clampedIndex > 0 ? goBack : undefined}
+                        onContinueAction={goNext}
+                        blockReason={blockReason}
+                    />
+                )}
         </div>
     );
 }

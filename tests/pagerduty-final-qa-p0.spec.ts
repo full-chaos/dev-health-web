@@ -33,7 +33,7 @@ test("P0 global Add Provider routes PagerDuty through the shared wizard", async 
     const signals = collectBrowserSignals(page);
     await page.goto("/org/admin/integrations");
     await page.getByRole("button", { name: "Add Provider" }).click();
-    await page.getByRole("radio", { name: "PagerDuty" }).check();
+    await page.getByText("PagerDuty", { exact: true }).click();
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: "Auth method" })).toBeVisible();
     await expect(page.getByRole("button", { name: "OAuth (recommended)" })).toBeVisible();
@@ -117,7 +117,7 @@ test("P0 OAuth callback succeeds once and removes callback query values", async 
         })
         .toEqual({
             callbackCount: 1,
-            pathname: "/org/admin/integrations/pagerduty",
+            pathname: "/org/admin/integrations/pagerduty/callback",
             search: "",
         });
     await captureScenario(page, testInfo, scenario, signals);

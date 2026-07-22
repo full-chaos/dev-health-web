@@ -18,29 +18,11 @@ import type {
 import { getSessionContext, withErrorHandling } from "./_shared";
 import { requirePagerDutyCreationEntitlement } from "./canonicalIncidentIngestion";
 
-type StartPagerDutyOAuthInput = {
-    readonly credentialName: string;
-    readonly datasets: readonly PagerDutyOAuthDataset[];
-    readonly region: PagerDutyRegion;
-    readonly subdomain: string;
-};
-
-export async function startPagerDutyOAuth(
-    input: StartPagerDutyOAuthInput,
-): Promise<Result<PagerDutyAuthorizeResponse>> {
+export async function startPagerDutyOAuth(): Promise<Result<PagerDutyAuthorizeResponse>> {
     return withErrorHandling(async () => {
         await requirePagerDutyCreationEntitlement();
         const { token, orgId } = await getSessionContext();
-        return adminApi.pagerDuty.authorize(
-            {
-                credential_name: input.credentialName,
-                enabled_datasets: input.datasets,
-                region: input.region,
-                subdomain: input.subdomain,
-            },
-            token,
-            orgId,
-        );
+        return adminApi.pagerDuty.authorize(token, orgId);
     });
 }
 
