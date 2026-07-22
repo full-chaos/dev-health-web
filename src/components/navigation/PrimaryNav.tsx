@@ -151,9 +151,6 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
                     className={`${mobileOpen ? "mt-3 block" : "hidden"} max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl border border-(--card-stroke) bg-(--card-80) p-4 md:mt-0 md:block md:max-h-none md:overflow-visible`}
                 >
                     <div>
-                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                            Full Chaos Dev Health Ops
-                        </p>
                         <p className="mt-2 font-(--font-display) text-lg font-semibold flex items-center gap-2">
                             Cockpit <BetaBadge />
                         </p>

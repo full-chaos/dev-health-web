@@ -51,6 +51,7 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
     it("always renders the eight area rows", () => {
         render(<PrimaryNav filters={makeFilter()} active="home" />);
 
+        expect(screen.queryByText("Full Chaos Dev Health Ops")).not.toBeInTheDocument();
         for (const name of [
             /^Cockpit$/i,
             /^Diagnose$/i,

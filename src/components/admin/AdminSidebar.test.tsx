@@ -38,7 +38,8 @@ describe("AdminSidebar", () => {
     it("renders without crashing and highlights the current route", () => {
         render(<AdminSidebar />);
 
-        expect(screen.getByText("Full Chaos Dev Health Ops")).toBeInTheDocument();
+        expect(screen.getByText("Admin")).toBeInTheDocument();
+        expect(screen.queryByText("Full Chaos Dev Health Ops")).not.toBeInTheDocument();
         expect(screen.getByTestId("org-switcher")).toBeInTheDocument();
         expect(
             screen.queryByRole("link", { name: /product telemetryusage/i }),
