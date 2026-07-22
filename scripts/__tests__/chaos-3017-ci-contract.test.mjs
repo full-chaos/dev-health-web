@@ -104,16 +104,15 @@ describe("CHAOS-3017 CI contracts", () => {
     });
 
     it("keeps default E2E shards non-empty, exhaustive, and disjoint outside setup dependencies", async () => {
-        const controller = new AbortController();
         const shardLabels = matrixShardLabels(job(contents(TESTS_WORKFLOW), "e2e-default"));
-        const [full, ...shards] = await Promise.all(
-            [undefined, ...shardLabels].map((shard) =>
-                listDefaultPlaywrightTests(shard, controller.signal).catch((error) => {
-                    controller.abort();
-                    throw error;
-                }),
-            ),
-        );
+        // Each Playwright process uses the report and result paths from the shared
+        // config. Listing them concurrently makes those processes race while the
+        // broader Vitest suite is also active, producing incomplete inventories.
+        const full = await listDefaultPlaywrightTests();
+        const shards = [];
+        for (const shard of shardLabels) {
+            shards.push(await listDefaultPlaywrightTests(shard));
+        }
 
         expect(full.length).toBeGreaterThan(0);
         expect(new Set(full).size).toBe(full.length);
