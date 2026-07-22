@@ -2,62 +2,103 @@
 
 [Demo](https://demo.fullchaos.studio)
 
-This is the application frontend for [dev-health-ops](https://github.com/chrisgeo/dev-health-ops).
+This is the application frontend for [dev-health-ops](https://github.com/full-chaos/dev-health-ops).
 
 ## Prerequisites
 
-- Node.js 18+ (recommended: 20+)
-- npm, yarn, pnpm, or bun
+- Node.js 22 or newer
+- pnpm 11.15.1 (pinned by `packageManager`)
+
+Enable the pinned pnpm toolchain with Corepack:
+
+```bash
+corepack enable
+pnpm --version
+```
 
 ## Getting Started
 
 ### Full Stack (with Backend)
 
+Keep `dev-health-ops` and `dev-health-web` as sibling checkouts.
+
 1. **Install dependencies:**
 
 ```bash
-npm install
+pnpm install --frozen-lockfile
 ```
 
-2. **Start ClickHouse** (from `dev-health-ops`):
+2. **Start the backend data services** (from `dev-health-ops`):
 
 ```bash
-dev-hops grafana up
+cd ../dev-health-ops
+docker compose up -d postgres clickhouse valkey pgbouncer
+
+export POSTGRES_URI="postgresql+asyncpg://postgres:postgres@localhost:5555/postgres"
+export CLICKHOUSE_URI="clickhouse://ch:ch@localhost:8123/default"
+dev-hops migrate postgres
+dev-hops migrate clickhouse
 ```
 
 3. **Run the API:**
 
 ```bash
-dev-hops api --db "clickhouse://localhost:8123/default" --reload
+POSTGRES_URI="postgresql+asyncpg://postgres:postgres@localhost:5555/postgres" \
+CLICKHOUSE_URI="clickhouse://ch:ch@localhost:8123/default" \
+  dev-hops api --reload
 ```
 
 4. **Run the web app:**
 
 ```bash
-BACKEND_URL="http://127.0.0.1:8000" npm run dev
+cd ../dev-health-web
+BACKEND_URL="http://127.0.0.1:8000" pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-> **First checkout?** The GraphQL schema file (`src/lib/graphql/schema.graphql`) is exported from the `dev-health-ops` backend and is not generated locally. If it is missing, `npm run codegen` will fail. To obtain it, start the backend API and run:
+> **First checkout?** The GraphQL schema file (`src/lib/graphql/schema.graphql`) is exported from the `dev-health-ops` backend and is not generated locally. If it is missing, `pnpm codegen` will fail. To obtain it, start the backend API and run:
 >
 > ```bash
 > PYTHONPATH=../dev-health-ops/src python3 -m dev_health_ops.api.graphql.export_schema --out src/lib/graphql/schema.graphql
-> npm run codegen
+> pnpm codegen
 > ```
 >
 > See [Schema Contract Enforcement](#schema-contract-enforcement) for details.
 
 ### Frontend Only (Demo Mode)
 
-You can run the frontend with sample data (no backend required):
+You can run the frontend with checked-in sample data and no backend:
 
 ```bash
-npm install
-npm run dev
+pnpm install --frozen-lockfile
+NEXT_PUBLIC_DEV_HEALTH_TEST_MODE=true pnpm dev
 ```
 
 This will serve the app at [http://localhost:3000](http://localhost:3000) using static sample data.
+
+### Context Fabric/ACR
+
+The local hosted service and bundled OpenCode, Claude Code, Codex, and Cursor
+packages are owned by the private `dev-health-acr` repository. With sibling
+checkouts, start the isolated TLS service fixture from Ops:
+
+```bash
+cd ../dev-health-ops
+bash scripts/context-fabric-local.sh
+```
+
+That fixture is intentionally optimized for `acr-api` and host-local `acr-mcp`;
+it does not copy a Web assertion key into this repository. Validate the Web UI
+and BFF states separately with:
+
+```bash
+cd ../dev-health-web
+pnpm test:e2e:context-fabric
+```
+
+See [`docs/context-fabric.md`](docs/context-fabric.md) for the security boundary,
+live assertion variables, and contract checks.
 
 ## Environment Variables
 
@@ -91,18 +132,21 @@ Copy `.env.example` to `.env.local` and configure as needed.
 
 ## Scripts
 
-| Script                     | Description                                                   |
-| -------------------------- | ------------------------------------------------------------- |
-| `npm run dev`              | Start development server                                      |
-| `npm run build`            | Build for production                                          |
-| `npm run start`            | Start production server                                       |
-| `npm run lint`             | Run ESLint                                                    |
-| `npm run typecheck`        | Run TypeScript checks                                         |
-| `npm run test:unit`        | Run unit tests (Vitest)                                       |
-| `npm run test:integration` | Run integration tier placeholder (currently no suite)         |
-| `npm run test:e2e`         | Run e2e tests (Playwright)                                    |
-| `npm run test:e2e:live`    | Run live-backend e2e smoke tests (Playwright)                 |
-| `npm run test:ci`          | Run CI gates (lint, typecheck, build, unit, integration, e2e) |
+| Script                              | Description                                                   |
+| ----------------------------------- | ------------------------------------------------------------- |
+| `pnpm dev`                          | Start development server                                      |
+| `pnpm build`                        | Build for production                                          |
+| `pnpm start`                        | Start production server                                       |
+| `pnpm lint`                         | Run ESLint                                                    |
+| `pnpm design-lint`                  | Run design-system static checks                               |
+| `pnpm typecheck`                    | Run TypeScript checks                                         |
+| `pnpm test:unit`                    | Run unit tests (Vitest)                                       |
+| `pnpm test:integration`             | Run integration tier placeholder (currently no suite)         |
+| `pnpm test:e2e`                     | Run e2e tests (Playwright)                                    |
+| `pnpm test:e2e:context-fabric`      | Run Context Fabric browser/BFF tests                          |
+| `pnpm test:e2e:live`                | Run live-backend e2e smoke tests (Playwright)                 |
+| `pnpm test:ci`                      | Run CI gates (lint, typecheck, build, unit, integration, e2e) |
+| `pnpm acr:contracts:check`          | Check Web's ACR contract copies                               |
 
 ## Test Tiers (Phase 0 Contract)
 
@@ -121,7 +165,7 @@ bash ci/run_tests.sh e2e
 bash ci/run_tests.sh live-e2e
 
 # Full CI-equivalent gate locally
-npm run test:ci
+pnpm test:ci
 ```
 
 ### Live Backend E2E (Phase 2)
@@ -155,7 +199,7 @@ In GitHub Actions, the `live-e2e.yml` workflow starts a real `dev-health-ops` AP
 Component tests run under the Vitest `components` project (jsdom environment). Files live alongside components at `src/components/**/*.test.tsx`.
 
 ```bash
-npm run test:unit   # runs both unit and component Vitest projects
+pnpm test:unit   # runs both unit and component Vitest projects
 ```
 
 Key patterns:
@@ -170,7 +214,7 @@ The `live-e2e.yml` CI workflow includes a GraphQL schema drift detection step th
 
 1. Start the `dev-health-ops` API locally.
 2. Re-export: `PYTHONPATH=../dev-health-ops/src python3 -m dev_health_ops.api.graphql.export_schema --out src/lib/graphql/schema.graphql`
-3. Regenerate types: `npm run codegen`
+3. Regenerate types: `pnpm codegen`
 4. Commit `schema.graphql` + `__generated__/` together.
 
 MSW mock handlers in `tests/mocks/handlers.ts` are typed with interfaces from `tests/mocks/types.ts` and generated GraphQL types, so TypeScript catches response shape mismatches at compile time.
@@ -181,7 +225,7 @@ MSW mock handlers in `tests/mocks/handlers.ts` are typed with interfaces from `t
 - Failure artifacts are always retained: video (`video: retain-on-failure`) and screenshots (`screenshot: only-on-failure`). The default E2E suite retains traces only on failure; Context Fabric persists traces on successful CI runs and writes named 1280/768/375 screenshots.
 - Every suite writes its JUnit output beneath `test-results/playwright/<suite>/junit.xml`.
 - Every suite writes its HTML report beneath `test-results/playwright-html/<suite>/`; CI uploads both roots, while certificates and auth state remain outside them.
-- `ci/run_tests.sh e2e` clears and recreates artifact directories before each run and prints diagnostic context (Node/npm/Playwright versions + artifact paths).
+- `ci/run_tests.sh e2e` clears and recreates artifact directories before each run and prints diagnostic context (Node/pnpm/Playwright versions + artifact paths).
 
 These paths can be overridden with:
 
@@ -191,6 +235,7 @@ PLAYWRIGHT_REPORT_DIR=<dir> PLAYWRIGHT_RESULTS_DIR=<dir> bash ci/run_tests.sh e2
 
 ## Documentation
 
+- `docs/context-fabric.md` — Context Fabric/ACR UI and BFF development
 - `docs/visualizations.md` — Chart selection guide (heatmaps, quadrants, flame diagrams)
 - `docs/graphql-client.md` — urql GraphQL client usage
 - `docs/graphql-investment.md` — Investment View GraphQL API
