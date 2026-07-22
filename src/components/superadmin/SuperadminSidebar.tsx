@@ -56,9 +56,6 @@ export function SuperadminSidebar({ canAccessOrgAdmin = false }: { canAccessOrgA
             <div className="md:sticky md:top-6">
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                            Full Chaos Dev Health Ops
-                        </p>
                         <p className="mt-3 font-(--font-display) text-lg">Superadmin</p>
                         <span className="mt-1 inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-purple-500">
                             Platform Admin

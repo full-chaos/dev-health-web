@@ -145,9 +145,6 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                     className={`${mobileOpen ? "mt-3 block" : "hidden"} max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 md:mt-0 md:block md:max-h-none md:overflow-visible`}
                 >
                     <div>
-                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                            Full Chaos Dev Health Ops
-                        </p>
                         <p className="mt-3 font-(--font-display) text-lg">Admin</p>
                         {isSuperuser && (
                             <span className="mt-1 inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-label-caps font-medium uppercase text-purple-500">
