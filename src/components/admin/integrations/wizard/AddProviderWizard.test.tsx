@@ -5,8 +5,11 @@ import { AddProviderWizard } from "./AddProviderWizard";
 import type { IntegrationCredential } from "@/lib/admin/types";
 
 vi.mock("@/lib/admin/server", () => ({
+    connectPagerDutyApiToken: vi.fn(),
+    connectPagerDutyClientCredentials: vi.fn(),
     testConnection: vi.fn(),
     createCredential: vi.fn(),
+    startPagerDutyOAuth: vi.fn(),
 }));
 
 import { testConnection, createCredential } from "@/lib/admin/server";
@@ -63,7 +66,7 @@ describe("AddProviderWizard", () => {
         expect(screen.getByLabelText("Personal access token")).toBeInTheDocument();
     });
 
-    it("routes PagerDuty from the global picker to its dedicated setup page", () => {
+    it("selects PagerDuty in the shared global provider picker", async () => {
         renderWithToaster(
             <AddProviderWizard
                 canCreatePagerDuty
@@ -73,12 +76,13 @@ describe("AddProviderWizard", () => {
             />,
         );
 
-        expect(screen.getByRole("link", { name: "PagerDuty" })).toHaveAttribute(
-            "href",
-            "/org/admin/integrations/pagerduty",
-        );
-        expect(screen.queryByRole("radio", { name: "PagerDuty" })).not.toBeInTheDocument();
-        expect(screen.queryByLabelText("API token")).not.toBeInTheDocument();
+        await userEvent.click(screen.getByRole("radio", { name: "PagerDuty" }));
+        await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+        expect(screen.queryByRole("link", { name: "PagerDuty" })).not.toBeInTheDocument();
+        expect(screen.getByText("OAuth (recommended)")).toBeInTheDocument();
+        expect(screen.getByText("Client credentials")).toBeInTheDocument();
+        expect(screen.getByText("Use API token instead")).toBeInTheDocument();
     });
 
     it("removes PagerDuty from the global picker when canonical incident ingestion is unavailable", () => {
@@ -91,7 +95,7 @@ describe("AddProviderWizard", () => {
             />,
         );
 
-        expect(screen.queryByRole("link", { name: "PagerDuty" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("radio", { name: "PagerDuty" })).not.toBeInTheDocument();
     });
 
     it("runs the full manual create flow: fill token \u2192 verify \u2192 finish \u2192 persists credential", async () => {

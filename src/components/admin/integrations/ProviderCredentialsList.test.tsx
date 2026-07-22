@@ -6,9 +6,12 @@ vi.mock("next/navigation", () => ({
 }));
 
 vi.mock("@/lib/admin/server", () => ({
+    connectPagerDutyApiToken: vi.fn(),
+    connectPagerDutyClientCredentials: vi.fn(),
     testConnection: vi.fn(),
     deleteCredential: vi.fn(),
     createCredential: vi.fn(),
+    startPagerDutyOAuth: vi.fn(),
 }));
 
 import { ProviderCredentialsList } from "./ProviderCredentialsList";
@@ -55,7 +58,7 @@ describe("ProviderCredentialsList", () => {
         );
 
         expect(screen.getByRole("table")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Add Provider" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Add credential" })).toBeInTheDocument();
     });
 
     it("opens the wizard when Add Provider is clicked and closes it back to the table on Cancel", async () => {
@@ -68,10 +71,50 @@ describe("ProviderCredentialsList", () => {
             />,
         );
 
-        await userEvent.click(screen.getByRole("button", { name: "Add Provider" }));
+        await userEvent.click(screen.getByRole("button", { name: "Add credential" }));
         expect(screen.getByLabelText("API Key")).toBeInTheDocument();
 
         await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
         expect(screen.getByRole("table")).toBeInTheDocument();
+    });
+
+    it("uses the shared credential wizard for PagerDuty when credential creation is enabled", async () => {
+        const user = userEvent.setup();
+        renderWithToaster(
+            <ProviderCredentialsList
+                provider="pagerduty"
+                providerName="PagerDuty"
+                credentials={[makeCredential({ provider: "pagerduty" })]}
+                syncConfigs={[]}
+                canCreateCredential
+            />,
+        );
+
+        expect(screen.getByRole("button", { name: "Add credential" })).toBeInTheDocument();
+        await user.click(screen.getByRole("button", { name: "Add credential" }));
+        expect(screen.getByText("OAuth (recommended)")).toBeInTheDocument();
+        await user.click(screen.getByText("OAuth (recommended)"));
+        await user.click(screen.getByRole("button", { name: "Continue" }));
+        expect(screen.getByLabelText("Account subdomain")).toBeInTheDocument();
+        expect(screen.queryByText("Datasets")).not.toBeInTheDocument();
+        expect(screen.queryByText("Service repository mappings")).not.toBeInTheDocument();
+    });
+
+    it("keeps existing PagerDuty rows manageable while hiding credential creation when disabled", () => {
+        renderWithToaster(
+            <ProviderCredentialsList
+                provider="pagerduty"
+                providerName="PagerDuty"
+                credentials={[makeCredential({ provider: "pagerduty" })]}
+                syncConfigs={[]}
+                canCreateCredential={false}
+            />,
+        );
+
+        expect(screen.getByRole("table")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Manage" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Test" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "Add credential" })).not.toBeInTheDocument();
     });
 });

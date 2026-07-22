@@ -1,18 +1,23 @@
-import type { ChangeEvent } from "react";
+import type { ChangeEvent, ReactNode } from "react";
+import { Button } from "@/components/shared/Button";
 import { GitHubForm, GitLabForm, JiraForm, LinearForm, LaunchDarklyForm } from "../ProviderForms";
 import { GitHubAppConnect } from "../GitHubAppConnect";
-import type { AddProviderMethod } from "../addProviderWizardSteps";
+import { PagerDutyCredentialFields } from "../PagerDutyCredentialFields";
+import { isPagerDutyAddProviderMethod, type AddProviderMethod } from "../addProviderWizardSteps";
 import type { Provider } from "@/lib/admin/types";
 
 type CredentialEntryStepProps = {
     provider: Provider;
     method: AddProviderMethod | null;
     credentialName: string;
+    isPending: boolean;
+    isPagerDutyOAuthReady: boolean;
     onCredentialNameChangeAction: (name: string) => void;
     onFieldChangeAction: (name: string, value: string) => void;
+    onStartPagerDutyOAuthAction: () => void;
 };
 
-function renderProviderFields(provider: Provider) {
+function renderProviderFields(provider: Provider, method: AddProviderMethod | null): ReactNode {
     switch (provider) {
         case "github":
             return <GitHubForm />;
@@ -24,8 +29,10 @@ function renderProviderFields(provider: Provider) {
             return <LinearForm />;
         case "launchdarkly":
             return <LaunchDarklyForm />;
-        default:
-            return null;
+        case "pagerduty":
+            return isPagerDutyAddProviderMethod(method) ? (
+                <PagerDutyCredentialFields method={method} />
+            ) : null;
     }
 }
 
@@ -43,8 +50,11 @@ export function CredentialEntryStep({
     provider,
     method,
     credentialName,
+    isPending,
+    isPagerDutyOAuthReady,
     onCredentialNameChangeAction,
     onFieldChangeAction,
+    onStartPagerDutyOAuthAction,
 }: CredentialEntryStepProps) {
     if (method === "github_app") {
         return (
@@ -56,7 +66,14 @@ export function CredentialEntryStep({
     }
 
     function handleFieldChange(event: ChangeEvent<HTMLDivElement>) {
-        const target = event.target as HTMLInputElement | HTMLTextAreaElement;
+        const target = event.target;
+        if (
+            !(target instanceof HTMLInputElement) &&
+            !(target instanceof HTMLTextAreaElement) &&
+            !(target instanceof HTMLSelectElement)
+        ) {
+            return;
+        }
         onFieldChangeAction(target.name, target.value);
     }
 
@@ -83,8 +100,17 @@ export function CredentialEntryStep({
                 </div>
             </div>
             <div onChange={handleFieldChange} className="space-y-4">
-                {renderProviderFields(provider)}
+                {renderProviderFields(provider, method)}
             </div>
+            {method === "pagerduty_oauth" ? (
+                <Button
+                    variant="primary"
+                    disabled={isPending || !isPagerDutyOAuthReady}
+                    onClick={onStartPagerDutyOAuthAction}
+                >
+                    Connect PagerDuty
+                </Button>
+            ) : null}
         </div>
     );
 }

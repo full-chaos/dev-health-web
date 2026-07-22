@@ -1,4 +1,5 @@
 import type { Provider } from "@/lib/admin/types";
+import type { AddProviderMethod } from "../addProviderWizardSteps";
 
 /**
  * The single field name that must be filled in for `testConnection` to have
@@ -32,6 +33,7 @@ export const PROVIDER_PRIMARY_FIELD: Record<Provider, string> = {
 export function hasPrimaryCredentialField(
     provider: Provider,
     fieldValues: Record<string, string>,
+    method: AddProviderMethod | null = null,
 ): boolean {
     if (provider === "github") {
         const hasToken = Boolean(fieldValues.token?.trim());
@@ -40,6 +42,13 @@ export function hasPrimaryCredentialField(
             Boolean(fieldValues.installationId?.trim()) &&
             Boolean(fieldValues.privateKey?.trim());
         return hasToken || hasAppTriple;
+    }
+    if (provider === "pagerduty") {
+        if (!fieldValues.subdomain?.trim()) return false;
+        if (method === "pagerduty_oauth") return true;
+        if (method === "pagerduty_client_credentials") {
+            return Boolean(fieldValues.client_id?.trim() && fieldValues.client_secret?.trim());
+        }
     }
     const value = fieldValues[PROVIDER_PRIMARY_FIELD[provider]];
     return Boolean(value && value.trim());

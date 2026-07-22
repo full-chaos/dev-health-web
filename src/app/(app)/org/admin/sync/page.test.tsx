@@ -34,6 +34,17 @@ const config: SyncConfig = {
 };
 
 describe("SyncStatusPage", () => {
+    it("exposes the shared Add sync config action", async () => {
+        mockListSyncConfigs.mockResolvedValue({ data: [] });
+
+        render(await SyncStatusPage());
+
+        expect(screen.getByRole("link", { name: "Add sync config" })).toHaveAttribute(
+            "href",
+            "/org/admin/sync/new",
+        );
+    });
+
     it("keeps loaded configurations visible when the response also contains an error", async () => {
         mockListSyncConfigs.mockResolvedValue({
             data: [config],

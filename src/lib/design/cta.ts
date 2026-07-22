@@ -173,6 +173,7 @@ export const CTA_LABELS = {
     acknowledgeAndSave: "Save anyway",
     /** Open the guided Add Provider workflow (CHAOS-2837). */
     addProvider: "Add Provider",
+    addCredential: "Add credential",
     /** Advance the Add Provider wizard's provider-select step (CHAOS-2837). */
     chooseProvider: "Choose provider",
     /** Pick the recommended, one-click GitHub App auth method (CHAOS-2837). */
@@ -183,7 +184,6 @@ export const CTA_LABELS = {
     manageCredential: "Manage",
     /** Row action opening the manage/edit modal for a failing/untested credential (CHAOS-2837). */
     resolveCredential: "Resolve",
-    reconnectPagerDuty: "Reconnect / rotate",
     /** Row action re-running a connection test from the credentials table (CHAOS-2837). */
     testCredential: "Test",
     /** Submit the Add Provider wizard's verify-connection step (CHAOS-2837). */
@@ -192,7 +192,7 @@ export const CTA_LABELS = {
     finishAddProvider: "Finish",
     /** Finish-step follow-up: jump straight into creating a sync configuration (CHAOS-2837). */
     createSyncConfig: "Create sync configuration",
-    newSyncConfig: "New Config",
+    newSyncConfig: "Add sync config",
     manageSyncConfig: "Manage",
     pauseSync: "Pause",
     resumeSync: "Resume",

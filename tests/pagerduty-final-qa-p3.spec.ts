@@ -62,11 +62,9 @@ test("P3 keeps a pre-existing PagerDuty connection manageable when the entitleme
     const consoleMessages = collectConsole(page);
 
     await page.goto("/org/admin/integrations/pagerduty");
-    await expect(page.getByText("PagerDuty setup is unavailable")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Connect PagerDuty" })).toHaveCount(0);
-    await page.getByLabel("Saved credentials").selectOption({ label: "PagerDuty operations" });
-    await page.getByRole("button", { name: "Check connection status" }).click();
-    await expect(page.getByRole("button", { name: "Disconnect" })).toBeVisible();
+    await expect(page.getByRole("table", { name: "PagerDuty credentials" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Add credential" })).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Test" })).toBeVisible();
     await expect(page.getByRole("link", { name: "Create sync configuration" })).toHaveCount(0);
     await waitForCaptureReadiness(page, "desktop");
     await captureArtifact(page, "off-existing-manage-only-768", consoleMessages);
@@ -82,8 +80,9 @@ test("P3 exposes PagerDuty creation only when the entitlement is explicitly true
     const consoleMessages = collectConsole(page);
 
     await page.goto("/org/admin/integrations/pagerduty");
-    await expect(page.getByRole("heading", { name: "Connect PagerDuty" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Connect PagerDuty" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Auth method" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "OAuth (recommended)" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Client credentials" })).toBeVisible();
     await waitForCaptureReadiness(page, "desktop");
     await captureArtifact(page, "on-create-path-1280", consoleMessages);
 });

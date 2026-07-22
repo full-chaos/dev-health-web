@@ -31,7 +31,7 @@ describe("PagerDutyCallback", () => {
         window.history.replaceState(window.history.state, "", "/");
     });
 
-    it("submits once, sanitizes callback query values, and hands the created credential to New Sync Config", async () => {
+    it("sanitizes the OAuth callback and leaves completion in credential management", async () => {
         actions.completePagerDutyOAuth.mockResolvedValue({
             data: {
                 connected: true,
@@ -48,17 +48,19 @@ describe("PagerDutyCallback", () => {
             </StrictMode>,
         );
 
-        await waitFor(() => expect(navigation.replace).toHaveBeenCalledOnce());
+        await waitFor(() => {
+            expect(screen.getByRole("status")).toHaveTextContent(
+                "PagerDuty is connected. You can now configure the datasets to sync.",
+            );
+        });
         expect(actions.completePagerDutyOAuth).toHaveBeenCalledTimes(1);
         expect(actions.completePagerDutyOAuth).toHaveBeenCalledWith({
             state: "callback-state",
             code: "callback-code",
         });
-        expect(navigation.replace).toHaveBeenCalledWith(
-            "/org/admin/sync/new?provider=pagerduty&credential_name=production",
-        );
+        expect(navigation.replace).not.toHaveBeenCalled();
         expect(window.location.pathname).toBe(callbackPath);
-        expect(window.location.search).toBe("?state=callback-state&code=callback-code");
+        expect(window.location.search).toBe("");
     });
 
     it("fails safely without an incomplete callback response", () => {
@@ -82,5 +84,7 @@ describe("PagerDutyCallback", () => {
             "href",
             "/org/admin/integrations/pagerduty",
         );
+        expect(window.location.pathname).toBe(callbackPath);
+        expect(window.location.search).toBe("");
     });
 });
