@@ -7,12 +7,10 @@ permissions:
     contents: read
 
 jobs:
-    collect:
+    format-artifact:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-              with:
-                  fetch-depth: 0
             - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
               with:
                   version: 11.1.1
@@ -21,15 +19,15 @@ jobs:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
-            - name: Collect audit output
-              run: pnpm audit --json --prod > audit.json || true
-            - name: Collect format output
-              run: pnpm format:check:changed > format.log 2>&1 || true
-            - name: Upload diagnostics
+            - name: Format failing files
+              run: |
+                  pnpm exec prettier --write src/components/settings/PreferencesSettings.test.tsx
+                  pnpm exec prettier --write src/lib/__tests__/fcInfinityTheme.test.ts
+            - name: Upload formatted files
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
               with:
-                  name: pr-799-diagnostics
+                  name: pr-799-formatted-files
                   path: |
-                      audit.json
-                      format.log
+                      src/components/settings/PreferencesSettings.test.tsx
+                      src/lib/__tests__/fcInfinityTheme.test.ts
                   retention-days: 1
