@@ -1,14 +1,18 @@
+import Image from "next/image";
+import Link from "next/link";
+import { Toaster } from "sonner";
+
+import fcLogo from "@/assets/fc-logo.png";
+import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { UserMenu } from "@/components/auth/UserMenu";
-import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
-import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { TrialBanner } from "@/components/billing/TrialBanner";
 import { BugReportButton } from "@/components/feedback/BugReportButton";
 import { TelemetryProvider } from "@/components/telemetry/TelemetryProvider";
-import { GraphQLProvider } from "@/lib/graphql/provider";
-import { Toaster } from "sonner";
-import { requireSession } from "@/lib/auth";
 import { getOrgEntitlements } from "@/lib/admin/server/billing";
+import { requireSession } from "@/lib/auth";
+import { GraphQLProvider } from "@/lib/graphql/provider";
 
 export default async function AppLayout({
     children,
@@ -37,8 +41,26 @@ export default async function AppLayout({
                             <header className="relative z-40 border-b border-(--card-stroke) bg-(--card-80)">
                                 <nav
                                     aria-label="Account"
-                                    className="flex min-h-14 items-center justify-end px-4 py-3 sm:px-6"
+                                    className="flex min-h-14 items-center justify-between px-4 py-3 sm:px-6"
                                 >
+                                    <Link
+                                        href="/dashboard"
+                                        aria-label="Full Chaos Dev Health cockpit"
+                                        className="flex items-center gap-2 rounded-md"
+                                    >
+                                        <Image
+                                            src={fcLogo}
+                                            alt="Full Chaos Dev Health logo"
+                                            width={32}
+                                            height={32}
+                                            sizes="32px"
+                                            className="h-8 w-auto"
+                                            priority
+                                        />
+                                        <span className="hidden text-sm font-semibold tracking-tight text-(--text-primary) sm:inline">
+                                            Full Chaos Dev Health
+                                        </span>
+                                    </Link>
                                     <UserMenu />
                                 </nav>
                             </header>
