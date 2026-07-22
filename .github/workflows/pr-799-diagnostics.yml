@@ -1,6 +1,7 @@
 name: PR 799 diagnostics
 
 on:
+    pull_request:
     push:
         branches:
             - feature/fc-infinity-themes
