@@ -2,7 +2,7 @@
     "name": "webapp",
     "version": "0.1.0",
     "private": true,
-    "packageManager": "pnpm@11.1.1",
+    "packageManager": "pnpm@11.15.1",
     "engines": {
         "node": ">=22"
     },
@@ -62,12 +62,6 @@
         "serialize-javascript": ">=7.0.3",
         "@graphql-codegen/plugin-helpers": "6.2.1",
         "size-sensor": "npm:noop2@2.0.0"
-    },
-    "pnpm": {
-        "overrides": {
-            "serialize-javascript": ">=7.0.3",
-            "@graphql-codegen/plugin-helpers": "6.2.1"
-        }
     },
     "devDependencies": {
         "@graphql-codegen/cli": "^7.2.0",
