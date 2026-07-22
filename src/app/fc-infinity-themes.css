@@ -1,0 +1,215 @@
+/* ============================================================
+ * FC INFINITY — logo-derived palettes
+ *
+ * The simplified mark uses a deep slate canvas in dark mode and
+ * a quiet off-white canvas in light mode. Bright logo colors are
+ * reserved for accessible accents, status, and data visualization.
+ * ============================================================ */
+:root {
+    --fc-void: #08080a;
+    --fc-ink: #15171a;
+    --fc-ember-line: #151e25;
+    --fc-tide-line: #152630;
+    --fc-carbon: #1c1c1e;
+    --fc-graphite: #23252a;
+    --fc-surface: #2f3238;
+    --fc-deep-ocean: #203340;
+    --fc-slate: #39444f;
+    --fc-steel: #5a6068;
+    --fc-muted: #808389;
+    --fc-mist: #a9acb1;
+    --fc-silver: #d1d1d4;
+    --fc-white: #fdfdfc;
+    --fc-deep-cyan: #04455d;
+    --fc-ocean: #037493;
+    --fc-cyan: #02a2bc;
+    --fc-aqua: #04b7c4;
+    --fc-electric-cyan: #09c5cb;
+    --fc-glacier: #6ce0e1;
+    --fc-ice-blue: #c4d9e5;
+    --fc-ember-shadow: #4a0b09;
+    --fc-crimson: #a30a06;
+    --fc-red: #f92703;
+    --fc-orange: #fb3402;
+    --fc-flame: #fe7501;
+    --fc-amber: #fe9f09;
+    --fc-gold: #ffdb4b;
+    --fc-sun: #ffe861;
+}
+
+:root[data-palette="fullchaos-infinity-ember"],
+:root[data-palette="fullchaos-infinity-tide"] {
+    --accent-1: var(--accent);
+}
+
+/* ============================================================
+ * PALETTE: fullchaos-infinity-ember
+ * Warm logo lobe leads; cool colors are supporting signals.
+ * ============================================================ */
+:root[data-palette="fullchaos-infinity-ember"][data-theme="light"] {
+    color-scheme: light;
+    --background: color-mix(in srgb, var(--fc-white) 88%, var(--fc-silver));
+    --foreground: var(--fc-ink);
+    --ink-muted: var(--fc-steel);
+    --accent: color-mix(in srgb, var(--fc-orange) 60%, var(--fc-crimson));
+    --accent-foreground: var(--fc-white);
+    --accent-2: var(--fc-ocean);
+    --accent-3: var(--fc-deep-cyan);
+    --accent-negative: var(--fc-crimson);
+    --accent-highlight: var(--fc-flame);
+    --card: var(--fc-white);
+    --card-stroke: color-mix(in srgb, var(--fc-steel) 55%, var(--fc-silver));
+    --surface: var(--card);
+    --surface-raised: var(--fc-white);
+    --border: color-mix(in srgb, var(--card-stroke) 72%, var(--background));
+    --text-primary: var(--foreground);
+    --text-secondary: color-mix(in srgb, var(--fc-ink) 78%, var(--fc-steel));
+    --text-muted: var(--ink-muted);
+    --chart-grid: var(--fc-silver);
+    --chart-text: var(--fc-ink);
+    --chart-muted: var(--fc-steel);
+    --chart-color-1: var(--fc-crimson);
+    --chart-color-2: var(--fc-orange);
+    --chart-color-3: var(--fc-red);
+    --chart-color-4: var(--fc-amber);
+    --chart-color-5: var(--fc-deep-ocean);
+    --chart-color-6: var(--fc-ocean);
+    --chart-color-7: var(--fc-deep-cyan);
+    --chart-color-8: var(--fc-aqua);
+    --chart-color-9: var(--fc-slate);
+    --chart-color-10: var(--fc-steel);
+    --positive: var(--fc-ocean);
+    --caution: color-mix(in srgb, var(--fc-orange) 60%, var(--fc-crimson));
+    --negative: var(--fc-crimson);
+    --info: var(--fc-deep-cyan);
+    --accent-ai: var(--fc-deep-ocean);
+    --hero-gradient: none;
+    --app-gradient: none;
+}
+
+:root[data-palette="fullchaos-infinity-ember"][data-theme="dark"] {
+    color-scheme: dark;
+    --background: color-mix(in srgb, var(--fc-slate) 70%, var(--fc-graphite));
+    --foreground: var(--fc-white);
+    --ink-muted: var(--fc-mist);
+    --accent: var(--fc-amber);
+    --accent-foreground: var(--fc-void);
+    --accent-2: var(--fc-glacier);
+    --accent-3: var(--fc-gold);
+    --accent-negative: color-mix(in srgb, var(--fc-red) 50%, var(--fc-white));
+    --accent-highlight: var(--fc-flame);
+    --card: var(--fc-carbon);
+    --card-stroke: color-mix(in srgb, var(--fc-steel) 78%, var(--fc-muted));
+    --surface: var(--card);
+    --surface-raised: color-mix(in srgb, var(--fc-carbon) 82%, var(--fc-slate));
+    --border: color-mix(in srgb, var(--card-stroke) 58%, var(--card));
+    --text-primary: var(--foreground);
+    --text-secondary: var(--fc-silver);
+    --text-muted: var(--ink-muted);
+    --chart-grid: var(--fc-slate);
+    --chart-text: var(--fc-white);
+    --chart-muted: var(--fc-mist);
+    --chart-color-1: var(--fc-amber);
+    --chart-color-2: var(--fc-flame);
+    --chart-color-3: var(--fc-gold);
+    --chart-color-4: var(--fc-orange);
+    --chart-color-5: var(--fc-red);
+    --chart-color-6: var(--fc-crimson);
+    --chart-color-7: var(--fc-electric-cyan);
+    --chart-color-8: var(--fc-aqua);
+    --chart-color-9: var(--fc-glacier);
+    --chart-color-10: var(--fc-ice-blue);
+    --positive: var(--fc-electric-cyan);
+    --caution: var(--fc-amber);
+    --negative: color-mix(in srgb, var(--fc-red) 50%, var(--fc-white));
+    --info: var(--fc-ice-blue);
+    --accent-ai: var(--fc-glacier);
+    --hero-gradient: none;
+    --app-gradient: none;
+}
+
+/* ============================================================
+ * PALETTE: fullchaos-infinity-tide
+ * Cool logo lobe leads; warm colors are supporting signals.
+ * ============================================================ */
+:root[data-palette="fullchaos-infinity-tide"][data-theme="light"] {
+    color-scheme: light;
+    --background: color-mix(in srgb, var(--fc-white) 88%, var(--fc-silver));
+    --foreground: var(--fc-ink);
+    --ink-muted: var(--fc-steel);
+    --accent: var(--fc-ocean);
+    --accent-foreground: var(--fc-white);
+    --accent-2: var(--fc-crimson);
+    --accent-3: var(--fc-deep-cyan);
+    --accent-negative: var(--fc-crimson);
+    --accent-highlight: var(--fc-aqua);
+    --card: var(--fc-white);
+    --card-stroke: color-mix(in srgb, var(--fc-steel) 55%, var(--fc-silver));
+    --surface: var(--card);
+    --surface-raised: var(--fc-white);
+    --border: color-mix(in srgb, var(--card-stroke) 72%, var(--background));
+    --text-primary: var(--foreground);
+    --text-secondary: color-mix(in srgb, var(--fc-ink) 78%, var(--fc-steel));
+    --text-muted: var(--ink-muted);
+    --chart-grid: var(--fc-silver);
+    --chart-text: var(--fc-ink);
+    --chart-muted: var(--fc-steel);
+    --chart-color-1: var(--fc-ocean);
+    --chart-color-2: var(--fc-deep-cyan);
+    --chart-color-3: var(--fc-deep-ocean);
+    --chart-color-4: var(--fc-slate);
+    --chart-color-5: var(--fc-cyan);
+    --chart-color-6: var(--fc-aqua);
+    --chart-color-7: var(--fc-crimson);
+    --chart-color-8: var(--fc-orange);
+    --chart-color-9: var(--fc-amber);
+    --chart-color-10: var(--fc-steel);
+    --positive: var(--fc-ocean);
+    --caution: color-mix(in srgb, var(--fc-orange) 60%, var(--fc-crimson));
+    --negative: var(--fc-crimson);
+    --info: var(--fc-deep-cyan);
+    --accent-ai: var(--fc-deep-ocean);
+    --hero-gradient: none;
+    --app-gradient: none;
+}
+
+:root[data-palette="fullchaos-infinity-tide"][data-theme="dark"] {
+    color-scheme: dark;
+    --background: color-mix(in srgb, var(--fc-slate) 70%, var(--fc-graphite));
+    --foreground: var(--fc-white);
+    --ink-muted: var(--fc-mist);
+    --accent: var(--fc-electric-cyan);
+    --accent-foreground: var(--fc-void);
+    --accent-2: var(--fc-amber);
+    --accent-3: var(--fc-glacier);
+    --accent-negative: color-mix(in srgb, var(--fc-red) 50%, var(--fc-white));
+    --accent-highlight: var(--fc-aqua);
+    --card: var(--fc-carbon);
+    --card-stroke: color-mix(in srgb, var(--fc-steel) 78%, var(--fc-muted));
+    --surface: var(--card);
+    --surface-raised: color-mix(in srgb, var(--fc-carbon) 82%, var(--fc-slate));
+    --border: color-mix(in srgb, var(--card-stroke) 58%, var(--card));
+    --text-primary: var(--foreground);
+    --text-secondary: var(--fc-silver);
+    --text-muted: var(--ink-muted);
+    --chart-grid: var(--fc-slate);
+    --chart-text: var(--fc-white);
+    --chart-muted: var(--fc-mist);
+    --chart-color-1: var(--fc-electric-cyan);
+    --chart-color-2: var(--fc-aqua);
+    --chart-color-3: var(--fc-glacier);
+    --chart-color-4: var(--fc-ice-blue);
+    --chart-color-5: var(--fc-ocean);
+    --chart-color-6: var(--fc-cyan);
+    --chart-color-7: var(--fc-amber);
+    --chart-color-8: var(--fc-flame);
+    --chart-color-9: var(--fc-red);
+    --chart-color-10: var(--fc-gold);
+    --positive: var(--fc-electric-cyan);
+    --caution: var(--fc-amber);
+    --negative: color-mix(in srgb, var(--fc-red) 50%, var(--fc-white));
+    --info: var(--fc-ice-blue);
+    --accent-ai: var(--fc-glacier);
+    --hero-gradient: none;
+    --app-gradient: none;
+}
