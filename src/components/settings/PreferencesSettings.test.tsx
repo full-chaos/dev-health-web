@@ -51,6 +51,17 @@ describe("PreferencesSettings", () => {
         expect(screen.getByRole("button", { name: "Cosmic Nebula" })).toBeInTheDocument();
     });
 
+    it("keeps experimental FC Infinity palettes out of preferences", () => {
+        render(<PreferencesSettings />);
+
+        expect(
+            screen.queryByRole("button", { name: "FC Infinity Ember" }),
+        ).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: "FC Infinity Tide" }),
+        ).not.toBeInTheDocument();
+    });
+
     it("applies the infinity knot palette from preferences", async () => {
         const user = userEvent.setup();
         render(<PreferencesSettings />);
