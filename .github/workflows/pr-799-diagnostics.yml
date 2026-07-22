@@ -7,7 +7,7 @@ permissions:
     contents: read
 
 jobs:
-    audit-fix-artifact:
+    dependency-artifact:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
@@ -19,17 +19,33 @@ jobs:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
-            - name: Apply audit remediation
-              run: pnpm audit --fix
+            - name: Add security overrides
+              run: |
+                  node <<'NODE'
+                  const fs = require("node:fs");
+                  const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+                  const securityOverrides = {
+                    "fast-uri": "3.1.4",
+                    "postcss": "8.5.16",
+                    "sharp": "0.35.0"
+                  };
+                  pkg.overrides = { ...pkg.overrides, ...securityOverrides };
+                  pkg.pnpm = pkg.pnpm || {};
+                  pkg.pnpm.overrides = { ...pkg.pnpm.overrides, ...securityOverrides };
+                  fs.writeFileSync("package.json", `${JSON.stringify(pkg, null, 4)}\n`);
+                  NODE
+                  pnpm install --lockfile-only
             - name: Verify high-severity audit gate
               run: pnpm audit --audit-level=high --prod
             - name: Verify build
               run: pnpm build
+            - name: Verify unit tests
+              run: pnpm test:unit
             - name: Upload dependency remediation
               if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
               with:
-                  name: pr-799-audit-fix
+                  name: pr-799-dependency-fix
                   path: |
                       package.json
                       pnpm-lock.yaml
