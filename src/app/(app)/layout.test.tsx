@@ -90,7 +90,7 @@ describe("AppLayout entitlement wiring", () => {
         });
     });
 
-    it("renders account controls in an in-flow account navigation", async () => {
+    it("renders the shared brand logo and account controls in the account navigation", async () => {
         getOrgEntitlementsMock.mockResolvedValue({
             data: {
                 features: {},
@@ -103,6 +103,12 @@ describe("AppLayout entitlement wiring", () => {
         render(await AppLayout({ children: <span>Context Fabric</span> }));
 
         const accountNavigation = screen.getByRole("navigation", { name: "Account" });
+        const brandLink = screen.getByRole("link", { name: "Full Chaos Dev Health cockpit" });
+        expect(brandLink).toHaveAttribute("href", "/dashboard");
+        expect(brandLink).toContainElement(
+            screen.getByRole("img", { name: "Full Chaos Dev Health logo" }),
+        );
+        expect(accountNavigation).toContainElement(brandLink);
         expect(accountNavigation).toContainElement(screen.getByTestId("global-user-menu"));
         expect(userMenuSpy).toHaveBeenCalledOnce();
     });
