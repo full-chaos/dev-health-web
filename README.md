@@ -132,21 +132,21 @@ Copy `.env.example` to `.env.local` and configure as needed.
 
 ## Scripts
 
-| Script                              | Description                                                   |
-| ----------------------------------- | ------------------------------------------------------------- |
-| `pnpm dev`                          | Start development server                                      |
-| `pnpm build`                        | Build for production                                          |
-| `pnpm start`                        | Start production server                                       |
-| `pnpm lint`                         | Run ESLint                                                    |
-| `pnpm design-lint`                  | Run design-system static checks                               |
-| `pnpm typecheck`                    | Run TypeScript checks                                         |
-| `pnpm test:unit`                    | Run unit tests (Vitest)                                       |
-| `pnpm test:integration`             | Run integration tier placeholder (currently no suite)         |
-| `pnpm test:e2e`                     | Run e2e tests (Playwright)                                    |
-| `pnpm test:e2e:context-fabric`      | Run Context Fabric browser/BFF tests                          |
-| `pnpm test:e2e:live`                | Run live-backend e2e smoke tests (Playwright)                 |
-| `pnpm test:ci`                      | Run CI gates (lint, typecheck, build, unit, integration, e2e) |
-| `pnpm acr:contracts:check`          | Check Web's ACR contract copies                               |
+| Script                         | Description                                                   |
+| ------------------------------ | ------------------------------------------------------------- |
+| `pnpm dev`                     | Start development server                                      |
+| `pnpm build`                   | Build for production                                          |
+| `pnpm start`                   | Start production server                                       |
+| `pnpm lint`                    | Run ESLint                                                    |
+| `pnpm design-lint`             | Run design-system static checks                               |
+| `pnpm typecheck`               | Run TypeScript checks                                         |
+| `pnpm test:unit`               | Run unit tests (Vitest)                                       |
+| `pnpm test:integration`        | Run integration tier placeholder (currently no suite)         |
+| `pnpm test:e2e`                | Run e2e tests (Playwright)                                    |
+| `pnpm test:e2e:context-fabric` | Run Context Fabric browser/BFF tests                          |
+| `pnpm test:e2e:live`           | Run live-backend e2e smoke tests (Playwright)                 |
+| `pnpm test:ci`                 | Run CI gates (lint, typecheck, build, unit, integration, e2e) |
+| `pnpm acr:contracts:check`     | Check Web's ACR contract copies                               |
 
 ## Test Tiers (Phase 0 Contract)
 
