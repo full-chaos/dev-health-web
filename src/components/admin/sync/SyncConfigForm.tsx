@@ -47,11 +47,13 @@ import {
     readPagerDutyAdminMappings,
 } from "./config-form/pagerDutyMappingOptions";
 import type { ServiceRepositoryMappings } from "@/lib/admin/pagerduty";
+import type { SyncConfigInitialSelection } from "@/lib/admin/syncConfigPreselection";
 
 type SyncConfigFormProps = {
     canCreatePagerDuty?: boolean;
     initialData?: SyncConfig;
     initialRepositorySelection?: SyncConfigRepositorySelection;
+    initialSelection?: SyncConfigInitialSelection;
     credentials: IntegrationCredential[];
     onSuccessAction?: () => void;
 };
@@ -59,11 +61,12 @@ type SyncConfigFormProps = {
 function buildInitialFormValues(
     initialData: SyncConfig | undefined,
     initialRepositorySelection: SyncConfigRepositorySelection | undefined,
+    initialSelection: SyncConfigInitialSelection | undefined,
 ) {
     return {
         name: initialData?.name || "",
-        provider: initialData?.provider || "github",
-        credential_id: initialData?.credential_id || "",
+        provider: initialData?.provider || initialSelection?.provider || "github",
+        credential_id: initialData?.credential_id || initialSelection?.credentialId || "",
         sync_targets: initialData?.sync_targets || [],
         is_active: initialData?.is_active ?? true,
         schedule_cron:
@@ -108,6 +111,7 @@ export function SyncConfigForm({
     canCreatePagerDuty = false,
     initialData,
     initialRepositorySelection,
+    initialSelection,
     credentials,
     onSuccessAction,
 }: SyncConfigFormProps) {
@@ -132,7 +136,7 @@ export function SyncConfigForm({
     // the page happened to load with (CHAOS-2797).
     const [baseline, setBaseline] = useState<SyncFormSnapshot>(() =>
         toSnapshot(
-            buildInitialFormValues(initialData, initialRepositorySelection),
+            buildInitialFormValues(initialData, initialRepositorySelection, initialSelection),
             initialRepositorySelection?.sync_all_repos ??
                 ((initialData?.sync_options?.all_repos as boolean | undefined) || false),
         ),
@@ -142,7 +146,9 @@ export function SyncConfigForm({
         formData,
         setFormData,
         handleChange: handleBaseChange,
-    } = useBaseFormState(buildInitialFormValues(initialData, initialRepositorySelection));
+    } = useBaseFormState(
+        buildInitialFormValues(initialData, initialRepositorySelection, initialSelection),
+    );
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- local credentials intentionally mirror updated server props.

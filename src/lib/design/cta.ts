@@ -183,6 +183,7 @@ export const CTA_LABELS = {
     manageCredential: "Manage",
     /** Row action opening the manage/edit modal for a failing/untested credential (CHAOS-2837). */
     resolveCredential: "Resolve",
+    reconnectPagerDuty: "Reconnect / rotate",
     /** Row action re-running a connection test from the credentials table (CHAOS-2837). */
     testCredential: "Test",
     /** Submit the Add Provider wizard's verify-connection step (CHAOS-2837). */

@@ -230,6 +230,41 @@ describe("SyncConfigForm", () => {
             expect(screen.queryByRole("option", { name: "PagerDuty" })).not.toBeInTheDocument();
         });
 
+        it("preselects a PagerDuty credential for Sync Config while keeping secret entry on Providers", async () => {
+            const pagerDutyCredential: IntegrationCredential = {
+                id: "cred-pagerduty",
+                provider: "pagerduty",
+                name: "PagerDuty production",
+                is_active: true,
+                config: {},
+                last_test_at: null,
+                last_test_success: true,
+                last_test_error: null,
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+            };
+            render(
+                <SyncConfigForm
+                    canCreatePagerDuty
+                    credentials={[...mockCredentials, pagerDutyCredential]}
+                    initialSelection={{ provider: "pagerduty", credentialId: "cred-pagerduty" }}
+                />,
+            );
+
+            expect(screen.getByLabelText("Provider")).toHaveValue("pagerduty");
+            expect(screen.queryByLabelText("Client secret")).not.toBeInTheDocument();
+            expect(screen.queryByLabelText("API token")).not.toBeInTheDocument();
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "PagerDuty Ops");
+            await clickContinue();
+            expect(screen.getByLabelText("Credential")).toHaveValue("cred-pagerduty");
+            await clickContinue();
+
+            expect(screen.getByLabelText("PagerDuty operational data")).toBeInTheDocument();
+            expect(screen.queryByLabelText("Client secret")).not.toBeInTheDocument();
+            expect(screen.queryByLabelText("API token")).not.toBeInTheDocument();
+        });
+
         it("credential step blocks Continue until a credential is chosen, and offers Create Credential when none exist for the provider", async () => {
             render(<SyncConfigForm credentials={mockCredentials} />);
 

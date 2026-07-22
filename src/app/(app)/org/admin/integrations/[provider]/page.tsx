@@ -140,7 +140,11 @@ export default async function IntegrationPage({
             )}
 
             {provider === "pagerduty" ? (
-                <PagerDutySetup canCreatePagerDuty={canCreatePagerDuty} credentials={credentials} />
+                <PagerDutySetup
+                    canCreatePagerDuty={canCreatePagerDuty}
+                    credentials={credentials}
+                    syncConfigs={syncConfigs}
+                />
             ) : !isCustomProvider ? (
                 <div id="managed-sync-credentials" className="space-y-8">
                     <ProviderCredentialsList

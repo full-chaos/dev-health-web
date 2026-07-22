@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { completePagerDutyOAuth } from "@/lib/admin/server";
+import { pagerDutySyncConfigPath } from "@/lib/admin/syncConfigPreselection";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -21,6 +22,7 @@ function sanitizeCallbackUrl(): void {
 }
 
 export function PagerDutyCallback() {
+    const router = useRouter();
     const searchParams = useSearchParams();
     const [, startTransition] = useTransition();
     const callbackCompletionStarted = useRef(false);
@@ -51,7 +53,7 @@ export function PagerDutyCallback() {
     }, []);
 
     useEffect(() => {
-        if (hasCallbackQuery) sanitizeCallbackUrl();
+        if (hasCallbackQuery && !isCompleteResponse) sanitizeCallbackUrl();
         if (!isCompleteResponse || !state || callbackCompletionStarted.current) return;
         callbackCompletionStarted.current = true;
         startTransition(async () => {
@@ -64,15 +66,33 @@ export function PagerDutyCallback() {
                 if (result.error) {
                     setCallbackState("failed");
                     setMessage(result.error);
+                    sanitizeCallbackUrl();
+                    return;
+                }
+                if (!result.data) {
+                    setCallbackState("failed");
+                    setMessage("PagerDuty authorization could not be completed.");
+                    sanitizeCallbackUrl();
                     return;
                 }
                 setCallbackState("connected");
-                setMessage("PagerDuty is connected. You can now configure the datasets to sync.");
-            } finally {
+                setMessage("PagerDuty is connected. Opening Sync Status…");
+                router.replace(pagerDutySyncConfigPath(result.data.credential_name));
+            } catch (e) {
+                setCallbackState("failed");
+                setMessage("An unexpected error occurred during authorization.");
                 sanitizeCallbackUrl();
             }
         });
-    }, [authorizationError, code, hasCallbackQuery, isCompleteResponse, startTransition, state]);
+    }, [
+        authorizationError,
+        code,
+        hasCallbackQuery,
+        isCompleteResponse,
+        router,
+        startTransition,
+        state,
+    ]);
 
     return (
         <section className="mx-auto max-w-xl space-y-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
