@@ -51,6 +51,16 @@ describe("ThemeToggle", () => {
         expect(screen.getByRole("option", { name: "Fullchaos Cosmic Nebula" })).toBeInTheDocument();
     });
 
+    it("keeps experimental FC Infinity palettes out of the selector", async () => {
+        const user = userEvent.setup();
+        render(<ThemeToggle />);
+
+        await user.click(screen.getByRole("button", { name: /expand settings/i }));
+
+        expect(screen.queryByRole("option", { name: "FC Infinity Ember" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("option", { name: "FC Infinity Tide" })).not.toBeInTheDocument();
+    });
+
     it("persists the infinity knot palette selection", async () => {
         const user = userEvent.setup();
         render(<ThemeToggle />);
