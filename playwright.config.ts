@@ -31,6 +31,10 @@ export default defineConfig({
         "acr-context-fabric.production.spec.ts",
     ],
     outputDir: resultsDirectory,
+    // The shared Next dev server intermittently loses dynamic route registrations after
+    // concurrent requests in CI, returning 404s for otherwise valid test-mode routes.
+    // Keep CI's test-mode fixture requests serial; local runs retain parallel feedback.
+    workers: isCI ? 1 : undefined,
     reporter: [
         ["list"],
         ["html", { outputFolder: htmlOutputFolder, open: "never" }],
