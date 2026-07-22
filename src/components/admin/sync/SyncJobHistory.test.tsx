@@ -165,8 +165,8 @@ describe("SyncJobHistory", () => {
 
             await waitFor(() => {
                 expect(screen.getByRole("alert")).toHaveTextContent("Request failed with 500");
+                expect(screen.getByText("Showing 1-10")).toBeInTheDocument();
             });
-            expect(screen.getByText("Showing 1-10")).toBeInTheDocument();
         });
     });
 
