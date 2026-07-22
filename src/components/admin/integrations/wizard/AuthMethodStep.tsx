@@ -38,9 +38,9 @@ export function AuthMethodStep({
                             : "border-(--card-stroke) hover:bg-(--card-70)"
                     }`}
                 >
-                    <p className="text-sm font-semibold text-foreground">OAuth (recommended)</p>
+                    <p className="text-sm font-semibold text-foreground">OAuth authorization</p>
                     <p className="mt-1 text-xs text-(--ink-muted)">
-                        Authorize read-only PagerDuty access in a new browser window.
+                        Authorize scoped PagerDuty access in a browser using PKCE.
                     </p>
                 </button>
 
@@ -61,9 +61,10 @@ export function AuthMethodStep({
                             : "border-(--card-stroke) hover:bg-(--card-70)"
                     }`}
                 >
-                    <p className="text-sm font-semibold text-foreground">Client credentials</p>
+                    <p className="text-sm font-semibold text-foreground">Private app credentials</p>
                     <p className="mt-1 text-xs text-(--ink-muted)">
-                        Connect with a PagerDuty OAuth client ID and secret.
+                        Use a private scoped OAuth app&apos;s client ID and secret without a browser
+                        callback.
                     </p>
                 </button>
 
@@ -76,7 +77,7 @@ export function AuthMethodStep({
                         method === "pagerduty_api_token" ? "text-(--accent)" : "text-(--ink-muted)"
                     }`}
                 >
-                    Use API token instead
+                    {CTA_LABELS.usePagerDutyApiToken}
                 </button>
             </div>
         );

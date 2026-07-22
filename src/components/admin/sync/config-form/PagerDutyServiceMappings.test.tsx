@@ -63,6 +63,17 @@ describe("PagerDutyServiceMappings", () => {
         });
     });
 
+    it("explains that repository mappings are required for incident metrics", () => {
+        render(<MappingHarness initialMappings={{}} />);
+
+        expect(
+            screen.getByText(
+                "Incidents sync without a mapping, but repository-scoped incident metrics and correlations require one.",
+                { exact: false },
+            ),
+        ).toBeVisible();
+    });
+
     it("round-trips every repository target and supports adding then removing one target", async () => {
         // Given: a persisted service maps to two repository targets.
         const user = userEvent.setup();
