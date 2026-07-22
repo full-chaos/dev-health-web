@@ -79,26 +79,42 @@ This will serve the app at [http://localhost:3000](http://localhost:3000) using 
 
 ### Context Fabric/ACR
 
-The local hosted service and bundled OpenCode, Claude Code, Codex, and Cursor
-packages are owned by the private `dev-health-acr` repository. With sibling
-checkouts, start the isolated TLS service fixture from Ops:
+The private `dev-health-acr` repository owns the service and the OpenCode,
+Claude Code, Codex, and Cursor packages. With sibling
+`dev-health-{ops,acr,web}` checkouts, start the complete Docker plugin fixture
+from Ops:
 
 ```bash
 cd ../dev-health-ops
 bash scripts/context-fabric-local.sh
 ```
 
-That fixture is intentionally optimized for `acr-api` and host-local `acr-mcp`;
-it does not copy a Web assertion key into this repository. Validate the Web UI
-and BFF states separately with:
+The launcher derives its Ops services from the real `compose.yml`, layers the
+canonical ACR Compose services and generated TLS configuration, runs `acr-api`
+in Docker, and builds the host-local `acr-mcp`.
+
+For Kubernetes, render or apply ACR from the same Ops checkout:
+
+```bash
+bash scripts/context-fabric-kubernetes.sh render \
+  --image "$ACR_IMAGE" \
+  --entitlement-url "$OPS_HTTPS_ORIGIN"
+
+bash scripts/context-fabric-kubernetes.sh apply \
+  --image "$ACR_IMAGE" \
+  --entitlement-url "$OPS_HTTPS_ORIGIN"
+```
+
+The service workflows intentionally do not copy a Web assertion key into this
+repository. Validate Web UI and BFF states separately with:
 
 ```bash
 cd ../dev-health-web
 pnpm test:e2e:context-fabric
 ```
 
-See [`docs/context-fabric.md`](docs/context-fabric.md) for the security boundary,
-live assertion variables, and contract checks.
+See [`docs/context-fabric.md`](docs/context-fabric.md) for the Docker/Kubernetes
+service boundary, live assertion variables, and contract checks.
 
 ## Environment Variables
 
