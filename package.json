@@ -85,7 +85,7 @@
         "@types/node": "^26",
         "@types/react": "^19",
         "@types/react-dom": "^19",
-        "eslint": "^10",
+        "eslint": "^9",
         "eslint-config-next": "^16",
         "eslint-config-prettier": "^10.1.8",
         "express": "^5.2.1",
@@ -97,7 +97,7 @@
         "prettier": "3.9.6",
         "tailwindcss": "^4",
         "tsx": "4.23.1",
-        "typescript": "^7",
+        "typescript": "^6",
         "vitest": "^4.1.10"
     }
 }
