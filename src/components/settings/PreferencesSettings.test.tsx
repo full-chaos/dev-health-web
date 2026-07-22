@@ -54,12 +54,8 @@ describe("PreferencesSettings", () => {
     it("keeps experimental FC Infinity palettes out of preferences", () => {
         render(<PreferencesSettings />);
 
-        expect(
-            screen.queryByRole("button", { name: "FC Infinity Ember" }),
-        ).not.toBeInTheDocument();
-        expect(
-            screen.queryByRole("button", { name: "FC Infinity Tide" }),
-        ).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "FC Infinity Ember" })).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: "FC Infinity Tide" })).not.toBeInTheDocument();
     });
 
     it("applies the infinity knot palette from preferences", async () => {
