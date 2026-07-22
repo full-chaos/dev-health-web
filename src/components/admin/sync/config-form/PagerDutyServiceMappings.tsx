@@ -166,7 +166,7 @@ export function PagerDutyServiceMappings({
     return (
         <FormSection
             title="Service repository mappings"
-            description="Connect each PagerDuty service to every repository it supports."
+            description="Connect each PagerDuty service to every repository it supports. Incidents sync without a mapping, but repository-scoped incident metrics and correlations require one."
         >
             <section
                 id="pagerduty-service-repository-mappings"
