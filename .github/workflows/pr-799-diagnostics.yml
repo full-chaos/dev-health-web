@@ -25,8 +25,6 @@ jobs:
               run: pnpm audit --json --prod > audit.json || true
             - name: Collect format output
               run: pnpm format:check:changed > format.log 2>&1 || true
-            - name: Collect unit output
-              run: pnpm test:unit > unit.log 2>&1 || true
             - name: Upload diagnostics
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
               with:
@@ -34,5 +32,4 @@ jobs:
                   path: |
                       audit.json
                       format.log
-                      unit.log
                   retention-days: 1
