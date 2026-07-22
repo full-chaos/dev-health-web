@@ -11,6 +11,8 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+              with:
+                  fetch-depth: 0
             - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
               with:
                   version: 11.1.1
@@ -18,24 +20,10 @@ jobs:
               with:
                   node-version: 22
                   cache: pnpm
-            - run: pnpm install --frozen-lockfile
-            - name: Add workspace security overrides
-              run: |
-                  cat > pnpm-workspace.yaml <<'YAML'
-                  overrides:
-                      fast-uri: 3.1.4
-                      postcss: 8.5.16
-                      sharp: 0.35.0
-
-                  allowBuilds:
-                      "@sentry/cli": true
-                      esbuild: true
-                      lefthook: true
-                      msw: true
-                      sharp: true
-                      unrs-resolver: true
-                  YAML
-                  pnpm install
+            - name: Regenerate lockfile with the fast-uri override
+              run: pnpm install --lockfile-only --no-frozen-lockfile --force
+            - name: Verify frozen install
+              run: pnpm install --frozen-lockfile
             - name: Verify high-severity audit gate
               run: pnpm audit --audit-level=high --prod
             - name: Verify build
