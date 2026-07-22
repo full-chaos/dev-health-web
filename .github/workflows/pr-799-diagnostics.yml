@@ -19,22 +19,23 @@ jobs:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
-            - name: Add security overrides
+            - name: Add workspace security overrides
               run: |
-                  node <<'NODE'
-                  const fs = require("node:fs");
-                  const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
-                  const securityOverrides = {
-                    "fast-uri": "3.1.4",
-                    "postcss": "8.5.16",
-                    "sharp": "0.35.0"
-                  };
-                  pkg.overrides = { ...pkg.overrides, ...securityOverrides };
-                  pkg.pnpm = pkg.pnpm || {};
-                  pkg.pnpm.overrides = { ...pkg.pnpm.overrides, ...securityOverrides };
-                  fs.writeFileSync("package.json", `${JSON.stringify(pkg, null, 4)}\n`);
-                  NODE
-                  pnpm install --lockfile-only
+                  cat > pnpm-workspace.yaml <<'YAML'
+                  overrides:
+                      fast-uri: 3.1.4
+                      postcss: 8.5.16
+                      sharp: 0.35.0
+
+                  allowBuilds:
+                      "@sentry/cli": true
+                      esbuild: true
+                      lefthook: true
+                      msw: true
+                      sharp: true
+                      unrs-resolver: true
+                  YAML
+                  pnpm install
             - name: Verify high-severity audit gate
               run: pnpm audit --audit-level=high --prod
             - name: Verify build
@@ -47,6 +48,6 @@ jobs:
               with:
                   name: pr-799-dependency-fix
                   path: |
-                      package.json
+                      pnpm-workspace.yaml
                       pnpm-lock.yaml
                   retention-days: 1
