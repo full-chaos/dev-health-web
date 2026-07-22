@@ -204,7 +204,7 @@ test("P0 EU client credentials persist through the shared wizard", async ({
     await page.getByLabel("Client ID").fill("qa-client-id");
     await page.getByLabel("Client secret").fill("redacted");
     await page.getByRole("button", { name: "Continue" }).click();
-    await page.getByRole("button", { name: "Verify connection" }).click();
+    await page.getByRole("button", { name: "Verify connection", exact: true }).click();
     await expect(page.getByText("Connection successful")).toBeVisible();
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("button", { name: "Finish" }).click();
@@ -230,7 +230,7 @@ test("P0 US API token persists through the shared wizard", async ({ page, reques
     await page.getByLabel("Account subdomain").fill("operations");
     await page.getByLabel("API token").fill("redacted");
     await page.getByRole("button", { name: "Continue" }).click();
-    await page.getByRole("button", { name: "Verify connection" }).click();
+    await page.getByRole("button", { name: "Verify connection", exact: true }).click();
     await expect(page.getByText("Connection successful")).toBeVisible();
     await page.getByRole("button", { name: "Continue" }).click();
     await page.getByRole("button", { name: "Finish" }).click();
