@@ -4,7 +4,7 @@ import { createHash, randomUUID, sign, type KeyObject } from "node:crypto";
 
 import type { AcrRuntimeConfig } from "./config";
 
-type AssertionPermission = "context:read" | "evidence:read";
+type AssertionPermission = "context:read" | "credential:issue" | "evidence:read";
 
 type WebAssertionInput = {
     readonly body: string;

@@ -42,7 +42,7 @@ type AcrRequest = {
     readonly body?: string;
     readonly method: "GET" | "POST";
     readonly path: string;
-    readonly permissions: readonly ("context:read" | "evidence:read")[];
+    readonly permissions: readonly ("context:read" | "credential:issue" | "evidence:read")[];
     readonly signal: AbortSignal;
 };
 
@@ -57,6 +57,19 @@ type EvidenceRequest = {
     readonly evidenceRefId: string;
     readonly signal: AbortSignal;
 };
+
+type DeviceApprovalRequest = {
+    readonly authorization: OpsAuthorization;
+    readonly body: string;
+    readonly signal: AbortSignal;
+};
+
+const deviceApprovalResponseSchema = z
+    .object({
+        schema_version: z.literal("device_approval_response.v1"),
+        status: z.literal("approved"),
+    })
+    .strict();
 
 function clientUrl(config: AcrRuntimeConfig, path: string): URL {
     const url = new URL(path, config.apiOrigin);
@@ -186,6 +199,23 @@ export class AcrRuntimeClient {
             );
         }
         return value;
+    }
+
+    async deviceApproval(input: DeviceApprovalRequest): Promise<{ readonly status: "approved" }> {
+        const value = await this.request({
+            ...input,
+            method: "POST",
+            path: "/api/v1/oauth/device_approval",
+            permissions: ["credential:issue"],
+        });
+        const parsed = deviceApprovalResponseSchema.safeParse(value);
+        if (!parsed.success) {
+            throw new AcrRuntimeError(
+                acrRuntimeErrorCodes.malformedResponse,
+                "Agent Context Runtime returned an invalid response.",
+            );
+        }
+        return { status: parsed.data.status };
     }
 
     private async request(input: AcrRequest): Promise<unknown> {

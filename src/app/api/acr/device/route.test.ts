@@ -1,0 +1,86 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { approveDeviceAuthorizationMock, authMock, checkRateLimitMock, getClientIpMock } =
+    vi.hoisted(() => ({
+        approveDeviceAuthorizationMock: vi.fn(),
+        authMock: vi.fn(),
+        checkRateLimitMock: vi.fn(),
+        getClientIpMock: vi.fn(),
+    }));
+
+vi.mock("@/lib/acr/service", () => ({
+    approveDeviceAuthorization: approveDeviceAuthorizationMock,
+}));
+vi.mock("@/lib/auth", () => ({ auth: authMock }));
+vi.mock("@/lib/client-ip", () => ({
+    getClientIp: getClientIpMock,
+    isTrustProxyEnabled: () => false,
+}));
+vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: checkRateLimitMock }));
+
+import { POST } from "./route";
+
+const body = {
+    repository_scopes: ["full-chaos/platform"],
+    repository_hints: ["full-chaos/platform"],
+    user_code: "ABCD2345",
+};
+
+function request(origin = "https://app.example.test"): Request {
+    return new Request("https://app.example.test/api/acr/device", {
+        body: JSON.stringify(body),
+        headers: { "content-type": "application/json", origin },
+        method: "POST",
+    });
+}
+
+describe("POST /api/acr/device", () => {
+    beforeEach(() => {
+        vi.stubEnv("AUTH_URL", "https://app.example.test");
+        authMock.mockResolvedValue({
+            access_token: "ops-token",
+            user: { id: "user-123", org_id: "org-123" },
+        });
+        checkRateLimitMock.mockResolvedValue({ limited: false, retryAfter: 0 });
+        getClientIpMock.mockReturnValue("127.0.0.1");
+        approveDeviceAuthorizationMock.mockResolvedValue({ status: "approved" });
+    });
+
+    afterEach(() => {
+        vi.unstubAllEnvs();
+        vi.clearAllMocks();
+    });
+
+    it("Given a same-origin authenticated request, when it is within both limits, then approves", async () => {
+        const response = await POST(request());
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ status: "approved" });
+        expect(checkRateLimitMock).toHaveBeenCalledTimes(2);
+        expect(approveDeviceAuthorizationMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                repositoryScopes: ["full-chaos/platform"],
+                userCode: "ABCD2345",
+            }),
+        );
+    });
+
+    it("Given a cross-origin request, when posting, then rejects before approval", async () => {
+        const response = await POST(request("https://evil.example.test"));
+
+        expect(response.status).toBe(403);
+        expect(approveDeviceAuthorizationMock).not.toHaveBeenCalled();
+    });
+
+    it("Given a limited user-code attempt, when posting, then rejects before approval", async () => {
+        checkRateLimitMock
+            .mockResolvedValueOnce({ limited: false, retryAfter: 0 })
+            .mockResolvedValueOnce({ limited: true, retryAfter: 60 });
+
+        const response = await POST(request());
+
+        expect(response.status).toBe(429);
+        expect(response.headers.get("retry-after")).toBe("60");
+        expect(approveDeviceAuthorizationMock).not.toHaveBeenCalled();
+    });
+});
