@@ -9,7 +9,7 @@ import { setupServer } from "msw/node";
 vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 
 import { auth } from "@/lib/auth";
-import { approveDeviceAuthorization } from "../service";
+import { approveDeviceAuthorization, previewDeviceAuthorization } from "../service";
 
 const server = setupServer();
 const temporaryPaths: string[] = [];
@@ -92,7 +92,7 @@ afterEach(() => {
 });
 
 describe("approveDeviceAuthorization", () => {
-    it("Given canonical hint intersection, when approving, then sends only the bounded grant with a body-bound credential assertion", async () => {
+    it("Given an explicit selected repository, when approving, then sends only the bounded grant with a body-bound credential assertion", async () => {
         installOpsAuthorization();
         server.use(
             http.post(
@@ -127,11 +127,79 @@ describe("approveDeviceAuthorization", () => {
         await expect(
             approveDeviceAuthorization({
                 repositoryScopes: ["full-chaos/platform"],
-                repositoryHints: ["full-chaos/platform"],
                 signal: new AbortController().signal,
                 userCode: "ABCD2345",
             }),
         ).resolves.toEqual({ status: "approved" });
+    });
+
+    it("Given a preview followed by approval, when using the same POST endpoint, then issues fresh body-bound credential assertions", async () => {
+        installOpsAuthorization();
+        const assertions: string[] = [];
+        server.use(
+            http.post(
+                "https://acr.example.test/api/v1/oauth/device_approval",
+                async ({ request }) => {
+                    const body = await request.text();
+                    expect(request.headers.get("authorization")).toBeNull();
+                    expect(new URL(request.url).search).toBe("");
+                    const assertion = request.headers.get("x-acr-web-assertion");
+                    expect(assertion).not.toBeNull();
+                    if (!assertion) return HttpResponse.json({}, { status: 401 });
+                    assertions.push(assertion);
+                    const requestBody = JSON.parse(body) as { readonly schema_version: string };
+                    if (requestBody.schema_version === "device_approval_preview_request.v1") {
+                        expect(requestBody).toEqual({
+                            schema_version: "device_approval_preview_request.v1",
+                            user_code: "ABCD2345",
+                        });
+                        expect(decodeAssertion(assertion)).toMatchObject({
+                            body_sha256: createHash("sha256").update(body).digest("base64url"),
+                            method: "POST",
+                            path: "/api/v1/oauth/device_approval",
+                            permissions: ["credential:issue"],
+                            repository_scopes: ["full-chaos/dev-health-acr", "full-chaos/platform"],
+                        });
+                        return HttpResponse.json({
+                            schema_version: "device_approval_preview_response.v1",
+                            repository_hints: ["full-chaos/platform"],
+                        });
+                    }
+                    expect(requestBody).toEqual({
+                        repository_scopes: ["full-chaos/platform"],
+                        schema_version: "device_approval_request.v1",
+                        user_code: "ABCD2345",
+                    });
+                    expect(decodeAssertion(assertion)).toMatchObject({
+                        body_sha256: createHash("sha256").update(body).digest("base64url"),
+                        method: "POST",
+                        path: "/api/v1/oauth/device_approval",
+                        permissions: ["credential:issue"],
+                        repository_scopes: ["full-chaos/platform"],
+                    });
+                    return HttpResponse.json({
+                        schema_version: "device_approval_response.v1",
+                        status: "approved",
+                    });
+                },
+            ),
+        );
+
+        await expect(
+            previewDeviceAuthorization({
+                signal: new AbortController().signal,
+                userCode: "ABCD2345",
+            }),
+        ).resolves.toEqual({ repositoryHints: ["full-chaos/platform"] });
+        await expect(
+            approveDeviceAuthorization({
+                repositoryScopes: ["full-chaos/platform"],
+                signal: new AbortController().signal,
+                userCode: "ABCD2345",
+            }),
+        ).resolves.toEqual({ status: "approved" });
+        expect(assertions).toHaveLength(2);
+        expect(assertions[0]).not.toBe(assertions[1]);
     });
 
     it.each([
@@ -156,7 +224,6 @@ describe("approveDeviceAuthorization", () => {
             await expect(
                 approveDeviceAuthorization({
                     repositoryScopes,
-                    repositoryHints: ["full-chaos/platform"],
                     signal: new AbortController().signal,
                     userCode: "ABCD2345",
                 }),
@@ -185,7 +252,6 @@ describe("approveDeviceAuthorization", () => {
         await expect(
             approveDeviceAuthorization({
                 repositoryScopes: ["full-chaos/platform"],
-                repositoryHints: ["full-chaos/platform"],
                 signal: new AbortController().signal,
                 userCode: "ABCD2345",
             }),

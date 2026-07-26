@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 
-import { approveDeviceAuthorization } from "@/lib/acr/service";
+import { approveDeviceAuthorization, previewDeviceAuthorization } from "@/lib/acr/service";
 import { AcrRuntimeError, safeAcrRuntimeMessage } from "@/lib/acr/errors";
 import { getClientIp, isTrustProxyEnabled } from "@/lib/client-ip";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -104,10 +104,8 @@ export async function POST(request: Request): Promise<NextResponse> {
     if (general.limited) return limitedResponse(general.retryAfter);
     const body = await parseBody(request);
     const userCode = asUserCode(body?.["user_code"]);
-    const repositoryScopes = asScopeList(body?.["repository_scopes"]);
-    const hintsValue = body?.["repository_hints"];
-    const repositoryHints = hintsValue === undefined ? undefined : asScopeList(hintsValue);
-    if (!userCode || !repositoryScopes || (hintsValue !== undefined && !repositoryHints)) {
+    const action = body?.["action"];
+    if (!userCode || (action !== "preview" && action !== "approve")) {
         return NextResponse.json(
             { error: { code: "invalid_request", message: "Request rejected." } },
             { status: 400 },
@@ -117,8 +115,21 @@ export async function POST(request: Request): Promise<NextResponse> {
     const codeAttempt = await checkRateLimit(`${clientIp}:${codeFingerprint}`, CODE_LIMIT);
     if (codeAttempt.limited) return limitedResponse(codeAttempt.retryAfter);
     try {
+        if (action === "preview") {
+            const preview = await previewDeviceAuthorization({
+                signal: request.signal,
+                userCode,
+            });
+            return NextResponse.json(preview, { headers: { "Cache-Control": "no-store" } });
+        }
+        const repositoryScopes = asScopeList(body?.["repository_scopes"]);
+        if (!repositoryScopes) {
+            return NextResponse.json(
+                { error: { code: "invalid_request", message: "Request rejected." } },
+                { status: 400 },
+            );
+        }
         const approval = await approveDeviceAuthorization({
-            ...(repositoryHints === undefined ? {} : { repositoryHints }),
             repositoryScopes,
             signal: request.signal,
             userCode,

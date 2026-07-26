@@ -142,17 +142,12 @@ function canonicalApprovalScopes(scopes: readonly string[]): readonly string[] {
 }
 
 export async function approveDeviceAuthorization(input: {
-    readonly repositoryHints?: readonly string[];
     readonly repositoryScopes: readonly string[];
     readonly signal: AbortSignal;
     readonly userCode: string;
 }): Promise<{ readonly status: "approved" }> {
     if (!deviceUserCode.test(input.userCode)) throw invalidApprovalRequest();
     const requestedScopes = canonicalApprovalScopes(input.repositoryScopes);
-    const hintedScopes =
-        input.repositoryHints === undefined
-            ? undefined
-            : canonicalApprovalScopes(input.repositoryHints);
     const rawSession = await auth();
     const session = sessionOrError(rawSession);
     if (
@@ -173,11 +168,7 @@ export async function approveDeviceAuthorization(input: {
         signal: input.signal,
         subject: session.subject,
     });
-    if (
-        requestedScopes.some((scope) => !authorization.repositoryScopes.includes(scope)) ||
-        (hintedScopes !== undefined &&
-            requestedScopes.some((scope) => !hintedScopes.includes(scope)))
-    ) {
+    if (requestedScopes.some((scope) => !authorization.repositoryScopes.includes(scope))) {
         throw invalidApprovalRequest();
     }
     const body = JSON.stringify({
@@ -187,6 +178,42 @@ export async function approveDeviceAuthorization(input: {
     });
     return new AcrRuntimeClient(loadAcrRuntimeConfig()).deviceApproval({
         authorization: { ...authorization, repositoryScopes: requestedScopes },
+        body,
+        signal: input.signal,
+    });
+}
+
+export async function previewDeviceAuthorization(input: {
+    readonly signal: AbortSignal;
+    readonly userCode: string;
+}): Promise<{ readonly repositoryHints: readonly string[] }> {
+    if (!deviceUserCode.test(input.userCode)) throw invalidApprovalRequest();
+    const rawSession = await auth();
+    const session = sessionOrError(rawSession);
+    if (
+        rawSession?.user.real_org_id !== undefined &&
+        session.orgId !== rawSession.user.real_org_id
+    ) {
+        throw new AcrRuntimeError(
+            acrRuntimeErrorCodes.notEntitled,
+            "Approval is unavailable while impersonating.",
+            {
+                status: 403,
+            },
+        );
+    }
+    const authorization = await resolveOpsAuthorization({
+        accessToken: session.accessToken,
+        orgId: session.orgId,
+        signal: input.signal,
+        subject: session.subject,
+    });
+    const body = JSON.stringify({
+        schema_version: "device_approval_preview_request.v1",
+        user_code: input.userCode,
+    });
+    return new AcrRuntimeClient(loadAcrRuntimeConfig()).deviceApprovalPreview({
+        authorization,
         body,
         signal: input.signal,
     });

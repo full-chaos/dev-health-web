@@ -1,11 +1,11 @@
 "use client";
 
-import { useId, useState } from "react";
+import { type SyntheticEvent, useId, useState } from "react";
 
 import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 
-type ApprovalState = "denied" | "expired" | "pending" | "success";
+type ApprovalState = "denied" | "expired" | "pending" | "review" | "success";
 
 type DeviceApprovalFormProps = {
     readonly initialState?: ApprovalState;
@@ -31,9 +31,13 @@ function stateCopy(state: ApprovalState): { readonly description: string; readon
             };
         case "pending":
             return {
-                description:
-                    "Enter the code from your terminal, then select the repositories to approve.",
+                description: "Enter the code from your terminal to review the request.",
                 title: "Approve device access",
+            };
+        case "review":
+            return {
+                description: "Select the repositories to approve for this device.",
+                title: "Review device access",
             };
         case "success":
             return {
@@ -59,8 +63,10 @@ export function DeviceApprovalForm({
     const [state, setState] = useState<ApprovalState>(initialState);
     const [message, setMessage] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
+    const [hints, setHints] = useState<readonly string[]>([]);
     const descriptionId = useId();
     const stateMessage = stateCopy(state);
+    const availableRepositories = repositories.filter((repository) => hints.includes(repository));
 
     function toggleRepository(repository: string): void {
         setSelected((current) =>
@@ -70,7 +76,40 @@ export function DeviceApprovalForm({
         );
     }
 
-    async function submit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+    async function submitPreview(event: SyntheticEvent<HTMLFormElement>): Promise<void> {
+        event.preventDefault();
+        setSubmitting(true);
+        setMessage(null);
+        try {
+            const response = await fetch("/api/acr/device", {
+                body: JSON.stringify({ action: "preview", user_code: code }),
+                headers: { "Content-Type": "application/json" },
+                method: "POST",
+            });
+            const result = await response.json();
+            if (response.ok && result.repositoryHints) {
+                setHints(result.repositoryHints);
+                const available = repositories.filter((repo) =>
+                    result.repositoryHints.includes(repo),
+                );
+                setSelected(available);
+                setState("review");
+                return;
+            }
+            setState(errorState(response));
+            setMessage(
+                response.status === 429
+                    ? "Too many attempts. Please wait before trying again."
+                    : "We could not preview this request.",
+            );
+        } catch {
+            setMessage("We could not reach the approval service. Please try again.");
+        } finally {
+            setSubmitting(false);
+        }
+    }
+
+    async function submitApprove(event: SyntheticEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
         if (selected.length === 0) {
             setMessage("Select at least one repository to continue.");
@@ -80,7 +119,11 @@ export function DeviceApprovalForm({
         setMessage(null);
         try {
             const response = await fetch("/api/acr/device", {
-                body: JSON.stringify({ repository_scopes: selected, user_code: code }),
+                body: JSON.stringify({
+                    action: "approve",
+                    repository_scopes: selected,
+                    user_code: code,
+                }),
                 headers: { "Content-Type": "application/json" },
                 method: "POST",
             });
@@ -115,7 +158,7 @@ export function DeviceApprovalForm({
                 </div>
                 {state === "pending" ? (
                     <form
-                        onSubmit={submit}
+                        onSubmit={submitPreview}
                         className="mt-6 space-y-6"
                         aria-describedby={descriptionId}
                     >
@@ -137,13 +180,28 @@ export function DeviceApprovalForm({
                                 value={code}
                             />
                         </div>
+                        <Button
+                            disabled={submitting || code.length !== 8}
+                            type="submit"
+                            variant="primary"
+                        >
+                            {submitting ? "Loading…" : "Preview request"}
+                        </Button>
+                    </form>
+                ) : null}
+                {state === "review" ? (
+                    <form
+                        onSubmit={submitApprove}
+                        className="mt-6 space-y-6"
+                        aria-describedby={descriptionId}
+                    >
                         <fieldset>
                             <legend className="text-h3 font-medium">Repositories to approve</legend>
                             <p className="mt-1 text-sm text-(--ink-muted)">
                                 Only repositories you are authorized to access are available.
                             </p>
                             <div className="mt-3 divide-y divide-(--card-stroke) rounded-(--radius-md) border border-(--card-stroke)">
-                                {repositories.map((repository) => (
+                                {availableRepositories.map((repository) => (
                                     <label
                                         key={repository}
                                         className="flex cursor-pointer items-center gap-3 px-4 py-3 text-body hover:bg-(--card-80)"
@@ -156,15 +214,30 @@ export function DeviceApprovalForm({
                                         <span>{repository}</span>
                                     </label>
                                 ))}
+                                {availableRepositories.length === 0 && (
+                                    <div className="px-4 py-3 text-body text-(--ink-muted)">
+                                        No authorized repositories match this request.
+                                    </div>
+                                )}
                             </div>
                         </fieldset>
-                        <Button
-                            disabled={submitting || code.length !== 8}
-                            type="submit"
-                            variant="primary"
-                        >
-                            {submitting ? "Approving…" : CTA_LABELS.confirm}
-                        </Button>
+                        <div className="flex gap-3">
+                            <Button
+                                disabled={submitting}
+                                onClick={() => setState("pending")}
+                                type="button"
+                                variant="secondary"
+                            >
+                                {CTA_LABELS.backButton}
+                            </Button>
+                            <Button
+                                disabled={submitting || selected.length === 0}
+                                type="submit"
+                                variant="primary"
+                            >
+                                {submitting ? "Approving…" : CTA_LABELS.confirm}
+                            </Button>
+                        </div>
                     </form>
                 ) : null}
             </section>

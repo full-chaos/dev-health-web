@@ -71,6 +71,13 @@ const deviceApprovalResponseSchema = z
     })
     .strict();
 
+const deviceApprovalPreviewResponseSchema = z
+    .object({
+        schema_version: z.literal("device_approval_preview_response.v1"),
+        repository_hints: z.array(z.string()),
+    })
+    .strict();
+
 function clientUrl(config: AcrRuntimeConfig, path: string): URL {
     const url = new URL(path, config.apiOrigin);
     if (url.origin !== config.apiOrigin.origin || url.search !== "" || url.hash !== "") {
@@ -216,6 +223,25 @@ export class AcrRuntimeClient {
             );
         }
         return { status: parsed.data.status };
+    }
+
+    async deviceApprovalPreview(
+        input: DeviceApprovalRequest,
+    ): Promise<{ readonly repositoryHints: readonly string[] }> {
+        const value = await this.request({
+            ...input,
+            method: "POST",
+            path: "/api/v1/oauth/device_approval",
+            permissions: ["credential:issue"],
+        });
+        const parsed = deviceApprovalPreviewResponseSchema.safeParse(value);
+        if (!parsed.success) {
+            throw new AcrRuntimeError(
+                acrRuntimeErrorCodes.malformedResponse,
+                "Agent Context Runtime returned an invalid response.",
+            );
+        }
+        return { repositoryHints: parsed.data.repository_hints };
     }
 
     private async request(input: AcrRequest): Promise<unknown> {

@@ -1,15 +1,22 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { approveDeviceAuthorizationMock, authMock, checkRateLimitMock, getClientIpMock } =
-    vi.hoisted(() => ({
-        approveDeviceAuthorizationMock: vi.fn(),
-        authMock: vi.fn(),
-        checkRateLimitMock: vi.fn(),
-        getClientIpMock: vi.fn(),
-    }));
+const {
+    approveDeviceAuthorizationMock,
+    authMock,
+    checkRateLimitMock,
+    getClientIpMock,
+    previewDeviceAuthorizationMock,
+} = vi.hoisted(() => ({
+    approveDeviceAuthorizationMock: vi.fn(),
+    authMock: vi.fn(),
+    checkRateLimitMock: vi.fn(),
+    getClientIpMock: vi.fn(),
+    previewDeviceAuthorizationMock: vi.fn(),
+}));
 
 vi.mock("@/lib/acr/service", () => ({
     approveDeviceAuthorization: approveDeviceAuthorizationMock,
+    previewDeviceAuthorization: previewDeviceAuthorizationMock,
 }));
 vi.mock("@/lib/auth", () => ({ auth: authMock }));
 vi.mock("@/lib/client-ip", () => ({
@@ -21,14 +28,15 @@ vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: checkRateLimitMock }));
 import { POST } from "./route";
 
 const body = {
+    action: "approve",
     repository_scopes: ["full-chaos/platform"],
     repository_hints: ["full-chaos/platform"],
     user_code: "ABCD2345",
 };
 
-function request(origin = "https://app.example.test"): Request {
+function request(origin = "https://app.example.test", customBody: unknown = body): Request {
     return new Request("https://app.example.test/api/acr/device", {
-        body: JSON.stringify(body),
+        body: JSON.stringify(customBody),
         headers: { "content-type": "application/json", origin },
         method: "POST",
     });
@@ -63,6 +71,35 @@ describe("POST /api/acr/device", () => {
                 userCode: "ABCD2345",
             }),
         );
+    });
+
+    it("Given a preview request, when it is within both limits, then previews", async () => {
+        previewDeviceAuthorizationMock.mockResolvedValue({
+            repositoryHints: ["full-chaos/platform"],
+        });
+
+        const response = await POST(
+            request("https://app.example.test", { action: "preview", user_code: "ABCD2345" }),
+        );
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toEqual({ repositoryHints: ["full-chaos/platform"] });
+        expect(checkRateLimitMock).toHaveBeenCalledTimes(2);
+        expect(previewDeviceAuthorizationMock).toHaveBeenCalledWith(
+            expect.objectContaining({
+                userCode: "ABCD2345",
+            }),
+        );
+    });
+
+    it("Given an unsupported action, when posting, then rejects before either approval operation", async () => {
+        const response = await POST(
+            request("https://app.example.test", { action: "grant", user_code: "ABCD2345" }),
+        );
+
+        expect(response.status).toBe(400);
+        expect(approveDeviceAuthorizationMock).not.toHaveBeenCalled();
+        expect(previewDeviceAuthorizationMock).not.toHaveBeenCalled();
     });
 
     it("Given a cross-origin request, when posting, then rejects before approval", async () => {
