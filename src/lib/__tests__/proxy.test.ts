@@ -256,6 +256,14 @@ describe("proxy rate limiting", () => {
         expect(res.headers.get("x-middleware-rewrite")).toBeNull();
     });
 
+    it("keeps device-approval BFF routes local instead of rewriting them to the backend", async () => {
+        mockAuth.mockResolvedValue(session);
+
+        const res = await proxy(makeRequest("/api/acr/device"));
+
+        expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+    });
+
     it("bypasses proxy limiter in non-production test mode", async () => {
         vi.stubEnv("DEV_HEALTH_TEST_MODE", "true");
         vi.stubEnv("NODE_ENV", "test");
