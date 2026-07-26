@@ -235,6 +235,48 @@ describe("approveDeviceAuthorization", () => {
     );
 
     it.each([
+        [
+            "a different schema version",
+            {
+                repository_hints: ["full-chaos/platform"],
+                schema_version: "device_approval_preview_response.v2",
+            },
+        ],
+        [
+            "a non-array repository hint value",
+            {
+                repository_hints: "full-chaos/platform",
+                schema_version: "device_approval_preview_response.v1",
+            },
+        ],
+        [
+            "an unexpected field",
+            {
+                repository_hints: ["full-chaos/platform"],
+                schema_version: "device_approval_preview_response.v1",
+                unbounded_scope: true,
+            },
+        ],
+    ])(
+        "Given %s, when previewing, then rejects the malformed response contract",
+        async (_name, response) => {
+            installOpsAuthorization();
+            server.use(
+                http.post("https://acr.example.test/api/v1/oauth/device_approval", () =>
+                    HttpResponse.json(response),
+                ),
+            );
+
+            await expect(
+                previewDeviceAuthorization({
+                    signal: new AbortController().signal,
+                    userCode: "ABCD2345",
+                }),
+            ).rejects.toMatchObject({ code: "malformed_response" });
+        },
+    );
+
+    it.each([
         ["an empty selection", []],
         ["a foreign selection", ["foreign/repository"]],
         ["a wildcard selection", ["full-chaos/*"]],
