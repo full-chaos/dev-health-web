@@ -186,7 +186,10 @@ export async function approveDeviceAuthorization(input: {
 export async function previewDeviceAuthorization(input: {
     readonly signal: AbortSignal;
     readonly userCode: string;
-}): Promise<{ readonly repositoryHints: readonly string[] }> {
+}): Promise<{
+    readonly organizationIdHint?: string;
+    readonly repositoryHints: readonly string[];
+}> {
     if (!deviceUserCode.test(input.userCode)) throw invalidApprovalRequest();
     const rawSession = await auth();
     const session = sessionOrError(rawSession);

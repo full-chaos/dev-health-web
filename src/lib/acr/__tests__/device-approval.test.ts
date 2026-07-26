@@ -161,6 +161,7 @@ describe("approveDeviceAuthorization", () => {
                             repository_scopes: ["full-chaos/dev-health-acr", "full-chaos/platform"],
                         });
                         return HttpResponse.json({
+                            organization_id_hint: "org_fullchaos",
                             schema_version: "device_approval_preview_response.v1",
                             repository_hints: ["full-chaos/platform"],
                         });
@@ -190,7 +191,10 @@ describe("approveDeviceAuthorization", () => {
                 signal: new AbortController().signal,
                 userCode: "ABCD2345",
             }),
-        ).resolves.toEqual({ repositoryHints: ["full-chaos/platform"] });
+        ).resolves.toEqual({
+            organizationIdHint: "org_fullchaos",
+            repositoryHints: ["full-chaos/platform"],
+        });
         await expect(
             approveDeviceAuthorization({
                 repositoryScopes: ["full-chaos/platform"],
@@ -201,6 +205,34 @@ describe("approveDeviceAuthorization", () => {
         expect(assertions).toHaveLength(2);
         expect(assertions[0]).not.toBe(assertions[1]);
     });
+
+    it.each([
+        ["a null hint", null],
+        ["an empty hint", ""],
+        ["an oversized hint", "o".repeat(129)],
+        ["a non-string hint", 42],
+    ])(
+        "Given %s, when previewing, then rejects the malformed response",
+        async (_name, organizationIdHint) => {
+            installOpsAuthorization();
+            server.use(
+                http.post("https://acr.example.test/api/v1/oauth/device_approval", () =>
+                    HttpResponse.json({
+                        organization_id_hint: organizationIdHint,
+                        repository_hints: ["full-chaos/platform"],
+                        schema_version: "device_approval_preview_response.v1",
+                    }),
+                ),
+            );
+
+            await expect(
+                previewDeviceAuthorization({
+                    signal: new AbortController().signal,
+                    userCode: "ABCD2345",
+                }),
+            ).rejects.toMatchObject({ code: "malformed_response" });
+        },
+    );
 
     it.each([
         ["an empty selection", []],

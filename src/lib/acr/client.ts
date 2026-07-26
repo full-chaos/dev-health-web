@@ -73,6 +73,7 @@ const deviceApprovalResponseSchema = z
 
 const deviceApprovalPreviewResponseSchema = z
     .object({
+        organization_id_hint: z.string().min(1).max(128).optional(),
         schema_version: z.literal("device_approval_preview_response.v1"),
         repository_hints: z.array(z.string()),
     })
@@ -225,9 +226,10 @@ export class AcrRuntimeClient {
         return { status: parsed.data.status };
     }
 
-    async deviceApprovalPreview(
-        input: DeviceApprovalRequest,
-    ): Promise<{ readonly repositoryHints: readonly string[] }> {
+    async deviceApprovalPreview(input: DeviceApprovalRequest): Promise<{
+        readonly organizationIdHint?: string;
+        readonly repositoryHints: readonly string[];
+    }> {
         const value = await this.request({
             ...input,
             method: "POST",
@@ -241,7 +243,12 @@ export class AcrRuntimeClient {
                 "Agent Context Runtime returned an invalid response.",
             );
         }
-        return { repositoryHints: parsed.data.repository_hints };
+        return {
+            ...(parsed.data.organization_id_hint === undefined
+                ? {}
+                : { organizationIdHint: parsed.data.organization_id_hint }),
+            repositoryHints: parsed.data.repository_hints,
+        };
     }
 
     private async request(input: AcrRequest): Promise<unknown> {
