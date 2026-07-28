@@ -130,6 +130,7 @@ run_quality() {
   echo "==> pnpm audit --audit-level=high --prod"
   pnpm audit --audit-level=high --prod
   run_pnpm_script codegen:check
+  run_pnpm_script ask-dev:contracts:check
   run_pnpm_script lint
   run_pnpm_script typecheck
 }

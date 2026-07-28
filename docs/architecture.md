@@ -257,6 +257,28 @@ Sentry.startSpan({ name: "my-operation" }, () => {
 Sentry.setUser({ id: userId, email });
 ```
 
+## Ask Dev contract artifacts
+
+Ask Dev wire types under `src/lib/dev/` are consumers of the canonical
+Pydantic contracts in `dev-health-ops`; the web repository does not redeclare
+their shape. `scripts/ask-dev-contracts.mjs` copies the exact schemas and
+positive/negative fixtures from a clean, pinned ops commit, records SHA-256
+digests in `src/lib/dev/contracts/source.json`, and generates
+`src/lib/dev/generated.ts` with `json-schema-to-typescript`.
+
+After an approved ops contract change, first commit the regenerated ops
+artifacts, update the pinned full commit in the web sync script, then run:
+
+```bash
+pnpm ask-dev:contracts:generate --source /path/to/clean/dev-health-ops
+pnpm ask-dev:contracts:check
+pnpm exec vitest run src/lib/dev/__tests__/contracts.test.ts
+```
+
+The quality gate runs the no-drift check. Incompatible field, enum, bound, or
+stream changes require a new contract version and the PRD/TRD change-control
+process; do not patch generated TypeScript or vendored JSON by hand.
+
 ## Key Files Quick Reference
 
 | Path                                       | Description                                |
