@@ -96,7 +96,7 @@ jobs:
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
               with:
                   repository: full-chaos/dev-health-ops
-                  ref: 774cd99b0970ac049fb107201edc45e61965d282
+                  ref: b745d56118585710f1c3da80d5a6eb3c17374c06
                   path: dev-health-ops
                   persist-credentials: false
             - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
