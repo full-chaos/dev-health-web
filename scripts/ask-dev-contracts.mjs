@@ -12,7 +12,7 @@ import { format } from "prettier";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ARTIFACT_ROOT = path.join(ROOT, "src/lib/dev/contracts");
 const GENERATED_PATH = path.join(ROOT, "src/lib/dev/generated.ts");
-const SOURCE_COMMIT = "8a48c918cdc44752a01b7530b75f3f5ce5b34df6";
+const SOURCE_COMMIT = "5581c6d6bb8aea490ab7af678d588cb8e0a63990";
 const SOURCE_PREFIX = "contracts/ask-dev/v1/";
 const PRETTIER_OPTIONS = Object.freeze({
     parser: "typescript",

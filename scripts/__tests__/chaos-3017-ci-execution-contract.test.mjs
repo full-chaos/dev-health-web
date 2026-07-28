@@ -24,10 +24,17 @@ const GENERAL_TIERS = [
         tier: "format",
     },
     {
-        commands: ["audit --audit-level=high --prod", "codegen:check", "lint", "typecheck"],
+        commands: [
+            "audit --audit-level=high --prod",
+            "codegen:check",
+            `ask-dev:contracts:check --source ${path.join(ROOT, "dev-health-ops")}`,
+            "lint",
+            "typecheck",
+        ],
         jobId: "quality",
         packageScripts: {
             "codegen:check": "graphql-codegen --config codegen.ts --check",
+            "ask-dev:contracts:check": "node scripts/ask-dev-contracts.mjs check",
             lint: "eslint src",
             typecheck: "tsc --noEmit",
         },
@@ -130,6 +137,14 @@ describe("CHAOS-3017 executable CI boundaries", () => {
             expect(runStep(workflowJob, workflowCommand)).toBe(
                 `            - run: ${workflowCommand}`,
             );
+            if (jobId === "quality") {
+                expect(workflowJob).toContain(
+                    "        env:\n            ASK_DEV_OPS_ROOT: dev-health-ops",
+                );
+                expect(workflowJob).toContain("repository: full-chaos/dev-health-ops");
+                expect(workflowJob).toContain("ref: 5581c6d6bb8aea490ab7af678d588cb8e0a63990");
+                expect(workflowJob).toContain("path: dev-health-ops");
+            }
             for (const [name, implementation] of Object.entries(packageScripts)) {
                 expect(scripts[name]).toBe(implementation);
             }

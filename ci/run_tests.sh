@@ -130,7 +130,12 @@ run_quality() {
   echo "==> pnpm audit --audit-level=high --prod"
   pnpm audit --audit-level=high --prod
   run_pnpm_script codegen:check
-  run_pnpm_script ask-dev:contracts:check
+  if [[ -z "${ASK_DEV_OPS_ROOT:-}" ]]; then
+    echo "ASK_DEV_OPS_ROOT must name the clean, pinned dev-health-ops checkout." >&2
+    return 1
+  fi
+  echo "==> pnpm ask-dev:contracts:check --source ${ASK_DEV_OPS_ROOT}"
+  pnpm ask-dev:contracts:check --source "${ASK_DEV_OPS_ROOT}"
   run_pnpm_script lint
   run_pnpm_script typecheck
 }

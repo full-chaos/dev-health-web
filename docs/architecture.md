@@ -266,16 +266,24 @@ positive/negative fixtures from a clean, pinned ops commit, records SHA-256
 digests in `src/lib/dev/contracts/source.json`, and generates
 `src/lib/dev/generated.ts` with `json-schema-to-typescript`.
 
-After an approved ops contract change, first commit the regenerated ops
-artifacts, update the pinned full commit in the web sync script, then run:
+The repositories land in order: first publish the ops foundation branch and
+open/merge its contract PR, then update the full ops commit pinned in both the
+web sync script and `.github/workflows/tests.yml`, and only then open the
+dependent web PR. The pinned commit must be reachable from an ops branch so the
+web quality job can check it out; web CI compares against that checkout rather
+than trusting its vendored `source.json`.
+
+After an approved ops contract change, regenerate from a clean sibling checkout:
 
 ```bash
-pnpm ask-dev:contracts:generate --source /path/to/clean/dev-health-ops
-pnpm ask-dev:contracts:check
+pnpm ask-dev:contracts:generate --source ../dev-health-ops
+pnpm ask-dev:contracts:check --source ../dev-health-ops
 pnpm exec vitest run src/lib/dev/__tests__/contracts.test.ts
 ```
 
-The quality gate runs the no-drift check. Incompatible field, enum, bound, or
+The vendored-only `pnpm ask-dev:contracts:check` remains available as a local
+integrity check, but it is not release evidence. The quality gate requires
+`ASK_DEV_OPS_ROOT` and runs the cross-repository check. Incompatible field, enum, bound, or
 stream changes require a new contract version and the PRD/TRD change-control
 process; do not patch generated TypeScript or vendored JSON by hand.
 

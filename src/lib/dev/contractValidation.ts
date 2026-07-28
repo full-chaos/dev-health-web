@@ -1,0 +1,205 @@
+type JsonRecord = Record<string, unknown>;
+
+function isRecord(value: unknown): value is JsonRecord {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function asRecords(value: unknown): JsonRecord[] {
+    return Array.isArray(value) && value.every(isRecord) ? value : [];
+}
+
+function hasUniqueStrings(value: unknown): boolean {
+    return Array.isArray(value) && value.every((item) => typeof item === "string")
+        ? new Set(value).size === value.length
+        : false;
+}
+
+function validateScope(scope: JsonRecord): boolean {
+    const repositories = scope.repositories;
+    const teamIds = scope.team_ids;
+    if (!hasUniqueStrings(repositories) || !hasUniqueStrings(teamIds)) return false;
+
+    const entityRefs = asRecords(scope.entity_refs);
+    const directScope = scope.direct_scope;
+    if (directScope === "organization" && entityRefs.length > 0) return false;
+    if (directScope === "repository" && (repositories as unknown[]).length === 0) return false;
+
+    const expectedEntityType: Record<string, string> = {
+        project: "project",
+        work_unit: "work_unit",
+        issue: "issue",
+        pull_request: "pull_request",
+    };
+    if (
+        typeof directScope === "string" &&
+        directScope in expectedEntityType &&
+        (entityRefs.length !== 1 || entityRefs[0]?.entity_type !== expectedEntityType[directScope])
+    ) {
+        return false;
+    }
+
+    if (isRecord(scope.comparison_range) && isRecord(scope.time_range)) {
+        const currentDuration =
+            Date.parse(String(scope.time_range.end)) - Date.parse(String(scope.time_range.start));
+        const comparisonDuration =
+            Date.parse(String(scope.comparison_range.end)) -
+            Date.parse(String(scope.comparison_range.start));
+        if (currentDuration !== comparisonDuration) return false;
+    }
+    return true;
+}
+
+function validateScopeResolution(resolution: JsonRecord): boolean {
+    const outcome = resolution.outcome;
+    const candidates = asRecords(resolution.candidates);
+    const resolvedScope = resolution.resolved_scope;
+    const resolvedOutcomes = new Set(["exact", "filtered", "inherited", "organization_fallback"]);
+    if (typeof outcome === "string" && resolvedOutcomes.has(outcome) && !isRecord(resolvedScope)) {
+        return false;
+    }
+    if (outcome === "ambiguous" ? candidates.length === 0 : candidates.length > 0) return false;
+    return !(
+        outcome === "organization_fallback" &&
+        (!isRecord(resolvedScope) || resolvedScope.direct_scope !== "organization")
+    );
+}
+
+function validateClaim(claim: JsonRecord): boolean {
+    const evidenceIds = Array.isArray(claim.evidence_ref_ids) ? claim.evidence_ref_ids : [];
+    const metricIds = Array.isArray(claim.metric_ref_ids) ? claim.metric_ref_ids : [];
+    if (claim.kind === "observed" && evidenceIds.length === 0 && metricIds.length === 0)
+        return false;
+    if (claim.kind === "inferred" && Number(claim.confidence) >= 1) return false;
+    if (claim.kind === "recommendation")
+        return typeof claim.recommendation_rule_version === "string";
+    return claim.recommendation_rule_version == null;
+}
+
+function referencesOnlyKnown(ids: unknown, known: ReadonlySet<unknown>): boolean {
+    return Array.isArray(ids) && ids.every((id) => known.has(id));
+}
+
+function validateAnswer(answer: JsonRecord): boolean {
+    const evidence = asRecords(answer.evidence);
+    const metrics = asRecords(answer.metrics);
+    const claims = asRecords(answer.claims);
+    const conflicts = asRecords(answer.conflicts);
+    const evidenceIds = evidence.map((item) => item.evidence_ref_id);
+    const metricIds = metrics.map((item) => item.metric_ref_id);
+    if (new Set(evidenceIds).size !== evidenceIds.length) return false;
+    if (new Set(metricIds).size !== metricIds.length) return false;
+
+    const knownEvidence = new Set(evidenceIds);
+    const knownMetrics = new Set(metricIds);
+    if (
+        claims.some(
+            (claim) =>
+                !referencesOnlyKnown(claim.evidence_ref_ids, knownEvidence) ||
+                !referencesOnlyKnown(claim.metric_ref_ids, knownMetrics),
+        ) ||
+        conflicts.some(
+            (conflict) => !referencesOnlyKnown(conflict.evidence_ref_ids, knownEvidence),
+        ) ||
+        metrics.some((metric) => !referencesOnlyKnown(metric.evidence_ref_ids, knownEvidence))
+    ) {
+        return false;
+    }
+
+    const coverage = answer.coverage;
+    if (answer.status === "complete" && isRecord(coverage)) {
+        return (
+            coverage.available_source_count === coverage.required_source_count &&
+            Array.isArray(coverage.unavailable_required_sources) &&
+            coverage.unavailable_required_sources.length === 0 &&
+            Array.isArray(coverage.stale_required_sources) &&
+            coverage.stale_required_sources.length === 0
+        );
+    }
+    return true;
+}
+
+function validateStreamEvent(event: JsonRecord): boolean {
+    const payloadByEvent: Record<string, string | undefined> = {
+        "run.started": undefined,
+        "scope.resolved": "scope_resolution",
+        progress: "progress",
+        "answer.delta": "delta",
+        "answer.completed": "answer",
+        warning: "warning",
+        error: "error",
+        done: "terminal_kind",
+    };
+    if (typeof event.event !== "string" || !(event.event in payloadByEvent)) return false;
+    const expectedPayload = payloadByEvent[event.event];
+    const payloadNames = [
+        "progress",
+        "scope_resolution",
+        "delta",
+        "answer",
+        "warning",
+        "error",
+        "terminal_kind",
+    ];
+    return payloadNames.every((name) =>
+        name === expectedPayload ? event[name] != null : event[name] == null,
+    );
+}
+
+function validateOneSemanticObject(value: JsonRecord): boolean {
+    switch (value.schema_version) {
+        case "dev_scope.v1":
+            return validateScope(value);
+        case "dev_scope_resolution.v1":
+            return validateScopeResolution(value);
+        case "dev_claim.v1":
+            return validateClaim(value);
+        case "dev_answer.v1":
+            return validateAnswer(value);
+        case "dev_message_request.v1":
+            return (
+                typeof value.question === "string" &&
+                new TextEncoder().encode(value.question).byteLength <= 8_192
+            );
+        case "dev_metric_ref.v1":
+            return value.value != null || (Array.isArray(value.series) && value.series.length > 0);
+        case "dev_tool_result.v1":
+            return value.status === "error" ? isRecord(value.error) : value.error == null;
+        case "dev_stream_event.v1":
+            return validateStreamEvent(value);
+        default:
+            return true;
+    }
+}
+
+/**
+ * Validate semantics that Draft 2020-12 cannot express after schema validation.
+ * Nested versioned contract objects are checked too, so a valid outer schema
+ * cannot hide an invalid scope, claim, or reference closure.
+ */
+export function validateAskDevSemanticInvariants(value: unknown): boolean {
+    if (Array.isArray(value)) return value.every(validateAskDevSemanticInvariants);
+    if (!isRecord(value)) return true;
+    return (
+        validateOneSemanticObject(value) &&
+        Object.values(value).every(validateAskDevSemanticInvariants)
+    );
+}
+
+/** Validate one bounded Ask Dev stream after every event passes its JSON schema. */
+export function validateAskDevStream(value: unknown): boolean {
+    if (!Array.isArray(value) || value.length === 0 || value.length > 100_000) return false;
+    if (!value.every(isRecord) || !validateAskDevSemanticInvariants(value)) return false;
+    const events = value as JsonRecord[];
+    if (new Set(events.map((event) => event.run_id)).size !== 1) return false;
+    if (!events.every((event, index) => event.sequence === index)) return false;
+    if (events[0]?.event !== "run.started") return false;
+
+    const terminalIndexes = events.flatMap((event, index) =>
+        event.event === "answer.completed" || event.event === "error" ? [index] : [],
+    );
+    if (terminalIndexes.length !== 1) return false;
+    const terminalIndex = terminalIndexes[0];
+    if (terminalIndex !== events.length - 2 || events.at(-1)?.event !== "done") return false;
+    const terminalKind = events[terminalIndex]?.event === "answer.completed" ? "answer" : "error";
+    return events.at(-1)?.terminal_kind === terminalKind;
+}

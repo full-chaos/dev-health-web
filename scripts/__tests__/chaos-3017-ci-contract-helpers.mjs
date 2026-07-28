@@ -46,6 +46,7 @@ export function recordHarnessPackageCommands(args, { failScript } = {}) {
     const artifactRoot = `test-results/chaos-3017-contract-${process.pid}`;
     try {
         const result = runHarness(args, {
+            ASK_DEV_OPS_ROOT: path.join(ROOT, "dev-health-ops"),
             CI_CONTRACT_COMMAND_LOG: commandLog,
             CI_CONTRACT_FAIL_SCRIPT: failScript ?? "",
             PATH: `${temporaryDirectory}:${process.env.PATH}`,

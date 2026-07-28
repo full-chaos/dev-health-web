@@ -13,6 +13,7 @@ import {
     BYO_LLM_FEATURE,
     devCapabilitiesFromEntitlements,
 } from "../entitlements";
+import { validateAskDevSemanticInvariants, validateAskDevStream } from "../contractValidation";
 
 type ManifestCase = Readonly<{ case: string; path: string; sha256: string }>;
 type ManifestContract = Readonly<{
@@ -25,6 +26,7 @@ type OpsManifest = Readonly<{
     schema_version: string;
     compatibility: string;
     contracts: readonly ManifestContract[];
+    stream_sequences: readonly ManifestCase[];
 }>;
 type SourceManifest = Readonly<{
     source_commit: string;
@@ -50,18 +52,6 @@ const EXPECTED_CONTRACTS = [
     "dev_stream_event.v1",
     "dev_error.v1",
 ] as const;
-const PYDANTIC_ONLY_INVARIANTS = new Set([
-    "dev_answer.v1/unknown_evidence_id",
-    "dev_answer.v1/unknown_metric_id",
-    "dev_answer.v1/invalid_scope",
-    "dev_answer.v1/invalid_complete_state",
-    "dev_claim.v1/ungrounded_observation",
-    "dev_message_request.v1/oversized_question",
-    "dev_scope.v1/repository_scope_without_repository",
-    "dev_scope_resolution.v1/ambiguous_without_candidates",
-    "dev_stream_event.v1/private_reasoning_payload",
-]);
-
 function readJson<T>(relativePath: string): T {
     return JSON.parse(fs.readFileSync(path.join(CONTRACT_ROOT, relativePath), "utf8")) as T;
 }
@@ -77,7 +67,7 @@ describe("Ask Dev generated contract boundary", () => {
         const source = readJson<SourceManifest>("source.json");
         const manifest = readJson<OpsManifest>("manifest.json");
 
-        expect(source.source_commit).toBe("8a48c918cdc44752a01b7530b75f3f5ce5b34df6");
+        expect(source.source_commit).toBe("5581c6d6bb8aea490ab7af678d588cb8e0a63990");
         expect(manifest.schema_version).toBe("ask_dev_contract_manifest.v1");
         expect(manifest.compatibility).toBe("additive-within-v1");
         expect(manifest.contracts.map((contract) => contract.schema_version)).toEqual(
@@ -87,27 +77,59 @@ describe("Ask Dev generated contract boundary", () => {
         for (const file of source.files) expect(digest(file.path)).toBe(file.sha256);
     });
 
-    it("accepts every positive golden and records a real negative for every schema", () => {
+    it("accepts every positive golden and rejects every manifest negative", () => {
         const manifest = readJson<OpsManifest>("manifest.json");
-        const schemaOnlyGaps = new Set<string>();
+        const checkedNegativePaths = new Set<string>();
 
         for (const contract of manifest.contracts) {
             const ajv = new Ajv2020({ allErrors: true, strict: false });
             addFormats(ajv);
             const validate = ajv.compile(readJson(contract.schema.path));
-            expect(validate(readJson(contract.positive.path)), contract.schema_version).toBe(true);
+            const positive = readJson(contract.positive.path);
+            expect(validate(positive), contract.schema_version).toBe(true);
+            expect(validateAskDevSemanticInvariants(positive), contract.schema_version).toBe(true);
             expect(contract.negative.length, contract.schema_version).toBeGreaterThan(0);
             for (const negative of contract.negative) {
-                if (validate(readJson(negative.path))) {
-                    schemaOnlyGaps.add(`${contract.schema_version}/${negative.case}`);
-                }
+                checkedNegativePaths.add(negative.path);
+                const fixture = readJson(negative.path);
+                expect(
+                    validate(fixture) && validateAskDevSemanticInvariants(fixture),
+                    `${contract.schema_version}/${negative.case}`,
+                ).toBe(false);
             }
         }
 
-        // JSON Schema cannot express cross-object ID closure, byte-length, or
-        // stream ordering. These exact cases are rejected by the canonical
-        // Pydantic/stream validators and are pinned here so a new false pass is loud.
-        expect(schemaOnlyGaps).toEqual(PYDANTIC_ONLY_INVARIANTS);
+        const copiedNegativePaths = fs
+            .readdirSync(path.join(CONTRACT_ROOT, "examples/negative"))
+            .map((name) => `examples/negative/${name}`);
+        expect([...checkedNegativePaths].sort()).toEqual(copiedNegativePaths.sort());
+    });
+
+    it("validates every manifest stream sequence and exactly one terminal", () => {
+        const manifest = readJson<OpsManifest>("manifest.json");
+        const streamSchema = manifest.contracts.find(
+            (contract) => contract.schema_version === "dev_stream_event.v1",
+        );
+        expect(streamSchema).toBeDefined();
+
+        const ajv = new Ajv2020({ allErrors: true, strict: false });
+        addFormats(ajv);
+        const validateEvent = ajv.compile(readJson(streamSchema!.schema.path));
+        const checkedStreamPaths = new Set<string>();
+        for (const streamCase of manifest.stream_sequences) {
+            checkedStreamPaths.add(streamCase.path);
+            const events = readJson<unknown[]>(streamCase.path);
+            expect(
+                events.every((event) => validateEvent(event)),
+                streamCase.case,
+            ).toBe(true);
+            expect(validateAskDevStream(events), streamCase.case).toBe(streamCase.case === "valid");
+        }
+
+        const copiedStreamPaths = fs
+            .readdirSync(path.join(CONTRACT_ROOT, "examples/streams"))
+            .map((name) => `examples/streams/${name}`);
+        expect([...checkedStreamPaths].sort()).toEqual(copiedStreamPaths.sort());
     });
 
     it("keeps Ask Dev, BYO LLM, and ACR decisions independent and fail-closed", () => {
