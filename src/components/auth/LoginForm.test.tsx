@@ -108,6 +108,26 @@ describe("LoginForm", () => {
         });
     });
 
+    test("hard-navigates to the callbackUrl on successful login when one is provided", async () => {
+        mockSignIn.mockResolvedValue({
+            error: undefined,
+            code: undefined,
+            status: 200,
+            ok: true,
+            url: null,
+        });
+        mockGetSession.mockResolvedValue({ user: { needs_onboarding: false } });
+        renderWithToaster(<LoginForm callbackUrl="/acr/device" />);
+
+        await userEvent.type(screen.getByLabelText(/email/i), "tester@example.com");
+        await userEvent.type(screen.getByLabelText(/password/i), "password");
+        await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
+
+        await waitFor(() => {
+            expect(locationAssign).toHaveBeenCalledWith("/acr/device");
+        });
+    });
+
     test("submits when Enter is pressed in the email field", async () => {
         mockSignIn.mockResolvedValue({
             error: "CredentialsSignin",
@@ -164,6 +184,26 @@ describe("LoginForm", () => {
         });
         mockGetSession.mockResolvedValue({ user: { needs_onboarding: true } });
         renderWithToaster(<LoginForm />);
+
+        await userEvent.type(screen.getByLabelText(/email/i), "tester@example.com");
+        await userEvent.type(screen.getByLabelText(/password/i), "password");
+        await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
+
+        await waitFor(() => {
+            expect(locationAssign).toHaveBeenCalledWith("/auth/onboard");
+        });
+    });
+
+    test("does not let callbackUrl bypass required onboarding", async () => {
+        mockSignIn.mockResolvedValue({
+            error: undefined,
+            code: undefined,
+            status: 200,
+            ok: true,
+            url: null,
+        });
+        mockGetSession.mockResolvedValue({ user: { needs_onboarding: true } });
+        renderWithToaster(<LoginForm callbackUrl="/acr/device" />);
 
         await userEvent.type(screen.getByLabelText(/email/i), "tester@example.com");
         await userEvent.type(screen.getByLabelText(/password/i), "password");
