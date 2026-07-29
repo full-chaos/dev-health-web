@@ -773,6 +773,547 @@ export type DateRangeInput = {
   startDate: Scalars['Date']['input'];
 };
 
+export type DevActualCompletion = {
+  __typename?: 'DevActualCompletion';
+  conflicts: Array<DevStatusConflict>;
+  evidenceRefIds: Array<Scalars['ID']['output']>;
+  reasonCodes: Array<Scalars['String']['output']>;
+  requiredChildren: Array<DevStatusFact>;
+  ruleId: Scalars['String']['output'];
+  ruleVersion: Scalars['String']['output'];
+  sourceRefIds: Array<Scalars['ID']['output']>;
+  state: DevCompletionState;
+};
+
+export type DevCiStatusFact = {
+  __typename?: 'DevCIStatusFact';
+  conclusion: Scalars['String']['output'];
+  displayLabel: Scalars['String']['output'];
+  entityId: Scalars['ID']['output'];
+  evidenceRefIds: Array<Scalars['ID']['output']>;
+  observedAt: Scalars['DateTime']['output'];
+  required?: Maybe<Scalars['Boolean']['output']>;
+  skippedRequiredWork?: Maybe<Scalars['Boolean']['output']>;
+  sourceRefId: Scalars['ID']['output'];
+};
+
+export type DevChangeSummary = {
+  __typename?: 'DevChangeSummary';
+  changes: Array<DevObservedChange>;
+  comparisonWindow: DevChangeWindow;
+  contractVersion: Scalars['String']['output'];
+  currentWindow: DevChangeWindow;
+  sourceRefs: Array<DevStatusSourceRef>;
+  state: Scalars['String']['output'];
+  warnings: Array<Scalars['String']['output']>;
+};
+
+export type DevChangeSummaryInput = {
+  comparisonEnd: Scalars['DateTime']['input'];
+  comparisonStart: Scalars['DateTime']['input'];
+  maxItems?: Scalars['Int']['input'];
+  scope: DevMetricScopeInput;
+};
+
+export type DevChangeWindow = {
+  __typename?: 'DevChangeWindow';
+  end: Scalars['DateTime']['output'];
+  start: Scalars['DateTime']['output'];
+};
+
+export type DevCompletionState =
+  | 'INDETERMINATE'
+  | 'NOT_READY'
+  | 'READY';
+
+export type DevDataHealthInput = {
+  requiredSources?: Array<Scalars['String']['input']>;
+  scope: DevEvidenceScopeInput;
+};
+
+export type DevDataHealthResult = {
+  __typename?: 'DevDataHealthResult';
+  completeEligible: Scalars['Boolean']['output'];
+  queryVersion: Scalars['String']['output'];
+  sources: Array<DevDataHealthSource>;
+};
+
+export type DevDataHealthSource = {
+  __typename?: 'DevDataHealthSource';
+  confidenceImpact?: Maybe<Scalars['String']['output']>;
+  coverage: Scalars['Float']['output'];
+  freshnessPolicyVersion?: Maybe<Scalars['String']['output']>;
+  lastSuccessfulAt?: Maybe<Scalars['DateTime']['output']>;
+  missingEntityIds: Array<Scalars['ID']['output']>;
+  missingRepositoryIds: Array<Scalars['ID']['output']>;
+  required: Scalars['Boolean']['output'];
+  sourceSystem: Scalars['String']['output'];
+  state: Scalars['String']['output'];
+  warning?: Maybe<Scalars['String']['output']>;
+  watermark?: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type DevDeploymentStatusFact = {
+  __typename?: 'DevDeploymentStatusFact';
+  displayLabel: Scalars['String']['output'];
+  entityId: Scalars['ID']['output'];
+  environment?: Maybe<Scalars['String']['output']>;
+  evidenceRefIds: Array<Scalars['ID']['output']>;
+  observedAt: Scalars['DateTime']['output'];
+  required: Scalars['Boolean']['output'];
+  sourceRefId: Scalars['ID']['output'];
+  status: Scalars['String']['output'];
+};
+
+export type DevEvidence = {
+  __typename?: 'DevEvidence';
+  citationText?: Maybe<Scalars['String']['output']>;
+  confidence: Scalars['Float']['output'];
+  displayLabel: Scalars['String']['output'];
+  entityId: Scalars['ID']['output'];
+  entityType: Scalars['String']['output'];
+  evidenceRefId: Scalars['ID']['output'];
+  flags: DevEvidenceFlags;
+  freshness: Scalars['String']['output'];
+  link?: Maybe<DevEvidenceLink>;
+  observedAt: Scalars['DateTime']['output'];
+  provenance: Scalars['String']['output'];
+  repositoryIds: Array<Scalars['ID']['output']>;
+  sourceSystem: Scalars['String']['output'];
+  sourceVersion: Scalars['String']['output'];
+  validEntityIds: Array<Scalars['ID']['output']>;
+};
+
+export type DevEvidenceFlags = {
+  __typename?: 'DevEvidenceFlags';
+  conflicting: Scalars['Boolean']['output'];
+  deleted: Scalars['Boolean']['output'];
+  redacted: Scalars['Boolean']['output'];
+  stale: Scalars['Boolean']['output'];
+  unavailable: Scalars['Boolean']['output'];
+  uncertain: Scalars['Boolean']['output'];
+  untrustedContent: Scalars['Boolean']['output'];
+};
+
+export type DevEvidenceLink = {
+  __typename?: 'DevEvidenceLink';
+  internalPath?: Maybe<Scalars['String']['output']>;
+  sourceUrl?: Maybe<Scalars['String']['output']>;
+};
+
+export type DevEvidenceScopeInput = {
+  directScope: DevEvidenceScopeKind;
+  endDate?: InputMaybe<Scalars['Date']['input']>;
+  presetDays?: InputMaybe<Scalars['Int']['input']>;
+  refs?: Array<DevEvidenceScopeRefInput>;
+  startDate?: InputMaybe<Scalars['Date']['input']>;
+  teamIds?: Array<Scalars['String']['input']>;
+  timezone?: Scalars['String']['input'];
+};
+
+export type DevEvidenceScopeKind =
+  | 'ISSUE'
+  | 'ORGANIZATION'
+  | 'PROJECT'
+  | 'PULL_REQUEST'
+  | 'REPOSITORY'
+  | 'WORK_UNIT';
+
+export type DevEvidenceScopeRefInput = {
+  kind: DevEvidenceScopeKind;
+  value: Scalars['String']['input'];
+};
+
+export type DevEvidenceSearchInput = {
+  limit?: Scalars['Int']['input'];
+  query: Scalars['String']['input'];
+  scope: DevEvidenceScopeInput;
+};
+
+export type DevEvidenceSearchResult = {
+  __typename?: 'DevEvidenceSearchResult';
+  evidence: Array<DevEvidence>;
+  queryVersion: Scalars['String']['output'];
+  rankingVersion: Scalars['String']['output'];
+  sources: Array<DevEvidenceSourceState>;
+};
+
+export type DevEvidenceSourceState = {
+  __typename?: 'DevEvidenceSourceState';
+  sourceSystem: Scalars['String']['output'];
+  state: Scalars['String']['output'];
+  warning?: Maybe<Scalars['String']['output']>;
+  watermark?: Maybe<Scalars['String']['output']>;
+};
+
+export type DevIncidentStatusFact = {
+  __typename?: 'DevIncidentStatusFact';
+  active: Scalars['Boolean']['output'];
+  blocking: Scalars['Boolean']['output'];
+  displayLabel: Scalars['String']['output'];
+  entityId: Scalars['ID']['output'];
+  evidenceRefIds: Array<Scalars['ID']['output']>;
+  observedAt: Scalars['DateTime']['output'];
+  sourceRefId: Scalars['ID']['output'];
+  status: Scalars['String']['output'];
+};
+
+export type DevMetricCatalog = {
+  __typename?: 'DevMetricCatalog';
+  metrics: Array<DevMetricDefinition>;
+  registryVersion: Scalars['String']['output'];
+};
+
+export type DevMetricCatalogInput = {
+  directScope?: InputMaybe<DevMetricDirectScope>;
+  hasTeamFilter?: Scalars['Boolean']['input'];
+};
+
+export type DevMetricDataState =
+  | 'INSUFFICIENT_EVIDENCE'
+  | 'NO_MATCH'
+  | 'PARTIAL'
+  | 'STALE'
+  | 'UNAVAILABLE'
+  | 'UNCONFIGURED'
+  | 'VALUE'
+  | 'ZERO';
+
+export type DevMetricDefinition = {
+  __typename?: 'DevMetricDefinition';
+  aggregation: Scalars['String']['output'];
+  comparisonRule: Scalars['String']['output'];
+  definitionVersion: Scalars['String']['output'];
+  description: Scalars['String']['output'];
+  displayPrecision: Scalars['Int']['output'];
+  entitlement: Scalars['String']['output'];
+  expectedMaterialization: Scalars['String']['output'];
+  freshnessPolicy: Scalars['String']['output'];
+  label: Scalars['String']['output'];
+  maxRangeDays: Scalars['Int']['output'];
+  metricId: DevMetricId;
+  minRangeDays: Scalars['Int']['output'];
+  nullSemantics: Scalars['String']['output'];
+  owner: Scalars['String']['output'];
+  queryVersion: Scalars['String']['output'];
+  sensitivity: Scalars['String']['output'];
+  sourceTable: Scalars['String']['output'];
+  sourceVersion: Scalars['String']['output'];
+  supportedDimensions: Array<Scalars['String']['output']>;
+  supportedPresets: Array<Scalars['Int']['output']>;
+  supportedScopes: Array<DevMetricDirectScope>;
+  supportedTimeGrains: Array<Scalars['String']['output']>;
+  supportsTeamFilter: Scalars['Boolean']['output'];
+  unit: Scalars['String']['output'];
+  upstreamSources: Array<Scalars['String']['output']>;
+  zeroSemantics: Scalars['String']['output'];
+};
+
+export type DevMetricDimensionValue = {
+  __typename?: 'DevMetricDimensionValue';
+  key: Scalars['String']['output'];
+  value: Scalars['String']['output'];
+};
+
+export type DevMetricDirectScope =
+  | 'ISSUE'
+  | 'ORGANIZATION'
+  | 'PROJECT'
+  | 'PULL_REQUEST'
+  | 'REPOSITORY'
+  | 'WORK_UNIT';
+
+export type DevMetricFreshness =
+  | 'FRESH'
+  | 'STALE'
+  | 'UNAVAILABLE'
+  | 'UNKNOWN';
+
+export type DevMetricId =
+  | 'AVG_WIP'
+  | 'CHANGE_FAILURE_RATE'
+  | 'COMPOUNDING_RISK_SCORE'
+  | 'CYCLE_TIME_P50_HOURS'
+  | 'CYCLOMATIC_PER_KLOC'
+  | 'DEPLOYMENTS_COUNT'
+  | 'INVESTMENT_ALLOCATION_PCT'
+  | 'ITEMS_COMPLETED';
+
+export type DevMetricMetadata = {
+  __typename?: 'DevMetricMetadata';
+  key: Scalars['String']['output'];
+  value: Scalars['String']['output'];
+};
+
+export type DevMetricQueryInput = {
+  dimensions?: Array<Scalars['String']['input']>;
+  includeComparison?: Scalars['Boolean']['input'];
+  includeSeries?: Scalars['Boolean']['input'];
+  maxSeriesPoints?: Scalars['Int']['input'];
+  metricId: DevMetricId;
+  scope: DevMetricScopeInput;
+};
+
+export type DevMetricResult = {
+  __typename?: 'DevMetricResult';
+  comparisonWindowEnd?: Maybe<Scalars['DateTime']['output']>;
+  comparisonWindowStart?: Maybe<Scalars['DateTime']['output']>;
+  coverage: Scalars['Float']['output'];
+  currentWindowEnd: Scalars['DateTime']['output'];
+  currentWindowStart: Scalars['DateTime']['output'];
+  definition: DevMetricDefinition;
+  freshness: DevMetricFreshness;
+  metadata: Array<DevMetricMetadata>;
+  sourceRefs: Array<DevMetricSourceRef>;
+  state: DevMetricDataState;
+  timezone: Scalars['String']['output'];
+  values: Array<DevMetricValue>;
+  warnings: Array<Scalars['String']['output']>;
+  watermark?: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type DevMetricScopeInput = {
+  directScope: DevMetricDirectScope;
+  endDate: Scalars['Date']['input'];
+  refs?: Array<Scalars['ID']['input']>;
+  startDate: Scalars['Date']['input'];
+  teamIds?: Array<Scalars['ID']['input']>;
+  timezone?: Scalars['String']['input'];
+};
+
+export type DevMetricSeriesPoint = {
+  __typename?: 'DevMetricSeriesPoint';
+  timestamp: Scalars['DateTime']['output'];
+  value: Scalars['Float']['output'];
+};
+
+export type DevMetricSourceRef = {
+  __typename?: 'DevMetricSourceRef';
+  queryVersion: Scalars['String']['output'];
+  refId: Scalars['ID']['output'];
+  sourceTable: Scalars['String']['output'];
+  sourceVersion: Scalars['String']['output'];
+  watermark?: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type DevMetricValue = {
+  __typename?: 'DevMetricValue';
+  comparisonValue?: Maybe<Scalars['Float']['output']>;
+  dimensions: Array<DevMetricDimensionValue>;
+  series: Array<DevMetricSeriesPoint>;
+  value: Scalars['Float']['output'];
+};
+
+export type DevObservedChange = {
+  __typename?: 'DevObservedChange';
+  after?: Maybe<Scalars['String']['output']>;
+  before?: Maybe<Scalars['String']['output']>;
+  category: Scalars['String']['output'];
+  changeId: Scalars['ID']['output'];
+  claimKind: Scalars['String']['output'];
+  confidence?: Maybe<Scalars['Float']['output']>;
+  displayLabel: Scalars['String']['output'];
+  entityId: Scalars['ID']['output'];
+  entityType: Scalars['String']['output'];
+  evidenceRefIds: Array<Scalars['ID']['output']>;
+  metricComparisonValue?: Maybe<Scalars['Float']['output']>;
+  metricId?: Maybe<DevMetricId>;
+  metricValue?: Maybe<Scalars['Float']['output']>;
+  observedAt: Scalars['DateTime']['output'];
+  relationshipChain: Array<Scalars['String']['output']>;
+  sourceRefIds: Array<Scalars['ID']['output']>;
+};
+
+export type DevPullRequestStatusFact = {
+  __typename?: 'DevPullRequestStatusFact';
+  changesRequested: Scalars['Int']['output'];
+  displayLabel: Scalars['String']['output'];
+  entityId: Scalars['ID']['output'];
+  evidenceRefIds: Array<Scalars['ID']['output']>;
+  merged: Scalars['Boolean']['output'];
+  observedAt: Scalars['DateTime']['output'];
+  required: Scalars['Boolean']['output'];
+  reviewState?: Maybe<Scalars['String']['output']>;
+  sourceRefId: Scalars['ID']['output'];
+  state: Scalars['String']['output'];
+};
+
+export type DevScopeCandidate = {
+  __typename?: 'DevScopeCandidate';
+  canonicalId: Scalars['ID']['output'];
+  kind: DevScopeEntityKind;
+  label: Scalars['String']['output'];
+  repositoryId?: Maybe<Scalars['ID']['output']>;
+};
+
+export type DevScopeEntityKind =
+  | 'ISSUE'
+  | 'PROJECT'
+  | 'PULL_REQUEST'
+  | 'REPOSITORY'
+  | 'WORK_UNIT';
+
+export type DevScopeSearchInput = {
+  kinds: Array<DevScopeEntityKind>;
+  limit?: Scalars['Int']['input'];
+  query: Scalars['String']['input'];
+};
+
+export type DevScopeSearchResult = {
+  __typename?: 'DevScopeSearchResult';
+  candidates: Array<DevScopeCandidate>;
+  catalogWatermark: Scalars['String']['output'];
+  queryVersion: Scalars['String']['output'];
+};
+
+export type DevStatusConflict = {
+  __typename?: 'DevStatusConflict';
+  code: Scalars['String']['output'];
+  evidenceRefIds: Array<Scalars['ID']['output']>;
+  message: Scalars['String']['output'];
+  severity: Scalars['String']['output'];
+  sourceRefIds: Array<Scalars['ID']['output']>;
+};
+
+export type DevStatusFact = {
+  __typename?: 'DevStatusFact';
+  displayLabel: Scalars['String']['output'];
+  entityId: Scalars['ID']['output'];
+  entityType: Scalars['String']['output'];
+  evidenceRefIds: Array<Scalars['ID']['output']>;
+  observedAt: Scalars['DateTime']['output'];
+  required?: Maybe<Scalars['Boolean']['output']>;
+  sourceRefId: Scalars['ID']['output'];
+  status: Scalars['String']['output'];
+};
+
+export type DevStatusScope = {
+  __typename?: 'DevStatusScope';
+  comparisonEnd?: Maybe<Scalars['DateTime']['output']>;
+  comparisonStart?: Maybe<Scalars['DateTime']['output']>;
+  currentEnd: Scalars['DateTime']['output'];
+  currentStart: Scalars['DateTime']['output'];
+  directScope: Scalars['String']['output'];
+  entities: Array<DevStatusScopeEntity>;
+  organizationId: Scalars['ID']['output'];
+  repositoryIds: Array<Scalars['ID']['output']>;
+  schemaVersion: Scalars['String']['output'];
+  teamIds: Array<Scalars['ID']['output']>;
+  timezone: Scalars['String']['output'];
+};
+
+export type DevStatusScopeEntity = {
+  __typename?: 'DevStatusScopeEntity';
+  displayLabel: Scalars['String']['output'];
+  entityId: Scalars['ID']['output'];
+  entityType: Scalars['String']['output'];
+  repositoryId?: Maybe<Scalars['ID']['output']>;
+};
+
+export type DevStatusSnapshot = {
+  __typename?: 'DevStatusSnapshot';
+  actual: DevActualCompletion;
+  asOf: Scalars['DateTime']['output'];
+  blockers: Array<DevStatusFact>;
+  children: Array<DevStatusFact>;
+  ci: Array<DevCiStatusFact>;
+  contractVersion: Scalars['String']['output'];
+  declared?: Maybe<DevStatusFact>;
+  deployments: Array<DevDeploymentStatusFact>;
+  incidents: Array<DevIncidentStatusFact>;
+  pullRequests: Array<DevPullRequestStatusFact>;
+  scope: DevStatusScope;
+  sourceRefs: Array<DevStatusSourceRef>;
+  state: Scalars['String']['output'];
+  warnings: Array<Scalars['String']['output']>;
+};
+
+export type DevStatusSnapshotInput = {
+  asOf?: InputMaybe<Scalars['DateTime']['input']>;
+  maxItems?: Scalars['Int']['input'];
+  scope: DevMetricScopeInput;
+};
+
+export type DevStatusSourceRef = {
+  __typename?: 'DevStatusSourceRef';
+  evidenceRefIds: Array<Scalars['ID']['output']>;
+  freshness: Scalars['String']['output'];
+  refId: Scalars['ID']['output'];
+  sourceSystem: Scalars['String']['output'];
+  sourceVersion: Scalars['String']['output'];
+  watermark?: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type DevWorkGraphDirection =
+  | 'BOTH'
+  | 'INCOMING'
+  | 'OUTGOING';
+
+export type DevWorkGraphNeighborEdge = {
+  __typename?: 'DevWorkGraphNeighborEdge';
+  confidence: Scalars['Float']['output'];
+  direction: DevWorkGraphDirection;
+  edgeId: Scalars['ID']['output'];
+  evidenceRefIds: Array<Scalars['ID']['output']>;
+  freshness: Scalars['String']['output'];
+  observedAt: Scalars['DateTime']['output'];
+  provenance: Scalars['String']['output'];
+  relationshipType: Scalars['String']['output'];
+  sourceId: Scalars['ID']['output'];
+  sourceRefId: Scalars['ID']['output'];
+  sourceType: Scalars['String']['output'];
+  targetId: Scalars['ID']['output'];
+  targetType: Scalars['String']['output'];
+};
+
+export type DevWorkGraphNeighborNode = {
+  __typename?: 'DevWorkGraphNeighborNode';
+  displayLabel: Scalars['String']['output'];
+  nodeId: Scalars['ID']['output'];
+  nodeType: Scalars['String']['output'];
+  repositoryId?: Maybe<Scalars['ID']['output']>;
+  resolutionState: Scalars['String']['output'];
+};
+
+export type DevWorkGraphNeighborsInput = {
+  depth?: Scalars['Int']['input'];
+  direction?: DevWorkGraphDirection;
+  limit?: Scalars['Int']['input'];
+  relationshipTypes: Array<Scalars['String']['input']>;
+  rootRefs: Array<DevWorkGraphRootRefInput>;
+  scope: DevEvidenceScopeInput;
+};
+
+export type DevWorkGraphNeighborsResult = {
+  __typename?: 'DevWorkGraphNeighborsResult';
+  depth: Scalars['Int']['output'];
+  edges: Array<DevWorkGraphNeighborEdge>;
+  nodes: Array<DevWorkGraphNeighborNode>;
+  queryVersion: Scalars['String']['output'];
+  returnedCount: Scalars['Int']['output'];
+  schemaVersion: Scalars['String']['output'];
+  sourceRefs: Array<DevWorkGraphSourceRef>;
+  state: Scalars['String']['output'];
+  totalCount: Scalars['Int']['output'];
+  truncated: Scalars['Boolean']['output'];
+  warnings: Array<Scalars['String']['output']>;
+  watermark?: Maybe<Scalars['DateTime']['output']>;
+};
+
+export type DevWorkGraphRootRefInput = {
+  nodeId: Scalars['ID']['input'];
+  nodeType: Scalars['String']['input'];
+};
+
+export type DevWorkGraphSourceRef = {
+  __typename?: 'DevWorkGraphSourceRef';
+  queryVersion: Scalars['String']['output'];
+  refId: Scalars['ID']['output'];
+  sourceTable: Scalars['String']['output'];
+  sourceVersion: Scalars['String']['output'];
+  watermark?: Maybe<Scalars['DateTime']['output']>;
+};
+
 export type DimensionInput =
   | 'AUTHOR'
   | 'REPO'
@@ -1334,6 +1875,22 @@ export type Query = {
   compoundingRisk: CompoundingRiskResult;
   /** Operator data-health and trust surface */
   dataHealth: DataHealth;
+  /** Return reproducible observed changes across explicit equal-duration windows without upgrading correlation to cause. */
+  devChangeSummary: DevChangeSummary;
+  /** Report source-specific Ask Dev coverage, freshness, failures, and whether required sources permit a complete answer. Requires the canonical explicit-enable ask_dev entitlement. */
+  devDataHealth: DevDataHealthResult;
+  /** Search bounded authorized Ask Dev evidence. Source text is sanitized and explicitly untrusted; results are capped at 25. Requires the canonical explicit-enable ask_dev entitlement. */
+  devEvidenceSearch: DevEvidenceSearchResult;
+  /** Query one registered Ask Dev V1 metric through the shared bounded service, including prior-equivalent comparison and source state. */
+  devMetric: DevMetricResult;
+  /** List the exact authorized Ask Dev V1 metric registry. */
+  devMetricCatalog: DevMetricCatalog;
+  /** Search authorized Ask Dev V1 direct-scope entities. Results are tenant-scoped, deterministic, and capped at 25 candidates. */
+  devScopeSearch: DevScopeSearchResult;
+  /** Return declared status separately from deterministic, evidence-backed completion using the versioned Ask Dev status rules. */
+  devStatusSnapshot: DevStatusSnapshot;
+  /** Return persisted, tenant-scoped work-graph neighbors with depth fixed to one and code-owned relationship/result bounds. */
+  devWorkGraphNeighbors: DevWorkGraphNeighborsResult;
   /** Experiments derived from opportunity suggested_experiments (CHAOS-2219). v1: computed at query-time — no persistence table. Each experiment is a typed promotion of a suggestion string with hypothesis / metric / owner / stop_condition. ``derived_from_opportunities`` is False when the opportunities service was unavailable; items will be empty in that case. */
   experiments: ExperimentsResult;
   /** List feature flag state-change events */
@@ -1504,6 +2061,54 @@ export type QueryCompoundingRiskArgs = {
 
 export type QueryDataHealthArgs = {
   team: Scalars['ID']['input'];
+};
+
+
+export type QueryDevChangeSummaryArgs = {
+  input: DevChangeSummaryInput;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryDevDataHealthArgs = {
+  input: DevDataHealthInput;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryDevEvidenceSearchArgs = {
+  input: DevEvidenceSearchInput;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryDevMetricArgs = {
+  input: DevMetricQueryInput;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryDevMetricCatalogArgs = {
+  input?: InputMaybe<DevMetricCatalogInput>;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryDevScopeSearchArgs = {
+  input: DevScopeSearchInput;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryDevStatusSnapshotArgs = {
+  input: DevStatusSnapshotInput;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryDevWorkGraphNeighborsArgs = {
+  input: DevWorkGraphNeighborsInput;
+  orgId: Scalars['String']['input'];
 };
 
 
