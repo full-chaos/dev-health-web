@@ -129,6 +129,17 @@ describe("org-scoped route guard", () => {
         expect(res.status).not.toBe(303);
     });
 
+    it("preserves the requested path and query when redirecting to sign in", async () => {
+        mockAuth.mockResolvedValue(null);
+
+        const res = await proxy(makeRequest("/settings?tab=integrations"));
+        const location = new URL(res.headers.get("Location")!);
+
+        expect(res.status).toBe(303);
+        expect(location.pathname).toBe("/auth/signin");
+        expect(location.searchParams.get("callbackUrl")).toBe("/settings?tab=integrations");
+    });
+
     it("redirects superuser without org from non-exempt path to /superadmin", async () => {
         mockAuth.mockResolvedValue(superuserNoOrg);
         const res = await proxy(makeRequest("/dashboard"));

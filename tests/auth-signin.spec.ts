@@ -40,3 +40,17 @@ test("/auth/signin tab navigates to signup", async ({ page }) => {
 
     await expect(page).toHaveURL(/\/auth\/signup/);
 });
+
+test("successful sign-in returns to the protected URL including its query", async ({ page }) => {
+    await page.goto("/settings?tab=integrations");
+
+    const signInUrl = new URL(page.url());
+    expect(signInUrl.pathname).toBe("/auth/signin");
+    expect(signInUrl.searchParams.get("callbackUrl")).toBe("/settings?tab=integrations");
+
+    await page.getByLabel("Email").fill("admin@devhealth.example");
+    await page.getByLabel("Password").fill("devhealth123");
+    await page.getByRole("button", { name: "Sign in" }).click();
+
+    await expect(page).toHaveURL(/\/settings\?tab=integrations$/);
+});

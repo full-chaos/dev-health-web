@@ -5,14 +5,16 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { resolveOrigin } from "@/lib/origin";
 import { extractErrorMessage } from "@/lib/errorMessages";
+import { appendCallbackUrl, safePostLoginRedirect } from "@/lib/post-login-redirect";
 import { PasswordStrength } from "./PasswordStrength";
 
 type SignupFormProps = {
     plan?: string;
     trialIntent?: boolean;
+    callbackUrl?: string;
 };
 
-export function SignupForm({ plan, trialIntent = false }: SignupFormProps) {
+export function SignupForm({ plan, trialIntent = false, callbackUrl }: SignupFormProps) {
     const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
@@ -22,6 +24,7 @@ export function SignupForm({ plan, trialIntent = false }: SignupFormProps) {
 
     const normalizedPlan = plan?.toLowerCase();
     const isTeamTrialIntent = trialIntent && normalizedPlan === "team";
+    const postLoginTarget = safePostLoginRedirect(callbackUrl);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -65,9 +68,12 @@ export function SignupForm({ plan, trialIntent = false }: SignupFormProps) {
             }
 
             router.push(
-                isTeamTrialIntent
-                    ? "/auth/signin?registered=true&plan=team&trial=true"
-                    : "/auth/signin?registered=true",
+                appendCallbackUrl(
+                    isTeamTrialIntent
+                        ? "/auth/signin?registered=true&plan=team&trial=true"
+                        : "/auth/signin?registered=true",
+                    postLoginTarget,
+                ),
             );
         } catch {
             toast.error("An error occurred. Please try again.");
