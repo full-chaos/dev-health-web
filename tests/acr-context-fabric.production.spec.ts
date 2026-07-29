@@ -234,7 +234,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
     });
 
     for (const scenario of ENTITLEMENT_SCENARIOS.filter((scenario) => scenario !== "provisioned")) {
-        test(`keeps validation out of customer navigation and fails closed when entitlement is ${scenario}`, async ({
+        test(`keeps validation out of customer navigation and available to platform admins when product entitlement is ${scenario}`, async ({
             page,
         }, testInfo) => {
             await setEntitlementScenario(page.request, scenario);
@@ -256,7 +256,10 @@ test.describe("Context Fabric production entitlement boundary", () => {
             }
 
             await gotoWithSessionReady(page, "/superadmin/context-fabric/validation");
-            await expect(page.getByTestId("data-state-not-entitled")).toBeVisible();
+            await expect(page).toHaveURL(/\/superadmin\/context-fabric\/validation$/);
+            await expect(
+                page.getByRole("heading", { name: "Context Fabric Validation", level: 1 }),
+            ).toBeVisible();
             if (scenario === "unprovisioned") {
                 await page.screenshot({
                     path: testInfo.outputPath("denied-unprovisioned-375.png"),
