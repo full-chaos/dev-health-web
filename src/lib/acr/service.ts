@@ -7,7 +7,6 @@ import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
 import { resolveOpsAuthorization } from "./ops";
 import { contextPacketRequest, parseContextPacketForm, parseEvidenceSelection } from "./protocol";
 
-const deviceUserCode = /^[ABCDEFGHJKMNPQRSTVWXYZ23456789]{8}$/u;
 const repositoryScope = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
 
 type WebSession = {
@@ -146,7 +145,6 @@ export async function approveDeviceAuthorization(input: {
     readonly signal: AbortSignal;
     readonly userCode: string;
 }): Promise<{ readonly status: "approved" }> {
-    if (!deviceUserCode.test(input.userCode)) throw invalidApprovalRequest();
     const requestedScopes = canonicalApprovalScopes(input.repositoryScopes);
     const rawSession = await auth();
     const session = sessionOrError(rawSession);
@@ -190,7 +188,6 @@ export async function previewDeviceAuthorization(input: {
     readonly organizationIdHint?: string;
     readonly repositoryHints: readonly string[];
 }> {
-    if (!deviceUserCode.test(input.userCode)) throw invalidApprovalRequest();
     const rawSession = await auth();
     const session = sessionOrError(rawSession);
     if (

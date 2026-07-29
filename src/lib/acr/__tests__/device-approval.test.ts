@@ -92,6 +92,31 @@ afterEach(() => {
 });
 
 describe("approveDeviceAuthorization", () => {
+    it("Given ACR-generated L and U characters, when previewing, then forwards the valid code", async () => {
+        installOpsAuthorization();
+        server.use(
+            http.post(
+                "https://acr.example.test/api/v1/oauth/device_approval",
+                async ({ request }) => {
+                    expect(await request.json()).toEqual({
+                        schema_version: "device_approval_preview_request.v1",
+                        user_code: "ALU23456",
+                    });
+                    return HttpResponse.json({
+                        schema_version: "device_approval_preview_response.v1",
+                    });
+                },
+            ),
+        );
+
+        await expect(
+            previewDeviceAuthorization({
+                signal: new AbortController().signal,
+                userCode: "ALU23456",
+            }),
+        ).resolves.toEqual({ repositoryHints: [] });
+    });
+
     it("Given an explicit selected repository, when approving, then sends only the bounded grant with a body-bound credential assertion", async () => {
         installOpsAuthorization();
         server.use(
