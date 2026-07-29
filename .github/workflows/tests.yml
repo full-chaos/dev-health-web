@@ -86,8 +86,19 @@ jobs:
         needs: [changes]
         if: needs.changes.outputs.code == 'true'
         runs-on: ubuntu-latest
+        env:
+            ASK_DEV_OPS_ROOT: dev-health-ops
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+            # This SHA is on the Ask Dev foundation branch. Publish that ops
+            # branch/PR before opening or updating the dependent web PR.
+            - name: Checkout canonical Ask Dev ops contracts
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+              with:
+                  repository: full-chaos/dev-health-ops
+                  ref: 11167458d781063670c95b832071b72d4543b5a7
+                  path: dev-health-ops
+                  persist-credentials: false
             - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
             - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
               with:
