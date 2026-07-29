@@ -11,6 +11,29 @@ import { DataState } from "@/components/ui/DataState";
 import { AskDevAnswer } from "./AskDevAnswer";
 import { useAskDev } from "./AskDevProvider";
 
+function platformAllowanceGuidance(
+    error: ReturnType<typeof useAskDev>["stream"]["error"],
+): string | null {
+    if (!error || !["rate_limited", "cost_limit_reached"].includes(error.code)) return null;
+    if (!error.limit_reset_at) {
+        return "Retrying immediately will not help. New platform-backed runs resume after the monthly allowance resets.";
+    }
+    const reset = new Date(error.limit_reset_at);
+    if (Number.isNaN(reset.getTime())) {
+        return "Retrying immediately will not help. New platform-backed runs resume after the monthly allowance resets.";
+    }
+    const resetLabel = new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "UTC",
+        timeZoneName: "short",
+    }).format(reset);
+    return `Retrying before ${resetLabel} will not help. New platform-backed runs resume at that reset.`;
+}
+
 const PROGRESS_LABELS: Record<string, string> = {
     resolving_scope: "Resolving the committed scope",
     checking_status: "Checking current status",
@@ -63,6 +86,7 @@ export function AskDevConversation({
     const router = useRouter();
     const searchParams = useSearchParams();
     const filters = useMemo(() => decodeFilter(searchParams.get("f")), [searchParams]);
+    const allowanceGuidance = platformAllowanceGuidance(stream.error);
 
     useEffect(() => {
         if (showHistory && availability.state === "ready") void loadHistory();
@@ -463,7 +487,12 @@ export function AskDevConversation({
                                         {stream.error?.safe_message ??
                                             "Ask Dev could not complete that request."}
                                     </p>
-                                    {stream.error?.retryable ? (
+                                    {allowanceGuidance ? (
+                                        <p className="mt-2 text-xs leading-5 text-(--text-secondary)">
+                                            {allowanceGuidance}
+                                        </p>
+                                    ) : null}
+                                    {stream.error?.retryable && !allowanceGuidance ? (
                                         <button
                                             type="button"
                                             onClick={() => void retryLastQuestion()}

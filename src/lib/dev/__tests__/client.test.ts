@@ -6,7 +6,7 @@ import conversationSummaryFixture from "../contracts/examples/positive/dev_conve
 import evidenceExpansionFixture from "../contracts/examples/positive/dev_evidence_expansion.v1.json";
 import feedbackFixture from "../contracts/examples/positive/dev_feedback.v1.json";
 import transcriptFixture from "../contracts/examples/positive/dev_conversation_transcript.v1.json";
-import type { DevStreamEvent } from "../generated";
+import type { DevMessageRequest, DevStreamEvent } from "../generated";
 import {
     DevApiError,
     consumeDevSseStream,
@@ -151,6 +151,41 @@ describe("Ask Dev browser client", () => {
         expect(fetchMock.mock.calls[0]?.[0]).toBe("/api/v1/dev/conversations?limit=25");
         expect(fetchMock.mock.calls[1]?.[0]).toBe("/api/v1/dev/capabilities");
         expect(JSON.stringify(fetchMock.mock.calls)).not.toContain("Authorization");
+    });
+
+    it("preserves the allowance reset on a non-retryable message admission error", async () => {
+        const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+            Response.json(
+                {
+                    schema_version: "dev_web_error.v1",
+                    code: "cost_limit_reached",
+                    safe_message: "The platform cost allowance has been reached.",
+                    retryable: false,
+                    limit_reset_at: "2026-08-01T00:00:00Z",
+                },
+                { status: 429 },
+            ),
+        );
+        const client = createDevApiClient({ fetch: fetchMock });
+
+        await expect(
+            client.streamMessage("conversation_01", {
+                schema_version: "dev_message_request.v1",
+                client_message_id: "message_01",
+                request_id: "request_01",
+                conversation_id: "conversation_01",
+                question: "What changed?",
+                question_class: "investigation",
+                scope: conversationFixture.current_scope as DevMessageRequest["scope"],
+            }),
+        ).rejects.toMatchObject({
+            status: 429,
+            detail: {
+                code: "cost_limit_reached",
+                retryable: false,
+                limit_reset_at: "2026-08-01T00:00:00Z",
+            },
+        });
     });
 
     it("loads a canonical transcript page through the same-origin route", async () => {

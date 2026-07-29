@@ -66,6 +66,20 @@ function formatCheckedAt(value: string | null): string {
     return Number.isNaN(date.getTime()) ? "Not checked" : date.toLocaleString();
 }
 
+function formatResetAt(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "at the next monthly reset";
+    return new Intl.DateTimeFormat(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "UTC",
+        timeZoneName: "short",
+    }).format(date);
+}
+
 export function AskDevAdminPanel({
     loadAction,
     loadUsageAction,
@@ -76,29 +90,41 @@ export function AskDevAdminPanel({
     const [saving, setSaving] = useState(false);
     const [checking, setChecking] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [usageError, setUsageError] = useState<string | null>(null);
     const [admin, setAdmin] = useState<AskDevAdminResponse | null>(null);
     const [usage, setUsage] = useState<AskDevAdminUsageResponse | null>(null);
     const [retentionDays, setRetentionDays] = useState<AskDevRetentionDays>(30);
     const [fallbackPolicy, setFallbackPolicy] = useState<AskDevFallbackPolicy>("fail_closed");
     const [emergencyDisabled, setEmergencyDisabled] = useState(false);
+    const [platformMonthlyRequestLimit, setPlatformMonthlyRequestLimit] = useState(1_000);
+    const [platformMonthlyCostLimitMicrousd, setPlatformMonthlyCostLimitMicrousd] =
+        useState(100_000_000);
 
     const applyAdmin = useCallback((value: AskDevAdminResponse) => {
         setAdmin(value);
         setRetentionDays(value.settings.retention_days);
         setFallbackPolicy(value.settings.fallback_policy);
         setEmergencyDisabled(value.settings.emergency_disabled);
+        setPlatformMonthlyRequestLimit(value.settings.platform_monthly_request_limit);
+        setPlatformMonthlyCostLimitMicrousd(value.settings.platform_monthly_cost_limit_microusd);
     }, []);
 
     const load = useCallback(async () => {
         setLoading(true);
         setError(null);
+        setUsageError(null);
         const [adminResult, usageResult] = await Promise.all([loadAction(), loadUsageAction()]);
         if ("error" in adminResult) {
             setError(adminResult.error ?? "Ask Dev controls could not be loaded.");
         } else {
             applyAdmin(adminResult.data);
         }
-        setUsage("error" in usageResult ? null : usageResult.data);
+        if ("error" in usageResult) {
+            setUsage(null);
+            setUsageError(usageResult.error ?? "Current allowance usage could not be loaded.");
+        } else {
+            setUsage(usageResult.data);
+        }
         setLoading(false);
     }, [applyAdmin, loadAction, loadUsageAction]);
 
@@ -114,14 +140,28 @@ export function AskDevAdminPanel({
             retention_days: retentionDays,
             fallback_policy: fallbackPolicy,
             emergency_disabled: emergencyDisabled,
+            platform_monthly_request_limit: platformMonthlyRequestLimit,
+            platform_monthly_cost_limit_microusd: platformMonthlyCostLimitMicrousd,
         });
-        setSaving(false);
         if ("error" in result) {
+            setSaving(false);
             setError(result.error ?? "Ask Dev controls could not be saved.");
             toast.error("Could not save Ask Dev controls.");
             return;
         }
         applyAdmin(result.data);
+        setUsageError(null);
+        const usageResult = await loadUsageAction();
+        if ("error" in usageResult) {
+            setUsage(null);
+            setUsageError(
+                usageResult.error ??
+                    "Controls were saved, but current allowance usage could not be refreshed.",
+            );
+        } else {
+            setUsage(usageResult.data);
+        }
+        setSaving(false);
         toast.success("Ask Dev controls saved.");
     };
 
@@ -352,6 +392,91 @@ export function AskDevAdminPanel({
                                     </span>
                                 </span>
                             </label>
+                            <div className="border-t border-(--border) pt-5 sm:col-span-2">
+                                <h4 className="text-sm font-semibold text-(--text-primary)">
+                                    Platform monthly allowance
+                                </h4>
+                                <p className="mt-1 text-xs leading-5 text-(--text-secondary)">
+                                    The permanent window and /dev share this allowance. Approved
+                                    platform fallback also consumes it when a BYO provider cannot
+                                    serve the request. Limits reset each UTC calendar month and do
+                                    not roll over.
+                                </p>
+                            </div>
+                            <label className="text-sm font-medium text-(--text-primary)">
+                                Monthly platform run limit
+                                <input
+                                    aria-label="Monthly platform run limit"
+                                    type="number"
+                                    min={admin.platform_allowance_bounds.request_minimum}
+                                    max={admin.platform_allowance_bounds.request_maximum}
+                                    step={1}
+                                    value={platformMonthlyRequestLimit}
+                                    disabled={!configurable}
+                                    onChange={(event) => {
+                                        const next = event.currentTarget.valueAsNumber;
+                                        if (!Number.isFinite(next)) return;
+                                        setPlatformMonthlyRequestLimit(
+                                            Math.min(
+                                                admin.platform_allowance_bounds.request_maximum,
+                                                Math.max(
+                                                    admin.platform_allowance_bounds.request_minimum,
+                                                    Math.trunc(next),
+                                                ),
+                                            ),
+                                        );
+                                    }}
+                                    className="mt-2 w-full rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm"
+                                />
+                                <span className="mt-1 block text-xs font-normal text-(--text-muted)">
+                                    {formatCount(admin.platform_allowance_bounds.request_minimum)}–
+                                    {formatCount(admin.platform_allowance_bounds.request_maximum)}
+                                    accepted runs
+                                </span>
+                            </label>
+                            <label className="text-sm font-medium text-(--text-primary)">
+                                Monthly platform cost cap (USD)
+                                <input
+                                    aria-label="Monthly platform cost cap (USD)"
+                                    type="number"
+                                    min={
+                                        admin.platform_allowance_bounds.cost_minimum_microusd /
+                                        1_000_000
+                                    }
+                                    max={
+                                        admin.platform_allowance_bounds.cost_maximum_microusd /
+                                        1_000_000
+                                    }
+                                    step={1}
+                                    value={platformMonthlyCostLimitMicrousd / 1_000_000}
+                                    disabled={!configurable}
+                                    onChange={(event) => {
+                                        const next = event.currentTarget.valueAsNumber;
+                                        if (!Number.isFinite(next)) return;
+                                        setPlatformMonthlyCostLimitMicrousd(
+                                            Math.min(
+                                                admin.platform_allowance_bounds
+                                                    .cost_maximum_microusd,
+                                                Math.max(
+                                                    admin.platform_allowance_bounds
+                                                        .cost_minimum_microusd,
+                                                    Math.round(next * 1_000_000),
+                                                ),
+                                            ),
+                                        );
+                                    }}
+                                    className="mt-2 w-full rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm"
+                                />
+                                <span className="mt-1 block text-xs font-normal text-(--text-muted)">
+                                    {formatCost(
+                                        admin.platform_allowance_bounds.cost_minimum_microusd,
+                                    )}
+                                    –
+                                    {formatCost(
+                                        admin.platform_allowance_bounds.cost_maximum_microusd,
+                                    )}
+                                </span>
+                            </label>
                         </div>
                         <button
                             type="button"
@@ -369,50 +494,141 @@ export function AskDevAdminPanel({
                         Ask Dev usage
                     </h3>
                     {usage ? (
-                        <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
-                            <div>
-                                <dt className="text-label-caps text-(--text-muted)">Runs</dt>
-                                <dd className="mt-1 text-h2 text-(--text-primary)">
-                                    {formatCount(usage.run_count)}
-                                </dd>
+                        <>
+                            {usage.platform_allowance.warning !== "none" ? (
+                                <div
+                                    role="alert"
+                                    className={`mt-4 rounded-(--radius-md) border px-4 py-3 text-sm ${
+                                        usage.platform_allowance.warning === "exhausted"
+                                            ? "border-(--negative)/30 bg-(--negative)/8 text-(--negative)"
+                                            : "border-(--caution)/35 bg-(--caution)/10 text-(--text-primary)"
+                                    }`}
+                                >
+                                    {usage.platform_allowance.warning === "exhausted" ? (
+                                        <>
+                                            <span className="font-semibold">
+                                                Platform allowance is exhausted.
+                                            </span>{" "}
+                                            New platform-backed runs remain blocked until it resets.
+                                            Existing conversation history remains available.
+                                        </>
+                                    ) : (
+                                        <>
+                                            This organization has used at least{" "}
+                                            {usage.platform_allowance.warning === "ninety_percent"
+                                                ? "90%"
+                                                : "80%"}{" "}
+                                            of the platform allowance.
+                                        </>
+                                    )}
+                                </div>
+                            ) : null}
+                            <div className="mt-4 rounded-(--radius-md) border border-(--border) bg-(--surface) p-4">
+                                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                                    <h4 className="text-sm font-semibold text-(--text-primary)">
+                                        Current platform allowance
+                                    </h4>
+                                    <p className="text-xs text-(--text-muted)">
+                                        Resets {formatResetAt(usage.platform_allowance.reset_at)}
+                                    </p>
+                                </div>
+                                <dl className="mt-3 grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <dt className="text-label-caps text-(--text-muted)">
+                                            Accepted runs
+                                        </dt>
+                                        <dd className="mt-1 text-h3 text-(--text-primary)">
+                                            {formatCount(usage.platform_allowance.request_used)} of{" "}
+                                            {formatCount(usage.platform_allowance.request_limit)}
+                                        </dd>
+                                        <p className="mt-1 text-xs text-(--text-muted)">
+                                            {formatCount(
+                                                usage.platform_allowance.request_remaining,
+                                            )}{" "}
+                                            remaining
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <dt className="text-label-caps text-(--text-muted)">
+                                            Estimated platform spend
+                                        </dt>
+                                        <dd className="mt-1 text-h3 text-(--text-primary)">
+                                            {formatCost(
+                                                usage.platform_allowance.cost_used_microusd,
+                                            )}{" "}
+                                            of{" "}
+                                            {formatCost(
+                                                usage.platform_allowance.cost_limit_microusd,
+                                            )}
+                                        </dd>
+                                        <p className="mt-1 text-xs text-(--text-muted)">
+                                            {formatCost(
+                                                usage.platform_allowance.cost_remaining_microusd,
+                                            )}{" "}
+                                            remaining
+                                        </p>
+                                    </div>
+                                </dl>
+                                <p className="mt-3 text-xs leading-5 text-(--text-secondary)">
+                                    The permanent window and /dev share this allowance. Platform
+                                    fallback also consumes it. A user retry is a new run; refreshes,
+                                    reconnects, and idempotent replays do not add a run.
+                                </p>
                             </div>
-                            <div>
-                                <dt className="text-label-caps text-(--text-muted)">Completed</dt>
-                                <dd className="mt-1 text-h2 text-(--positive)">
-                                    {formatCount(usage.completed_runs)}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt className="text-label-caps text-(--text-muted)">
-                                    Failure rate
-                                </dt>
-                                <dd className="mt-1 text-h2 text-(--text-primary)">
-                                    {formatRate(usage.failure_rate)}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt className="text-label-caps text-(--text-muted)">
-                                    Degraded rate
-                                </dt>
-                                <dd className="mt-1 text-h2 text-(--text-primary)">
-                                    {formatRate(usage.degraded_rate)}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt className="text-label-caps text-(--text-muted)">Tokens</dt>
-                                <dd className="mt-1 text-h2 text-(--text-primary)">
-                                    {formatCount(usage.input_tokens + usage.output_tokens)}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt className="text-label-caps text-(--text-muted)">
-                                    Estimated spend
-                                </dt>
-                                <dd className="mt-1 text-h2 text-(--text-primary)">
-                                    {formatCost(usage.estimated_cost_microusd)}
-                                </dd>
-                            </div>
-                        </dl>
+                            <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
+                                <div>
+                                    <dt className="text-label-caps text-(--text-muted)">Runs</dt>
+                                    <dd className="mt-1 text-h2 text-(--text-primary)">
+                                        {formatCount(usage.run_count)}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-label-caps text-(--text-muted)">
+                                        Completed
+                                    </dt>
+                                    <dd className="mt-1 text-h2 text-(--positive)">
+                                        {formatCount(usage.completed_runs)}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-label-caps text-(--text-muted)">
+                                        Failure rate
+                                    </dt>
+                                    <dd className="mt-1 text-h2 text-(--text-primary)">
+                                        {formatRate(usage.failure_rate)}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-label-caps text-(--text-muted)">
+                                        Degraded rate
+                                    </dt>
+                                    <dd className="mt-1 text-h2 text-(--text-primary)">
+                                        {formatRate(usage.degraded_rate)}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-label-caps text-(--text-muted)">Tokens</dt>
+                                    <dd className="mt-1 text-h2 text-(--text-primary)">
+                                        {formatCount(usage.input_tokens + usage.output_tokens)}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-label-caps text-(--text-muted)">
+                                        Estimated spend
+                                    </dt>
+                                    <dd className="mt-1 text-h2 text-(--text-primary)">
+                                        {formatCost(usage.estimated_cost_microusd)}
+                                    </dd>
+                                </div>
+                            </dl>
+                        </>
+                    ) : usageError ? (
+                        <DataState
+                            variant="error"
+                            title="Ask Dev usage is unavailable"
+                            message={usageError}
+                            className="mt-4"
+                        />
                     ) : (
                         <DataState
                             variant="detector-enabled-no-findings"

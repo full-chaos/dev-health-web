@@ -875,12 +875,16 @@ export interface AskDevAdminSettings {
     retention_days: AskDevRetentionDays;
     fallback_policy: AskDevFallbackPolicy;
     emergency_disabled: boolean;
+    platform_monthly_request_limit: number;
+    platform_monthly_cost_limit_microusd: number;
 }
 
 export interface AskDevAdminSettingsPatch {
     retention_days?: AskDevRetentionDays;
     fallback_policy?: AskDevFallbackPolicy;
     emergency_disabled?: boolean;
+    platform_monthly_request_limit?: number;
+    platform_monthly_cost_limit_microusd?: number;
 }
 
 export interface AskDevRequestLimits {
@@ -888,6 +892,28 @@ export interface AskDevRequestLimits {
     active_runs_per_organization: number;
     requests_per_user_per_15_minutes: number;
     requests_per_organization_per_hour: number;
+}
+
+export interface AskDevPlatformAllowanceBounds {
+    request_minimum: number;
+    request_maximum: number;
+    cost_minimum_microusd: number;
+    cost_maximum_microusd: number;
+}
+
+export type AskDevPlatformAllowanceWarning =
+    "none" | "eighty_percent" | "ninety_percent" | "exhausted";
+
+export interface AskDevPlatformAllowanceUsage {
+    window_start: string;
+    reset_at: string;
+    request_limit: number;
+    request_used: number;
+    request_remaining: number;
+    cost_limit_microusd: number;
+    cost_used_microusd: number;
+    cost_remaining_microusd: number;
+    warning: AskDevPlatformAllowanceWarning;
 }
 
 export interface AskDevAdminResponse {
@@ -907,6 +933,7 @@ export interface AskDevAdminResponse {
     retention_options: AskDevRetentionDays[];
     fallback_options: AskDevFallbackPolicy[];
     request_limits: AskDevRequestLimits;
+    platform_allowance_bounds: AskDevPlatformAllowanceBounds;
     no_training_by_default: boolean;
 }
 
@@ -926,6 +953,7 @@ export interface AskDevAdminUsageResponse {
     failure_rate: number;
     degraded_rate: number;
     readiness: AskDevAdminReadiness;
+    platform_allowance: AskDevPlatformAllowanceUsage;
 }
 // ---- Provider types ----
 
