@@ -161,6 +161,38 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await setAcrMockControls(request);
     });
 
+    test("accepts a device code produced by ACR without a duplicated browser alphabet", async ({
+        page,
+    }, testInfo) => {
+        await setEntitlementScenario(page.request, "provisioned");
+        const previewBodies: unknown[] = [];
+        await page.route("**/api/acr/device", async (route) => {
+            previewBodies.push(route.request().postDataJSON());
+            await route.fulfill({
+                body: JSON.stringify({ repositoryHints: ["full-chaos/dev-health-acr"] }),
+                contentType: "application/json",
+                status: 200,
+            });
+        });
+        await page.goto("/acr/device");
+
+        const code = page.getByLabel("Verification code");
+        await code.fill("EP23TUGG");
+        expect(await code.evaluate((input: HTMLInputElement) => input.checkValidity())).toBe(true);
+        await page.screenshot({
+            path: testInfo.outputPath("device-approval-valid-code-entry.png"),
+            fullPage: true,
+        });
+        await page.getByRole("button", { name: "Preview request" }).click();
+
+        await expect(page.getByRole("heading", { name: "Review device access" })).toBeVisible();
+        expect(previewBodies).toEqual([{ action: "preview", user_code: "EP23TUGG" }]);
+        await page.screenshot({
+            path: testInfo.outputPath("device-approval-valid-code.png"),
+            fullPage: true,
+        });
+    });
+
     test("shows one current Context Fabric destination for a provisioned organization at every viewport", async ({
         page,
     }, testInfo) => {

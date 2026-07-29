@@ -32,9 +32,12 @@ describe("DeviceApprovalForm", () => {
         vi.stubGlobal("fetch", fetchMock);
 
         render(<DeviceApprovalForm repositories={["full-chaos/platform", "full-chaos/private"]} />);
-        fireEvent.change(screen.getByLabelText("Verification code"), {
-            target: { value: "ABCD2345" },
+        const verificationCode = screen.getByLabelText("Verification code");
+        fireEvent.change(verificationCode, {
+            target: { value: "EP23TUGG" },
         });
+        expect(verificationCode).toBeValid();
+        expect(verificationCode).not.toHaveAttribute("pattern");
         fireEvent.click(screen.getByRole("button", { name: "Preview request" }));
 
         await screen.findByRole("heading", { name: "Review device access" });
@@ -48,7 +51,7 @@ describe("DeviceApprovalForm", () => {
             1,
             "/api/acr/device",
             expect.objectContaining({
-                body: JSON.stringify({ action: "preview", user_code: "ABCD2345" }),
+                body: JSON.stringify({ action: "preview", user_code: "EP23TUGG" }),
                 method: "POST",
             }),
         );
@@ -59,7 +62,7 @@ describe("DeviceApprovalForm", () => {
                 body: JSON.stringify({
                     action: "approve",
                     repository_scopes: ["full-chaos/platform"],
-                    user_code: "ABCD2345",
+                    user_code: "EP23TUGG",
                 }),
                 method: "POST",
             }),
@@ -83,5 +86,28 @@ describe("DeviceApprovalForm", () => {
         await screen.findByText("No authorized repositories match this request.");
         expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
         expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("Given a malformed eight-character code, when ACR rejects it, then shows the rejection", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 400 }));
+        vi.stubGlobal("fetch", fetchMock);
+
+        render(<DeviceApprovalForm repositories={["full-chaos/platform"]} />);
+        const verificationCode = screen.getByLabelText("Verification code");
+        fireEvent.change(verificationCode, {
+            target: { value: "OOOOOOOO" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "Preview request" }));
+
+        await screen.findByText("We could not preview this request.");
+        expect(fetchMock).toHaveBeenCalledWith(
+            "/api/acr/device",
+            expect.objectContaining({
+                body: JSON.stringify({ action: "preview", user_code: "OOOOOOOO" }),
+                method: "POST",
+            }),
+        );
     });
 });

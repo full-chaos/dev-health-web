@@ -175,7 +175,6 @@ export function DeviceApprovalForm({
                                 onChange={(event) =>
                                     setCode(event.target.value.trim().toUpperCase())
                                 }
-                                pattern="[ABCDEFGHJKMNPQRSTVWXYZ23456789]{8}"
                                 required
                                 value={code}
                             />
