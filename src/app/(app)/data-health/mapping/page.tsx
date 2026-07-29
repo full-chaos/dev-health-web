@@ -6,6 +6,7 @@ import {
     type GetMappingCoverageHealthQuery,
 } from "@/lib/graphql/__generated__/graphql";
 import { requireSession } from "@/lib/auth";
+import { DataHealthAskDevTrigger } from "../_components/DataHealthAskDevTrigger";
 
 export default async function MappingHealthPage() {
     const session = await requireSession();
@@ -30,7 +31,9 @@ export default async function MappingHealthPage() {
             <AdminHeader
                 title="Mapping Coverage"
                 description="Deployment to work-item mapping and overall traceability."
-            />
+            >
+                <DataHealthAskDevTrigger />
+            </AdminHeader>
 
             {error && (
                 <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">

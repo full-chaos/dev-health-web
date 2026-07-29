@@ -16,7 +16,7 @@ export default defineConfig({
         },
         {
             name: "live-api",
-            testIgnore: /onboarding-ui\.spec\.ts/,
+            testIgnore: [/onboarding-ui\.spec\.ts/, /ask-dev-acceptance\.spec\.ts/],
             dependencies: ["onboarding-ui"],
             use: { baseURL: "http://127.0.0.1:3002", headless: true },
         },

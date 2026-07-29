@@ -41,6 +41,8 @@ export type OpsAuthorization = {
 type ResolveOpsAuthorizationInput = {
     readonly accessToken: string;
     readonly orgId: string;
+    /** Platform validation is independently authorized by the superuser route guard. */
+    readonly platformValidation?: boolean;
     readonly selectedRepository?: string;
     readonly signal: AbortSignal;
     readonly subject: string;
@@ -86,31 +88,33 @@ function opsHeaders(accessToken: string): Readonly<Record<string, string>> {
 export async function resolveOpsAuthorization(
     input: ResolveOpsAuthorizationInput,
 ): Promise<OpsAuthorization> {
-    const entitlement = await fetchBoundedJson({
-        headers: opsHeaders(input.accessToken),
-        method: "GET",
-        signal: input.signal,
-        timeoutMs: 5_000,
-        url: backendUrl(`/api/v1/licensing/entitlements/${encodeURIComponent(input.orgId)}`),
-    });
-    if (entitlement.status !== 200) {
-        throw new AcrRuntimeError(
-            acrRuntimeErrorCodes.unavailable,
-            "Agent Context Runtime is temporarily unavailable.",
-            { retryable: true },
-        );
-    }
-    const parsedEntitlement = entitlementSchema.safeParse(entitlement.value);
-    if (
-        !parsedEntitlement.success ||
-        !parsedEntitlement.data.is_valid ||
-        !parsedEntitlement.data.features.agent_context_runtime
-    ) {
-        throw new AcrRuntimeError(
-            acrRuntimeErrorCodes.notEntitled,
-            "Agent Context Runtime is not available for this organization.",
-            { status: 403 },
-        );
+    if (input.platformValidation !== true) {
+        const entitlement = await fetchBoundedJson({
+            headers: opsHeaders(input.accessToken),
+            method: "GET",
+            signal: input.signal,
+            timeoutMs: 5_000,
+            url: backendUrl(`/api/v1/licensing/entitlements/${encodeURIComponent(input.orgId)}`),
+        });
+        if (entitlement.status !== 200) {
+            throw new AcrRuntimeError(
+                acrRuntimeErrorCodes.unavailable,
+                "Agent Context Runtime is temporarily unavailable.",
+                { retryable: true },
+            );
+        }
+        const parsedEntitlement = entitlementSchema.safeParse(entitlement.value);
+        if (
+            !parsedEntitlement.success ||
+            !parsedEntitlement.data.is_valid ||
+            !parsedEntitlement.data.features.agent_context_runtime
+        ) {
+            throw new AcrRuntimeError(
+                acrRuntimeErrorCodes.notEntitled,
+                "Agent Context Runtime is not available for this organization.",
+                { status: 403 },
+            );
+        }
     }
     const scopes = await fetchBoundedJson({
         body: JSON.stringify({

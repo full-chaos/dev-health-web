@@ -14,6 +14,63 @@ function hasUniqueStrings(value: unknown): boolean {
         : false;
 }
 
+const SURFACE_ENTITY_TYPES: Readonly<Record<string, ReadonlySet<string>>> = {
+    diagnose_overview: new Set(["repository"]),
+    flow_metrics: new Set(["repository"]),
+    investment: new Set(["repository"]),
+    work_graph: new Set(["repository", "project", "work_unit", "issue", "pull_request"]),
+    complexity: new Set(["repository"]),
+    cognitive_load: new Set(["repository"]),
+    bottlenecks: new Set(["repository", "project"]),
+    repository_detail: new Set(["repository"]),
+    project_detail: new Set(["project"]),
+    work_unit_detail: new Set(["work_unit"]),
+    issue_detail: new Set(["issue"]),
+    pull_request_detail: new Set(["pull_request"]),
+    data_health: new Set(["repository"]),
+};
+
+const ORGANIZATION_SURFACE_ROUTES = new Set([
+    "diagnose_overview",
+    "flow_metrics",
+    "investment",
+    "cognitive_load",
+    "bottlenecks",
+    "data_health",
+]);
+
+function validateSurfaceContext(scope: JsonRecord, entityRefs: JsonRecord[]): boolean {
+    if (scope.surface_context == null) return true;
+    if (!isRecord(scope.surface_context)) return false;
+    const routeId = scope.surface_context.route_id;
+    const surfaceRefs = asRecords(scope.surface_context.entity_refs);
+    if (typeof routeId !== "string" || !(routeId in SURFACE_ENTITY_TYPES)) return false;
+    const uniqueRefs = new Set(
+        surfaceRefs.map((ref) => `${String(ref.entity_type)}:${String(ref.entity_id)}`),
+    );
+    if (uniqueRefs.size !== surfaceRefs.length) return false;
+    if (surfaceRefs.length === 0) {
+        return ORGANIZATION_SURFACE_ROUTES.has(routeId) && scope.direct_scope === "organization";
+    }
+    const allowedTypes = SURFACE_ENTITY_TYPES[routeId]!;
+    if (surfaceRefs.some((ref) => !allowedTypes.has(String(ref.entity_type)))) return false;
+    if (surfaceRefs.every((ref) => ref.entity_type === "repository")) {
+        const surfaceIds = new Set(surfaceRefs.map((ref) => ref.entity_id));
+        const repositoryIds = new Set(scope.repositories as unknown[]);
+        return (
+            scope.direct_scope === "repository" &&
+            surfaceIds.size === repositoryIds.size &&
+            [...surfaceIds].every((id) => repositoryIds.has(id))
+        );
+    }
+    if (surfaceRefs.length !== 1 || entityRefs.length !== 1) return false;
+    return (
+        scope.direct_scope === surfaceRefs[0]!.entity_type &&
+        entityRefs[0]!.entity_type === surfaceRefs[0]!.entity_type &&
+        entityRefs[0]!.entity_id === surfaceRefs[0]!.entity_id
+    );
+}
+
 function validateScope(scope: JsonRecord): boolean {
     const repositories = scope.repositories;
     const teamIds = scope.team_ids;
@@ -37,6 +94,7 @@ function validateScope(scope: JsonRecord): boolean {
     ) {
         return false;
     }
+    if (!validateSurfaceContext(scope, entityRefs)) return false;
 
     if (isRecord(scope.comparison_range) && isRecord(scope.time_range)) {
         const currentDuration =
@@ -145,6 +203,46 @@ function validateStreamEvent(event: JsonRecord): boolean {
     );
 }
 
+function validateTranscriptEntry(entry: JsonRecord): boolean {
+    if (entry.role === "user") {
+        return (
+            typeof entry.question === "string" &&
+            new TextEncoder().encode(entry.question).byteLength <= 8_192 &&
+            isRecord(entry.scope) &&
+            entry.answer == null
+        );
+    }
+    if (entry.role === "assistant") {
+        return entry.question == null && entry.scope == null && isRecord(entry.answer);
+    }
+    return false;
+}
+
+function validateConversationTranscript(transcript: JsonRecord): boolean {
+    const items = asRecords(transcript.items);
+    const messageIds = items.map((item) => item.message_id);
+    if (new Set(messageIds).size !== messageIds.length) return false;
+
+    const ordering = items.map(
+        (item) => [Date.parse(String(item.created_at)), String(item.message_id)] as const,
+    );
+    if (
+        ordering.some((value, index) => {
+            if (index === 0) return false;
+            const previous = ordering[index - 1]!;
+            return value[0] < previous[0] || (value[0] === previous[0] && value[1] < previous[1]);
+        })
+    ) {
+        return false;
+    }
+
+    return items.every(
+        (item) =>
+            item.answer == null ||
+            (isRecord(item.answer) && item.answer.conversation_id === transcript.conversation_id),
+    );
+}
+
 function validateOneSemanticObject(value: JsonRecord): boolean {
     switch (value.schema_version) {
         case "dev_scope.v1":
@@ -162,10 +260,22 @@ function validateOneSemanticObject(value: JsonRecord): boolean {
             );
         case "dev_metric_ref.v1":
             return value.value != null || (Array.isArray(value.series) && value.series.length > 0);
+        case "dev_evidence_expansion.v1":
+            return (
+                typeof value.serialized_bytes === "number" &&
+                value.serialized_bytes ===
+                    new TextEncoder().encode(
+                        typeof value.safe_excerpt === "string" ? value.safe_excerpt : "",
+                    ).byteLength
+            );
         case "dev_tool_result.v1":
             return value.status === "error" ? isRecord(value.error) : value.error == null;
         case "dev_stream_event.v1":
             return validateStreamEvent(value);
+        case "dev_transcript_entry.v1":
+            return validateTranscriptEntry(value);
+        case "dev_conversation_transcript.v1":
+            return validateConversationTranscript(value);
         default:
             return true;
     }

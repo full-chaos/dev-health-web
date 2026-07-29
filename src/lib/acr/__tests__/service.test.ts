@@ -94,12 +94,20 @@ function configureAuthenticatedSession(): void {
     });
 }
 
-function installOpsAuthorization(scopes = ["full-chaos/dev-health-acr"]): void {
+function installOpsAuthorization(
+    scopes = ["full-chaos/dev-health-acr"],
+    agentContextRuntime = true,
+    onEntitlement: () => void = () => undefined,
+): void {
     server.use(
         http.get("http://ops.example.test/api/v1/licensing/entitlements/:orgId", ({ request }) => {
+            onEntitlement();
             expect(request.headers.get("authorization")).toBe("Bearer ops-session-token");
             expect(request.headers.get("cache-control")).toBe("no-store");
-            return HttpResponse.json({ features: { agent_context_runtime: true }, is_valid: true });
+            return HttpResponse.json({
+                features: { agent_context_runtime: agentContextRuntime },
+                is_valid: true,
+            });
         }),
         http.post("http://ops.example.test/graphql", async ({ request }) => {
             const body = await request.json();
@@ -139,7 +147,7 @@ function decodeWebAssertion(assertion: string): z.infer<typeof webAssertionPaylo
     );
 }
 
-function installAcrHappyResponses(): void {
+function installAcrHappyResponses(includeDebug = false): void {
     server.use(
         http.get("https://acr.example.test/api/v1/agent-context/capabilities", ({ request }) => {
             const assertion = request.headers.get("x-acr-web-assertion");
@@ -179,7 +187,7 @@ function installAcrHappyResponses(): void {
                 });
                 const packetRequest = z
                     .object({
-                        options: z.object({ include_debug: z.literal(false) }).loose(),
+                        options: z.object({ include_debug: z.literal(includeDebug) }).loose(),
                         repository: z
                             .object({ slug: z.literal("full-chaos/dev-health-acr") })
                             .strict(),
@@ -379,6 +387,32 @@ describe("ACR server-only runtime service", () => {
         await expect(listAuthorizedRepositories("org-123")).resolves.toEqual([]);
     });
 
+    it("keeps platform validation usable without granting the customer agent runtime", async () => {
+        let entitlementRequests = 0;
+        vi.mocked(auth).mockResolvedValue({
+            access_token: "ops-session-token",
+            expires: "2026-07-16T00:00:00.000Z",
+            user: { id: "user-123", is_superuser: true, org_id: "org-123" },
+        });
+        installOpsAuthorization(["full-chaos/dev-health-acr"], false, () => {
+            entitlementRequests += 1;
+        });
+        installAcrHappyResponses(true);
+
+        await expect(
+            createContextPacket({
+                body: {
+                    branchOrCommit: "abcdef1",
+                    goal: "Validate Context Fabric independently",
+                    repository: "full-chaos/dev-health-acr",
+                    taskReference: "CHAOS-3216",
+                },
+                signal: new AbortController().signal,
+            }),
+        ).resolves.toEqual(contextPacket);
+        expect(entitlementRequests).toBe(0);
+    });
+
     it("fails closed on an ACR contract version drift before forwarding a packet", async () => {
         installOpsAuthorization();
         server.use(
@@ -501,6 +535,7 @@ describe("ACR server-only runtime service", () => {
 
     it("keeps invalid private-key permissions outside the runtime request path", async () => {
         configure(writeSigningKey(0o640));
+        installOpsAuthorization();
 
         await expect(
             createContextPacket({

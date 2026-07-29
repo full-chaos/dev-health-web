@@ -1,4 +1,5 @@
 import { FilterBar } from "@/components/filters/FilterBar";
+import { AskDevMetricSurfaceTrigger } from "@/components/ask-dev/AskDevMetricSurfaceTrigger";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { AreaOverview } from "@/components/navigation/AreaOverview";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
@@ -42,15 +43,26 @@ export default async function DiagnosePage({ searchParams }: DiagnosePageProps) 
                 <main className="flex min-w-0 flex-1 flex-col gap-8">
                     <header className="flex flex-col gap-4">
                         <BackLink href={withFilterParam("/", filters, activeRole)} />
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Overview
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">Diagnose</h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Investigate flow, investment, landscape, work graph, complexity,
-                                cognitive load, bottlenecks, and code from one durable area.
-                            </p>
+                        <div className="flex flex-wrap items-start justify-between gap-4">
+                            <div>
+                                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                                    Overview
+                                </p>
+                                <h1 className="mt-2 font-(--font-display) text-3xl">Diagnose</h1>
+                                <p className="mt-2 text-sm text-(--ink-muted)">
+                                    Investigate flow, investment, landscape, work graph, complexity,
+                                    cognitive load, bottlenecks, and code from one durable area.
+                                </p>
+                            </div>
+                            <AskDevMetricSurfaceTrigger
+                                filters={filters}
+                                routeId="diagnose_overview"
+                                suggestedQuestionIds={[
+                                    "delivery_status",
+                                    "observed_change",
+                                    "data_trust",
+                                ]}
+                            />
                         </div>
                     </header>
 

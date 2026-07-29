@@ -1,0 +1,433 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
+
+import { DataState } from "@/components/ui/DataState";
+import { CTA_LABELS } from "@/lib/design/cta";
+import type { ActionResult } from "@/lib/result";
+import type {
+    AskDevAdminReadiness,
+    AskDevAdminResponse,
+    AskDevAdminSettingsPatch,
+    AskDevAdminUsageResponse,
+    AskDevFallbackPolicy,
+    AskDevRetentionDays,
+} from "@/lib/admin/types";
+
+type AskDevAdminPanelProps = {
+    loadAction: () => Promise<ActionResult<AskDevAdminResponse>>;
+    loadUsageAction: () => Promise<ActionResult<AskDevAdminUsageResponse>>;
+    saveAction: (settings: AskDevAdminSettingsPatch) => Promise<ActionResult<AskDevAdminResponse>>;
+    readinessAction: () => Promise<ActionResult<AskDevAdminResponse>>;
+};
+
+const READINESS_LABELS: Record<AskDevAdminReadiness, string> = {
+    ready: "Ready",
+    unsupported_model: "Model not certified",
+    missing_credentials: "Credentials required",
+    disabled: "Disabled",
+    degraded: "Provider degraded",
+    stale_readiness: "Readiness check expired",
+};
+
+const READINESS_TONES: Record<AskDevAdminReadiness, string> = {
+    ready: "bg-(--positive)",
+    unsupported_model: "bg-(--negative)",
+    missing_credentials: "bg-(--caution)",
+    disabled: "bg-(--ink-muted)",
+    degraded: "bg-(--caution)",
+    stale_readiness: "bg-(--info)",
+};
+
+function formatCount(value: number): string {
+    return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value);
+}
+
+function formatRate(value: number): string {
+    return new Intl.NumberFormat(undefined, {
+        style: "percent",
+        maximumFractionDigits: 1,
+    }).format(value);
+}
+
+function formatCost(microusd: number | null): string {
+    if (microusd === null) return "Not available";
+    return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 2,
+    }).format(microusd / 1_000_000);
+}
+
+function formatCheckedAt(value: string | null): string {
+    if (!value) return "Not checked";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "Not checked" : date.toLocaleString();
+}
+
+export function AskDevAdminPanel({
+    loadAction,
+    loadUsageAction,
+    saveAction,
+    readinessAction,
+}: AskDevAdminPanelProps) {
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [checking, setChecking] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [admin, setAdmin] = useState<AskDevAdminResponse | null>(null);
+    const [usage, setUsage] = useState<AskDevAdminUsageResponse | null>(null);
+    const [retentionDays, setRetentionDays] = useState<AskDevRetentionDays>(30);
+    const [fallbackPolicy, setFallbackPolicy] = useState<AskDevFallbackPolicy>("fail_closed");
+    const [emergencyDisabled, setEmergencyDisabled] = useState(false);
+
+    const applyAdmin = useCallback((value: AskDevAdminResponse) => {
+        setAdmin(value);
+        setRetentionDays(value.settings.retention_days);
+        setFallbackPolicy(value.settings.fallback_policy);
+        setEmergencyDisabled(value.settings.emergency_disabled);
+    }, []);
+
+    const load = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        const [adminResult, usageResult] = await Promise.all([loadAction(), loadUsageAction()]);
+        if ("error" in adminResult) {
+            setError(adminResult.error ?? "Ask Dev controls could not be loaded.");
+        } else {
+            applyAdmin(adminResult.data);
+        }
+        setUsage("error" in usageResult ? null : usageResult.data);
+        setLoading(false);
+    }, [applyAdmin, loadAction, loadUsageAction]);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- load coordinates server action state after mount.
+        void load();
+    }, [load]);
+
+    const save = async () => {
+        setSaving(true);
+        setError(null);
+        const result = await saveAction({
+            retention_days: retentionDays,
+            fallback_policy: fallbackPolicy,
+            emergency_disabled: emergencyDisabled,
+        });
+        setSaving(false);
+        if ("error" in result) {
+            setError(result.error ?? "Ask Dev controls could not be saved.");
+            toast.error("Could not save Ask Dev controls.");
+            return;
+        }
+        applyAdmin(result.data);
+        toast.success("Ask Dev controls saved.");
+    };
+
+    const runReadiness = async () => {
+        setChecking(true);
+        setError(null);
+        const result = await readinessAction();
+        setChecking(false);
+        if ("error" in result) {
+            setError(result.error ?? "Ask Dev readiness could not be checked.");
+            toast.error("Ask Dev readiness check did not complete.");
+            return;
+        }
+        applyAdmin(result.data);
+        toast.success("Ask Dev readiness check completed.");
+    };
+
+    if (loading) {
+        return <DataState variant="loading" title="Loading Ask Dev controls…" />;
+    }
+
+    if (!admin) {
+        return (
+            <DataState
+                variant="error"
+                title="Ask Dev controls are unavailable"
+                message={error ?? "The organization policy could not be loaded."}
+                action={
+                    <button
+                        type="button"
+                        onClick={() => void load()}
+                        className="rounded-md bg-(--accent) px-4 py-2 text-sm font-semibold text-(--accent-foreground)"
+                    >
+                        {CTA_LABELS.retry}
+                    </button>
+                }
+            />
+        );
+    }
+
+    const configurable = !["not_entitled", "globally_disabled", "unavailable"].includes(
+        admin.entitlement_state,
+    );
+
+    return (
+        <section
+            aria-labelledby="ask-dev-admin-title"
+            className="overflow-hidden rounded-(--radius-lg) border border-(--border) bg-(--surface-raised) shadow-(--elevation-card)"
+        >
+            <header className="relative overflow-hidden border-b border-(--border) px-6 py-6 sm:px-8">
+                <div aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-(--accent)" />
+                <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="max-w-2xl">
+                        <p className="text-label-caps text-(--text-muted)">
+                            Context Fabric interaction
+                        </p>
+                        <h2 id="ask-dev-admin-title" className="mt-2 text-h1 text-(--text-primary)">
+                            Ask Dev
+                        </h2>
+                        <p className="mt-2 text-body text-(--text-secondary)">
+                            One organization policy controls the permanent chat window and the full
+                            investigation workspace. Context Fabric Validation remains a separate
+                            platform-admin tool.
+                        </p>
+                    </div>
+                    <div
+                        role="status"
+                        className="inline-flex items-center gap-2 self-start rounded-(--radius-pill) border border-(--border) bg-(--surface) px-3 py-1.5 text-sm font-medium text-(--text-primary)"
+                    >
+                        <span
+                            aria-hidden="true"
+                            className={`h-2.5 w-2.5 rounded-full ${READINESS_TONES[admin.readiness]}`}
+                        />
+                        {READINESS_LABELS[admin.readiness]}
+                    </div>
+                </div>
+            </header>
+
+            {error ? (
+                <div
+                    role="alert"
+                    className="border-b border-(--negative)/30 bg-(--negative)/10 px-6 py-3 text-sm text-(--negative) sm:px-8"
+                >
+                    {error}
+                </div>
+            ) : null}
+
+            <div className="divide-y divide-(--border)">
+                <section aria-labelledby="ask-dev-availability" className="px-6 py-6 sm:px-8">
+                    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(18rem,0.7fr)]">
+                        <div>
+                            <h3 id="ask-dev-availability" className="text-h3 text-(--text-primary)">
+                                Availability and provider
+                            </h3>
+                            <dl className="mt-4 grid gap-x-8 gap-y-4 sm:grid-cols-2">
+                                <div>
+                                    <dt className="text-label-caps text-(--text-muted)">
+                                        Chat window
+                                    </dt>
+                                    <dd className="mt-1 text-body text-(--text-primary)">
+                                        {admin.chat_window_available ? "Available" : "Unavailable"}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-label-caps text-(--text-muted)">
+                                        Full page
+                                    </dt>
+                                    <dd className="mt-1 text-body text-(--text-primary)">
+                                        {admin.full_page_available ? "Available" : "Unavailable"}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-label-caps text-(--text-muted)">
+                                        Provider
+                                    </dt>
+                                    <dd className="mt-1 text-body text-(--text-primary)">
+                                        {admin.effective_provider_label ?? "Not selected"}
+                                        {admin.provider_source ? ` · ${admin.provider_source}` : ""}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-label-caps text-(--text-muted)">Model</dt>
+                                    <dd className="mt-1 text-body text-(--text-primary)">
+                                        {admin.effective_model_label ?? "Not selected"}
+                                    </dd>
+                                </div>
+                            </dl>
+                            {admin.administrator_safe_failure_reason ? (
+                                <p className="mt-4 border-l-2 border-(--caution) pl-3 text-sm text-(--text-secondary)">
+                                    {admin.administrator_safe_failure_reason}
+                                </p>
+                            ) : null}
+                        </div>
+                        <div className="flex flex-col justify-between gap-4 border-l border-(--border) pl-0 lg:pl-6">
+                            <div>
+                                <p className="text-label-caps text-(--text-muted)">
+                                    Last preflight
+                                </p>
+                                <p className="mt-1 text-sm text-(--text-primary)">
+                                    {formatCheckedAt(admin.readiness_checked_at)}
+                                </p>
+                                <p className="mt-1 text-xs text-(--text-muted)">
+                                    Uses synthetic data only. No organization evidence is
+                                    transmitted.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                disabled={checking || !configurable}
+                                onClick={() => void runReadiness()}
+                                className="self-start rounded-md border border-(--border) bg-(--surface) px-4 py-2 text-sm font-semibold text-(--text-primary) transition-colors hover:border-(--accent) disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {checking ? "Checking…" : CTA_LABELS.runPreflight}
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <section aria-labelledby="ask-dev-policy" className="px-6 py-6 sm:px-8">
+                    <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
+                        <div className="grid flex-1 gap-5 sm:grid-cols-2">
+                            <div className="sm:col-span-2">
+                                <h3 id="ask-dev-policy" className="text-h3 text-(--text-primary)">
+                                    Conversation and fallback policy
+                                </h3>
+                                <p className="mt-1 text-sm text-(--text-secondary)">
+                                    The window and /dev share this history and retention policy.
+                                </p>
+                            </div>
+                            <label className="text-sm font-medium text-(--text-primary)">
+                                Content retention
+                                <select
+                                    value={retentionDays}
+                                    disabled={!configurable}
+                                    onChange={(event) =>
+                                        setRetentionDays(
+                                            Number(event.target.value) as AskDevRetentionDays,
+                                        )
+                                    }
+                                    className="mt-2 w-full rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm"
+                                >
+                                    {admin.retention_options.map((days) => (
+                                        <option key={days} value={days}>
+                                            {days === 0
+                                                ? "0 days — ephemeral"
+                                                : "30 days — retained"}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="text-sm font-medium text-(--text-primary)">
+                                Unsupported BYO behavior
+                                <select
+                                    value={fallbackPolicy}
+                                    disabled={!configurable}
+                                    onChange={(event) =>
+                                        setFallbackPolicy(
+                                            event.target.value as AskDevFallbackPolicy,
+                                        )
+                                    }
+                                    className="mt-2 w-full rounded-md border border-(--border) bg-(--surface) px-3 py-2 text-sm"
+                                >
+                                    {admin.fallback_options.map((option) => (
+                                        <option key={option} value={option}>
+                                            {option === "fail_closed"
+                                                ? "Fail closed"
+                                                : "Use approved platform fallback"}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label className="flex items-start gap-3 rounded-(--radius-md) border border-(--negative)/30 bg-(--negative)/5 p-4 sm:col-span-2">
+                                <input
+                                    aria-label="Emergency disable Ask Dev"
+                                    type="checkbox"
+                                    checked={emergencyDisabled}
+                                    disabled={!configurable}
+                                    onChange={(event) => setEmergencyDisabled(event.target.checked)}
+                                    className="mt-1 h-4 w-4 accent-(--negative)"
+                                />
+                                <span>
+                                    <span className="block text-sm font-semibold text-(--text-primary)">
+                                        Emergency disable Ask Dev
+                                    </span>
+                                    <span className="mt-1 block text-xs text-(--text-secondary)">
+                                        Prevents new runs from both surfaces. Existing retained
+                                        history and unrelated BYO-LLM settings are preserved.
+                                    </span>
+                                </span>
+                            </label>
+                        </div>
+                        <button
+                            type="button"
+                            disabled={saving || !configurable}
+                            onClick={() => void save()}
+                            className="rounded-md bg-(--accent) px-5 py-2.5 text-sm font-semibold text-(--accent-foreground) transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {saving ? "Saving…" : CTA_LABELS.save}
+                        </button>
+                    </div>
+                </section>
+
+                <section aria-labelledby="ask-dev-usage" className="px-6 py-6 sm:px-8">
+                    <h3 id="ask-dev-usage" className="text-h3 text-(--text-primary)">
+                        Ask Dev usage
+                    </h3>
+                    {usage ? (
+                        <dl className="mt-4 grid gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-6">
+                            <div>
+                                <dt className="text-label-caps text-(--text-muted)">Runs</dt>
+                                <dd className="mt-1 text-h2 text-(--text-primary)">
+                                    {formatCount(usage.run_count)}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-label-caps text-(--text-muted)">Completed</dt>
+                                <dd className="mt-1 text-h2 text-(--positive)">
+                                    {formatCount(usage.completed_runs)}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-label-caps text-(--text-muted)">
+                                    Failure rate
+                                </dt>
+                                <dd className="mt-1 text-h2 text-(--text-primary)">
+                                    {formatRate(usage.failure_rate)}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-label-caps text-(--text-muted)">
+                                    Degraded rate
+                                </dt>
+                                <dd className="mt-1 text-h2 text-(--text-primary)">
+                                    {formatRate(usage.degraded_rate)}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-label-caps text-(--text-muted)">Tokens</dt>
+                                <dd className="mt-1 text-h2 text-(--text-primary)">
+                                    {formatCount(usage.input_tokens + usage.output_tokens)}
+                                </dd>
+                            </div>
+                            <div>
+                                <dt className="text-label-caps text-(--text-muted)">
+                                    Estimated spend
+                                </dt>
+                                <dd className="mt-1 text-h2 text-(--text-primary)">
+                                    {formatCost(usage.estimated_cost_microusd)}
+                                </dd>
+                            </div>
+                        </dl>
+                    ) : (
+                        <DataState
+                            variant="detector-enabled-no-findings"
+                            title="No Ask Dev usage yet"
+                            description="Usage appears here after the organization completes its first Ask Dev run."
+                            className="mt-4"
+                        />
+                    )}
+                </section>
+
+                <footer className="bg-(--surface) px-6 py-4 text-xs text-(--text-secondary) sm:px-8">
+                    Questions, answers, evidence, tool results, and feedback are not used for model
+                    training by default. Provider processing follows the selected provider policy.
+                </footer>
+            </div>
+        </section>
+    );
+}

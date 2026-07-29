@@ -4,13 +4,19 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import AppLayout from "./layout";
 
-const { adminTierProviderSpy, getOrgEntitlementsMock, requireSessionMock, userMenuSpy } =
-    vi.hoisted(() => ({
-        adminTierProviderSpy: vi.fn(),
-        getOrgEntitlementsMock: vi.fn(),
-        requireSessionMock: vi.fn(),
-        userMenuSpy: vi.fn(),
-    }));
+const {
+    askDevProviderSpy,
+    adminTierProviderSpy,
+    getOrgEntitlementsMock,
+    requireSessionMock,
+    userMenuSpy,
+} = vi.hoisted(() => ({
+    askDevProviderSpy: vi.fn(),
+    adminTierProviderSpy: vi.fn(),
+    getOrgEntitlementsMock: vi.fn(),
+    requireSessionMock: vi.fn(),
+    userMenuSpy: vi.fn(),
+}));
 
 vi.mock("@/lib/auth", () => ({
     requireSession: requireSessionMock,
@@ -41,6 +47,21 @@ vi.mock("@/components/auth/SessionProvider", () => ({
     SessionProvider: ({ children }: { readonly children: ReactNode }) => <>{children}</>,
 }));
 
+vi.mock("@/components/ask-dev/AskDevProvider", () => ({
+    AskDevProvider: ({
+        children,
+        contextualEntrypointsEnabled,
+        orgId,
+    }: {
+        readonly children: ReactNode;
+        readonly contextualEntrypointsEnabled?: boolean;
+        readonly orgId: string;
+    }) => {
+        askDevProviderSpy({ contextualEntrypointsEnabled, orgId });
+        return <div data-testid="ask-dev-provider">{children}</div>;
+    },
+}));
+
 vi.mock("@/lib/graphql/provider", () => ({
     GraphQLProvider: ({ children }: { readonly children: ReactNode }) => <>{children}</>,
 }));
@@ -63,11 +84,40 @@ vi.mock("sonner", () => ({ Toaster: () => null }));
 describe("AppLayout entitlement wiring", () => {
     beforeEach(() => {
         adminTierProviderSpy.mockClear();
+        askDevProviderSpy.mockClear();
         userMenuSpy.mockClear();
         requireSessionMock.mockResolvedValue({
             user: { id: "user-1", org_id: "org-1", token: "secret-token" },
         });
     });
+
+    it.each([false, true])(
+        "mounts Ask Dev while preserving a strict contextual-entrypoint decision (%s)",
+        async (contextualEntrypointsEnabled) => {
+            getOrgEntitlementsMock.mockResolvedValue({
+                data: {
+                    features: {
+                        ask_dev: true,
+                        ask_dev_contextual_entrypoints: contextualEntrypointsEnabled,
+                        agent_context_runtime: false,
+                    },
+                    is_valid: true,
+                    limits: {},
+                    tier: "team",
+                },
+            });
+
+            render(await AppLayout({ children: <span>App shell</span> }));
+
+            expect(screen.getByTestId("ask-dev-provider")).toContainElement(
+                screen.getByText("App shell"),
+            );
+            expect(askDevProviderSpy).toHaveBeenCalledWith({
+                contextualEntrypointsEnabled,
+                orgId: "org-1",
+            });
+        },
+    );
 
     it("passes a valid organization entitlement to the client provider without a session token", async () => {
         getOrgEntitlementsMock.mockResolvedValue({
@@ -88,6 +138,7 @@ describe("AppLayout entitlement wiring", () => {
             limits: { agent_context_runtime: 1 },
             tier: "enterprise",
         });
+        expect(askDevProviderSpy).not.toHaveBeenCalled();
     });
 
     it("renders the shared brand logo and account controls in the account navigation", async () => {

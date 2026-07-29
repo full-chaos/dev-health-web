@@ -21,11 +21,19 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta, WorkUnitInvestment } from "@/lib/types";
 import type { UseInvestmentDataResult } from "./useInvestmentData";
 
-const { useInvestmentDataMock, workUnitAttributionRef } = vi.hoisted(() => ({
+const { askDevTriggerMock, useInvestmentDataMock, workUnitAttributionRef } = vi.hoisted(() => ({
+    askDevTriggerMock: vi.fn(),
     useInvestmentDataMock: vi.fn(),
     // Holds the workUnitTeamAttributions rows the urql mock should return for the
     // attribution query (CHAOS-2608). Tests set `.rows`; default empty.
     workUnitAttributionRef: { rows: [] as unknown[] },
+}));
+
+vi.mock("@/components/ask-dev/AskDevTrigger", () => ({
+    AskDevTrigger: ({ context }: { context: unknown }) => {
+        askDevTriggerMock(context);
+        return <button type="button">Ask Dev about this</button>;
+    },
 }));
 
 vi.mock("./useInvestmentData", () => ({
@@ -149,6 +157,7 @@ const reworkMetric: MetricDelta = {
 describe("InvestmentView — Confidence tab", () => {
     afterEach(() => {
         cleanup();
+        askDevTriggerMock.mockReset();
         useInvestmentDataMock.mockReset();
     });
 
@@ -314,6 +323,7 @@ describe("InvestmentView — Confidence tab", () => {
 describe("InvestmentView — Evidence tab (table-first drilldown)", () => {
     afterEach(() => {
         cleanup();
+        askDevTriggerMock.mockReset();
         useInvestmentDataMock.mockReset();
     });
 
@@ -366,6 +376,32 @@ describe("InvestmentView — Evidence tab (table-first drilldown)", () => {
         expect(
             screen.getByText(/No work units available for the selected window/i),
         ).toBeInTheDocument();
+    });
+
+    it("offers typed Ask Dev context for the selected canonical work-unit ID", () => {
+        const selectedUnit = makeUnit("wu-7d3f", 10, {
+            work_unit_name: "Rendered page title must not be sent",
+        });
+        useInvestmentDataMock.mockReturnValue(
+            makeData({ workUnits: [selectedUnit], selectedUnit }),
+        );
+
+        render(<InvestmentView filters={baseFilters} activeTab="evidence" />);
+
+        expect(askDevTriggerMock).toHaveBeenCalledWith({
+            routeId: "work_unit_detail",
+            entityRefs: [
+                {
+                    entity_type: "work_unit",
+                    entity_id: "wu-7d3f",
+                    display_label: "Selected work unit",
+                },
+            ],
+            suggestedQuestionIds: ["delivery_status", "remaining_work", "data_trust"],
+        });
+        expect(JSON.stringify(askDevTriggerMock.mock.calls)).not.toContain(
+            "Rendered page title must not be sent",
+        );
     });
 });
 

@@ -13,6 +13,30 @@
  * literal strings, so the labels live here and nowhere else.
  */
 export const CTA_LABELS = {
+    /** Submit the current investigation question to Ask Dev. */
+    askDev: "Ask",
+    /** Open the persistent Ask Dev window from the authenticated shell. */
+    openAskDev: "Open Ask Dev",
+    /** Start a separate Ask Dev conversation without reusing committed scope. */
+    newAskDevConversation: "New conversation",
+    /** Expand the persistent Ask Dev window without starting another run. */
+    expandAskDev: "Expand Ask Dev panel",
+    /** Return the expanded Ask Dev window to its compact size. */
+    reduceAskDev: "Reduce Ask Dev panel",
+    /** Record positive feedback on an Ask Dev answer. */
+    askDevHelpful: "Helpful",
+    /** Record negative feedback on an Ask Dev answer. */
+    askDevNotHelpful: "Not helpful",
+    /** Open Ask Dev with an approved page or entity context proposed. */
+    askDevAboutThis: "Ask Dev about this",
+    /** Use a visible disambiguation candidate for the next explicit question. */
+    useAskDevScope: "Use this scope",
+    /** Open the full Ask Dev investigation workspace. */
+    askDevWorkspace: "Ask Dev workspace",
+    /** Return the full Ask Dev workspace to the app-wide permanent window. */
+    returnToAskDevWindow: "Return to Ask Dev window",
+    /** Return to the Dev Health cockpit from global brand navigation. */
+    devHealthCockpit: "Full Chaos Dev Health cockpit",
     /** Open the evidence trail behind a signal / metric / work unit. */
     openEvidence: "Open evidence",
     generateContext: "Generate context",

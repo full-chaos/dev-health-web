@@ -256,6 +256,18 @@ describe("proxy rate limiting", () => {
         expect(res.headers.get("x-middleware-rewrite")).toBeNull();
     });
 
+    it("keeps Ask Dev BFF routes local while legacy API routes still proxy", async () => {
+        mockAuth.mockResolvedValue(session);
+
+        const askDevResponse = await proxy(makeRequest("/api/v1/dev/capabilities", "GET"));
+        const legacyResponse = await proxy(makeRequest("/api/v1/admin/ask-dev", "GET"));
+
+        expect(askDevResponse.headers.get("x-middleware-rewrite")).toBeNull();
+        expect(legacyResponse.headers.get("x-middleware-rewrite")).toBe(
+            "http://localhost:8000/api/v1/admin/ask-dev",
+        );
+    });
+
     it("keeps device-approval BFF routes local instead of rewriting them to the backend", async () => {
         mockAuth.mockResolvedValue(session);
 

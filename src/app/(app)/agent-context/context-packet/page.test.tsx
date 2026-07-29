@@ -1,166 +1,82 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render } from "@/test/utils";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { authMock, contextPacketGatedBodySpy, getCurrentOrgMock, getOrgEntitlementsMock } =
-    vi.hoisted(() => ({
-        authMock: vi.fn(),
-        contextPacketGatedBodySpy: vi.fn(),
-        getCurrentOrgMock: vi.fn(),
-        getOrgEntitlementsMock: vi.fn(),
-    }));
-const listAuthorizedRepositoriesMock = vi.hoisted(() => vi.fn());
+const { getOrgEntitlementsMock, permanentRedirectMock, requireSessionMock } = vi.hoisted(() => ({
+    getOrgEntitlementsMock: vi.fn(),
+    permanentRedirectMock: vi.fn(),
+    requireSessionMock: vi.fn(),
+}));
 
-vi.mock("@/lib/admin/server", () => ({
-    getCurrentOrg: getCurrentOrgMock,
+vi.mock("next/navigation", () => ({ permanentRedirect: permanentRedirectMock }));
+vi.mock("@/lib/auth", () => ({ requireSession: requireSessionMock }));
+vi.mock("@/lib/admin/server/billing", () => ({
     getOrgEntitlements: getOrgEntitlementsMock,
 }));
-
-vi.mock("@/lib/auth", () => ({ auth: authMock }));
-
-vi.mock("@/lib/acr/service", () => ({
-    listAuthorizedRepositories: listAuthorizedRepositoriesMock,
-}));
-
 vi.mock("@/lib/fetchOrNull", () => ({
-    fetchOrNull: async <T,>(result: Promise<T>) => result,
+    fetchOrNull: async <T,>(value: Promise<T>) => value,
 }));
 
-vi.mock("@/components/navigation/PrimaryNav", () => ({
-    PrimaryNav: () => null,
-}));
+import ContextPacketCompatibilityPage from "./page";
 
-vi.mock("@/components/shared/BackLink", () => ({
-    BackLink: () => null,
-}));
-
-vi.mock("./_components/ContextPacketGatedBody", () => ({
-    ContextPacketGatedBody: ({
-        controlledState,
-        enabled,
-        live,
-        repositoryCatalog,
-        showRetrievalDebug,
-    }: {
-        readonly controlledState: string;
-        readonly enabled: boolean;
-        readonly live: boolean;
-        readonly repositoryCatalog?: { readonly kind: string };
-        readonly showRetrievalDebug: boolean;
-    }) => {
-        contextPacketGatedBodySpy({
-            controlledState,
-            enabled,
-            live,
-            ...(repositoryCatalog ? { repositoryCatalog } : {}),
-            showRetrievalDebug,
-        });
-        return null;
-    },
-}));
-
-import ContextPacketPage from "./page";
-import { AcrRuntimeError, acrRuntimeErrorCodes } from "@/lib/acr/errors";
-
-describe("ContextPacketPage entitlement gate", () => {
+describe("ContextPacketCompatibilityPage role matrix", () => {
     beforeEach(() => {
-        contextPacketGatedBodySpy.mockClear();
-        getCurrentOrgMock.mockResolvedValue({ data: { id: "org-1" } });
-        authMock.mockResolvedValue({ user: { is_superuser: false } });
-        listAuthorizedRepositoriesMock.mockResolvedValue(["full-chaos/dev-health-acr"]);
-        vi.stubEnv("DEV_HEALTH_TEST_MODE", "false");
-        vi.stubEnv("NEXT_PUBLIC_DEV_HEALTH_TEST_MODE", "false");
+        permanentRedirectMock.mockClear();
+        getOrgEntitlementsMock.mockClear();
     });
 
-    afterEach(() => {
-        vi.unstubAllEnvs();
-    });
-
-    it.each([
-        ["missing", {}],
-        ["an entitlement error", { error: "unavailable" }],
-        [
-            "an invalid entitlement",
-            { data: { features: { agent_context_runtime: true }, is_valid: false } },
-        ],
-        [
-            "a disabled feature",
-            { data: { features: { agent_context_runtime: false }, is_valid: true } },
-        ],
-    ])("keeps the direct route not entitled when it receives %s", async (_condition, result) => {
-        getOrgEntitlementsMock.mockResolvedValue(result);
-
-        render(await ContextPacketPage({}));
-
-        expect(contextPacketGatedBodySpy).toHaveBeenCalledWith({
-            controlledState: "sample",
-            enabled: false,
-            live: true,
-            showRetrievalDebug: false,
+    it("moves platform administrators to the independent validation surface", async () => {
+        requireSessionMock.mockResolvedValue({
+            user: { id: "platform-1", is_superuser: true },
         });
+
+        await ContextPacketCompatibilityPage({
+            searchParams: Promise.resolve({ state: "partial" }),
+        });
+
+        expect(permanentRedirectMock).toHaveBeenCalledWith(
+            "/superadmin/context-fabric/validation?state=partial",
+        );
+        expect(getOrgEntitlementsMock).not.toHaveBeenCalled();
     });
 
-    it("allows the direct route only for a valid enabled feature", async () => {
+    it("moves an entitled product user to Ask Dev without diagnostic query details", async () => {
+        requireSessionMock.mockResolvedValue({
+            user: { id: "user-1", org_id: "org-1", role: "member", is_superuser: false },
+        });
         getOrgEntitlementsMock.mockResolvedValue({
-            data: { features: { agent_context_runtime: true }, is_valid: true },
+            data: { features: { ask_dev: true }, is_valid: true },
         });
 
-        render(await ContextPacketPage({}));
-
-        expect(contextPacketGatedBodySpy).toHaveBeenCalledWith({
-            controlledState: "sample",
-            enabled: true,
-            live: true,
-            repositoryCatalog: {
-                kind: "ready",
-                repositories: ["full-chaos/dev-health-acr"],
-            },
-            showRetrievalDebug: false,
+        await ContextPacketCompatibilityPage({
+            searchParams: Promise.resolve({ state: "error", repository: "private-repo" }),
         });
-    });
 
-    it("passes a valid empty repository catalog to the live explorer", async () => {
-        getOrgEntitlementsMock.mockResolvedValue({
-            data: { features: { agent_context_runtime: true }, is_valid: true },
-        });
-        listAuthorizedRepositoriesMock.mockResolvedValue([]);
-
-        render(await ContextPacketPage({}));
-
-        expect(contextPacketGatedBodySpy).toHaveBeenCalledWith(
-            expect.objectContaining({ repositoryCatalog: { kind: "empty" } }),
+        expect(permanentRedirectMock).toHaveBeenCalledWith("/dev");
+        expect(permanentRedirectMock).not.toHaveBeenCalledWith(
+            expect.stringContaining("private-repo"),
         );
     });
 
-    it("passes a discovery error to the client instead of treating it as an empty catalog", async () => {
-        getOrgEntitlementsMock.mockResolvedValue({
-            data: { features: { agent_context_runtime: true }, is_valid: true },
+    it("returns an org administrator without platform access to Diagnose", async () => {
+        requireSessionMock.mockResolvedValue({
+            user: { id: "admin-1", org_id: "org-1", role: "admin", is_superuser: false },
         });
-        listAuthorizedRepositoriesMock.mockRejectedValue(
-            new AcrRuntimeError(acrRuntimeErrorCodes.upstream, "credential=do-not-leak", {
-                retryable: true,
-            }),
-        );
+        getOrgEntitlementsMock.mockResolvedValue({
+            data: { features: { ask_dev: false, agent_context_runtime: true }, is_valid: true },
+        });
 
-        render(await ContextPacketPage({}));
+        await ContextPacketCompatibilityPage({});
 
-        expect(contextPacketGatedBodySpy).toHaveBeenCalledWith(
-            expect.objectContaining({ repositoryCatalog: { kind: "error" } }),
+        expect(permanentRedirectMock).toHaveBeenCalledWith("/diagnose");
+        expect(permanentRedirectMock).not.toHaveBeenCalledWith(
+            expect.stringContaining("context-fabric"),
         );
     });
 
-    it("does not authorize the direct route from a public test-mode variable", async () => {
-        vi.stubEnv("NEXT_PUBLIC_DEV_HEALTH_TEST_MODE", "true");
-        getOrgEntitlementsMock.mockResolvedValue({
-            data: { features: { agent_context_runtime: true }, is_valid: false },
-        });
+    it("uses the standard authenticated-route guard before choosing a destination", async () => {
+        const signInRedirect = new Error("NEXT_REDIRECT: /auth/signin");
+        requireSessionMock.mockRejectedValue(signInRedirect);
 
-        render(await ContextPacketPage({}));
-
-        expect(contextPacketGatedBodySpy).toHaveBeenCalledWith({
-            controlledState: "sample",
-            enabled: false,
-            live: true,
-            showRetrievalDebug: false,
-        });
+        await expect(ContextPacketCompatibilityPage({})).rejects.toBe(signInRedirect);
+        expect(permanentRedirectMock).not.toHaveBeenCalled();
     });
 });

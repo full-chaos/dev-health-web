@@ -207,7 +207,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
         ]);
     });
 
-    test("shows one current Context Fabric destination for a provisioned organization at every viewport", async ({
+    test("keeps Context Fabric Validation in platform administration and out of customer navigation", async ({
         page,
     }, testInfo) => {
         await setEntitlementScenario(page.request, "provisioned");
@@ -215,16 +215,15 @@ test.describe("Context Fabric production entitlement boundary", () => {
 
         for (const viewport of viewports) {
             await page.setViewportSize(viewport);
-            await page.goto("/agent-context/context-packet");
+            await page.goto("/superadmin/context-fabric/validation");
 
-            if (viewport.width < 768) {
-                await page.getByRole("button", { name: "Show navigation" }).click();
-            }
-
-            const links = page.getByRole("link", { name: "Context Fabric", exact: true });
-            await expect(links).toHaveCount(1);
-            await expect(links).toHaveAttribute("aria-current", "page");
-            await expect(links).toHaveAttribute("href", /\/agent-context\/context-packet/);
+            await expect(page).toHaveURL(/\/superadmin\/context-fabric\/validation$/);
+            await expect(
+                page.getByRole("heading", { name: "Context Fabric Validation", level: 1 }),
+            ).toBeVisible();
+            await expect(
+                page.getByRole("link", { name: "Context Fabric", exact: true }),
+            ).toHaveCount(0);
             await page.screenshot({
                 path: testInfo.outputPath(`provisioned-${viewport.name}.png`),
                 fullPage: true,
@@ -235,7 +234,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
     });
 
     for (const scenario of ENTITLEMENT_SCENARIOS.filter((scenario) => scenario !== "provisioned")) {
-        test(`hides Context Fabric and denies the direct route when entitlement is ${scenario}`, async ({
+        test(`keeps validation out of customer navigation and available to platform admins when product entitlement is ${scenario}`, async ({
             page,
         }, testInfo) => {
             await setEntitlementScenario(page.request, scenario);
@@ -256,8 +255,11 @@ test.describe("Context Fabric production entitlement boundary", () => {
                 });
             }
 
-            await gotoWithSessionReady(page, "/agent-context/context-packet");
-            await expect(page.getByTestId("data-state-not-entitled")).toBeVisible();
+            await gotoWithSessionReady(page, "/superadmin/context-fabric/validation");
+            await expect(page).toHaveURL(/\/superadmin\/context-fabric\/validation$/);
+            await expect(
+                page.getByRole("heading", { name: "Context Fabric Validation", level: 1 }),
+            ).toBeVisible();
             if (scenario === "unprovisioned") {
                 await page.screenshot({
                     path: testInfo.outputPath("denied-unprovisioned-375.png"),
@@ -275,12 +277,12 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await setEntitlementScenario(page.request, "provisioned");
         const faults = recordBrowserFaults(page);
         await page.setViewportSize({ width: 375, height: 812 });
-        await page.goto("/agent-context/context-packet");
+        await page.goto("/work");
 
         const navigationControl = page.getByRole("button", { name: "Show navigation" });
         await navigationControl.click();
         await expect(page.getByRole("link", { name: "Context Fabric", exact: true })).toHaveCount(
-            1,
+            0,
         );
         await page.keyboard.press("Escape");
 
@@ -297,7 +299,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
 
         for (const viewport of viewports) {
             await page.setViewportSize(viewport);
-            await gotoWithSessionReady(page, "/agent-context/context-packet");
+            await gotoWithSessionReady(page, "/superadmin/context-fabric/validation");
 
             const accountNavigation = page.getByRole("navigation", { name: "Account" });
             const accountControl = page.getByRole("button", { name: "Account options" });
@@ -326,7 +328,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
                 (element) => element.getBoundingClientRect().bottom,
             );
             const pageHeadingTop = await page
-                .getByRole("heading", { name: "Context Fabric", level: 1 })
+                .getByRole("heading", { name: "Context Fabric Validation", level: 1 })
                 .evaluate((element) => element.getBoundingClientRect().top);
             expect(accountNavigationBottomAfterOpen).toBe(accountNavigationBottomBeforeOpen);
             const menu = page.locator("#account-options");
@@ -383,7 +385,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await page.route(`${ACR_API_ORIGIN}/**`, (route) => {
             throw new Error(`Browser attempted direct ACR access: ${route.request().url()}`);
         });
-        await gotoWithSessionReady(page, "/agent-context/context-packet");
+        await gotoWithSessionReady(page, "/superadmin/context-fabric/validation");
 
         await page.getByRole("button", { name: "Account options" }).click();
         await page.getByRole("link", { name: "Preferences" }).click();
@@ -434,7 +436,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
         });
         const browserRequests: string[] = [];
         page.on("request", (request) => browserRequests.push(request.url()));
-        await page.goto("/agent-context/context-packet");
+        await page.goto("/superadmin/context-fabric/validation");
         await expect(page.getByText("Context Fabric status")).toHaveCount(0);
         await page.screenshot({
             path: testInfo.outputPath("happy-live-initial-1280.png"),
@@ -500,7 +502,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
 
         for (const viewport of viewports) {
             await page.setViewportSize(viewport);
-            await page.goto("/agent-context/context-packet");
+            await page.goto("/superadmin/context-fabric/validation");
             await page.getByLabel(/Goal/).fill("e2e unsafe evidence");
             await page.getByRole("button", { name: "Generate context" }).click();
             await expect(page.getByRole("heading", { name: "e2e unsafe evidence" })).toBeVisible();
@@ -527,34 +529,28 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await expectHealthyBrowser(faults);
     });
 
-    test("suppresses retrieval debug for members and exposes it for superusers at every viewport", async ({
+    test("denies platform validation to members and exposes retrieval diagnostics to superusers", async ({
         page,
     }, testInfo) => {
         await setEntitlementScenario(page.request, "provisioned");
         const faults = recordBrowserFaults(page);
         await page.context().clearCookies();
         await signIn(page, "member@example.com");
-        for (const viewport of viewports) {
-            await page.setViewportSize(viewport);
-            await page.goto("/agent-context/context-packet");
-            await page.getByLabel(/Goal/).fill("e2e retrieval debug");
-            await page.getByRole("button", { name: "Generate context" }).click();
-            await expect(page.getByRole("heading", { name: "e2e retrieval debug" })).toBeVisible();
-            await expect(page.getByText("Retrieval details")).toHaveCount(0);
-            await expect(page.getByText(RETRIEVAL_DEBUG_SUMMARY)).toHaveCount(0);
-            await page.screenshot({
-                path: testInfo.outputPath(`retrieval-debug-suppressed-${viewport.name}.png`),
-                fullPage: true,
-            });
-        }
+        await page.goto("/superadmin/context-fabric/validation");
+        await expect(page).toHaveURL(/\/dashboard$/);
+        await expect(page.getByRole("heading", { name: "Context Fabric Validation" })).toHaveCount(
+            0,
+        );
+        await page.screenshot({
+            path: testInfo.outputPath("platform-validation-denied-member.png"),
+            fullPage: true,
+        });
 
-        await page.getByRole("button", { name: "Account options" }).click();
-        await page.getByRole("button", { name: "Sign out" }).click();
-        await expect(page).toHaveURL(/\/$/);
+        await page.context().clearCookies();
         await signIn(page, "test@example.com");
         for (const viewport of viewports) {
             await page.setViewportSize(viewport);
-            await page.goto("/agent-context/context-packet");
+            await page.goto("/superadmin/context-fabric/validation");
             await page.getByLabel(/Goal/).fill("e2e retrieval debug");
             await page.getByRole("button", { name: "Generate context" }).click();
             await page.getByText("Retrieval details").click();
@@ -592,7 +588,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await page.route(`${ACR_API_ORIGIN}/**`, (route) => {
             throw new Error(`Browser attempted direct ACR access: ${route.request().url()}`);
         });
-        await page.goto("/agent-context/context-packet");
+        await page.goto("/superadmin/context-fabric/validation");
 
         await page.getByLabel(/Goal/).fill("e2e malformed packet");
         await page.getByRole("button", { name: "Generate context" }).click();
@@ -609,7 +605,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await page.route(`${ACR_API_ORIGIN}/**`, (route) => {
             throw new Error(`Browser attempted direct ACR access: ${route.request().url()}`);
         });
-        await page.goto("/agent-context/context-packet");
+        await page.goto("/superadmin/context-fabric/validation");
 
         const staleResponse = page.waitForResponse(
             (response) =>
@@ -641,7 +637,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
 
         for (const viewport of viewports) {
             await page.setViewportSize(viewport);
-            await page.goto("/agent-context/context-packet");
+            await page.goto("/superadmin/context-fabric/validation");
             await page.getByLabel(/Goal/).fill("e2e partial");
             await page.getByRole("button", { name: "Generate context" }).click();
             const terminal = page.getByRole("region", {
@@ -671,7 +667,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
             evidenceDelayMs: 1_000,
             evidenceReferenceCount: 9,
         });
-        await page.goto("/agent-context/context-packet");
+        await page.goto("/superadmin/context-fabric/validation");
 
         await page.getByLabel(/Goal/).fill("e2e partial");
         await page.getByRole("button", { name: "Generate context" }).click();
@@ -705,7 +701,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
             if (new URL(request.url()).pathname === "/api/feedback")
                 feedbackRequests.push(request.url());
         });
-        await page.goto("/agent-context/context-packet");
+        await page.goto("/superadmin/context-fabric/validation");
 
         await page.getByLabel(/Goal/).fill("e2e feedback first packet");
         await page.getByRole("button", { name: "Generate context" }).click();
@@ -728,7 +724,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
     ] as const) {
         test(`renders the live ${goal} terminal outcome`, async ({ page }) => {
             await setEntitlementScenario(page.request, "provisioned");
-            await page.goto("/agent-context/context-packet");
+            await page.goto("/superadmin/context-fabric/validation");
 
             await page.getByLabel(/Goal/).fill(goal);
             await page.getByRole("button", { name: "Generate context" }).click();

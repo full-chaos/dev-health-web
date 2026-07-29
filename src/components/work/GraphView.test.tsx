@@ -13,6 +13,7 @@ const {
     mockUseOrgId,
     mockReplace,
     mockUsePathname,
+    mockAskDevTrigger,
 } = vi.hoisted(() => ({
     mockUseSearchParams: vi.fn(() => new URLSearchParams()),
     mockUseWorkGraphEdges: vi.fn(),
@@ -21,6 +22,14 @@ const {
     mockUseOrgId: vi.fn(() => "org-1"),
     mockReplace: vi.fn(),
     mockUsePathname: vi.fn(() => "/diagnose/work-graph"),
+    mockAskDevTrigger: vi.fn(),
+}));
+
+vi.mock("@/components/ask-dev/AskDevTrigger", () => ({
+    AskDevTrigger: ({ context }: { context: unknown }) => {
+        mockAskDevTrigger(context);
+        return <button type="button">Ask Dev about this</button>;
+    },
 }));
 
 vi.mock("next/navigation", () => ({
@@ -658,6 +667,44 @@ describe("GraphView", () => {
         expect(screen.getByLabelText(/Subcategory/i)).toHaveValue("quality.bugfix");
         expect(screen.getByText(/Quality \/ Quality \/ Bugfix/i)).toBeInTheDocument();
         expect(screen.getByText("src/app/page.tsx")).toBeInTheDocument();
+        expect(mockAskDevTrigger).not.toHaveBeenCalled();
+    });
+
+    it("offers typed Ask Dev context only for approved Work Graph node selections", () => {
+        mockUseSearchParams.mockReturnValue(new URLSearchParams({ graph_node: "ISSUE:ISS-1" }));
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [
+                {
+                    edgeId: "e1",
+                    sourceType: "ISSUE",
+                    sourceId: "ISS-1",
+                    targetType: "PR",
+                    targetId: "PR-1",
+                    edgeType: "FIXES",
+                    provenance: "NATIVE",
+                    confidence: 1,
+                    evidence: "test",
+                },
+            ],
+            loading: false,
+            error: null,
+            totalCount: 1,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        expect(mockAskDevTrigger).toHaveBeenCalledWith({
+            routeId: "work_graph",
+            entityRefs: [
+                {
+                    entity_type: "issue",
+                    entity_id: "ISS-1",
+                    display_label: "Selected issue",
+                },
+            ],
+            suggestedQuestionIds: ["remaining_work", "data_trust"],
+        });
     });
 
     it("does NOT fall back to sample data when edges are empty", () => {

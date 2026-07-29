@@ -9,6 +9,7 @@ import {
     type GetConnectorsDataHealthQuery,
 } from "@/lib/graphql/__generated__/graphql";
 import { requireSession } from "@/lib/auth";
+import { DataHealthAskDevTrigger } from "../_components/DataHealthAskDevTrigger";
 
 export default async function ConnectorsHealthPage() {
     const session = await requireSession();
@@ -38,7 +39,9 @@ export default async function ConnectorsHealthPage() {
             <AdminHeader
                 title="Connector Health"
                 description="Freshness, errors, and status of all configured providers."
-            />
+            >
+                <DataHealthAskDevTrigger />
+            </AdminHeader>
 
             {error ? (
                 <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">

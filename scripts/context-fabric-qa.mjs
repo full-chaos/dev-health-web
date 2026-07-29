@@ -9,6 +9,7 @@ const environment = {
     ...process.env,
     AUTH_SECRET: "context-fabric-production-playwright",
     BACKEND_URL: "http://127.0.0.1:8012",
+    NEXT_PUBLIC_SENTRY_REPLAY_ROUTES: "",
     NODE_ENV: "production",
 };
 

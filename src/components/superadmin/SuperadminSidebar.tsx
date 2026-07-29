@@ -14,6 +14,12 @@ const navItems = [
         href: "/superadmin/product-telemetry",
         description: "Usage",
     },
+    {
+        id: "context-fabric-validation",
+        label: "Context Fabric Validation",
+        href: "/superadmin/context-fabric/validation",
+        description: "Runtime",
+    },
     { id: "audit", label: "Audit Log", href: "/superadmin/audit", description: "Events" },
     { id: "settings", label: "Settings", href: "/superadmin/settings", description: "Platform" },
     {
@@ -52,12 +58,12 @@ export function SuperadminSidebar({ canAccessOrgAdmin = false }: { canAccessOrgA
     const pathname = usePathname();
 
     return (
-        <aside className="w-full md:max-w-[220px] md:shrink-0">
+        <aside className="w-full md:max-w-56 md:shrink-0">
             <div className="md:sticky md:top-6">
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
                     <div>
                         <p className="mt-3 font-(--font-display) text-lg">Superadmin</p>
-                        <span className="mt-1 inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-widest text-purple-500">
+                        <span className="mt-1 inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-label-caps font-medium text-purple-500">
                             Platform Admin
                         </span>
                         <p className="mt-2 text-xs text-(--ink-muted)">
@@ -82,7 +88,7 @@ export function SuperadminSidebar({ canAccessOrgAdmin = false }: { canAccessOrgA
                                 >
                                     <span className="font-medium">{item.label}</span>
                                     <span
-                                        className={`text-[10px] uppercase tracking-widest ${
+                                        className={`text-label-caps ${
                                             isActive ? "text-purple-400" : "text-(--ink-muted)"
                                         }`}
                                     >
