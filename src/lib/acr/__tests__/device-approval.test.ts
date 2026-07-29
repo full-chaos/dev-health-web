@@ -206,6 +206,24 @@ describe("approveDeviceAuthorization", () => {
         expect(assertions[0]).not.toBe(assertions[1]);
     });
 
+    it("Given a preview with no repository hints, when ACR omits the optional field, then returns an empty selection", async () => {
+        installOpsAuthorization();
+        server.use(
+            http.post("https://acr.example.test/api/v1/oauth/device_approval", () =>
+                HttpResponse.json({
+                    schema_version: "device_approval_preview_response.v1",
+                }),
+            ),
+        );
+
+        await expect(
+            previewDeviceAuthorization({
+                signal: new AbortController().signal,
+                userCode: "ABCD2345",
+            }),
+        ).resolves.toEqual({ repositoryHints: [] });
+    });
+
     it.each([
         ["a null hint", null],
         ["an empty hint", ""],

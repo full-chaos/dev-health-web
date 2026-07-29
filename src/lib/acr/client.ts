@@ -75,7 +75,7 @@ const deviceApprovalPreviewResponseSchema = z
     .object({
         organization_id_hint: z.string().min(1).max(128).optional(),
         schema_version: z.literal("device_approval_preview_response.v1"),
-        repository_hints: z.array(z.string()),
+        repository_hints: z.array(z.string()).default([]),
     })
     .strict();
 
