@@ -25,6 +25,7 @@ import type {
     LLMSettingsStatusResponse,
     LLMSettingsUpsert,
     LLMSettingsActionResult,
+    LLMBudgetResponse,
     LLMSpendSummaryResponse,
 } from "../types";
 import { getSessionContext, withErrorHandling } from "./_shared";
@@ -261,6 +262,17 @@ export async function getLLMSettingsStatus(): Promise<
     return withStatusErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.llmSettings.status(token, orgId);
+    });
+}
+
+/**
+ * Enforceable BYO-LLM organization budget status. Unlike the historical spend
+ * summary this includes active reservations and is the admission-control view.
+ */
+export async function getLLMBudget(): Promise<LLMSettingsActionResult<LLMBudgetResponse>> {
+    return withStatusErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        return adminApi.llmSettings.budget(token, orgId);
     });
 }
 

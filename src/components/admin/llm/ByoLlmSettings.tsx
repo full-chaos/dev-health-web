@@ -3,10 +3,12 @@
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import {
     LLM_PROVIDERS,
     LLM_PROVIDER_LABELS,
+    type LLMBudgetResponse,
     type LLMProvider,
     type LLMSettingsActionResult,
     type LLMSettingsResponse,
@@ -25,7 +27,7 @@ type LockState = {
 /** Read-only summary vs. editable-form view of the saved configuration (CHAOS-2565). */
 type Mode = "view" | "edit";
 
-type BadgeTone = "positive" | "caution" | "muted";
+type BadgeTone = "positive" | "caution" | "negative" | "muted";
 
 type BadgeInfo = {
     label: string;
@@ -34,6 +36,7 @@ type BadgeInfo = {
 
 export type ByoLlmSettingsProps = {
     loadSettingsAction: () => Promise<LLMSettingsActionResult<LLMSettingsResponse>>;
+    loadBudgetAction: () => Promise<LLMSettingsActionResult<LLMBudgetResponse>>;
     /**
      * BYO-LLM status badge read (CHAOS-2560/2565). The backend endpoint is
      * built on a sibling branch; a failed/errored result degrades gracefully
@@ -55,14 +58,78 @@ const captionClass = "mt-1 text-xs text-(--ink-muted)";
 const BADGE_TONE_CLASSES: Record<BadgeTone, string> = {
     positive: "bg-(--positive)/10 text-(--positive)",
     caution: "bg-(--caution)/10 text-(--caution)",
+    negative: "bg-(--negative)/10 text-(--negative)",
     muted: "bg-(--card-70) text-(--ink-muted)",
 };
 
 const BADGE_DOT_CLASSES: Record<BadgeTone, string> = {
     positive: "bg-(--positive)",
     caution: "bg-(--caution)",
+    negative: "bg-(--negative)",
     muted: "bg-(--ink-muted)",
 };
+
+const MICRO_USD_PER_USD = 1_000_000;
+
+function formatMicroUsd(value: number | null): string {
+    if (value === null) return "Unavailable";
+    return new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 6,
+    }).format(value / MICRO_USD_PER_USD);
+}
+
+function formatMicroUsdInput(value: number | null): string {
+    if (value === null) return "";
+    return (value / MICRO_USD_PER_USD).toFixed(6).replace(/(\.\d*?[1-9])0+$|\.0+$/, "$1");
+}
+
+function parseMicroUsdInput(value: string): number | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    if (!/^\d+(?:\.\d{1,6})?$/.test(trimmed)) return Number.NaN;
+    const [whole, fraction = ""] = trimmed.split(".");
+    const microUsd = Number(whole) * MICRO_USD_PER_USD + Number(fraction.padEnd(6, "0"));
+    return Number.isSafeInteger(microUsd) ? microUsd : Number.NaN;
+}
+
+function formatResetAt(value: string): string {
+    const reset = new Date(value);
+    if (Number.isNaN(reset.getTime())) return value;
+    return new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        timeZone: "UTC",
+        timeZoneName: "short",
+    }).format(reset);
+}
+
+function deriveBudgetBadge(budget: LLMBudgetResponse): BadgeInfo {
+    if (budget.reason === "budget_exhausted") {
+        return { label: "Budget exhausted", tone: "negative" };
+    }
+    if (budget.reason === "usage_unavailable") {
+        return { label: "Usage unavailable — calls blocked", tone: "negative" };
+    }
+    if (budget.reason === "pricing_unavailable") {
+        return { label: "Pricing unavailable — calls blocked", tone: "negative" };
+    }
+    if (budget.reason === "budget_not_configured") {
+        return { label: "No budget configured", tone: "muted" };
+    }
+    const fractionUsed =
+        budget.limit_micro_usd && budget.used_micro_usd !== null
+            ? budget.used_micro_usd / budget.limit_micro_usd
+            : 0;
+    return fractionUsed >= 0.8
+        ? { label: "Approaching budget", tone: "caution" }
+        : { label: "Budget enforced", tone: "positive" };
+}
 
 /**
  * Derives the status badge wording/tone from the CHAOS-2560 status DTO.
@@ -93,6 +160,7 @@ function deriveStatusBadge(
 
 export function ByoLlmSettings({
     loadSettingsAction,
+    loadBudgetAction,
     loadStatusAction,
     saveSettingsAction,
     removeSettingsAction,
@@ -104,11 +172,15 @@ export function ByoLlmSettings({
     const [mode, setMode] = useState<Mode>("edit");
     const [savedSettings, setSavedSettings] = useState<LLMSettingsResponse | null>(null);
     const [status, setStatus] = useState<LLMSettingsStatusResponse | null>(null);
+    const [budget, setBudget] = useState<LLMBudgetResponse | null>(null);
+    const [budgetLoading, setBudgetLoading] = useState(true);
+    const [budgetLoadError, setBudgetLoadError] = useState<string | null>(null);
 
     const [provider, setProvider] = useState<string>(DEFAULT_PROVIDER);
     const [model, setModel] = useState("");
     const [apiKey, setApiKey] = useState("");
     const [baseUrl, setBaseUrl] = useState("");
+    const [budgetUsd, setBudgetUsd] = useState("");
     const [hasStoredKey, setHasStoredKey] = useState(false);
     const [maskedKey, setMaskedKey] = useState<string | null>(null);
     const [hasSavedSettings, setHasSavedSettings] = useState(false);
@@ -117,12 +189,27 @@ export function ByoLlmSettings({
     const [deleting, setDeleting] = useState(false);
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [baseUrlError, setBaseUrlError] = useState<string | null>(null);
+    const [budgetInputError, setBudgetInputError] = useState<string | null>(null);
     const [formError, setFormError] = useState<string | null>(null);
 
     const fetchStatus = useCallback(async () => {
         const result = await loadStatusAction();
         setStatus(result.data ?? null);
     }, [loadStatusAction]);
+
+    const fetchBudget = useCallback(async () => {
+        setBudgetLoading(true);
+        setBudgetLoadError(null);
+        const result = await loadBudgetAction();
+        if (result.data) {
+            setBudget(result.data);
+            setBudgetUsd(formatMicroUsdInput(result.data.limit_micro_usd));
+        } else {
+            setBudget(null);
+            setBudgetLoadError(result.error ?? "Could not load the organization budget.");
+        }
+        setBudgetLoading(false);
+    }, [loadBudgetAction]);
 
     const applySettings = useCallback((data: LLMSettingsResponse) => {
         setSavedSettings(data);
@@ -140,6 +227,8 @@ export function ByoLlmSettings({
         setLoading(true);
         setLoadError(null);
         setLocked(null);
+        setBudgetLoading(true);
+        setBudgetLoadError(null);
         const result = await loadSettingsAction();
         if (result.status === 402) {
             setLocked({
@@ -157,9 +246,10 @@ export function ByoLlmSettings({
         } else if (result.data) {
             applySettings(result.data);
             void fetchStatus();
+            void fetchBudget();
         }
         setLoading(false);
-    }, [loadSettingsAction, applySettings, fetchStatus]);
+    }, [loadSettingsAction, applySettings, fetchStatus, fetchBudget]);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchSettings coordinates async loading state after mount.
@@ -169,6 +259,7 @@ export function ByoLlmSettings({
     const handleEdit = () => {
         setFormError(null);
         setBaseUrlError(null);
+        setBudgetInputError(null);
         setConfirmingDelete(false);
         setMode("edit");
     };
@@ -179,9 +270,11 @@ export function ByoLlmSettings({
             setModel(savedSettings.model ?? "");
             setBaseUrl(savedSettings.base_url ?? "");
             setApiKey("");
+            setBudgetUsd(formatMicroUsdInput(budget?.limit_micro_usd ?? null));
         }
         setFormError(null);
         setBaseUrlError(null);
+        setBudgetInputError(null);
         setConfirmingDelete(false);
         setMode("view");
     };
@@ -191,9 +284,23 @@ export function ByoLlmSettings({
             setFormError("Select a provider before saving.");
             return;
         }
+        const parsedBudget = parseMicroUsdInput(budgetUsd);
+        if (Number.isNaN(parsedBudget)) {
+            setBudgetInputError(
+                "Enter a non-negative USD amount with no more than 6 decimal places.",
+            );
+            return;
+        }
+        if (parsedBudget !== null && budget && parsedBudget > budget.maximum_limit_micro_usd) {
+            setBudgetInputError(
+                `The maximum provisioned budget is ${formatMicroUsd(budget.maximum_limit_micro_usd)}.`,
+            );
+            return;
+        }
         setSaving(true);
         setFormError(null);
         setBaseUrlError(null);
+        setBudgetInputError(null);
         const payload: LLMSettingsUpsert = {
             provider: provider.trim(),
             model: model.trim() ? model.trim() : null,
@@ -204,10 +311,19 @@ export function ByoLlmSettings({
         if (apiKey.trim()) {
             payload.api_key = apiKey.trim();
         }
+        // Blank preserves the existing backend value. Zero is intentionally
+        // included because it is the explicit hard-stop configuration.
+        if (parsedBudget !== null) {
+            payload.budget_limit_micro_usd = parsedBudget;
+        }
         const result = await saveSettingsAction(payload);
         setSaving(false);
         if (result.status === 400) {
-            setBaseUrlError(result.error ?? "The base URL is invalid.");
+            if (parsedBudget !== null && result.error?.toLowerCase().includes("budget")) {
+                setBudgetInputError(result.error);
+            } else {
+                setBaseUrlError(result.error ?? "The base URL is invalid.");
+            }
             toast.error("Could not save BYO-LLM settings.");
             return;
         }
@@ -219,6 +335,7 @@ export function ByoLlmSettings({
         if (result.data) {
             applySettings(result.data);
             void fetchStatus();
+            void fetchBudget();
         }
         toast.success("BYO-LLM settings saved.");
     };
@@ -338,6 +455,116 @@ export function ByoLlmSettings({
         </span>
     );
 
+    const budgetBadge = budget ? deriveBudgetBadge(budget) : null;
+    const budgetPanel = (
+        <section
+            aria-labelledby="byo-budget-heading"
+            data-testid="byo-llm-budget-status"
+            className="mt-6 rounded-xl border border-(--card-stroke) bg-(--card-70) p-4"
+        >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2 id="byo-budget-heading" className="text-sm font-semibold text-foreground">
+                        Organization budget
+                    </h2>
+                    <p className="mt-1 text-xs text-(--ink-muted)">
+                        Hard monthly cap for calls made with this organization&apos;s provider
+                        credentials.
+                    </p>
+                </div>
+                {budgetBadge ? (
+                    <span
+                        className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${BADGE_TONE_CLASSES[budgetBadge.tone]}`}
+                    >
+                        <span
+                            aria-hidden="true"
+                            className={`h-2 w-2 rounded-full ${BADGE_DOT_CLASSES[budgetBadge.tone]}`}
+                        />
+                        {budgetBadge.label}
+                    </span>
+                ) : null}
+            </div>
+
+            {budgetLoading ? (
+                <DataState
+                    variant="loading"
+                    title="Loading budget status…"
+                    className="mt-4"
+                    data-testid="byo-llm-budget-loading"
+                />
+            ) : budgetLoadError ? (
+                <DataState
+                    variant="error"
+                    title="Budget status unavailable"
+                    message={budgetLoadError}
+                    className="mt-4"
+                    data-testid="byo-llm-budget-error"
+                    action={
+                        <button
+                            type="button"
+                            onClick={fetchBudget}
+                            className="rounded-lg border border-(--negative)/30 bg-(--card-80) px-3 py-1.5 text-xs font-medium text-foreground"
+                        >
+                            {CTA_LABELS.retry}
+                        </button>
+                    }
+                />
+            ) : budget ? (
+                <div className="mt-4 space-y-3">
+                    {budget.limit_micro_usd !== null ? (
+                        <dl className="grid gap-3 text-sm sm:grid-cols-3">
+                            <div>
+                                <dt className={labelClass}>Used or reserved</dt>
+                                <dd>{formatMicroUsd(budget.used_micro_usd)}</dd>
+                            </div>
+                            <div>
+                                <dt className={labelClass}>Monthly limit</dt>
+                                <dd>{formatMicroUsd(budget.limit_micro_usd)}</dd>
+                            </div>
+                            <div>
+                                <dt className={labelClass}>Remaining</dt>
+                                <dd>{formatMicroUsd(budget.remaining_micro_usd)}</dd>
+                            </div>
+                        </dl>
+                    ) : (
+                        <p className="text-sm text-(--ink-muted)">
+                            Set a limit to prevent BYO-LLM spend from exceeding an organization
+                            ceiling.
+                        </p>
+                    )}
+
+                    {budget.reason === "budget_exhausted" ? (
+                        <p className="text-sm text-(--negative)">
+                            New budgeted BYO-LLM calls are blocked until the limit is increased or
+                            the monthly window resets.
+                        </p>
+                    ) : budget.reason === "usage_unavailable" ? (
+                        <p className="text-sm text-(--negative)">
+                            A completed call did not report usable token data. New budgeted calls
+                            are blocked so missing usage cannot bypass the cap.
+                        </p>
+                    ) : budget.reason === "pricing_unavailable" ? (
+                        <p className="text-sm text-(--negative)">
+                            The current provider, model, or custom base URL has no reliable price.
+                            New budgeted calls are blocked because the cap cannot be safely enforced
+                            for that configuration.
+                        </p>
+                    ) : budget.reason === "available" && budgetBadge?.tone === "caution" ? (
+                        <p className="text-sm text-(--caution)">
+                            At least 80% of the monthly organization budget has been used or
+                            reserved.
+                        </p>
+                    ) : null}
+
+                    <p className="text-xs text-(--ink-muted)">
+                        Calendar month (UTC) · resets {formatResetAt(budget.reset_at)} · maximum
+                        provisioned limit {formatMicroUsd(budget.maximum_limit_micro_usd)}
+                    </p>
+                </div>
+            ) : null}
+        </section>
+    );
+
     const deleteButton = (
         <button
             type="button"
@@ -393,6 +620,8 @@ export function ByoLlmSettings({
                             <dd className="text-sm text-foreground">{baseUrl || "Not set"}</dd>
                         </div>
                     </dl>
+
+                    {budgetPanel}
 
                     <div className="mt-6 rounded-xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-xs text-(--ink-muted)">
                         BYO-LLM requires Team tier or higher. Keys are encrypted with the org
@@ -486,7 +715,48 @@ export function ByoLlmSettings({
                                 </p>
                             )}
                         </div>
+
+                        <div className="sm:col-span-2">
+                            <label htmlFor="byo-budget-usd" className={labelClass}>
+                                Monthly organization budget (USD)
+                            </label>
+                            <div className="relative max-w-sm">
+                                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-(--ink-muted)">
+                                    $
+                                </span>
+                                <input
+                                    id="byo-budget-usd"
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={budgetUsd}
+                                    disabled={budgetLoading || saving}
+                                    placeholder="Leave blank to preserve current limit"
+                                    onChange={(event) => {
+                                        setBudgetUsd(event.target.value);
+                                        setBudgetInputError(null);
+                                    }}
+                                    className={`${inputClass} pl-7 disabled:opacity-50 ${budgetInputError ? "border-(--negative)/60" : ""}`}
+                                    aria-invalid={budgetInputError ? true : undefined}
+                                    aria-describedby="byo-budget-caption"
+                                />
+                            </div>
+                            {budgetInputError ? (
+                                <p
+                                    id="byo-budget-caption"
+                                    className="mt-1 text-xs text-(--negative)"
+                                >
+                                    {budgetInputError}
+                                </p>
+                            ) : (
+                                <p id="byo-budget-caption" className={captionClass}>
+                                    Blank preserves the current limit. Enter 0 for an immediate hard
+                                    stop. Up to 6 decimal places are supported.
+                                </p>
+                            )}
+                        </div>
                     </div>
+
+                    {budgetPanel}
 
                     <div className="mt-6 rounded-xl border border-dashed border-(--card-stroke) bg-(--card-70) px-4 py-3 text-xs text-(--ink-muted)">
                         BYO-LLM requires Team tier or higher. Keys are encrypted with the org

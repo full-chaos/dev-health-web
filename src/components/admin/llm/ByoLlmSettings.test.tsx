@@ -10,6 +10,7 @@ vi.mock("next/link", () => ({
 import { ByoLlmSettings, type ByoLlmSettingsProps } from "./ByoLlmSettings";
 
 const mockLoad = vi.fn<ByoLlmSettingsProps["loadSettingsAction"]>();
+const mockLoadBudget = vi.fn<ByoLlmSettingsProps["loadBudgetAction"]>();
 const mockLoadStatus = vi.fn<ByoLlmSettingsProps["loadStatusAction"]>();
 const mockSave = vi.fn<ByoLlmSettingsProps["saveSettingsAction"]>();
 const mockRemove = vi.fn<ByoLlmSettingsProps["removeSettingsAction"]>();
@@ -18,6 +19,7 @@ function renderForm() {
     return renderWithToaster(
         <ByoLlmSettings
             loadSettingsAction={mockLoad}
+            loadBudgetAction={mockLoadBudget}
             loadStatusAction={mockLoadStatus}
             saveSettingsAction={mockSave}
             removeSettingsAction={mockRemove}
@@ -28,6 +30,7 @@ function renderForm() {
 describe("ByoLlmSettings", () => {
     beforeEach(() => {
         mockLoad.mockReset();
+        mockLoadBudget.mockReset();
         mockSave.mockReset();
         mockRemove.mockReset();
         mockLoadStatus.mockReset();
@@ -36,6 +39,19 @@ describe("ByoLlmSettings", () => {
         // back to settings-derived Saved/Not configured wording unless a test
         // explicitly exercises the happy-path status DTO.
         mockLoadStatus.mockResolvedValue({ error: "Not implemented", status: 501 });
+        mockLoadBudget.mockResolvedValue({
+            data: {
+                used_micro_usd: 0,
+                limit_micro_usd: null,
+                remaining_micro_usd: null,
+                window: "calendar_month_utc",
+                reset_at: "2026-08-01T00:00:00Z",
+                enforcement_available: false,
+                reason: "budget_not_configured",
+                maximum_limit_micro_usd: 500_000_000,
+                pricing_version: "openai-public-2025-08-07.v1",
+            },
+        });
     });
 
     it("renders the form with a Not configured status for an empty config", async () => {
@@ -46,6 +62,102 @@ describe("ByoLlmSettings", () => {
         expect(screen.getByRole("heading", { name: "AI Setup" })).toBeInTheDocument();
         expect(screen.getByLabelText("Provider")).toBeInTheDocument();
         expect(screen.getByLabelText("API Key")).toBeInTheDocument();
+        expect(await screen.findByText("No budget configured")).toBeInTheDocument();
+        expect(screen.getByLabelText("Monthly organization budget (USD)")).toHaveValue("");
+    });
+
+    it("renders reserved usage, warning state, monthly reset, and provisioned maximum", async () => {
+        mockLoad.mockResolvedValue({ data: { provider: "openai", model: "gpt-5-mini" } });
+        mockLoadBudget.mockResolvedValue({
+            data: {
+                used_micro_usd: 85_000_000,
+                limit_micro_usd: 100_000_000,
+                remaining_micro_usd: 15_000_000,
+                window: "calendar_month_utc",
+                reset_at: "2026-08-01T00:00:00Z",
+                enforcement_available: true,
+                reason: "available",
+                maximum_limit_micro_usd: 500_000_000,
+                pricing_version: "openai-public-2025-08-07.v1",
+            },
+        });
+
+        renderForm();
+
+        expect(await screen.findByText("Approaching budget")).toBeInTheDocument();
+        expect(screen.getByText("$85.00")).toBeInTheDocument();
+        expect(screen.getByText("$100.00")).toBeInTheDocument();
+        expect(screen.getByText("$15.00")).toBeInTheDocument();
+        expect(screen.getByText(/At least 80%/)).toBeInTheDocument();
+        expect(screen.getByText(/maximum provisioned limit \$500.00/)).toBeInTheDocument();
+    });
+
+    it("keeps provider settings usable when budget status is temporarily unavailable", async () => {
+        mockLoad.mockResolvedValue({ data: { provider: "openai", model: "gpt-5-mini" } });
+        mockLoadBudget
+            .mockResolvedValueOnce({ error: "Budget service unavailable", status: 503 })
+            .mockResolvedValueOnce({
+                data: {
+                    used_micro_usd: 0,
+                    limit_micro_usd: 10_000_000,
+                    remaining_micro_usd: 10_000_000,
+                    window: "calendar_month_utc",
+                    reset_at: "2026-08-01T00:00:00Z",
+                    enforcement_available: true,
+                    reason: "available",
+                    maximum_limit_micro_usd: 500_000_000,
+                    pricing_version: "openai-public-2025-08-07.v1",
+                },
+            });
+
+        renderForm();
+
+        expect(await screen.findByText("Budget service unavailable")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
+        await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+        expect(await screen.findByText("Budget enforced")).toBeInTheDocument();
+    });
+
+    it.each([
+        {
+            reason: "budget_exhausted" as const,
+            label: "Budget exhausted",
+            explanation: /New budgeted BYO-LLM calls are blocked/,
+            used: 100_000_000,
+        },
+        {
+            reason: "usage_unavailable" as const,
+            label: "Usage unavailable — calls blocked",
+            explanation: /did not report usable token data/,
+            used: null,
+        },
+        {
+            reason: "pricing_unavailable" as const,
+            label: "Pricing unavailable — calls blocked",
+            explanation: /has no reliable price/,
+            used: null,
+        },
+    ])("renders the $reason enforcement state", async ({ reason, label, explanation, used }) => {
+        mockLoad.mockResolvedValue({ data: { provider: "openai", model: "custom-model" } });
+        mockLoadBudget.mockResolvedValue({
+            data: {
+                used_micro_usd: used,
+                limit_micro_usd: 100_000_000,
+                remaining_micro_usd: reason === "budget_exhausted" ? 0 : null,
+                window: "calendar_month_utc",
+                reset_at: "2026-08-01T00:00:00Z",
+                enforcement_available: reason === "budget_exhausted",
+                reason,
+                maximum_limit_micro_usd: 500_000_000,
+                pricing_version:
+                    reason === "pricing_unavailable" ? null : "openai-public-2025-08-07.v1",
+            },
+        });
+
+        renderForm();
+
+        expect(await screen.findByText(label)).toBeInTheDocument();
+        expect(screen.getByText(explanation)).toBeInTheDocument();
     });
 
     it("renders a read-only summary with a Saved badge when settings are persisted", async () => {
@@ -259,6 +371,92 @@ describe("ByoLlmSettings", () => {
         await waitFor(() => {
             expect(screen.getByText("BYO-LLM settings saved.")).toBeInTheDocument();
         });
+    });
+
+    it("submits an exact micro-USD budget and supports an explicit zero hard stop", async () => {
+        mockLoad.mockResolvedValue({ data: {} });
+        mockSave.mockResolvedValue({ data: { provider: "openai" } });
+        renderForm();
+
+        await screen.findByRole("heading", { name: "AI Setup" });
+        const budgetInput = screen.getByLabelText("Monthly organization budget (USD)");
+        await userEvent.type(budgetInput, "12.345678");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        expect(mockSave).toHaveBeenCalledWith(
+            expect.objectContaining({ budget_limit_micro_usd: 12_345_678 }),
+        );
+
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await userEvent.clear(screen.getByLabelText("Monthly organization budget (USD)"));
+        await userEvent.type(screen.getByLabelText("Monthly organization budget (USD)"), "0");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        expect(mockSave).toHaveBeenLastCalledWith(
+            expect.objectContaining({ budget_limit_micro_usd: 0 }),
+        );
+    });
+
+    it("omits a blank budget so the backend preserves the current value", async () => {
+        mockLoad.mockResolvedValue({ data: {} });
+        mockSave.mockResolvedValue({ data: { provider: "openai" } });
+        renderForm();
+
+        await screen.findByRole("heading", { name: "AI Setup" });
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        const payload = mockSave.mock.calls[0][0];
+        expect("budget_limit_micro_usd" in payload).toBe(false);
+    });
+
+    it("rejects malformed or over-provisioned budgets before saving", async () => {
+        mockLoad.mockResolvedValue({ data: {} });
+        mockLoadBudget.mockResolvedValue({
+            data: {
+                used_micro_usd: 0,
+                limit_micro_usd: null,
+                remaining_micro_usd: null,
+                window: "calendar_month_utc",
+                reset_at: "2026-08-01T00:00:00Z",
+                enforcement_available: false,
+                reason: "budget_not_configured",
+                maximum_limit_micro_usd: 5_000_000,
+                pricing_version: "openai-public-2025-08-07.v1",
+            },
+        });
+        renderForm();
+
+        await screen.findByRole("heading", { name: "AI Setup" });
+        const input = screen.getByLabelText("Monthly organization budget (USD)");
+        await userEvent.type(input, "1.0000001");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        expect(screen.getByText(/no more than 6 decimal places/)).toBeInTheDocument();
+        expect(mockSave).not.toHaveBeenCalled();
+
+        await userEvent.clear(input);
+        await userEvent.type(input, "6");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+        expect(screen.getByText("The maximum provisioned budget is $5.00.")).toBeInTheDocument();
+        expect(mockSave).not.toHaveBeenCalled();
+    });
+
+    it("surfaces a backend budget maximum rejection on the budget field", async () => {
+        mockLoad.mockResolvedValue({ data: { provider: "openai" } });
+        mockSave.mockResolvedValue({
+            error: "budget_limit_micro_usd must be between 0 and 5000000",
+            status: 400,
+        });
+        renderForm();
+
+        await screen.findByRole("heading", { name: "AI Setup" });
+        await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+        await userEvent.type(screen.getByLabelText("Monthly organization budget (USD)"), "1");
+        await userEvent.click(screen.getByRole("button", { name: "Save" }));
+
+        expect(
+            await screen.findByText("budget_limit_micro_usd must be between 0 and 5000000"),
+        ).toBeInTheDocument();
+        expect(screen.getByLabelText("Base URL")).not.toHaveAttribute("aria-invalid", "true");
     });
 
     it("surfaces a 400 base_url validation error inline", async () => {
