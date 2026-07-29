@@ -14,7 +14,7 @@ type WebSession = {
     readonly accessToken: string;
     readonly orgId: string;
     readonly subject: string;
-    readonly isAdmin: boolean;
+    readonly isPlatformAdmin: boolean;
 };
 
 function sessionOrError(session: Awaited<ReturnType<typeof auth>>): WebSession {
@@ -30,7 +30,12 @@ function sessionOrError(session: Awaited<ReturnType<typeof auth>>): WebSession {
             },
         );
     }
-    return { accessToken, isAdmin: session.user.is_superuser === true, orgId, subject };
+    return {
+        accessToken,
+        isPlatformAdmin: session.user.is_superuser === true,
+        orgId,
+        subject,
+    };
 }
 
 async function authorizedRuntime(input: {
@@ -39,12 +44,13 @@ async function authorizedRuntime(input: {
 }): Promise<{
     readonly client: AcrRuntimeClient;
     readonly authorization: Awaited<ReturnType<typeof resolveOpsAuthorization>>;
-    readonly isAdmin: boolean;
+    readonly isPlatformAdmin: boolean;
 }> {
     const session = sessionOrError(await auth());
     const authorization = await resolveOpsAuthorization({
         accessToken: session.accessToken,
         orgId: session.orgId,
+        platformValidation: session.isPlatformAdmin,
         selectedRepository: input.repository,
         signal: input.signal,
         subject: session.subject,
@@ -52,7 +58,7 @@ async function authorizedRuntime(input: {
     return {
         authorization,
         client: new AcrRuntimeClient(loadAcrRuntimeConfig()),
-        isAdmin: session.isAdmin,
+        isPlatformAdmin: session.isPlatformAdmin,
     };
 }
 
@@ -68,7 +74,9 @@ export async function createContextPacket(input: {
     });
     return runtime.client.contextPacket({
         authorization: runtime.authorization,
-        body: JSON.stringify(contextPacketRequest(form, capabilities.limits, runtime.isAdmin)),
+        body: JSON.stringify(
+            contextPacketRequest(form, capabilities.limits, runtime.isPlatformAdmin),
+        ),
         signal: input.signal,
     });
 }
@@ -87,6 +95,7 @@ export async function listAuthorizedRepositories(orgId: string): Promise<readonl
     const authorization = await resolveOpsAuthorization({
         accessToken,
         orgId,
+        platformValidation: session?.user?.is_superuser === true,
         signal: new AbortController().signal,
         subject,
     });

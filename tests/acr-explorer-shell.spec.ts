@@ -1,5 +1,7 @@
 import { expect, test, type ConsoleMessage, type Page, type Request } from "@playwright/test";
 
+const CONTEXT_FABRIC_VALIDATION_PATH = "/superadmin/context-fabric/validation";
+
 const noAcrRequests = (page: Page) => {
     const requests: string[] = [];
     page.on("request", (request) => {
@@ -27,8 +29,15 @@ const browserFaults = (page: Page) => {
 async function openExplorer(page: Page) {
     const faults = browserFaults(page);
     const requests = noAcrRequests(page);
-    await page.goto("/agent-context/context-packet");
-    await expect(page.getByRole("heading", { name: "Context Fabric", level: 1 })).toBeVisible();
+    await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+    await expect(page).toHaveURL(new RegExp(`${CONTEXT_FABRIC_VALIDATION_PATH}$`));
+    await expect(
+        page.getByRole("heading", {
+            name: "Context Fabric Validation",
+            exact: true,
+            level: 1,
+        }),
+    ).toBeVisible();
     return { faults, requests };
 }
 
@@ -42,7 +51,7 @@ async function expectHealthyExplorer({
     expect(faults.failedRequests).toEqual([]);
 }
 
-test.describe("Context Fabric Explorer", () => {
+test.describe("Context Fabric Validation", () => {
     test.beforeEach(async ({ request }) => {
         const response = await request.post("http://127.0.0.1:8001/__test/entitlements", {
             data: { scenario: "provisioned" },
@@ -50,17 +59,32 @@ test.describe("Context Fabric Explorer", () => {
         expect(response.ok()).toBe(true);
     });
 
-    test("renders the deterministic sample packet and exposes its Diagnose navigation entry", async ({
+    test("renders the deterministic sample packet in platform administration and stays out of Diagnose navigation", async ({
         page,
     }) => {
         const faults = browserFaults(page);
         const requests = noAcrRequests(page);
-        await page.goto("/agent-context/context-packet");
+        await page.goto("/diagnose");
+        await expect(page.getByRole("link", { name: "Context Fabric", exact: true })).toHaveCount(
+            0,
+        );
+        await expect(
+            page.getByRole("link", { name: "Context Fabric Validation", exact: true }),
+        ).toHaveCount(0);
 
-        await expect(page.getByRole("heading", { name: "Context Fabric", level: 1 })).toBeVisible();
-        await expect(page.getByRole("link", { name: "Diagnose", exact: true })).toHaveAttribute(
-            "data-active",
-            "true",
+        await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+
+        await expect(page).toHaveURL(new RegExp(`${CONTEXT_FABRIC_VALIDATION_PATH}$`));
+        await expect(
+            page.getByRole("heading", {
+                name: "Context Fabric Validation",
+                exact: true,
+                level: 1,
+            }),
+        ).toBeVisible();
+        await expect(page.getByRole("link", { name: /Context Fabric Validation/ })).toHaveAttribute(
+            "aria-current",
+            "page",
         );
         await expect(page.getByRole("heading", { name: "Pressure", level: 2 })).toBeVisible();
         await expect(page.getByText("Context Fabric status")).toBeVisible();
@@ -109,24 +133,28 @@ test.describe("Context Fabric Explorer", () => {
         await expectHealthyExplorer(health);
     });
 
-    test("puts mobile navigation before context content at 375px", async ({ page }) => {
+    test("puts mobile platform navigation before validation content at 375px", async ({ page }) => {
         await page.setViewportSize({ width: 375, height: 812 });
         const health = await openExplorer(page);
-        const navigationControl = page.getByRole("button", { name: "Show navigation" });
-        const backLink = page.getByRole("link", { name: "Back to Diagnose" });
-        const [navigationBox, backLinkBox] = await Promise.all([
-            navigationControl.boundingBox(),
-            backLink.boundingBox(),
+        const validationLink = page.getByRole("link", { name: /Context Fabric Validation/ });
+        const validationHeading = page.getByRole("heading", {
+            name: "Context Fabric Validation",
+            exact: true,
+            level: 1,
+        });
+        const [navigationBox, headingBox] = await Promise.all([
+            validationLink.boundingBox(),
+            validationHeading.boundingBox(),
         ]);
 
-        expect(navigationBox?.y).toBeLessThan(backLinkBox?.y ?? Number.POSITIVE_INFINITY);
+        expect(navigationBox?.y).toBeLessThan(headingBox?.y ?? Number.POSITIVE_INFINITY);
         await expectHealthyExplorer(health);
     });
 
     test("renders partial coverage with available context and no ACR request", async ({ page }) => {
         const faults = browserFaults(page);
         const requests = noAcrRequests(page);
-        await page.goto("/agent-context/context-packet?state=partial");
+        await page.goto(`${CONTEXT_FABRIC_VALIDATION_PATH}?state=partial`);
 
         await expect(page.getByRole("heading", { name: "Pressure", level: 2 })).toBeVisible();
         await expect(page.getByText("Coverage is partial.")).toBeVisible();
@@ -145,7 +173,7 @@ test.describe("Context Fabric Explorer", () => {
         test(`renders ${scenario[0]} without an ACR request`, async ({ page }) => {
             const faults = browserFaults(page);
             const requests = noAcrRequests(page);
-            await page.goto(`/agent-context/context-packet?state=${scenario[0]}`);
+            await page.goto(`${CONTEXT_FABRIC_VALIDATION_PATH}?state=${scenario[0]}`);
 
             await expect(page.getByTestId(scenario[1])).toBeVisible();
             await expect.poll(() => requests).toEqual([]);

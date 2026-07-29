@@ -82,6 +82,7 @@ type AskDevContextValue = {
     historyError: string | null;
     historyLoading: boolean;
     panelMode: AskDevPanelMode;
+    persistentReturnHref: string;
     proposedContext: AskDevSurfaceContext | null;
     proposedScope: DevScope;
     proposedScopeLabel: string;
@@ -102,6 +103,7 @@ type AskDevContextValue = {
     selectProposedEntity: (entity: AskDevEntityRef) => void;
     renameConversation: (conversationId: string, title: string) => Promise<void>;
     retryLastQuestion: () => Promise<void>;
+    returnToPersistentWindow: () => void;
     setPanelMode: (mode: AskDevPanelMode) => void;
     setRetentionDays: (days: 0 | 30) => void;
     startNewConversation: () => void;
@@ -259,6 +261,7 @@ export function AskDevProvider({
     const searchParams = useSearchParams();
     const searchString = searchParams.toString();
     const [panelMode, setPanelMode] = useState<AskDevPanelMode>("closed");
+    const [persistentReturnHref, setPersistentReturnHref] = useState("/dashboard");
     const [conversationId, setConversationId] = useState<string | null>(null);
     const [transcript, setTranscript] = useState<AskDevTranscriptEntry[]>([]);
     const [conversations, setConversations] = useState<DevConversationList["items"]>([]);
@@ -317,6 +320,12 @@ export function AskDevProvider({
             controller.abort();
         };
     }, [client]);
+
+    useEffect(() => {
+        if (pathname !== "/dev" && !pathname.startsWith("/superadmin/context-fabric/validation")) {
+            setPersistentReturnHref(`${pathname}${searchString ? `?${searchString}` : ""}`);
+        }
+    }, [pathname, searchString]);
 
     const clearProposedContext = useCallback(() => setSurfaceProposal(null), []);
     const setProposedContext = useCallback(
@@ -624,6 +633,7 @@ export function AskDevProvider({
             historyError,
             historyLoading,
             panelMode,
+            persistentReturnHref,
             proposedContext,
             proposedScope,
             proposedScopeLabel,
@@ -644,6 +654,7 @@ export function AskDevProvider({
             selectProposedEntity,
             renameConversation,
             retryLastQuestion,
+            returnToPersistentWindow: () => setPanelMode("compact"),
             setPanelMode,
             setRetentionDays,
             startNewConversation,
@@ -665,6 +676,7 @@ export function AskDevProvider({
             loadHistory,
             openConversation,
             panelMode,
+            persistentReturnHref,
             proposedContext,
             proposedScope,
             proposedScopeLabel,

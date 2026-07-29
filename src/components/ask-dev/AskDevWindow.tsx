@@ -17,6 +17,11 @@ export function AskDevWindow() {
         if (panelMode !== "closed") panelRef.current?.focus();
     }, [panelMode]);
 
+    const closeAndRestoreFocus = () => {
+        closePanel();
+        requestAnimationFrame(() => launcherRef.current?.focus());
+    };
+
     if (panelMode === "closed") {
         return (
             <button
@@ -51,8 +56,7 @@ export function AskDevWindow() {
             onKeyDown={(event) => {
                 if (event.key === "Escape") {
                     event.preventDefault();
-                    closePanel();
-                    requestAnimationFrame(() => launcherRef.current?.focus());
+                    closeAndRestoreFocus();
                 }
             }}
         >
@@ -82,7 +86,7 @@ export function AskDevWindow() {
                     </button>
                     <button
                         type="button"
-                        onClick={closePanel}
+                        onClick={closeAndRestoreFocus}
                         aria-label={CTA_LABELS.closePanel}
                         className="rounded-(--radius-sm) px-2 py-1.5 text-(--text-secondary) hover:bg-(--surface-raised) hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-ai)/45"
                     >

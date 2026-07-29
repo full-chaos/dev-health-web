@@ -162,20 +162,40 @@ describe("AskDevProvider permanent window", () => {
         await user.click(screen.getByRole("button", { name: "Expand Ask Dev panel" }));
         await user.click(screen.getByRole("button", { name: "Reduce Ask Dev panel" }));
         await user.click(screen.getByRole("button", { name: "Close panel" }));
+        await waitFor(() =>
+            expect(screen.getByRole("button", { name: "Open Ask Dev" })).toHaveFocus(),
+        );
         await user.click(screen.getByRole("button", { name: "Open Ask Dev" }));
         expect(screen.getByText(answer.direct_summary)).toBeVisible();
 
         navigation.pathname = "/metrics";
+        navigation.query = "tab=flow";
         rendered.rerender(view());
         expect(screen.getByText("Proposed context:")).toHaveTextContent("Flow");
         expect(screen.getByText("Committed scope:")).toHaveTextContent("Organization");
         expect(client.streamMessage).toHaveBeenCalledOnce();
+        await waitFor(() =>
+            expect(screen.getByRole("link", { name: "Ask Dev workspace" })).toHaveAttribute(
+                "href",
+                "/dev",
+            ),
+        );
 
         navigation.pathname = "/dev";
         rendered.rerender(view(true));
         expect(screen.getByRole("region", { name: "Ask Dev workspace" })).toBeVisible();
         expect(screen.getByText(answer.direct_summary)).toBeVisible();
         expect(screen.queryByRole("button", { name: "Open Ask Dev" })).not.toBeInTheDocument();
+        const returnLink = screen.getByRole("link", { name: "Return to Ask Dev window" });
+        await waitFor(() => expect(returnLink).toHaveAttribute("href", "/metrics?tab=flow"));
+
+        returnLink.addEventListener("click", (event) => event.preventDefault(), { once: true });
+        fireEvent.click(returnLink);
+        navigation.pathname = "/metrics";
+        rendered.rerender(view());
+
+        expect(screen.getByRole("region", { name: "Ask Dev" })).toBeVisible();
+        expect(screen.getByText(answer.direct_summary)).toBeVisible();
         expect(client.streamMessage).toHaveBeenCalledOnce();
     });
 

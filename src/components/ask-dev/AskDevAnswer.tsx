@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { CTA_LABELS } from "@/lib/design/cta";
-import type { DevAnswer, DevEvidenceExpansion, DevEvidenceRef } from "@/lib/dev/generated";
+import type {
+    DevAnswer,
+    DevEvidenceExpansion,
+    DevEvidenceRef,
+    DevScope,
+} from "@/lib/dev/generated";
 import { formatMetricValue, formatNumber, formatPercent, formatTimestamp } from "@/lib/formatters";
 
 import { useAskDev } from "./AskDevProvider";
@@ -14,27 +19,45 @@ function safeExcerpt(value: string | null | undefined): string | null {
     return value.replace(/^UNTRUSTED_DATA\r?\n/u, "").replace(/\r?\nEND_UNTRUSTED_DATA$/u, "");
 }
 
-function EvidenceRow({ answerId, evidence }: { answerId: string; evidence: DevEvidenceRef }) {
-    const { expandEvidence } = useAskDev();
-    const [expansion, setExpansion] = useState<DevEvidenceExpansion | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+function validityScopeLabel(scope: DevScope | null | undefined): string | null {
+    if (!scope) return null;
+    const namedEntity = scope.entity_refs?.find(
+        (entity) => entity.entity_type === scope.direct_scope,
+    );
+    if (namedEntity) return namedEntity.display_label;
+    if (scope.direct_scope === "organization") return "Organization";
+    const count =
+        scope.direct_scope === "repository"
+            ? (scope.repositories?.length ?? 0)
+            : (scope.entity_refs?.filter((entity) => entity.entity_type === scope.direct_scope)
+                  .length ?? 0);
+    const label = scope.direct_scope.replaceAll("_", " ");
+    return count > 0 ? `${count} ${label}${count === 1 ? "" : "s"}` : label;
+}
+
+function EvidenceRow({
+    anchorId,
+    error,
+    evidence,
+    expansion,
+    loading,
+    openExpansion,
+}: {
+    anchorId: string;
+    error: string | null;
+    evidence: DevEvidenceRef;
+    expansion: DevEvidenceExpansion | null;
+    loading: boolean;
+    openExpansion: () => Promise<void>;
+}) {
     const internalPath = evidence.link?.internal_path;
 
-    const openExpansion = async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            setExpansion(await expandEvidence(evidence.evidence_ref_id, answerId));
-        } catch (caught) {
-            setError(caught instanceof Error ? caught.message : "Evidence detail is unavailable.");
-        } finally {
-            setLoading(false);
-        }
-    };
-
     return (
-        <div className="space-y-2 border-l-2 border-(--border) pl-3">
+        <div
+            id={anchorId}
+            tabIndex={-1}
+            className="scroll-mt-6 space-y-2 border-l-2 border-(--border) pl-3 outline-none focus-visible:border-(--accent)"
+        >
             <div className="flex flex-wrap items-start justify-between gap-2">
                 <div className="flex min-w-0 flex-col gap-1">
                     <span className="font-medium text-(--text-primary)">
@@ -93,10 +116,127 @@ function EvidenceRow({ answerId, evidence }: { answerId: string; evidence: DevEv
 }
 
 export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
-    const { selectProposedEntity, submitAnswerFeedback, submitQuestion } = useAskDev();
+    const { expandEvidence, selectProposedEntity, submitAnswerFeedback, submitQuestion } =
+        useAskDev();
     const [feedback, setFeedback] = useState<"helpful" | "not_helpful" | "saving" | null>(null);
     const [feedbackError, setFeedbackError] = useState<string | null>(null);
+    const [evidenceExpansions, setEvidenceExpansions] = useState<
+        Readonly<Record<string, DevEvidenceExpansion>>
+    >({});
+    const [evidenceErrors, setEvidenceErrors] = useState<Readonly<Record<string, string>>>({});
+    const [loadingEvidenceIds, setLoadingEvidenceIds] = useState<ReadonlySet<string>>(
+        () => new Set(),
+    );
+    const [openMetricIds, setOpenMetricIds] = useState<ReadonlySet<string>>(() => new Set());
     const scopeResolution = answer.resolved_scope;
+    const evidenceById = useMemo(
+        () =>
+            new Map(
+                (answer.evidence ?? []).map((evidence) => [evidence.evidence_ref_id, evidence]),
+            ),
+        [answer.evidence],
+    );
+    const evidencePositionById = useMemo(
+        () =>
+            new Map(
+                (answer.evidence ?? []).map((evidence, index) => [evidence.evidence_ref_id, index]),
+            ),
+        [answer.evidence],
+    );
+    const metricPositionById = useMemo(
+        () => new Map((answer.metrics ?? []).map((metric, index) => [metric.metric_ref_id, index])),
+        [answer.metrics],
+    );
+
+    const focusDetail = (anchorId: string) => {
+        requestAnimationFrame(() => {
+            document.getElementById(anchorId)?.focus({ preventScroll: false });
+        });
+    };
+
+    const openEvidenceDetail = async (evidenceRefId: string) => {
+        const position = evidencePositionById.get(evidenceRefId);
+        if (position === undefined || !evidenceById.has(evidenceRefId)) return;
+        const anchorId = `ask-dev-evidence-${position + 1}`;
+        setLoadingEvidenceIds((current) => new Set(current).add(evidenceRefId));
+        setEvidenceErrors((current) => {
+            const next = { ...current };
+            delete next[evidenceRefId];
+            return next;
+        });
+        try {
+            const expansion = await expandEvidence(evidenceRefId, answer.answer_id);
+            setEvidenceExpansions((current) => ({ ...current, [evidenceRefId]: expansion }));
+            focusDetail(anchorId);
+        } catch (caught) {
+            setEvidenceErrors((current) => ({
+                ...current,
+                [evidenceRefId]:
+                    caught instanceof Error ? caught.message : "Evidence detail is unavailable.",
+            }));
+            focusDetail(anchorId);
+        } finally {
+            setLoadingEvidenceIds((current) => {
+                const next = new Set(current);
+                next.delete(evidenceRefId);
+                return next;
+            });
+        }
+    };
+
+    const openMetricDetail = (metricRefId: string) => {
+        const position = metricPositionById.get(metricRefId);
+        if (position === undefined) return;
+        setOpenMetricIds((current) => new Set(current).add(metricRefId));
+        focusDetail(`ask-dev-metric-${position + 1}`);
+    };
+
+    const renderInlineCitations = (
+        evidenceRefIds: readonly string[] = [],
+        metricRefIds: readonly string[] = [],
+        ownerLabel: string,
+    ) => {
+        const knownEvidenceRefs = evidenceRefIds.filter((id) => evidencePositionById.has(id));
+        const knownMetricRefs = metricRefIds.filter((id) => metricPositionById.has(id));
+        if (!knownEvidenceRefs.length && !knownMetricRefs.length) return null;
+
+        return (
+            <span
+                className="ml-2 inline-flex flex-wrap gap-1 align-baseline"
+                aria-label="Citations"
+            >
+                {knownEvidenceRefs.map((evidenceRefId) => {
+                    const position = evidencePositionById.get(evidenceRefId)!;
+                    return (
+                        <button
+                            key={evidenceRefId}
+                            type="button"
+                            onClick={() => void openEvidenceDetail(evidenceRefId)}
+                            disabled={loadingEvidenceIds.has(evidenceRefId)}
+                            aria-label={`Open evidence citation ${position + 1} for ${ownerLabel}`}
+                            className="rounded-(--radius-sm) bg-(--accent)/10 px-1.5 py-0.5 font-mono text-[0.6875rem] font-medium leading-none text-(--accent) hover:bg-(--accent)/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45 disabled:opacity-50"
+                        >
+                            E{position + 1}
+                        </button>
+                    );
+                })}
+                {knownMetricRefs.map((metricRefId) => {
+                    const position = metricPositionById.get(metricRefId)!;
+                    return (
+                        <button
+                            key={metricRefId}
+                            type="button"
+                            onClick={() => openMetricDetail(metricRefId)}
+                            aria-label={`Open metric citation ${position + 1} for ${ownerLabel}`}
+                            className="rounded-(--radius-sm) bg-(--accent-ai)/10 px-1.5 py-0.5 font-mono text-[0.6875rem] font-medium leading-none text-(--accent-ai) hover:bg-(--accent-ai)/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-ai)/45"
+                        >
+                            M{position + 1}
+                        </button>
+                    );
+                })}
+            </span>
+        );
+    };
 
     const sendFeedback = async (rating: "helpful" | "not_helpful") => {
         setFeedback("saving");
@@ -221,13 +361,48 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                         {answer.claims.map((claim) => (
                             <li key={claim.claim_id} className="flex gap-3 text-sm leading-6">
                                 <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-(--accent)" />
-                                <span>
-                                    {claim.text}
-                                    <span className="ml-2 text-xs text-(--text-muted)">
-                                        {claim.kind.replaceAll("_", " ")} ·{" "}
-                                        {formatPercent(claim.confidence * 100)} confidence
-                                    </span>
-                                </span>
+                                <div className="min-w-0">
+                                    <p>
+                                        {claim.text}
+                                        {renderInlineCitations(
+                                            claim.evidence_ref_ids,
+                                            claim.metric_ref_ids,
+                                            "claim",
+                                        )}
+                                    </p>
+                                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-(--text-muted)">
+                                        <span>
+                                            {claim.kind.replaceAll("_", " ")} ·{" "}
+                                            {formatPercent(claim.confidence * 100)} confidence
+                                        </span>
+                                        {validityScopeLabel(claim.validity_scope) ? (
+                                            <span>
+                                                Applies to{" "}
+                                                {validityScopeLabel(claim.validity_scope)}
+                                            </span>
+                                        ) : null}
+                                        {claim.flags.stale ? (
+                                            <span className="rounded-(--radius-pill) bg-(--caution)/10 px-2 text-(--caution)">
+                                                Stale
+                                            </span>
+                                        ) : null}
+                                        {claim.flags.uncertain ? (
+                                            <span className="rounded-(--radius-pill) bg-(--caution)/10 px-2 text-(--caution)">
+                                                Uncertain
+                                            </span>
+                                        ) : null}
+                                        {claim.flags.conflicting ? (
+                                            <span className="rounded-(--radius-pill) bg-(--caution)/10 px-2 text-(--caution)">
+                                                Conflicting
+                                            </span>
+                                        ) : null}
+                                        {claim.flags.untrusted_source ? (
+                                            <span className="rounded-(--radius-pill) bg-(--negative)/10 px-2 text-(--negative)">
+                                                Untrusted source
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                </div>
                             </li>
                         ))}
                     </ul>
@@ -260,10 +435,17 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                         {answer.metrics.map((metric) => (
                             <div
                                 key={metric.metric_ref_id}
-                                className="grid gap-1 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-baseline"
+                                id={`ask-dev-metric-${(metricPositionById.get(metric.metric_ref_id) ?? 0) + 1}`}
+                                tabIndex={-1}
+                                className="scroll-mt-6 grid gap-1 py-3 outline-none focus-visible:ring-2 focus-visible:ring-(--accent-ai)/45 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-baseline"
                             >
                                 <dt className="text-sm text-(--text-secondary)">
                                     {metric.label}
+                                    {renderInlineCitations(
+                                        metric.evidence_ref_ids,
+                                        [],
+                                        `metric ${metric.label}`,
+                                    )}
                                     <span className="mt-0.5 block text-xs text-(--text-muted)">
                                         {metric.aggregation} · {metric.freshness} ·{" "}
                                         {formatPercent(metric.coverage * 100)} coverage
@@ -284,7 +466,10 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                                             )}
                                         </span>
                                     ) : null}
-                                    <details className="mt-1 text-xs text-(--text-muted)">
+                                    <details
+                                        open={openMetricIds.has(metric.metric_ref_id) || undefined}
+                                        className="mt-1 text-xs text-(--text-muted)"
+                                    >
                                         <summary className="cursor-pointer font-medium text-(--text-secondary)">
                                             Metric definition
                                         </summary>
@@ -337,8 +522,12 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                         {answer.evidence.map((evidence) => (
                             <EvidenceRow
                                 key={evidence.evidence_ref_id}
+                                anchorId={`ask-dev-evidence-${(evidencePositionById.get(evidence.evidence_ref_id) ?? 0) + 1}`}
+                                error={evidenceErrors[evidence.evidence_ref_id] ?? null}
                                 evidence={evidence}
-                                answerId={answer.answer_id}
+                                expansion={evidenceExpansions[evidence.evidence_ref_id] ?? null}
+                                loading={loadingEvidenceIds.has(evidence.evidence_ref_id)}
+                                openExpansion={() => openEvidenceDetail(evidence.evidence_ref_id)}
                             />
                         ))}
                     </div>

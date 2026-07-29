@@ -35,7 +35,7 @@ export default async function AskDevPage({ searchParams }: AskDevPageProps) {
                         <DataState
                             variant="source-unsupported"
                             title="Ask Dev is not available for this organization"
-                            description="Ask Dev appears here when it is included in the organization plan and enabled for this workspace."
+                            description="Ask Dev appears here only when it is explicitly enabled for this organization and its license."
                             className="w-full rounded-(--radius-lg) border border-(--border) bg-(--surface) p-8"
                         />
                     )}

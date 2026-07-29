@@ -7,7 +7,7 @@ import {
     repositoryCatalogFrom,
     type RepositoryCatalog,
 } from "@/app/(app)/agent-context/context-packet/_components/repositoryCatalog";
-import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
+import { getCurrentOrg } from "@/lib/admin/server";
 import { AcrRuntimeError } from "@/lib/acr/errors";
 import { listAuthorizedRepositories } from "@/lib/acr/service";
 import { fetchOrNull } from "@/lib/fetchOrNull";
@@ -35,18 +35,9 @@ export default async function ContextFabricValidationPage({
     const params = (await searchParams) ?? {};
     const testMode = process.env.DEV_HEALTH_TEST_MODE === "true";
     const org = await fetchOrNull(getCurrentOrg(), "context-fabric-validation/current-org");
-    const entitlements = org?.data?.id
-        ? await fetchOrNull(
-              getOrgEntitlements(org.data.id),
-              "context-fabric-validation/entitlements",
-          )
-        : null;
-    const enabled =
-        entitlements?.data?.is_valid === true &&
-        entitlements.data.features.agent_context_runtime === true;
     let repositoryCatalog: RepositoryCatalog | undefined;
 
-    if (enabled && !testMode && org?.data?.id) {
+    if (!testMode && org?.data?.id) {
         try {
             repositoryCatalog = repositoryCatalogFrom(
                 await listAuthorizedRepositories(org.data.id),
@@ -70,7 +61,7 @@ export default async function ContextFabricValidationPage({
                 </p>
             </header>
             <ContextPacketGatedBody
-                enabled={enabled}
+                enabled
                 controlledState={controlledStateFrom(params.state, testMode)}
                 live={!testMode}
                 repositoryCatalog={repositoryCatalog}

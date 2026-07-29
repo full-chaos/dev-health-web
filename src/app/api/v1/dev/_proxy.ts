@@ -26,6 +26,24 @@ const NO_STORE_HEADERS = {
     Pragma: "no-cache",
 } as const;
 
+const DEV_ROUTE_ORIGIN = "https://ask-dev-route.invalid";
+
+function devUpstreamUrl(upstreamPath: string): URL | null {
+    const route = new URL(upstreamPath, DEV_ROUTE_ORIGIN);
+    if (
+        route.origin !== DEV_ROUTE_ORIGIN ||
+        (route.pathname !== "/api/v1/dev" && !route.pathname.startsWith("/api/v1/dev/"))
+    ) {
+        return null;
+    }
+
+    const upstream = new URL(getBackendUrl());
+    upstream.pathname = route.pathname;
+    upstream.search = route.search;
+    upstream.hash = "";
+    return upstream;
+}
+
 function webError(
     status: number,
     code: string,
@@ -183,7 +201,11 @@ export async function proxyDevRequest(
 
     let upstream: Response;
     try {
-        upstream = await fetch(new URL(upstreamPath, `${getBackendUrl()}/`), {
+        const upstreamUrl = devUpstreamUrl(upstreamPath);
+        if (!upstreamUrl) {
+            return webError(400, "invalid_request", "The Ask Dev request is invalid.");
+        }
+        upstream = await fetch(upstreamUrl, {
             method: request.method,
             headers,
             body: body

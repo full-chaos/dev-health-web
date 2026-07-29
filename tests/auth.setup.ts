@@ -15,13 +15,9 @@ function sessionEmail(session: unknown): string | undefined {
 }
 
 setup("authenticate", async ({ page }) => {
-    const initialSessionResponse = page.waitForResponse(
-        (response) =>
-            new URL(response.url()).pathname === "/api/auth/session" &&
-            response.request().method() === "GET",
-    );
     await page.goto("/auth/signin");
-    expect((await initialSessionResponse).ok()).toBeTruthy();
+    const initialSessionResponse = await page.request.get("/api/auth/session");
+    expect(initialSessionResponse.ok()).toBeTruthy();
 
     await page.getByLabel("Email").fill(TEST_EMAIL);
     await page.getByLabel("Password").fill(TEST_PASSWORD);

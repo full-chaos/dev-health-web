@@ -88,6 +88,19 @@ describe("Ask Dev same-origin proxy", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
+    it("rejects an upstream path that can replace the configured Ops origin", async () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+
+        const response = await proxyDevRequest(
+            request(),
+            "//attacker.example.test/api/v1/dev/conversations",
+        );
+
+        expect(response.status).toBe(400);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it("normalizes upstream errors and never returns unknown upstream fields", async () => {
         vi.stubGlobal(
             "fetch",

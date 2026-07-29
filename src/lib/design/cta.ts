@@ -33,6 +33,8 @@ export const CTA_LABELS = {
     useAskDevScope: "Use this scope",
     /** Open the full Ask Dev investigation workspace. */
     askDevWorkspace: "Ask Dev workspace",
+    /** Return the full Ask Dev workspace to the app-wide permanent window. */
+    returnToAskDevWindow: "Return to Ask Dev window",
     /** Return to the Dev Health cockpit from global brand navigation. */
     devHealthCockpit: "Full Chaos Dev Health cockpit",
     /** Open the evidence trail behind a signal / metric / work unit. */
