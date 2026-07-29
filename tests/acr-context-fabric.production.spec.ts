@@ -161,15 +161,18 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await setAcrMockControls(request);
     });
 
-    test("accepts a device code produced by ACR without a duplicated browser alphabet", async ({
+    test("approves an ACR device code without a duplicated alphabet or repository hint", async ({
         page,
     }, testInfo) => {
         await setEntitlementScenario(page.request, "provisioned");
-        const previewBodies: unknown[] = [];
+        const approvalBodies: unknown[] = [];
         await page.route("**/api/acr/device", async (route) => {
-            previewBodies.push(route.request().postDataJSON());
+            const body = route.request().postDataJSON();
+            approvalBodies.push(body);
             await route.fulfill({
-                body: JSON.stringify({ repositoryHints: ["full-chaos/dev-health-acr"] }),
+                body: JSON.stringify(
+                    body.action === "approve" ? { status: "approved" } : { repositoryHints: [] },
+                ),
                 contentType: "application/json",
                 status: 200,
             });
@@ -186,11 +189,22 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await page.getByRole("button", { name: "Preview request" }).click();
 
         await expect(page.getByRole("heading", { name: "Review device access" })).toBeVisible();
-        expect(previewBodies).toEqual([{ action: "preview", user_code: "EP23TUGG" }]);
+        await expect(page.getByLabel("full-chaos/dev-health-acr")).toBeChecked();
         await page.screenshot({
             path: testInfo.outputPath("device-approval-valid-code.png"),
             fullPage: true,
         });
+        await page.getByRole("button", { name: "Confirm" }).click();
+
+        await expect(page.getByRole("heading", { name: "Approval complete" })).toBeVisible();
+        expect(approvalBodies).toEqual([
+            { action: "preview", user_code: "EP23TUGG" },
+            {
+                action: "approve",
+                repository_scopes: ["full-chaos/dev-health-acr"],
+                user_code: "EP23TUGG",
+            },
+        ]);
     });
 
     test("shows one current Context Fabric destination for a provisioned organization at every viewport", async ({

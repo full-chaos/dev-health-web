@@ -69,23 +69,44 @@ describe("DeviceApprovalForm", () => {
         );
     });
 
-    it("Given a preview with no available repositories, when rendered, then prevents an unbounded approval request", async () => {
+    it("Given a preview with no repository preference, when confirming, then approves from the authorized catalog", async () => {
         const fetchMock = vi
             .fn()
             .mockResolvedValueOnce(
                 new Response(JSON.stringify({ repositoryHints: [] }), { status: 200 }),
+            )
+            .mockResolvedValueOnce(
+                new Response(JSON.stringify({ status: "approved" }), { status: 200 }),
             );
         vi.stubGlobal("fetch", fetchMock);
 
-        render(<DeviceApprovalForm repositories={["full-chaos/platform"]} />);
+        render(
+            <DeviceApprovalForm repositories={["full-chaos/dev-health", "full-chaos/platform"]} />,
+        );
         fireEvent.change(screen.getByLabelText("Verification code"), {
-            target: { value: "ABCD2345" },
+            target: { value: "EP23TUGG" },
         });
         fireEvent.click(screen.getByRole("button", { name: "Preview request" }));
 
-        await screen.findByText("No authorized repositories match this request.");
-        expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
-        expect(fetchMock).toHaveBeenCalledTimes(1);
+        await screen.findByRole("heading", { name: "Review device access" });
+        expect(screen.getByLabelText("full-chaos/dev-health")).toBeChecked();
+        expect(screen.getByLabelText("full-chaos/platform")).toBeChecked();
+
+        fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+        await screen.findByRole("heading", { name: "Approval complete" });
+        expect(fetchMock).toHaveBeenNthCalledWith(
+            2,
+            "/api/acr/device",
+            expect.objectContaining({
+                body: JSON.stringify({
+                    action: "approve",
+                    repository_scopes: ["full-chaos/dev-health", "full-chaos/platform"],
+                    user_code: "EP23TUGG",
+                }),
+                method: "POST",
+            }),
+        );
     });
 
     it("Given a malformed eight-character code, when ACR rejects it, then shows the rejection", async () => {

@@ -54,6 +54,14 @@ function errorState(response: Response): ApprovalState {
     return "pending";
 }
 
+function repositoriesForHints(
+    repositories: readonly string[],
+    hints: readonly string[],
+): readonly string[] {
+    if (hints.length === 0) return repositories;
+    return repositories.filter((repository) => hints.includes(repository));
+}
+
 export function DeviceApprovalForm({
     initialState = "pending",
     repositories,
@@ -66,7 +74,7 @@ export function DeviceApprovalForm({
     const [hints, setHints] = useState<readonly string[]>([]);
     const descriptionId = useId();
     const stateMessage = stateCopy(state);
-    const availableRepositories = repositories.filter((repository) => hints.includes(repository));
+    const availableRepositories = repositoriesForHints(repositories, hints);
 
     function toggleRepository(repository: string): void {
         setSelected((current) =>
@@ -89,9 +97,7 @@ export function DeviceApprovalForm({
             const result = await response.json();
             if (response.ok && result.repositoryHints) {
                 setHints(result.repositoryHints);
-                const available = repositories.filter((repo) =>
-                    result.repositoryHints.includes(repo),
-                );
+                const available = repositoriesForHints(repositories, result.repositoryHints);
                 setSelected(available);
                 setState("review");
                 return;
