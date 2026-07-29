@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-namespace */
-// Generated from full-chaos/dev-health-ops b745d56118585710f1c3da80d5a6eb3c17374c06. Do not edit.
+// Generated from full-chaos/dev-health-ops 11167458d781063670c95b832071b72d4543b5a7. Do not edit.
 export namespace DevAnswerContract {
     export type AnswerId = string;
     export type AsOf = string;

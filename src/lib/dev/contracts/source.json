@@ -1,6 +1,6 @@
 {
   "schema_version": "ask_dev_web_contract_source.v1",
-  "source_commit": "b745d56118585710f1c3da80d5a6eb3c17374c06",
+  "source_commit": "11167458d781063670c95b832071b72d4543b5a7",
   "files": [
     {
       "path": "examples/negative/dev_answer.v1.invalid_complete_state.json",
