@@ -1,5 +1,6 @@
 import { request } from "./_request";
 import type {
+    LLMBudgetResponse,
     LLMSettingsResponse,
     LLMSettingsStatusResponse,
     LLMSettingsUpsert,
@@ -34,4 +35,10 @@ export const llmSettingsApi = {
     // rather than blocking the UI.
     status: (token?: string, orgId?: string) =>
         request<LLMSettingsStatusResponse>("/llm-settings/status", {}, token, orgId),
+
+    // Enforceable calendar-month organization ceiling. This is intentionally
+    // separate from the ClickHouse spend-summary endpoint: active reservations
+    // participate in admission before provider calls complete.
+    budget: (token?: string, orgId?: string) =>
+        request<LLMBudgetResponse>("/llm-settings/budget", {}, token, orgId),
 };

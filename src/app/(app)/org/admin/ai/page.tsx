@@ -5,6 +5,7 @@ import { AskDevAdminPanel } from "@/components/admin/ask-dev/AskDevAdminPanel";
 import {
     getLLMSettings,
     getLLMSettingsStatus,
+    getLLMBudget,
     upsertLLMSettings,
     deleteLLMSettings,
     getLLMSpendSummary,
@@ -31,6 +32,7 @@ export default function ByoLlmAdminPage() {
             />
             <ByoLlmSettings
                 loadSettingsAction={getLLMSettings}
+                loadBudgetAction={getLLMBudget}
                 loadStatusAction={getLLMSettingsStatus}
                 saveSettingsAction={upsertLLMSettings}
                 removeSettingsAction={deleteLLMSettings}

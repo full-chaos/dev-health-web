@@ -759,6 +759,11 @@ export interface LLMSettingsUpsert {
     api_key?: string | null;
     base_url?: string | null;
     concurrency?: number | null;
+    /**
+     * Calendar-month organization hard cap in integer micro-USD. Omit to
+     * preserve the existing budget; zero is an explicit hard stop.
+     */
+    budget_limit_micro_usd?: number | null;
 }
 
 /**
@@ -770,6 +775,31 @@ export interface LLMSettingsActionResult<T> {
     data?: T;
     error?: string;
     status?: number;
+}
+
+// ---- BYO LLM Organization Budget (CHAOS-3238) ----
+
+export type LLMBudgetReason =
+    | "available"
+    | "budget_not_configured"
+    | "pricing_unavailable"
+    | "usage_unavailable"
+    | "budget_exhausted";
+
+/**
+ * GET /admin/llm-settings/budget response. Monetary values use integer
+ * micro-USD so the browser never treats provider spend as binary floats.
+ */
+export interface LLMBudgetResponse {
+    used_micro_usd: number | null;
+    limit_micro_usd: number | null;
+    remaining_micro_usd: number | null;
+    window: "calendar_month_utc";
+    reset_at: string;
+    enforcement_available: boolean;
+    reason: LLMBudgetReason;
+    maximum_limit_micro_usd: number;
+    pricing_version: string | null;
 }
 
 // ---- BYO LLM Spend Summary (CHAOS-2564) ----
