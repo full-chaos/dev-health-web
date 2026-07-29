@@ -854,6 +854,79 @@ export interface LLMSettingsStatusResponse {
     reason_code: LLMSettingsStatusReasonCode;
     last_fallback_at: string | null;
 }
+
+// ---- Ask Dev administration (CHAOS-3217) ----
+
+export type AskDevEntitlementState =
+    "enabled" | "not_entitled" | "globally_disabled" | "org_disabled" | "unavailable";
+
+export type AskDevAdminReadiness =
+    | "ready"
+    | "unsupported_model"
+    | "missing_credentials"
+    | "disabled"
+    | "degraded"
+    | "stale_readiness";
+
+export type AskDevFallbackPolicy = "fail_closed" | "platform";
+export type AskDevRetentionDays = 0 | 30;
+
+export interface AskDevAdminSettings {
+    retention_days: AskDevRetentionDays;
+    fallback_policy: AskDevFallbackPolicy;
+    emergency_disabled: boolean;
+}
+
+export interface AskDevAdminSettingsPatch {
+    retention_days?: AskDevRetentionDays;
+    fallback_policy?: AskDevFallbackPolicy;
+    emergency_disabled?: boolean;
+}
+
+export interface AskDevRequestLimits {
+    active_runs_per_user: number;
+    active_runs_per_organization: number;
+    requests_per_user_per_15_minutes: number;
+    requests_per_organization_per_hour: number;
+}
+
+export interface AskDevAdminResponse {
+    schema_version: string;
+    entitlement_state: AskDevEntitlementState;
+    ask_dev_enabled: boolean;
+    chat_window_available: boolean;
+    full_page_available: boolean;
+    effective_provider_label: string | null;
+    effective_model_label: string | null;
+    provider_source: "platform" | "byo" | null;
+    readiness: AskDevAdminReadiness;
+    readiness_checked_at: string | null;
+    readiness_version: string | null;
+    administrator_safe_failure_reason: string | null;
+    settings: AskDevAdminSettings;
+    retention_options: AskDevRetentionDays[];
+    fallback_options: AskDevFallbackPolicy[];
+    request_limits: AskDevRequestLimits;
+    no_training_by_default: boolean;
+}
+
+export interface AskDevAdminUsageResponse {
+    schema_version: string;
+    use_case: "ask_dev";
+    since: string;
+    through: string;
+    request_count: number;
+    run_count: number;
+    completed_runs: number;
+    failed_runs: number;
+    degraded_runs: number;
+    input_tokens: number;
+    output_tokens: number;
+    estimated_cost_microusd: number | null;
+    failure_rate: number;
+    degraded_rate: number;
+    readiness: AskDevAdminReadiness;
+}
 // ---- Provider types ----
 
 export type Provider = "github" | "gitlab" | "jira" | "linear" | "launchdarkly" | "pagerduty";

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { AskDevMetricSurfaceTrigger } from "@/components/ask-dev/AskDevMetricSurfaceTrigger";
 import { BackLink } from "@/components/shared/BackLink";
 
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
@@ -102,6 +103,15 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                                 </p>
                             </div>
                             <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em]">
+                                <AskDevMetricSurfaceTrigger
+                                    filters={filters}
+                                    routeId="investment"
+                                    suggestedQuestionIds={[
+                                        "observed_change",
+                                        "remaining_work",
+                                        "data_trust",
+                                    ]}
+                                />
                                 <Link
                                     href={buildExploreUrl({
                                         metric: "throughput",

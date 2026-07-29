@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AskDevMetricSurfaceTrigger } from "@/components/ask-dev/AskDevMetricSurfaceTrigger";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { FilterBar } from "@/components/filters/FilterBar";
@@ -164,7 +165,18 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                                 Open a metric to investigate.
                             </p>
                         </div>
-                        <BackLink href={withFilterParam("/", filters, activeRole)} />
+                        <div className="flex flex-wrap items-center gap-3">
+                            <AskDevMetricSurfaceTrigger
+                                filters={filters}
+                                routeId="flow_metrics"
+                                suggestedQuestionIds={[
+                                    "delivery_status",
+                                    "observed_change",
+                                    "metric_definition",
+                                ]}
+                            />
+                            <BackLink href={withFilterParam("/", filters, activeRole)} />
+                        </div>
                     </header>
 
                     <GlobalContextBar filters={filters} />

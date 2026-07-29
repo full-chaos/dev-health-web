@@ -1,4 +1,5 @@
 import { ContextStrip } from "@/components/navigation/ContextStrip";
+import { AskDevMetricSurfaceTrigger } from "@/components/ask-dev/AskDevMetricSurfaceTrigger";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
@@ -308,6 +309,12 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                                     commit-time rollups to show where attention is being split. It
                                     does not collect IDE, keystroke, prompt, or session telemetry.
                                 </p>
+                                <AskDevMetricSurfaceTrigger
+                                    className="mt-6"
+                                    filters={filters}
+                                    routeId="cognitive_load"
+                                    suggestedQuestionIds={["observed_change", "data_trust"]}
+                                />
                             </div>
                             <div className="border-t border-(--card-stroke) bg-(--card-60) p-8 lg:border-l lg:border-t-0">
                                 <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">

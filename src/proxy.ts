@@ -287,6 +287,8 @@ async function handleRequest(request: NextRequest) {
             !pathname.startsWith("/api/auth") &&
             !pathname.startsWith("/api/acr") &&
             !pathname.startsWith("/api/agent-context") &&
+            pathname !== "/api/v1/dev" &&
+            !pathname.startsWith("/api/v1/dev/") &&
             !pathname.startsWith("/api/v1/llm-proxy"));
 
     if (!shouldProxy) {

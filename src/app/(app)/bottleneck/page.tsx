@@ -10,6 +10,7 @@
 
 import Link from "next/link";
 
+import { AskDevMetricSurfaceTrigger } from "@/components/ask-dev/AskDevMetricSurfaceTrigger";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -131,12 +132,23 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
                                 Where work is piling up and review is slowing delivery.
                             </p>
                         </div>
-                        <Link
-                            href={withFilterParam("/", filters, activeRole)}
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-                        >
-                            {CTA_LABELS.backToCockpit}
-                        </Link>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <AskDevMetricSurfaceTrigger
+                                filters={filters}
+                                routeId="bottlenecks"
+                                suggestedQuestionIds={[
+                                    "delivery_status",
+                                    "remaining_work",
+                                    "observed_change",
+                                ]}
+                            />
+                            <Link
+                                href={withFilterParam("/", filters, activeRole)}
+                                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                            >
+                                {CTA_LABELS.backToCockpit}
+                            </Link>
+                        </div>
                     </header>
 
                     <FilterBar view="work" />

@@ -287,6 +287,32 @@ integrity check, but it is not release evidence. The quality gate requires
 stream changes require a new contract version and the PRD/TRD change-control
 process; do not patch generated TypeScript or vendored JSON by hand.
 
+### Ask Dev browser and surface ownership
+
+The authenticated app layout owns one `AskDevProvider` for both interaction
+surfaces. The persistent app-shell window and `/dev` consume that provider's
+conversation ID, committed scope, transcript, stream state, answer, and
+retention choice. Expanding or minimizing changes presentation only; it must not
+create a second conversation or submit a second run. A page change may update
+the visible proposed context, but the provider commits a scope only when the
+user submits a question.
+
+Browser requests use the same-origin `/api/v1/dev/**` handlers. Those handlers read
+the authenticated session token on the server and forward it to Ops; access and
+provider credentials are never serialized into client state. Mutations require
+a same-origin request, responses are `private, no-store`, and the client validates
+every SSE event and terminal `dev_answer.v1` before rendering. The structured
+answer renderer is shared by the window and full-page workspace so evidence,
+metrics, warnings, status, freshness, conflicts, and feedback cannot drift by
+surface.
+
+Contextual launchers pass only IDs from the approved route, entity, filter, and
+suggested-question registries. Opening a launcher focuses the window and shows
+proposed context; it does not submit a question, scrape the DOM, or send page
+copy. Context Fabric Validation is a separate superuser route at
+`/superadmin/context-fabric/validation` and is intentionally excluded from the
+customer window.
+
 ## Key Files Quick Reference
 
 | Path                                       | Description                                |

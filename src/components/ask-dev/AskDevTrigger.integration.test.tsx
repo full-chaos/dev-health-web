@@ -1,0 +1,414 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+import type { DevApiClient } from "@/lib/dev/client";
+import type { DevAnswer, DevConversation } from "@/lib/dev/generated";
+import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { encodeFilter } from "@/lib/filters/encode";
+import { fingerprintAskDevFilter } from "@/lib/dev/contextualEntryPoints";
+
+import { AskDevProvider } from "./AskDevProvider";
+import { AskDevTrigger } from "./AskDevTrigger";
+import { AskDevWorkspace } from "./AskDevWorkspace";
+
+const navigation = vi.hoisted(() => ({
+    pathname: "/issues/CHAOS-3216",
+    filter: null as string | null,
+    query: "",
+    replace: vi.fn(),
+}));
+vi.mock("next/navigation", () => ({
+    usePathname: () => navigation.pathname,
+    useRouter: () => ({ replace: navigation.replace }),
+    useSearchParams: () =>
+        new URLSearchParams(
+            navigation.query || (navigation.filter ? { f: navigation.filter } : {}),
+        ),
+}));
+
+const answer = {
+    answer_id: "answer-1",
+    conversation_id: "conversation-1",
+    direct_summary: "The evidence suggests work remains.",
+    status: "complete",
+    claims: [],
+    evidence: [],
+    metrics: [],
+    warnings: [],
+} as unknown as DevAnswer;
+
+function makeClient(): DevApiClient {
+    const conversation = {
+        conversation_id: "conversation-1",
+        current_scope: {
+            schema_version: "dev_scope.v1",
+            organization_id: "org-1",
+            direct_scope: "issue",
+            repositories: [],
+            entity_refs: [],
+            team_ids: [],
+            time_range: {
+                start: "2026-06-29T00:00:00Z",
+                end: "2026-07-29T00:00:00Z",
+                timezone: "UTC",
+            },
+        },
+        created_at: "2026-07-29T00:00:00Z",
+        message_count: 0,
+        retention_days: 30,
+        schema_version: "dev_conversation.v1",
+        state: "active",
+        title: "Remaining work",
+        updated_at: "2026-07-29T00:00:00Z",
+    } as DevConversation;
+
+    return {
+        getCapabilities: vi.fn().mockResolvedValue({
+            schema_version: "dev_capabilities.v1",
+            ask_dev: true,
+            can_read: true,
+            readiness: "ready",
+        }),
+        listConversations: vi.fn().mockResolvedValue({ items: [], next_cursor: null }),
+        createConversation: vi.fn().mockResolvedValue(conversation),
+        getConversation: vi.fn().mockResolvedValue(conversation),
+        getConversationTranscript: vi.fn().mockResolvedValue({
+            conversation_id: "conversation-1",
+            items: [],
+            next_cursor: null,
+            schema_version: "dev_conversation_transcript.v1",
+        }),
+        renameConversation: vi.fn(),
+        deleteConversation: vi.fn(),
+        streamMessage: vi.fn().mockResolvedValue(answer),
+        expandEvidence: vi.fn(),
+        submitFeedback: vi.fn(),
+    };
+}
+
+const issueContext = {
+    routeId: "issue_detail" as const,
+    entityRefs: [
+        {
+            entity_type: "issue" as const,
+            entity_id: "CHAOS-3216",
+            display_label: "CHAOS-3216",
+        },
+    ],
+    suggestedQuestionIds: ["remaining_work" as const, "data_trust" as const],
+};
+
+const approvedSurfaceCases = [
+    {
+        name: "flow metrics",
+        context: {
+            routeId: "flow_metrics" as const,
+            entityRefs: [],
+            filterFingerprint: "filter-v1-00000001",
+        },
+        label: "Flow metrics · current filters",
+    },
+    {
+        name: "investment",
+        context: {
+            routeId: "investment" as const,
+            entityRefs: [],
+            filterFingerprint: "filter-v1-00000002",
+        },
+        label: "Investment · current filters",
+    },
+    {
+        name: "complexity",
+        context: {
+            routeId: "complexity" as const,
+            entityRefs: [
+                {
+                    entity_type: "repository" as const,
+                    entity_id: "repo-1",
+                    display_label: "Selected repository",
+                },
+            ],
+            filterFingerprint: "filter-v1-00000003",
+        },
+        label: "Complexity · Selected repository",
+    },
+    {
+        name: "cognitive load",
+        context: {
+            routeId: "cognitive_load" as const,
+            entityRefs: [],
+            filterFingerprint: "filter-v1-00000004",
+        },
+        label: "Cognitive Load · current filters",
+    },
+    {
+        name: "bottlenecks",
+        context: {
+            routeId: "bottlenecks" as const,
+            entityRefs: [],
+            filterFingerprint: "filter-v1-00000005",
+        },
+        label: "Bottlenecks · current filters",
+    },
+    {
+        name: "Work Graph issue selection",
+        context: {
+            routeId: "work_graph" as const,
+            entityRefs: [
+                {
+                    entity_type: "issue" as const,
+                    entity_id: "ISS-1",
+                    display_label: "Selected issue",
+                },
+            ],
+        },
+        label: "Work Graph · Selected issue",
+    },
+    {
+        name: "repository detail",
+        context: {
+            routeId: "repository_detail" as const,
+            entityRefs: [
+                {
+                    entity_type: "repository" as const,
+                    entity_id: "repo-1",
+                    display_label: "Selected repository",
+                },
+            ],
+        },
+        label: "Repository · Selected repository",
+    },
+    {
+        name: "work-unit detail",
+        context: {
+            routeId: "work_unit_detail" as const,
+            entityRefs: [
+                {
+                    entity_type: "work_unit" as const,
+                    entity_id: "work-unit-1",
+                    display_label: "Selected work unit",
+                },
+            ],
+        },
+        label: "Work unit · Selected work unit",
+    },
+    {
+        name: "data health",
+        context: {
+            routeId: "data_health" as const,
+            entityRefs: [],
+        },
+        label: "Data health",
+    },
+] as const;
+
+describe("Ask Dev contextual handoff", () => {
+    beforeAll(() => {
+        Element.prototype.scrollIntoView = vi.fn();
+    });
+
+    beforeEach(() => {
+        navigation.pathname = "/issues/CHAOS-3216";
+        navigation.filter = null;
+        navigation.query = "";
+        navigation.replace.mockClear();
+    });
+
+    it.each(approvedSurfaceCases)(
+        "opens $name with typed proposed scope and never auto-submits",
+        async ({ context, label }) => {
+            const user = userEvent.setup();
+            const client = makeClient();
+            render(
+                <AskDevProvider client={client} contextualEntrypointsEnabled orgId="org-1">
+                    <AskDevTrigger context={context} />
+                </AskDevProvider>,
+            );
+
+            await user.click(screen.getByRole("button", { name: "Ask Dev about this" }));
+
+            expect(screen.getByText("Proposed context:")).toHaveTextContent(label);
+            expect(client.createConversation).not.toHaveBeenCalled();
+            expect(client.streamMessage).not.toHaveBeenCalled();
+        },
+    );
+
+    it("shows typed proposed scope, sends nothing on open, and preserves it in /dev", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        const view = (workspace = false) => (
+            <AskDevProvider client={client} contextualEntrypointsEnabled orgId="org-1">
+                {workspace ? (
+                    <AskDevWorkspace />
+                ) : (
+                    <>
+                        <p>Private rendered page prose must never become context.</p>
+                        <AskDevTrigger context={issueContext} />
+                    </>
+                )}
+            </AskDevProvider>
+        );
+        const rendered = render(view());
+
+        await user.click(screen.getByRole("button", { name: "Ask Dev about this" }));
+
+        expect(screen.getByRole("region", { name: "Ask Dev" })).toHaveFocus();
+        expect(screen.getByText("Proposed context:")).toHaveTextContent("Issue · CHAOS-3216");
+        expect(
+            screen.getByRole("button", {
+                name: "What work appears to remain in this scope?",
+            }),
+        ).toBeInTheDocument();
+        expect(client.createConversation).not.toHaveBeenCalled();
+        expect(client.streamMessage).not.toHaveBeenCalled();
+
+        navigation.pathname = "/dev";
+        rendered.rerender(view(true));
+        expect(screen.getByText("Proposed context:")).toHaveTextContent("Issue · CHAOS-3216");
+        expect(client.createConversation).not.toHaveBeenCalled();
+        expect(client.streamMessage).not.toHaveBeenCalled();
+
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What remains?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        expect(client.createConversation).toHaveBeenCalledWith(
+            expect.objectContaining({
+                current_scope: expect.objectContaining({
+                    direct_scope: "issue",
+                    entity_refs: issueContext.entityRefs,
+                    surface_context: {
+                        route_id: "issue_detail",
+                        entity_refs: issueContext.entityRefs,
+                    },
+                }),
+            }),
+        );
+        expect(JSON.stringify(vi.mocked(client.createConversation).mock.calls)).not.toContain(
+            "Private rendered page prose",
+        );
+        expect(JSON.stringify(vi.mocked(client.streamMessage).mock.calls)).not.toContain(
+            "Private rendered page prose",
+        );
+    });
+
+    it("hides only contextual actions when their independent gate is off", async () => {
+        const client = makeClient();
+        render(
+            <AskDevProvider client={client} contextualEntrypointsEnabled={false} orgId="org-1">
+                <AskDevTrigger context={issueContext} />
+            </AskDevProvider>,
+        );
+
+        expect(
+            screen.queryByRole("button", { name: "Ask Dev about this" }),
+        ).not.toBeInTheDocument();
+        expect(await screen.findByRole("button", { name: "Open Ask Dev" })).toBeInTheDocument();
+        expect(client.createConversation).not.toHaveBeenCalled();
+        expect(client.streamMessage).not.toHaveBeenCalled();
+    });
+
+    it("lets the user remove proposed context before asking", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        render(
+            <AskDevProvider client={client} contextualEntrypointsEnabled orgId="org-1">
+                <AskDevTrigger context={issueContext} />
+            </AskDevProvider>,
+        );
+
+        await user.click(screen.getByRole("button", { name: "Ask Dev about this" }));
+        expect(screen.getByText("Proposed context:")).toHaveTextContent("Issue · CHAOS-3216");
+
+        await user.click(screen.getByRole("button", { name: "Clear context" }));
+
+        expect(screen.getByText("Proposed context:")).toHaveTextContent("Organization");
+        expect(client.createConversation).not.toHaveBeenCalled();
+        expect(client.streamMessage).not.toHaveBeenCalled();
+    });
+
+    it("does not turn deferred supporting-evidence routes into direct context", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        navigation.pathname = "/deployments/deployment-1";
+        navigation.filter = encodeFilter({
+            ...defaultMetricFilter,
+            scope: { level: "repo", ids: ["private-repository"] },
+        });
+
+        render(
+            <AskDevProvider client={client} contextualEntrypointsEnabled orgId="org-1">
+                <p>Deployment supporting evidence</p>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        expect(screen.getByText("Proposed context:")).toHaveTextContent("Organization");
+        expect(screen.getByText("Direct scope:")).toHaveTextContent("organization");
+        expect(client.createConversation).not.toHaveBeenCalled();
+        expect(client.streamMessage).not.toHaveBeenCalled();
+
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What changed?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        expect(client.createConversation).toHaveBeenCalledWith(
+            expect.objectContaining({
+                current_scope: expect.objectContaining({
+                    direct_scope: "organization",
+                    entity_refs: [],
+                    repositories: [],
+                    team_ids: [],
+                    surface_context: null,
+                }),
+            }),
+        );
+        expect(JSON.stringify(vi.mocked(client.createConversation).mock.calls)).not.toContain(
+            "private-repository",
+        );
+    });
+
+    it("commits approved legacy filters consistently with the visible proposal", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        const filters = {
+            ...defaultMetricFilter,
+            time: { ...defaultMetricFilter.time, range_days: 14 },
+            scope: { level: "team" as const, ids: ["team-a"] },
+        };
+        navigation.pathname = "/diagnose";
+        navigation.query = "scope_type=team&scope_id=team-a&range_days=14";
+
+        render(
+            <AskDevProvider client={client} contextualEntrypointsEnabled orgId="org-1">
+                <AskDevTrigger
+                    context={{
+                        routeId: "diagnose_overview",
+                        entityRefs: [],
+                        filterFingerprint: fingerprintAskDevFilter(encodeFilter(filters)),
+                    }}
+                />
+            </AskDevProvider>,
+        );
+
+        await user.click(screen.getByRole("button", { name: "Ask Dev about this" }));
+        expect(screen.getByText("Teams:")).toHaveTextContent("1 selected");
+        expect(client.createConversation).not.toHaveBeenCalled();
+        expect(client.streamMessage).not.toHaveBeenCalled();
+
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What changed?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        expect(client.createConversation).toHaveBeenCalledWith(
+            expect.objectContaining({
+                current_scope: expect.objectContaining({
+                    direct_scope: "organization",
+                    team_ids: ["team-a"],
+                    surface_context: expect.objectContaining({
+                        route_id: "diagnose_overview",
+                        filter_fingerprint: fingerprintAskDevFilter(encodeFilter(filters)),
+                    }),
+                }),
+            }),
+        );
+    });
+});

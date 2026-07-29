@@ -10,6 +10,7 @@
  */
 
 import { ContextStrip } from "@/components/navigation/ContextStrip";
+import { AskDevMetricSurfaceTrigger } from "@/components/ask-dev/AskDevMetricSurfaceTrigger";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
@@ -196,7 +197,14 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
                                 Every score traces to cyclomatic complexity and churn evidence.
                             </p>
                         </div>
-                        <BackLink href={withFilterParam("/", filters, activeRole)} />
+                        <div className="flex flex-wrap items-center gap-3">
+                            <AskDevMetricSurfaceTrigger
+                                filters={filters}
+                                routeId="complexity"
+                                suggestedQuestionIds={["observed_change", "data_trust"]}
+                            />
+                            <BackLink href={withFilterParam("/", filters, activeRole)} />
+                        </div>
                     </header>
 
                     <FilterBar view="complexity" />

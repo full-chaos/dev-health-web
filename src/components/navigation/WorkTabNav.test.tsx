@@ -16,7 +16,7 @@ describe("Work lens retirement", () => {
             "Complexity",
             "Cognitive Load",
             "Bottlenecks",
-            "Context Fabric",
+            "Ask Dev",
             "People",
             "Code",
         ]);

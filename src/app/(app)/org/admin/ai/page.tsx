@@ -1,12 +1,17 @@
 import { ByoLlmSettings } from "@/components/admin/llm/ByoLlmSettings";
 import { ByoLlmErrorStates } from "@/components/admin/llm/ByoLlmErrorStates";
 import { ByoLlmSpendSummary } from "@/components/admin/llm/ByoLlmSpendSummary";
+import { AskDevAdminPanel } from "@/components/admin/ask-dev/AskDevAdminPanel";
 import {
     getLLMSettings,
     getLLMSettingsStatus,
     upsertLLMSettings,
     deleteLLMSettings,
     getLLMSpendSummary,
+    getAskDevAdmin,
+    getAskDevUsage,
+    updateAskDevAdminSettings,
+    runAskDevReadiness,
 } from "@/lib/admin/server";
 
 // Bring Your Own LLM (BYO-LLM) org-admin settings page. Sits inside
@@ -18,6 +23,12 @@ import {
 export default function ByoLlmAdminPage() {
     return (
         <div className="flex flex-col gap-8">
+            <AskDevAdminPanel
+                loadAction={getAskDevAdmin}
+                loadUsageAction={getAskDevUsage}
+                saveAction={updateAskDevAdminSettings}
+                readinessAction={runAskDevReadiness}
+            />
             <ByoLlmSettings
                 loadSettingsAction={getLLMSettings}
                 loadStatusAction={getLLMSettingsStatus}

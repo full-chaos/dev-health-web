@@ -142,7 +142,7 @@ describe("CHAOS-3017 executable CI boundaries", () => {
                     "        env:\n            ASK_DEV_OPS_ROOT: dev-health-ops",
                 );
                 expect(workflowJob).toContain("repository: full-chaos/dev-health-ops");
-                expect(workflowJob).toContain("ref: 11167458d781063670c95b832071b72d4543b5a7");
+                expect(workflowJob).toContain("ref: 4e5494dbd62d7a8c989f4f844f6a73c10be8970c");
                 expect(workflowJob).toContain("path: dev-health-ops");
             }
             for (const [name, implementation] of Object.entries(packageScripts)) {

@@ -75,7 +75,7 @@ describe("navArea.children — locked child navigation", () => {
                 "Complexity",
                 "Cognitive Load",
                 "Bottlenecks",
-                "Context Fabric",
+                "Ask Dev",
                 "People",
                 "Code",
             ],
@@ -139,6 +139,7 @@ describe("selectedAreaIdForPathname", () => {
         { pathname: "/people/abc", expected: "diagnose" },
         { pathname: "/landscape", expected: "diagnose" },
         { pathname: "/explore", expected: "diagnose" },
+        { pathname: "/dev", expected: "diagnose" },
         { pathname: "/agent-context/context-packet", expected: "diagnose" },
         { pathname: "/plan", expected: "plan" },
         { pathname: "/plan/delivery-forecast", expected: "plan" },
@@ -204,11 +205,7 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
         { areaId: "diagnose", pathname: "/metrics", childId: "flow" },
         { areaId: "diagnose", pathname: "/investment", childId: "investment" },
         { areaId: "diagnose", pathname: "/landscape", childId: "landscape" },
-        {
-            areaId: "diagnose",
-            pathname: "/agent-context/context-packet",
-            childId: "context-packet",
-        },
+        { areaId: "diagnose", pathname: "/dev", childId: "ask-dev" },
         {
             areaId: "plan",
             pathname: "/plan",
@@ -305,11 +302,12 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/diagnose/work-graph")).toBe("Work Graph");
         expect(navTitleForPathname("/metrics")).toBe("Flow");
         expect(navTitleForPathname("/landscape")).toBe("Landscape");
-        expect(navTitleForPathname("/agent-context/context-packet")).toBe("Context Fabric");
-        expect(navTrailForPathname("/agent-context/context-packet")).toEqual([
+        expect(navTitleForPathname("/dev")).toBe("Ask Dev");
+        expect(navTrailForPathname("/dev")).toEqual([
             { label: "Diagnose", href: "/diagnose" },
-            { label: "Context Fabric" },
+            { label: "Ask Dev" },
         ]);
+        expect(navTitleForPathname("/agent-context/context-packet")).toBe("Diagnose");
         expect(navTitleForPathname("/plan")).toBe("Overview");
         expect(navTitleForPathname("/plan/delivery-forecast")).toBe("Overview");
         expect(navTitleForPathname("/plan/capacity")).toBe("Completion Forecast");
