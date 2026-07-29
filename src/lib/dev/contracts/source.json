@@ -1,6 +1,6 @@
 {
   "schema_version": "ask_dev_web_contract_source.v1",
-  "source_commit": "4e5494dbd62d7a8c989f4f844f6a73c10be8970c",
+  "source_commit": "f8f541c35f971b19e26ce8c14f9b52d0801cc8df",
   "files": [
     {
       "path": "examples/negative/dev_answer.v1.invalid_complete_state.json",
@@ -192,7 +192,7 @@
     },
     {
       "path": "manifest.json",
-      "sha256": "af62af9578ef54b61856cf14f51314501874141f6a595cd2f8eb60f75de87bc1"
+      "sha256": "2274b580514ca74ca62523f10f7a2462240bad19d6b53ccdcd8593ac8c78f151"
     },
     {
       "path": "schemas/dev_answer.v1.schema.json",
@@ -220,7 +220,7 @@
     },
     {
       "path": "schemas/dev_error.v1.schema.json",
-      "sha256": "5b03876710519d0d9d8f5b8d1ece96fc2779adfbb633b856b53b066dafc7e113"
+      "sha256": "e68386046905c634c118564dd3d74447fc55387c57d84a6a79ce903f0a4c3907"
     },
     {
       "path": "schemas/dev_evidence_expansion.v1.schema.json",
@@ -252,7 +252,7 @@
     },
     {
       "path": "schemas/dev_stream_event.v1.schema.json",
-      "sha256": "4d408655d00b24238321568f55d4be784e47da9a1280d66ece264c5b8219a32d"
+      "sha256": "1cd0ad8794e65be66b741fe0b5cc4d3d347785f23a1c8c6cfaf127c51dfcf37e"
     },
     {
       "path": "schemas/dev_tool_request.v1.schema.json",
@@ -260,7 +260,7 @@
     },
     {
       "path": "schemas/dev_tool_result.v1.schema.json",
-      "sha256": "78442857bc57cff75709502eccdfde909c2676fb63a0944f0e717306e72e4045"
+      "sha256": "4a50d7e3853ddb25c6eb0b2141d6156000547aed28244f9659e4ee18b4a9b13e"
     }
   ]
 }

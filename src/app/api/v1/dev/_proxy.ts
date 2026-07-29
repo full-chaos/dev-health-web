@@ -13,6 +13,7 @@ export type DevWebError = Readonly<{
     safe_message: string;
     retryable: boolean;
     request_id?: string;
+    limit_reset_at?: string;
 }>;
 
 type ProxyOptions = Readonly<{
@@ -50,6 +51,7 @@ function webError(
     safeMessage: string,
     retryable = false,
     requestId?: string,
+    limitResetAt?: string,
 ): Response {
     const error: DevWebError = {
         schema_version: "dev_web_error.v1",
@@ -57,6 +59,7 @@ function webError(
         safe_message: safeMessage,
         retryable,
         ...(requestId ? { request_id: requestId } : {}),
+        ...(limitResetAt ? { limit_reset_at: limitResetAt } : {}),
     };
     return Response.json(error, { status, headers: NO_STORE_HEADERS });
 }
@@ -134,7 +137,7 @@ async function boundedResponseBody(response: Response, limit: number): Promise<U
 
 function safeUpstreamError(
     payload: unknown,
-): Pick<DevWebError, "code" | "safe_message" | "retryable" | "request_id"> {
+): Pick<DevWebError, "code" | "safe_message" | "retryable" | "request_id" | "limit_reset_at"> {
     if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
         return {
             code: "upstream_error",
@@ -151,6 +154,9 @@ function safeUpstreamError(
                 : "Ask Dev is temporarily unavailable.",
         retryable: value.retryable === true,
         ...(typeof value.request_id === "string" ? { request_id: value.request_id } : {}),
+        ...(typeof value.limit_reset_at === "string"
+            ? { limit_reset_at: value.limit_reset_at }
+            : {}),
     };
 }
 
@@ -236,6 +242,7 @@ export async function proxyDevRequest(
             safe.safe_message,
             safe.retryable,
             safe.request_id,
+            safe.limit_reset_at,
         );
         const retryAfter = upstream.headers.get("retry-after");
         if (retryAfter) response.headers.set("Retry-After", retryAfter);

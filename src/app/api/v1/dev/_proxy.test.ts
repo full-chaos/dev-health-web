@@ -110,7 +110,8 @@ describe("Ask Dev same-origin proxy", () => {
                         schema_version: "dev_error.v1",
                         code: "rate_limited",
                         safe_message: "Try later.",
-                        retryable: true,
+                        retryable: false,
+                        limit_reset_at: "2026-08-01T00:00:00Z",
                         provider_secret: "must-not-leak",
                     },
                     { status: 429, headers: { "Retry-After": "30" } },
@@ -126,7 +127,8 @@ describe("Ask Dev same-origin proxy", () => {
             schema_version: "dev_web_error.v1",
             code: "rate_limited",
             safe_message: "Try later.",
-            retryable: true,
+            retryable: false,
+            limit_reset_at: "2026-08-01T00:00:00Z",
         });
     });
 

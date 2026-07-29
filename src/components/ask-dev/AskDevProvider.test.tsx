@@ -363,6 +363,50 @@ describe("AskDevProvider permanent window", () => {
         expect(streamMessage.mock.calls[2]?.[1]).not.toHaveProperty("retry_of_run_id");
     });
 
+    it.each([
+        { code: "rate_limited", workspace: false, surface: "permanent window" },
+        { code: "cost_limit_reached", workspace: true, surface: "/dev workspace" },
+    ])(
+        "shows reset guidance without an immediate retry on the $surface",
+        async ({ code, workspace }) => {
+            const user = userEvent.setup();
+            const client = makeClient();
+            vi.mocked(client.streamMessage).mockRejectedValue({
+                detail: {
+                    schema_version: "dev_web_error.v1",
+                    code,
+                    safe_message: "This organization has reached its platform allowance.",
+                    retryable: false,
+                    limit_reset_at: "2026-08-01T00:00:00Z",
+                },
+            });
+            navigation.pathname = workspace ? "/dev" : "/dashboard";
+            render(
+                <AskDevProvider client={client} orgId="org-1">
+                    {workspace ? <AskDevWorkspace /> : <main>Dashboard</main>}
+                </AskDevProvider>,
+            );
+
+            if (!workspace) {
+                await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+            }
+            await user.type(
+                await screen.findByRole("textbox", { name: "Ask Dev question" }),
+                "What changed?",
+            );
+            await user.click(screen.getByRole("button", { name: "Ask" }));
+
+            expect(
+                await screen.findByText("This organization has reached its platform allowance."),
+            ).toBeVisible();
+            expect(screen.getByText(/retrying before aug 1, 2026/i)).toBeVisible();
+            expect(
+                screen.getByText(/new platform-backed runs resume at that reset/i),
+            ).toBeVisible();
+            expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+        },
+    );
+
     it("renames and deletes retained history through the supported client methods", async () => {
         const user = userEvent.setup();
         const client = makeClient();

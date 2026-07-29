@@ -26,6 +26,7 @@ export type DevWebError = Readonly<{
     safe_message: string;
     retryable: boolean;
     request_id?: string;
+    limit_reset_at?: string;
 }>;
 
 export class DevApiError extends Error {
@@ -108,6 +109,7 @@ function fromStreamError(event: DevStreamEvent): DevWebError | null {
         safe_message: event.error.safe_message,
         retryable: event.error.retryable,
         request_id: event.error.request_id,
+        ...(event.error.limit_reset_at ? { limit_reset_at: event.error.limit_reset_at } : {}),
     };
 }
 
@@ -377,7 +379,9 @@ function isWebError(value: unknown): value is DevWebError {
         candidate.schema_version === "dev_web_error.v1" &&
         typeof candidate.code === "string" &&
         typeof candidate.safe_message === "string" &&
-        typeof candidate.retryable === "boolean"
+        typeof candidate.retryable === "boolean" &&
+        (!Object.hasOwn(candidate, "limit_reset_at") ||
+            typeof candidate.limit_reset_at === "string")
     );
 }
 
@@ -391,6 +395,9 @@ async function responseError(response: Response): Promise<DevApiError> {
                 safe_message: value.safe_message,
                 retryable: value.retryable,
                 ...(typeof value.request_id === "string" ? { request_id: value.request_id } : {}),
+                ...(typeof value.limit_reset_at === "string"
+                    ? { limit_reset_at: value.limit_reset_at }
+                    : {}),
             });
         }
     } catch {

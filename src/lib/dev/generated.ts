@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-namespace */
-// Generated from full-chaos/dev-health-ops 4e5494dbd62d7a8c989f4f844f6a73c10be8970c. Do not edit.
+// Generated from full-chaos/dev-health-ops f8f541c35f971b19e26ce8c14f9b52d0801cc8df. Do not edit.
 export namespace DevAnswerContract {
     export type AnswerId = string;
     export type AsOf = string;
@@ -7380,6 +7380,7 @@ export namespace DevErrorContract {
         | "answer_validation_failed"
         | "cancelled"
         | "internal_error";
+    export type LimitResetAt = string | null;
     /**
      * @maxItems 5
      */
@@ -7397,6 +7398,7 @@ export namespace DevErrorContract {
 
     export interface DevError {
         code: Code;
+        limit_reset_at?: LimitResetAt;
         remediation?: Remediation;
         request_id: RequestId;
         retryable: Retryable;
@@ -15093,6 +15095,7 @@ export namespace DevStreamEventContract {
         | "answer_validation_failed"
         | "cancelled"
         | "internal_error";
+    export type LimitResetAt = string | null;
     /**
      * @maxItems 5
      */
@@ -15307,6 +15310,7 @@ export namespace DevStreamEventContract {
     }
     export interface DevError {
         code: Code;
+        limit_reset_at?: LimitResetAt;
         remediation?: Remediation;
         request_id: RequestId;
         retryable: Retryable;
@@ -16259,6 +16263,7 @@ export namespace DevToolResultContract {
         | "answer_validation_failed"
         | "cancelled"
         | "internal_error";
+    export type LimitResetAt = string | null;
     /**
      * @maxItems 5
      */
@@ -18627,6 +18632,7 @@ export namespace DevToolResultContract {
     }
     export interface DevError {
         code: Code;
+        limit_reset_at?: LimitResetAt;
         remediation?: Remediation;
         request_id: RequestId;
         retryable: Retryable;

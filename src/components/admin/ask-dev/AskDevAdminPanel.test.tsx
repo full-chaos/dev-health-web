@@ -25,6 +25,8 @@ const adminResponse: AskDevAdminResponse = {
         retention_days: 30,
         fallback_policy: "fail_closed",
         emergency_disabled: false,
+        platform_monthly_request_limit: 1_000,
+        platform_monthly_cost_limit_microusd: 100_000_000,
     },
     retention_options: [0, 30],
     fallback_options: ["fail_closed", "platform"],
@@ -33,6 +35,12 @@ const adminResponse: AskDevAdminResponse = {
         active_runs_per_organization: 5,
         requests_per_user_per_15_minutes: 20,
         requests_per_organization_per_hour: 100,
+    },
+    platform_allowance_bounds: {
+        request_minimum: 100,
+        request_maximum: 5_000,
+        cost_minimum_microusd: 10_000_000,
+        cost_maximum_microusd: 500_000_000,
     },
     no_training_by_default: true,
 };
@@ -53,6 +61,17 @@ const usageResponse: AskDevAdminUsageResponse = {
     failure_rate: 0.1,
     degraded_rate: 0.1,
     readiness: "ready",
+    platform_allowance: {
+        window_start: "2026-07-01T00:00:00Z",
+        reset_at: "2026-08-01T00:00:00Z",
+        request_limit: 1_000,
+        request_used: 825,
+        request_remaining: 175,
+        cost_limit_microusd: 100_000_000,
+        cost_used_microusd: 82_500_000,
+        cost_remaining_microusd: 17_500_000,
+        warning: "eighty_percent",
+    },
 };
 
 describe("AskDevAdminPanel", () => {
@@ -91,12 +110,45 @@ describe("AskDevAdminPanel", () => {
         expect(screen.getByText("10")).toBeInTheDocument();
         expect(screen.getByText("1,500")).toBeInTheDocument();
         expect(screen.getByText("$1.25")).toBeInTheDocument();
+        expect(screen.getByText("825 of 1,000")).toBeInTheDocument();
+        expect(screen.getByText("$82.50 of $100.00")).toBeInTheDocument();
+        expect(screen.getByText(/80% of the platform allowance/i)).toBeInTheDocument();
+        expect(screen.getByText(/resets aug 1, 2026/i)).toBeInTheDocument();
+        expect(screen.getAllByText(/window and \/dev share this allowance/i)).not.toHaveLength(0);
+        expect(screen.getAllByText(/platform fallback also consumes it/i)).not.toHaveLength(0);
         expect(screen.getByText(/not used for model training by default/i)).toBeInTheDocument();
         expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/base url/i)).not.toBeInTheDocument();
     });
 
-    it("submits only the approved retention, fallback, and emergency policy", async () => {
+    it("submits the approved conversation policy and bounded platform allowance", async () => {
+        const refreshedUsage = {
+            ...usageResponse,
+            platform_allowance: {
+                ...usageResponse.platform_allowance,
+                request_limit: 750,
+                request_remaining: 0,
+                cost_limit_microusd: 75_000_000,
+                cost_remaining_microusd: 0,
+                warning: "exhausted",
+            },
+        } satisfies AskDevAdminUsageResponse;
+        loadUsageAction
+            .mockResolvedValueOnce({ data: usageResponse })
+            .mockResolvedValueOnce({ data: refreshedUsage });
+        saveAction.mockResolvedValueOnce({
+            data: {
+                ...adminResponse,
+                settings: {
+                    ...adminResponse.settings,
+                    retention_days: 0,
+                    fallback_policy: "platform",
+                    emergency_disabled: true,
+                    platform_monthly_request_limit: 750,
+                    platform_monthly_cost_limit_microusd: 75_000_000,
+                },
+            } satisfies AskDevAdminResponse,
+        });
         renderPanel();
 
         await screen.findByRole("heading", { name: "Ask Dev" });
@@ -107,6 +159,14 @@ describe("AskDevAdminPanel", () => {
             target: { value: "platform" },
         });
         fireEvent.click(screen.getByLabelText("Emergency disable Ask Dev"));
+        const requestLimit = screen.getByLabelText("Monthly platform run limit");
+        const costLimit = screen.getByLabelText("Monthly platform cost cap (USD)");
+        expect(requestLimit).toHaveAttribute("min", "100");
+        expect(requestLimit).toHaveAttribute("max", "5000");
+        expect(costLimit).toHaveAttribute("min", "10");
+        expect(costLimit).toHaveAttribute("max", "500");
+        fireEvent.change(requestLimit, { target: { value: "750" } });
+        fireEvent.change(costLimit, { target: { value: "75" } });
         fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
         await waitFor(() =>
@@ -114,10 +174,40 @@ describe("AskDevAdminPanel", () => {
                 retention_days: 0,
                 fallback_policy: "platform",
                 emergency_disabled: true,
+                platform_monthly_request_limit: 750,
+                platform_monthly_cost_limit_microusd: 75_000_000,
             }),
         );
+        await waitFor(() => expect(loadUsageAction).toHaveBeenCalledTimes(2));
+        expect(screen.getByText("825 of 750")).toBeInTheDocument();
+        expect(screen.getByText("$82.50 of $75.00")).toBeInTheDocument();
+        expect(screen.getByText(/platform allowance is exhausted/i)).toBeInTheDocument();
         expect(screen.queryByRole("option", { name: /7 days/i })).not.toBeInTheDocument();
         expect(screen.queryByRole("option", { name: /90 days/i })).not.toBeInTheDocument();
+    });
+
+    it("clearly reports an exhausted platform allowance and its reset", async () => {
+        loadUsageAction.mockResolvedValue({
+            data: {
+                ...usageResponse,
+                platform_allowance: {
+                    ...usageResponse.platform_allowance,
+                    request_used: 1_000,
+                    request_remaining: 0,
+                    cost_used_microusd: 100_000_000,
+                    cost_remaining_microusd: 0,
+                    warning: "exhausted",
+                },
+            } satisfies AskDevAdminUsageResponse,
+        });
+
+        renderPanel();
+
+        expect(await screen.findByText(/platform allowance is exhausted/i)).toBeInTheDocument();
+        expect(screen.getByText(/new platform-backed runs remain blocked/i)).toBeInTheDocument();
+        expect(
+            screen.getByText(/existing conversation history remains available/i),
+        ).toBeInTheDocument();
     });
 
     it("runs the non-sensitive readiness action explicitly", async () => {
