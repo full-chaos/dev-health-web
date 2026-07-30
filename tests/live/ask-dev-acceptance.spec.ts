@@ -165,7 +165,8 @@ test("permanent contextual window continues one grounded run in /dev without dup
     });
 
     await page.goto("/data-health");
-    await page.getByRole("button", { name: "Ask Dev about this" }).click();
+    await expect(page.getByRole("button", { name: "Ask Dev about this" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Open Ask Dev" }).click();
 
     const permanentWindow = page.getByRole("region", { name: "Ask Dev" });
     await expect(permanentWindow).toBeVisible();

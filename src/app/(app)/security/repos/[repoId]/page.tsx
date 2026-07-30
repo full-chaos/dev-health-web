@@ -6,7 +6,7 @@ import {
 } from "@/lib/filters/security";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { SecurityAlertQueue } from "@/components/security/SecurityAlertQueue";
-import { AskDevTrigger } from "@/components/ask-dev/AskDevTrigger";
+import { AskDevContextRegistration } from "@/components/ask-dev/AskDevContextRegistration";
 
 type RepoSecurityPageProps = {
     params: Promise<{ repoId: string }>;
@@ -41,7 +41,7 @@ export default async function RepoSecurityPage({ params, searchParams }: RepoSec
                                 Security alerts scoped to this repository.
                             </p>
                         </div>
-                        <AskDevTrigger
+                        <AskDevContextRegistration
                             context={{
                                 routeId: "repository_detail",
                                 entityRefs: [

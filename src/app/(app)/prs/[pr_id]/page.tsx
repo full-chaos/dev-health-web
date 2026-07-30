@@ -1,5 +1,5 @@
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
-import { AskDevTrigger } from "@/components/ask-dev/AskDevTrigger";
+import { AskDevContextRegistration } from "@/components/ask-dev/AskDevContextRegistration";
 import { BackLink } from "@/components/shared/BackLink";
 import { CommitHashDisclosure } from "@/components/shared/CommitHashDisclosure";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
@@ -299,7 +299,7 @@ function PrHeader({
             </div>
             <div className="flex flex-wrap items-center gap-3">
                 {context ? (
-                    <AskDevTrigger
+                    <AskDevContextRegistration
                         context={{
                             routeId: "pull_request_detail",
                             entityRefs: [

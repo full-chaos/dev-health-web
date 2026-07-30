@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { AskDevTrigger } from "@/components/ask-dev/AskDevTrigger";
+import { AskDevContextRegistration } from "@/components/ask-dev/AskDevContextRegistration";
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -56,7 +56,7 @@ export default async function IssueDetailPage({ params }: IssueDetailPageProps) 
                             </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-3">
-                            <AskDevTrigger
+                            <AskDevContextRegistration
                                 context={{
                                     routeId: "issue_detail",
                                     entityRefs: [

@@ -1,11 +1,11 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-const askDevTriggerMock = vi.hoisted(() => vi.fn());
-vi.mock("@/components/ask-dev/AskDevTrigger", () => ({
-    AskDevTrigger: ({ context }: { context: unknown }) => {
-        askDevTriggerMock(context);
-        return <button type="button">Ask Dev about this</button>;
+const askDevContextRegistrationMock = vi.hoisted(() => vi.fn());
+vi.mock("@/components/ask-dev/AskDevContextRegistration", () => ({
+    AskDevContextRegistration: ({ context }: { context: unknown }) => {
+        askDevContextRegistrationMock(context);
+        return null;
     },
 }));
 vi.mock("@/components/navigation/PrimaryNav", () => ({ PrimaryNav: () => null }));
@@ -23,8 +23,10 @@ describe("repository detail Ask Dev entry point", () => {
         });
         render(ui);
 
-        expect(screen.getByRole("button", { name: "Ask Dev about this" })).toBeInTheDocument();
-        expect(askDevTriggerMock).toHaveBeenCalledWith({
+        expect(
+            screen.queryByRole("button", { name: "Ask Dev about this" }),
+        ).not.toBeInTheDocument();
+        expect(askDevContextRegistrationMock).toHaveBeenCalledWith({
             routeId: "repository_detail",
             entityRefs: [
                 {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { AskDevTrigger } from "@/components/ask-dev/AskDevTrigger";
+import { AskDevContextRegistration } from "@/components/ask-dev/AskDevContextRegistration";
 import { formatNumber } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
 import {
@@ -191,7 +191,7 @@ export function InvestmentView({
                 </div>
                 <div className="flex items-center gap-2">
                     {data.selectedUnit ? (
-                        <AskDevTrigger
+                        <AskDevContextRegistration
                             context={{
                                 routeId: "work_unit_detail",
                                 entityRefs: [

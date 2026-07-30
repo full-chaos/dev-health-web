@@ -13,7 +13,7 @@ const {
     mockUseOrgId,
     mockReplace,
     mockUsePathname,
-    mockAskDevTrigger,
+    mockAskDevContextRegistration,
 } = vi.hoisted(() => ({
     mockUseSearchParams: vi.fn(() => new URLSearchParams()),
     mockUseWorkGraphEdges: vi.fn(),
@@ -22,13 +22,13 @@ const {
     mockUseOrgId: vi.fn(() => "org-1"),
     mockReplace: vi.fn(),
     mockUsePathname: vi.fn(() => "/diagnose/work-graph"),
-    mockAskDevTrigger: vi.fn(),
+    mockAskDevContextRegistration: vi.fn(),
 }));
 
-vi.mock("@/components/ask-dev/AskDevTrigger", () => ({
-    AskDevTrigger: ({ context }: { context: unknown }) => {
-        mockAskDevTrigger(context);
-        return <button type="button">Ask Dev about this</button>;
+vi.mock("@/components/ask-dev/AskDevContextRegistration", () => ({
+    AskDevContextRegistration: ({ context }: { context: unknown }) => {
+        mockAskDevContextRegistration(context);
+        return null;
     },
 }));
 
@@ -667,7 +667,7 @@ describe("GraphView", () => {
         expect(screen.getByLabelText(/Subcategory/i)).toHaveValue("quality.bugfix");
         expect(screen.getByText(/Quality \/ Quality \/ Bugfix/i)).toBeInTheDocument();
         expect(screen.getByText("src/app/page.tsx")).toBeInTheDocument();
-        expect(mockAskDevTrigger).not.toHaveBeenCalled();
+        expect(mockAskDevContextRegistration).not.toHaveBeenCalled();
     });
 
     it("offers typed Ask Dev context only for approved Work Graph node selections", () => {
@@ -694,7 +694,7 @@ describe("GraphView", () => {
 
         render(<GraphView filters={filters} />);
 
-        expect(mockAskDevTrigger).toHaveBeenCalledWith({
+        expect(mockAskDevContextRegistration).toHaveBeenCalledWith({
             routeId: "work_graph",
             entityRefs: [
                 {

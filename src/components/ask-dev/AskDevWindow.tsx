@@ -1,8 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 
+import fcLogo from "@/assets/fc-logo.png";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 import { AskDevConversation } from "./AskDevConversation";
@@ -28,15 +30,18 @@ export function AskDevWindow() {
                 ref={launcherRef}
                 type="button"
                 onClick={openPanel}
-                className="fixed bottom-5 right-5 z-50 inline-flex items-center gap-2 rounded-(--radius-pill) border border-(--accent-ai)/35 bg-(--surface-raised) px-4 py-3 font-medium text-(--text-primary) shadow-(--elevation-drawer) transition hover:-translate-y-0.5 hover:border-(--accent-ai)/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-ai)/50"
+                className="fixed bottom-4 right-4 z-50 inline-flex items-center gap-1.5 rounded-(--radius-pill) border border-(--accent-ai)/35 bg-(--surface-raised) px-3 py-2 text-sm font-medium text-(--text-primary) shadow-(--elevation-subtle) transition hover:-translate-y-0.5 hover:border-(--accent-ai)/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-ai)/50"
                 aria-label={CTA_LABELS.openAskDev}
             >
-                <span
-                    className="flex h-7 w-7 items-center justify-center rounded-full bg-(--accent-ai)/15 text-(--accent-ai)"
+                <Image
+                    src={fcLogo}
+                    alt=""
                     aria-hidden="true"
-                >
-                    ✦
-                </span>
+                    width={20}
+                    height={20}
+                    sizes="20px"
+                    className="h-5 w-auto"
+                />
                 <span>Ask Dev</span>
             </button>
         );

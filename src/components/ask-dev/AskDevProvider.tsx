@@ -289,11 +289,16 @@ export function AskDevProvider({
         context: AskDevSurfaceContext;
         scope: DevScope;
         label: string;
+        sourcePathname: string;
     } | null>(null);
-    const proposedContext = surfaceProposal?.context ?? null;
-    const proposedScope = surfaceProposal?.scope ?? routeScope;
+    const activeSurfaceProposal =
+        surfaceProposal && (surfaceProposal.sourcePathname === pathname || pathname === "/dev")
+            ? surfaceProposal
+            : null;
+    const proposedContext = activeSurfaceProposal?.context ?? null;
+    const proposedScope = activeSurfaceProposal?.scope ?? routeScope;
     const proposedScopeLabel =
-        surfaceProposal?.label ??
+        activeSurfaceProposal?.label ??
         (routeScope.surface_context || pathname === "/dev"
             ? (navTitleForPathname(pathname) ?? "Current page")
             : "Organization");
@@ -341,9 +346,10 @@ export function AskDevProvider({
                     surface_context: surfaceContext,
                 },
                 label: askDevSurfaceContextLabel(context),
+                sourcePathname: pathname,
             });
         },
-        [contextualEntrypointsEnabled, routeScope],
+        [contextualEntrypointsEnabled, pathname, routeScope],
     );
 
     const selectProposedEntity = useCallback(

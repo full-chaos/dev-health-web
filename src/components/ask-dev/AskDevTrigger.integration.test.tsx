@@ -9,7 +9,7 @@ import { encodeFilter } from "@/lib/filters/encode";
 import { fingerprintAskDevFilter } from "@/lib/dev/contextualEntryPoints";
 
 import { AskDevProvider } from "./AskDevProvider";
-import { AskDevTrigger } from "./AskDevTrigger";
+import { AskDevContextRegistration } from "./AskDevContextRegistration";
 import { AskDevWorkspace } from "./AskDevWorkspace";
 
 const navigation = vi.hoisted(() => ({
@@ -203,7 +203,7 @@ const approvedSurfaceCases = [
     },
 ] as const;
 
-describe("Ask Dev contextual handoff", () => {
+describe("Ask Dev registered context handoff", () => {
     beforeAll(() => {
         Element.prototype.scrollIntoView = vi.fn();
     });
@@ -222,11 +222,14 @@ describe("Ask Dev contextual handoff", () => {
             const client = makeClient();
             render(
                 <AskDevProvider client={client} contextualEntrypointsEnabled orgId="org-1">
-                    <AskDevTrigger context={context} />
+                    <AskDevContextRegistration context={context} />
                 </AskDevProvider>,
             );
 
-            await user.click(screen.getByRole("button", { name: "Ask Dev about this" }));
+            expect(
+                screen.queryByRole("button", { name: "Ask Dev about this" }),
+            ).not.toBeInTheDocument();
+            await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
 
             expect(screen.getByText("Proposed context:")).toHaveTextContent(label);
             expect(client.createConversation).not.toHaveBeenCalled();
@@ -244,14 +247,14 @@ describe("Ask Dev contextual handoff", () => {
                 ) : (
                     <>
                         <p>Private rendered page prose must never become context.</p>
-                        <AskDevTrigger context={issueContext} />
+                        <AskDevContextRegistration context={issueContext} />
                     </>
                 )}
             </AskDevProvider>
         );
         const rendered = render(view());
 
-        await user.click(screen.getByRole("button", { name: "Ask Dev about this" }));
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
 
         expect(screen.getByRole("region", { name: "Ask Dev" })).toHaveFocus();
         expect(screen.getByText("Proposed context:")).toHaveTextContent("Issue · CHAOS-3216");
@@ -292,18 +295,45 @@ describe("Ask Dev contextual handoff", () => {
         );
     });
 
-    it("hides only contextual actions when their independent gate is off", async () => {
+    it("does not leak registered entity context into an unrelated route", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        const rendered = render(
+            <AskDevProvider client={client} contextualEntrypointsEnabled orgId="org-1">
+                <AskDevContextRegistration context={issueContext} />
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        expect(screen.getByText("Proposed context:")).toHaveTextContent("Issue · CHAOS-3216");
+
+        navigation.pathname = "/metrics";
+        rendered.rerender(
+            <AskDevProvider client={client} contextualEntrypointsEnabled orgId="org-1">
+                <p>Flow metrics</p>
+            </AskDevProvider>,
+        );
+
+        expect(screen.getByText("Proposed context:")).toHaveTextContent("Flow");
+        expect(screen.getByText("Proposed context:")).not.toHaveTextContent("CHAOS-3216");
+        expect(client.createConversation).not.toHaveBeenCalled();
+        expect(client.streamMessage).not.toHaveBeenCalled();
+    });
+
+    it("ignores registered context when contextual entry points are disabled", async () => {
         const client = makeClient();
         render(
             <AskDevProvider client={client} contextualEntrypointsEnabled={false} orgId="org-1">
-                <AskDevTrigger context={issueContext} />
+                <AskDevContextRegistration context={issueContext} />
             </AskDevProvider>,
         );
 
         expect(
             screen.queryByRole("button", { name: "Ask Dev about this" }),
         ).not.toBeInTheDocument();
-        expect(await screen.findByRole("button", { name: "Open Ask Dev" })).toBeInTheDocument();
+        const user = userEvent.setup();
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        expect(screen.getByText("Proposed context:")).toHaveTextContent("Organization");
         expect(client.createConversation).not.toHaveBeenCalled();
         expect(client.streamMessage).not.toHaveBeenCalled();
     });
@@ -313,11 +343,11 @@ describe("Ask Dev contextual handoff", () => {
         const client = makeClient();
         render(
             <AskDevProvider client={client} contextualEntrypointsEnabled orgId="org-1">
-                <AskDevTrigger context={issueContext} />
+                <AskDevContextRegistration context={issueContext} />
             </AskDevProvider>,
         );
 
-        await user.click(screen.getByRole("button", { name: "Ask Dev about this" }));
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
         expect(screen.getByText("Proposed context:")).toHaveTextContent("Issue · CHAOS-3216");
 
         await user.click(screen.getByRole("button", { name: "Clear context" }));
@@ -380,7 +410,7 @@ describe("Ask Dev contextual handoff", () => {
 
         render(
             <AskDevProvider client={client} contextualEntrypointsEnabled orgId="org-1">
-                <AskDevTrigger
+                <AskDevContextRegistration
                     context={{
                         routeId: "diagnose_overview",
                         entityRefs: [],
@@ -390,7 +420,7 @@ describe("Ask Dev contextual handoff", () => {
             </AskDevProvider>,
         );
 
-        await user.click(screen.getByRole("button", { name: "Ask Dev about this" }));
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
         expect(screen.getByText("Teams:")).toHaveTextContent("1 selected");
         expect(client.createConversation).not.toHaveBeenCalled();
         expect(client.streamMessage).not.toHaveBeenCalled();
