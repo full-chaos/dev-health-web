@@ -13,14 +13,16 @@ vi.mock("next/navigation", () => ({
 vi.mock("next/link", () => ({
     default: ({
         href,
+        prefetch,
         children,
         ...props
     }: {
         href: string;
+        prefetch?: boolean;
         children: ReactNode;
         [key: string]: unknown;
     }) => (
-        <a href={href} {...props}>
+        <a href={href} data-prefetch={String(prefetch)} {...props}>
             {children}
         </a>
     ),
@@ -48,6 +50,24 @@ describe("AdminSidebar", () => {
             "aria-current",
             "page",
         );
+    });
+
+    it("does not prefetch every admin surface when the sidebar renders", () => {
+        render(
+            <AdminSidebar
+                isSuperuser
+                features={{
+                    audit_log: true,
+                    ip_allowlist: true,
+                    custom_retention: true,
+                    ask_dev: true,
+                }}
+            />,
+        );
+
+        const navigationLinks = screen.getAllByRole("link");
+        expect(navigationLinks.length).toBeGreaterThan(1);
+        expect(navigationLinks.every((link) => link.dataset.prefetch === "false")).toBe(true);
     });
 
     it("renders superuser mode with platform admin links and hides organization nav", () => {

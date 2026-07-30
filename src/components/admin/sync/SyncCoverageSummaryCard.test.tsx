@@ -8,8 +8,9 @@ import {
 } from "@/lib/admin/__tests__/syncCoverageFixtures";
 
 const mockPush = vi.fn();
+const mockRefresh = vi.fn();
 vi.mock("next/navigation", () => ({
-    useRouter: () => ({ push: mockPush, refresh: vi.fn() }),
+    useRouter: () => ({ push: mockPush, refresh: mockRefresh }),
 }));
 vi.mock("@/lib/admin/server", () => ({
     triggerSync: vi.fn(),
@@ -19,6 +20,7 @@ vi.mock("@/lib/admin/server", () => ({
 
 beforeEach(() => {
     mockPush.mockClear();
+    mockRefresh.mockClear();
 });
 
 describe("SyncCoverageSummaryCard", () => {
@@ -36,19 +38,27 @@ describe("SyncCoverageSummaryCard", () => {
         expect(screen.getByTestId("coverage-summary-loading")).toBeInTheDocument();
     });
 
-    it("renders an explicit error state instead of fabricating a summary", () => {
+    it("keeps retry and backfill recovery available when coverage fails", async () => {
+        const onBackfillAction = vi.fn();
+        const user = userEvent.setup();
         render(
             <SyncCoverageSummaryCard
                 configId="cfg-1"
                 coverage={null}
                 error="Request failed with 500"
                 isActive
-                onBackfillAction={vi.fn()}
+                onBackfillAction={onBackfillAction}
             />,
         );
 
         expect(screen.getByTestId("coverage-summary-error")).toBeInTheDocument();
         expect(screen.getByText("Request failed with 500")).toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Backfill" }));
+        expect(onBackfillAction).toHaveBeenCalledOnce();
+
+        await user.click(screen.getByRole("button", { name: "Retry" }));
+        expect(mockRefresh).toHaveBeenCalledOnce();
     });
 
     it("renders the healthy health badge and key stats, and opens the wizard on Backfill", async () => {
