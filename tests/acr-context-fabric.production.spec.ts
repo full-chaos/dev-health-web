@@ -539,7 +539,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await page.context().clearCookies();
         await signIn(page, "member@example.com");
         await page.goto("/superadmin/context-fabric/validation");
-        await expect(page).toHaveURL(/\/dashboard$/);
+        await expect(page).toHaveURL(/\/dashboard(?:\?|$)/u);
         await expect(page.getByRole("heading", { name: "Context Fabric Validation" })).toHaveCount(
             0,
         );
