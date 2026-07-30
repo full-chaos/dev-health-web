@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { DataHealthAskDevTrigger } from "./_components/DataHealthAskDevTrigger";
 
 export default function DataHealthOverviewPage() {
     return (
@@ -8,9 +7,7 @@ export default function DataHealthOverviewPage() {
             <AdminHeader
                 title="Data Health & Trust"
                 description="Monitor connector freshness, identity coverage, and mapping health."
-            >
-                <DataHealthAskDevTrigger />
-            </AdminHeader>
+            />
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <Link href="/data-health/connectors" className="block">

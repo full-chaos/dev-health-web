@@ -28,7 +28,6 @@ export const CTA_LABELS = {
     /** Record negative feedback on an Ask Dev answer. */
     askDevNotHelpful: "Not helpful",
     /** Open Ask Dev with an approved page or entity context proposed. */
-    askDevAboutThis: "Ask Dev about this",
     /** Use a visible disambiguation candidate for the next explicit question. */
     useAskDevScope: "Use this scope",
     /** Open the full Ask Dev investigation workspace. */

@@ -368,18 +368,13 @@ export function ByoLlmSettings({
         toast.success("BYO-LLM settings removed.");
     };
 
-    const eyebrow = (
-        <p className="text-xs font-semibold uppercase tracking-[0.15em] text-(--ink-muted)">
-            Organization Settings
-        </p>
-    );
-
     if (loading) {
         return (
             <div>
-                {eyebrow}
-                <h1 className="mt-2 font-(--font-display) text-2xl font-bold">AI Setup</h1>
-                <div className="mt-8 py-12 text-center text-(--ink-muted)">Loading AI setup...</div>
+                <h2 className="text-h2 text-(--text-primary)">BYO LLM</h2>
+                <div className="mt-6 py-12 text-center text-(--text-muted)">
+                    Loading BYO LLM settings...
+                </div>
             </div>
         );
     }
@@ -387,8 +382,7 @@ export function ByoLlmSettings({
     if (locked) {
         return (
             <div>
-                {eyebrow}
-                <h1 className="mt-2 mb-6 font-(--font-display) text-2xl font-bold">AI Setup</h1>
+                <h2 className="mb-6 text-h2 text-(--text-primary)">BYO LLM</h2>
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center">
                     <div className="mx-auto max-w-md space-y-4">
                         <p className="text-xs font-semibold uppercase tracking-wider text-(--accent)">
@@ -396,9 +390,7 @@ export function ByoLlmSettings({
                                 ? `${BYO_REQUIRED_TIER_LABEL} Plan Feature`
                                 : "Feature Disabled"}
                         </p>
-                        <h2 className="font-(--font-display) text-2xl text-foreground">
-                            BYO-LLM is locked
-                        </h2>
+                        <h3 className="text-h3 text-foreground">BYO-LLM is locked</h3>
                         <p className="text-sm text-(--ink-muted)">{locked.message}</p>
                         <p className="text-sm text-(--ink-muted)">
                             BYO-LLM requires Team tier or higher. Keys are encrypted with the org
@@ -422,8 +414,7 @@ export function ByoLlmSettings({
         return (
             <div>
                 <header className="mb-8">
-                    {eyebrow}
-                    <h1 className="mt-2 font-(--font-display) text-2xl font-bold">AI Setup</h1>
+                    <h2 className="text-h2 text-(--text-primary)">BYO LLM</h2>
                 </header>
 
                 <div className="rounded-2xl border border-(--negative)/20 bg-(--negative)/10 p-6 text-sm text-(--negative)">
@@ -584,8 +575,7 @@ export function ByoLlmSettings({
         <div>
             <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div>
-                    {eyebrow}
-                    <h1 className="mt-2 font-(--font-display) text-2xl font-bold">AI Setup</h1>
+                    <h2 className="text-h2 text-(--text-primary)">BYO LLM</h2>
                     <p className="mt-1 max-w-2xl text-sm text-(--ink-muted)">
                         Provide your own provider, model, and credentials. Resolution precedence:
                         per-call kill-switch › org settings › platform default.

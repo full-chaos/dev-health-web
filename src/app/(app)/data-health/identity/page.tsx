@@ -1,5 +1,4 @@
 import { IdentityGapsTable } from "../_components/IdentityGapsTable";
-import { DataHealthAskDevTrigger } from "../_components/DataHealthAskDevTrigger";
 
 export default function DataHealthIdentityPage() {
     return (
@@ -14,7 +13,6 @@ export default function DataHealthIdentityPage() {
                         aliases.
                     </p>
                 </div>
-                <DataHealthAskDevTrigger />
             </div>
 
             <IdentityGapsTable />

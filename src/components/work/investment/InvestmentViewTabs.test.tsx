@@ -21,18 +21,20 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta, WorkUnitInvestment } from "@/lib/types";
 import type { UseInvestmentDataResult } from "./useInvestmentData";
 
-const { askDevTriggerMock, useInvestmentDataMock, workUnitAttributionRef } = vi.hoisted(() => ({
-    askDevTriggerMock: vi.fn(),
-    useInvestmentDataMock: vi.fn(),
-    // Holds the workUnitTeamAttributions rows the urql mock should return for the
-    // attribution query (CHAOS-2608). Tests set `.rows`; default empty.
-    workUnitAttributionRef: { rows: [] as unknown[] },
-}));
+const { askDevContextRegistrationMock, useInvestmentDataMock, workUnitAttributionRef } = vi.hoisted(
+    () => ({
+        askDevContextRegistrationMock: vi.fn(),
+        useInvestmentDataMock: vi.fn(),
+        // Holds the workUnitTeamAttributions rows the urql mock should return for the
+        // attribution query (CHAOS-2608). Tests set `.rows`; default empty.
+        workUnitAttributionRef: { rows: [] as unknown[] },
+    }),
+);
 
-vi.mock("@/components/ask-dev/AskDevTrigger", () => ({
-    AskDevTrigger: ({ context }: { context: unknown }) => {
-        askDevTriggerMock(context);
-        return <button type="button">Ask Dev about this</button>;
+vi.mock("@/components/ask-dev/AskDevContextRegistration", () => ({
+    AskDevContextRegistration: ({ context }: { context: unknown }) => {
+        askDevContextRegistrationMock(context);
+        return null;
     },
 }));
 
@@ -157,7 +159,7 @@ const reworkMetric: MetricDelta = {
 describe("InvestmentView — Confidence tab", () => {
     afterEach(() => {
         cleanup();
-        askDevTriggerMock.mockReset();
+        askDevContextRegistrationMock.mockReset();
         useInvestmentDataMock.mockReset();
     });
 
@@ -323,7 +325,7 @@ describe("InvestmentView — Confidence tab", () => {
 describe("InvestmentView — Evidence tab (table-first drilldown)", () => {
     afterEach(() => {
         cleanup();
-        askDevTriggerMock.mockReset();
+        askDevContextRegistrationMock.mockReset();
         useInvestmentDataMock.mockReset();
     });
 
@@ -388,7 +390,7 @@ describe("InvestmentView — Evidence tab (table-first drilldown)", () => {
 
         render(<InvestmentView filters={baseFilters} activeTab="evidence" />);
 
-        expect(askDevTriggerMock).toHaveBeenCalledWith({
+        expect(askDevContextRegistrationMock).toHaveBeenCalledWith({
             routeId: "work_unit_detail",
             entityRefs: [
                 {
@@ -399,7 +401,7 @@ describe("InvestmentView — Evidence tab (table-first drilldown)", () => {
             ],
             suggestedQuestionIds: ["delivery_status", "remaining_work", "data_trust"],
         });
-        expect(JSON.stringify(askDevTriggerMock.mock.calls)).not.toContain(
+        expect(JSON.stringify(askDevContextRegistrationMock.mock.calls)).not.toContain(
             "Rendered page title must not be sent",
         );
     });

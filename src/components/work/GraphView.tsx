@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import { WorkGraphExplorer, WorkGraphLegend } from "@/components/charts/WorkGraphExplorer";
-import { AskDevTrigger } from "@/components/ask-dev/AskDevTrigger";
+import { AskDevContextRegistration } from "@/components/ask-dev/AskDevContextRegistration";
 import { DataState } from "@/components/ui/DataState";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { useWorkGraphEdges, useWorkGraphFlow, useWorkGraphArtifacts } from "@/lib/graphql/hooks";
@@ -1031,7 +1031,7 @@ function NodeDetailPanel({ node, incomingEdges, outgoingEdges, onClose }: NodeDe
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    {askDevContext ? <AskDevTrigger context={askDevContext} /> : null}
+                    {askDevContext ? <AskDevContextRegistration context={askDevContext} /> : null}
                     <button
                         type="button"
                         onClick={onClose}

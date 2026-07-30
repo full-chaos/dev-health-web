@@ -26,6 +26,7 @@ export default async function LicensingDetailPage({ params }: PageProps) {
     const entitlements = entitlementsResult.data;
     const overrides = overridesResult.data;
     const featureFlags = flagsResult.data;
+    const featureCatalogUnavailable = Boolean(flagsResult.error || !featureFlags);
 
     if (!org || !entitlements) {
         notFound();
@@ -43,6 +44,7 @@ export default async function LicensingDetailPage({ params }: PageProps) {
                 entitlements={entitlements}
                 overrides={overrides || []}
                 featureFlags={featureFlags || []}
+                featureCatalogUnavailable={featureCatalogUnavailable}
             />
         </div>
     );

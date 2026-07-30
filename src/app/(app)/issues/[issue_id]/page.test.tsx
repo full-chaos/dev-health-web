@@ -1,13 +1,13 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const askDevTriggerMock = vi.fn();
+const askDevContextRegistrationMock = vi.fn();
 const getFlameMock = vi.fn();
 
-vi.mock("@/components/ask-dev/AskDevTrigger", () => ({
-    AskDevTrigger: ({ context }: { context: unknown }) => {
-        askDevTriggerMock(context);
-        return <button type="button">Ask Dev about this</button>;
+vi.mock("@/components/ask-dev/AskDevContextRegistration", () => ({
+    AskDevContextRegistration: ({ context }: { context: unknown }) => {
+        askDevContextRegistrationMock(context);
+        return null;
     },
 }));
 vi.mock("@/components/charts/FlameDiagram", () => ({ FlameDiagram: () => null }));
@@ -32,7 +32,7 @@ import IssueDetailPage from "./page";
 
 describe("Issue detail Ask Dev entry point", () => {
     beforeEach(() => {
-        askDevTriggerMock.mockReset();
+        askDevContextRegistrationMock.mockReset();
         getFlameMock.mockReset().mockResolvedValue({
             entity: { work_item_id: "CHAOS-3216", title: "Sensitive page title" },
             timeline: { start: "2026-07-01T00:00:00Z", end: "2026-07-29T00:00:00Z" },
@@ -46,8 +46,10 @@ describe("Issue detail Ask Dev entry point", () => {
         });
         render(ui);
 
-        expect(screen.getByRole("button", { name: "Ask Dev about this" })).toBeInTheDocument();
-        expect(askDevTriggerMock).toHaveBeenCalledWith({
+        expect(
+            screen.queryByRole("button", { name: "Ask Dev about this" }),
+        ).not.toBeInTheDocument();
+        expect(askDevContextRegistrationMock).toHaveBeenCalledWith({
             routeId: "issue_detail",
             entityRefs: [
                 {
@@ -58,6 +60,8 @@ describe("Issue detail Ask Dev entry point", () => {
             ],
             suggestedQuestionIds: ["remaining_work", "data_trust"],
         });
-        expect(JSON.stringify(askDevTriggerMock.mock.calls)).not.toContain("Sensitive page title");
+        expect(JSON.stringify(askDevContextRegistrationMock.mock.calls)).not.toContain(
+            "Sensitive page title",
+        );
     });
 });

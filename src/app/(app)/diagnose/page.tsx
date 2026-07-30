@@ -1,5 +1,4 @@
 import { FilterBar } from "@/components/filters/FilterBar";
-import { AskDevMetricSurfaceTrigger } from "@/components/ask-dev/AskDevMetricSurfaceTrigger";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { AreaOverview } from "@/components/navigation/AreaOverview";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
@@ -54,15 +53,6 @@ export default async function DiagnosePage({ searchParams }: DiagnosePageProps) 
                                     cognitive load, bottlenecks, and code from one durable area.
                                 </p>
                             </div>
-                            <AskDevMetricSurfaceTrigger
-                                filters={filters}
-                                routeId="diagnose_overview"
-                                suggestedQuestionIds={[
-                                    "delivery_status",
-                                    "observed_change",
-                                    "data_trust",
-                                ]}
-                            />
                         </div>
                     </header>
 

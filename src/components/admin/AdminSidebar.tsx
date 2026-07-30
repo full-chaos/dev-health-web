@@ -10,7 +10,7 @@ type NavItem = {
     label: string;
     href: string;
     description: string;
-    featureKey?: string;
+    featureKeys?: readonly string[];
 };
 
 const navItems: NavItem[] = [
@@ -61,28 +61,28 @@ const navItems: NavItem[] = [
         label: "Audit Logs",
         href: "/org/admin/audit-logs",
         description: "Access history",
-        featureKey: "audit_log",
+        featureKeys: ["audit_log"],
     },
     {
         id: "ip-allowlist",
         label: "IP Allowlist",
         href: "/org/admin/ip-allowlist",
         description: "Network access",
-        featureKey: "ip_allowlist",
+        featureKeys: ["ip_allowlist"],
     },
     {
         id: "retention",
         label: "Data Retention",
         href: "/org/admin/retention",
         description: "Retention policy",
-        featureKey: "custom_retention",
+        featureKeys: ["custom_retention"],
     },
     {
-        id: "byo-llm",
+        id: "ai-setup",
         label: "AI Setup",
         href: "/org/admin/ai",
         description: "Model provider",
-        featureKey: "byo_llm",
+        featureKeys: ["ask_dev", "byo_llm"],
     },
 ];
 
@@ -107,7 +107,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
         if (isSuperuser && item.id === "organization") {
             return false;
         }
-        if (item.featureKey && features?.[item.featureKey] !== true) {
+        if (item.featureKeys && !item.featureKeys.some((key) => features?.[key] === true)) {
             return false;
         }
         return true;

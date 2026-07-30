@@ -82,6 +82,22 @@ describe("AdminSidebar", () => {
         ).not.toBeInTheDocument();
     });
 
+    it.each([
+        [{ ask_dev: true, byo_llm: false }, true],
+        [{ ask_dev: false, byo_llm: true }, true],
+        [{ ask_dev: true, byo_llm: true }, true],
+        [{ ask_dev: false, byo_llm: false }, false],
+    ] as const)("keeps AI Setup independent for %o", (features, visible) => {
+        render(<AdminSidebar features={features} />);
+
+        const link = screen.queryByRole("link", { name: /ai setupmodel provider/i });
+        if (visible) {
+            expect(link).toHaveAttribute("href", "/org/admin/ai");
+        } else {
+            expect(link).not.toBeInTheDocument();
+        }
+    });
+
     it("keeps mobile navigation collapsed until its keyboard control opens it", async () => {
         const user = userEvent.setup();
         render(<AdminSidebar />);
@@ -110,10 +126,12 @@ describe("AdminSidebar", () => {
         ["/org/admin/users/new", /usersorg members/i],
         ["/org/admin/integrations/github", /providersconnected sources/i],
         ["/org/admin/teams/team-1/edit", /teamsteam ownership/i],
+        ["/org/admin/ai/ask-dev", /ai setupmodel provider/i],
+        ["/org/admin/ai/byo-llm", /ai setupmodel provider/i],
     ])("keeps the parent nav item active for descendant route %s", (route, linkName) => {
         pathname = route;
 
-        render(<AdminSidebar />);
+        render(<AdminSidebar features={{ ask_dev: true, byo_llm: true }} />);
 
         const activeLinks = screen
             .getAllByRole("link")

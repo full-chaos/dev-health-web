@@ -59,7 +59,7 @@ describe("ByoLlmSettings", () => {
         renderForm();
 
         expect(await screen.findByText("Not configured")).toBeInTheDocument();
-        expect(screen.getByRole("heading", { name: "AI Setup" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "BYO LLM", level: 2 })).toBeInTheDocument();
         expect(screen.getByLabelText("Provider")).toBeInTheDocument();
         expect(screen.getByLabelText("API Key")).toBeInTheDocument();
         expect(await screen.findByText("No budget configured")).toBeInTheDocument();
@@ -171,7 +171,7 @@ describe("ByoLlmSettings", () => {
         });
         renderForm();
 
-        await screen.findByRole("heading", { name: "AI Setup" });
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
         expect(screen.getByText("Saved")).toBeInTheDocument();
         expect(screen.getByText("Anthropic")).toBeInTheDocument();
         expect(screen.getByText("claude-3-5-sonnet")).toBeInTheDocument();
@@ -236,7 +236,7 @@ describe("ByoLlmSettings", () => {
         });
         renderForm();
 
-        await screen.findByRole("heading", { name: "AI Setup" });
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
         expect(screen.getByText("gpt-4o")).toBeInTheDocument();
 
         await userEvent.click(screen.getByRole("button", { name: "Edit" }));
@@ -269,7 +269,7 @@ describe("ByoLlmSettings", () => {
         });
         renderForm();
 
-        await screen.findByRole("heading", { name: "AI Setup" });
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
         await userEvent.click(screen.getByRole("button", { name: "Edit" }));
         const modelInput = screen.getByLabelText<HTMLInputElement>("Model");
         await userEvent.clear(modelInput);
@@ -292,7 +292,7 @@ describe("ByoLlmSettings", () => {
         });
         renderForm();
 
-        await screen.findByRole("heading", { name: "AI Setup" });
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
         await userEvent.click(screen.getByRole("button", { name: "Edit" }));
         expect(screen.getByLabelText<HTMLInputElement>("API Key").value).toBe("");
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -356,7 +356,7 @@ describe("ByoLlmSettings", () => {
         });
         renderForm();
 
-        await screen.findByRole("heading", { name: "AI Setup" });
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
         await userEvent.type(screen.getByLabelText("Model"), "gpt-4o");
         await userEvent.type(screen.getByLabelText("API Key"), "sk-secret");
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -378,7 +378,7 @@ describe("ByoLlmSettings", () => {
         mockSave.mockResolvedValue({ data: { provider: "openai" } });
         renderForm();
 
-        await screen.findByRole("heading", { name: "AI Setup" });
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
         const budgetInput = screen.getByLabelText("Monthly organization budget (USD)");
         await userEvent.type(budgetInput, "12.345678");
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -402,7 +402,7 @@ describe("ByoLlmSettings", () => {
         mockSave.mockResolvedValue({ data: { provider: "openai" } });
         renderForm();
 
-        await screen.findByRole("heading", { name: "AI Setup" });
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
 
         const payload = mockSave.mock.calls[0][0];
@@ -426,7 +426,7 @@ describe("ByoLlmSettings", () => {
         });
         renderForm();
 
-        await screen.findByRole("heading", { name: "AI Setup" });
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
         const input = screen.getByLabelText("Monthly organization budget (USD)");
         await userEvent.type(input, "1.0000001");
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -448,7 +448,7 @@ describe("ByoLlmSettings", () => {
         });
         renderForm();
 
-        await screen.findByRole("heading", { name: "AI Setup" });
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
         await userEvent.click(screen.getByRole("button", { name: "Edit" }));
         await userEvent.type(screen.getByLabelText("Monthly organization budget (USD)"), "1");
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -464,7 +464,7 @@ describe("ByoLlmSettings", () => {
         mockSave.mockResolvedValue({ error: "invalid_base_url", status: 400 });
         renderForm();
 
-        await screen.findByRole("heading", { name: "AI Setup" });
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
         await userEvent.click(screen.getByRole("button", { name: "Edit" }));
         await userEvent.type(screen.getByLabelText("Base URL"), "not-a-url");
         await userEvent.click(screen.getByRole("button", { name: "Save" }));
@@ -481,7 +481,7 @@ describe("ByoLlmSettings", () => {
         mockRemove.mockResolvedValue({ data: { deleted: true } });
         renderForm();
 
-        await screen.findByRole("heading", { name: "AI Setup" });
+        await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
         await userEvent.click(screen.getByRole("button", { name: "Delete" }));
         expect(mockRemove).not.toHaveBeenCalled();
 
