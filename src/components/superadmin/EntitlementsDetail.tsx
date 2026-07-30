@@ -10,6 +10,7 @@ type EntitlementsDetailProps = {
     entitlements: OrgEntitlements;
     overrides: FeatureOverride[];
     featureFlags: FeatureFlag[];
+    featureCatalogUnavailable: boolean;
 };
 
 export function EntitlementsDetail({
@@ -17,6 +18,7 @@ export function EntitlementsDetail({
     entitlements,
     overrides,
     featureFlags,
+    featureCatalogUnavailable,
 }: EntitlementsDetailProps) {
     const [isCreating, setIsCreating] = useState(false);
     const [selectedFeatureId, setSelectedFeatureId] = useState("");
@@ -152,11 +154,25 @@ export function EntitlementsDetail({
                     <button
                         type="button"
                         onClick={() => setIsCreating(!isCreating)}
-                        className="rounded-lg bg-(--accent) px-3 py-1.5 text-sm font-medium text-white hover:bg-(--accent)/90"
+                        disabled={featureCatalogUnavailable}
+                        className="rounded-lg bg-(--accent) px-3 py-1.5 text-sm font-medium text-white hover:bg-(--accent)/90 disabled:cursor-not-allowed disabled:opacity-50"
                     >
                         {isCreating ? "Cancel" : "Add Override"}
                     </button>
                 </div>
+
+                {featureCatalogUnavailable ? (
+                    <div
+                        role="alert"
+                        className="mb-6 rounded-xl border border-(--negative)/30 bg-(--negative)/10 px-4 py-3 text-sm text-(--negative)"
+                    >
+                        <p className="font-medium">Feature catalog unavailable</p>
+                        <p className="mt-1">
+                            New overrides cannot be added until the feature catalog loads. Existing
+                            overrides remain available below.
+                        </p>
+                    </div>
+                ) : null}
 
                 {isCreating && (
                     <form
