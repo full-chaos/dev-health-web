@@ -44,19 +44,22 @@ function authenticate(overrides: Record<string, unknown> = {}): void {
     });
 }
 
-function installOpsAuthorization(
-    scopes = ["full-chaos/dev-health-acr", "full-chaos/platform"],
-): void {
+function installOpsAuthorization(scopes = ["full-chaos/dev-health-acr", "full-chaos/platform"]): {
+    repositoryCatalogRequests: number;
+} {
+    const observations = { repositoryCatalogRequests: 0 };
     server.use(
         http.get("http://ops.example.test/api/v1/licensing/entitlements/:orgId", () =>
             HttpResponse.json({ features: { agent_context_runtime: true }, is_valid: true }),
         ),
-        http.post("http://ops.example.test/graphql", () =>
-            HttpResponse.json({
+        http.post("http://ops.example.test/graphql", () => {
+            observations.repositoryCatalogRequests += 1;
+            return HttpResponse.json({
                 data: { catalog: { values: scopes.map((value) => ({ count: 1, value })) } },
-            }),
-        ),
+            });
+        }),
     );
+    return observations;
 }
 
 function decodeAssertion(value: string): Record<string, unknown> {
@@ -118,7 +121,7 @@ describe("approveDeviceAuthorization", () => {
     });
 
     it("Given an explicit selected repository, when approving, then sends only the bounded grant with a body-bound credential assertion", async () => {
-        installOpsAuthorization();
+        const ops = installOpsAuthorization();
         server.use(
             http.post(
                 "https://acr.example.test/api/v1/oauth/device_approval",
@@ -137,9 +140,11 @@ describe("approveDeviceAuthorization", () => {
                     expect(decodeAssertion(assertion)).toMatchObject({
                         body_sha256: createHash("sha256").update(body).digest("base64url"),
                         method: "POST",
+                        org_id: "org-123",
                         path: "/api/v1/oauth/device_approval",
                         permissions: ["credential:issue"],
                         repository_scopes: ["full-chaos/platform"],
+                        sub: "user-123",
                     });
                     return HttpResponse.json({
                         schema_version: "device_approval_response.v1",
@@ -156,10 +161,11 @@ describe("approveDeviceAuthorization", () => {
                 userCode: "ABCD2345",
             }),
         ).resolves.toEqual({ status: "approved" });
+        expect(ops.repositoryCatalogRequests).toBe(0);
     });
 
-    it("Given a preview followed by approval, when using the same POST endpoint, then issues fresh body-bound credential assertions", async () => {
-        installOpsAuthorization();
+    it("Given organization-wide approval, when previewing and approving, then never derives authorization from the repository catalog", async () => {
+        const ops = installOpsAuthorization();
         const assertions: string[] = [];
         server.use(
             http.post(
@@ -181,9 +187,11 @@ describe("approveDeviceAuthorization", () => {
                         expect(decodeAssertion(assertion)).toMatchObject({
                             body_sha256: createHash("sha256").update(body).digest("base64url"),
                             method: "POST",
+                            org_id: "org-123",
                             path: "/api/v1/oauth/device_approval",
                             permissions: ["credential:issue"],
-                            repository_scopes: ["full-chaos/dev-health-acr", "full-chaos/platform"],
+                            repository_scopes: ["*"],
+                            sub: "user-123",
                         });
                         return HttpResponse.json({
                             organization_id_hint: "org_fullchaos",
@@ -192,16 +200,18 @@ describe("approveDeviceAuthorization", () => {
                         });
                     }
                     expect(requestBody).toEqual({
-                        repository_scopes: ["full-chaos/platform"],
+                        repository_scopes: ["*"],
                         schema_version: "device_approval_request.v1",
                         user_code: "ABCD2345",
                     });
                     expect(decodeAssertion(assertion)).toMatchObject({
                         body_sha256: createHash("sha256").update(body).digest("base64url"),
                         method: "POST",
+                        org_id: "org-123",
                         path: "/api/v1/oauth/device_approval",
                         permissions: ["credential:issue"],
-                        repository_scopes: ["full-chaos/platform"],
+                        repository_scopes: ["*"],
+                        sub: "user-123",
                     });
                     return HttpResponse.json({
                         schema_version: "device_approval_response.v1",
@@ -222,13 +232,43 @@ describe("approveDeviceAuthorization", () => {
         });
         await expect(
             approveDeviceAuthorization({
-                repositoryScopes: ["full-chaos/platform"],
+                repositoryScopes: ["*"],
                 signal: new AbortController().signal,
                 userCode: "ABCD2345",
             }),
         ).resolves.toEqual({ status: "approved" });
         expect(assertions).toHaveLength(2);
         expect(assertions[0]).not.toBe(assertions[1]);
+        expect(ops.repositoryCatalogRequests).toBe(0);
+    });
+
+    it("Given ACR reports a device authorization conflict, when approving, then preserves the 409 response", async () => {
+        installOpsAuthorization();
+        server.use(
+            http.post("https://acr.example.test/api/v1/oauth/device_approval", () =>
+                HttpResponse.json(
+                    {
+                        error: {
+                            code: "device_authorization_conflict",
+                            http_status: 409,
+                            message: "Device authorization is no longer pending",
+                            retryable: false,
+                        },
+                        request_id: "req_device_conflict",
+                        schema_version: "error.v1",
+                    },
+                    { status: 409 },
+                ),
+            ),
+        );
+
+        await expect(
+            approveDeviceAuthorization({
+                repositoryScopes: ["*"],
+                signal: new AbortController().signal,
+                userCode: "ABCD2345",
+            }),
+        ).rejects.toMatchObject({ code: "upstream", retryable: false, status: 409 });
     });
 
     it("Given a preview with no repository hints, when ACR omits the optional field, then returns an empty selection", async () => {
@@ -321,8 +361,18 @@ describe("approveDeviceAuthorization", () => {
 
     it.each([
         ["an empty selection", []],
-        ["a foreign selection", ["foreign/repository"]],
-        ["a wildcard selection", ["full-chaos/*"]],
+        ["a repository-name wildcard", ["full-chaos/*"]],
+        ["a wildcard mixed with an exact scope", ["*", "full-chaos/platform"]],
+        ["unsorted exact scopes", ["full-chaos/zeta", "full-chaos/alpha"]],
+        ["duplicate exact scopes", ["full-chaos/platform", "full-chaos/platform"]],
+        ["an uppercase exact scope", ["Full-Chaos/platform"]],
+        [
+            "more than 100 exact scopes",
+            Array.from(
+                { length: 101 },
+                (_, index) => `full-chaos/repository-${String(index).padStart(3, "0")}`,
+            ),
+        ],
     ])(
         "Given %s, when approving, then fails before the ACR call",
         async (_name, repositoryScopes) => {
@@ -348,6 +398,40 @@ describe("approveDeviceAuthorization", () => {
             expect(approvals).toBe(0);
         },
     );
+
+    it("Given an organization without the ACR entitlement, when approving, then denies before ACR credential issuance", async () => {
+        let approvals = 0;
+        let repositoryCatalogRequests = 0;
+        server.use(
+            http.get("http://ops.example.test/api/v1/licensing/entitlements/:orgId", () =>
+                HttpResponse.json({
+                    features: { agent_context_runtime: false },
+                    is_valid: true,
+                }),
+            ),
+            http.post("http://ops.example.test/graphql", () => {
+                repositoryCatalogRequests += 1;
+                return HttpResponse.json({ data: { catalog: { values: [] } } });
+            }),
+            http.post("https://acr.example.test/api/v1/oauth/device_approval", () => {
+                approvals += 1;
+                return HttpResponse.json({
+                    schema_version: "device_approval_response.v1",
+                    status: "approved",
+                });
+            }),
+        );
+
+        await expect(
+            approveDeviceAuthorization({
+                repositoryScopes: ["*"],
+                signal: new AbortController().signal,
+                userCode: "ABCD2345",
+            }),
+        ).rejects.toMatchObject({ code: "not_entitled", status: 403 });
+        expect(repositoryCatalogRequests).toBe(0);
+        expect(approvals).toBe(0);
+    });
 
     it("Given impersonation, when approving, then rejects before entitlement resolution", async () => {
         authenticate({

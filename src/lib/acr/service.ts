@@ -4,7 +4,7 @@ import { auth } from "@/lib/auth";
 import { AcrRuntimeClient } from "./client";
 import { loadAcrRuntimeConfig } from "./config";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
-import { resolveOpsAuthorization } from "./ops";
+import { resolveOpsAuthorization, resolveOpsCredentialIssuanceAuthorization } from "./ops";
 import { contextPacketRequest, parseContextPacketForm, parseEvidenceSelection } from "./protocol";
 
 const repositoryScope = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
@@ -136,6 +136,7 @@ function invalidApprovalRequest(): AcrRuntimeError {
 }
 
 function canonicalApprovalScopes(scopes: readonly string[]): readonly string[] {
+    if (scopes.length === 1 && scopes[0] === "*") return scopes;
     const sorted = [...scopes].sort((left, right) => left.localeCompare(right));
     if (
         scopes.length === 0 ||
@@ -169,22 +170,20 @@ export async function approveDeviceAuthorization(input: {
             },
         );
     }
-    const authorization = await resolveOpsAuthorization({
+    const authorization = await resolveOpsCredentialIssuanceAuthorization({
         accessToken: session.accessToken,
         orgId: session.orgId,
+        repositoryScopes: requestedScopes,
         signal: input.signal,
         subject: session.subject,
     });
-    if (requestedScopes.some((scope) => !authorization.repositoryScopes.includes(scope))) {
-        throw invalidApprovalRequest();
-    }
     const body = JSON.stringify({
         repository_scopes: requestedScopes,
         schema_version: "device_approval_request.v1",
         user_code: input.userCode,
     });
     return new AcrRuntimeClient(loadAcrRuntimeConfig()).deviceApproval({
-        authorization: { ...authorization, repositoryScopes: requestedScopes },
+        authorization,
         body,
         signal: input.signal,
     });
@@ -211,9 +210,10 @@ export async function previewDeviceAuthorization(input: {
             },
         );
     }
-    const authorization = await resolveOpsAuthorization({
+    const authorization = await resolveOpsCredentialIssuanceAuthorization({
         accessToken: session.accessToken,
         orgId: session.orgId,
+        repositoryScopes: ["*"],
         signal: input.signal,
         subject: session.subject,
     });

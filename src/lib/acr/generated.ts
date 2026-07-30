@@ -1,3 +1,23 @@
+export interface ACRClientCredentialMetadataV1 {
+    schema_version: "acr_client_credential.v1";
+    credential_id: string;
+    name: string;
+    token_prefix: string;
+    org_id: string;
+    repository_scopes: string[];
+    /**
+     * @minItems 1
+     */
+    scopes: [
+        "context:read" | "evidence:read" | "episode:write",
+        ...("context:read" | "evidence:read" | "episode:write")[],
+    ];
+    created_at: string;
+    expires_at: string | null;
+    revoked_at: string | null;
+    last_used_at: string | null;
+}
+
 export interface ACRAgentEpisodeCreateV1 {
     schema_version: "agent_episode_create.v1";
     client_episode_id: string;
@@ -296,12 +316,101 @@ export interface ACRContextPacketV1 {
     retrieval_debug_summary?: string;
 }
 
+export interface SelfCredentialRevocationRequestV1 {
+    schema_version: "credential_revoke_request.v1";
+    rollback_receipt?: {
+        source_credential_id: string;
+        replacement_credential_id: string;
+        rollback_until: string;
+    };
+}
+
+export interface SelfCredentialRevocationResponseV1 {
+    schema_version: "credential_revoke_response.v1";
+    credential: ACRClientCredentialMetadataV1;
+}
+
+export interface SelfCredentialRotationRequestV1 {
+    schema_version: "credential_rotate_request.v1";
+}
+
+export interface SelfCredentialRotationResponseV1 {
+    schema_version: "credential_rotate_response.v1";
+    access_token: string;
+    credential: ACRClientCredentialMetadataV1;
+    receipt: {
+        source_credential_id: string;
+        replacement_credential_id: string;
+        rollback_until: string;
+    };
+}
+
+export interface DeviceApprovalPreviewRequestV1 {
+    schema_version: "device_approval_preview_request.v1";
+    user_code: string;
+}
+
+export interface DeviceApprovalPreviewResponseV1 {
+    schema_version: "device_approval_preview_response.v1";
+    organization_id_hint?: string;
+    /**
+     * @minItems 1
+     * @maxItems 100
+     */
+    repository_hints?: [string, ...string[]];
+}
+
+export interface DeviceApprovalRequestV1 {
+    schema_version: "device_approval_request.v1";
+    user_code: string;
+    repository_scopes: [string, ...string[]] | ["*"];
+}
+
+export interface DeviceApprovalResponseV1 {
+    schema_version: "device_approval_response.v1";
+    status: "approved";
+}
+
+export interface DeviceAuthorizationRequestV1 {
+    schema_version: "device_authorization_request.v1";
+    organization_id_hint?: string;
+    /**
+     * @minItems 1
+     * @maxItems 100
+     */
+    repository_hints?: [string, ...string[]];
+}
+
+export interface DeviceAuthorizationResponseV1 {
+    schema_version: "device_authorization_response.v1";
+    device_code: string;
+    user_code: string;
+    verification_uri: string;
+    expires_in: 600;
+    interval: 5;
+}
+
+export interface DeviceTokenRequestV1 {
+    schema_version: "device_token_request.v1";
+    grant_type: "urn:ietf:params:oauth:grant-type:device_code";
+    device_code: string;
+}
+
+export interface DeviceTokenResponseV1 {
+    schema_version: "device_token_response.v1";
+    access_token: string;
+    token_type: "Bearer";
+    expires_in: 2592000;
+    credential: ACRClientCredentialMetadataV1;
+}
+
 export interface ACRErrorV1 {
     schema_version: "error.v1";
     request_id: string;
     error: {
         code:
             | "invalid_request"
+            | "device_authorization_conflict"
             | "invalid_token"
             | "insufficient_scope"
             | "feature_not_enabled"
@@ -354,4 +463,10 @@ export interface ACRExpandedEvidenceV1 {
         [k: string]: unknown | undefined;
     };
     redaction_reason?: string;
+}
+
+export interface OAuthDeviceGrantErrorV1 {
+    schema_version: "oauth_device_error.v1";
+    error:
+        "authorization_pending" | "slow_down" | "access_denied" | "expired_token" | "invalid_grant";
 }

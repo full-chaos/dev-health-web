@@ -9,7 +9,6 @@ type ApprovalState = "denied" | "expired" | "pending" | "review" | "success";
 
 type DeviceApprovalFormProps = {
     readonly initialState?: ApprovalState;
-    readonly repositories: readonly string[];
 };
 
 type ApprovalResponse = {
@@ -36,13 +35,13 @@ function stateCopy(state: ApprovalState): { readonly description: string; readon
             };
         case "review":
             return {
-                description: "Select the repositories to approve for this device.",
+                description: "Review the organization-wide access requested for this device.",
                 title: "Review device access",
             };
         case "success":
             return {
                 description:
-                    "Your selected repositories are approved. Return to your terminal to finish sign-in.",
+                    "All current and future repositories in your organization are approved. Return to your terminal to finish sign-in.",
                 title: "Approval complete",
             };
     }
@@ -54,35 +53,13 @@ function errorState(response: Response): ApprovalState {
     return "pending";
 }
 
-function repositoriesForHints(
-    repositories: readonly string[],
-    hints: readonly string[],
-): readonly string[] {
-    if (hints.length === 0) return repositories;
-    return repositories.filter((repository) => hints.includes(repository));
-}
-
-export function DeviceApprovalForm({
-    initialState = "pending",
-    repositories,
-}: DeviceApprovalFormProps) {
+export function DeviceApprovalForm({ initialState = "pending" }: DeviceApprovalFormProps) {
     const [code, setCode] = useState("");
-    const [selected, setSelected] = useState<readonly string[]>([]);
     const [state, setState] = useState<ApprovalState>(initialState);
     const [message, setMessage] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
-    const [hints, setHints] = useState<readonly string[]>([]);
     const descriptionId = useId();
     const stateMessage = stateCopy(state);
-    const availableRepositories = repositoriesForHints(repositories, hints);
-
-    function toggleRepository(repository: string): void {
-        setSelected((current) =>
-            current.includes(repository)
-                ? current.filter((selectedRepository) => selectedRepository !== repository)
-                : [...current, repository].sort((left, right) => left.localeCompare(right)),
-        );
-    }
 
     async function submitPreview(event: SyntheticEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
@@ -95,10 +72,7 @@ export function DeviceApprovalForm({
                 method: "POST",
             });
             const result = await response.json();
-            if (response.ok && result.repositoryHints) {
-                setHints(result.repositoryHints);
-                const available = repositoriesForHints(repositories, result.repositoryHints);
-                setSelected(available);
+            if (response.ok && Array.isArray(result.repositoryHints)) {
                 setState("review");
                 return;
             }
@@ -117,17 +91,13 @@ export function DeviceApprovalForm({
 
     async function submitApprove(event: SyntheticEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
-        if (selected.length === 0) {
-            setMessage("Select at least one repository to continue.");
-            return;
-        }
         setSubmitting(true);
         setMessage(null);
         try {
             const response = await fetch("/api/acr/device", {
                 body: JSON.stringify({
                     action: "approve",
-                    repository_scopes: selected,
+                    repository_scopes: ["*"],
                     user_code: code,
                 }),
                 headers: { "Content-Type": "application/json" },
@@ -200,32 +170,22 @@ export function DeviceApprovalForm({
                         className="mt-6 space-y-6"
                         aria-describedby={descriptionId}
                     >
-                        <fieldset>
-                            <legend className="text-h3 font-medium">Repositories to approve</legend>
+                        <section
+                            aria-labelledby="organization-repositories-title"
+                            className="rounded-(--radius-md) border border-(--card-stroke) bg-background px-4 py-4"
+                        >
+                            <h2
+                                id="organization-repositories-title"
+                                className="text-h3 font-medium"
+                            >
+                                All organization repositories
+                            </h2>
                             <p className="mt-1 text-sm text-(--ink-muted)">
-                                Only repositories you are authorized to access are available.
+                                This device can read context from all current and future
+                                repositories in your organization. Access never extends to another
+                                organization.
                             </p>
-                            <div className="mt-3 divide-y divide-(--card-stroke) rounded-(--radius-md) border border-(--card-stroke)">
-                                {availableRepositories.map((repository) => (
-                                    <label
-                                        key={repository}
-                                        className="flex cursor-pointer items-center gap-3 px-4 py-3 text-body hover:bg-(--card-80)"
-                                    >
-                                        <input
-                                            checked={selected.includes(repository)}
-                                            onChange={() => toggleRepository(repository)}
-                                            type="checkbox"
-                                        />
-                                        <span>{repository}</span>
-                                    </label>
-                                ))}
-                                {availableRepositories.length === 0 && (
-                                    <div className="px-4 py-3 text-body text-(--ink-muted)">
-                                        No authorized repositories match this request.
-                                    </div>
-                                )}
-                            </div>
-                        </fieldset>
+                        </section>
                         <div className="flex gap-3">
                             <Button
                                 disabled={submitting}
@@ -235,11 +195,7 @@ export function DeviceApprovalForm({
                             >
                                 {CTA_LABELS.backButton}
                             </Button>
-                            <Button
-                                disabled={submitting || selected.length === 0}
-                                type="submit"
-                                variant="primary"
-                            >
+                            <Button disabled={submitting} type="submit" variant="primary">
                                 {submitting ? "Approving…" : CTA_LABELS.confirm}
                             </Button>
                         </div>

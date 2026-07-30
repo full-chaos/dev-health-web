@@ -24,11 +24,25 @@ describe("ACR REST contract boundary", () => {
             "schemas/expanded_evidence.v1.schema.json",
             "examples/context_packet.v1.json",
             "examples/expanded_evidence.v1.json",
+            "schemas/acr_client_credential.v1.schema.json",
             "schemas/agent_episode.v1.schema.json",
             "schemas/agent_episode_create.v1.schema.json",
+            "schemas/credential_revoke_request.v1.schema.json",
+            "schemas/credential_revoke_response.v1.schema.json",
+            "schemas/credential_rotate_request.v1.schema.json",
+            "schemas/credential_rotate_response.v1.schema.json",
+            "schemas/device_approval_preview_request.v1.schema.json",
+            "schemas/device_approval_preview_response.v1.schema.json",
+            "schemas/device_approval_request.v1.schema.json",
+            "schemas/device_approval_response.v1.schema.json",
+            "schemas/device_authorization_request.v1.schema.json",
+            "schemas/device_authorization_response.v1.schema.json",
+            "schemas/device_token_request.v1.schema.json",
+            "schemas/device_token_response.v1.schema.json",
+            "schemas/oauth_device_error.v1.schema.json",
         ]);
         expect(JSON.stringify(manifest)).not.toMatch(/generated_at|timestamp|created_at/u);
-        expect(manifest.source_commit).toBe("b5a76c3c51c9ccd4f6f90031843de874aef1f1f4");
+        expect(manifest.source_commit).toBe("7e7c57be32c2b81bcd94994e584a554e2a05a99a");
     });
 
     it("accepts every committed golden with its paired Draft 2020-12 schema", () => {
