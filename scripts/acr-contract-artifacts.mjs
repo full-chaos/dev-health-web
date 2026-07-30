@@ -1,3 +1,5 @@
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { compile } from "json-schema-to-typescript";
 import { format } from "prettier";
@@ -43,21 +45,31 @@ function symbolName(fileName) {
         .join("");
 }
 
-async function dtoModule(schemaFiles, artifactRoot, prettierOptions) {
-    const declarations = [];
-    for (const schema of schemaFiles) {
-        declarations.push(
-            await compile(JSON.parse(schema.contents), typeName(schema.path), {
-                bannerComment: "",
-                cwd: path.join(artifactRoot, "schemas"),
-                declareExternallyReferenced: false,
-                format: false,
-                strictIndexSignatures: true,
-                unknownAny: false,
-            }),
-        );
+async function dtoModule(schemaFiles, prettierOptions) {
+    const sourceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "acr-contract-types-"));
+    try {
+        for (const schema of schemaFiles) {
+            fs.writeFileSync(path.join(sourceRoot, path.basename(schema.path)), schema.contents, {
+                flag: "wx",
+            });
+        }
+        const declarations = [];
+        for (const schema of schemaFiles) {
+            declarations.push(
+                await compile(JSON.parse(schema.contents), typeName(schema.path), {
+                    bannerComment: "",
+                    cwd: sourceRoot,
+                    declareExternallyReferenced: false,
+                    format: false,
+                    strictIndexSignatures: true,
+                    unknownAny: false,
+                }),
+            );
+        }
+        return format(declarations.join("\n").replace(/\bany\b/gu, "unknown"), prettierOptions);
+    } finally {
+        fs.rmSync(sourceRoot, { force: true, recursive: true });
     }
-    return format(declarations.join("\n").replace(/\bany\b/gu, "unknown"), prettierOptions);
 }
 
 async function validatorModule(schemaFiles, exampleFiles, prettierOptions) {
@@ -98,12 +110,7 @@ async function validatorModule(schemaFiles, exampleFiles, prettierOptions) {
     );
 }
 
-export async function expectedArtifacts({
-    artifactRoot,
-    sourceCommit,
-    sourceFiles,
-    prettierOptions,
-}) {
+export async function expectedArtifacts({ sourceCommit, sourceFiles, prettierOptions }) {
     const schemaFiles = sourceFiles
         .filter((file) => file.path.startsWith("contracts/jsonschema/"))
         .sort((left, right) => left.path.localeCompare(right.path));
@@ -122,6 +129,6 @@ export async function expectedArtifacts({
         ...rawArtifacts,
         "manifest.json": stableJson(manifest),
         "../contracts.ts": await validatorModule(schemaFiles, exampleFiles, prettierOptions),
-        "../generated.ts": await dtoModule(schemaFiles, artifactRoot, prettierOptions),
+        "../generated.ts": await dtoModule(schemaFiles, prettierOptions),
     };
 }

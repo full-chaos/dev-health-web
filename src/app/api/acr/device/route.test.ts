@@ -25,11 +25,12 @@ vi.mock("@/lib/client-ip", () => ({
 }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: checkRateLimitMock }));
 
+import { AcrRuntimeError, acrRuntimeErrorCodes } from "@/lib/acr/errors";
 import { POST } from "./route";
 
 const body = {
     action: "approve",
-    repository_scopes: ["full-chaos/platform"],
+    repository_scopes: ["*"],
     repository_hints: ["full-chaos/platform"],
     user_code: "ABCD2345",
 };
@@ -67,7 +68,7 @@ describe("POST /api/acr/device", () => {
         expect(checkRateLimitMock).toHaveBeenCalledTimes(2);
         expect(approveDeviceAuthorizationMock).toHaveBeenCalledWith(
             expect.objectContaining({
-                repositoryScopes: ["full-chaos/platform"],
+                repositoryScopes: ["*"],
                 userCode: "ABCD2345",
             }),
         );
@@ -119,5 +120,24 @@ describe("POST /api/acr/device", () => {
         expect(response.status).toBe(429);
         expect(response.headers.get("retry-after")).toBe("60");
         expect(approveDeviceAuthorizationMock).not.toHaveBeenCalled();
+    });
+
+    it("Given ACR rejects an approval conflict, when posting, then preserves the 409 status", async () => {
+        approveDeviceAuthorizationMock.mockRejectedValue(
+            new AcrRuntimeError(acrRuntimeErrorCodes.upstream, "redacted upstream conflict", {
+                status: 409,
+            }),
+        );
+
+        const response = await POST(request());
+
+        expect(response.status).toBe(409);
+        expect(await response.json()).toEqual({
+            error: {
+                code: "upstream",
+                message: "Agent Context Runtime is temporarily unavailable.",
+                retryable: false,
+            },
+        });
     });
 });

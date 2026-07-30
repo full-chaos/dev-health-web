@@ -13,12 +13,12 @@ describe("DeviceApprovalForm", () => {
         ["denied", "Request not approved"],
         ["expired", "Code expired"],
     ] as const)("Given a %s state, when rendered, then announces %s", (state, title) => {
-        render(<DeviceApprovalForm initialState={state} repositories={["full-chaos/platform"]} />);
+        render(<DeviceApprovalForm initialState={state} />);
 
         expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
     });
 
-    it("Given an approved preview, when confirming, then sends the bounded selected repositories in a fresh request", async () => {
+    it("Given an approved preview, when confirming, then approves all current and future organization repositories", async () => {
         const fetchMock = vi
             .fn()
             .mockResolvedValueOnce(
@@ -31,7 +31,7 @@ describe("DeviceApprovalForm", () => {
             );
         vi.stubGlobal("fetch", fetchMock);
 
-        render(<DeviceApprovalForm repositories={["full-chaos/platform", "full-chaos/private"]} />);
+        render(<DeviceApprovalForm />);
         const verificationCode = screen.getByLabelText("Verification code");
         fireEvent.change(verificationCode, {
             target: { value: "EP23TUGG" },
@@ -41,8 +41,9 @@ describe("DeviceApprovalForm", () => {
         fireEvent.click(screen.getByRole("button", { name: "Preview request" }));
 
         await screen.findByRole("heading", { name: "Review device access" });
-        expect(screen.getByLabelText("full-chaos/platform")).toBeChecked();
-        expect(screen.queryByLabelText("full-chaos/private")).not.toBeInTheDocument();
+        expect(
+            screen.getByText(/all current and future repositories in your organization/i),
+        ).toBeVisible();
 
         fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
@@ -61,7 +62,7 @@ describe("DeviceApprovalForm", () => {
             expect.objectContaining({
                 body: JSON.stringify({
                     action: "approve",
-                    repository_scopes: ["full-chaos/platform"],
+                    repository_scopes: ["*"],
                     user_code: "EP23TUGG",
                 }),
                 method: "POST",
@@ -69,28 +70,28 @@ describe("DeviceApprovalForm", () => {
         );
     });
 
-    it("Given a preview with no repository preference, when confirming, then approves from the authorized catalog", async () => {
+    it("Given repository hints, when confirming, then does not narrow the organization-wide grant to analytics inventory", async () => {
         const fetchMock = vi
             .fn()
             .mockResolvedValueOnce(
-                new Response(JSON.stringify({ repositoryHints: [] }), { status: 200 }),
+                new Response(
+                    JSON.stringify({ repositoryHints: ["full-chaos/cataloged-repository"] }),
+                    { status: 200 },
+                ),
             )
             .mockResolvedValueOnce(
                 new Response(JSON.stringify({ status: "approved" }), { status: 200 }),
             );
         vi.stubGlobal("fetch", fetchMock);
 
-        render(
-            <DeviceApprovalForm repositories={["full-chaos/dev-health", "full-chaos/platform"]} />,
-        );
+        render(<DeviceApprovalForm />);
         fireEvent.change(screen.getByLabelText("Verification code"), {
             target: { value: "EP23TUGG" },
         });
         fireEvent.click(screen.getByRole("button", { name: "Preview request" }));
 
         await screen.findByRole("heading", { name: "Review device access" });
-        expect(screen.getByLabelText("full-chaos/dev-health")).toBeChecked();
-        expect(screen.getByLabelText("full-chaos/platform")).toBeChecked();
+        expect(screen.queryByText("full-chaos/cataloged-repository")).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
@@ -101,7 +102,7 @@ describe("DeviceApprovalForm", () => {
             expect.objectContaining({
                 body: JSON.stringify({
                     action: "approve",
-                    repository_scopes: ["full-chaos/dev-health", "full-chaos/platform"],
+                    repository_scopes: ["*"],
                     user_code: "EP23TUGG",
                 }),
                 method: "POST",
@@ -115,7 +116,7 @@ describe("DeviceApprovalForm", () => {
             .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 400 }));
         vi.stubGlobal("fetch", fetchMock);
 
-        render(<DeviceApprovalForm repositories={["full-chaos/platform"]} />);
+        render(<DeviceApprovalForm />);
         const verificationCode = screen.getByLabelText("Verification code");
         fireEvent.change(verificationCode, {
             target: { value: "OOOOOOOO" },

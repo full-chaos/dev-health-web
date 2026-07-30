@@ -161,7 +161,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await setAcrMockControls(request);
     });
 
-    test("approves an ACR device code without a duplicated alphabet or repository hint", async ({
+    test("renders and submits the organization-wide device grant in the browser", async ({
         page,
     }, testInfo) => {
         await setEntitlementScenario(page.request, "provisioned");
@@ -189,7 +189,9 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await page.getByRole("button", { name: "Preview request" }).click();
 
         await expect(page.getByRole("heading", { name: "Review device access" })).toBeVisible();
-        await expect(page.getByLabel("full-chaos/dev-health-acr")).toBeChecked();
+        await expect(
+            page.getByText(/all current and future repositories in your organization/i),
+        ).toBeVisible();
         await page.screenshot({
             path: testInfo.outputPath("device-approval-valid-code.png"),
             fullPage: true,
@@ -201,7 +203,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
             { action: "preview", user_code: "EP23TUGG" },
             {
                 action: "approve",
-                repository_scopes: ["full-chaos/dev-health-acr"],
+                repository_scopes: ["*"],
                 user_code: "EP23TUGG",
             },
         ]);
