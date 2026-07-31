@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { resolveOrigin } from "@/lib/origin";
 import { extractErrorMessage } from "@/lib/errorMessages";
 import { appendCallbackUrl, safePostLoginRedirect } from "@/lib/post-login-redirect";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { PasswordStrength } from "./PasswordStrength";
 
 type SignupFormProps = {
@@ -153,11 +154,11 @@ export function SignupForm({ plan, trialIntent = false, callbackUrl }: SignupFor
                 <span className="text-sm text-[var(--foreground)]">
                     I agree to the{" "}
                     <a href="/marketing/terms" className="text-[var(--accent)] hover:underline">
-                        Terms of Service
+                        {CTA_LABELS.termsOfService}
                     </a>{" "}
                     and{" "}
                     <a href="/marketing/privacy" className="text-[var(--accent)] hover:underline">
-                        Privacy Policy
+                        {CTA_LABELS.privacyPolicy}
                     </a>
                 </span>
             </label>
