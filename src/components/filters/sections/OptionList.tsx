@@ -31,7 +31,7 @@ export function OptionList({
                     </label>
                 ))
             ) : (
-                <p className="text-[11px] text-(--ink-muted)">
+                <p className="text-xs text-(--ink-muted)">
                     No options yet. Use Advanced filters to type values.
                 </p>
             )}

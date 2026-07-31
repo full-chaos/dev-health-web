@@ -47,7 +47,7 @@ export function ToolbarActions({
                     }`}
                     aria-expanded={showAdvanced}
                 >
-                    Filters
+                    {CTA_LABELS.filters}
                 </button>
             )}
             <Button variant="secondary" onClick={resetFilters}>
