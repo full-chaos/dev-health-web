@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { BetaBadge } from "@/components/BetaBadge";
 import fcLogo from "@/assets/fc-logo.png";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { Toaster } from "sonner";
 
 export default function AuthLayout({
@@ -17,7 +18,7 @@ export default function AuthLayout({
                     <Link
                         href="/"
                         className="flex items-center"
-                        aria-label="Full Chaos Dev Health home"
+                        aria-label={CTA_LABELS.devHealthHome}
                     >
                         <Image
                             src={fcLogo}
@@ -34,7 +35,7 @@ export default function AuthLayout({
                         </div>
                     </Link>
                     <div className="flex items-center gap-1.5">
-                        <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
+                        <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-0.5 text-label-caps font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
                             OSS
                         </span>
                         <BetaBadge />
@@ -45,19 +46,19 @@ export default function AuthLayout({
                         href="/marketing/pricing"
                         className="text-sm text-(--ink-muted) transition hover:text-foreground"
                     >
-                        Pricing
+                        {CTA_LABELS.pricing}
                     </Link>
                     <Link
                         href="/auth/signin"
                         className="text-sm text-(--ink-muted) transition hover:text-foreground"
                     >
-                        Sign in
+                        {CTA_LABELS.signIn}
                     </Link>
                     <Link
                         href="/auth/signup"
                         className="rounded-full bg-(--accent) px-5 py-2 text-sm font-medium text-white transition hover:opacity-90"
                     >
-                        Get started
+                        {CTA_LABELS.getStarted}
                     </Link>
                 </div>
             </nav>

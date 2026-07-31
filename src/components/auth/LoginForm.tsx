@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn, getSession } from "next-auth/react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { safePostLoginRedirect } from "@/lib/post-login-redirect";
 
 type LoginFormProps = {
@@ -149,7 +150,7 @@ export function LoginForm({ plan, trialIntent = false, callbackUrl }: LoginFormP
                     disabled={loading}
                     className="w-full rounded-lg border border-[var(--card-stroke)] bg-transparent py-3 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--card-stroke)]/20 transition-colors disabled:opacity-50"
                 >
-                    {loading ? "Signing in..." : "Sign in"}
+                    {loading ? CTA_LABELS.signingIn : CTA_LABELS.signIn}
                 </button>
             </form>
         </>
