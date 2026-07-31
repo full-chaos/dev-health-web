@@ -286,6 +286,7 @@ describe("Ask Dev registered context handoff", () => {
                     },
                 }),
             }),
+            expect.anything(),
         );
         expect(JSON.stringify(vi.mocked(client.createConversation).mock.calls)).not.toContain(
             "Private rendered page prose",
@@ -318,6 +319,40 @@ describe("Ask Dev registered context handoff", () => {
         expect(screen.getByText("Proposed context:")).not.toHaveTextContent("CHAOS-3216");
         expect(client.createConversation).not.toHaveBeenCalled();
         expect(client.streamMessage).not.toHaveBeenCalled();
+    });
+
+    it("does not resurrect a cleared contextual scope when later opening /dev from an unrelated route (CHAOS-3215 M1)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        const rendered = render(
+            <AskDevProvider client={client} contextualEntrypointsEnabled orgId="org-1">
+                <AskDevContextRegistration context={issueContext} />
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        expect(screen.getByText("Proposed context:")).toHaveTextContent("Issue · CHAOS-3216");
+
+        // Navigate away to an unrelated route — the proposal correctly hides here.
+        navigation.pathname = "/metrics";
+        rendered.rerender(
+            <AskDevProvider client={client} contextualEntrypointsEnabled orgId="org-1">
+                <p>Flow metrics</p>
+            </AskDevProvider>,
+        );
+        expect(screen.getByText("Proposed context:")).toHaveTextContent("Flow");
+
+        // Now land on /dev from that unrelated route (not directly from the page
+        // that registered the context). Because the scope was never actually
+        // cleared — only hidden by the derived visibility check — it used to
+        // resurface here even though the user had moved on from that page.
+        navigation.pathname = "/dev";
+        rendered.rerender(
+            <AskDevProvider client={client} contextualEntrypointsEnabled orgId="org-1">
+                <AskDevWorkspace />
+            </AskDevProvider>,
+        );
+        expect(screen.getByText("Proposed context:")).not.toHaveTextContent("CHAOS-3216");
     });
 
     it("ignores registered context when contextual entry points are disabled", async () => {
@@ -391,6 +426,7 @@ describe("Ask Dev registered context handoff", () => {
                     surface_context: null,
                 }),
             }),
+            expect.anything(),
         );
         expect(JSON.stringify(vi.mocked(client.createConversation).mock.calls)).not.toContain(
             "private-repository",
@@ -439,6 +475,7 @@ describe("Ask Dev registered context handoff", () => {
                     }),
                 }),
             }),
+            expect.anything(),
         );
     });
 });

@@ -21,4 +21,12 @@ describe("AskDevWindow launcher", () => {
         expect(launcher).not.toHaveTextContent("✦");
         expect(container.querySelector('img[alt=""]')).toBeInTheDocument();
     });
+
+    it("disables the launcher's hover transition under prefers-reduced-motion (CHAOS-3215 L1)", () => {
+        render(<AskDevWindow />);
+
+        const launcher = screen.getByRole("button", { name: "Open Ask Dev" });
+        expect(launcher.className).toContain("motion-reduce:transition-none");
+        expect(launcher.className).toContain("motion-reduce:hover:translate-y-0");
+    });
 });

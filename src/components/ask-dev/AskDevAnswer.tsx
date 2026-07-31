@@ -19,6 +19,33 @@ function safeExcerpt(value: string | null | undefined): string | null {
     return value.replace(/^UNTRUSTED_DATA\r?\n/u, "").replace(/\r?\nEND_UNTRUSTED_DATA$/u, "");
 }
 
+// Grounded in the sanctioned framing from ops/docs/use/ai-workflows/index.md
+// ("Ask Dev: window and full-page workspace"): "A partial, degraded,
+// refused, or insufficient-evidence answer is a result with limitations,
+// not a silent success." `complete` needs no caption (no limitation to
+// explain). `error` is also intentionally absent, but for a different reason
+// than `complete`: AskDevConversation now routes any transcript entry whose
+// `answer.status === "error"` through the same failed/alert treatment as a
+// live run failure, so it is never rendered by this component at all
+// (CHAOS-3215 M-error-status).
+//
+// `partial`'s wording must not claim a specific cause: per
+// ops/src/dev_health_ops/api/dev/orchestrator.py (`_budget_answer`), PARTIAL
+// is also returned when the provider budget/round limit is reached with
+// *full* evidence coverage (available_source_count === required_source_count)
+// — not only when required evidence was unavailable. That specific claim
+// belongs to `insufficient_evidence`, where it is accurate.
+const STATUS_EXPLANATIONS: Partial<Record<DevAnswer["status"], string>> = {
+    partial:
+        "Partial: the investigation did not fully complete. A result with limitations, not a silent success.",
+    degraded:
+        "Degraded: part of the investigation could not complete as expected. A result with limitations, not a silent success.",
+    insufficient_evidence:
+        "Insufficient evidence: there isn't enough evidence to answer with confidence. A result with limitations, not a silent success.",
+    refused:
+        "Refused: Ask Dev did not answer this question. A result with limitations, not a silent success.",
+};
+
 function validityScopeLabel(scope: DevScope | null | undefined): string | null {
     if (!scope) return null;
     const namedEntity = scope.entity_refs?.find(
@@ -129,6 +156,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
     );
     const [openMetricIds, setOpenMetricIds] = useState<ReadonlySet<string>>(() => new Set());
     const scopeResolution = answer.resolved_scope;
+    const statusExplanation = STATUS_EXPLANATIONS[answer.status];
     const evidenceById = useMemo(
         () =>
             new Map(
@@ -148,6 +176,22 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
         [answer.metrics],
     );
 
+    // Detail-panel ids are scoped by answer.answer_id, not just position: a
+    // transcript can contain many answers, and position-only ids (e.g.
+    // "ask-dev-evidence-1") collide across every one of them, so
+    // focusDetail()/getElementById can jump focus to an earlier answer's panel
+    // instead of this one (CHAOS-3215 M6).
+    const evidenceAnchorId = (position: number) =>
+        `ask-dev-evidence-${answer.answer_id}-${position + 1}`;
+    const metricAnchorId = (position: number) =>
+        `ask-dev-metric-${answer.answer_id}-${position + 1}`;
+    // Section heading ids (used only for aria-labelledby) are static per
+    // section kind, so they need the same per-answer scoping to stay unique
+    // across a transcript with multiple answers.
+    const findingsHeadingId = `ask-dev-findings-${answer.answer_id}`;
+    const metricsHeadingId = `ask-dev-metrics-${answer.answer_id}`;
+    const evidenceHeadingId = `ask-dev-evidence-heading-${answer.answer_id}`;
+
     const focusDetail = (anchorId: string) => {
         requestAnimationFrame(() => {
             document.getElementById(anchorId)?.focus({ preventScroll: false });
@@ -157,7 +201,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
     const openEvidenceDetail = async (evidenceRefId: string) => {
         const position = evidencePositionById.get(evidenceRefId);
         if (position === undefined || !evidenceById.has(evidenceRefId)) return;
-        const anchorId = `ask-dev-evidence-${position + 1}`;
+        const anchorId = evidenceAnchorId(position);
         setLoadingEvidenceIds((current) => new Set(current).add(evidenceRefId));
         setEvidenceErrors((current) => {
             const next = { ...current };
@@ -188,7 +232,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
         const position = metricPositionById.get(metricRefId);
         if (position === undefined) return;
         setOpenMetricIds((current) => new Set(current).add(metricRefId));
-        focusDetail(`ask-dev-metric-${position + 1}`);
+        focusDetail(metricAnchorId(position));
     };
 
     const renderInlineCitations = (
@@ -253,7 +297,12 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
     };
 
     return (
-        <article className="space-y-5" aria-label="Ask Dev answer">
+        <article
+            id={`ask-dev-answer-${answer.answer_id}`}
+            tabIndex={-1}
+            className="space-y-5 outline-none"
+            aria-label="Ask Dev answer"
+        >
             <div className="flex flex-wrap items-center gap-2">
                 <span className="rounded-(--radius-pill) bg-(--accent-ai)/12 px-2.5 py-1 text-label-caps text-(--accent-ai)">
                     AI-generated
@@ -265,6 +314,10 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                     As of {formatTimestamp(answer.as_of)}
                 </span>
             </div>
+
+            {statusExplanation ? (
+                <p className="text-xs text-(--text-muted)">{statusExplanation}</p>
+            ) : null}
 
             <p className="text-body leading-7 text-(--text-primary)">{answer.direct_summary}</p>
 
@@ -352,9 +405,9 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
             {answer.claims?.length ? (
                 <section
                     className="space-y-3 border-t border-(--border) pt-4"
-                    aria-labelledby="ask-dev-findings"
+                    aria-labelledby={findingsHeadingId}
                 >
-                    <h3 id="ask-dev-findings" className="text-label-caps text-(--text-muted)">
+                    <h3 id={findingsHeadingId} className="text-label-caps text-(--text-muted)">
                         What the evidence suggests
                     </h3>
                     <ul className="space-y-3">
@@ -426,16 +479,18 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
             {answer.metrics?.length ? (
                 <section
                     className="border-t border-(--border) pt-4"
-                    aria-labelledby="ask-dev-metrics"
+                    aria-labelledby={metricsHeadingId}
                 >
-                    <h3 id="ask-dev-metrics" className="text-label-caps text-(--text-muted)">
+                    <h3 id={metricsHeadingId} className="text-label-caps text-(--text-muted)">
                         Metrics
                     </h3>
                     <dl className="mt-2 divide-y divide-(--border)">
                         {answer.metrics.map((metric) => (
                             <div
                                 key={metric.metric_ref_id}
-                                id={`ask-dev-metric-${(metricPositionById.get(metric.metric_ref_id) ?? 0) + 1}`}
+                                id={metricAnchorId(
+                                    metricPositionById.get(metric.metric_ref_id) ?? 0,
+                                )}
                                 tabIndex={-1}
                                 className="scroll-mt-6 grid gap-1 py-3 outline-none focus-visible:ring-2 focus-visible:ring-(--accent-ai)/45 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-baseline"
                             >
@@ -513,16 +568,18 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
             {answer.evidence?.length ? (
                 <section
                     className="space-y-3 border-t border-(--border) pt-4"
-                    aria-labelledby="ask-dev-evidence"
+                    aria-labelledby={evidenceHeadingId}
                 >
-                    <h3 id="ask-dev-evidence" className="text-label-caps text-(--text-muted)">
+                    <h3 id={evidenceHeadingId} className="text-label-caps text-(--text-muted)">
                         Evidence
                     </h3>
                     <div className="space-y-4">
                         {answer.evidence.map((evidence) => (
                             <EvidenceRow
                                 key={evidence.evidence_ref_id}
-                                anchorId={`ask-dev-evidence-${(evidencePositionById.get(evidence.evidence_ref_id) ?? 0) + 1}`}
+                                anchorId={evidenceAnchorId(
+                                    evidencePositionById.get(evidence.evidence_ref_id) ?? 0,
+                                )}
                                 error={evidenceErrors[evidence.evidence_ref_id] ?? null}
                                 evidence={evidence}
                                 expansion={evidenceExpansions[evidence.evidence_ref_id] ?? null}
