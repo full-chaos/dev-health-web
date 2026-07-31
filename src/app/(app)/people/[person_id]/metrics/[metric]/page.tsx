@@ -13,7 +13,7 @@ import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter } from "@/lib/filters/encode";
 import { formatNumber } from "@/lib/formatters";
 import { getMetricLabel } from "@/lib/metrics/catalog";
-import { CTA_LABELS } from "@/lib/design/cta";
+import { backToArea, CTA_LABELS } from "@/lib/design/cta";
 import { getRangeParams, withRangeParams } from "@/lib/people/query";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
@@ -230,7 +230,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                 )}
                                 className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
                             >
-                                Back to individual
+                                {backToArea("Individual")}
                             </Link>
                         </div>
                     </header>
@@ -287,7 +287,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                 {timeseries.length ? (
                                     <TimeseriesChart data={timeseries} height={240} />
                                 ) : (
-                                    <div className="flex h-[240px] items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
+                                    <div className="flex h-60 items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
                                         Timeseries data unavailable.
                                     </div>
                                 )}
@@ -353,15 +353,15 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                                 }
                                             />
                                         ) : (
-                                            <div className="flex h-[220px] items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
+                                            <div className="flex h-56 items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
                                                 No breakdown data.
                                             </div>
                                         )}
                                     </div>
                                     <div className="mt-4 space-y-2 text-sm">
-                                        {group.items.map((item, index) => (
+                                        {group.items.map((item) => (
                                             <div
-                                                key={`${group.id}-${item.label ?? "unknown"}-${index}`}
+                                                key={`${group.id}-${item.label ?? "unknown"}-${item.value}`}
                                                 className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                                             >
                                                 {group.isEntity ? (
@@ -390,12 +390,12 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                             </div>
                             <div className="mt-4 space-y-3 text-sm">
                                 {drivers.length ? (
-                                    drivers.map((driver, idx) => {
+                                    drivers.map((driver) => {
                                         const evidence = getEvidenceTypeFromLink(driver.link);
                                         const href = evidence ? evidenceHref(evidence) : null;
                                         return (
                                             <div
-                                                key={`${driver.text}-${idx}`}
+                                                key={`${driver.text}-${driver.link}`}
                                                 className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
                                             >
                                                 <p className="text-sm text-foreground">
@@ -406,7 +406,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                                         href={href}
                                                         className="mt-2 inline-flex text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                                                     >
-                                                        Open evidence
+                                                        {CTA_LABELS.openEvidence}
                                                     </Link>
                                                 )}
                                             </div>
@@ -438,7 +438,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                             : "border-(--card-stroke) text-(--ink-muted)"
                                     }`}
                                 >
-                                    PRs
+                                    {CTA_LABELS.pullRequests}
                                 </Link>
                                 <Link
                                     href={evidenceHref("issues")}
@@ -448,7 +448,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                             : "border-(--card-stroke) text-(--ink-muted)"
                                     }`}
                                 >
-                                    Issues
+                                    {CTA_LABELS.issues}
                                 </Link>
                             </div>
                             {evidenceType && (
@@ -465,12 +465,13 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {(drilldown?.items ?? []).map((item, idx) => {
+                                            {(drilldown?.items ?? []).map((item, index) => {
                                                 const fallbackHref = evidenceHref(evidenceType);
                                                 const href = getItemHref(item, fallbackHref);
+                                                const itemKey = JSON.stringify(item);
                                                 return (
                                                     <tr
-                                                        key={`item-${idx}`}
+                                                        key={itemKey}
                                                         className="border-b border-(--card-stroke)"
                                                     >
                                                         <td className="py-2 pr-4 font-medium">
@@ -480,7 +481,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                                             >
                                                                 <EntityLabel
                                                                     variant="text"
-                                                                    id={getItemTitle(item, idx)}
+                                                                    id={getItemTitle(item, index)}
                                                                 />
                                                             </a>
                                                         </td>
