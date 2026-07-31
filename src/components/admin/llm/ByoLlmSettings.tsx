@@ -48,6 +48,14 @@ export type ByoLlmSettingsProps = {
         data: LLMSettingsUpsert,
     ) => Promise<LLMSettingsActionResult<LLMSettingsResponse>>;
     removeSettingsAction: () => Promise<LLMSettingsActionResult<{ deleted: boolean }>>;
+    /**
+     * Runs the BYO preflight against the saved configuration (CHAOS-3265).
+     * Independent of `status?.active`/`mode` — rendered whenever a BYO
+     * configuration is saved, even if it is currently degraded or not
+     * selected for Ask Dev. Returns the fresh `LLMSettingsStatusResponse`,
+     * which is applied directly rather than re-fetching status.
+     */
+    runReadinessAction: () => Promise<LLMSettingsActionResult<LLMSettingsStatusResponse>>;
 };
 
 const inputClass =
@@ -158,12 +166,43 @@ function deriveStatusBadge(
     return { label: "Saved", tone: "positive" };
 }
 
+/**
+ * Derives the BYO preflight badge wording/tone from the CHAOS-3265 readiness
+ * fields on the status DTO. Independent of `active`/`degraded` — a saved
+ * configuration can be explicitly checked regardless of whether it currently
+ * wins Ask Dev's provider-selection arbitration.
+ *
+ * `"stale"` (CHAOS-3254 READINESS_VERSION bump) is a neutral/informational
+ * state — a prior certification exists but no longer applies (settings
+ * changed, or the backend's certification requirements changed) — and must
+ * NOT use the negative "failed" tone/copy.
+ */
+function deriveReadinessBadge(status: LLMSettingsStatusResponse | null): BadgeInfo {
+    if (!status || status.readiness === "never_checked") {
+        return { label: "Not yet checked", tone: "muted" };
+    }
+    if (status.readiness === "ready") {
+        return { label: "Preflight passed", tone: "positive" };
+    }
+    if (status.readiness === "stale") {
+        return { label: "Certification expired — run preflight", tone: "muted" };
+    }
+    return { label: "Preflight failed", tone: "negative" };
+}
+
+function formatCheckedAt(value: string | null): string {
+    if (!value) return "Not checked";
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? "Not checked" : date.toLocaleString();
+}
+
 export function ByoLlmSettings({
     loadSettingsAction,
     loadBudgetAction,
     loadStatusAction,
     saveSettingsAction,
     removeSettingsAction,
+    runReadinessAction,
 }: ByoLlmSettingsProps) {
     const [loading, setLoading] = useState(true);
     const [locked, setLocked] = useState<LockState>(null);
@@ -186,6 +225,7 @@ export function ByoLlmSettings({
     const [hasSavedSettings, setHasSavedSettings] = useState(false);
 
     const [saving, setSaving] = useState(false);
+    const [checkingReadiness, setCheckingReadiness] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [confirmingDelete, setConfirmingDelete] = useState(false);
     const [baseUrlError, setBaseUrlError] = useState<string | null>(null);
@@ -368,6 +408,29 @@ export function ByoLlmSettings({
         toast.success("BYO-LLM settings removed.");
     };
 
+    const runByoPreflight = async () => {
+        setCheckingReadiness(true);
+        const result = await runReadinessAction();
+        setCheckingReadiness(false);
+        if (result.error) {
+            // The action itself failed (network/backend error, or no saved
+            // BYO configuration) — distinct from a completed preflight that
+            // determined the provider is not ready (handled below).
+            toast.error(result.error || "BYO preflight did not complete.");
+            return;
+        }
+        if (result.data) {
+            // The POST already returns the fresh status DTO; apply it
+            // directly instead of re-fetching.
+            setStatus(result.data);
+            if (result.data.readiness === "failed") {
+                toast.error(result.data.readiness_safe_failure_reason ?? "BYO preflight failed.");
+                return;
+            }
+        }
+        toast.success("BYO preflight completed.");
+    };
+
     if (loading) {
         return (
             <div>
@@ -445,6 +508,59 @@ export function ByoLlmSettings({
             {badge.label}
         </span>
     );
+
+    const readinessBadge = deriveReadinessBadge(status);
+    // Rendered whenever a BYO configuration is saved — independent of
+    // `status?.active`/`mode` (CHAOS-3265). A saved-but-degraded or
+    // not-currently-selected configuration is still explicitly checkable.
+    const byoPreflightPanel = hasSavedSettings ? (
+        <section
+            aria-labelledby="byo-preflight-heading"
+            data-testid="byo-llm-preflight"
+            className="mt-6 rounded-xl border border-(--card-stroke) bg-(--card-70) p-4"
+        >
+            <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                    <h2
+                        id="byo-preflight-heading"
+                        className="text-sm font-semibold text-foreground"
+                    >
+                        BYO preflight
+                    </h2>
+                    <p className="mt-1 max-w-xl text-xs text-(--ink-muted)">
+                        Tests only this saved BYO configuration. It does not consume Ask Dev&apos;s
+                        platform allowance, does not change which provider Ask Dev currently uses,
+                        and does not send organization evidence — synthetic data only.
+                    </p>
+                </div>
+                <span
+                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ${BADGE_TONE_CLASSES[readinessBadge.tone]}`}
+                >
+                    <span
+                        aria-hidden="true"
+                        className={`h-2 w-2 rounded-full ${BADGE_DOT_CLASSES[readinessBadge.tone]}`}
+                    />
+                    {readinessBadge.label}
+                </span>
+            </div>
+            <p className="mt-3 text-xs text-(--ink-muted)">
+                Last checked: {formatCheckedAt(status?.readiness_checked_at ?? null)}
+            </p>
+            {status?.readiness === "failed" && status.readiness_safe_failure_reason ? (
+                <p className="mt-2 text-sm text-(--negative)">
+                    {status.readiness_safe_failure_reason}
+                </p>
+            ) : null}
+            <button
+                type="button"
+                onClick={() => void runByoPreflight()}
+                disabled={checkingReadiness}
+                className="mt-4 rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-(--accent)/60 disabled:opacity-50"
+            >
+                {checkingReadiness ? "Checking…" : CTA_LABELS.runByoPreflight}
+            </button>
+        </section>
+    ) : null;
 
     const budgetBadge = budget ? deriveBudgetBadge(budget) : null;
     const budgetPanel = (
@@ -776,6 +892,8 @@ export function ByoLlmSettings({
                     </div>
                 </div>
             )}
+
+            {byoPreflightPanel}
         </div>
     );
 }

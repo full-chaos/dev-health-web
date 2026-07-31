@@ -296,6 +296,23 @@ export async function deleteLLMSettings(): Promise<LLMSettingsActionResult<{ del
     });
 }
 
+/**
+ * Runs the BYO preflight against the saved configuration (CHAOS-3265).
+ * Independent of Ask Dev's provider-selection arbitration — gated only on a
+ * saved BYO configuration existing (the backend 404s otherwise), never on
+ * whether BYO currently wins Ask Dev's arbitration.
+ */
+export async function runLLMSettingsReadiness(): Promise<
+    LLMSettingsActionResult<LLMSettingsStatusResponse>
+> {
+    return withStatusErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        const result = await adminApi.llmSettings.runReadiness(token, orgId);
+        revalidatePath("/org/admin/ai/byo-llm");
+        return result;
+    });
+}
+
 // Org-scoped per-run spend summary (CHAOS-2564). Uses withStatusErrorHandling
 // (not the generic withErrorHandling) so a tier/flag gate (402/403) surfaces
 // as a distinguishable locked state rather than a generic load error.

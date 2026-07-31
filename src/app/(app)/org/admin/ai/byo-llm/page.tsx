@@ -7,6 +7,7 @@ import {
     getLLMSettings,
     getLLMSettingsStatus,
     getLLMSpendSummary,
+    runLLMSettingsReadiness,
     upsertLLMSettings,
 } from "@/lib/admin/server";
 
@@ -19,6 +20,7 @@ export default function ByoLlmAISetupPage() {
                 loadStatusAction={getLLMSettingsStatus}
                 saveSettingsAction={upsertLLMSettings}
                 removeSettingsAction={deleteLLMSettings}
+                runReadinessAction={runLLMSettingsReadiness}
             />
             <ByoLlmSpendSummary loadSpendAction={getLLMSpendSummary} />
             <ByoLlmErrorStates />

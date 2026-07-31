@@ -20,6 +20,12 @@ const navItems = [
         href: "/superadmin/context-fabric/validation",
         description: "Runtime",
     },
+    {
+        id: "ask-dev",
+        label: "Ask Dev",
+        href: "/superadmin/ai/ask-dev",
+        description: "Platform LLM",
+    },
     { id: "audit", label: "Audit Log", href: "/superadmin/audit", description: "Events" },
     { id: "settings", label: "Settings", href: "/superadmin/settings", description: "Platform" },
     {

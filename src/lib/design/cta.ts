@@ -111,6 +111,10 @@ export const CTA_LABELS = {
     checkConnectionStatus: "Check connection status",
     disconnect: "Disconnect",
     runPreflight: "Run preflight",
+    /** Trigger the platform-admin-only Ask Dev provider preflight (CHAOS-3265). */
+    runPlatformPreflight: "Run platform preflight",
+    /** Trigger the org-scoped BYO-LLM preflight, independent of Ask Dev's active provider (CHAOS-3265). */
+    runByoPreflight: "Run BYO preflight",
     /** Advance to the next step of the guided onboarding flow (CHAOS-2675). */
     continueStep: "Continue",
     /** Continue the guided first-run setup from the dashboard (CHAOS-2678). */

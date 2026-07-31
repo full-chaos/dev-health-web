@@ -78,14 +78,12 @@ describe("AskDevAdminPanel", () => {
     const loadAction = vi.fn();
     const loadUsageAction = vi.fn();
     const saveAction = vi.fn();
-    const readinessAction = vi.fn();
 
     beforeEach(() => {
         vi.clearAllMocks();
         loadAction.mockResolvedValue({ data: adminResponse });
         loadUsageAction.mockResolvedValue({ data: usageResponse });
         saveAction.mockResolvedValue({ data: adminResponse });
-        readinessAction.mockResolvedValue({ data: adminResponse });
     });
 
     function renderPanel() {
@@ -94,7 +92,6 @@ describe("AskDevAdminPanel", () => {
                 loadAction={loadAction}
                 loadUsageAction={loadUsageAction}
                 saveAction={saveAction}
-                readinessAction={readinessAction}
             />,
         );
     }
@@ -103,10 +100,6 @@ describe("AskDevAdminPanel", () => {
         renderPanel();
 
         expect(await screen.findByRole("heading", { name: "Ask Dev" })).toBeInTheDocument();
-        expect(screen.getByText("Chat window")).toBeInTheDocument();
-        expect(screen.getByText("Full page")).toBeInTheDocument();
-        expect(screen.getByText("OpenAI compatible · platform")).toBeInTheDocument();
-        expect(screen.getByText("Certified model")).toBeInTheDocument();
         expect(screen.getByText("10")).toBeInTheDocument();
         expect(screen.getByText("1,500")).toBeInTheDocument();
         expect(screen.getByText("$1.25")).toBeInTheDocument();
@@ -119,6 +112,25 @@ describe("AskDevAdminPanel", () => {
         expect(screen.getByText(/not used for model training by default/i)).toBeInTheDocument();
         expect(screen.queryByText(/api key/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/base url/i)).not.toBeInTheDocument();
+    });
+
+    it("renders no provider identity, readiness badge, or preflight action (CHAOS-3265)", async () => {
+        renderPanel();
+
+        expect(await screen.findByRole("heading", { name: "Ask Dev" })).toBeInTheDocument();
+        // No platform-provider identity fields (moved to Platform Admin / BYO LLM).
+        expect(screen.queryByText("Chat window")).not.toBeInTheDocument();
+        expect(screen.queryByText("Full page")).not.toBeInTheDocument();
+        expect(screen.queryByText("Availability and provider")).not.toBeInTheDocument();
+        expect(screen.queryByText(/OpenAI compatible/i)).not.toBeInTheDocument();
+        expect(screen.queryByText("Certified model")).not.toBeInTheDocument();
+        // No readiness badge/pill in the header.
+        expect(screen.queryByRole("status")).not.toBeInTheDocument();
+        expect(screen.queryByText("Ready")).not.toBeInTheDocument();
+        // No preflight action anywhere on the surface.
+        expect(screen.queryByRole("button", { name: "Run preflight" })).not.toBeInTheDocument();
+        expect(screen.queryByText(/last preflight/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/synthetic data only/i)).not.toBeInTheDocument();
     });
 
     it("submits the approved conversation policy and bounded platform allowance", async () => {
@@ -210,14 +222,6 @@ describe("AskDevAdminPanel", () => {
         ).toBeInTheDocument();
     });
 
-    it("runs the non-sensitive readiness action explicitly", async () => {
-        renderPanel();
-
-        fireEvent.click(await screen.findByRole("button", { name: "Run preflight" }));
-        await waitFor(() => expect(readinessAction).toHaveBeenCalledTimes(1));
-        expect(screen.getByText(/synthetic data only/i)).toBeInTheDocument();
-    });
-
     it("keeps organization controls unavailable when Ask Dev is not entitled", async () => {
         loadAction.mockResolvedValue({
             data: {
@@ -232,6 +236,6 @@ describe("AskDevAdminPanel", () => {
         renderPanel();
 
         expect(await screen.findByRole("button", { name: "Save" })).toBeDisabled();
-        expect(screen.getByRole("button", { name: "Run preflight" })).toBeDisabled();
+        expect(screen.queryByRole("button", { name: "Run preflight" })).not.toBeInTheDocument();
     });
 });

@@ -869,13 +869,33 @@ export type LLMSettingsStatusReasonCode =
     "not_configured" | "unknown_provider" | "missing_credentials" | "invalid_base_url" | "active";
 
 /**
- * GET /admin/llm-settings/status response (CHAOS-2560). Drives the BYO-LLM
- * status badge on the AI Setup summary (CHAOS-2565): `active` renders
- * "Active", `configured && degraded` renders "Invalid — using platform
- * default", and `!configured` renders "Not configured". This endpoint is a
- * pure evaluator over stored settings + recent fallback audit rows — never a
- * live provider call — so a fetch failure degrades gracefully to the
- * settings-derived Saved/Not configured wording rather than blocking the UI.
+ * BYO preflight outcome (CHAOS-3265, amended for the CHAOS-3254
+ * READINESS_VERSION bump). Independent of `active`/`degraded` — a saved BYO
+ * configuration can be explicitly preflight-checked regardless of whether it
+ * currently wins Ask Dev's provider-selection arbitration.
+ *
+ * `"stale"` means a preflight was run before, but the stored result no
+ * longer corresponds to the current BYO configuration or the backend's
+ * current readiness-version requirement (the org edited BYO settings since
+ * the last check, or the backend's certification requirements changed). This
+ * is NOT an error/failure state — it is "not currently certified, re-run" —
+ * and must render with neutral/informational styling, never the negative
+ * "failed" tone. `readiness_safe_failure_reason` is only meaningful for
+ * `"failed"`; it must not be treated as an error explanation when stale.
+ */
+export type LLMSettingsReadinessState = "ready" | "failed" | "stale" | "never_checked";
+
+/**
+ * GET /admin/llm-settings/status response (CHAOS-2560, extended CHAOS-3265).
+ * Drives the BYO-LLM status badge on the AI Setup summary (CHAOS-2565):
+ * `active` renders "Active", `configured && degraded` renders "Invalid —
+ * using platform default", and `!configured` renders "Not configured". This
+ * endpoint is a pure evaluator over stored settings + recent fallback audit
+ * rows — never a live provider call — so a fetch failure degrades gracefully
+ * to the settings-derived Saved/Not configured wording rather than blocking
+ * the UI. `readiness`/`readiness_checked_at`/`readiness_safe_failure_reason`
+ * (CHAOS-3265) reflect the last explicit BYO preflight run via
+ * `POST /admin/llm-settings/readiness`, independent of this GET.
  */
 export interface LLMSettingsStatusResponse {
     configured: boolean;
@@ -883,6 +903,9 @@ export interface LLMSettingsStatusResponse {
     degraded: boolean;
     reason_code: LLMSettingsStatusReasonCode;
     last_fallback_at: string | null;
+    readiness: LLMSettingsReadinessState;
+    readiness_checked_at: string | null;
+    readiness_safe_failure_reason: string | null;
 }
 
 // ---- Ask Dev administration (CHAOS-3217) ----
@@ -1030,6 +1053,27 @@ export interface PlatformStats {
     active_sync_configs: number;
     recent_syncs_success: number;
     recent_syncs_failed: number;
+}
+
+// ---- Platform Ask Dev Readiness (CHAOS-3265) ----
+
+/**
+ * GET/POST /admin/platform/ask-dev/readiness response. Superuser-only —
+ * describes the operator/platform-owned Ask Dev provider (env-configured),
+ * never an organization's BYO configuration. `readiness` reuses
+ * `AskDevAdminReadiness` because the enum values are identical; do not
+ * duplicate the union.
+ */
+export interface PlatformAskDevReadinessResponse {
+    schema_version: "platform_ask_dev_readiness.v1";
+    configured: boolean;
+    /** Safe label only, e.g. "OpenAI compatible" — never a raw endpoint or credential. */
+    provider_label: string | null;
+    model_label: string | null;
+    readiness: AskDevAdminReadiness;
+    readiness_checked_at: string | null;
+    readiness_version: string | null;
+    safe_remediation: string | null;
 }
 
 // ---- Licensing & Feature Flags ----

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { renderWithToaster, screen, userEvent, waitFor } from "@/test/utils";
+import { renderWithToaster, screen, userEvent, waitFor, within } from "@/test/utils";
 
 vi.mock("next/link", () => ({
     default: ({ href, children }: { href: string; children: React.ReactNode }) => (
@@ -14,6 +14,7 @@ const mockLoadBudget = vi.fn<ByoLlmSettingsProps["loadBudgetAction"]>();
 const mockLoadStatus = vi.fn<ByoLlmSettingsProps["loadStatusAction"]>();
 const mockSave = vi.fn<ByoLlmSettingsProps["saveSettingsAction"]>();
 const mockRemove = vi.fn<ByoLlmSettingsProps["removeSettingsAction"]>();
+const mockRunReadiness = vi.fn<ByoLlmSettingsProps["runReadinessAction"]>();
 
 function renderForm() {
     return renderWithToaster(
@@ -23,6 +24,7 @@ function renderForm() {
             loadStatusAction={mockLoadStatus}
             saveSettingsAction={mockSave}
             removeSettingsAction={mockRemove}
+            runReadinessAction={mockRunReadiness}
         />,
     );
 }
@@ -34,6 +36,7 @@ describe("ByoLlmSettings", () => {
         mockSave.mockReset();
         mockRemove.mockReset();
         mockLoadStatus.mockReset();
+        mockRunReadiness.mockReset();
         // The CHAOS-2560 status endpoint is being built on a sibling branch;
         // default every test to the "not built yet" failure so the badge falls
         // back to settings-derived Saved/Not configured wording unless a test
@@ -192,6 +195,9 @@ describe("ByoLlmSettings", () => {
                 degraded: false,
                 reason_code: "active",
                 last_fallback_at: null,
+                readiness: "never_checked",
+                readiness_checked_at: null,
+                readiness_safe_failure_reason: null,
             },
         });
         renderForm();
@@ -210,11 +216,233 @@ describe("ByoLlmSettings", () => {
                 degraded: true,
                 reason_code: "invalid_base_url",
                 last_fallback_at: "2026-01-01T00:00:00Z",
+                readiness: "never_checked",
+                readiness_checked_at: null,
+                readiness_safe_failure_reason: null,
             },
         });
         renderForm();
 
         expect(await screen.findByText("Invalid — using platform default")).toBeInTheDocument();
+    });
+
+    describe("BYO preflight (CHAOS-3265)", () => {
+        it("renders no preflight control when no BYO settings are saved", async () => {
+            mockLoad.mockResolvedValue({ data: {} });
+            renderForm();
+
+            expect(await screen.findByText("Not configured")).toBeInTheDocument();
+            expect(screen.queryByTestId("byo-llm-preflight")).not.toBeInTheDocument();
+            expect(
+                screen.queryByRole("button", { name: "Run BYO preflight" }),
+            ).not.toBeInTheDocument();
+        });
+
+        it("renders and allows running the preflight when saved settings are degraded/not currently active", async () => {
+            mockLoad.mockResolvedValue({ data: { provider: "openai", model: "gpt-4o" } });
+            mockLoadStatus.mockResolvedValue({
+                data: {
+                    configured: true,
+                    active: false,
+                    degraded: true,
+                    reason_code: "invalid_base_url",
+                    last_fallback_at: "2026-01-01T00:00:00Z",
+                    readiness: "never_checked",
+                    readiness_checked_at: null,
+                    readiness_safe_failure_reason: null,
+                },
+            });
+            mockRunReadiness.mockResolvedValue({
+                data: {
+                    configured: true,
+                    active: false,
+                    degraded: true,
+                    reason_code: "invalid_base_url",
+                    last_fallback_at: "2026-01-01T00:00:00Z",
+                    readiness: "ready",
+                    readiness_checked_at: "2026-07-30T12:00:00Z",
+                    readiness_safe_failure_reason: null,
+                },
+            });
+            renderForm();
+
+            expect(await screen.findByTestId("byo-llm-preflight")).toBeInTheDocument();
+            expect(screen.getByText("Invalid — using platform default")).toBeInTheDocument();
+            expect(screen.getByText("Not yet checked")).toBeInTheDocument();
+
+            await userEvent.click(screen.getByRole("button", { name: "Run BYO preflight" }));
+
+            expect(mockRunReadiness).toHaveBeenCalledTimes(1);
+            expect(await screen.findByText("Preflight passed")).toBeInTheDocument();
+            await waitFor(() => {
+                expect(screen.getByText("BYO preflight completed.")).toBeInTheDocument();
+            });
+            // Applied the POST response directly rather than re-fetching status.
+            expect(mockLoadStatus).toHaveBeenCalledTimes(1);
+        });
+
+        it("still renders and runs the preflight in edit mode", async () => {
+            mockLoad.mockResolvedValue({ data: { provider: "openai", model: "gpt-4o" } });
+            mockLoadStatus.mockResolvedValue({
+                data: {
+                    configured: true,
+                    active: true,
+                    degraded: false,
+                    reason_code: "active",
+                    last_fallback_at: null,
+                    readiness: "ready",
+                    readiness_checked_at: "2026-07-01T00:00:00Z",
+                    readiness_safe_failure_reason: null,
+                },
+            });
+            mockRunReadiness.mockResolvedValue({
+                data: {
+                    configured: true,
+                    active: true,
+                    degraded: false,
+                    reason_code: "active",
+                    last_fallback_at: null,
+                    readiness: "ready",
+                    readiness_checked_at: "2026-07-30T12:00:00Z",
+                    readiness_safe_failure_reason: null,
+                },
+            });
+            renderForm();
+
+            await screen.findByRole("heading", { name: "BYO LLM", level: 2 });
+            await userEvent.click(screen.getByRole("button", { name: "Edit" }));
+            expect(screen.getByTestId("byo-llm-preflight")).toBeInTheDocument();
+
+            await userEvent.click(screen.getByRole("button", { name: "Run BYO preflight" }));
+            expect(mockRunReadiness).toHaveBeenCalledTimes(1);
+        });
+
+        it("surfaces the readiness_safe_failure_reason and an error toast when the preflight determines the provider is not ready, without leaking raw credentials in the preflight surface itself", async () => {
+            mockLoad.mockResolvedValue({
+                data: {
+                    provider: "openai",
+                    model: "gpt-4o",
+                    api_key: "sk-1…last",
+                    base_url: "https://byo-provider.example.test/v1",
+                },
+            });
+            mockLoadStatus.mockResolvedValue({
+                data: {
+                    configured: true,
+                    active: true,
+                    degraded: false,
+                    reason_code: "active",
+                    last_fallback_at: null,
+                    readiness: "never_checked",
+                    readiness_checked_at: null,
+                    readiness_safe_failure_reason: null,
+                },
+            });
+            // A completed preflight call (no ActionResult.error) whose result
+            // determined the provider is not ready — distinct from a hard
+            // action/network failure.
+            mockRunReadiness.mockResolvedValue({
+                data: {
+                    configured: true,
+                    active: true,
+                    degraded: false,
+                    reason_code: "active",
+                    last_fallback_at: null,
+                    readiness: "failed",
+                    readiness_checked_at: "2026-07-30T12:00:00Z",
+                    readiness_safe_failure_reason: "The provider rejected the request.",
+                },
+            });
+            renderForm();
+
+            const preflightSection = await screen.findByTestId("byo-llm-preflight");
+            await userEvent.click(
+                within(preflightSection).getByRole("button", { name: "Run BYO preflight" }),
+            );
+
+            expect(
+                await within(preflightSection).findByText("Preflight failed"),
+            ).toBeInTheDocument();
+            // The safe failure reason is rendered inline in the preflight
+            // section AND surfaced via an error toast — both use the same
+            // backend-provided string, so at least two occurrences exist.
+            await waitFor(() => {
+                expect(
+                    screen.getAllByText("The provider rejected the request.").length,
+                ).toBeGreaterThanOrEqual(2);
+            });
+            expect(
+                within(preflightSection).getByText("The provider rejected the request."),
+            ).toBeInTheDocument();
+            // The preflight section itself never renders the raw API key or base URL
+            // — only the safe readiness state/remediation copy the backend returns.
+            expect(within(preflightSection).queryByText(/sk-1…last/)).not.toBeInTheDocument();
+            expect(
+                within(preflightSection).queryByText(/byo-provider\.example\.test/),
+            ).not.toBeInTheDocument();
+        });
+
+        it("surfaces a generic error toast when the preflight action itself fails (network/backend error)", async () => {
+            mockLoad.mockResolvedValue({ data: { provider: "openai", model: "gpt-4o" } });
+            mockLoadStatus.mockResolvedValue({
+                data: {
+                    configured: true,
+                    active: true,
+                    degraded: false,
+                    reason_code: "active",
+                    last_fallback_at: null,
+                    readiness: "never_checked",
+                    readiness_checked_at: null,
+                    readiness_safe_failure_reason: null,
+                },
+            });
+            mockRunReadiness.mockResolvedValue({ error: "Upstream error (503)", status: 503 });
+            renderForm();
+
+            await screen.findByTestId("byo-llm-preflight");
+            await userEvent.click(screen.getByRole("button", { name: "Run BYO preflight" }));
+
+            await waitFor(() => {
+                expect(screen.getByText("Upstream error (503)")).toBeInTheDocument();
+            });
+        });
+
+        it("renders a stale certification as a neutral, non-alarming state (CHAOS-3254 READINESS_VERSION bump), not as a failure", async () => {
+            // Genuinely stale: a real prior certification exists (readiness_checked_at
+            // set) that no longer applies (settings/backend requirements changed) —
+            // distinct from never_checked (no prior run) and failed (an active
+            // problem). readiness_safe_failure_reason is only meaningful for
+            // "failed" and must not be rendered as an error here even if present.
+            mockLoad.mockResolvedValue({ data: { provider: "openai", model: "gpt-4o" } });
+            mockLoadStatus.mockResolvedValue({
+                data: {
+                    configured: true,
+                    active: true,
+                    degraded: false,
+                    reason_code: "active",
+                    last_fallback_at: null,
+                    readiness: "stale",
+                    readiness_checked_at: "2026-06-01T00:00:00Z",
+                    readiness_safe_failure_reason: null,
+                },
+            });
+            renderForm();
+
+            const preflightSection = await screen.findByTestId("byo-llm-preflight");
+            const badgeText = within(preflightSection).getByText(
+                "Certification expired — run preflight",
+            );
+            expect(badgeText).toBeInTheDocument();
+            // Non-alarming: never the negative/red tone used for an actual failure,
+            // and no failure-reason paragraph rendered for a stale (non-error) state.
+            expect(badgeText.parentElement?.className ?? "").not.toContain("negative");
+            expect(
+                within(preflightSection).queryByText(/rejected|error|blocked/i),
+            ).not.toBeInTheDocument();
+            expect(
+                within(preflightSection).getByRole("button", { name: "Run BYO preflight" }),
+            ).not.toBeDisabled();
+        });
     });
 
     it("enters edit mode from the summary, edits, and saves", async () => {
