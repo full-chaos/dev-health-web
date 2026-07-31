@@ -411,8 +411,11 @@ describe("ByoLlmSettings", () => {
             // Genuinely stale: a real prior certification exists (readiness_checked_at
             // set) that no longer applies (settings/backend requirements changed) —
             // distinct from never_checked (no prior run) and failed (an active
-            // problem). readiness_safe_failure_reason is only meaningful for
-            // "failed" and must not be rendered as an error here even if present.
+            // problem). The backend can populate readiness_safe_failure_reason even
+            // for a stale record (e.g. carried over from the certification that went
+            // stale); that field is only meaningful for "failed" and must NOT be
+            // rendered as an error here despite being non-null — exercise that
+            // explicitly rather than asserting it only for the easy null case.
             mockLoad.mockResolvedValue({ data: { provider: "openai", model: "gpt-4o" } });
             mockLoadStatus.mockResolvedValue({
                 data: {
@@ -423,7 +426,7 @@ describe("ByoLlmSettings", () => {
                     last_fallback_at: null,
                     readiness: "stale",
                     readiness_checked_at: "2026-06-01T00:00:00Z",
-                    readiness_safe_failure_reason: null,
+                    readiness_safe_failure_reason: "The provider rejected the request.",
                 },
             });
             renderForm();
@@ -434,8 +437,12 @@ describe("ByoLlmSettings", () => {
             );
             expect(badgeText).toBeInTheDocument();
             // Non-alarming: never the negative/red tone used for an actual failure,
-            // and no failure-reason paragraph rendered for a stale (non-error) state.
+            // and the failure-reason paragraph must NOT render for a stale (non-error)
+            // state even though readiness_safe_failure_reason is populated.
             expect(badgeText.parentElement?.className ?? "").not.toContain("negative");
+            expect(
+                within(preflightSection).queryByText("The provider rejected the request."),
+            ).not.toBeInTheDocument();
             expect(
                 within(preflightSection).queryByText(/rejected|error|blocked/i),
             ).not.toBeInTheDocument();
