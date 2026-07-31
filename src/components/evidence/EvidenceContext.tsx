@@ -29,7 +29,9 @@ export function EvidenceContext({ data }: EvidenceContextProps) {
     return (
         <section className="space-y-3 rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4">
             <div className="flex items-center justify-between">
-                <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">Context</p>
+                <p className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
+                    Context
+                </p>
                 {data.trend && (
                     <div
                         className={`flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium ${trendTone}`}
