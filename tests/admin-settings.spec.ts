@@ -25,6 +25,7 @@ async function waitForSettledToast(page: Page, message: RegExp) {
 test("settings page renders all sections", async ({ page }) => {
     await page.goto("/org/admin/settings");
 
+    await expect(page.getByText("System configuration and management.")).toHaveCount(0);
     await expect(page.getByRole("heading", { name: "Organization", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Profile" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
@@ -54,6 +55,10 @@ test("settings notifications settle below Account without obscuring responsive a
             await page.keyboard.press("Enter");
             await expect(navigationControl).toHaveAttribute("aria-expanded", "true");
             await expect(navigationControl).toHaveAccessibleName("Hide admin navigation");
+            await page.screenshot({
+                path: testInfo.outputPath("admin-navigation-open-mobile.png"),
+                fullPage: true,
+            });
             await page.keyboard.press("Escape");
             await expect(navigationControl).toBeFocused();
             await expect(navigationControl).toHaveAttribute("aria-expanded", "false");
