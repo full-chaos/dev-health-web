@@ -91,18 +91,15 @@ export function UserMenu() {
                         >
                             {CTA_LABELS.adminPanel}
                         </Link>
-                        <div className="border-t border-(--card-stroke)">
-                            <button
-                                type="button"
-                                onClick={() => signOut()}
-                                className="block w-full px-4 py-2 text-left text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
-                            >
-                                {CTA_LABELS.signOut}
-                            </button>
-                        </div>
-                        <div className="border-t border-(--card-stroke)">
-                            <BugReportButton />
-                        </div>
+                        <div role="separator" className="border-t border-(--card-stroke)" />
+                        <BugReportButton />
+                        <button
+                            type="button"
+                            onClick={() => signOut()}
+                            className="block w-full px-4 py-2 text-left text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                        >
+                            {CTA_LABELS.signOut}
+                        </button>
                     </div>
                 </div>
             )}

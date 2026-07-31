@@ -32,7 +32,7 @@ describe("UserMenu", () => {
         });
     });
 
-    it("reveals Report issue with a bug icon at the bottom of the account menu", async () => {
+    it("places Report issue immediately before Sign out in the account menu", async () => {
         const user = userEvent.setup();
         render(<UserMenu />);
 
@@ -45,12 +45,18 @@ describe("UserMenu", () => {
         expect(accountControl).toHaveAttribute("aria-expanded", "true");
         const preferences = screen.getByRole("link", { name: CTA_LABELS.preferences });
         expect(preferences).toHaveAttribute("href", "/settings");
+        const adminPanel = screen.getByRole("link", { name: CTA_LABELS.adminPanel });
+        const separator = screen.getByRole("separator");
         const signOut = screen.getByRole("button", { name: CTA_LABELS.signOut });
         const reportIssue = screen.getByRole("button", { name: CTA_LABELS.reportIssue });
         expect(signOut).toBeVisible();
         expect(reportIssue).toBeVisible();
         expect(reportIssue.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
-        expect(signOut.compareDocumentPosition(reportIssue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+        const menuActionButtons = Array.from(document.querySelectorAll("#account-options button"));
+        expect(menuActionButtons).toEqual([reportIssue, signOut]);
+        expect(adminPanel.nextElementSibling).toBe(separator);
+        expect(separator.nextElementSibling).toBe(reportIssue);
+        expect(reportIssue.nextElementSibling).toBe(signOut);
 
         await user.tab();
         expect(preferences).toHaveFocus();
