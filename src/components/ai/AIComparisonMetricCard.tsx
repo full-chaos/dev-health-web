@@ -1,5 +1,9 @@
 "use client";
 
+import { useId, useState } from "react";
+
+import { CTA_LABELS } from "@/lib/design/cta";
+
 type AIComparisonMetricCardProps = {
     title: string;
     value?: number | null;
@@ -37,6 +41,8 @@ export function AIComparisonMetricCard({
     tooltip,
     onDrilldown,
 }: AIComparisonMetricCardProps) {
+    const tooltipId = useId();
+    const [tooltipVisible, setTooltipVisible] = useState(false);
     const deltaLabel =
         delta == null
             ? "Baseline delta unavailable"
@@ -44,20 +50,40 @@ export function AIComparisonMetricCard({
 
     return (
         <article
-            className="flex min-h-[188px] flex-col justify-between rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm"
+            className="flex min-h-48 flex-col justify-between rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm"
             data-testid="ai-comparison-metric-card"
         >
             <div>
                 <div className="flex items-start justify-between gap-3">
                     <h3 className="font-(--font-display) text-lg">{title}</h3>
                     {tooltip && (
-                        <span
-                            className="rounded-full border border-(--card-stroke) px-2 py-1 text-xs text-(--ink-muted)"
-                            title={tooltip}
-                            aria-label={tooltip}
+                        <button
+                            type="button"
+                            aria-describedby={tooltipId}
+                            onBlur={() => setTooltipVisible(false)}
+                            onFocus={() => setTooltipVisible(true)}
+                            onKeyDown={(event) => {
+                                if (event.key === "Escape") setTooltipVisible(false);
+                            }}
+                            onMouseEnter={() => setTooltipVisible(true)}
+                            onMouseLeave={() => setTooltipVisible(false)}
+                            className="relative rounded-full border border-(--card-stroke) px-2 py-1 text-xs text-(--ink-muted)"
                         >
-                            ?
-                        </span>
+                            <span aria-hidden="true">?</span>
+                            <span className="sr-only">Metric information</span>
+                            <span
+                                id={tooltipId}
+                                role="tooltip"
+                                aria-hidden={!tooltipVisible}
+                                style={{
+                                    opacity: tooltipVisible ? 1 : 0,
+                                    visibility: tooltipVisible ? "visible" : "hidden",
+                                }}
+                                className="absolute top-full right-0 z-10 mt-2 w-56 rounded-lg border border-(--card-stroke) bg-card p-2 text-left text-xs text-foreground shadow-lg transition"
+                            >
+                                {tooltip}
+                            </span>
+                        </button>
                     )}
                 </div>
                 <p className="mt-2 text-sm text-(--ink-muted)">{description}</p>
@@ -78,7 +104,7 @@ export function AIComparisonMetricCard({
                         onClick={onDrilldown}
                         className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-(--accent-positive) hover:underline"
                     >
-                        Drill into evidence
+                        {CTA_LABELS.openEvidence}
                     </button>
                 )}
             </div>
