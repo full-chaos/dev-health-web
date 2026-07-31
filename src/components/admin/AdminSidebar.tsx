@@ -151,9 +151,6 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                                 Platform Admin
                             </span>
                         )}
-                        <p className="mt-2 text-xs text-(--ink-muted)">
-                            System configuration and management.
-                        </p>
                     </div>
 
                     <OrgSwitcher />

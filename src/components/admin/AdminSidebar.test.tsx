@@ -41,6 +41,7 @@ describe("AdminSidebar", () => {
         render(<AdminSidebar />);
 
         expect(screen.getByText("Admin")).toBeInTheDocument();
+        expect(screen.queryByText("System configuration and management.")).not.toBeInTheDocument();
         expect(screen.queryByText("Full Chaos Dev Health Ops")).not.toBeInTheDocument();
         expect(screen.getByTestId("org-switcher")).toBeInTheDocument();
         expect(
