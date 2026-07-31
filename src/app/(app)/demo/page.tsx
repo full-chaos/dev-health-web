@@ -631,7 +631,7 @@ export default function Home() {
                                 Only the named individual is shown in this view.
                             </p>
                         </div>
-                        <div className="flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                        <div className="flex flex-wrap gap-2 text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                             <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1">
                                 Developer: L. Morales
                             </span>
@@ -647,7 +647,7 @@ export default function Home() {
                         <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
                             <div className="mb-3 flex items-center justify-between">
                                 <h3 className="text-sm font-semibold">Individual heatmap</h3>
-                                <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                <span className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                                     Active hours
                                 </span>
                             </div>
@@ -656,7 +656,7 @@ export default function Home() {
                         <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
                             <div className="mb-3 flex items-center justify-between">
                                 <h3 className="text-sm font-semibold">Individual flame</h3>
-                                <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                <span className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                                     Issue focus
                                 </span>
                             </div>
@@ -670,7 +670,7 @@ export default function Home() {
                         <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
                             <div className="mb-3 flex items-center justify-between">
                                 <h3 className="text-sm font-semibold">Individual quadrant</h3>
-                                <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                <span className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                                     Trajectory
                                 </span>
                             </div>
@@ -736,7 +736,7 @@ export default function Home() {
                         >
                             <div className="mb-3 flex items-center justify-between">
                                 <h3 className="text-sm font-semibold">Repo transfer</h3>
-                                <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                <span className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                                     6 repos
                                 </span>
                             </div>
@@ -749,7 +749,7 @@ export default function Home() {
                         >
                             <div className="mb-3 flex items-center justify-between">
                                 <h3 className="text-sm font-semibold">Work type rework</h3>
-                                <span className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                <span className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                                     Self-links on
                                 </span>
                             </div>
