@@ -132,8 +132,7 @@ jobs:
             - name: Run dev-health-ops migrations
               env:
                   DATABASE_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
-                  DEV_HEALTH_ALLOW_CELERY_RIVER_CUTOVER: "1"
-              run: alembic -c alembic.ini upgrade head
+              run: python -m dev_health_ops.cli --db "$DATABASE_URI" migrate postgres
               working-directory: dev-health-ops
 
             - name: Seed dev-health-ops fixtures

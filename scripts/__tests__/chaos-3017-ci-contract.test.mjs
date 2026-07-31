@@ -265,10 +265,17 @@ describe("CHAOS-3017 CI contracts", () => {
         }
     });
 
-    it("opts the live backend fixture into the reviewed Celery-to-River cutover", () => {
-        const workflow = contents(LIVE_E2E_WORKFLOW);
+    it("uses the application migrator without authorizing the River cutover", () => {
+        const migrationStep = step(
+            job(contents(LIVE_E2E_WORKFLOW), "live-e2e"),
+            "Run dev-health-ops migrations",
+        );
 
-        expect(workflow).toContain('DEV_HEALTH_ALLOW_CELERY_RIVER_CUTOVER: "1"');
+        expect(migrationStep).toContain("python -m dev_health_ops.cli");
+        expect(migrationStep).toContain('--db "$DATABASE_URI"');
+        expect(migrationStep).toContain("migrate postgres");
+        expect(migrationStep).not.toContain("alembic");
+        expect(migrationStep).not.toContain("DEV_HEALTH_ALLOW_CELERY_RIVER_CUTOVER");
     });
 
     it("pins paths-filter to the reviewed commit in every touched workflow", () => {

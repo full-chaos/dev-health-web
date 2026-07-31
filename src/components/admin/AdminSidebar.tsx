@@ -164,6 +164,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                                 <Link
                                     key={item.id}
                                     href={item.href}
+                                    prefetch={false}
                                     aria-current={isActive ? "page" : undefined}
                                     className={`group flex items-center justify-between rounded-2xl border px-3 py-2 transition ${
                                         isActive
@@ -185,6 +186,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                         {isSuperuser && (
                             <Link
                                 href="/superadmin"
+                                prefetch={false}
                                 className="group flex items-center justify-between rounded-2xl border border-purple-500/20 bg-purple-500/10 px-3 py-2 text-purple-400 hover:bg-purple-500/20 transition"
                             >
                                 <span className="font-medium">Platform Admin</span>
@@ -194,7 +196,11 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                     </nav>
                     <div className="mt-5 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-3 text-xs text-(--ink-muted)">
                         Return to{" "}
-                        <Link href="/dashboard" className="underline hover:text-foreground">
+                        <Link
+                            href="/dashboard"
+                            prefetch={false}
+                            className="underline hover:text-foreground"
+                        >
                             main app
                         </Link>
                         .

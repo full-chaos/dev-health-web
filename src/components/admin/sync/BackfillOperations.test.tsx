@@ -51,6 +51,26 @@ describe("BackfillOperations", () => {
         expect(screen.getByLabelText("To")).toHaveValue("2026-01-03");
     });
 
+    it("opens an unscoped recovery backfill when coverage cannot load", async () => {
+        const user = userEvent.setup();
+        render(
+            <BackfillOperations
+                configId="cfg-1"
+                coverage={null}
+                coverageError="fetch failed"
+                isActive
+                activeBackfillJob={null}
+                testMode
+            />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "Backfill" }));
+
+        expect(screen.getByRole("dialog", { name: "Run historical backfill" })).toBeInTheDocument();
+        expect(screen.getByLabelText("From")).toHaveValue("");
+        expect(screen.getAllByText("No coverage data yet")).toHaveLength(2);
+    });
+
     it("closes the wizard via its Cancel action", async () => {
         const user = userEvent.setup();
         renderOperations();
