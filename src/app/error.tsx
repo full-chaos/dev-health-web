@@ -8,6 +8,7 @@
  */
 import { useEffect } from "react";
 import { logger } from "@/lib/logger";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 interface ErrorProps {
     error: Error & { digest?: string };
@@ -36,7 +37,7 @@ export default function Error({ error, reset }: ErrorProps) {
                     onClick={reset}
                     className="rounded-full border border-(--card-stroke) px-6 py-2.5 text-xs uppercase tracking-[0.2em] hover:border-(--accent) transition"
                 >
-                    Try again
+                    {CTA_LABELS.tryAgain}
                 </button>
             </div>
         </div>

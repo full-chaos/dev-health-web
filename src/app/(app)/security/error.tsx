@@ -1,6 +1,7 @@
 "use client";
 
 import { ErrorCard } from "@/components/ui/ErrorCard";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export default function SecurityError({
     error,
@@ -19,7 +20,7 @@ export default function SecurityError({
                         onClick={reset}
                         className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] transition hover:bg-(--card-80)"
                     >
-                        Try again
+                        {CTA_LABELS.tryAgain}
                     </button>
                 }
             />
