@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatSparklineTooltipDate } from "./SparklineChart";
+import { formatSparklineTooltipDate, formatSparklineTooltipValue } from "./SparklineChart";
 
 describe("formatSparklineTooltipDate", () => {
     it("formats an ISO datetime string as a short date (not the raw ISO)", () => {
@@ -32,5 +32,17 @@ describe("formatSparklineTooltipDate", () => {
         // because integers are not valid dates
         expect(formatSparklineTooltipDate(1)).toBe("1");
         expect(formatSparklineTooltipDate(42)).toBe("42");
+    });
+});
+
+describe("formatSparklineTooltipValue", () => {
+    it("rounds numeric tooltip values instead of exposing floating-point precision", () => {
+        expect(formatSparklineTooltipValue(0.6889888599537036)).toBe("0.7");
+        expect(formatSparklineTooltipValue(11993.3875352)).toBe("11,993.4");
+    });
+
+    it("preserves non-numeric tooltip values", () => {
+        expect(formatSparklineTooltipValue("No data")).toBe("No data");
+        expect(formatSparklineTooltipValue(undefined)).toBe("");
     });
 });
