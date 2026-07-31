@@ -25,6 +25,23 @@ async function waitForSettledToast(page: Page, message: RegExp) {
 test("settings page renders all sections", async ({ page }) => {
     await page.goto("/org/admin/settings");
 
+    await expect(page.getByText("System configuration and management.")).toBeVisible();
+    for (const description of [
+        "Overview",
+        "Org members",
+        "Workspace settings",
+        "Connected sources",
+        "Sync activity",
+        "Team ownership",
+        "Identity mapping",
+        "Access history",
+        "Network access",
+        "Retention policy",
+        "Model provider",
+        "Global",
+    ]) {
+        await expect(page.getByText(description, { exact: true })).toHaveCount(0);
+    }
     await expect(page.getByRole("heading", { name: "Organization", exact: true })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Profile" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Billing" })).toBeVisible();
@@ -43,6 +60,7 @@ test("settings notifications settle below Account without obscuring responsive a
     for (const viewport of viewports) {
         await page.setViewportSize(viewport);
         await page.goto("/org/admin/settings");
+        await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
 
         const pageTitle = page.getByRole("heading", { name: "Organization", exact: true });
         await expect(pageTitle).toBeInViewport();
@@ -54,6 +72,10 @@ test("settings notifications settle below Account without obscuring responsive a
             await page.keyboard.press("Enter");
             await expect(navigationControl).toHaveAttribute("aria-expanded", "true");
             await expect(navigationControl).toHaveAccessibleName("Hide admin navigation");
+            await page.screenshot({
+                path: testInfo.outputPath("admin-navigation-open-mobile.png"),
+                fullPage: true,
+            });
             await page.keyboard.press("Escape");
             await expect(navigationControl).toBeFocused();
             await expect(navigationControl).toHaveAttribute("aria-expanded", "false");

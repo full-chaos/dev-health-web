@@ -9,7 +9,6 @@ type NavItem = {
     id: string;
     label: string;
     href: string;
-    description: string;
     featureKeys?: readonly string[];
 };
 
@@ -18,70 +17,59 @@ const navItems: NavItem[] = [
         id: "dashboard",
         label: "Dashboard",
         href: "/org/admin",
-        description: "Overview",
     },
     {
         id: "users",
         label: "Users",
         href: "/org/admin/users",
-        description: "Org members",
     },
     {
         id: "organization",
         label: "Organization",
         href: "/org/admin/settings",
-        description: "Workspace settings",
     },
     {
         id: "integrations",
         label: "Providers",
         href: "/org/admin/integrations",
-        description: "Connected sources",
     },
     {
         id: "sync",
         label: "Sync Status",
         href: "/org/admin/sync",
-        description: "Sync activity",
     },
     {
         id: "teams",
         label: "Teams",
         href: "/org/admin/teams",
-        description: "Team ownership",
     },
     {
         id: "identities",
         label: "Identities",
         href: "/org/admin/identities",
-        description: "Identity mapping",
     },
     {
         id: "audit",
         label: "Audit Logs",
         href: "/org/admin/audit-logs",
-        description: "Access history",
         featureKeys: ["audit_log"],
     },
     {
         id: "ip-allowlist",
         label: "IP Allowlist",
         href: "/org/admin/ip-allowlist",
-        description: "Network access",
         featureKeys: ["ip_allowlist"],
     },
     {
         id: "retention",
         label: "Data Retention",
         href: "/org/admin/retention",
-        description: "Retention policy",
         featureKeys: ["custom_retention"],
     },
     {
         id: "ai-setup",
         label: "AI Setup",
         href: "/org/admin/ai",
-        description: "Model provider",
         featureKeys: ["ask_dev", "byo_llm"],
     },
 ];
@@ -166,20 +154,13 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                                     href={item.href}
                                     prefetch={false}
                                     aria-current={isActive ? "page" : undefined}
-                                    className={`group flex items-center justify-between rounded-2xl border px-3 py-2 transition ${
+                                    className={`group flex items-center rounded-2xl border px-3 py-2 transition ${
                                         isActive
                                             ? "border-(--accent) bg-(--accent)/15 text-foreground"
                                             : "border-transparent bg-(--card-70) text-(--ink-muted) hover:border-(--card-stroke) hover:text-foreground"
                                     }`}
                                 >
                                     <span className="font-medium">{item.label}</span>
-                                    <span
-                                        className={`text-label-caps uppercase ${
-                                            isActive ? "text-(--accent)" : "text-(--ink-muted)"
-                                        }`}
-                                    >
-                                        {item.description}
-                                    </span>
                                 </Link>
                             );
                         })}
@@ -187,10 +168,9 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                             <Link
                                 href="/superadmin"
                                 prefetch={false}
-                                className="group flex items-center justify-between rounded-2xl border border-purple-500/20 bg-purple-500/10 px-3 py-2 text-purple-400 hover:bg-purple-500/20 transition"
+                                className="group flex items-center rounded-2xl border border-purple-500/20 bg-purple-500/10 px-3 py-2 text-purple-400 hover:bg-purple-500/20 transition"
                             >
                                 <span className="font-medium">Platform Admin</span>
-                                <span className="text-label-caps uppercase">Global</span>
                             </Link>
                         )}
                     </nav>
