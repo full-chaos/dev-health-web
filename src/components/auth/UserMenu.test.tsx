@@ -72,4 +72,25 @@ describe("UserMenu", () => {
         await user.click(signOut);
         expect(signOutMock).toHaveBeenCalledOnce();
     });
+
+    it("uses decorative icons for every account menu destination and action", async () => {
+        const user = userEvent.setup();
+        useSessionMock.mockReturnValue({
+            data: { user: { email: "operator@example.com", is_superuser: true } },
+            status: "authenticated",
+        });
+        render(<UserMenu />);
+
+        await user.click(screen.getByRole("button", { name: CTA_LABELS.accountOptions }));
+
+        for (const item of [
+            screen.getByRole("link", { name: CTA_LABELS.platformAdmin }),
+            screen.getByRole("link", { name: CTA_LABELS.preferences }),
+            screen.getByRole("link", { name: CTA_LABELS.adminPanel }),
+            screen.getByRole("button", { name: CTA_LABELS.reportIssue }),
+            screen.getByRole("button", { name: CTA_LABELS.signOut }),
+        ]) {
+            expect(item.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+        }
+    });
 });

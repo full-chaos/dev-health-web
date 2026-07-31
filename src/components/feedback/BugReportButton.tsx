@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Bug } from "lucide-react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 
@@ -21,31 +22,6 @@ const initialFormState: FeedbackFormState = {
     description: "",
     type: "bug",
 };
-
-function BugIcon() {
-    return (
-        <svg
-            aria-hidden="true"
-            className="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
-        >
-            <path d="M12 6v12" />
-            <path d="M8 8h8" />
-            <path d="M8 16h8" />
-            <path d="M7 10 4 8" />
-            <path d="M7 14 4 16" />
-            <path d="M17 10l3-2" />
-            <path d="M17 14l3 2" />
-            <path d="M15 5a3 3 0 1 0-6 0" />
-            <rect x="7" y="6" width="10" height="12" rx="5" />
-        </svg>
-    );
-}
 
 export function BugReportButton() {
     const [isOpen, setIsOpen] = useState(false);
@@ -141,7 +117,7 @@ export function BugReportButton() {
                 className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                 onClick={openPanel}
             >
-                <BugIcon />
+                <Bug aria-hidden="true" className="h-4 w-4 shrink-0 text-(--ink-muted)" />
                 {CTA_LABELS.reportIssue}
             </button>
 
