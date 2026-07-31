@@ -77,6 +77,29 @@ describe("CockpitClient — Key Shifts row", () => {
         expect(screen.getByText("Code Churn")).toBeInTheDocument();
     });
 
+    it("scrubs unresolved identifiers from notable-shift narratives", () => {
+        const internalId = "a1b2c3d4-e5f6-4789-abcd-0123456789ab";
+        render(
+            <CockpitClient
+                home={makeHome({
+                    summary: [
+                        {
+                            id: "summary-1",
+                            text: `Compounding risk appears elevated for ${internalId}.`,
+                            evidence_link: "/api/v1/home?thread=understand",
+                        },
+                    ],
+                })}
+                filters={filters}
+                activeRole="ic"
+            />,
+        );
+
+        expect(document.body).not.toHaveTextContent(internalId);
+        expect(document.body.innerHTML).not.toContain(internalId);
+        expect(screen.getByText(/#a1b2c3d4/)).toBeInTheDocument();
+    });
+
     it("shows no-data-connected when deltas are empty and no sources are connected", () => {
         // makeHome() has freshness.sources: {} → no sources → no-data-connected
         render(<CockpitClient home={makeHome({ deltas: [] })} filters={filters} activeRole="ic" />);
