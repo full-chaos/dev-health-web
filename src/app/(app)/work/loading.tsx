@@ -2,10 +2,10 @@ import { SkeletonChart } from "@/components/ui/Skeleton";
 
 function NavSkeleton() {
     return (
-        <aside className="w-full md:max-w-[220px] md:shrink-0 animate-pulse">
+        <aside className="w-full md:max-w-56 md:shrink-0 animate-pulse">
             <div className="sticky top-10 space-y-2">
-                {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="h-10 bg-(--card-70) rounded-2xl" />
+                {Array.from({ length: 8 }, (_, index) => `nav-skeleton-${index}`).map((key) => (
+                    <div key={key} className="h-10 bg-(--card-70) rounded-2xl" />
                 ))}
             </div>
         </aside>
@@ -34,9 +34,11 @@ export default function Loading() {
 
                     {/* Tab nav: Landscape / Heatmap / Flow / Investment / Capacity / Flame / Evidence / Graph */}
                     <div className="flex flex-wrap gap-2 animate-pulse">
-                        {Array.from({ length: 8 }).map((_, i) => (
-                            <div key={i} className="h-8 bg-(--card-70) rounded-full w-24" />
-                        ))}
+                        {Array.from({ length: 8 }, (_, index) => `tab-skeleton-${index}`).map(
+                            (key) => (
+                                <div key={key} className="h-8 bg-(--card-70) rounded-full w-24" />
+                            ),
+                        )}
                     </div>
 
                     {/* Context strip */}
@@ -53,16 +55,18 @@ export default function Loading() {
 
                     {/* Investment mix / summary cards */}
                     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 animate-pulse">
-                        {Array.from({ length: 4 }).map((_, i) => (
-                            <div
-                                key={i}
-                                className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 space-y-3"
-                            >
-                                <div className="h-3 bg-(--card-70) rounded w-20" />
-                                <div className="h-8 bg-(--card-70) rounded w-14" />
-                                <div className="h-3 bg-(--card-70) rounded w-12" />
-                            </div>
-                        ))}
+                        {Array.from({ length: 4 }, (_, index) => `card-skeleton-${index}`).map(
+                            (key) => (
+                                <div
+                                    key={key}
+                                    className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 space-y-3"
+                                >
+                                    <div className="h-3 bg-(--card-70) rounded w-20" />
+                                    <div className="h-8 bg-(--card-70) rounded w-14" />
+                                    <div className="h-3 bg-(--card-70) rounded w-12" />
+                                </div>
+                            ),
+                        )}
                     </div>
                 </main>
             </div>

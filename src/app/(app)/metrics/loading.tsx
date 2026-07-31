@@ -2,10 +2,10 @@ import { SkeletonChart, SkeletonTable } from "@/components/ui/Skeleton";
 
 function NavSkeleton() {
     return (
-        <aside className="w-full md:max-w-[220px] md:shrink-0 animate-pulse">
+        <aside className="w-full md:max-w-56 md:shrink-0 animate-pulse">
             <div className="sticky top-10 space-y-2">
-                {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="h-10 bg-(--card-70) rounded-2xl" />
+                {Array.from({ length: 8 }, (_, index) => `nav-skeleton-${index}`).map((key) => (
+                    <div key={key} className="h-10 bg-(--card-70) rounded-2xl" />
                 ))}
             </div>
         </aside>
@@ -34,9 +34,11 @@ export default function Loading() {
 
                     {/* Tab nav: DORA / Flow / Quality / Throughput */}
                     <div className="flex flex-wrap gap-2 animate-pulse">
-                        {Array.from({ length: 4 }).map((_, i) => (
-                            <div key={i} className="h-8 bg-(--card-70) rounded-full w-24" />
-                        ))}
+                        {Array.from({ length: 4 }, (_, index) => `tab-skeleton-${index}`).map(
+                            (key) => (
+                                <div key={key} className="h-8 bg-(--card-70) rounded-full w-24" />
+                            ),
+                        )}
                     </div>
 
                     {/* Active tab section header + metric chips */}
@@ -49,25 +51,32 @@ export default function Loading() {
                             <div className="h-3 bg-(--card-70) rounded w-24" />
                         </div>
                         <div className="mt-4 flex flex-wrap gap-2">
-                            {Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="h-6 bg-(--card-70) rounded-full w-28" />
-                            ))}
+                            {Array.from({ length: 4 }, (_, index) => `chip-skeleton-${index}`).map(
+                                (key) => (
+                                    <div
+                                        key={key}
+                                        className="h-6 bg-(--card-70) rounded-full w-28"
+                                    />
+                                ),
+                            )}
                         </div>
                     </div>
 
                     {/* Metric cards grid (2 cols mobile, 4 cols desktop) */}
                     <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 animate-pulse">
-                        {Array.from({ length: 4 }).map((_, i) => (
-                            <div
-                                key={i}
-                                className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 space-y-3"
-                            >
-                                <div className="h-3 bg-(--card-70) rounded w-24" />
-                                <div className="h-8 bg-(--card-70) rounded w-16" />
-                                <div className="h-3 bg-(--card-70) rounded w-12" />
-                                <div className="h-12 bg-(--card-70) rounded" />
-                            </div>
-                        ))}
+                        {Array.from({ length: 4 }, (_, index) => `metric-skeleton-${index}`).map(
+                            (key) => (
+                                <div
+                                    key={key}
+                                    className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 space-y-3"
+                                >
+                                    <div className="h-3 bg-(--card-70) rounded w-24" />
+                                    <div className="h-8 bg-(--card-70) rounded w-16" />
+                                    <div className="h-3 bg-(--card-70) rounded w-12" />
+                                    <div className="h-12 bg-(--card-70) rounded" />
+                                </div>
+                            ),
+                        )}
                     </div>
 
                     {/* Quadrant chart */}
@@ -83,8 +92,11 @@ export default function Loading() {
                             <div className="h-4 bg-(--card-70) rounded w-56" />
                             <div className="h-32 bg-(--card-70) rounded-2xl" />
                             <div className="space-y-2">
-                                {Array.from({ length: 4 }).map((_, i) => (
-                                    <div key={i} className="h-9 bg-(--card-70) rounded-2xl" />
+                                {Array.from(
+                                    { length: 4 },
+                                    (_, index) => `association-skeleton-${index}`,
+                                ).map((key) => (
+                                    <div key={key} className="h-9 bg-(--card-70) rounded-2xl" />
                                 ))}
                             </div>
                         </div>
@@ -96,8 +108,11 @@ export default function Loading() {
                             <div className="h-4 bg-(--card-70) rounded w-56" />
                             <div className="h-32 bg-(--card-70) rounded-2xl" />
                             <div className="space-y-2">
-                                {Array.from({ length: 4 }).map((_, i) => (
-                                    <div key={i} className="h-9 bg-(--card-70) rounded-2xl" />
+                                {Array.from(
+                                    { length: 4 },
+                                    (_, index) => `contributor-skeleton-${index}`,
+                                ).map((key) => (
+                                    <div key={key} className="h-9 bg-(--card-70) rounded-2xl" />
                                 ))}
                             </div>
                         </div>
