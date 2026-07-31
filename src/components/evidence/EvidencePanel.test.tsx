@@ -73,6 +73,74 @@ describe("EvidencePanel", () => {
         expect(screen.getByText("Shorten review queue")).toBeInTheDocument();
     });
 
+    it("formats contributor values and percentages for display", async () => {
+        mockGetExplainData.mockResolvedValue({
+            metric: "throughput",
+            label: "Throughput",
+            value: 11993,
+            unit: "items",
+            delta_pct: 361.38753526545264,
+            summary: "Throughput moved in this window.",
+            contributors: [
+                {
+                    id: "contributor-1",
+                    label: "Repository activity",
+                    value: 11993,
+                    delta_pct: 361.38753526545264,
+                    evidence_link: "/explore",
+                },
+            ],
+            actions: [],
+        });
+
+        render(
+            <EvidencePanel
+                isOpen
+                onCloseAction={() => undefined}
+                title="Throughput"
+                metric="throughput"
+                filters={filters}
+            />,
+        );
+
+        expect(await screen.findByText("11,993 (361%)")).toBeInTheDocument();
+        expect(document.body).not.toHaveTextContent("361.38753526545264");
+    });
+
+    it("does not expose internal evidence identifiers", async () => {
+        const internalId = "a1b2c3d4-e5f6-4789-abcd-0123456789ab";
+        mockGetExplainData.mockResolvedValue({
+            metric: "cycle_time",
+            label: "Cycle Time",
+            value: 4,
+            unit: "days",
+            delta_pct: -12,
+            summary: "Cycle time appears lower in this window.",
+            evidence: [
+                {
+                    id: internalId,
+                    title: "Shorten review queue",
+                    url: "/prs/PR-1",
+                    type: "pr",
+                },
+            ],
+            actions: [],
+        });
+
+        render(
+            <EvidencePanel
+                isOpen
+                onCloseAction={() => undefined}
+                title="Cycle Time"
+                metric="cycle_time"
+                filters={filters}
+            />,
+        );
+
+        expect(await screen.findByText("Shorten review queue")).toBeInTheDocument();
+        expect(document.body).not.toHaveTextContent(internalId);
+    });
+
     it("makes empty evidence explicit as partial data", async () => {
         mockGetExplainData.mockResolvedValue({
             metric: "throughput",

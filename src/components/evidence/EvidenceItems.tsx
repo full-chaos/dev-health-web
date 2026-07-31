@@ -42,9 +42,6 @@ export function EvidenceItems({ items }: EvidenceItemsProps) {
                                     <span className="rounded border border-(--card-stroke) bg-(--card-70) px-1.5 py-0.5 text-[10px] font-bold uppercase text-(--ink-muted)">
                                         {item.type}
                                     </span>
-                                    <span className="truncate font-mono text-xs text-(--ink-muted)">
-                                        {item.id}
-                                    </span>
                                 </div>
                                 <p className="line-clamp-2 text-sm font-medium leading-5 text-foreground group-hover:text-(--accent)">
                                     {item.title}

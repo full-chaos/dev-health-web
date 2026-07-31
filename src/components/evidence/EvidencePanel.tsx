@@ -14,6 +14,8 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getMetricDefinition } from "@/lib/metrics/definitions";
+import { formatNumber, formatPercent as formatDisplayPercent } from "@/lib/formatters";
+import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import Link from "next/link";
 
 type EvidenceItem = {
@@ -62,7 +64,9 @@ type EvidencePanelResult = Partial<EvidencePanelData> & {
 };
 
 const formatPercent = (value?: number | null) =>
-    typeof value === "number" ? `${Math.round(value)}%` : "not available";
+    typeof value === "number" ? formatDisplayPercent(value) : "not available";
+
+const safeNarrative = (value: string) => scrubIdentifiers(value).text;
 
 const humanizeKey = (value: string) =>
     value
@@ -389,17 +393,23 @@ export function EvidencePanel({
                                     title: d.label,
                                     url: d.evidence_link || "#",
                                     type: "other" as const,
-                                    meta: `${d.value} (${d.delta_pct}%)`,
+                                    meta: `${formatNumber(d.value)} (${formatPercent(d.delta_pct)})`,
                                 }),
                             );
 
                         // Deduplicate by id — drivers and contributors overlap
                         const seen = new Set<string>();
-                        const evidence = rawEvidence.filter((item) => {
-                            if (seen.has(item.id)) return false;
-                            seen.add(item.id);
-                            return true;
-                        });
+                        const evidence = rawEvidence
+                            .filter((item) => {
+                                if (seen.has(item.id)) return false;
+                                seen.add(item.id);
+                                return true;
+                            })
+                            .map((item) => ({
+                                ...item,
+                                title: safeNarrative(item.title),
+                                ...(item.meta ? { meta: safeNarrative(item.meta) } : {}),
+                            }));
 
                         const actions = result.actions || definition?.suggestedActions || [];
 
@@ -411,14 +421,17 @@ export function EvidencePanel({
                             partial: evidence.length === 0,
                         };
 
+                        const summary =
+                            result.summary ||
+                            `${result.label || title} is ${trend} by ${formatPercent(Math.abs(deltaPct))}`;
+                        const whyItMatters = result.why_it_matters || definition?.whyItMatters;
+
                         setData({
                             ...result,
-                            summary:
-                                result.summary ||
-                                `${result.label || title} is ${trend} by ${Math.abs(deltaPct)}%`,
+                            summary: safeNarrative(summary),
                             trend,
                             magnitude,
-                            why_it_matters: result.why_it_matters || definition?.whyItMatters,
+                            why_it_matters: whyItMatters ? safeNarrative(whyItMatters) : undefined,
                             evidence,
                             actions,
                             provenance,
