@@ -130,7 +130,7 @@ function AdminAuditLogTable({ entries }: { entries: AuditEntry[] }) {
                                     <span className="text-xs font-medium">
                                         {entry.resource_type}
                                     </span>
-                                    <span className="font-mono text-[10px] text-(--ink-muted)">
+                                    <span className="font-mono text-xs text-(--ink-muted)">
                                         {entry.resource_id}
                                     </span>
                                 </div>
