@@ -3,6 +3,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import remarkGfm from "remark-gfm";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 const ReactMarkdown = dynamic(() => import("react-markdown"), {
     ssr: false,
@@ -43,6 +44,7 @@ export function MarkdownRenderer({ content }: { content: string }) {
             {provenance && (
                 <div className="border-t border-(--card-stroke) pt-4">
                     <button
+                        type="button"
                         onClick={() => setShowProvenance(!showProvenance)}
                         className="flex items-center gap-2 text-xs uppercase tracking-[0.15em] text-(--ink-muted) hover:text-foreground transition-colors"
                     >
@@ -57,10 +59,11 @@ export function MarkdownRenderer({ content }: { content: string }) {
                             strokeLinecap="round"
                             strokeLinejoin="round"
                             className={`transition-transform ${showProvenance ? "rotate-90" : ""}`}
+                            aria-hidden="true"
                         >
                             <path d="m9 18 6-6-6-6" />
                         </svg>
-                        Provenance
+                        {CTA_LABELS.provenance}
                     </button>
                     {showProvenance && (
                         <div className="mt-3 prose prose-xs dark:prose-invert max-w-none opacity-70">
@@ -73,7 +76,7 @@ export function MarkdownRenderer({ content }: { content: string }) {
             )}
 
             {footer && (
-                <div className="border-t border-(--card-stroke) pt-3 text-[10px] text-(--ink-muted) tracking-wide">
+                <div className="border-t border-(--card-stroke) pt-3 text-xs text-(--ink-muted) tracking-wide">
                     {footer}
                 </div>
             )}
