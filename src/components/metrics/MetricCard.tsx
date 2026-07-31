@@ -3,6 +3,7 @@ import { LineagePopover } from "@/app/(app)/data-health/_components/LineagePopov
 
 import { SparklineChart } from "@/components/charts/SparklineChart";
 import { MetricDelta } from "@/components/shared/MetricDelta";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { formatMetricValue } from "@/lib/formatters";
 import type { SparkPoint } from "@/lib/types";
 
@@ -43,7 +44,7 @@ export function MetricCard({
     const sparkValues = spark?.map((point) => point.value) ?? [];
     const sparkLabels = spark?.map((point) => point.ts) ?? [];
     // Only a real destination earns the clickable affordance + "Open evidence" cue.
-    const captionText = caption ?? (href ? "Open evidence" : null);
+    const captionText = caption ?? (href ? CTA_LABELS.openEvidence : null);
     const cardClassName = `group rounded-3xl border border-(--card-stroke) bg-card p-4 ${
         href ? "transition hover:-translate-y-1 hover:shadow-lg" : ""
     } ${className ?? ""}`;
@@ -78,7 +79,7 @@ export function MetricCard({
                     ) : (
                         <div
                             title="Not enough data points to plot a trend yet"
-                            className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-2 text-center text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)"
+                            className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-2 text-center text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)"
                         >
                             No trend yet
                         </div>
@@ -93,8 +94,17 @@ export function MetricCard({
     }
 
     return (
-        <Link href={href} className={cardClassName}>
+        <div className={`relative ${cardClassName}`}>
+            <Link
+                href={href}
+                className="absolute inset-0 z-10 rounded-3xl"
+                aria-label={`${label}: ${captionText}`}
+            >
+                <span className="sr-only" aria-hidden="true">
+                    ↗
+                </span>
+            </Link>
             {body}
-        </Link>
+        </div>
     );
 }

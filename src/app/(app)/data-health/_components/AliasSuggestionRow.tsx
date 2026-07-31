@@ -1,6 +1,7 @@
 "use client";
 
 import { ProviderBadge } from "@/components/admin/identities/ProviderBadge";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type AliasSuggestion = {
     unmappedIdentity: {
@@ -67,7 +68,7 @@ export function AliasSuggestionRow({ suggestion }: { suggestion: AliasSuggestion
                     onClick={handleConfirm}
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition"
                 >
-                    Confirm Mapping
+                    {CTA_LABELS.confirmMapping}
                 </button>
             </div>
         </div>
