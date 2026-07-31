@@ -6,6 +6,7 @@ import { AuditLogTable } from "@/components/shared/AuditLogTable";
 import { AuditLogFilters } from "@/components/shared/AuditLogFilters";
 import { listPlatformAuditLogs } from "@/lib/admin/server";
 import type { AuditLog, AuditLogFilter } from "@/lib/admin/types";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export default function AuditLogPage() {
     const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -77,7 +78,7 @@ export default function AuditLogPage() {
                             disabled={offset === 0}
                             className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
                         >
-                            Previous
+                            {CTA_LABELS.previousPage}
                         </button>
                         <span className="text-sm text-(--ink-muted)">
                             Showing {offset + 1}-{offset + logs.length}
@@ -88,7 +89,7 @@ export default function AuditLogPage() {
                             disabled={logs.length < limit}
                             className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
                         >
-                            Next
+                            {CTA_LABELS.nextPage}
                         </button>
                     </div>
                 </>
