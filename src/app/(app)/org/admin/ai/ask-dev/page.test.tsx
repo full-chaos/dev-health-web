@@ -7,7 +7,6 @@ vi.mock("@/components/admin/ask-dev/AskDevAdminPanel", () => ({
 vi.mock("@/lib/admin/server", () => ({
     getAskDevAdmin: vi.fn(),
     getAskDevUsage: vi.fn(),
-    runAskDevReadiness: vi.fn(),
     updateAskDevAdminSettings: vi.fn(),
 }));
 

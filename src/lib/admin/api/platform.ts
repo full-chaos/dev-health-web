@@ -1,8 +1,21 @@
 import { request } from "./_request";
-import type { PlatformStats } from "../types";
+import type { PlatformAskDevReadinessResponse, PlatformStats } from "../types";
 
 export const platformApi = {
     stats: (token?: string) => request<PlatformStats>("/platform/stats", {}, token),
+
+    // Superuser-only platform Ask Dev readiness (CHAOS-3265). No org scope —
+    // mirrors `stats` by omitting orgId entirely.
+    askDevReadiness: {
+        get: (token?: string) =>
+            request<PlatformAskDevReadinessResponse>("/platform/ask-dev/readiness", {}, token),
+        run: (token?: string) =>
+            request<PlatformAskDevReadinessResponse>(
+                "/platform/ask-dev/readiness",
+                { method: "POST" },
+                token,
+            ),
+    },
 };
 
 export const impersonationApi = {

@@ -28,14 +28,10 @@ export async function updateAskDevAdminSettings(
     });
 }
 
-export async function runAskDevReadiness(): Promise<ActionResult<AskDevAdminResponse>> {
-    return withErrorHandling(async () => {
-        const { token, orgId } = await getSessionContext();
-        const result = await adminApi.askDev.runReadiness(token, orgId);
-        revalidatePath("/org/admin/ai");
-        return result;
-    });
-}
+// NOTE (CHAOS-3265): `runAskDevReadiness` was removed — the org Ask Dev
+// surface no longer exposes a platform-provider preflight action. See
+// `runPlatformAskDevReadiness` (src/lib/admin/server/platform.ts) and
+// `runLLMSettingsReadiness` (src/lib/admin/server/settings.ts).
 
 export async function getAskDevUsage(
     since?: string,

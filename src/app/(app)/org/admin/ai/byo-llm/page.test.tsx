@@ -16,6 +16,7 @@ vi.mock("@/lib/admin/server", () => ({
     getLLMSettings: vi.fn(),
     getLLMSettingsStatus: vi.fn(),
     getLLMSpendSummary: vi.fn(),
+    runLLMSettingsReadiness: vi.fn(),
     upsertLLMSettings: vi.fn(),
 }));
 

@@ -17,8 +17,10 @@ export const askDevAdminApi = {
             orgId,
         ),
 
-    runReadiness: (token?: string, orgId?: string) =>
-        request<AskDevAdminResponse>("/ask-dev/readiness", { method: "POST" }, token, orgId),
+    // NOTE (CHAOS-3265): `POST /ask-dev/readiness` was removed entirely — the
+    // org surface no longer exposes any platform-provider preflight action.
+    // Platform preflight now lives under `platformApi.askDevReadiness`;
+    // BYO preflight now lives under `llmSettingsApi.runReadiness`.
 
     usage: (since?: string, token?: string, orgId?: string) => {
         const query = since ? `?since=${encodeURIComponent(since)}` : "";

@@ -36,6 +36,17 @@ export const llmSettingsApi = {
     status: (token?: string, orgId?: string) =>
         request<LLMSettingsStatusResponse>("/llm-settings/status", {}, token, orgId),
 
+    // Runs the BYO preflight against the saved configuration (CHAOS-3265).
+    // Independent of Ask Dev's provider-selection arbitration — gated only on
+    // a saved BYO configuration existing (404 otherwise), never on `active`.
+    runReadiness: (token?: string, orgId?: string) =>
+        request<LLMSettingsStatusResponse>(
+            "/llm-settings/readiness",
+            { method: "POST" },
+            token,
+            orgId,
+        ),
+
     // Enforceable calendar-month organization ceiling. This is intentionally
     // separate from the ClickHouse spend-summary endpoint: active reservations
     // participate in admission before provider calls complete.
