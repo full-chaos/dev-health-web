@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getBackendUrl } from "@/lib/origin";
 import { auth } from "@/lib/auth";
 import { getSubscription } from "@/lib/billing/actions";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export const metadata: Metadata = {
     title: "Pricing — Full Chaos Dev Health",
@@ -291,7 +292,7 @@ export default async function PricingPage() {
                             }`}
                         >
                             {tier.highlighted && (
-                                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-(--accent) px-4 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white">
+                                <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-(--accent) px-4 py-1 text-label-caps font-semibold uppercase tracking-[0.2em] text-white">
                                     Most Popular
                                 </span>
                             )}
@@ -438,13 +439,13 @@ export default async function PricingPage() {
                             href="/auth/signup"
                             className="rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
                         >
-                            Get started free
+                            {CTA_LABELS.getStartedFree}
                         </Link>
                         <a
                             href="mailto:support@fullchaos.studio"
                             className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
                         >
-                            Talk to sales
+                            {CTA_LABELS.talkToSales}
                         </a>
                     </div>
                 </div>

@@ -26,7 +26,7 @@ type InvestmentPreviewProps = {
 
 function LoadingState() {
     return (
-        <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) h-[320px]">
+        <div className="flex h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70)">
             <div className="mb-4 flex gap-1">
                 <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent) [animation-delay:0ms]" />
                 <span className="h-2 w-2 animate-pulse rounded-full bg-(--accent) [animation-delay:150ms]" />
@@ -93,7 +93,7 @@ export function InvestmentPreview({ filters }: InvestmentPreviewProps) {
 
     if (!hasData) {
         return (
-            <div className="flex flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) h-[320px]">
+            <div className="flex h-80 flex-col items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70)">
                 <span className="text-sm text-(--ink-muted)">
                     Investment data not yet available for this window.
                 </span>

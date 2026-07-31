@@ -11,6 +11,7 @@ import { withFilterParam } from "@/lib/filters/url";
 import { fetchFeatureFlagsData, fetchFeatureFlagList } from "@/lib/feature-flags/fetchers";
 import { FF_MEASURES } from "@/lib/feature-flags/constants";
 import { getServerEnv } from "@/lib/config";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { fetchFlagPage } from "./actions";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 
@@ -100,7 +101,7 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
                             href={withFilterParam("/", filters, activeRole)}
                             className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
                         >
-                            Back to cockpit
+                            {CTA_LABELS.backToCockpit}
                         </Link>
                     </header>
 

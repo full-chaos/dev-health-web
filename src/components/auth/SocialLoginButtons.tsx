@@ -2,6 +2,7 @@
 
 import { signIn } from "next-auth/react";
 import { safePostLoginRedirect } from "@/lib/post-login-redirect";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 function GitHubIcon() {
     return (
@@ -66,7 +67,7 @@ export function SocialLoginButtons({ providers = [], callbackUrl }: SocialLoginB
                     }
                     className={buttonClass}
                 >
-                    <GitHubIcon /> Continue with GitHub
+                    <GitHubIcon /> {CTA_LABELS.continueWithGitHub}
                 </button>
             )}
             {providers.includes("google") && (
@@ -79,7 +80,7 @@ export function SocialLoginButtons({ providers = [], callbackUrl }: SocialLoginB
                     }
                     className={buttonClass}
                 >
-                    <GoogleIcon /> Continue with Google
+                    <GoogleIcon /> {CTA_LABELS.continueWithGoogle}
                 </button>
             )}
             {providers.includes("gitlab") && (
@@ -92,7 +93,7 @@ export function SocialLoginButtons({ providers = [], callbackUrl }: SocialLoginB
                     }
                     className={buttonClass}
                 >
-                    <GitLabIcon /> Continue with GitLab
+                    <GitLabIcon /> {CTA_LABELS.continueWithGitLab}
                 </button>
             )}
         </div>

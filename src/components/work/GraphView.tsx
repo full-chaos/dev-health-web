@@ -493,9 +493,9 @@ export function GraphView({
                     type="button"
                     onClick={() => handleThemeChange("all")}
                     className="uppercase tracking-[0.18em] text-(--accent-2)"
-                    aria-label="Clear theme scope"
+                    aria-label={CTA_LABELS.clearThemeScope}
                 >
-                    Clear
+                    {CTA_LABELS.clear}
                 </button>
             </div>
         ) : null;

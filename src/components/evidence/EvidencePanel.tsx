@@ -537,7 +537,7 @@ export function EvidencePanel({
                         href={exploreUrl}
                         className="flex w-full items-center justify-center rounded-xl border border-(--accent)/20 bg-(--accent)/10 px-4 py-3 text-sm font-medium text-(--accent) transition-colors hover:bg-(--accent)/20"
                     >
-                        Open in Explore View ↗
+                        {CTA_LABELS.openEvidence} ↗
                     </Link>
                 </footer>
             </div>

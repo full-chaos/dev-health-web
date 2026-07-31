@@ -1,5 +1,7 @@
-import React, { KeyboardEvent, useState } from "react";
+import { useState } from "react";
+import type { KeyboardEvent } from "react";
 import type { ReadonlyURLSearchParams } from "next/navigation";
+import { CTA_LABELS } from "@/lib/design/cta";
 import type { ChordDirection, ChordGroupingDimension } from "@/lib/types";
 
 export type ChordControlsValue = {
@@ -216,7 +218,7 @@ export function ChordChartControls({
                 <div className="flex items-center border border-(--card-stroke) rounded-lg bg-(--card) overflow-hidden h-9">
                     <button
                         type="button"
-                        aria-label="Decrease entities"
+                        aria-label={CTA_LABELS.decreaseEntities}
                         onClick={() => {
                             const next = Math.max(3, value.topN - 1);
                             setTopNInput(next.toString());
@@ -245,7 +247,7 @@ export function ChordChartControls({
                     />
                     <button
                         type="button"
-                        aria-label="Increase entities"
+                        aria-label={CTA_LABELS.increaseEntities}
                         onClick={() => {
                             const next = Math.min(16, value.topN + 1);
                             setTopNInput(next.toString());

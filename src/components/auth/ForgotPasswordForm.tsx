@@ -5,6 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { resolveOrigin } from "@/lib/origin";
 import { extractErrorMessage } from "@/lib/errorMessages";
+import { backToArea } from "@/lib/design/cta";
 
 export function ForgotPasswordForm() {
     const [email, setEmail] = useState("");
@@ -52,7 +53,7 @@ export function ForgotPasswordForm() {
                         href="/auth/signin?from=reset"
                         className="text-sm font-medium text-[var(--accent)] hover:opacity-90"
                     >
-                        Back to Sign in
+                        {backToArea("Sign In")}
                     </Link>
                 </div>
             </div>

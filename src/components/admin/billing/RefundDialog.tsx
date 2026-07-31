@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { createRefund, type RefundRecord } from "@/lib/billing/actions";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type RefundDialogProps = {
     invoiceId: string;
@@ -113,7 +114,7 @@ export function RefundDialog({
                 onClick={() => setIsOpen(true)}
                 className="rounded-md border border-red-500/40 px-3 py-2 text-sm font-medium text-red-500 hover:bg-red-500/10"
             >
-                Issue Refund
+                {CTA_LABELS.issueRefund}
             </button>
         );
     }
@@ -128,7 +129,7 @@ export function RefundDialog({
                         onClick={resetAndClose}
                         className="rounded-md px-2 py-1 text-(--ink-muted) hover:bg-(--card-80)"
                     >
-                        Close
+                        {CTA_LABELS.close}
                     </button>
                 </div>
 
@@ -217,7 +218,7 @@ export function RefundDialog({
                                 onClick={beginConfirmation}
                                 className="rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
                             >
-                                Continue
+                                {CTA_LABELS.continue}
                             </button>
                         ) : (
                             <>
@@ -226,7 +227,7 @@ export function RefundDialog({
                                     onClick={() => setConfirming(false)}
                                     className="rounded-md border border-(--card-stroke) px-4 py-2 text-sm"
                                 >
-                                    Back
+                                    {CTA_LABELS.back}
                                 </button>
                                 <button
                                     type="button"

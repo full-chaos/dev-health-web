@@ -7,6 +7,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getFlame } from "@/lib/api/visuals";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { backToArea } from "@/lib/design/cta";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { RelatedEntitiesPanel } from "@/components/work/RelatedEntitiesPanel";
@@ -75,7 +76,7 @@ export default async function IssueDetailPage({ params }: IssueDetailPageProps) 
                                 href="/explore"
                                 className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
                             >
-                                Back to Explore
+                                {backToArea("Explore")}
                             </Link>
                         </div>
                     </header>

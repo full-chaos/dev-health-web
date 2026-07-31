@@ -1,9 +1,9 @@
 function NavSkeleton() {
     return (
-        <aside className="w-full md:max-w-[220px] md:shrink-0 animate-pulse">
+        <aside className="w-full md:max-w-56 md:shrink-0 animate-pulse">
             <div className="sticky top-10 space-y-2">
-                {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="h-10 bg-(--card-70) rounded-2xl" />
+                {Array.from({ length: 8 }, (_, index) => `nav-skeleton-${index}`).map((key) => (
+                    <div key={key} className="h-10 bg-(--card-70) rounded-2xl" />
                 ))}
             </div>
         </aside>
@@ -25,8 +25,11 @@ export default function Loading() {
                             <div className="h-4 bg-(--card-70) rounded w-40" />
                         </div>
                         <div className="flex flex-wrap gap-2">
-                            {Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="h-8 bg-(--card-70) rounded-full w-28" />
+                            {Array.from(
+                                { length: 4 },
+                                (_, index) => `header-skeleton-${index}`,
+                            ).map((key) => (
+                                <div key={key} className="h-8 bg-(--card-70) rounded-full w-28" />
                             ))}
                         </div>
                     </div>
@@ -52,9 +55,12 @@ export default function Loading() {
                             <div className="space-y-2">
                                 <div className="h-3 bg-(--card-70) rounded w-24" />
                                 <div className="flex flex-wrap gap-2 mt-2">
-                                    {Array.from({ length: 5 }).map((_, i) => (
+                                    {Array.from(
+                                        { length: 5 },
+                                        (_, index) => `filter-skeleton-${index}`,
+                                    ).map((key) => (
                                         <div
-                                            key={i}
+                                            key={key}
                                             className="h-6 bg-(--card-70) rounded-full w-20"
                                         />
                                     ))}
@@ -81,8 +87,11 @@ export default function Loading() {
                             </div>
                             <div className="h-24 bg-(--card-70) rounded-2xl" />
                             <div className="space-y-2">
-                                {Array.from({ length: 4 }).map((_, i) => (
-                                    <div key={i} className="h-9 bg-(--card-70) rounded-2xl" />
+                                {Array.from(
+                                    { length: 4 },
+                                    (_, index) => `association-skeleton-${index}`,
+                                ).map((key) => (
+                                    <div key={key} className="h-9 bg-(--card-70) rounded-2xl" />
                                 ))}
                             </div>
                         </div>
@@ -95,8 +104,11 @@ export default function Loading() {
                             </div>
                             <div className="h-24 bg-(--card-70) rounded-2xl" />
                             <div className="space-y-2">
-                                {Array.from({ length: 4 }).map((_, i) => (
-                                    <div key={i} className="h-9 bg-(--card-70) rounded-2xl" />
+                                {Array.from(
+                                    { length: 4 },
+                                    (_, index) => `contributor-skeleton-${index}`,
+                                ).map((key) => (
+                                    <div key={key} className="h-9 bg-(--card-70) rounded-2xl" />
                                 ))}
                             </div>
                         </div>
@@ -106,8 +118,11 @@ export default function Loading() {
                     <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 animate-pulse">
                         <div className="h-6 bg-(--card-70) rounded w-40 mb-3" />
                         <div className="flex flex-wrap gap-3">
-                            {Array.from({ length: 4 }).map((_, i) => (
-                                <div key={i} className="h-8 bg-(--card-70) rounded-full w-28" />
+                            {Array.from(
+                                { length: 4 },
+                                (_, index) => `shortcut-skeleton-${index}`,
+                            ).map((key) => (
+                                <div key={key} className="h-8 bg-(--card-70) rounded-full w-28" />
                             ))}
                         </div>
                     </div>

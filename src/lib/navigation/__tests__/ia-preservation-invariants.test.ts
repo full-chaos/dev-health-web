@@ -674,11 +674,6 @@ describe("IA preservation invariant #9 — no dead hubItems links (signal cards)
     });
 
     it("renders every preview-route hubItem as a non-clickable card (cannot 404)", () => {
-        const previewHubItems = hubItemEntries.filter(
-            ({ area, item }) =>
-                !routePageExists(item.href) && previewChildFor(area, item.href) !== undefined,
-        );
-
         // Both Improve sub-areas (Experiments CHAOS-2219, Automations CHAOS-2220) have
         // been promoted to real routes, so there are currently 0 preview hub items.
         // The structural assertions below still validate the preview code paths exist

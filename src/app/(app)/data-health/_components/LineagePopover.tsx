@@ -20,16 +20,14 @@ export function LineagePopover({ metricId }: { metricId: string }) {
 
     // Render a simple info icon that triggers a group-hover tooltip
     return (
-        <div
-            className="relative group inline-block ml-2 cursor-help"
-            onClick={(e) => e.preventDefault()}
-        >
+        <div className="relative z-20 group inline-block ml-2 cursor-help">
             <svg
                 className="w-4 h-4 text-(--ink-muted) hover:text-(--accent)"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
             >
+                <title>Metric lineage</title>
                 <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -51,7 +49,7 @@ export function LineagePopover({ metricId }: { metricId: string }) {
                 {data?.dataHealth?.metricLineage && (
                     <div className="space-y-3">
                         <div>
-                            <div className="text-[10px] uppercase text-(--ink-muted)/70 mb-1">
+                            <div className="text-label-caps uppercase text-(--ink-muted)/70 mb-1">
                                 Source Tables
                             </div>
                             <div className="flex flex-wrap gap-1">
@@ -68,7 +66,7 @@ export function LineagePopover({ metricId }: { metricId: string }) {
 
                         <div className="flex justify-between">
                             <div>
-                                <div className="text-[10px] uppercase text-(--ink-muted)/70 mb-1">
+                                <div className="text-label-caps uppercase text-(--ink-muted)/70 mb-1">
                                     Compute Window
                                 </div>
                                 <div className="text-xs">
@@ -76,7 +74,7 @@ export function LineagePopover({ metricId }: { metricId: string }) {
                                 </div>
                             </div>
                             <div className="text-right">
-                                <div className="text-[10px] uppercase text-(--ink-muted)/70 mb-1">
+                                <div className="text-label-caps uppercase text-(--ink-muted)/70 mb-1">
                                     Rows Processed
                                 </div>
                                 <div className="text-xs">
@@ -87,7 +85,7 @@ export function LineagePopover({ metricId }: { metricId: string }) {
                         </div>
 
                         <div>
-                            <div className="text-[10px] uppercase text-(--ink-muted)/70 mb-1">
+                            <div className="text-label-caps uppercase text-(--ink-muted)/70 mb-1">
                                 Last Computed
                             </div>
                             <div className="text-xs">

@@ -10,7 +10,7 @@ export function PreviewBadge({ title }: { title?: string }) {
     return (
         <span
             title={title}
-            className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-sky-400"
+            className="rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-label-caps font-semibold uppercase tracking-[0.15em] text-sky-400"
         >
             Preview
         </span>

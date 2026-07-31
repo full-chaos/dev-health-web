@@ -120,7 +120,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                         href={buildExploreUrl({ filters, role: activeRole })}
                         className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                     >
-                        {CTA_LABELS.openInExplore}
+                        {CTA_LABELS.openEvidence}
                     </Link>
                 </div>
 
@@ -197,7 +197,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                             href={withFilterParam("/opportunities", filters, activeRole)}
                             className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                         >
-                            View all
+                            {CTA_LABELS.viewAll}
                         </Link>
                     </div>
                     <div className="mt-4 grid gap-3">
@@ -257,7 +257,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                             }
                             className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                         >
-                            Open evidence
+                            {CTA_LABELS.openEvidence}
                         </button>
                     </div>
                     <p className="mt-3 text-sm text-(--ink-muted)">
@@ -272,7 +272,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                     ) : null}
                     {home?.limiting_factor?.recommended_action ? (
                         <div className="mt-3 rounded-2xl border border-(--accent)/20 bg-(--accent)/8 p-3">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-(--accent)">
+                            <p className="text-label-caps font-semibold uppercase tracking-[0.2em] text-(--accent)">
                                 Recommended action
                             </p>
                             <p className="mt-1 text-sm leading-5 text-foreground">
@@ -311,7 +311,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                             href={buildExploreUrl({ filters, role: activeRole })}
                             className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                         >
-                            Open in Explore
+                            {CTA_LABELS.openEvidence}
                         </Link>
                     </div>
                     <div className="mt-4 space-y-4 text-sm">

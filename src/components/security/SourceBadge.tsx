@@ -16,7 +16,7 @@ export function SourceBadge({ source }: SourceBadgeProps) {
     const label = SOURCE_LABELS[source] ?? source;
 
     return (
-        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-slate-700">
+        <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-label-caps font-semibold uppercase tracking-wider text-slate-700">
             {label}
         </span>
     );

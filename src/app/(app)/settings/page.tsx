@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PreferencesSettings } from "@/components/settings/PreferencesSettings";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export default function UserPreferencesPage() {
     return (
@@ -7,7 +8,7 @@ export default function UserPreferencesPage() {
             <div className="mb-8">
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                     <Link href="/dashboard" className="hover:text-foreground transition-colors">
-                        Dashboard
+                        {CTA_LABELS.dashboard}
                     </Link>
                     {" / "}
                     Preferences

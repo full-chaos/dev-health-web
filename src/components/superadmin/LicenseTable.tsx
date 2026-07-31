@@ -1,6 +1,6 @@
-import React from "react";
 import Link from "next/link";
 import type { Organization } from "@/lib/admin/types";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type LicenseTableProps = {
     orgs: Organization[];
@@ -67,7 +67,7 @@ export function LicenseTable({ orgs }: LicenseTableProps) {
                                     href={`/superadmin/licensing/${org.id}`}
                                     className="text-(--accent) hover:underline"
                                 >
-                                    Manage Entitlements
+                                    {CTA_LABELS.manageEntitlements}
                                 </Link>
                             </td>
                         </tr>

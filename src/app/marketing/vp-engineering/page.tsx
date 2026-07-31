@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export const metadata: Metadata = {
     title: "For VP Engineering — Full Chaos Dev Health",
@@ -161,13 +162,13 @@ export default function VPEngineeringPage() {
                             href="/auth/signup"
                             className="rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
                         >
-                            Start for free
+                            {CTA_LABELS.startForFree}
                         </Link>
                         <Link
                             href="/marketing/pricing"
                             className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
                         >
-                            See pricing
+                            {CTA_LABELS.seePricing}
                         </Link>
                     </div>
                 </div>
@@ -192,12 +193,12 @@ export default function VPEngineeringPage() {
                                         <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
                                             {surface.icon}
                                         </div>
-                                        <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                        <p className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                                             {surface.label}
                                         </p>
                                     </div>
                                     {surface.comingSoon && (
-                                        <span className="rounded-full border border-(--card-stroke) bg-(--card) px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
+                                        <span className="rounded-full border border-(--card-stroke) bg-(--card) px-2 py-0.5 text-label-caps font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
                                             Coming soon
                                         </span>
                                     )}
@@ -316,7 +317,7 @@ export default function VPEngineeringPage() {
                             href="/auth/signup"
                             className="rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
                         >
-                            Get started free
+                            {CTA_LABELS.getStartedFree}
                         </Link>
                         <Link
                             href="https://github.com/full-chaos/dev-health-ops"
@@ -324,7 +325,7 @@ export default function VPEngineeringPage() {
                             rel="noopener noreferrer"
                             className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
                         >
-                            Star on GitHub
+                            {CTA_LABELS.starOnGitHub}
                         </Link>
                     </div>
                 </div>

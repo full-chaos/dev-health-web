@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SettingsSection } from "@/components/admin/settings/SettingsSection";
 import { listSettingCategories, listSettings } from "@/lib/admin/server";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export default async function SettingsPage() {
     const { data: categories, error: categoriesError } = await listSettingCategories();
@@ -80,7 +81,7 @@ export default async function SettingsPage() {
                             href="/org/admin/settings"
                             className="text-(--accent) hover:underline"
                         >
-                            Org Admin Settings
+                            {CTA_LABELS.orgAdminSettings}
                         </Link>{" "}
                         page or the CLI.
                     </p>

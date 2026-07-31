@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export const metadata: Metadata = {
     title: "Solutions — Full Chaos Dev Health",
@@ -87,7 +88,7 @@ export default function MarketingHubPage() {
                             <p className="mt-4 text-sm leading-relaxed text-(--ink-muted)">
                                 {buyer.description}
                             </p>
-                            <p className="mt-6 text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                            <p className="mt-6 text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                                 {buyer.surfaces}
                             </p>
                             <p className="mt-6 inline-flex items-center gap-1 text-sm font-medium text-(--accent)">
@@ -134,13 +135,13 @@ export default function MarketingHubPage() {
                             href="/auth/signup"
                             className="rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
                         >
-                            Get started free
+                            {CTA_LABELS.getStartedFree}
                         </Link>
                         <Link
                             href="/marketing/pricing"
                             className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
                         >
-                            See pricing
+                            {CTA_LABELS.seePricing}
                         </Link>
                     </div>
                 </div>

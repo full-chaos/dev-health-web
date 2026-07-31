@@ -288,7 +288,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                     })}
                                     className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                                 >
-                                    {CTA_LABELS.openInExplore}
+                                    {CTA_LABELS.openEvidence}
                                 </Link>
                             </div>
                             <p className="mt-3 text-sm text-(--ink-muted)">

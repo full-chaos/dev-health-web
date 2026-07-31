@@ -56,14 +56,12 @@ test.describe("AI Review Load dashboard", () => {
         await expect(page.getByText(/Average pushes after the first review/i)).toBeVisible();
     });
 
-    test("drill-into-evidence button opens the PR selector modal (CHAOS-1739)", async ({
-        page,
-    }) => {
+    test("open-evidence button opens the PR selector modal (CHAOS-1739)", async ({ page }) => {
         await page.goto(`/ai/review-load?f=${populatedFilter}`);
 
         const dashboard = page.getByTestId("ai-review-load-dashboard");
         await dashboard
-            .getByRole("button", { name: /Drill into evidence/i })
+            .getByRole("button", { name: /Open evidence/i })
             .first()
             .click();
 

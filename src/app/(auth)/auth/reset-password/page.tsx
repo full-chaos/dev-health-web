@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
+import { backToArea } from "@/lib/design/cta";
 
 type SearchParams = Promise<{ token?: string }>;
 
@@ -32,7 +33,7 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
                                     href="/auth/signin"
                                     className="text-sm font-medium text-[var(--accent)] hover:underline"
                                 >
-                                    Back to Sign in
+                                    {backToArea("Sign In")}
                                 </Link>
                             </div>
                         </div>

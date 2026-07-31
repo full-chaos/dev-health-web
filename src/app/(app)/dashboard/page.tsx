@@ -235,7 +235,7 @@ export default async function Home({ searchParams }: HomePageProps) {
                                     })}
                                     className="text-(--accent-2)"
                                 >
-                                    {CTA_LABELS.openInExplore}
+                                    {CTA_LABELS.openEvidence}
                                 </Link>
                             </div>
                         </div>

@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 // FLAKY (CHAOS-2164): under CI-constrained runners the evidence-panel open +
-// "Open in Explore View" click can land before the panel is interactive, leaving
+// "Open evidence" click can land before the panel is interactive, leaving
 // the URL on /dashboard. Self-heals on retry. Stabilize with clickUntilUrl; do not skip.
 test(
     "home loads and navigates to explore via panel",
@@ -9,7 +9,7 @@ test(
         annotation: {
             type: "flaky",
             description:
-                "CHAOS-2164: pre-hydration evidence-panel/Explore-link click race under CI load; passes on retry.",
+                "CHAOS-2164: pre-hydration evidence-panel/Open-evidence click race under CI load; passes on retry.",
         },
     },
     async ({ page }) => {
@@ -27,9 +27,9 @@ test(
         const firstSignal = page.getByTestId("signal-open-evidence").first();
         await firstSignal.click();
 
-        // Panel should open with evidence - look for the "Open in Explore View" link
+        // Panel should open with evidence - look for the canonical evidence link
         const exploreLink = page.getByRole("link", {
-            name: "Open in Explore View ↗",
+            name: "Open evidence ↗",
         });
         await expect(exploreLink).toBeVisible();
         await exploreLink.click();

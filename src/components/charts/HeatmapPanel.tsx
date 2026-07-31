@@ -243,7 +243,7 @@ export function HeatmapPanel({
                 {isFlat ? (
                     <div
                         data-testid="heatmap-flat-state"
-                        className="flex h-[320px] items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-6 text-center text-sm text-(--ink-muted)"
+                        className="flex h-80 items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-6 text-center text-sm text-(--ink-muted)"
                     >
                         {flatStateLabel}
                     </div>
@@ -276,7 +276,7 @@ export function HeatmapPanel({
                                 <>
                                     <div className="flex items-center justify-between gap-3">
                                         <div className="flex min-w-0 items-center gap-2">
-                                            <span className="shrink-0 rounded border border-(--card-stroke) bg-(--card-70) px-1.5 py-0.5 text-[10px] font-bold uppercase text-(--ink-muted)">
+                                            <span className="shrink-0 rounded border border-(--card-stroke) bg-(--card-70) px-1.5 py-0.5 text-label-caps font-bold uppercase text-(--ink-muted)">
                                                 {artifact.type}
                                             </span>
                                             <span className="truncate" title={artifact.title}>

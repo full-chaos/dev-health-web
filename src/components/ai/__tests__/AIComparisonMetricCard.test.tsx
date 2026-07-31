@@ -47,8 +47,37 @@ describe("AIComparisonMetricCard", () => {
             />,
         );
 
-        await user.click(screen.getByRole("button", { name: /drill into evidence/i }));
+        await user.click(screen.getByRole("button", { name: /open evidence/i }));
         expect(onDrilldown).toHaveBeenCalledOnce();
+    });
+
+    it("exposes and dismisses tooltip content from the keyboard", async () => {
+        const user = userEvent.setup();
+        render(
+            <AIComparisonMetricCard
+                title="Review load"
+                value={4}
+                description="Review load card"
+                tooltip="Calculated from completed reviews"
+            />,
+        );
+
+        const trigger = screen.getByRole("button", { name: "Metric information" });
+        const tooltip = screen.getByRole("tooltip", { hidden: true });
+
+        expect(trigger).toHaveAttribute("aria-describedby", tooltip.id);
+        expect(tooltip).toHaveTextContent("Calculated from completed reviews");
+        expect(tooltip).toHaveAttribute("aria-hidden", "true");
+        expect(tooltip).toHaveStyle({ opacity: "0", visibility: "hidden" });
+
+        await user.tab();
+        expect(trigger).toHaveFocus();
+        expect(tooltip).toHaveAttribute("aria-hidden", "false");
+        expect(tooltip).toHaveStyle({ opacity: "1", visibility: "visible" });
+        await user.keyboard("{Escape}");
+
+        expect(tooltip).toHaveAttribute("aria-hidden", "true");
+        expect(tooltip).toHaveStyle({ opacity: "0", visibility: "hidden" });
     });
 
     it("formats missing values explicitly", () => {

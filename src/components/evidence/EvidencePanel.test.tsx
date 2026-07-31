@@ -215,7 +215,7 @@ describe("EvidencePanel", () => {
         ],
         ["/api/v1/opportunities", { items: [] }, "/opportunities?f="],
     ])(
-        "links non-Explore evidence API %s to its matching product route",
+        "links evidence API %s to its matching product route",
         async (apiUrl, payload, expectedHref) => {
             vi.spyOn(globalThis, "fetch").mockResolvedValue(
                 new Response(JSON.stringify(payload), { status: 200 }),
@@ -234,7 +234,7 @@ describe("EvidencePanel", () => {
             await waitFor(() =>
                 expect(screen.getByText("Quality + provenance")).toBeInTheDocument(),
             );
-            expect(screen.getByRole("link", { name: /Open in Explore View/i })).toHaveAttribute(
+            expect(screen.getByRole("link", { name: /Open evidence/i })).toHaveAttribute(
                 "href",
                 expect.stringContaining(expectedHref),
             );

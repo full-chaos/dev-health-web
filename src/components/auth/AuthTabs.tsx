@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type AuthTabsProps = {
     signInHref?: string;
@@ -25,7 +26,7 @@ export function AuthTabs({
                         : "bg-transparent text-[var(--foreground)] hover:bg-[var(--card-stroke)]/20"
                 }`}
             >
-                Sign in
+                {CTA_LABELS.signIn}
             </Link>
             <Link
                 href={signUpHref}
@@ -35,7 +36,7 @@ export function AuthTabs({
                         : "bg-transparent text-[var(--foreground)] hover:bg-[var(--card-stroke)]/20"
                 }`}
             >
-                Create account
+                {CTA_LABELS.createAccount}
             </Link>
         </div>
     );

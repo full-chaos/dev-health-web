@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 const FEATURES = [
     {
@@ -192,13 +193,13 @@ export default function MarketingPage() {
                             href="/auth/signup"
                             className="rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
                         >
-                            Start for free
+                            {CTA_LABELS.startForFree}
                         </Link>
                         <Link
                             href="https://github.com/full-chaos/dev-health-ops"
                             className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
                         >
-                            View on GitHub
+                            {CTA_LABELS.viewOnGitHub}
                         </Link>
                     </div>
                 </div>
@@ -222,16 +223,19 @@ export default function MarketingPage() {
                                     key={tab}
                                     className="rounded-2xl border border-(--card-stroke) bg-(--card) p-4"
                                 >
-                                    <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                    <p className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                                         {tab}
                                     </p>
                                     <div className="mt-3 flex items-end gap-1">
-                                        {Array.from({ length: 7 }).map((_, i) => (
+                                        {Array.from(
+                                            { length: 7 },
+                                            (_, index) => `bar-${tab}-${index}`,
+                                        ).map((key, index) => (
                                             <div
-                                                key={`bar-${tab}-${i}`}
+                                                key={key}
                                                 className="flex-1 rounded-sm bg-(--accent)/20"
                                                 style={{
-                                                    height: `${20 + Math.sin(i * 1.2) * 16 + i * 4}px`,
+                                                    height: `${20 + Math.sin(index * 1.2) * 16 + index * 4}px`,
                                                 }}
                                             />
                                         ))}
@@ -268,7 +272,7 @@ export default function MarketingPage() {
                                 <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
                                     {feature.icon}
                                 </div>
-                                <p className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                <p className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                                     {feature.label}
                                 </p>
                             </div>
@@ -336,10 +340,10 @@ export default function MarketingPage() {
                             className="group rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1"
                         >
                             <div className="flex items-center justify-between">
-                                <span className="rounded-full bg-(--accent)/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-(--accent)">
+                                <span className="rounded-full bg-(--accent)/10 px-3 py-1 text-label-caps font-semibold uppercase tracking-[0.2em] text-(--accent)">
                                     {persona.tag}
                                 </span>
-                                <span className="text-right text-[10px] uppercase tracking-[0.2em] text-(--accent-2)">
+                                <span className="text-right text-label-caps uppercase tracking-[0.2em] text-(--accent-2)">
                                     {persona.focus}
                                 </span>
                             </div>
@@ -371,13 +375,13 @@ export default function MarketingPage() {
                             href="/auth/signup"
                             className="rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
                         >
-                            Get started free
+                            {CTA_LABELS.getStartedFree}
                         </Link>
                         <Link
                             href="https://github.com/full-chaos/dev-health-ops"
                             className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
                         >
-                            Star on GitHub
+                            {CTA_LABELS.starOnGitHub}
                         </Link>
                     </div>
                 </div>

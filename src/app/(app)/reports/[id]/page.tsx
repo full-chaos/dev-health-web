@@ -18,6 +18,7 @@ import {
     deleteSavedReport,
 } from "@/lib/reports/fetchers";
 import { publicEnv } from "@/lib/config";
+import { backToArea, CTA_LABELS } from "@/lib/design/cta";
 
 type ReportParameters = {
     scope?: string;
@@ -28,7 +29,7 @@ type ReportParameters = {
 function StatusBadge({ status }: { status?: string }) {
     if (!status)
         return (
-            <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[10px] uppercase tracking-wider text-(--ink-muted)">
+            <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-label-caps uppercase tracking-wider text-(--ink-muted)">
                 Never run
             </span>
         );
@@ -36,25 +37,25 @@ function StatusBadge({ status }: { status?: string }) {
     switch (status) {
         case ReportStatus.SUCCESS:
             return (
-                <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-green-500">
+                <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-label-caps uppercase tracking-wider text-green-500">
                     Success
                 </span>
             );
         case ReportStatus.FAILED:
             return (
-                <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-red-500">
+                <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-label-caps uppercase tracking-wider text-red-500">
                     Failed
                 </span>
             );
         case ReportStatus.RUNNING:
             return (
-                <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-blue-500">
+                <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-label-caps uppercase tracking-wider text-blue-500">
                     Running
                 </span>
             );
         case ReportStatus.PENDING:
             return (
-                <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-yellow-500">
+                <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-label-caps uppercase tracking-wider text-yellow-500">
                     Pending
                 </span>
             );
@@ -255,7 +256,7 @@ export default function SingleReportPage() {
                                 href="/reports"
                                 className="mt-4 inline-block rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                             >
-                                Back to Reports
+                                {backToArea("Reports")}
                             </Link>
                         </div>
                     </main>
@@ -400,6 +401,7 @@ export default function SingleReportPage() {
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
                                     >
+                                        <title>Back to reports</title>
                                         <path d="m15 18-6-6 6-6" />
                                     </svg>
                                 </Link>
@@ -424,18 +426,20 @@ export default function SingleReportPage() {
                                     />
                                     <div className="flex gap-2">
                                         <button
+                                            type="button"
                                             onClick={handleEditSave}
                                             disabled={isSaving || !editName.trim()}
                                             className="rounded-full bg-(--accent) px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
                                         >
-                                            {isSaving ? "Saving..." : "Save"}
+                                            {isSaving ? CTA_LABELS.saving : CTA_LABELS.save}
                                         </button>
                                         <button
+                                            type="button"
                                             onClick={handleEditCancel}
                                             disabled={isSaving}
                                             className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                         >
-                                            Cancel
+                                            {CTA_LABELS.cancel}
                                         </button>
                                     </div>
                                 </div>
@@ -453,29 +457,33 @@ export default function SingleReportPage() {
                         {!isEditing && (
                             <div className="flex items-center gap-3">
                                 <button
+                                    type="button"
                                     onClick={handleEditStart}
                                     className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                 >
-                                    Edit
+                                    {CTA_LABELS.edit}
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={handleCloneStart}
                                     className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                 >
-                                    Clone
+                                    {CTA_LABELS.clone}
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => setShowDeleteConfirm(true)}
                                     className="rounded-full border border-red-500/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-red-500 hover:bg-red-500/10 transition-colors"
                                 >
-                                    Delete
+                                    {CTA_LABELS.delete}
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={handleRunNow}
                                     disabled={isRunning}
                                     className="rounded-full bg-(--accent) px-4 py-2 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
                                 >
-                                    {isRunning ? "Running..." : "Run Now"}
+                                    {isRunning ? "Running..." : CTA_LABELS.runNow}
                                 </button>
                             </div>
                         )}
@@ -494,18 +502,20 @@ export default function SingleReportPage() {
                                 />
                                 <div className="flex gap-2">
                                     <button
+                                        type="button"
                                         onClick={handleCloneConfirm}
                                         disabled={isCloning}
                                         className="rounded-full bg-(--accent) px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
                                     >
-                                        {isCloning ? "Cloning..." : "Clone"}
+                                        {isCloning ? "Cloning..." : CTA_LABELS.clone}
                                     </button>
                                     <button
+                                        type="button"
                                         onClick={() => setShowCloneDialog(false)}
                                         disabled={isCloning}
                                         className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                     >
-                                        Cancel
+                                        {CTA_LABELS.cancel}
                                     </button>
                                 </div>
                             </div>
@@ -523,18 +533,20 @@ export default function SingleReportPage() {
                             </p>
                             <div className="flex gap-2">
                                 <button
+                                    type="button"
                                     onClick={handleDeleteConfirm}
                                     disabled={isDeleting}
                                     className="rounded-full bg-red-500 px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-red-600 transition-colors disabled:opacity-50"
                                 >
-                                    {isDeleting ? "Deleting..." : "Delete"}
+                                    {isDeleting ? "Deleting..." : CTA_LABELS.delete}
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => setShowDeleteConfirm(false)}
                                     disabled={isDeleting}
                                     className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                 >
-                                    Cancel
+                                    {CTA_LABELS.cancel}
                                 </button>
                             </div>
                         </div>

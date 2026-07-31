@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { createSavedReport } from "@/lib/reports/fetchers";
 import type { CreateSavedReportInput } from "@/lib/reports/types";
 
@@ -236,14 +237,14 @@ export default function NewReportPage() {
                                     href="/reports"
                                     className="rounded-full border border-(--card-stroke) px-6 py-2 text-sm font-medium hover:bg-(--card-70) transition-colors"
                                 >
-                                    Cancel
+                                    {CTA_LABELS.cancel}
                                 </Link>
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
                                     className="rounded-full bg-(--accent) px-6 py-2 text-sm font-medium text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
                                 >
-                                    {isSubmitting ? "Creating..." : "Create Report"}
+                                    {isSubmitting ? "Creating..." : CTA_LABELS.createReport}
                                 </button>
                             </div>
                         </form>

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { getPendingTeamChanges, approveTeamChanges, dismissTeamChanges } from "@/lib/admin/server";
 import type { FlaggedChange } from "@/lib/admin/types";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 function formatRelativeTime(dateString: string): string {
     const date = new Date(dateString);
@@ -129,7 +130,7 @@ export function PendingChangesPanel() {
                             disabled={isPending}
                             className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-green-600 hover:bg-green-500/10 disabled:opacity-50"
                         >
-                            Approve All
+                            {CTA_LABELS.approveAll}
                         </button>
                         <button
                             type="button"
@@ -137,7 +138,7 @@ export function PendingChangesPanel() {
                             disabled={isPending}
                             className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-500/10 disabled:opacity-50"
                         >
-                            Dismiss All
+                            {CTA_LABELS.dismissAll}
                         </button>
                     </div>
 
@@ -200,7 +201,7 @@ export function PendingChangesPanel() {
                                     disabled={isPending}
                                     className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-green-600 hover:bg-green-500/10 disabled:opacity-50"
                                 >
-                                    Approve
+                                    {CTA_LABELS.approve}
                                 </button>
                                 <button
                                     type="button"
@@ -208,7 +209,7 @@ export function PendingChangesPanel() {
                                     disabled={isPending}
                                     className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-500/10 disabled:opacity-50"
                                 >
-                                    Dismiss
+                                    {CTA_LABELS.dismiss}
                                 </button>
                             </div>
                         </div>

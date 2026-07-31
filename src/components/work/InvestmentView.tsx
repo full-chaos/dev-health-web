@@ -247,9 +247,9 @@ export function InvestmentView({
                             <div>
                                 <span className="text-(--ink-muted)">Work unit:</span>{" "}
                                 {formatWorkUnitLabel(data.selectedUnit)}
-                                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-(--ink-muted)">
+                                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-(--ink-muted)">
                                     {data.selectedUnitTypeLabel ? (
-                                        <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-[9px] uppercase tracking-[0.2em]">
+                                        <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-label-caps uppercase tracking-[0.2em]">
                                             {data.selectedUnitTypeLabel}
                                         </span>
                                     ) : null}
@@ -291,9 +291,9 @@ export function InvestmentView({
                                     No structural evidence reported.
                                 </p>
                             )}
-                            {(data.selectedUnit.evidence?.structural ?? []).map((entry, idx) => (
+                            {(data.selectedUnit.evidence?.structural ?? []).map((entry) => (
                                 <EvidenceEntryCard
-                                    key={`structural-${idx}`}
+                                    key={`structural-${JSON.stringify(entry)}`}
                                     entry={entry as Record<string, unknown>}
                                 />
                             ))}
@@ -310,9 +310,9 @@ export function InvestmentView({
                                     No contextual evidence reported.
                                 </p>
                             )}
-                            {(data.selectedUnit.evidence?.contextual ?? []).map((entry, idx) => (
+                            {(data.selectedUnit.evidence?.contextual ?? []).map((entry) => (
                                 <EvidenceEntryCard
-                                    key={`contextual-${idx}`}
+                                    key={`contextual-${JSON.stringify(entry)}`}
                                     entry={entry as Record<string, unknown>}
                                 />
                             ))}
@@ -327,9 +327,9 @@ export function InvestmentView({
                             {(data.selectedUnit.evidence?.textual ?? []).length === 0 && (
                                 <p className="text-(--ink-muted)">No textual evidence reported.</p>
                             )}
-                            {(data.selectedUnit.evidence?.textual ?? []).map((entry, idx) => (
+                            {(data.selectedUnit.evidence?.textual ?? []).map((entry) => (
                                 <EvidenceEntryCard
-                                    key={`textual-${idx}`}
+                                    key={`textual-${JSON.stringify(entry)}`}
                                     entry={entry as Record<string, unknown>}
                                 />
                             ))}
@@ -340,7 +340,7 @@ export function InvestmentView({
                         <div className="mt-4 overflow-hidden rounded-2xl border border-dashed border-(--accent-2) bg-(--accent-2-10) lg:col-span-3">
                             <div className="flex items-center justify-between border-b border-dashed border-(--accent-2) bg-(--accent-2-15) px-4 py-2">
                                 <div className="flex items-center gap-2">
-                                    <div className="rounded bg-(--accent-2) px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                                    <div className="rounded bg-(--accent-2) px-1.5 py-0.5 text-label-caps font-bold uppercase tracking-wider text-white">
                                         AI-Generated
                                     </div>
                                     <span className="text-xs font-medium text-(--accent-2)">
@@ -357,7 +357,7 @@ export function InvestmentView({
                                 ) : data.explanation ? (
                                     <div className="space-y-6">
                                         <div>
-                                            <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                            <h4 className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                                                 Summary
                                             </h4>
                                             <p className="mt-2 text-sm leading-relaxed">
@@ -367,7 +367,7 @@ export function InvestmentView({
 
                                         <div className="grid gap-6 md:grid-cols-2">
                                             <div>
-                                                <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                                <h4 className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                                                     Reasons
                                                 </h4>
                                                 <div className="mt-3 space-y-3">
@@ -378,7 +378,7 @@ export function InvestmentView({
                                                             key={cat}
                                                             className="rounded-lg bg-(--card-70) p-3"
                                                         >
-                                                            <span className="text-[10px] font-bold uppercase text-(--accent-2)">
+                                                            <span className="text-label-caps font-bold uppercase text-(--accent-2)">
                                                                 {cat}
                                                             </span>
                                                             <p className="mt-1 text-xs text-(--ink-muted)">
@@ -402,7 +402,7 @@ export function InvestmentView({
                                             </div>
 
                                             <div>
-                                                <h4 className="text-[10px] uppercase tracking-[0.2em] text-(--ink-muted)">
+                                                <h4 className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                                                     Uncertainty
                                                 </h4>
                                                 <div className="mt-3 space-y-3">

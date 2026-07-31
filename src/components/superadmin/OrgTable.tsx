@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { Organization } from "@/lib/admin/types";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type OrgTableProps = {
     orgs: Organization[];
@@ -86,7 +87,7 @@ export function OrgTable({ orgs }: OrgTableProps) {
                     href={`/superadmin/orgs/${org.id}`}
                     className="text-(--accent) hover:underline"
                 >
-                    Edit
+                    {CTA_LABELS.edit}
                 </Link>
             ),
         },

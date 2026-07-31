@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { UserTable } from "@/components/superadmin/UserTable";
 import { listPlatformUsers } from "@/lib/admin/server";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type UsersPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -44,14 +45,14 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
                             type="submit"
                             className="inline-flex items-center rounded-xl border border-(--card-stroke) px-3 py-2 text-sm font-medium text-foreground hover:bg-(--card-70)"
                         >
-                            Search
+                            {CTA_LABELS.search}
                         </button>
                     </form>
                     <Link
                         href="/superadmin/users/new"
                         className="inline-flex items-center rounded-xl bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
                     >
-                        Create User
+                        {CTA_LABELS.createUser}
                     </Link>
                 </div>
             </AdminHeader>

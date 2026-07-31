@@ -41,6 +41,7 @@ export function ConfidenceGate({
                         stroke="currentColor"
                         strokeWidth={2}
                     >
+                        <title>Blocked access</title>
                         <path
                             strokeLinecap="round"
                             strokeLinejoin="round"
@@ -51,7 +52,7 @@ export function ConfidenceGate({
                 <p className="max-w-sm text-sm text-(--ink-muted)">
                     {suppressedMessage ?? GATE_COPY.suppressedDefault}
                 </p>
-                <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-red-400">
+                <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-label-caps font-semibold uppercase tracking-[0.15em] text-red-400">
                     Coverage {Math.round(coverage * 100)}%
                 </span>
             </div>
@@ -62,13 +63,13 @@ export function ConfidenceGate({
         return (
             <div className="relative rounded-3xl border border-amber-500/30 p-px">
                 <div
-                    className="absolute -top-3 left-4 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] text-amber-400"
+                    className="absolute -top-3 left-4 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-label-caps font-semibold uppercase tracking-[0.15em] text-amber-400"
                     title={GATE_COPY.warnTooltip}
                 >
                     Reduced confidence
                 </div>
                 <div className="rounded-3xl bg-(--card-80) p-4">{children}</div>
-                <p className="px-4 pb-3 text-[11px] text-amber-400/80">{GATE_COPY.warnTooltip}</p>
+                <p className="px-4 pb-3 text-xs text-amber-400/80">{GATE_COPY.warnTooltip}</p>
             </div>
         );
     }

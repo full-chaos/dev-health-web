@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { toast } from "sonner";
 import type { FeatureFlag, FeatureOverride, OrgEntitlements } from "@/lib/admin/types";
 import { createFeatureOverride, deleteFeatureOverride } from "@/lib/admin/server";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type EntitlementsDetailProps = {
     orgId: string;
@@ -25,7 +26,7 @@ export function EntitlementsDetail({
     const [overrideReason, setOverrideReason] = useState("");
     const [overrideEnabled, setOverrideEnabled] = useState(true);
 
-    const handleCreateOverride = async (e: React.FormEvent) => {
+    const handleCreateOverride = async (e: React.SyntheticEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!selectedFeatureId) return;
 
@@ -241,7 +242,7 @@ export function EntitlementsDetail({
                                 type="submit"
                                 className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
                             >
-                                Save Override
+                                {CTA_LABELS.saveOverride}
                             </button>
                         </div>
                     </form>
@@ -290,7 +291,7 @@ export function EntitlementsDetail({
                                                 onClick={() => handleDeleteOverride(override.id)}
                                                 className="text-red-500 hover:underline"
                                             >
-                                                Delete
+                                                {CTA_LABELS.delete}
                                             </button>
                                         </td>
                                     </tr>
