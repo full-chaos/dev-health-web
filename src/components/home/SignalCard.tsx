@@ -1,6 +1,7 @@
 "use client";
 
 import type { CockpitSignal } from "@/lib/types";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 import {
     CONFIDENCE_DOT,
@@ -59,7 +60,7 @@ export function SignalCard({ signal, emphasized = false, onOpenEvidence }: Signa
             }
         >
             {emphasized && (
-                <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-(--accent)">
+                <p className="text-label-caps font-semibold uppercase tracking-[0.28em] text-(--accent)">
                     Top signal
                 </p>
             )}
@@ -77,7 +78,7 @@ export function SignalCard({ signal, emphasized = false, onOpenEvidence }: Signa
                 </h3>
                 <span
                     data-testid="signal-severity"
-                    className={`shrink-0 rounded-full border px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] ${SEVERITY_BADGE[signal.severity]}`}
+                    className={`shrink-0 rounded-full border px-2.5 py-0.5 text-label-caps font-bold uppercase tracking-[0.18em] ${SEVERITY_BADGE[signal.severity]}`}
                 >
                     {SEVERITY_LABEL[signal.severity]}
                 </span>
@@ -110,7 +111,7 @@ export function SignalCard({ signal, emphasized = false, onOpenEvidence }: Signa
             </div>
 
             {/* The four required encodings: severity (above) + confidence, scope, evidence count */}
-            <div className="mt-4 flex flex-wrap items-center gap-2 text-[11px]">
+            <div className="mt-4 flex flex-wrap items-center gap-2 text-label-caps">
                 <span
                     data-testid="signal-confidence"
                     className={`inline-flex items-center gap-1.5 rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-1 font-medium uppercase tracking-[0.12em] ${CONFIDENCE_TEXT[signal.confidence]}`}
@@ -144,7 +145,7 @@ export function SignalCard({ signal, emphasized = false, onOpenEvidence }: Signa
                 data-testid="signal-recommended-action"
                 className="mt-4 rounded-2xl border border-(--accent)/20 bg-(--accent)/8 p-3"
             >
-                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-(--accent)">
+                <p className="text-label-caps font-semibold uppercase tracking-[0.2em] text-(--accent)">
                     Recommended action
                 </p>
                 <p className="mt-1 text-sm leading-5 text-foreground">
@@ -159,7 +160,7 @@ export function SignalCard({ signal, emphasized = false, onOpenEvidence }: Signa
                 onClick={open}
                 className="mt-4 flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.18em] text-(--ink-muted) transition-colors hover:border-(--accent)/40 hover:bg-(--accent)/10 hover:text-(--accent)"
             >
-                Open evidence
+                {CTA_LABELS.openEvidence}
                 <span aria-hidden>↗</span>
             </button>
         </article>
