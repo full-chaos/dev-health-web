@@ -1,8 +1,10 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
+import { Building2, LogOut, Settings2, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
+import { BugReportButton } from "@/components/feedback/BugReportButton";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 export function UserMenu() {
@@ -56,7 +58,7 @@ export function UserMenu() {
 
             {isOpen && (
                 <div
-                    className="absolute right-0 top-full z-50 mt-2 w-48 rounded-(--radius-sm) border border-(--card-stroke) bg-(--card) shadow-lg"
+                    className="absolute right-0 top-full z-50 mt-2 w-48 rounded-(--radius-sm) border border-(--card-stroke) bg-(--card) shadow-(--elevation-card)"
                     id="account-options"
                 >
                     <div className="py-1">
@@ -70,35 +72,51 @@ export function UserMenu() {
                         {session.user?.is_superuser && (
                             <Link
                                 href="/superadmin"
-                                className="block px-4 py-2 text-sm text-purple-400 hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                                className="flex items-center gap-2 px-4 py-2 text-sm text-purple-400 hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                                 onClick={() => setIsOpen(false)}
                             >
+                                <ShieldCheck
+                                    aria-hidden="true"
+                                    className="h-4 w-4 shrink-0 text-(--ink-muted)"
+                                />
                                 {CTA_LABELS.platformAdmin}
                             </Link>
                         )}
                         <Link
                             href="/settings"
-                            className="block px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                             onClick={() => setIsOpen(false)}
                         >
+                            <Settings2
+                                aria-hidden="true"
+                                className="h-4 w-4 shrink-0 text-(--ink-muted)"
+                            />
                             {CTA_LABELS.preferences}
                         </Link>
                         <Link
                             href="/org/admin"
-                            className="block px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                             onClick={() => setIsOpen(false)}
                         >
+                            <Building2
+                                aria-hidden="true"
+                                className="h-4 w-4 shrink-0 text-(--ink-muted)"
+                            />
                             {CTA_LABELS.adminPanel}
                         </Link>
-                        <div className="border-t border-(--card-stroke)">
-                            <button
-                                type="button"
-                                onClick={() => signOut()}
-                                className="block w-full px-4 py-2 text-left text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
-                            >
-                                {CTA_LABELS.signOut}
-                            </button>
-                        </div>
+                        <div role="separator" className="border-t border-(--card-stroke)" />
+                        <BugReportButton />
+                        <button
+                            type="button"
+                            onClick={() => signOut()}
+                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                        >
+                            <LogOut
+                                aria-hidden="true"
+                                className="h-4 w-4 shrink-0 text-(--ink-muted)"
+                            />
+                            {CTA_LABELS.signOut}
+                        </button>
                     </div>
                 </div>
             )}

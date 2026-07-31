@@ -322,10 +322,12 @@ test.describe("Context Fabric production entitlement boundary", () => {
             const preferences = page.getByRole("link", { name: "Preferences" });
             const adminPanel = page.getByRole("link", { name: "Admin Panel" });
             const signOut = page.getByRole("button", { name: "Sign out" });
+            const reportIssue = page.getByRole("button", { name: "Report issue" });
             await expect(platformAdmin).toBeVisible();
             await expect(preferences).toBeVisible();
             await expect(adminPanel).toBeVisible();
             await expect(signOut).toBeVisible();
+            await expect(reportIssue).toBeVisible();
             const accountNavigationBottomAfterOpen = await accountNavigation.evaluate(
                 (element) => element.getBoundingClientRect().bottom,
             );
@@ -337,7 +339,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
             await expect(menu).toBeVisible();
             const menuTop = await menu.evaluate((element) => element.getBoundingClientRect().top);
             expect(menuTop).toBeLessThan(pageHeadingTop);
-            for (const menuItem of [platformAdmin, preferences, adminPanel, signOut]) {
+            for (const menuItem of [platformAdmin, preferences, adminPanel, signOut, reportIssue]) {
                 expect(
                     await menuItem.evaluate((element) => {
                         const bounds = element.getBoundingClientRect();
@@ -632,7 +634,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await expect(page.getByRole("heading", { name: "e2e stale response" })).toHaveCount(0);
     });
 
-    test("keeps the issue-report control clear of Context Fabric form, terminal, and cards at every viewport", async ({
+    test("opens issue reporting from the bottom of the account menu at every viewport", async ({
         page,
     }, testInfo) => {
         await setEntitlementScenario(page.request, "provisioned");
@@ -647,13 +649,29 @@ test.describe("Context Fabric production entitlement boundary", () => {
             });
             await expect(terminal).toBeVisible();
 
-            const issueReportControl = page.getByRole("button", { name: "Report an issue" });
-            const categoryCards = page.locator("article");
-            await expect(categoryCards).toHaveCount(1);
-            // The bug report control is an intentional floating FAB (fixed
-            // bottom-right overlay), so the earlier anti-overlap constraint no
-            // longer applies; assert only that it remains present and reachable.
+            await page.getByRole("button", { name: "Account options" }).click();
+            const issueReportControl = page.getByRole("button", { name: "Report issue" });
             await expect(issueReportControl).toBeVisible();
+            await issueReportControl.click();
+            const dialog = page.getByRole("dialog", { name: "Report issue" });
+            await expect(dialog).toBeVisible();
+            await page.getByLabel("Title").fill("Pointer interaction remains open");
+            await expect(dialog).toBeVisible();
+            await expect(page.getByRole("button", { name: "Account options" })).toHaveAttribute(
+                "aria-expanded",
+                "true",
+            );
+            const submitReport = page.getByRole("button", { name: "Submit Report" });
+            expect(
+                await submitReport.evaluate((element) => {
+                    const bounds = element.getBoundingClientRect();
+                    const topmostElement = document.elementFromPoint(
+                        bounds.left + bounds.width / 2,
+                        bounds.top + bounds.height / 2,
+                    );
+                    return topmostElement === element || element.contains(topmostElement);
+                }),
+            ).toBe(true);
             await page.screenshot({
                 path: testInfo.outputPath(`issue-report-layout-${viewport.name}.png`),
                 fullPage: true,
