@@ -123,7 +123,9 @@ describe("AskDevAnswer citations", () => {
 
         expect(actions.expandEvidence).toHaveBeenCalledWith("evidence-internal-1", "answer-1");
         expect(await screen.findByText("The authorized evidence excerpt.")).toBeVisible();
-        await waitFor(() => expect(document.getElementById("ask-dev-evidence-1")).toHaveFocus());
+        await waitFor(() =>
+            expect(document.getElementById("ask-dev-evidence-answer-1-1")).toHaveFocus(),
+        );
 
         await user.click(
             screen.getByRole("button", {
@@ -133,7 +135,7 @@ describe("AskDevAnswer citations", () => {
 
         const metricDefinition = screen.getByText("Metric definition").closest("details");
         expect(metricDefinition).toHaveAttribute("open");
-        expect(document.getElementById("ask-dev-metric-1")).toHaveFocus();
+        expect(document.getElementById("ask-dev-metric-answer-1-1")).toHaveFocus();
         expect(screen.queryByText("evidence-internal-1")).not.toBeInTheDocument();
         expect(screen.queryByText("metric-internal-1")).not.toBeInTheDocument();
         expect(screen.getByText("Applies to Web application")).toBeVisible();
@@ -156,5 +158,103 @@ describe("AskDevAnswer citations", () => {
 
         expect(actions.expandEvidence).toHaveBeenCalledWith("evidence-internal-1", "answer-1");
         expect(await screen.findByText("The authorized evidence excerpt.")).toBeVisible();
+    });
+
+    it("scopes detail-panel and article ids to the answer id so multiple answers in a transcript never collide, and actually activates the second answer's panel", async () => {
+        const user = userEvent.setup();
+        const secondAnswer = { ...answer, answer_id: "answer-2" } as unknown as DevAnswer;
+        render(
+            <>
+                <AskDevAnswer answer={answer} />
+                <AskDevAnswer answer={secondAnswer} />
+            </>,
+        );
+
+        // Position-based ids (pre-fix: "ask-dev-evidence-1"/"ask-dev-metric-1")
+        // would collide across every answer in the transcript, so
+        // getElementById would silently resolve to the first answer's panel
+        // for both. Scoping by answer_id keeps each answer's ids unique.
+        expect(document.getElementById("ask-dev-evidence-answer-1-1")).toBeInTheDocument();
+        expect(document.getElementById("ask-dev-evidence-answer-2-1")).toBeInTheDocument();
+        expect(document.getElementById("ask-dev-metric-answer-1-1")).toBeInTheDocument();
+        expect(document.getElementById("ask-dev-metric-answer-2-1")).toBeInTheDocument();
+        expect(document.getElementById("ask-dev-answer-answer-1")).toBeInTheDocument();
+        expect(document.getElementById("ask-dev-answer-answer-2")).toBeInTheDocument();
+
+        // Each answer's "Evidence" section heading is linked via
+        // aria-labelledby to *that answer's own* heading id, not shared or
+        // swapped with the other answer's section.
+        const firstHeading = document.getElementById("ask-dev-evidence-heading-answer-1");
+        const secondHeading = document.getElementById("ask-dev-evidence-heading-answer-2");
+        expect(firstHeading?.closest("section")).toHaveAttribute(
+            "aria-labelledby",
+            "ask-dev-evidence-heading-answer-1",
+        );
+        expect(secondHeading?.closest("section")).toHaveAttribute(
+            "aria-labelledby",
+            "ask-dev-evidence-heading-answer-2",
+        );
+
+        // Both answers share the same underlying evidence_ref_id, so both
+        // citation buttons have the identical accessible name — activating
+        // the *second* answer's button must open and focus the second
+        // answer's own detail panel, never the first answer's.
+        const openButtons = screen.getAllByRole("button", {
+            name: "Open evidence citation 1 for claim",
+        });
+        expect(openButtons).toHaveLength(2);
+        await user.click(openButtons[1]!);
+
+        await waitFor(() =>
+            expect(document.getElementById("ask-dev-evidence-answer-2-1")).toHaveFocus(),
+        );
+        expect(document.getElementById("ask-dev-evidence-answer-1-1")).not.toHaveFocus();
+    });
+});
+
+describe("AskDevAnswer status explanations (CHAOS-3215)", () => {
+    beforeAll(() => {
+        window.requestAnimationFrame = (callback: FrameRequestCallback) => {
+            callback(0);
+            return 0;
+        };
+    });
+
+    beforeEach(() => {
+        Object.values(actions).forEach((action) => action.mockReset());
+    });
+
+    // Copy grounded in ops/docs/use/ai-workflows/index.md ("Ask Dev: window
+    // and full-page workspace"): "A partial, degraded, refused, or
+    // insufficient-evidence answer is a result with limitations, not a
+    // silent success."
+    it.each([
+        [
+            "partial",
+            "Partial: the investigation did not fully complete. A result with limitations, not a silent success.",
+        ],
+        [
+            "degraded",
+            "Degraded: part of the investigation could not complete as expected. A result with limitations, not a silent success.",
+        ],
+        [
+            "insufficient_evidence",
+            "Insufficient evidence: there isn't enough evidence to answer with confidence. A result with limitations, not a silent success.",
+        ],
+        [
+            "refused",
+            "Refused: Ask Dev did not answer this question. A result with limitations, not a silent success.",
+        ],
+    ] as const)("shows the sanctioned explanation for a %s answer", (status, expectedText) => {
+        const statusAnswer = { ...answer, status } as unknown as DevAnswer;
+        render(<AskDevAnswer answer={statusAnswer} />);
+
+        expect(screen.getByText(expectedText)).toBeVisible();
+    });
+
+    it("renders no status explanation for a complete answer", () => {
+        render(<AskDevAnswer answer={answer} />);
+
+        expect(screen.queryByText(/not a silent success/u)).not.toBeInTheDocument();
     });
 });

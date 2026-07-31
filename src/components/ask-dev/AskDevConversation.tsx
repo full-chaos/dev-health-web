@@ -6,6 +6,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 import { formatDateUTC } from "@/lib/formatters";
+import { runtimeConfig } from "@/lib/runtimeConfig";
 import { DataState } from "@/components/ui/DataState";
 
 import { AskDevAnswer } from "./AskDevAnswer";
@@ -62,14 +63,13 @@ export function AskDevConversation({
         historyLoading,
         loadHistory,
         openConversation,
+        orgId,
         proposedContext,
         proposedQuestions,
         proposedScope,
         proposedScopeLabel,
         renameConversation,
         retryLastQuestion,
-        retentionDays,
-        setRetentionDays,
         startNewConversation,
         stream,
         submitQuestion,
@@ -80,21 +80,117 @@ export function AskDevConversation({
     const [editingTitle, setEditingTitle] = useState("");
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
     const [historyActionError, setHistoryActionError] = useState<string | null>(null);
+    const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
     const composerId = useId();
+    const historyPanelId = useId();
     const transcriptEnd = useRef<HTMLDivElement>(null);
+    const composerRef = useRef<HTMLTextAreaElement>(null);
+    const renameInputRef = useRef<HTMLInputElement>(null);
+    // Declared here (ahead of the effects below that reference it) rather than
+    // inline where it was originally introduced, so the org-switch reset
+    // effect can clear it too — see that effect's comment (CHAOS-3215).
+    const runInProgress = useRef(false);
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
     const filters = useMemo(() => decodeFilter(searchParams.get("f")), [searchParams]);
     const allowanceGuidance = platformAllowanceGuidance(stream.error);
+    // "Powered by Context Fabric" is the sanctioned relationship framing
+    // (CHAOS-3215): Ask Dev is the customer interaction layer, Context
+    // Fabric Validation is a separate platform-administrator diagnostic
+    // surface. This links out to the customer doc for that relationship —
+    // never to the admin-only validation surface.
+    const askDevDocsHref = `${runtimeConfig.docsUrl()}/use/ai-workflows/`;
 
     useEffect(() => {
         if (showHistory && availability.state === "ready") void loadHistory();
     }, [availability.state, loadHistory, showHistory]);
 
+    // This conversation subtree owns its own draft/history-edit UI state, so
+    // the provider's organization-switch reset (which clears transcript,
+    // conversationId, etc. synchronously at render time) cannot reach it. An
+    // unsent draft typed under one organization must not persist after
+    // switching to another (CHAOS-3215 H1). `orgId` is exposed on context for
+    // exactly this purpose. This mirrors the provider's own render-time
+    // "adjusting state while rendering" reset (see AskDevProvider.tsx) rather
+    // than a `useEffect`, for the same reason: a passive effect fires only
+    // after the previous organization's draft has already been painted once.
+    const [previousOrgId, setPreviousOrgId] = useState(orgId);
+    if (orgId !== previousOrgId) {
+        setPreviousOrgId(orgId);
+        setDraft("");
+        setEditingConversationId(null);
+        setEditingTitle("");
+        setPendingDeleteId(null);
+        setHistoryActionError(null);
+        setHistoryPanelOpen(false);
+    }
+
+    // `runInProgress` is a ref, not visible state, so clearing it does not
+    // need (and per the project's lint rules, must not use) the render-time
+    // escape hatch above — a plain effect is fine here, unlike the setState
+    // calls above it.
+    useEffect(() => {
+        runInProgress.current = false;
+    }, [orgId]);
+
     useEffect(() => {
         transcriptEnd.current?.scrollIntoView({ block: "nearest" });
     }, [stream.delta, stream.phase, transcript]);
+
+    // The rAF focus-move callbacks below bail if the user has moved on to
+    // something else by the time they fire — either the composer (typing the
+    // next question) or the conversation-rename input (mid-edit of a saved
+    // title while a run streams in the background). Stealing focus from
+    // either would corrupt what the user is doing (CHAOS-3215 L2 / M-rename).
+    const isUserActivelyEditingElsewhere = () =>
+        document.activeElement === composerRef.current ||
+        document.activeElement === renameInputRef.current;
+
+    // Move keyboard focus to a newly-completed answer (or to the terminal
+    // failure alert) once a run that was actually running reaches a terminal
+    // state — mirrors AskDevAnswer's focusDetail() pattern (requestAnimationFrame
+    // + .focus() on a tabIndex={-1} element). Split into two effects because the
+    // "answer.completed" stream event (which flips stream.phase) and the actual
+    // transcript push happen on different renders: a single effect keyed on both
+    // dependencies would already have advanced its "was running" tracking ref
+    // past "running" by the time the transcript update it needs to react to
+    // arrives. `runInProgress` bridges that gap. Reopening a saved conversation
+    // never sets `runInProgress`, so it never steals focus (CHAOS-3215 L2).
+    useEffect(() => {
+        if (stream.phase === "running") {
+            runInProgress.current = true;
+            return;
+        }
+        if (!runInProgress.current) return;
+        if (stream.phase === "idle") {
+            // The run was superseded (an organization switch or "New
+            // conversation") rather than reaching a terminal state of its
+            // own — clear tracking without moving focus, otherwise a later,
+            // unrelated transcript-open could incorrectly steal focus by
+            // satisfying the effect below (CHAOS-3215 M-runInProgress).
+            runInProgress.current = false;
+            return;
+        }
+        if (stream.phase !== "failed") return;
+        runInProgress.current = false;
+        requestAnimationFrame(() => {
+            if (isUserActivelyEditingElsewhere()) return;
+            document.getElementById("ask-dev-run-failed")?.focus({ preventScroll: true });
+        });
+    }, [stream.phase]);
+
+    useEffect(() => {
+        if (!runInProgress.current) return;
+        const lastEntry = transcript[transcript.length - 1];
+        if (!lastEntry || lastEntry.role !== "assistant") return;
+        runInProgress.current = false;
+        const answerId = lastEntry.answer.answer_id;
+        requestAnimationFrame(() => {
+            if (isUserActivelyEditingElsewhere()) return;
+            document.getElementById(`ask-dev-answer-${answerId}`)?.focus({ preventScroll: true });
+        });
+    }, [transcript]);
 
     const submit = async () => {
         const question = draft.trim();
@@ -185,11 +281,33 @@ export function AskDevConversation({
 
     return (
         <div
-            className={`flex min-h-0 flex-1 ${showHistory ? "lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]" : ""}`}
+            // Base `flex-col` stacks the mobile toggle bar, the (conditionally
+            // shown) history aside, and the conversation column vertically —
+            // without it these were unstyled row siblings below `lg`, so a
+            // narrow viewport could squeeze/collapse the primary workspace.
+            // `lg:grid` replaces that stacked layout with the two-column
+            // desktop layout (CHAOS-3215 M-mobile-layout).
+            className={`flex min-h-0 flex-1 flex-col ${showHistory ? "lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]" : ""}`}
         >
             {showHistory ? (
+                <div className="border-b border-(--border) bg-(--surface)/65 px-4 py-2 lg:hidden">
+                    <button
+                        type="button"
+                        aria-expanded={historyPanelOpen}
+                        aria-controls={historyPanelId}
+                        onClick={() => setHistoryPanelOpen((open) => !open)}
+                        className="rounded-(--radius-sm) border border-(--border) px-2.5 py-1.5 text-xs font-medium text-(--text-secondary) transition hover:border-(--accent)/45 hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
+                    >
+                        {historyPanelOpen
+                            ? CTA_LABELS.hideAskDevHistory
+                            : CTA_LABELS.showAskDevHistory}
+                    </button>
+                </div>
+            ) : null}
+            {showHistory ? (
                 <aside
-                    className="hidden border-r border-(--border) bg-(--surface)/65 p-4 lg:block"
+                    id={historyPanelId}
+                    className={`${historyPanelOpen ? "block" : "hidden"} border-r border-(--border) bg-(--surface)/65 p-4 lg:block`}
                     aria-label="Ask Dev history"
                 >
                     <div className="flex items-center justify-between gap-2">
@@ -230,6 +348,7 @@ export function AskDevConversation({
                                                 Conversation title
                                             </label>
                                             <input
+                                                ref={renameInputRef}
                                                 id={`title-${conversation.conversation_id}`}
                                                 value={editingTitle}
                                                 onChange={(event) =>
@@ -391,9 +510,15 @@ export function AskDevConversation({
                     </div>
                 </div>
 
+                {/*
+                 * No aria-live here: the transcript's running/failed states carry
+                 * their own role="status"/role="alert" regions below, which
+                 * announce at coarse phase transitions. Wrapping the whole
+                 * scrollable transcript in aria-live would additionally announce
+                 * every streamed answer.delta chunk as it arrives (CHAOS-3215 M3).
+                 */}
                 <div
                     className={`min-h-0 flex-1 overflow-y-auto px-4 ${compact ? "py-4" : "py-6 sm:px-6"}`}
-                    aria-live="polite"
                     aria-label="Ask Dev transcript"
                 >
                     {transcript.length === 0 && stream.phase === "idle" ? (
@@ -407,6 +532,28 @@ export function AskDevConversation({
                             <p className="mt-3 text-sm leading-6 text-(--text-secondary)">
                                 Ask Dev works from persisted metrics and evidence. It shows the
                                 scope it used and calls out missing or stale sources.
+                            </p>
+                            <p className="mt-2 text-xs text-(--text-muted)">
+                                Powered by Context Fabric.{" "}
+                                {/*
+                                 * Plain <a>, not next/link's <Link>: this
+                                 * points at the separately-hosted customer
+                                 * docs site (a different origin from the
+                                 * app), and Link's client-side route
+                                 * normalization can rewrite the target path
+                                 * (e.g. trailing-slash handling) in ways that
+                                 * do not apply to genuinely external URLs.
+                                 */}
+                                <a
+                                    href={askDevDocsHref}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    aria-label={`${CTA_LABELS.viewAskDevDocs} — opens in new tab`}
+                                    className="font-medium text-(--accent) underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
+                                >
+                                    {CTA_LABELS.viewAskDevDocs}
+                                    <span aria-hidden="true"> ↗</span>
+                                </a>
                             </p>
                             {proposedQuestions.length ? (
                                 <div
@@ -439,6 +586,29 @@ export function AskDevConversation({
                                         <div className="rounded-(--radius-lg) rounded-br-(--radius-sm) bg-(--accent)/13 px-4 py-3 text-sm leading-6 text-(--text-primary)">
                                             {entry.text}
                                         </div>
+                                    ) : entry.answer.status === "error" ? (
+                                        // A persisted answer with `status: "error"` must render
+                                        // through the same failed/alert treatment as a live run
+                                        // failure, not as ordinary completed output — otherwise
+                                        // a genuine failure reads as a silent success (CHAOS-3215
+                                        // M-error-status). Reuses the same id convention
+                                        // (`ask-dev-answer-<id>`) that AskDevAnswer would have
+                                        // used, so the completion focus-move effect above still
+                                        // finds it.
+                                        <div
+                                            id={`ask-dev-answer-${entry.answer.answer_id}`}
+                                            tabIndex={-1}
+                                            className="rounded-(--radius-md) border border-(--negative)/30 bg-(--negative)/8 p-4 outline-none"
+                                            role="alert"
+                                        >
+                                            <p className="text-sm font-medium text-(--negative)">
+                                                The investigation stopped safely.
+                                            </p>
+                                            <p className="mt-1 text-sm text-(--text-secondary)">
+                                                {entry.answer.direct_summary ||
+                                                    "Ask Dev could not complete that request."}
+                                            </p>
+                                        </div>
                                     ) : (
                                         <AskDevAnswer answer={entry.answer} />
                                     )}
@@ -446,25 +616,39 @@ export function AskDevConversation({
                             ))}
 
                             {stream.phase === "running" ? (
-                                <li
-                                    className="space-y-3 border-l-2 border-(--accent-ai)/45 pl-4"
-                                    role="status"
-                                >
-                                    <p className="text-sm font-medium text-(--text-primary)">
-                                        {stream.progress
-                                            ? (PROGRESS_LABELS[stream.progress] ?? "Investigating")
-                                            : "Starting the investigation"}
-                                    </p>
-                                    {stream.delta ? (
-                                        <p className="whitespace-pre-wrap text-sm leading-6 text-(--text-secondary)">
-                                            {stream.delta}
+                                <li className="space-y-3 border-l-2 border-(--accent-ai)/45 pl-4">
+                                    {/*
+                                     * The interactive Cancel button below is deliberately kept
+                                     * outside this role="status" region: an interactive element
+                                     * inside a live region can be difficult for assistive
+                                     * technology to operate, since the region may re-announce
+                                     * around it. Only the announced progress text lives inside
+                                     * (CHAOS-3215 L-cancel-live-region).
+                                     */}
+                                    <div role="status" className="space-y-3">
+                                        <p className="text-sm font-medium text-(--text-primary)">
+                                            {stream.progress
+                                                ? (PROGRESS_LABELS[stream.progress] ??
+                                                  "Investigating")
+                                                : "Starting the investigation"}
                                         </p>
-                                    ) : (
-                                        <div
-                                            className="h-2 w-32 animate-pulse rounded-(--radius-pill) bg-(--accent-ai)/25"
-                                            aria-hidden="true"
-                                        />
-                                    )}
+                                        {/*
+                                         * Streamed delta text is visually rendered but excluded
+                                         * from the announced role="status" region (aria-hidden) —
+                                         * only the progress label above should be announced, at
+                                         * phase transitions, not on every answer.delta chunk
+                                         * (CHAOS-3215 M3).
+                                         */}
+                                        <div aria-hidden="true">
+                                            {stream.delta ? (
+                                                <p className="whitespace-pre-wrap text-sm leading-6 text-(--text-secondary)">
+                                                    {stream.delta}
+                                                </p>
+                                            ) : (
+                                                <div className="h-2 w-32 animate-pulse rounded-(--radius-pill) bg-(--accent-ai)/25 motion-reduce:animate-none" />
+                                            )}
+                                        </div>
+                                    </div>
                                     <button
                                         type="button"
                                         onClick={cancelRun}
@@ -477,7 +661,9 @@ export function AskDevConversation({
 
                             {stream.phase === "failed" ? (
                                 <li
-                                    className="rounded-(--radius-md) border border-(--negative)/30 bg-(--negative)/8 p-4"
+                                    id="ask-dev-run-failed"
+                                    tabIndex={-1}
+                                    className="rounded-(--radius-md) border border-(--negative)/30 bg-(--negative)/8 p-4 outline-none"
                                     role="alert"
                                 >
                                     <p className="text-sm font-medium text-(--negative)">
@@ -526,6 +712,7 @@ export function AskDevConversation({
                     </label>
                     <div className="flex items-end gap-2 rounded-(--radius-lg) border border-(--border) bg-(--background)/75 p-2 focus-within:border-(--accent)/60 focus-within:ring-2 focus-within:ring-(--accent)/15">
                         <textarea
+                            ref={composerRef}
                             id={composerId}
                             value={draft}
                             onChange={(event) => setDraft(event.target.value)}
@@ -549,23 +736,17 @@ export function AskDevConversation({
                             {CTA_LABELS.askDev}
                         </button>
                     </div>
-                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-(--text-muted)">
+                    {/*
+                     * No per-conversation retention selector: retention is an
+                     * org-admin-only 0/30-day policy (PATCH
+                     * /api/v1/admin/ask-dev/settings). The backend always applied
+                     * org policy and silently ignored any per-conversation
+                     * `retention_days` sent from here, so the selector was a
+                     * misleading affordance — removed per CHAOS-3215 M7 /
+                     * CHAOS-3217.
+                     */}
+                    <div className="mt-2 text-xs text-(--text-muted)">
                         <span>Enter to ask · Shift+Enter for a new line</span>
-                        <label className="flex items-center gap-2">
-                            History
-                            <select
-                                value={retentionDays}
-                                onChange={(event) =>
-                                    setRetentionDays(event.target.value === "0" ? 0 : 30)
-                                }
-                                disabled={transcript.length > 0}
-                                className="rounded-(--radius-sm) border border-(--border) bg-(--surface) px-2 py-1 text-xs text-(--text-secondary)"
-                                aria-label="Conversation retention"
-                            >
-                                <option value="30">30 days</option>
-                                <option value="0">Do not retain</option>
-                            </select>
-                        </label>
                     </div>
                 </form>
             </div>

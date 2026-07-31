@@ -81,13 +81,13 @@ type AskDevContextValue = {
     conversations: DevConversationList["items"];
     historyError: string | null;
     historyLoading: boolean;
+    orgId: string;
     panelMode: AskDevPanelMode;
     persistentReturnHref: string;
     proposedContext: AskDevSurfaceContext | null;
     proposedScope: DevScope;
     proposedScopeLabel: string;
     proposedQuestions: readonly { id: string; label: string }[];
-    retentionDays: 0 | 30;
     stream: typeof initialDevConversationStreamState;
     transcript: AskDevTranscriptEntry[];
     cancelRun: () => void;
@@ -105,7 +105,6 @@ type AskDevContextValue = {
     retryLastQuestion: () => Promise<void>;
     returnToPersistentWindow: () => void;
     setPanelMode: (mode: AskDevPanelMode) => void;
-    setRetentionDays: (days: 0 | 30) => void;
     startNewConversation: () => void;
     submitAnswerFeedback: (answerId: string, rating: "helpful" | "not_helpful") => Promise<void>;
     submitQuestion: (question: string) => Promise<void>;
@@ -268,11 +267,36 @@ export function AskDevProvider({
     const [historyLoading, setHistoryLoading] = useState(false);
     const [historyError, setHistoryError] = useState<string | null>(null);
     const [committedScopeLabel, setCommittedScopeLabel] = useState<string | null>(null);
-    const [retentionDays, setRetentionDays] = useState<0 | 30>(30);
     const [stream, setStream] = useState(initialDevConversationStreamState);
     const [availability, setAvailability] = useState<AskDevAvailability>({ state: "loading" });
+    // Once the floating window has been shown at all, an org-switch-triggered
+    // capabilities refetch (which synchronously resets `availability` back to
+    // "loading" below) must not unmount it — only its *content* should fail
+    // closed to a loading state while the new organization's capabilities are
+    // pending (AskDevConversation already renders that). Otherwise the whole
+    // window would flicker closed and reopen on every org switch, which the
+    // H1 fix's "the window itself stays open" invariant explicitly rules out.
+    // It intentionally does NOT reset during the render-time org-switch block
+    // below — resetting it there, alongside `availability`, would collapse
+    // straight back into the H1 flicker it exists to prevent, since the
+    // launcher would vanish for the entire "loading" window of every org
+    // switch. It DOES reset once the new organization's capabilities resolve
+    // to `disabled` (an actual `ask_dev` capability check, not merely "not
+    // ready or loading") — otherwise an org that genuinely never had Ask Dev
+    // available would keep showing the launcher forever because some
+    // *other*, earlier organization in the session once did (CHAOS-3215).
+    const [everAvailable, setEverAvailable] = useState(false);
     const activeRequest = useRef<AbortController | null>(null);
+    const activeHistoryRequest = useRef<AbortController | null>(null);
     const historySelection = useRef(0);
+    // Mirrors the latest `orgId` prop for use inside async callbacks (after an
+    // `await`), so a response that resolves after the organization changed
+    // again can recognize itself as stale even before the cleanup effect below
+    // has run. A plain overwrite during render (not an increment) is safe
+    // under React 18 Strict Mode's dev-only double-render: assigning the same
+    // value twice is a no-op (CHAOS-3215 H2).
+    const orgIdRef = useRef(orgId);
+    orgIdRef.current = orgId;
     const encodedFilter = searchParams.get("f");
     const filters = useMemo(
         () =>
@@ -324,13 +348,85 @@ export function AskDevProvider({
             active = false;
             controller.abort();
         };
-    }, [client]);
+    }, [client, orgId]);
+
+    useEffect(() => {
+        if (availability.state === "ready" || availability.state === "not_ready") {
+            setEverAvailable(true);
+        } else if (availability.state === "disabled") {
+            setEverAvailable(false);
+        }
+    }, [availability.state]);
 
     useEffect(() => {
         if (pathname !== "/dev" && !pathname.startsWith("/superadmin/context-fabric/validation")) {
             setPersistentReturnHref(`${pathname}${searchString ? `?${searchString}` : ""}`);
         }
     }, [pathname, searchString]);
+
+    // A contextual scope proposal is only trustworthy while the user is still on
+    // (or has gone straight to /dev from) the page that registered it. Once the
+    // user visits any other route, permanently clear it — not just hide it —
+    // so it can never resurface later on an unrelated visit to /dev (CHAOS-3215 M1).
+    useEffect(() => {
+        setSurfaceProposal((current) =>
+            current && pathname !== current.sourcePathname && pathname !== "/dev" ? null : current,
+        );
+    }, [pathname]);
+
+    // Conversation state is keyed to the active organization. AskDevProvider is
+    // mounted once in the app shell layout and receives `orgId` as a prop from
+    // the server session — switching orgs triggers a router.refresh() that
+    // updates this prop on the already-mounted provider without unmounting it.
+    //
+    // This reset runs synchronously during render — the "adjusting state while
+    // rendering" pattern (https://react.dev/learn/you-might-not-need-an-effect)
+    // — rather than in a `useEffect`. A passive effect only fires after React
+    // has already committed (and the browser can paint) a render that still
+    // shows the previous organization's transcript/conversation/history, so
+    // for a tenant boundary a post-commit effect is one paint frame too late
+    // (CHAOS-3215 H1). Comparing against a `useState`-tracked previous value
+    // (not a ref) is the documented-safe form of this pattern: React discards
+    // a duplicate `setState` call from Strict Mode's dev-only double render,
+    // so this cannot double-apply.
+    const [previousOrgId, setPreviousOrgId] = useState(orgId);
+    if (orgId !== previousOrgId) {
+        setPreviousOrgId(orgId);
+        // A plain ref bump, not a `setState` call, so it invalidates any
+        // in-flight `openConversation` selection immediately — before the
+        // cleanup effect below (or any promise callback) can run. Harmless if
+        // Strict Mode's dev-only double render bumps it twice: it is only ever
+        // compared for (in)equality, never read as an absolute count.
+        historySelection.current += 1;
+        setConversationId(null);
+        setCommittedScopeLabel(null);
+        setTranscript([]);
+        setStream(initialDevConversationStreamState);
+        setConversations([]);
+        setHistoryError(null);
+        setSurfaceProposal(null);
+        // Fail closed rather than keep showing the previous organization's
+        // availability/remediation copy until the new organization's
+        // capabilities have been (re)fetched by the effect above.
+        setAvailability({ state: "loading" });
+    }
+
+    // Aborting an in-flight request is a real side effect (an
+    // AbortController's listeners can run synchronously), so it stays in an
+    // effect rather than the render-time block above. This effect has no
+    // setup body — only its cleanup — so the same abort runs both when
+    // `orgId` changes and when the provider itself unmounts (e.g. an
+    // entitlement change removes Ask Dev from the tree, where a `[orgId]`
+    // reset effect would otherwise never fire). Also covers the M2 gap:
+    // provider unmount previously left `activeRequest` unaborted.
+    useEffect(() => {
+        return () => {
+            activeRequest.current?.abort();
+            activeRequest.current = null;
+            activeHistoryRequest.current?.abort();
+            activeHistoryRequest.current = null;
+        };
+    }, [orgId]);
 
     const clearProposedContext = useCallback(() => setSurfaceProposal(null), []);
     const setProposedContext = useCallback(
@@ -373,15 +469,33 @@ export function AskDevProvider({
     );
 
     const loadHistory = useCallback(async () => {
+        activeHistoryRequest.current?.abort();
+        const controller = new AbortController();
+        activeHistoryRequest.current = controller;
+        const requestOrgId = orgIdRef.current;
         setHistoryLoading(true);
         setHistoryError(null);
         try {
-            const result = await client.listConversations();
+            const result = await client.listConversations({ signal: controller.signal });
+            // A stale response — from a superseded `loadHistory` call or from
+            // an organization switch that happened while this request was in
+            // flight — must never repopulate the history UI with another
+            // tenant's conversation titles (CHAOS-3215 H2).
+            if (activeHistoryRequest.current !== controller || orgIdRef.current !== requestOrgId) {
+                return;
+            }
             setConversations(result.items);
         } catch (error) {
+            if (controller.signal.aborted) return;
+            if (activeHistoryRequest.current !== controller || orgIdRef.current !== requestOrgId) {
+                return;
+            }
             setHistoryError(safeMessage(error));
         } finally {
-            setHistoryLoading(false);
+            if (activeHistoryRequest.current === controller) {
+                activeHistoryRequest.current = null;
+                setHistoryLoading(false);
+            }
         }
     }, [client]);
 
@@ -412,7 +526,6 @@ export function AskDevProvider({
                 }
                 setConversationId(conversation.conversation_id);
                 setCommittedScopeLabel(conversationLabel(conversation));
-                setRetentionDays(conversation.retention_days);
                 setTranscript(retainedEntries);
                 setStream(initialDevConversationStreamState);
             } catch (error) {
@@ -467,7 +580,12 @@ export function AskDevProvider({
 
     const deleteConversation = useCallback(
         async (targetConversationId: string) => {
+            const requestOrgId = orgIdRef.current;
             await client.deleteConversation(targetConversationId);
+            // A delayed deletion completion from a since-switched-away
+            // organization must not clear or abort whatever the *current*
+            // organization is doing (CHAOS-3215 M-delete).
+            if (orgIdRef.current !== requestOrgId) return;
             setConversations((current) =>
                 current.filter(
                     (conversation) => conversation.conversation_id !== targetConversationId,
@@ -524,15 +642,36 @@ export function AskDevProvider({
             let activeRunId: string | null = null;
             activeRequest.current?.abort();
             activeRequest.current = controller;
+            // Captured once, before any `await`: the org-switch render-time
+            // reset already clears visible state synchronously (CHAOS-3215
+            // H1), but this closure can still be resumed by a microtask after
+            // the org changed again and before the cleanup effect aborts
+            // `controller`. Checking identity against `orgIdRef.current` at
+            // every resumption point closes that residual window.
+            const requestOrgId = orgIdRef.current;
+            const superseded = () =>
+                controller.signal.aborted ||
+                activeRequest.current !== controller ||
+                orgIdRef.current !== requestOrgId;
 
             try {
                 let activeConversationId = conversationId;
                 if (!activeConversationId) {
-                    const created = await client.createConversation({
-                        current_scope: requestScope,
-                        retention_days: retentionDays,
-                        title: normalizedQuestion.slice(0, 80),
-                    });
+                    // Conversation-creation is not itself streamed, but it must still
+                    // honor cancellation: if a reset (startNewConversation) or a history
+                    // selection (openConversation) supersedes this request while it is
+                    // in flight, activeRequest.current will no longer be `controller` by
+                    // the time this resolves. Bail out before applying its result so a
+                    // late response can never overwrite state set by whatever superseded
+                    // it (CHAOS-3215 H2).
+                    const created = await client.createConversation(
+                        {
+                            current_scope: requestScope,
+                            title: normalizedQuestion.slice(0, 80),
+                        },
+                        { signal: controller.signal },
+                    );
+                    if (superseded()) return;
                     activeConversationId = created.conversation_id;
                     setConversationId(activeConversationId);
                     void loadHistory();
@@ -552,8 +691,7 @@ export function AskDevProvider({
                 const answer = await client.streamMessage(activeConversationId, request, {
                     signal: controller.signal,
                     onEvent: (event: DevStreamEvent) => {
-                        if (controller.signal.aborted || activeRequest.current !== controller)
-                            return;
+                        if (superseded()) return;
                         if (event.event === "run.started") {
                             activeRunId = event.run_id;
                             setTranscript((current) =>
@@ -571,7 +709,7 @@ export function AskDevProvider({
                         setStream((current) => reduceDevConversationStream(current, event));
                     },
                 });
-                if (controller.signal.aborted || activeRequest.current !== controller) return;
+                if (superseded()) return;
                 setTranscript((current) => [
                     ...current,
                     {
@@ -584,7 +722,7 @@ export function AskDevProvider({
                     },
                 ]);
             } catch (error) {
-                if (!controller.signal.aborted) {
+                if (!controller.signal.aborted && orgIdRef.current === requestOrgId) {
                     setStream((current) => ({
                         ...current,
                         phase: "failed",
@@ -602,7 +740,6 @@ export function AskDevProvider({
             loadHistory,
             proposedScope,
             proposedScopeLabel,
-            retentionDays,
             stream.phase,
         ],
     );
@@ -638,13 +775,13 @@ export function AskDevProvider({
             conversations,
             historyError,
             historyLoading,
+            orgId,
             panelMode,
             persistentReturnHref,
             proposedContext,
             proposedScope,
             proposedScopeLabel,
             proposedQuestions,
-            retentionDays,
             stream,
             transcript,
             cancelRun,
@@ -662,7 +799,6 @@ export function AskDevProvider({
             retryLastQuestion,
             returnToPersistentWindow: () => setPanelMode("compact"),
             setPanelMode,
-            setRetentionDays,
             startNewConversation,
             submitAnswerFeedback,
             submitQuestion,
@@ -681,6 +817,7 @@ export function AskDevProvider({
             expandEvidence,
             loadHistory,
             openConversation,
+            orgId,
             panelMode,
             persistentReturnHref,
             proposedContext,
@@ -688,7 +825,6 @@ export function AskDevProvider({
             proposedScopeLabel,
             proposedQuestions,
             renameConversation,
-            retentionDays,
             retryLastQuestion,
             startNewConversation,
             stream,
@@ -701,7 +837,7 @@ export function AskDevProvider({
     );
 
     const showPersistentWindow =
-        (availability.state === "ready" || availability.state === "not_ready") &&
+        (availability.state === "ready" || availability.state === "not_ready" || everAvailable) &&
         pathname !== "/dev" &&
         !pathname.startsWith("/superadmin/context-fabric/validation");
 

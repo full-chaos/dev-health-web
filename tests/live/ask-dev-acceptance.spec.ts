@@ -503,8 +503,13 @@ test("permanent contextual window continues one grounded run in /dev without dup
     const ephemeralPolicy = await updateAskDevPolicy(page, identity, { retention_days: 0 });
     expect(ephemeralPolicy).toMatchObject({ settings: { retention_days: 0 } });
     try {
-        const retention = page.getByLabel("Conversation retention");
-        await retention.selectOption("0");
+        // Retention is an organization-administrator policy (already set to 0
+        // days above via updateAskDevPolicy), not a per-conversation control —
+        // there is no "Conversation retention" selector to interact with
+        // (CHAOS-3215 M7). The conversation created below inherits the org
+        // policy purely from the backend, which the assertions after it
+        // verify (retention_days: 0, expires_at: null, and 404 after the run
+        // completes).
         const ephemeralComposer = page
             .getByRole("region", { name: "Ask Dev workspace" })
             .getByRole("textbox", { name: "Ask Dev question" });

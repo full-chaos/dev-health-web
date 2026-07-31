@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { useLayoutEffect } from "react";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { DevApiClient } from "@/lib/dev/client";
+import type { DevApiClient, DevConversationList } from "@/lib/dev/client";
 import type {
     DevAnswer,
     DevConversation,
@@ -104,6 +105,22 @@ function makeClient(): DevApiClient {
     };
 }
 
+/**
+ * Fires a `useLayoutEffect`, which always runs before any passive
+ * `useEffect` in the same commit (regardless of tree position). This lets a
+ * test observe the DOM exactly as of commit — before any `useEffect`
+ * (including AskDevProvider's own post-commit cleanup effect) has run — which
+ * is what actually distinguishes "cleared synchronously during render" from
+ * "cleared by a passive effect that RTL's `act()`-wrapped `rerender()` would
+ * flush before assertions run anyway" (CHAOS-3215 H1).
+ */
+function LayoutProbe({ onLayout }: { onLayout: () => void }) {
+    useLayoutEffect(() => {
+        onLayout();
+    });
+    return null;
+}
+
 describe("AskDevProvider permanent window", () => {
     beforeAll(() => {
         Element.prototype.scrollIntoView = vi.fn();
@@ -113,6 +130,12 @@ describe("AskDevProvider permanent window", () => {
         navigation.pathname = "/dashboard";
         navigation.query = "";
         navigation.replace.mockClear();
+    });
+
+    afterEach(() => {
+        // jsdom does not implement matchMedia by default; remove any per-test stub.
+        // @ts-expect-error test cleanup
+        delete window.matchMedia;
     });
 
     it("opens without creating a conversation or submitting a run", async () => {
@@ -238,6 +261,52 @@ describe("AskDevProvider permanent window", () => {
         expect(await screen.findByText("Ask Dev is currently unavailable")).toBeVisible();
         expect(client.createConversation).not.toHaveBeenCalled();
         expect(client.streamMessage).not.toHaveBeenCalled();
+    });
+
+    it("hides the permanent launcher after switching from an available organization to a genuinely disabled one (CHAOS-3215)", async () => {
+        const client = makeClient();
+        // First call (org-1, on mount) resolves ready; second call (org-2,
+        // after the org switch) resolves disabled. `everAvailable` latching
+        // permanently `true` from org-1's "ready" state must not survive
+        // org-2's resolved "disabled" capabilities — the launcher is a
+        // control surface, not just conversation content, and must be fully
+        // absent once we know org-2 was never actually available.
+        vi.mocked(client.getCapabilities)
+            .mockResolvedValueOnce({
+                schema_version: "dev_capabilities.v1",
+                ask_dev: true,
+                can_read: true,
+                readiness: "ready",
+            })
+            .mockResolvedValueOnce({
+                schema_version: "dev_capabilities.v1",
+                ask_dev: false,
+                can_read: false,
+                readiness: "disabled",
+            });
+        const rendered = render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        // Confirm org-1 actually reached "ready" (and not just "loading"),
+        // which is what latches `everAvailable` to true in the first place.
+        expect(await screen.findByRole("button", { name: "Open Ask Dev" })).toBeVisible();
+
+        // The provider is mounted once in the app shell layout; switching
+        // organizations updates the `orgId` prop on this already-mounted
+        // instance rather than remounting it.
+        rendered.rerender(
+            <AskDevProvider client={client} orgId="org-2">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await waitFor(() => expect(client.getCapabilities).toHaveBeenCalledTimes(2));
+        await waitFor(() =>
+            expect(screen.queryByRole("button", { name: "Open Ask Dev" })).not.toBeInTheDocument(),
+        );
     });
 
     it("shows the same controlled remediation in the window and /dev when not ready", async () => {
@@ -651,6 +720,735 @@ describe("AskDevProvider permanent window", () => {
         expect(client.getConversationTranscript).not.toHaveBeenCalledWith(
             "conversation-first",
             expect.anything(),
+        );
+    });
+
+    it("resets conversation, transcript, and history when the active organization changes (CHAOS-3215 H1)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        const rendered = render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What remains?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+        expect(await screen.findByText(answer.direct_summary)).toBeVisible();
+        expect(client.createConversation).toHaveBeenCalledOnce();
+
+        // The provider is mounted once in the app shell layout; switching
+        // organizations updates the `orgId` prop on this already-mounted
+        // instance (via router.refresh()) rather than remounting it.
+        rendered.rerender(
+            <AskDevProvider client={client} orgId="org-2">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        // The window itself (UI-only state) stays open, but every
+        // conversation-scoped piece of state must be gone. Availability also
+        // fails closed to a loading state until the new organization's
+        // capabilities are (re)fetched (CHAOS-3215 M-capabilities), so the
+        // conversation UI itself only reappears once that resolves.
+        expect(screen.getByRole("region", { name: "Ask Dev" })).toBeVisible();
+        expect(screen.queryByText(answer.direct_summary)).not.toBeInTheDocument();
+        expect(screen.getByText("Checking Ask Dev availability…")).toBeVisible();
+
+        expect(await screen.findByText("Committed scope:")).toHaveTextContent(
+            "Commits when you ask",
+        );
+
+        await user.type(
+            screen.getByRole("textbox", { name: "Ask Dev question" }),
+            "New org question",
+        );
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+        await waitFor(() => expect(client.createConversation).toHaveBeenCalledTimes(2));
+    });
+
+    it("does not let a superseded conversation-creation response overwrite a reset conversation (CHAOS-3215 H2)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        let resolveStaleCreate!: (value: DevConversation) => void;
+        const staleCreate = new Promise<DevConversation>((resolve) => {
+            resolveStaleCreate = resolve;
+        });
+        const staleConversation = { ...conversation, conversation_id: "conversation-stale" };
+        const freshConversation = { ...conversation, conversation_id: "conversation-fresh" };
+        vi.mocked(client.createConversation)
+            .mockImplementationOnce(() => staleCreate)
+            .mockResolvedValueOnce(freshConversation);
+        navigation.pathname = "/dev";
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <AskDevWorkspace />
+            </AskDevProvider>,
+        );
+
+        await user.type(
+            await screen.findByRole("textbox", { name: "Ask Dev question" }),
+            "First question",
+        );
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        // Reset while the first conversation-creation request is still in flight.
+        await user.click(await screen.findByRole("button", { name: "New conversation" }));
+        resolveStaleCreate(staleConversation);
+        await waitFor(() => expect(client.createConversation).toHaveBeenCalledTimes(1));
+
+        await user.type(
+            screen.getByRole("textbox", { name: "Ask Dev question" }),
+            "Second question",
+        );
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        await waitFor(() => expect(client.createConversation).toHaveBeenCalledTimes(2));
+        expect(client.streamMessage).toHaveBeenCalledWith(
+            "conversation-fresh",
+            expect.objectContaining({ question: "Second question" }),
+            expect.anything(),
+        );
+        expect(client.streamMessage).not.toHaveBeenCalledWith(
+            "conversation-stale",
+            expect.anything(),
+            expect.anything(),
+        );
+    });
+
+    it("moves focus to the newly-completed answer when a run finishes (CHAOS-3215 L2)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What remains?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        await waitFor(() =>
+            expect(document.getElementById(`ask-dev-answer-${answer.answer_id}`)).toHaveFocus(),
+        );
+    });
+
+    it("keeps streamed answer deltas out of the announced live region (CHAOS-3215 M3)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        vi.mocked(client.streamMessage).mockImplementationOnce(
+            (_conversationId, _request, options) =>
+                new Promise<DevAnswer>(() => {
+                    options?.onEvent?.({
+                        event: "run.started",
+                        run_id: "run-delta",
+                        sequence: 0,
+                    } as DevStreamEvent);
+                    options?.onEvent?.({
+                        event: "answer.delta",
+                        delta: "Partial ",
+                        run_id: "run-delta",
+                        sequence: 1,
+                    } as DevStreamEvent);
+                    options?.onEvent?.({
+                        event: "answer.delta",
+                        delta: "streamed text",
+                        run_id: "run-delta",
+                        sequence: 2,
+                    } as DevStreamEvent);
+                    // Intentionally never resolves: keeps the run "running" so the
+                    // transcript still shows the streamed delta.
+                }),
+        );
+        const { container } = render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What changed?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        const deltaText = await screen.findByText("Partial streamed text");
+        const transcriptRegion = container.querySelector('[aria-label="Ask Dev transcript"]');
+        expect(transcriptRegion).not.toBeNull();
+        expect(transcriptRegion).not.toHaveAttribute("aria-live");
+        expect(deltaText.closest('[aria-hidden="true"]')).not.toBeNull();
+    });
+
+    it("disables the thinking pulse animation under prefers-reduced-motion (CHAOS-3215 L1)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        vi.mocked(client.streamMessage).mockImplementationOnce(
+            (_conversationId, _request, options) =>
+                new Promise<DevAnswer>(() => {
+                    options?.onEvent?.({
+                        event: "run.started",
+                        run_id: "run-pulse",
+                        sequence: 0,
+                    } as DevStreamEvent);
+                }),
+        );
+        const { container } = render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What changed?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        const pulse = await waitFor(() => {
+            const found = container.querySelector(".animate-pulse");
+            expect(found).not.toBeNull();
+            return found!;
+        });
+        expect(pulse).toHaveClass("motion-reduce:animate-none");
+    });
+
+    it("exposes a togglable history panel instead of hard-hiding controls below `lg` (CHAOS-3215 M4)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        vi.mocked(client.listConversations).mockResolvedValue({
+            items: [
+                {
+                    conversation_id: "conversation-1",
+                    direct_scope: "organization",
+                    message_count: 1,
+                    schema_version: "dev_conversation_summary.v1",
+                    state: "active",
+                    title: "Delivery status",
+                    updated_at: "2026-07-29T00:00:00Z",
+                },
+            ],
+            next_cursor: null,
+        });
+        navigation.pathname = "/dev";
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <AskDevWorkspace />
+            </AskDevProvider>,
+        );
+
+        const toggle = await screen.findByRole("button", { name: "Show conversations" });
+        expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+        await user.click(toggle);
+
+        expect(await screen.findByRole("button", { name: "Hide conversations" })).toHaveAttribute(
+            "aria-expanded",
+            "true",
+        );
+        expect(await screen.findByRole("button", { name: /Delivery status/i })).toBeVisible();
+    });
+
+    it("applies modal dialog semantics and traps Tab focus only when the window renders full-screen on mobile (CHAOS-3215 M5)", async () => {
+        Object.defineProperty(window, "matchMedia", {
+            writable: true,
+            configurable: true,
+            value: vi.fn().mockImplementation((query: string) => ({
+                matches: true,
+                media: query,
+                addEventListener: vi.fn(),
+                removeEventListener: vi.fn(),
+            })),
+        });
+        const user = userEvent.setup();
+        const client = makeClient();
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+
+        const dialog = screen.getByRole("dialog", { name: "Ask Dev" });
+        expect(dialog).toHaveAttribute("aria-modal", "true");
+
+        const workspaceLink = screen.getByRole("link", { name: "Ask Dev workspace" });
+        const composer = screen.getByRole("textbox", { name: "Ask Dev question" });
+
+        workspaceLink.focus();
+        fireEvent.keyDown(dialog, { key: "Tab", shiftKey: true });
+        expect(composer).toHaveFocus();
+
+        composer.focus();
+        fireEvent.keyDown(dialog, { key: "Tab" });
+        expect(workspaceLink).toHaveFocus();
+    });
+
+    it("does not apply modal dialog semantics to the docked desktop panel (CHAOS-3215 M5)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+
+        expect(screen.queryByRole("dialog", { name: "Ask Dev" })).not.toBeInTheDocument();
+        expect(screen.getByRole("region", { name: "Ask Dev" })).toBeInTheDocument();
+    });
+
+    it("removes the per-conversation retention selector (CHAOS-3215 M7)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+
+        expect(screen.queryByLabelText("Conversation retention")).not.toBeInTheDocument();
+        expect(screen.queryByText("Do not retain")).not.toBeInTheDocument();
+
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What remains?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        expect(await screen.findByText(answer.direct_summary)).toBeVisible();
+        expect(client.createConversation).toHaveBeenCalledWith(
+            expect.not.objectContaining({ retention_days: expect.anything() }),
+            expect.anything(),
+        );
+    });
+
+    it("clears the previous organization's transcript synchronously at render time, before any passive effect can run (CHAOS-3215 H1)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        const probe = { org2: false, sawStaleAnswerAtLayoutTime: null as boolean | null };
+        const onLayout = () => {
+            if (!probe.org2) return;
+            probe.sawStaleAnswerAtLayoutTime =
+                document.body.textContent?.includes(answer.direct_summary) ?? false;
+        };
+        const rendered = render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+                <LayoutProbe onLayout={onLayout} />
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What remains?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+        expect(await screen.findByText(answer.direct_summary)).toBeVisible();
+
+        probe.org2 = true;
+        rendered.rerender(
+            <AskDevProvider client={client} orgId="org-2">
+                <main>Dashboard</main>
+                <LayoutProbe onLayout={onLayout} />
+            </AskDevProvider>,
+        );
+
+        // A `useLayoutEffect` in this same commit already observed the DOM
+        // with the previous organization's answer gone — proving the reset
+        // did not depend on any `useEffect` having fired yet.
+        expect(probe.sawStaleAnswerAtLayoutTime).toBe(false);
+    });
+
+    it("clears an unsent composer draft when the active organization changes (CHAOS-3215 H1)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        const rendered = render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        const composer = screen.getByRole("textbox", { name: "Ask Dev question" });
+        await user.type(composer, "Unsent draft under org 1");
+        expect(composer).toHaveValue("Unsent draft under org 1");
+
+        rendered.rerender(
+            <AskDevProvider client={client} orgId="org-2">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        // Availability fails closed to a loading state until the new
+        // organization's capabilities resolve (CHAOS-3215 M-capabilities); the
+        // composer only reappears once that settles, and it must come back
+        // empty.
+        expect(await screen.findByRole("textbox", { name: "Ask Dev question" })).toHaveValue("");
+    });
+
+    it("does not let a delayed history response from the previous organization repopulate conversation titles after an org switch (CHAOS-3215 H2)", async () => {
+        const client = makeClient();
+        let resolveOrg1History!: (value: DevConversationList) => void;
+        const org1History = new Promise<DevConversationList>((resolve) => {
+            resolveOrg1History = resolve;
+        });
+        vi.mocked(client.listConversations).mockReturnValueOnce(org1History);
+        navigation.pathname = "/dev";
+        const rendered = render(
+            <AskDevProvider client={client} orgId="org-1">
+                <AskDevWorkspace />
+            </AskDevProvider>,
+        );
+
+        await waitFor(() => expect(client.listConversations).toHaveBeenCalledTimes(1));
+
+        rendered.rerender(
+            <AskDevProvider client={client} orgId="org-2">
+                <AskDevWorkspace />
+            </AskDevProvider>,
+        );
+
+        vi.mocked(client.listConversations).mockResolvedValueOnce({
+            items: [
+                {
+                    conversation_id: "org-2-conv",
+                    direct_scope: "organization",
+                    message_count: 1,
+                    schema_version: "dev_conversation_summary.v1",
+                    state: "active",
+                    title: "Org 2 investigation",
+                    updated_at: "2026-07-29T00:00:00Z",
+                },
+            ],
+            next_cursor: null,
+        });
+
+        // The org-1 request resolves *after* the switch to org-2.
+        resolveOrg1History({
+            items: [
+                {
+                    conversation_id: "org-1-conv",
+                    direct_scope: "organization",
+                    message_count: 1,
+                    schema_version: "dev_conversation_summary.v1",
+                    state: "active",
+                    title: "Org 1 investigation",
+                    updated_at: "2026-07-29T00:00:00Z",
+                },
+            ],
+            next_cursor: null,
+        });
+
+        await waitFor(() => expect(client.listConversations).toHaveBeenCalledTimes(2));
+        expect(await screen.findByText(/Org 2 investigation/i)).toBeVisible();
+        expect(screen.queryByText(/Org 1 investigation/i)).not.toBeInTheDocument();
+    });
+
+    it("refetches capabilities for the newly active organization and fails closed until they resolve (CHAOS-3215 M-capabilities)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        const rendered = render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        expect(screen.getByRole("textbox", { name: "Ask Dev question" })).toBeVisible();
+
+        let resolveOrg2!: (value: Awaited<ReturnType<DevApiClient["getCapabilities"]>>) => void;
+        const org2Capabilities = new Promise<Awaited<ReturnType<DevApiClient["getCapabilities"]>>>(
+            (resolve) => {
+                resolveOrg2 = resolve;
+            },
+        );
+        vi.mocked(client.getCapabilities).mockReturnValueOnce(org2Capabilities);
+
+        rendered.rerender(
+            <AskDevProvider client={client} orgId="org-2">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        // Fails closed the instant the org changes: the previous
+        // organization's "ready" composer must not still be shown while the
+        // new organization's capabilities are pending.
+        expect(screen.queryByRole("textbox", { name: "Ask Dev question" })).not.toBeInTheDocument();
+        expect(screen.getByText("Checking Ask Dev availability…")).toBeVisible();
+
+        resolveOrg2({
+            schema_version: "dev_capabilities.v1",
+            ask_dev: true,
+            can_read: true,
+            readiness: "ready",
+        });
+
+        expect(await screen.findByRole("textbox", { name: "Ask Dev question" })).toBeVisible();
+        expect(client.getCapabilities).toHaveBeenCalledTimes(2);
+    });
+
+    it("renders an error-status answer through the failed-run alert treatment instead of as ordinary completed output (CHAOS-3215 M-error-status)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        const errorAnswer = {
+            ...answer,
+            answer_id: "answer-error-1",
+            status: "error",
+            direct_summary: "Ask Dev could not validate the retrieved evidence safely.",
+        } as unknown as DevAnswer;
+        vi.mocked(client.streamMessage).mockImplementationOnce(
+            async (_conversationId, _request, options) => {
+                options?.onEvent?.({
+                    event: "run.started",
+                    run_id: "run-error",
+                    sequence: 0,
+                } as DevStreamEvent);
+                options?.onEvent?.({
+                    event: "answer.completed",
+                    answer: errorAnswer,
+                    run_id: "run-error",
+                    sequence: 1,
+                } as DevStreamEvent);
+                return errorAnswer;
+            },
+        );
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What failed?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        const alert = await screen.findByRole("alert");
+        expect(alert).toHaveTextContent(errorAnswer.direct_summary);
+        expect(screen.queryByText("AI-generated")).not.toBeInTheDocument();
+    });
+
+    it("does not let a superseded run steal focus from a later-opened saved conversation (CHAOS-3215 M-runInProgress)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        vi.mocked(client.streamMessage).mockImplementationOnce(
+            (_conversationId, _request, options) =>
+                new Promise<DevAnswer>(() => {
+                    options?.onEvent?.({
+                        event: "run.started",
+                        run_id: "run-superseded",
+                        sequence: 0,
+                    } as DevStreamEvent);
+                    // Intentionally never resolves: the run stays "running"
+                    // until "New conversation" supersedes it.
+                }),
+        );
+        vi.mocked(client.listConversations).mockResolvedValue({
+            items: [
+                {
+                    conversation_id: "conversation-1",
+                    direct_scope: "organization",
+                    message_count: 1,
+                    schema_version: "dev_conversation_summary.v1",
+                    state: "active",
+                    title: "Delivery status",
+                    updated_at: "2026-07-29T00:00:00Z",
+                },
+            ],
+            next_cursor: null,
+        });
+        vi.mocked(client.getConversation).mockResolvedValue(conversation);
+        vi.mocked(client.getConversationTranscript).mockResolvedValue({
+            conversation_id: "conversation-1",
+            items: [
+                {
+                    answer,
+                    created_at: "2026-07-29T00:00:00Z",
+                    message_id: "message-1",
+                    question: null,
+                    retry_of_run_id: null,
+                    role: "assistant",
+                    run_id: "run-original",
+                    run_state: "completed",
+                    schema_version: "dev_transcript_entry.v1",
+                    scope: null,
+                },
+            ],
+            next_cursor: null,
+            schema_version: "dev_conversation_transcript.v1",
+        });
+        navigation.pathname = "/dev";
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <AskDevWorkspace />
+            </AskDevProvider>,
+        );
+
+        await user.type(
+            await screen.findByRole("textbox", { name: "Ask Dev question" }),
+            "What remains?",
+        );
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+        await waitFor(() => expect(client.streamMessage).toHaveBeenCalledOnce());
+
+        await user.click(await screen.findByRole("button", { name: "New conversation" }));
+        await user.click(await screen.findByRole("button", { name: /Delivery status/i }));
+
+        expect(await screen.findByText(answer.direct_summary)).toBeVisible();
+        expect(document.getElementById(`ask-dev-answer-${answer.answer_id}`)).not.toHaveFocus();
+    });
+
+    it("does not let a delayed delete-conversation completion from the previous organization clear the new organization's active state (CHAOS-3215 M-delete)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        vi.mocked(client.listConversations).mockResolvedValue({
+            items: [
+                {
+                    conversation_id: "conversation-1",
+                    direct_scope: "organization",
+                    message_count: 1,
+                    schema_version: "dev_conversation_summary.v1",
+                    state: "active",
+                    title: "Delivery status",
+                    updated_at: "2026-07-29T00:00:00Z",
+                },
+            ],
+            next_cursor: null,
+        });
+        let resolveDelete!: () => void;
+        vi.mocked(client.deleteConversation).mockImplementationOnce(
+            () =>
+                new Promise<void>((resolve) => {
+                    resolveDelete = resolve;
+                }),
+        );
+        navigation.pathname = "/dev";
+        const rendered = render(
+            <AskDevProvider client={client} orgId="org-1">
+                <AskDevWorkspace />
+            </AskDevProvider>,
+        );
+
+        await screen.findByRole("button", { name: /Delivery status/i });
+        await user.click(screen.getByRole("button", { name: "Delete" }));
+        await user.click(screen.getByRole("button", { name: "Confirm delete?" }));
+        expect(client.deleteConversation).toHaveBeenCalledOnce();
+
+        rendered.rerender(
+            <AskDevProvider client={client} orgId="org-2">
+                <AskDevWorkspace />
+            </AskDevProvider>,
+        );
+
+        // Give org-2 an active, completed answer before the stale org-1
+        // delete resolves.
+        await user.type(
+            await screen.findByRole("textbox", { name: "Ask Dev question" }),
+            "Org 2 question",
+        );
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+        expect(await screen.findByText(answer.direct_summary)).toBeVisible();
+
+        resolveDelete();
+        await waitFor(() => expect(client.deleteConversation).toHaveBeenCalledOnce());
+
+        // The stale org-1 delete completion must not have cleared org-2's
+        // freshly-completed answer.
+        expect(screen.getByText(answer.direct_summary)).toBeVisible();
+    });
+
+    it("aborts the active request when the provider unmounts (CHAOS-3215 M-unmount)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        let capturedSignal: AbortSignal | undefined;
+        vi.mocked(client.streamMessage).mockImplementationOnce(
+            (_conversationId, _request, options) =>
+                new Promise<DevAnswer>(() => {
+                    capturedSignal = options?.signal;
+                    options?.onEvent?.({
+                        event: "run.started",
+                        run_id: "run-unmount",
+                        sequence: 0,
+                    } as DevStreamEvent);
+                    // Intentionally never resolves.
+                }),
+        );
+        const rendered = render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What remains?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+        await waitFor(() => expect(capturedSignal).toBeDefined());
+        expect(capturedSignal?.aborted).toBe(false);
+
+        rendered.unmount();
+
+        expect(capturedSignal?.aborted).toBe(true);
+    });
+
+    it("moves focus into the panel when a desktop-open window becomes mobile-modal on resize (CHAOS-3215 M5)", async () => {
+        // Held on an object (rather than bare `let`s) so TypeScript's control
+        // flow analysis doesn't narrow these to `never` at the point they are
+        // read below — they are only ever reassigned from inside a nested
+        // closure that TS cannot prove runs before that read.
+        const media: {
+            query: { matches: boolean } | null;
+            changeListener: (() => void) | null;
+        } = { query: null, changeListener: null };
+        // Cast the target to a loosely-typed object so `Object.defineProperty`'s
+        // generic inference doesn't contextually type `value` against the real
+        // `Window["matchMedia"]`/`MediaQueryList` DOM signatures — this stub
+        // intentionally implements only the subset `AskDevWindow` reads.
+        Object.defineProperty(window as unknown as Record<string, unknown>, "matchMedia", {
+            writable: true,
+            configurable: true,
+            value: vi.fn().mockImplementation((query: string) => {
+                const mediaQueryList = {
+                    matches: false,
+                    media: query,
+                    addEventListener: (_event: string, listener: () => void) => {
+                        media.changeListener = listener;
+                    },
+                    removeEventListener: () => {
+                        media.changeListener = null;
+                    },
+                };
+                media.query = mediaQueryList;
+                return mediaQueryList;
+            }),
+        });
+        const user = userEvent.setup();
+        const client = makeClient();
+        render(
+            <div>
+                <button type="button">Somewhere else</button>
+                <AskDevProvider client={client} orgId="org-1">
+                    <main>Dashboard</main>
+                </AskDevProvider>
+            </div>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        expect(screen.queryByRole("dialog", { name: "Ask Dev" })).not.toBeInTheDocument();
+
+        // While the panel is still docked/non-modal on desktop, focus can
+        // legitimately be elsewhere in the app — the desktop panel is
+        // intentionally non-modal.
+        const elsewhere = screen.getByRole("button", { name: "Somewhere else" });
+        elsewhere.focus();
+        expect(elsewhere).toHaveFocus();
+
+        if (media.query) media.query.matches = true;
+        media.changeListener?.();
+
+        const dialog = await screen.findByRole("dialog", { name: "Ask Dev" });
+        await waitFor(() => expect(dialog).toHaveFocus());
+
+        // The close/restore-focus path still works once modal: Escape closes
+        // the panel and returns focus to the launcher.
+        fireEvent.keyDown(dialog, { key: "Escape" });
+        await waitFor(() =>
+            expect(screen.getByRole("button", { name: "Open Ask Dev" })).toHaveFocus(),
         );
     });
 });

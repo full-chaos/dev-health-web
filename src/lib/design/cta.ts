@@ -23,6 +23,10 @@ export const CTA_LABELS = {
     expandAskDev: "Expand Ask Dev panel",
     /** Return the expanded Ask Dev window to its compact size. */
     reduceAskDev: "Reduce Ask Dev panel",
+    /** Reveal the Ask Dev conversation history panel below the `lg` breakpoint. */
+    showAskDevHistory: "Show conversations",
+    /** Collapse the Ask Dev conversation history panel below the `lg` breakpoint. */
+    hideAskDevHistory: "Hide conversations",
     /** Record positive feedback on an Ask Dev answer. */
     askDevHelpful: "Helpful",
     /** Record negative feedback on an Ask Dev answer. */
@@ -246,6 +250,8 @@ export const CTA_LABELS = {
     goToValidate: "Validate",
     /** Inline link to the runner setup examples from the empty batch-list state (CHAOS-2714). */
     goToCiJob: "CI job",
+    /** Link from the Ask Dev empty state to the customer doc explaining the Ask Dev / Context Fabric relationship (CHAOS-3215). */
+    viewAskDevDocs: "Learn more",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
