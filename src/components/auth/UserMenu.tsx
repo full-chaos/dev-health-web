@@ -3,6 +3,7 @@
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { useState, useRef, useEffect } from "react";
+import { BugReportButton } from "@/components/feedback/BugReportButton";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 export function UserMenu() {
@@ -56,7 +57,7 @@ export function UserMenu() {
 
             {isOpen && (
                 <div
-                    className="absolute right-0 top-full z-50 mt-2 w-48 rounded-(--radius-sm) border border-(--card-stroke) bg-(--card) shadow-lg"
+                    className="absolute right-0 top-full z-50 mt-2 w-48 rounded-(--radius-sm) border border-(--card-stroke) bg-(--card) shadow-(--elevation-card)"
                     id="account-options"
                 >
                     <div className="py-1">
@@ -98,6 +99,9 @@ export function UserMenu() {
                             >
                                 {CTA_LABELS.signOut}
                             </button>
+                        </div>
+                        <div className="border-t border-(--card-stroke)">
+                            <BugReportButton />
                         </div>
                     </div>
                 </div>

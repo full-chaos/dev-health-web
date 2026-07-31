@@ -8,7 +8,6 @@ import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { TrialBanner } from "@/components/billing/TrialBanner";
-import { BugReportButton } from "@/components/feedback/BugReportButton";
 import { AskDevProvider } from "@/components/ask-dev/AskDevProvider";
 import { TelemetryProvider } from "@/components/telemetry/TelemetryProvider";
 import { getOrgEntitlements } from "@/lib/admin/server/billing";
@@ -60,7 +59,6 @@ export default async function AppLayout({
                 </nav>
             </header>
             {children}
-            <BugReportButton />
             <Toaster
                 containerAriaLabel="Notifications"
                 position="top-right"

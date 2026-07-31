@@ -32,7 +32,7 @@ describe("UserMenu", () => {
         });
     });
 
-    it("reveals Preferences and Sign out through the keyboard-accessible account control", async () => {
+    it("reveals Report issue with a bug icon at the bottom of the account menu", async () => {
         const user = userEvent.setup();
         render(<UserMenu />);
 
@@ -45,11 +45,25 @@ describe("UserMenu", () => {
         expect(accountControl).toHaveAttribute("aria-expanded", "true");
         const preferences = screen.getByRole("link", { name: CTA_LABELS.preferences });
         expect(preferences).toHaveAttribute("href", "/settings");
-        expect(screen.getByRole("button", { name: CTA_LABELS.signOut })).toBeVisible();
+        const signOut = screen.getByRole("button", { name: CTA_LABELS.signOut });
+        const reportIssue = screen.getByRole("button", { name: CTA_LABELS.reportIssue });
+        expect(signOut).toBeVisible();
+        expect(reportIssue).toBeVisible();
+        expect(reportIssue.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+        expect(signOut.compareDocumentPosition(reportIssue)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
 
         await user.tab();
         expect(preferences).toHaveFocus();
-        await user.click(screen.getByRole("button", { name: CTA_LABELS.signOut }));
+        await user.click(reportIssue);
+        const dialog = screen.getByRole("dialog", { name: CTA_LABELS.reportIssue });
+        const title = screen.getByLabelText("Title");
+        await user.click(title);
+        expect(dialog).toBeVisible();
+        expect(accountControl).toHaveAttribute("aria-expanded", "true");
+        await user.keyboard("{Escape}");
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(reportIssue).toHaveFocus();
+        await user.click(signOut);
         expect(signOutMock).toHaveBeenCalledOnce();
     });
 });
