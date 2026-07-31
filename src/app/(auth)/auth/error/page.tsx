@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { backToArea } from "@/lib/design/cta";
 
 type SearchParams = Promise<{ error?: string }>;
 
@@ -34,7 +35,7 @@ export default async function AuthErrorPage({ searchParams }: { searchParams: Se
                         href="/auth/signin"
                         className="inline-flex items-center justify-center rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
                     >
-                        Return to Sign In
+                        {backToArea("Sign In")}
                     </Link>
                 </div>
             </div>
