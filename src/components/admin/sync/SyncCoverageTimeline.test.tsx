@@ -5,6 +5,7 @@ import {
     COMPLETE_COVERAGE_SUMMARY,
     LEGACY_INSUFFICIENT_DATA_SUMMARY,
     PARTIAL_COVERAGE_SUMMARY,
+    TRUNCATED_COVERAGE_SUMMARY,
 } from "@/lib/admin/__tests__/syncCoverageFixtures";
 import {
     SAMPLE_COVERAGE_CONCURRENT_CONFIG,
@@ -13,7 +14,7 @@ import {
 
 describe("SyncCoverageTimeline", () => {
     it("renders a loading state when coverage has not resolved yet", () => {
-        render(<SyncCoverageTimeline coverage={null} onBackfillGapAction={vi.fn()} />);
+        render(<SyncCoverageTimeline coverage={null} onBackfillWindowAction={vi.fn()} />);
 
         expect(screen.getByTestId("coverage-timeline-loading")).toBeInTheDocument();
     });
@@ -23,7 +24,7 @@ describe("SyncCoverageTimeline", () => {
             <SyncCoverageTimeline
                 coverage={null}
                 error="Coverage endpoint returned 500"
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
@@ -35,7 +36,7 @@ describe("SyncCoverageTimeline", () => {
         render(
             <SyncCoverageTimeline
                 coverage={LEGACY_INSUFFICIENT_DATA_SUMMARY}
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
@@ -47,7 +48,7 @@ describe("SyncCoverageTimeline", () => {
         render(
             <SyncCoverageTimeline
                 coverage={PARTIAL_COVERAGE_SUMMARY}
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
@@ -56,19 +57,19 @@ describe("SyncCoverageTimeline", () => {
         expect(screen.queryByText(/src-repo/)).not.toBeInTheDocument();
     });
 
-    it("invokes onBackfillGapAction with the gap's range when 'Backfill this gap' is clicked", async () => {
-        const onBackfillGapAction = vi.fn();
+    it("preserves the legacy gap action when canonical windows are absent", async () => {
+        const onBackfillWindowAction = vi.fn();
         const user = userEvent.setup();
         render(
             <SyncCoverageTimeline
                 coverage={PARTIAL_COVERAGE_SUMMARY}
-                onBackfillGapAction={onBackfillGapAction}
+                onBackfillWindowAction={onBackfillWindowAction}
             />,
         );
 
         const button = screen.getByRole("button", { name: "Backfill this gap" });
         await user.click(button);
-        expect(onBackfillGapAction).toHaveBeenCalledWith(
+        expect(onBackfillWindowAction).toHaveBeenCalledWith(
             expect.objectContaining({
                 since: "2026-01-02T00:00:00Z",
                 before: "2026-01-03T00:00:00Z",
@@ -76,11 +77,94 @@ describe("SyncCoverageTimeline", () => {
         );
     });
 
+    it("uses only canonical backfill windows when the field is present", async () => {
+        const onBackfillWindowAction = vi.fn();
+        const user = userEvent.setup();
+        render(
+            <SyncCoverageTimeline
+                coverage={TRUNCATED_COVERAGE_SUMMARY}
+                onBackfillWindowAction={onBackfillWindowAction}
+            />,
+        );
+
+        expect(screen.queryByRole("button", { name: "Backfill this gap" })).not.toBeInTheDocument();
+        const action = screen.getByRole("button", {
+            name: "Backfill Dec 20, 2025 to Jan 1, 2026",
+        });
+        await user.click(action);
+        expect(onBackfillWindowAction).toHaveBeenCalledWith({
+            since: "2025-12-20",
+            before: "2026-01-01",
+        });
+    });
+
+    it("does not infer a backfill action from gaps when canonical windows are explicitly empty", () => {
+        render(
+            <SyncCoverageTimeline
+                coverage={{ ...PARTIAL_COVERAGE_SUMMARY, backfill_windows: [] }}
+                onBackfillWindowAction={vi.fn()}
+            />,
+        );
+
+        expect(screen.getAllByText("Gap").length).toBeGreaterThan(0);
+        expect(screen.queryByRole("button", { name: /Backfill/ })).not.toBeInTheDocument();
+    });
+
+    it("uses the server coverage bounds as the decorative timeline extent", () => {
+        render(
+            <SyncCoverageTimeline
+                coverage={TRUNCATED_COVERAGE_SUMMARY}
+                onBackfillWindowAction={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByTestId("coverage-covered-band-commits")).toHaveStyle({
+            left: "74.8051948051948%",
+            width: "6.233766233766234%",
+        });
+    });
+
+    it("falls back to the dataset extent when explicit coverage bounds are invalid", () => {
+        render(
+            <SyncCoverageTimeline
+                coverage={{
+                    ...TRUNCATED_COVERAGE_SUMMARY,
+                    coverage_since: "not-a-date",
+                    coverage_through: "also-not-a-date",
+                }}
+                onBackfillWindowAction={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByTestId("coverage-covered-band-commits")).toHaveStyle({
+            left: "0%",
+            width: "50%",
+        });
+    });
+
+    it("expands server coverage bounds to keep actual gap ranges visible", () => {
+        render(
+            <SyncCoverageTimeline
+                coverage={{
+                    ...TRUNCATED_COVERAGE_SUMMARY,
+                    coverage_since: "2026-01-01T00:00:00Z",
+                    coverage_through: "2026-01-02T00:00:00Z",
+                }}
+                onBackfillWindowAction={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByTestId("coverage-covered-band-commits")).toHaveStyle({
+            left: "0%",
+            width: "50%",
+        });
+    });
+
     it("filters rendered datasets by the dataset filter", async () => {
         render(
             <SyncCoverageTimeline
                 coverage={COMPLETE_COVERAGE_SUMMARY}
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
@@ -96,7 +180,7 @@ describe("SyncCoverageTimeline", () => {
         render(
             <SyncCoverageTimeline
                 coverage={PARTIAL_COVERAGE_SUMMARY}
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
@@ -114,7 +198,7 @@ describe("SyncCoverageTimeline", () => {
         render(
             <SyncCoverageTimeline
                 coverage={PARTIAL_COVERAGE_SUMMARY}
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
@@ -127,7 +211,7 @@ describe("SyncCoverageTimeline", () => {
         render(
             <SyncCoverageTimeline
                 coverage={SAMPLE_COVERAGE_OVERLAPPING_RETRY}
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
@@ -141,7 +225,7 @@ describe("SyncCoverageTimeline", () => {
         render(
             <SyncCoverageTimeline
                 coverage={SAMPLE_COVERAGE_CONCURRENT_CONFIG}
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 

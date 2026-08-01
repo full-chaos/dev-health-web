@@ -160,6 +160,12 @@ export interface SyncCoverageRange {
     run_ids: string[];
 }
 
+/** Server-owned, config-wide date range accepted by the backfill endpoint. */
+export interface SyncCoverageBackfillWindow {
+    since: string;
+    before: string;
+}
+
 export interface SyncRunJobEnrichment {
     mode: string;
     triggered_by: string;
@@ -208,6 +214,15 @@ export interface SyncCoverageSummary {
     data_basis: SyncCoverageDataBasis;
     history_lookback_days: number;
     truncated_before: string;
+    /** Explicit response window. Optional while Web and Ops deploy independently. */
+    coverage_since?: string;
+    coverage_through?: string;
+    /** True when retained facts exist before the exact response window. */
+    is_truncated?: boolean;
+    /** Stable backend reason code; the UI must map it to user-safe copy. */
+    truncation_reason?: string | null;
+    /** Authoritative config-wide actions. Present empty means no action is available. */
+    backfill_windows?: SyncCoverageBackfillWindow[];
     overall: SyncCoverageOverall;
     datasets: SyncCoverageDataset[];
     sources: SyncCoverageSource[];

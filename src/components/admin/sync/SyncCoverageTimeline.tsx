@@ -5,6 +5,7 @@ import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatDateUTC } from "@/lib/formatters";
 import type {
+    SyncCoverageBackfillWindow,
     SyncCoverageDataset,
     SyncCoverageRange,
     SyncCoverageSummary,
@@ -14,8 +15,8 @@ import { CoverageBadge, statusLabel, statusTone, type CoverageTone } from "./Cov
 interface SyncCoverageTimelineProps {
     coverage: SyncCoverageSummary | null;
     error?: string | null;
-    /** Opens the backfill wizard prefilled with this gap's range (CHAOS-2795/2796). */
-    onBackfillGapAction: (range: SyncCoverageRange) => void;
+    /** Opens the backfill wizard with a server-owned or legacy-compatible date window. */
+    onBackfillWindowAction: (range: SyncCoverageBackfillWindow) => void;
 }
 
 type BandKind = "covered" | "gap" | "stale" | "failed";
@@ -79,6 +80,25 @@ function datasetExtent(dataset: SyncCoverageDataset): [number, number] | null {
     return [start, end];
 }
 
+function serverCoverageExtent(coverage: SyncCoverageSummary): [number, number] | null {
+    if (!coverage.coverage_since || !coverage.coverage_through) return null;
+    const start = new Date(coverage.coverage_since).getTime();
+    const end = new Date(coverage.coverage_through).getTime();
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null;
+    return [start, end];
+}
+
+function timelineExtent(
+    coverage: SyncCoverageSummary,
+    dataset: SyncCoverageDataset,
+): [number, number] | null {
+    const server = serverCoverageExtent(coverage);
+    const data = datasetExtent(dataset);
+    if (!server) return data;
+    if (!data) return server;
+    return [Math.min(server[0], data[0]), Math.max(server[1], data[1])];
+}
+
 function bandStyle(
     range: SyncCoverageRange,
     extent: [number, number],
@@ -102,7 +122,7 @@ function bandStyle(
 export function SyncCoverageTimeline({
     coverage,
     error,
-    onBackfillGapAction,
+    onBackfillWindowAction,
 }: SyncCoverageTimelineProps) {
     const [datasetFilter, setDatasetFilter] = useState<string>("all");
     const [sourceFilter, setSourceFilter] = useState<string>("all");
@@ -151,8 +171,9 @@ export function SyncCoverageTimeline({
                 dataset.failed_ranges.length >
             0,
     );
+    const hasCanonicalBackfill = (coverage.backfill_windows?.length ?? 0) > 0;
 
-    if (!hasAnyRangeData) {
+    if (!hasAnyRangeData && !hasCanonicalBackfill) {
         return (
             <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
                 <DataState
@@ -216,9 +237,43 @@ export function SyncCoverageTimeline({
                 </div>
             </div>
 
+            {coverage.backfill_windows !== undefined && coverage.backfill_windows.length > 0 && (
+                <div
+                    className="space-y-3 rounded-lg border border-(--card-stroke) bg-(--card-70) p-4"
+                    data-testid="coverage-backfill-windows"
+                >
+                    <div>
+                        <h4 className="font-medium text-foreground">Available backfills</h4>
+                        <p className="mt-1 text-sm text-(--ink-muted)">
+                            These config-wide windows are provided by the coverage service.
+                        </p>
+                    </div>
+                    <ul className="space-y-2">
+                        {coverage.backfill_windows.map((window) => (
+                            <li
+                                key={`${window.since}-${window.before}`}
+                                className="flex flex-wrap items-center justify-between gap-3"
+                            >
+                                <span className="text-sm text-foreground">
+                                    {formatDateUTC(window.since)} – {formatDateUTC(window.before)}
+                                </span>
+                                <button
+                                    type="button"
+                                    aria-label={`Backfill ${formatDateUTC(window.since)} to ${formatDateUTC(window.before)}`}
+                                    onClick={() => onBackfillWindowAction(window)}
+                                    className="text-sm font-medium text-(--accent) hover:underline"
+                                >
+                                    {CTA_LABELS.backfillThisWindow}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
             <div className="space-y-6">
                 {datasets.map((dataset) => {
-                    const extent = datasetExtent(dataset);
+                    const extent = timelineExtent(coverage, dataset);
                     const activeSourceId = sourceFilter === "all" ? null : sourceFilter;
                     const filterBySource = (ranges: SyncCoverageRange[]) =>
                         ranges.filter((r) => rangeIncludesSource(r, activeSourceId));
@@ -281,6 +336,7 @@ export function SyncCoverageTimeline({
                                                         {kindRanges.map((row) => (
                                                             <div
                                                                 key={rangeKey(kind, row.range)}
+                                                                data-testid={`coverage-${kind}-band-${dataset.dataset_key}`}
                                                                 className={`absolute top-0 h-full rounded-full ${BAND_BAR_CLASS[kind]}`}
                                                                 style={bandStyle(row.range, extent)}
                                                             />
@@ -366,11 +422,14 @@ export function SyncCoverageTimeline({
                                                                   .join(", ")}
                                                     </td>
                                                     <td className="px-2 py-2">
-                                                        {row.kind === "gap" ? (
+                                                        {row.kind === "gap" &&
+                                                        coverage.backfill_windows === undefined ? (
                                                             <button
                                                                 type="button"
                                                                 onClick={() =>
-                                                                    onBackfillGapAction(row.range)
+                                                                    onBackfillWindowAction(
+                                                                        row.range,
+                                                                    )
                                                                 }
                                                                 className="text-(--accent) hover:underline"
                                                             >

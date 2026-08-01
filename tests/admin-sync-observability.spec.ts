@@ -135,9 +135,48 @@ test.describe("Journey 1 — coverage-first config detail", () => {
 
         await expect(page.getByText(/unknown/i)).toHaveCount(0);
     });
+
+    test("truncated coverage labels the server-owned window and exposes only canonical backfills", async ({
+        page,
+    }) => {
+        await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
+
+        await expect(page.getByTestId("coverage-window")).toContainText(
+            "Coverage shown: Jun 20, 2026 – Jul 2, 2026",
+        );
+        await expect(page.getByTestId("coverage-truncation-notice")).toContainText(
+            "limited to this coverage window",
+        );
+        const timeline = timelineRegion(page);
+        await expect(timeline.getByTestId("coverage-backfill-windows")).toBeVisible();
+        await expect(timeline.getByRole("button", { name: "Backfill this gap" })).toHaveCount(0);
+        await expect(
+            timeline.getByRole("button", { name: "Backfill Jun 24, 2026 to Jun 26, 2026" }),
+        ).toBeVisible();
+    });
 });
 
 test.describe("Journey 2 — gap-driven backfill flow", () => {
+    test("canonical backfill entry prefills the exact server-owned window", async ({ page }) => {
+        await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
+        const backfillButton = page.getByRole("button", {
+            name: "Backfill Jun 24, 2026 to Jun 26, 2026",
+        });
+        const dialog = page.getByRole("dialog");
+
+        // On constrained CI runners the server-rendered button can become
+        // actionable just before its client handler hydrates. Retry the complete
+        // click-and-result assertion so a swallowed pre-hydration click is loud
+        // and bounded, matching the repository's navigation journey pattern.
+        await expect(async () => {
+            await backfillButton.click();
+            await expect(dialog).toBeVisible({ timeout: 3000 });
+        }).toPass({ timeout: 30000, intervals: [300, 700, 1500] });
+
+        await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-06-24");
+        await expect(page.getByLabel("To", { exact: true })).toHaveValue("2026-06-26");
+    });
+
     test("opens the wizard prefilled from a gap, validates the range, previews an estimate, gates an expensive submit, and completes in test mode", async ({
         page,
     }) => {
