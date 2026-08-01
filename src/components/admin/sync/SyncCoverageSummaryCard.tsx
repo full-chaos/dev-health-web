@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { DataState } from "@/components/ui/DataState";
-import { formatNumber } from "@/lib/formatters";
+import { formatDateUTC, formatNumber } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { SyncCoverageSummary } from "@/lib/admin/types";
 import { CoverageBadge, healthLabel, healthTone } from "./CoverageBadge";
@@ -31,6 +31,13 @@ function StatBlock({ label, value }: { label: string; value: ReactNode }) {
             <dd className="mt-1 text-lg font-medium text-foreground">{value}</dd>
         </div>
     );
+}
+
+function truncationMessage(reason: string | null | undefined): string {
+    if (reason === "lookback_limit") {
+        return "History is limited to this coverage window so coverage can be computed safely. Older activity may not appear in the health summary or timeline.";
+    }
+    return "History is limited to this coverage window. Older activity may not appear in the health summary or timeline.";
 }
 
 export function SyncCoverageSummaryCard({
@@ -86,6 +93,22 @@ export function SyncCoverageSummaryCard({
     }
 
     const { overall, data_basis: dataBasis } = coverage;
+    const coveredRanges = coverage.datasets.flatMap((dataset) => dataset.covered_ranges);
+    const derivedSince = coveredRanges
+        .map((range) => new Date(range.since).getTime())
+        .filter(Number.isFinite)
+        .reduce<number | null>((earliest, value) => Math.min(earliest ?? value, value), null);
+    const derivedThrough = coveredRanges
+        .map((range) => new Date(range.before).getTime())
+        .filter(Number.isFinite)
+        .reduce<number | null>((latest, value) => Math.max(latest ?? value, value), null);
+    const coverageSince =
+        coverage.coverage_since ??
+        (derivedSince === null ? null : new Date(derivedSince).toISOString());
+    const coverageThrough =
+        coverage.coverage_through ??
+        (derivedThrough === null ? null : new Date(derivedThrough).toISOString());
+    const hasCoverageWindow = coverageSince !== null && coverageThrough !== null;
     const isLegacyInsufficientData =
         overall.health === "insufficient_data" && dataBasis === "legacy";
 
@@ -111,6 +134,24 @@ export function SyncCoverageSummaryCard({
                             This configuration has no planner-tracked sync runs yet, so detailed
                             coverage cannot be computed. Coverage will populate once a
                             planner-backed sync completes.
+                        </p>
+                    )}
+                    <p className="text-sm text-(--ink-muted)" data-testid="coverage-window">
+                        {hasCoverageWindow ? (
+                            <>
+                                Coverage shown: {formatDateUTC(coverageSince)} –{" "}
+                                {formatDateUTC(coverageThrough)}
+                            </>
+                        ) : (
+                            "No successful synced data yet."
+                        )}
+                    </p>
+                    {coverage.is_truncated === true && (
+                        <p
+                            className="max-w-2xl rounded-lg border border-(--caution)/40 bg-(--caution)/10 px-3 py-2 text-sm text-foreground"
+                            data-testid="coverage-truncation-notice"
+                        >
+                            {truncationMessage(coverage.truncation_reason)}
                         </p>
                     )}
                 </div>

@@ -5,7 +5,11 @@ import { SyncCoverageSummaryCard } from "./SyncCoverageSummaryCard";
 import { SyncCoverageTimeline } from "./SyncCoverageTimeline";
 import { BackfillStatus } from "./BackfillStatus";
 import { BackfillWizard } from "./BackfillWizard";
-import type { BackfillJob, SyncCoverageRange, SyncCoverageSummary } from "@/lib/admin/types";
+import type {
+    BackfillJob,
+    SyncCoverageBackfillWindow,
+    SyncCoverageSummary,
+} from "@/lib/admin/types";
 
 interface BackfillOperationsProps {
     configId: string;
@@ -46,7 +50,7 @@ export function BackfillOperations({
     const [isWizardOpen, setIsWizardOpen] = useState(false);
     const [wizardRange, setWizardRange] = useState<WizardRange | null>(null);
 
-    const openWizard = (range?: SyncCoverageRange) => {
+    const openWizard = (range?: SyncCoverageBackfillWindow) => {
         setWizardRange(
             range ? { since: toDateInput(range.since), before: toDateInput(range.before) } : null,
         );
@@ -76,7 +80,7 @@ export function BackfillOperations({
             <SyncCoverageTimeline
                 coverage={coverage}
                 error={coverageError}
-                onBackfillGapAction={openWizard}
+                onBackfillWindowAction={openWizard}
             />
 
             {isWizardOpen && (

@@ -69,7 +69,7 @@ export const SAMPLE_COVERAGE_HEALTHY: SyncCoverageSummary = {
     provider: PROVIDER,
     generated_at: GENERATED_AT,
     data_basis: "planner",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
     overall: {
         health: "healthy",
@@ -147,7 +147,7 @@ export const SAMPLE_COVERAGE_GAPS: SyncCoverageSummary = {
     provider: PROVIDER,
     generated_at: GENERATED_AT,
     data_basis: "planner",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
     overall: {
         health: "gaps",
@@ -270,12 +270,30 @@ export const SAMPLE_COVERAGE_GAPS: SyncCoverageSummary = {
     ],
 };
 
+export const SAMPLE_COVERAGE_TRUNCATED: SyncCoverageSummary = {
+    ...SAMPLE_COVERAGE_GAPS,
+    coverage_since: "2026-06-20T00:00:00.000Z",
+    coverage_through: GENERATED_AT,
+    is_truncated: true,
+    truncation_reason: "lookback_limit",
+    backfill_windows: [
+        {
+            since: "2026-06-24",
+            before: "2026-06-26",
+        },
+        {
+            since: "2026-06-28",
+            before: "2026-07-01",
+        },
+    ],
+};
+
 export const SAMPLE_COVERAGE_FAILED: SyncCoverageSummary = {
     config_id: CONFIG_ID,
     provider: PROVIDER,
     generated_at: GENERATED_AT,
     data_basis: "planner",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
     overall: {
         health: "failed",
@@ -336,7 +354,7 @@ export const SAMPLE_COVERAGE_STALE: SyncCoverageSummary = {
     provider: PROVIDER,
     generated_at: GENERATED_AT,
     data_basis: "planner",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
     overall: {
         health: "stale",
@@ -392,7 +410,7 @@ export const SAMPLE_COVERAGE_INSUFFICIENT_DATA: SyncCoverageSummary = {
     provider: PROVIDER,
     generated_at: GENERATED_AT,
     data_basis: "legacy",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
     overall: {
         health: "insufficient_data",
@@ -412,7 +430,7 @@ export const SAMPLE_COVERAGE_OVERLAPPING_RETRY: SyncCoverageSummary = {
     provider: PROVIDER,
     generated_at: GENERATED_AT,
     data_basis: "planner",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
     overall: {
         health: "healthy",
@@ -483,7 +501,7 @@ export const SAMPLE_COVERAGE_CONCURRENT_CONFIG: SyncCoverageSummary = {
     provider: PROVIDER,
     generated_at: GENERATED_AT,
     data_basis: "planner",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
     overall: {
         health: "healthy",
@@ -536,6 +554,7 @@ export const SAMPLE_COVERAGE_CONCURRENT_CONFIG: SyncCoverageSummary = {
 export const SYNC_COVERAGE_SAMPLES = {
     healthy: SAMPLE_COVERAGE_HEALTHY,
     gaps: SAMPLE_COVERAGE_GAPS,
+    truncated: SAMPLE_COVERAGE_TRUNCATED,
     failed: SAMPLE_COVERAGE_FAILED,
     stale: SAMPLE_COVERAGE_STALE,
     insufficient_data: SAMPLE_COVERAGE_INSUFFICIENT_DATA,

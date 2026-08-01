@@ -135,9 +135,37 @@ test.describe("Journey 1 — coverage-first config detail", () => {
 
         await expect(page.getByText(/unknown/i)).toHaveCount(0);
     });
+
+    test("truncated coverage labels the server-owned window and exposes only canonical backfills", async ({
+        page,
+    }) => {
+        await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
+
+        await expect(page.getByTestId("coverage-window")).toContainText(
+            "Coverage shown: Jun 20, 2026 – Jul 2, 2026",
+        );
+        await expect(page.getByTestId("coverage-truncation-notice")).toContainText(
+            "limited to this coverage window",
+        );
+        const timeline = timelineRegion(page);
+        await expect(timeline.getByTestId("coverage-backfill-windows")).toBeVisible();
+        await expect(timeline.getByRole("button", { name: "Backfill this gap" })).toHaveCount(0);
+        await expect(
+            timeline.getByRole("button", { name: "Backfill Jun 24, 2026 to Jun 26, 2026" }),
+        ).toBeVisible();
+    });
 });
 
 test.describe("Journey 2 — gap-driven backfill flow", () => {
+    test("canonical backfill entry prefills the exact server-owned window", async ({ page }) => {
+        await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
+        await page.getByRole("button", { name: "Backfill Jun 24, 2026 to Jun 26, 2026" }).click();
+
+        await expect(page.getByRole("dialog")).toBeVisible();
+        await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-06-24");
+        await expect(page.getByLabel("To", { exact: true })).toHaveValue("2026-06-26");
+    });
+
     test("opens the wizard prefilled from a gap, validates the range, previews an estimate, gates an expensive submit, and completes in test mode", async ({
         page,
     }) => {

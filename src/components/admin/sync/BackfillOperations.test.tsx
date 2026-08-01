@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { render, screen, userEvent } from "@/test/utils";
 import { BackfillOperations } from "./BackfillOperations";
-import { PARTIAL_COVERAGE_SUMMARY } from "@/lib/admin/__tests__/syncCoverageFixtures";
+import {
+    PARTIAL_COVERAGE_SUMMARY,
+    TRUNCATED_COVERAGE_SUMMARY,
+} from "@/lib/admin/__tests__/syncCoverageFixtures";
 
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -49,6 +52,28 @@ describe("BackfillOperations", () => {
         expect(screen.getByRole("dialog")).toBeInTheDocument();
         expect(screen.getByLabelText("From")).toHaveValue("2026-01-02");
         expect(screen.getByLabelText("To")).toHaveValue("2026-01-03");
+    });
+
+    it("opens the wizard with the exact server-owned canonical backfill window", async () => {
+        const user = userEvent.setup();
+        render(
+            <BackfillOperations
+                configId="cfg-1"
+                coverage={TRUNCATED_COVERAGE_SUMMARY}
+                coverageError={undefined}
+                isActive
+                activeBackfillJob={null}
+                testMode
+            />,
+        );
+
+        await user.click(
+            screen.getByRole("button", { name: "Backfill Dec 20, 2025 to Jan 1, 2026" }),
+        );
+
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+        expect(screen.getByLabelText("From")).toHaveValue("2025-12-20");
+        expect(screen.getByLabelText("To")).toHaveValue("2026-01-01");
     });
 
     it("opens an unscoped recovery backfill when coverage cannot load", async () => {
