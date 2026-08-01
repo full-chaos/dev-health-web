@@ -1,9 +1,5 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
-import {
-    ACR_API_ORIGIN,
-    BFF_ORIGIN,
-    OPS_MOCK_ORIGIN,
-} from "../playwright.context-fabric.config";
+import { ACR_API_ORIGIN, BFF_ORIGIN, OPS_MOCK_ORIGIN } from "../playwright.context-fabric.config";
 import { UNSAFE_EVIDENCE_RAW_PAYLOAD } from "./mocks/acr-fixtures";
 import {
     EMPTY_BROWSER_FAULTS,
