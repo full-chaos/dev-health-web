@@ -41,7 +41,7 @@ describe("Context Fabric Playwright lifecycle budgets", () => {
     it("keeps browser-facing BFF and server-only ACR origins distinct", () => {
         expect(BFF_ORIGIN).toBe("http://127.0.0.1:3012");
         expect(OPS_MOCK_ORIGIN).toBe("http://127.0.0.1:8012");
-        expect(ACR_API_ORIGIN).toBe("https://127.0.0.1:8013");
+        expect(ACR_API_ORIGIN).toBe("http://127.0.0.1:8013");
         expect(ACR_API_ORIGIN).not.toBe(BFF_ORIGIN);
 
         const webServers = config.webServer;
@@ -57,6 +57,9 @@ describe("Context Fabric Playwright lifecycle budgets", () => {
             ACR_API_ORIGIN,
             BACKEND_URL: OPS_MOCK_ORIGIN,
         });
+        expect(webServers[1]?.env).not.toHaveProperty("ACR_MOCK_CERT_FILE");
+        expect(webServers[1]?.env).not.toHaveProperty("ACR_MOCK_KEY_FILE");
+        expect(webServers[2]?.env).not.toHaveProperty("NODE_TLS_REJECT_UNAUTHORIZED");
     });
 
     it("uses Node launchers that work without a POSIX shell", () => {

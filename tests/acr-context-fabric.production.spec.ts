@@ -1,5 +1,9 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from "@playwright/test";
-import { ACR_API_ORIGIN, BFF_ORIGIN } from "../playwright.context-fabric.config";
+import {
+    ACR_API_ORIGIN,
+    BFF_ORIGIN,
+    OPS_MOCK_ORIGIN,
+} from "../playwright.context-fabric.config";
 import { UNSAFE_EVIDENCE_RAW_PAYLOAD } from "./mocks/acr-fixtures";
 import {
     EMPTY_BROWSER_FAULTS,
@@ -46,14 +50,14 @@ async function setEntitlementScenario(
     request: APIRequestContext,
     scenario: EntitlementScenario,
 ): Promise<void> {
-    const response = await request.post("http://127.0.0.1:8012/__test/entitlements", {
+    const response = await request.post(`${OPS_MOCK_ORIGIN}/__test/entitlements`, {
         data: { scenario },
     });
     expect(response.ok()).toBe(true);
 }
 
 async function expectNoAcrRequests(request: APIRequestContext): Promise<void> {
-    const response = await request.get("http://127.0.0.1:8012/__test/acr-requests");
+    const response = await request.get(`${OPS_MOCK_ORIGIN}/__test/acr-requests`);
     expect(response.ok()).toBe(true);
     expect(await response.json()).toEqual({ count: 0 });
 }

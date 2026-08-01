@@ -37,21 +37,6 @@ async function prepareAcrMock() {
     await rm(keysDirectory, { force: true, recursive: true });
     await mkdir(keysDirectory, { recursive: true });
     await writeAssertionKey();
-    await requireSuccess("openssl", [
-        "req",
-        "-x509",
-        "-newkey",
-        "rsa:2048",
-        "-nodes",
-        "-keyout",
-        join(keysDirectory, "tls.key"),
-        "-out",
-        join(keysDirectory, "tls.crt"),
-        "-subj",
-        "/CN=127.0.0.1",
-        "-days",
-        "1",
-    ]);
 }
 
 async function prepareBff() {
@@ -95,7 +80,7 @@ const launchTarget = process.argv[2];
 if (launchTarget === "ops-mock") {
     await startOwned(process.execPath, ["--import", "tsx", "./tests/mocks/http-server.ts"], {
         cwd: rootDirectory,
-        env: { ...process.env, MOCK_SERVER_PORT: "8012" },
+        env: { ...process.env, MOCK_SERVER_PORT: process.env.MOCK_SERVER_PORT ?? "8012" },
     });
 } else if (launchTarget === "acr-mock") {
     await prepareAcrMock();
@@ -103,16 +88,14 @@ if (launchTarget === "ops-mock") {
         cwd: rootDirectory,
         env: {
             ...process.env,
-            ACR_MOCK_CERT_FILE: join("test-results", "context-fabric-keys", "tls.crt"),
-            ACR_MOCK_KEY_FILE: join("test-results", "context-fabric-keys", "tls.key"),
-            ACR_MOCK_PORT: "8013",
+            ACR_MOCK_PORT: process.env.ACR_MOCK_PORT ?? "8013",
         },
     });
 } else if (launchTarget === "bff") {
     await prepareBff();
     await startOwned(process.execPath, ["server.js"], {
         cwd: runtimeDirectory,
-        env: { ...process.env, HOSTNAME: "127.0.0.1", PORT: "3012" },
+        env: { ...process.env, HOSTNAME: "127.0.0.1", PORT: process.env.PORT ?? "3012" },
     });
 } else {
     throw new Error("Expected Context Fabric launcher target: ops-mock, acr-mock, or bff.");

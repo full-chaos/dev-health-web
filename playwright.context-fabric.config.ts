@@ -1,9 +1,12 @@
 import { defineConfig } from "@playwright/test";
 import { PLAYWRIGHT_GRACEFUL_SHUTDOWN_TIMEOUT_MS } from "./scripts/owned-process-lifecycle.mjs";
 
-export const BFF_ORIGIN = "http://127.0.0.1:3012";
-export const OPS_MOCK_ORIGIN = "http://127.0.0.1:8012";
-export const ACR_API_ORIGIN = "https://127.0.0.1:8013";
+export const BFF_PORT = process.env.CONTEXT_FABRIC_BFF_PORT ?? "3012";
+export const OPS_MOCK_PORT = process.env.CONTEXT_FABRIC_OPS_PORT ?? "8012";
+export const ACR_MOCK_PORT = process.env.CONTEXT_FABRIC_ACR_PORT ?? "8013";
+export const BFF_ORIGIN = `http://127.0.0.1:${BFF_PORT}`;
+export const OPS_MOCK_ORIGIN = `http://127.0.0.1:${OPS_MOCK_PORT}`;
+export const ACR_API_ORIGIN = `http://127.0.0.1:${ACR_MOCK_PORT}`;
 
 const AUTH_FILE = "test-results/.auth/state.json";
 const RESULTS_DIRECTORY =
@@ -31,7 +34,6 @@ export default defineConfig({
     use: {
         baseURL: BFF_ORIGIN,
         headless: true,
-        ignoreHTTPSErrors: true,
         screenshot: "only-on-failure",
         trace: PERSIST_TRACE ? "on" : "retain-on-failure",
     },
@@ -53,20 +55,15 @@ export default defineConfig({
             reuseExistingServer: false,
             gracefulShutdown: GRACEFUL_SHUTDOWN,
             timeout: 30_000,
-            env: { MOCK_SERVER_PORT: "8012" },
+            env: { MOCK_SERVER_PORT: OPS_MOCK_PORT },
         },
         {
             command: "node scripts/context-fabric-launch.mjs acr-mock",
             url: `${ACR_API_ORIGIN}/health`,
-            ignoreHTTPSErrors: true,
             reuseExistingServer: false,
             gracefulShutdown: GRACEFUL_SHUTDOWN,
             timeout: 30_000,
-            env: {
-                ACR_MOCK_CERT_FILE: "test-results/context-fabric-keys/tls.crt",
-                ACR_MOCK_KEY_FILE: "test-results/context-fabric-keys/tls.key",
-                ACR_MOCK_PORT: "8013",
-            },
+            env: { ACR_MOCK_PORT },
         },
         {
             command: "node scripts/context-fabric-launch.mjs bff",
@@ -84,7 +81,7 @@ export default defineConfig({
                 ACR_WEB_ASSERTION_KEY_FILE: "../context-fabric-keys/web-assertion.key",
                 ACR_WEB_ASSERTION_KID: "context-fabric-e2e",
                 NODE_ENV: "production",
-                NODE_TLS_REJECT_UNAUTHORIZED: "0",
+                PORT: BFF_PORT,
             },
         },
     ],

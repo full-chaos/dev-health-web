@@ -29,18 +29,6 @@ export function run(
     });
 }
 
-export async function preflightOpenSSL({ runCommand = run } = {}) {
-    try {
-        const exitCode = await runCommand("openssl", ["version"]);
-        if (exitCode !== 0) throw new Error(`exited with code ${exitCode}`);
-    } catch (error) {
-        const detail = error instanceof Error ? ` (${error.message})` : "";
-        throw new Error(
-            `Context Fabric QA requires OpenSSL on PATH to create its local HTTPS certificate${detail}. Install OpenSSL and reopen your terminal before retrying.`,
-        );
-    }
-}
-
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 // The guided onboarding Playwright suite runs `next dev` with
@@ -66,7 +54,6 @@ export async function main({
     isReadable,
     cleanGuidedBuildOutput = removeGuidedBuildOutput,
 } = {}) {
-    await preflightOpenSSL({ runCommand });
     const packageManager = resolvePackageManagerCommand({
         platform,
         npmExecPath,

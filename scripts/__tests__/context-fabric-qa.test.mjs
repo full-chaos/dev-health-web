@@ -3,7 +3,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it, vi } from "vitest";
-import { main, preflightOpenSSL, removeGuidedBuildOutput, run } from "../context-fabric-qa.mjs";
+import { main, removeGuidedBuildOutput, run } from "../context-fabric-qa.mjs";
 import { resolvePackageManagerCommand } from "../package-manager.mjs";
 
 describe("Context Fabric QA launcher", () => {
@@ -61,15 +61,6 @@ describe("Context Fabric QA launcher", () => {
         });
     });
 
-    it("reports the OpenSSL prerequisite with an actionable error", async () => {
-        const runCommand = vi.fn(() => Promise.reject(new Error("spawn openssl ENOENT")));
-
-        await expect(preflightOpenSSL({ runCommand })).rejects.toThrow(
-            "Install OpenSSL and reopen your terminal",
-        );
-        expect(runCommand).toHaveBeenCalledWith("openssl", ["version"]);
-    });
-
     it("uses the npm package-manager entrypoint for both package-manager phases", async () => {
         const commands = [];
         const npmExecPath = "C:\\Program Files\\pnpm\\pnpm.cjs";
@@ -91,7 +82,6 @@ describe("Context Fabric QA launcher", () => {
             }),
         ).resolves.toBe(0);
         expect(commands).toEqual([
-            ["openssl", ["version"]],
             ["clean-guided-build-output", []],
             [process.execPath, [npmExecPath, "build"]],
             [
