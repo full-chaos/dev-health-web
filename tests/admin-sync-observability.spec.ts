@@ -159,9 +159,20 @@ test.describe("Journey 1 — coverage-first config detail", () => {
 test.describe("Journey 2 — gap-driven backfill flow", () => {
     test("canonical backfill entry prefills the exact server-owned window", async ({ page }) => {
         await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
-        await page.getByRole("button", { name: "Backfill Jun 24, 2026 to Jun 26, 2026" }).click();
+        const backfillButton = page.getByRole("button", {
+            name: "Backfill Jun 24, 2026 to Jun 26, 2026",
+        });
+        const dialog = page.getByRole("dialog");
 
-        await expect(page.getByRole("dialog")).toBeVisible();
+        // On constrained CI runners the server-rendered button can become
+        // actionable just before its client handler hydrates. Retry the complete
+        // click-and-result assertion so a swallowed pre-hydration click is loud
+        // and bounded, matching the repository's navigation journey pattern.
+        await expect(async () => {
+            await backfillButton.click();
+            await expect(dialog).toBeVisible({ timeout: 3000 });
+        }).toPass({ timeout: 30000, intervals: [300, 700, 1500] });
+
         await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-06-24");
         await expect(page.getByLabel("To", { exact: true })).toHaveValue("2026-06-26");
     });
