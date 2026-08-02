@@ -366,9 +366,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
              */}
             <div className="space-y-1.5">
                 {statusExplanation ? (
-                    <p className="text-sm leading-6 text-(--text-secondary)">
-                        {statusExplanation}
-                    </p>
+                    <p className="text-sm leading-6 text-(--text-secondary)">{statusExplanation}</p>
                 ) : null}
                 <p className="font-(--font-display) text-h3 text-(--text-primary)">
                     {answer.direct_summary}

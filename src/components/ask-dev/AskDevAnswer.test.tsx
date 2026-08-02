@@ -363,9 +363,7 @@ describe("AskDevAnswer sanctioned copy (CHAOS-3291)", () => {
             partial: true,
             refused: true,
         };
-        expect(Object.keys(ANSWER_STATUS_LABELS).sort()).toEqual(
-            Object.keys(knownStatuses).sort(),
-        );
+        expect(Object.keys(ANSWER_STATUS_LABELS).sort()).toEqual(Object.keys(knownStatuses).sort());
     });
 
     it("SCOPE_OUTCOME_LABELS has exactly one sanctioned entry per ScopeResolutionOutcome member", () => {
@@ -378,8 +376,6 @@ describe("AskDevAnswer sanctioned copy (CHAOS-3291)", () => {
             organization_fallback: true,
             unresolved: true,
         };
-        expect(Object.keys(SCOPE_OUTCOME_LABELS).sort()).toEqual(
-            Object.keys(knownOutcomes).sort(),
-        );
+        expect(Object.keys(SCOPE_OUTCOME_LABELS).sort()).toEqual(Object.keys(knownOutcomes).sort());
     });
 });
