@@ -41,9 +41,21 @@ afterEach(() => {
 });
 
 describe("ACR server runtime configuration", () => {
-    it("rejects a non-HTTPS ACR origin before any request can be signed", () => {
+    it("accepts a private HTTP ACR service origin", () => {
         const keyFile = writeSigningKey();
-        configure(keyFile, "http://acr.example.test");
+        configure(keyFile, "http://acr-api:8080");
+
+        expect(loadAcrRuntimeConfig().apiOrigin.href).toBe("http://acr-api:8080/");
+    });
+
+    it.each([
+        "ftp://acr-api:8080",
+        "http://user@acr-api:8080",
+        "http://acr-api:8080/private",
+        "http://acr-api:8080?query=true",
+    ])("rejects an invalid ACR service origin: %s", (origin) => {
+        const keyFile = writeSigningKey();
+        configure(keyFile, origin);
 
         expect(() => loadAcrRuntimeConfig()).toThrow(AcrRuntimeError);
     });
