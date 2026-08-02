@@ -127,6 +127,7 @@ app.post("/api/v1/dev/conversations/:conversationId/messages", (req, res) => {
         String(req.body?.client_message_id ?? ""),
         String(req.body?.question ?? ""),
         req.body?.scope,
+        typeof req.body?.retry_of_run_id === "string" ? req.body.retry_of_run_id : null,
     );
     if (!result) {
         res.status(404).json({

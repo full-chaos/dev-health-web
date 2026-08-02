@@ -106,8 +106,9 @@ test.describe("Ask Dev — shared request behavior", () => {
         await expect(page.locator("body")).not.toContainText('cancelled"', { useInnerText: false });
     });
 
-    test("retry after a retryable failure resubmits and reaches a completed answer", async ({
+    test("retry after a retryable failure sends a real second request and reaches a completed answer", async ({
         page,
+        request,
     }) => {
         await page.goto("/diagnose", { waitUntil: "domcontentloaded" });
         await openAskDevWindow(page);
@@ -121,13 +122,23 @@ test.describe("Ask Dev — shared request behavior", () => {
             "A required source is temporarily unavailable.",
         );
 
-        // Retry replays the same client_message_id against the mock, which
-        // still resolves to the same canned error — the assertion here is
-        // that retry is wired end-to-end (a real request goes out and the
-        // failed state re-renders), not that this particular scenario
-        // eventually succeeds.
+        const beforeRetry = await getAskDevRequestCounts(request);
+
+        // The mock (tests/mocks/devScenario.ts's RETRYABLE_ERROR_SCENARIOS
+        // handling) resolves a retry of this scenario to a distinct,
+        // successful "complete" answer — a real second attempt, not a
+        // second delivery of the same canned failure. Retry sends
+        // `retry_of_run_id`, which is how the mock tells attempt 2 apart
+        // from attempt 1 for the identical question text.
         await page.getByRole("button", { name: "Retry" }).click();
-        await expect(askDevFailedAlert(page)).toBeVisible();
+
+        const answer = askDevAnswerArticle(page);
+        await expect(answer).toBeVisible();
+        await expect(answer).toContainText("Twelve work items completed");
+        await expect(askDevFailedAlert(page)).not.toBeVisible();
+
+        const afterRetry = await getAskDevRequestCounts(request);
+        expect(afterRetry.messages).toBe(beforeRetry.messages + 1);
     });
 });
 
@@ -166,15 +177,18 @@ test.describe("Ask Dev — internal-state isolation (denylist)", () => {
         });
     }
 
-    // Known, tracked gaps (CHAOS-3291 owns the fix — AskDevAnswer.tsx:311
-    // renders `answer.status.replaceAll("_", " ")` and :333 renders
-    // `scopeResolution.outcome.replaceAll("_", " ")` directly). Written in
-    // final form now so the suite goes green automatically — no author
-    // needs to remember to come back and un-skip it — the moment 3291's
-    // sanctioned-copy map lands; until then `test.fixme` keeps the gate
-    // green without hiding the gap (it still reports as an expected
-    // failure, not silently absent).
-    test.fixme("the answer status pill never leaks a raw or space-transformed AnswerStatus value (CHAOS-3291)", async ({
+    // CHAOS-3291 owns the underlying fix (AskDevAnswer.tsx:311 renders
+    // `answer.status.replaceAll("_", " ")` and :333 renders
+    // `scopeResolution.outcome.replaceAll("_", " ")` directly). Web PR #832
+    // (the sanctioned-copy-map fix) is enqueued in the merge queue —
+    // sequencing this branch to land after it, so these are ordinary ACTIVE
+    // tests, not `test.fixme`/`test.fail()`: a fixme never self-activates
+    // (Playwright skips it unconditionally forever, so #832 merging
+    // wouldn't change anything on its own), and with #832 already
+    // sequenced ahead of this branch there is no gap period to bridge with
+    // `test.fail()` either — by the time this lands, the fix is already
+    // there to verify against.
+    test("the answer status pill never leaks a raw or space-transformed AnswerStatus value (CHAOS-3291)", async ({
         page,
     }) => {
         await page.goto("/diagnose", { waitUntil: "domcontentloaded" });
@@ -191,7 +205,7 @@ test.describe("Ask Dev — internal-state isolation (denylist)", () => {
         }
     });
 
-    test.fixme("a forbidden-or-not-found scope resolution never renders the raw internal outcome (CHAOS-3291)", async ({
+    test("a forbidden-or-not-found scope resolution never renders the raw internal outcome (CHAOS-3291)", async ({
         page,
     }) => {
         await page.goto("/diagnose", { waitUntil: "domcontentloaded" });

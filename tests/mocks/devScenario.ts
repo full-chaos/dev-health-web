@@ -81,8 +81,23 @@ function buildAnswer(
 
     if ((OUTCOME_TABLE_KEYS as readonly string[]).includes(scenario)) {
         const outcome = outcomeCase(scenario);
-        base.status = outcome.status;
-        base.direct_summary = outcome.directSummary;
+        // "complete" deliberately does NOT overwrite status/direct_summary
+        // from the table: the canonical fixture (dev_answer.v1.json) IS the
+        // real producer for that scenario, and letting its own fields flow
+        // through unmodified is what makes a real contract-fixture mutation
+        // (e.g. status changed to something else, or direct_summary edited)
+        // break this scenario's e2e test — proving the fixture is actually
+        // exercised, not just present. The other statuses below have no
+        // canonical positive example to draw from (only one exists, and its
+        // status is "complete"), so they necessarily construct synthetic
+        // content; ASK_DEV_OUTCOME_TABLE's `status` values are still
+        // constrained to the pinned schema's real AnswerStatus enum (see
+        // askDevContracts.ts), and tests/ask-dev-vocabulary.spec.ts asserts
+        // that constraint plus full enum coverage.
+        if (scenario !== "complete") {
+            base.status = outcome.status;
+            base.direct_summary = outcome.directSummary;
+        }
         if (outcome.emptyEvidence) {
             base.claims = [];
             base.evidence = [];
@@ -386,6 +401,11 @@ export function getTranscript(conversationId: string): JsonRecord | null {
     };
 }
 
+const RETRYABLE_ERROR_SCENARIOS: ReadonlySet<DevAnswerScenario> = new Set([
+    "scope_forbidden_error",
+    "source_unavailable_error",
+]);
+
 /**
  * Applies one message/run to a stored conversation and returns its SSE
  * frames. Replays the identical prior frames for a repeated
@@ -399,6 +419,7 @@ export function applyMessage(
     clientMessageId: string,
     rawQuestion: string,
     scope: unknown,
+    retryOfRunId: string | null,
 ): { frames: string; replayed: boolean } | null {
     const stored = conversations.get(conversationId);
     if (!stored) return null;
@@ -409,7 +430,18 @@ export function applyMessage(
         return { frames: encodeSseFrames(existing.events as JsonRecord[]), replayed: true };
     }
 
-    const { scenario, visibleQuestion } = parseScenario(rawQuestion);
+    const parsed = parseScenario(rawQuestion);
+    // A retry of a retryable stream-level failure succeeds on the next
+    // attempt — this is what makes "click Retry" an observably different,
+    // real second request rather than a no-op that merely leaves the
+    // original failed alert on screen (a prior version of the retry spec
+    // only asserted the pre-existing alert was "still visible", which
+    // would have passed even with an inert Retry button).
+    const scenario =
+        retryOfRunId && RETRYABLE_ERROR_SCENARIOS.has(parsed.scenario)
+            ? "complete"
+            : parsed.scenario;
+    const visibleQuestion = parsed.visibleQuestion;
     const events = buildStreamEvents(scenario, conversationId, visibleQuestion);
     stored.seenClientMessageIds.set(clientMessageId, { events });
 
