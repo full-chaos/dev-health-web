@@ -5,10 +5,42 @@ import { expect, test } from "@playwright/test";
 
 import {
     ANSWER_STATUS_VALUES,
+    assertExhaustivePartition,
     assertKnownToSchema,
     SCOPE_RESOLUTION_OUTCOME_VALUES,
 } from "./fixtures/askDevContracts";
 import { ASK_DEV_OUTCOME_TABLE } from "./fixtures/askDevOutcomes";
+
+/**
+ * Extracts the top-level keys of one exported `Record<Enum, string>` object
+ * literal from a TSX source file by name, via text parsing rather than a
+ * module import.
+ *
+ * AskDevAnswer.tsx ("use client") transitively imports AskDevWindow.tsx,
+ * which imports a PNG asset (fc-logo.png) — Next/Vite's bundler resolves
+ * that fine, but this Playwright spec file is compiled by Playwright's own
+ * standalone esbuild transform, which has no asset loader configured and
+ * fails on the binary PNG content. Reading the real source text (as this
+ * suite's fixme-tripwire test already does) reads the same live production
+ * file without pulling its import graph through a transform that can't
+ * handle it.
+ */
+function exportedLabelMapKeys(sourceText: string, exportName: string): readonly string[] {
+    const start = sourceText.indexOf(`export const ${exportName}`);
+    if (start === -1) throw new Error(`Could not find "export const ${exportName}" in source.`);
+    const openBrace = sourceText.indexOf("{", start);
+    const closeBrace = sourceText.indexOf("};", openBrace);
+    if (openBrace === -1 || closeBrace === -1) {
+        throw new Error(`Could not find the object literal body for "${exportName}".`);
+    }
+    const body = sourceText.slice(openBrace + 1, closeBrace);
+    const keyPattern = /^\s*([a-z][a-z0-9_]*)\s*:/gmu;
+    const keys: string[] = [];
+    for (const match of body.matchAll(keyPattern)) keys.push(match[1]!);
+    if (keys.length === 0)
+        throw new Error(`Found no keys for "${exportName}" — parsing likely broke.`);
+    return keys;
+}
 
 // CHAOS-3287 (codex NO-SHIP fix #1, finding: "outcome coverage is a
 // self-oracle"): tests/fixtures/askDevOutcomes.ts is used to BOTH build the
@@ -56,11 +88,61 @@ test.describe("Ask Dev — outcome table vs. pinned contract vocabulary", () => 
         ).toEqual([]);
     });
 
-    test("the scope-resolution scenarios (ambiguous, forbidden_or_not_found) are real, pinned outcomes", () => {
-        assertKnownToSchema(
-            ["ambiguous", "forbidden_or_not_found"],
+    // codex NO-SHIP finding (this test's prior form): membership-checking
+    // only the 2 values the mock scenarios happen to use let a new
+    // ScopeResolutionOutcome member, or a rename of an unreferenced member
+    // like `filtered`→`narrowed`, pass silently — no add/remove/rename
+    // guarantee actually held. Fixed with an exact partition: every pinned
+    // value is either scenario-covered or on this documented exclusion
+    // list, and the assertion fails until that partition is deliberately
+    // updated to match.
+    const SCENARIO_COVERED_SCOPE_OUTCOMES = [
+        // Every ASK_DEV_OUTCOME_TABLE scenario (complete/partial/degraded/
+        // insufficient_evidence/refused) carries the canonical fixture's own
+        // unmodified resolved_scope, whose outcome is "exact".
+        "exact",
+        // needs_clarification mock scenario.
+        "ambiguous",
+        // forbidden_or_not_found_scope mock scenario — the exact value
+        // CHAOS-3291 fixed the raw-render leak for.
+        "forbidden_or_not_found",
+    ] as const;
+    const DOCUMENTED_EXCLUDED_SCOPE_OUTCOMES = [
+        // Not yet exercised by a dedicated mock scenario. Tracked as a
+        // coverage gap, not a security gap: neither is on the internal-enum
+        // denylist (only forbidden_or_not_found and scope_forbidden are),
+        // and both are otherwise-ordinary successful-resolution variants.
+        "filtered",
+        "inherited",
+        "organization_fallback",
+        // Not yet exercised; also not customer-sensitive in the same way
+        // forbidden_or_not_found is (it doesn't collapse a
+        // permission/existence distinction), just currently untested.
+        "unresolved",
+    ] as const;
+
+    test("production sanctioned SCOPE_OUTCOME_LABELS keys exactly match the pinned ScopeResolutionOutcome enum", () => {
+        // Cross-checks the independently pinned-schema-derived vocabulary
+        // (askDevContracts.ts) against AskDevAnswer.tsx's own exported,
+        // TypeScript-exhaustive `Record<DevAnswer["resolved_scope"]["outcome"], string>`
+        // — a second, independent source of the same "what are all the real
+        // values" question. A read of the real component's source text, not
+        // an edit of it (see exportedLabelMapKeys's doc comment for why this
+        // is a text read rather than a module import).
+        const source = readFileSync(
+            path.join(__dirname, "..", "src", "components", "ask-dev", "AskDevAnswer.tsx"),
+            "utf8",
+        );
+        const labelKeys = exportedLabelMapKeys(source, "SCOPE_OUTCOME_LABELS");
+        expect(labelKeys.slice().sort()).toEqual([...SCOPE_RESOLUTION_OUTCOME_VALUES].sort());
+    });
+
+    test("every pinned ScopeResolutionOutcome is exactly scenario-covered or documented-excluded", () => {
+        assertExhaustivePartition(
             SCOPE_RESOLUTION_OUTCOME_VALUES,
-            "needs_clarification/forbidden_or_not_found_scope mock scenario outcomes",
+            SCENARIO_COVERED_SCOPE_OUTCOMES,
+            DOCUMENTED_EXCLUDED_SCOPE_OUTCOMES,
+            "ScopeResolutionOutcome",
         );
     });
 });

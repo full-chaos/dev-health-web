@@ -192,3 +192,46 @@ export function assertKnownToSchema(
         );
     }
 }
+
+/**
+ * Asserts that `coveredValues` (values exercised by a dedicated mock
+ * scenario) and `excludedValues` (values deliberately NOT exercised, with a
+ * documented reason at the call site) together form an EXACT partition of
+ * `authoritativeValues` (the pinned schema's real enum) — every
+ * authoritative value is in exactly one of the two lists, and neither list
+ * names a value the schema doesn't have.
+ *
+ * Unlike `assertKnownToSchema` (a one-way subset check — codex NO-SHIP
+ * finding: membership-checking only the 2 values a test happens to use lets
+ * a new enum member, or a rename of an unreferenced member like
+ * `filtered`→`narrowed`, pass silently), this fails on ANY drift in the
+ * authoritative set: an addition (falls into neither list), a removal (a
+ * listed value schema no longer has), or a rename (same as removal +
+ * addition). The two lists must be updated deliberately for the assertion
+ * to pass again — that deliberate update is the point.
+ */
+export function assertExhaustivePartition(
+    authoritativeValues: readonly string[],
+    coveredValues: readonly string[],
+    excludedValues: readonly string[],
+    label: string,
+): void {
+    const overlap = coveredValues.filter((value) => excludedValues.includes(value));
+    if (overlap.length > 0) {
+        throw new Error(
+            `${label}: value(s) listed as both covered and excluded: ${overlap.join(", ")}.`,
+        );
+    }
+    const partition = new Set([...coveredValues, ...excludedValues]);
+    const missing = authoritativeValues.filter((value) => !partition.has(value));
+    const unknown = [...partition].filter((value) => !authoritativeValues.includes(value));
+    if (missing.length > 0 || unknown.length > 0) {
+        throw new Error(
+            `${label}: covered+excluded does not exactly equal the pinned schema enum. ` +
+                `Missing from the partition (present in the schema, not covered or excluded): ` +
+                `${missing.join(", ") || "(none)"}. ` +
+                `Unknown to the schema (covered or excluded but not a real pinned value): ` +
+                `${unknown.join(", ") || "(none)"}.`,
+        );
+    }
+}
