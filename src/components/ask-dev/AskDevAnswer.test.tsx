@@ -4,7 +4,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DevAnswer } from "@/lib/dev/generated";
 
-import { AskDevAnswer } from "./AskDevAnswer";
+import { ANSWER_STATUS_LABELS, AskDevAnswer, SCOPE_OUTCOME_LABELS } from "./AskDevAnswer";
 
 const actions = vi.hoisted(() => ({
     expandEvidence: vi.fn(),
@@ -345,5 +345,41 @@ describe("AskDevAnswer sanctioned copy (CHAOS-3291)", () => {
         expect(screen.getByText("Not accessible")).toBeVisible();
         expect(screen.queryByText(/forbidden/iu)).not.toBeInTheDocument();
         expect(screen.queryByText(/not found/iu)).not.toBeInTheDocument();
+    });
+
+    // Totality guard, independent of any single render: these reference
+    // records exist purely so TypeScript re-enforces exhaustiveness here
+    // too. If AnswerStatus or ScopeResolutionOutcome ever gains a member,
+    // this file fails to compile until it's added below (mirroring the
+    // TOTAL Record in AskDevAnswer.tsx), and the Object.keys comparison
+    // catches any drift between the two lists even if both happened to
+    // compile.
+    it("ANSWER_STATUS_LABELS has exactly one sanctioned entry per AnswerStatus member", () => {
+        const knownStatuses: Record<DevAnswer["status"], true> = {
+            complete: true,
+            degraded: true,
+            error: true,
+            insufficient_evidence: true,
+            partial: true,
+            refused: true,
+        };
+        expect(Object.keys(ANSWER_STATUS_LABELS).sort()).toEqual(
+            Object.keys(knownStatuses).sort(),
+        );
+    });
+
+    it("SCOPE_OUTCOME_LABELS has exactly one sanctioned entry per ScopeResolutionOutcome member", () => {
+        const knownOutcomes: Record<DevAnswer["resolved_scope"]["outcome"], true> = {
+            ambiguous: true,
+            exact: true,
+            filtered: true,
+            forbidden_or_not_found: true,
+            inherited: true,
+            organization_fallback: true,
+            unresolved: true,
+        };
+        expect(Object.keys(SCOPE_OUTCOME_LABELS).sort()).toEqual(
+            Object.keys(knownOutcomes).sort(),
+        );
     });
 });

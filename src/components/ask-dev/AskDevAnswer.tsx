@@ -39,7 +39,11 @@ function safeExcerpt(value: string | null | undefined): string | null {
 // enum fallback) so an unmapped AnswerStatus is a type error at build time,
 // never a raw internal value reaching the badge at runtime (CHAOS-3291,
 // design system A8 "no internal/impl leakage").
-const ANSWER_STATUS_LABELS: Record<DevAnswer["status"], string> = {
+// Exported (rather than module-private) so the totality test in
+// AskDevAnswer.test.tsx can assert Object.keys(...) coverage against the
+// real generated union directly, instead of duplicating a second copy of
+// the member list in the test file that could itself drift.
+export const ANSWER_STATUS_LABELS: Record<DevAnswer["status"], string> = {
     complete: "Complete",
     degraded: "Degraded",
     error: "Error",
@@ -54,7 +58,7 @@ const ANSWER_STATUS_LABELS: Record<DevAnswer["status"], string> = {
 // distinction (the backend deliberately collapses forbidden vs. not-found
 // into one outcome so scope resolution can't be used to enumerate what
 // exists; the label must preserve that, not re-split it).
-const SCOPE_OUTCOME_LABELS: Record<DevAnswer["resolved_scope"]["outcome"], string> = {
+export const SCOPE_OUTCOME_LABELS: Record<DevAnswer["resolved_scope"]["outcome"], string> = {
     ambiguous: "Ambiguous",
     exact: "Exact match",
     filtered: "Filtered",
