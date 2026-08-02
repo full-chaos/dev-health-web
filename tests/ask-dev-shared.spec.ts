@@ -6,6 +6,7 @@ import {
     forbiddenEnumStrings,
     SCOPE_RESOLUTION_OUTCOME_VALUES,
 } from "./fixtures/askDevContracts";
+import { outcomeCase } from "./fixtures/askDevOutcomes";
 import {
     askDevAnswerArticle,
     askDevComposer,
@@ -235,15 +236,27 @@ test.describe("Ask Dev — evidence hierarchy", () => {
         const answer = askDevAnswerArticle(page);
         await expect(answer).toBeVisible();
 
-        const order = await answer.evaluate((node) => {
-            const direct = node.querySelector("p.text-body");
+        // Located by text content, not a CSS class: CHAOS-3291 (#832)
+        // reworked the direct-summary markup/styling as part of this exact
+        // "answer-first hierarchy" fix, and a class-name-coupled selector
+        // broke on that real change. Only the evidence section's aria-label
+        // is a stable-by-contract selector.
+        const order = await answer.evaluate((node, directSummaryText) => {
+            const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+            let direct: Node | null = null;
+            for (let textNode = walker.nextNode(); textNode; textNode = walker.nextNode()) {
+                if (textNode.textContent?.includes(directSummaryText)) {
+                    direct = textNode;
+                    break;
+                }
+            }
             const evidenceSection = node.querySelector('[aria-label="Evidence coverage"]');
             if (!direct || !evidenceSection) return "missing";
             return direct.compareDocumentPosition(evidenceSection) &
                 Node.DOCUMENT_POSITION_FOLLOWING
                 ? "direct-first"
                 : "evidence-first";
-        });
+        }, outcomeCase("complete").directSummary);
         expect(order).toBe("direct-first");
     });
 
