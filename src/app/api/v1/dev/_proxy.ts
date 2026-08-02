@@ -66,11 +66,42 @@ function webError(
 
 function expectedOrigin(request: Request): string {
     const configured = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL;
-    try {
-        return configured ? new URL(configured).origin : new URL(request.url).origin;
-    } catch {
-        return "";
+    if (configured) {
+        try {
+            return new URL(configured).origin;
+        } catch {
+            return "";
+        }
     }
+    // FALLBACK ONLY, when AUTH_URL/NEXTAUTH_URL is not configured (local
+    // dev, and this repo's own Playwright default suite — CI's
+    // e2e-default job doesn't set either): derive the expected origin from
+    // the request's own inbound Host, not `request.url`. Next.js's dev
+    // server can report a `request.url` host that does not match the
+    // `--hostname` it was actually started with (observed: started with
+    // `--hostname 127.0.0.1`, browser Origin/Host both genuinely
+    // "127.0.0.1:<port>", but `request.url` reported "localhost:<port>")
+    // — using it here made this same-origin check reject every legitimate
+    // mutation unconditionally whenever AUTH_URL is unset.
+    //
+    // Trusting X-Forwarded-Host/Host here does not weaken this check: the
+    // value actually compared below is the *incoming* `Origin` header,
+    // which a browser sets authoritatively — `Origin` is a forbidden
+    // header name (Fetch spec), so no page's JavaScript, same-site or
+    // cross-site, can ever set or override it. Spoofing
+    // X-Forwarded-Host only changes what we compare Origin *against*; it
+    // cannot make a cross-site attacker's browser send a forged Origin
+    // that equals this site's. A configured AUTH_URL/NEXTAUTH_URL always
+    // takes precedence over this fallback (see the branch above).
+    const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
+    if (!host) return "";
+    let protocol = "https:";
+    try {
+        protocol = new URL(request.url).protocol || "https:";
+    } catch {
+        protocol = "https:";
+    }
+    return `${protocol}//${host}`;
 }
 
 function hasValidMutationOrigin(request: Request): boolean {

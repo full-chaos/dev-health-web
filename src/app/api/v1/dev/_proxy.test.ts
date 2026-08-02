@@ -53,6 +53,99 @@ describe("Ask Dev same-origin proxy", () => {
         expect(authMock).not.toHaveBeenCalled();
     });
 
+    // Regression coverage for a real defect found by CHAOS-3287's Playwright
+    // coverage: with no AUTH_URL/NEXTAUTH_URL configured (the normal state
+    // for local `pnpm dev` and this repo's own e2e-default CI job),
+    // `expectedOrigin()` used to derive the expected origin from
+    // `request.url`, which Next.js's dev server does not reliably set to
+    // the actual `--hostname` it was started with. That rejected every
+    // legitimate same-origin mutation unconditionally. The fix derives the
+    // expected origin from the request's own inbound Host header instead.
+    it("accepts a same-origin mutation derived from the Host header when AUTH_URL is unset", async () => {
+        vi.stubEnv("AUTH_URL", "");
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(
+                Response.json({ schema_version: "dev_conversation.v1" }, { status: 201 }),
+            );
+        vi.stubGlobal("fetch", fetchMock);
+
+        const incoming = new Request("http://localhost:3001/api/v1/dev/conversations", {
+            method: "POST",
+            headers: {
+                "content-type": "application/json",
+                origin: "http://127.0.0.1:3001",
+                host: "127.0.0.1:3001",
+            },
+            body: "{}",
+        });
+
+        const response = await proxyDevRequest(incoming, "/api/v1/dev/conversations", {
+            mutation: true,
+        });
+
+        expect(response.status).toBe(201);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    // AUTH_URL/NEXTAUTH_URL, when configured, must stay authoritative — the
+    // Host/X-Forwarded-Host derivation is the FALLBACK for when neither is
+    // set, never a competing source. A reverse proxy or load balancer can
+    // rewrite Host in ways that must not silently override an explicitly
+    // configured canonical origin.
+    it("prefers a configured AUTH_URL over a mismatched Host header", async () => {
+        vi.stubEnv("AUTH_URL", "https://app.example.test");
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(
+                Response.json({ schema_version: "dev_conversation.v1" }, { status: 201 }),
+            );
+        vi.stubGlobal("fetch", fetchMock);
+
+        const incoming = new Request("https://app.example.test/api/v1/dev/conversations", {
+            method: "POST",
+            headers: {
+                "content-type": "application/json",
+                origin: "https://app.example.test",
+                // A Host header that, if it were consulted, would compute a
+                // different expected origin than AUTH_URL — proving AUTH_URL
+                // wins rather than merely "also happening to agree".
+                host: "internal-lb.example.test:8080",
+            },
+            body: "{}",
+        });
+
+        const response = await proxyDevRequest(incoming, "/api/v1/dev/conversations", {
+            mutation: true,
+        });
+
+        expect(response.status).toBe(201);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it("still rejects a cross-origin mutation when AUTH_URL is unset", async () => {
+        vi.stubEnv("AUTH_URL", "");
+        const fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+
+        const incoming = new Request("http://localhost:3001/api/v1/dev/conversations", {
+            method: "POST",
+            headers: {
+                "content-type": "application/json",
+                origin: "https://evil.example.test",
+                host: "127.0.0.1:3001",
+            },
+            body: "{}",
+        });
+
+        const response = await proxyDevRequest(incoming, "/api/v1/dev/conversations", {
+            mutation: true,
+        });
+
+        expect(response.status).toBe(403);
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
     it("forwards only the server session bearer, body, abort signal, and no-store response", async () => {
         const fetchMock = vi
             .fn()
