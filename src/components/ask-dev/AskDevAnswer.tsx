@@ -35,6 +35,39 @@ function safeExcerpt(value: string | null | undefined): string | null {
 // *full* evidence coverage (available_source_count === required_source_count)
 // — not only when required evidence was unavailable. That specific claim
 // belongs to `insufficient_evidence`, where it is accurate.
+// Sanctioned copy for the status pill. A TOTAL map (no Partial, no raw
+// enum fallback) so an unmapped AnswerStatus is a type error at build time,
+// never a raw internal value reaching the badge at runtime (CHAOS-3291,
+// design system A8 "no internal/impl leakage").
+// Exported (rather than module-private) so the totality test in
+// AskDevAnswer.test.tsx can assert Object.keys(...) coverage against the
+// real generated union directly, instead of duplicating a second copy of
+// the member list in the test file that could itself drift.
+export const ANSWER_STATUS_LABELS: Record<DevAnswer["status"], string> = {
+    complete: "Complete",
+    degraded: "Degraded",
+    error: "Error",
+    insufficient_evidence: "Insufficient evidence",
+    partial: "Partial",
+    refused: "Refused",
+};
+
+// Sanctioned copy for the scope-resolution outcome row. Also TOTAL: the raw
+// `forbidden_or_not_found` member previously rendered verbatim as "forbidden
+// or not found" — customer-facing copy must not leak that internal
+// distinction (the backend deliberately collapses forbidden vs. not-found
+// into one outcome so scope resolution can't be used to enumerate what
+// exists; the label must preserve that, not re-split it).
+export const SCOPE_OUTCOME_LABELS: Record<DevAnswer["resolved_scope"]["outcome"], string> = {
+    ambiguous: "Ambiguous",
+    exact: "Exact match",
+    filtered: "Filtered",
+    forbidden_or_not_found: "Not accessible",
+    inherited: "Inherited",
+    organization_fallback: "Organization-wide",
+    unresolved: "Unresolved",
+};
+
 const STATUS_EXPLANATIONS: Partial<Record<DevAnswer["status"], string>> = {
     partial:
         "Partial: the investigation did not fully complete. A result with limitations, not a silent success.",
@@ -83,30 +116,33 @@ function EvidenceRow({
         <div
             id={anchorId}
             tabIndex={-1}
-            className="scroll-mt-6 space-y-2 border-l-2 border-(--border) pl-3 outline-none focus-visible:border-(--accent)"
+            className="scroll-mt-6 space-y-1.5 border-l-2 border-(--border) pl-3 outline-none focus-visible:border-(--accent)"
         >
             <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="flex min-w-0 flex-col gap-1">
-                    <span className="font-medium text-(--text-primary)">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-sm text-(--text-secondary)">
                         {evidence.display_label}
                     </span>
                     <span className="text-xs text-(--text-muted)">
                         {evidence.provenance} · {formatTimestamp(evidence.observed_at)}
                     </span>
                 </div>
+                {/*
+                 * Quiet by default (text-muted, no fill) — this is a
+                 * secondary, on-demand affordance, not a primary CTA; it
+                 * only picks up accent color on hover/focus (CHAOS-3291).
+                 */}
                 <button
                     type="button"
                     onClick={() => void openExpansion()}
                     disabled={loading}
-                    className="rounded-(--radius-sm) px-2 py-1 text-xs font-medium text-(--accent) hover:bg-(--accent)/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45 disabled:opacity-50"
+                    className="rounded-(--radius-sm) px-2 py-1 text-xs font-medium text-(--text-muted) hover:bg-(--accent)/10 hover:text-(--accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45 disabled:opacity-50"
                 >
                     {loading ? "Opening…" : CTA_LABELS.openEvidence}
                 </button>
             </div>
             {evidence.citation_text ? (
-                <p className="text-sm leading-6 text-(--text-secondary)">
-                    {evidence.citation_text}
-                </p>
+                <p className="text-xs leading-5 text-(--text-muted)">{evidence.citation_text}</p>
             ) : null}
             {expansion ? (
                 <div className="rounded-(--radius-md) bg-(--background)/60 p-3 text-sm leading-6 text-(--text-secondary)">
@@ -308,18 +344,34 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                     AI-generated
                 </span>
                 <span className="rounded-(--radius-pill) border border-(--border) px-2.5 py-1 text-label-caps text-(--text-muted)">
-                    {answer.status.replaceAll("_", " ")}
+                    {ANSWER_STATUS_LABELS[answer.status]}
                 </span>
                 <span className="text-xs text-(--text-muted)">
                     As of {formatTimestamp(answer.as_of)}
                 </span>
             </div>
 
-            {statusExplanation ? (
-                <p className="text-xs text-(--text-muted)">{statusExplanation}</p>
-            ) : null}
-
-            <p className="text-body leading-7 text-(--text-primary)">{answer.direct_summary}</p>
+            {/*
+             * The direct answer is the primary content (TRD §16: scope →
+             * question → answer → evidence/metrics → follow-up; CHAOS-3291).
+             * Previously the status caption rendered as an isolated text-xs
+             * line and direct_summary as plain text-body — same visual
+             * weight as the supporting chrome below it, so a thin answer
+             * (e.g. "Status: partial.") read as smaller and less important
+             * than the Evidence block. Keeping the caption tightly coupled
+             * to the summary (one block, no separating chrome) and giving
+             * the summary the same display-font treatment used for section
+             * headings elsewhere makes it read as one coherent answer
+             * rather than badge + boilerplate + terse line.
+             */}
+            <div className="space-y-1.5">
+                {statusExplanation ? (
+                    <p className="text-sm leading-6 text-(--text-secondary)">{statusExplanation}</p>
+                ) : null}
+                <p className="font-(--font-display) text-h3 text-(--text-primary)">
+                    {answer.direct_summary}
+                </p>
+            </div>
 
             {scopeResolution ? (
                 <section
@@ -330,7 +382,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                         <span className="text-(--text-muted)">
                             Scope outcome:{" "}
                             <strong className="font-medium text-(--text-secondary)">
-                                {scopeResolution.outcome.replaceAll("_", " ")}
+                                {SCOPE_OUTCOME_LABELS[scopeResolution.outcome]}
                             </strong>
                         </span>
                         <span className="text-(--text-muted)">
@@ -573,7 +625,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                     <h3 id={evidenceHeadingId} className="text-label-caps text-(--text-muted)">
                         Evidence
                     </h3>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {answer.evidence.map((evidence) => (
                             <EvidenceRow
                                 key={evidence.evidence_ref_id}
