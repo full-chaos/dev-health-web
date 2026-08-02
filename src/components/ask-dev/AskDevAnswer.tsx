@@ -35,6 +35,35 @@ function safeExcerpt(value: string | null | undefined): string | null {
 // *full* evidence coverage (available_source_count === required_source_count)
 // — not only when required evidence was unavailable. That specific claim
 // belongs to `insufficient_evidence`, where it is accurate.
+// Sanctioned copy for the status pill. A TOTAL map (no Partial, no raw
+// enum fallback) so an unmapped AnswerStatus is a type error at build time,
+// never a raw internal value reaching the badge at runtime (CHAOS-3291,
+// design system A8 "no internal/impl leakage").
+const ANSWER_STATUS_LABELS: Record<DevAnswer["status"], string> = {
+    complete: "Complete",
+    degraded: "Degraded",
+    error: "Error",
+    insufficient_evidence: "Insufficient evidence",
+    partial: "Partial",
+    refused: "Refused",
+};
+
+// Sanctioned copy for the scope-resolution outcome row. Also TOTAL: the raw
+// `forbidden_or_not_found` member previously rendered verbatim as "forbidden
+// or not found" — customer-facing copy must not leak that internal
+// distinction (the backend deliberately collapses forbidden vs. not-found
+// into one outcome so scope resolution can't be used to enumerate what
+// exists; the label must preserve that, not re-split it).
+const SCOPE_OUTCOME_LABELS: Record<DevAnswer["resolved_scope"]["outcome"], string> = {
+    ambiguous: "Ambiguous",
+    exact: "Exact match",
+    filtered: "Filtered",
+    forbidden_or_not_found: "Not accessible",
+    inherited: "Inherited",
+    organization_fallback: "Organization-wide",
+    unresolved: "Unresolved",
+};
+
 const STATUS_EXPLANATIONS: Partial<Record<DevAnswer["status"], string>> = {
     partial:
         "Partial: the investigation did not fully complete. A result with limitations, not a silent success.",
@@ -311,7 +340,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                     AI-generated
                 </span>
                 <span className="rounded-(--radius-pill) border border-(--border) px-2.5 py-1 text-label-caps text-(--text-muted)">
-                    {answer.status.replaceAll("_", " ")}
+                    {ANSWER_STATUS_LABELS[answer.status]}
                 </span>
                 <span className="text-xs text-(--text-muted)">
                     As of {formatTimestamp(answer.as_of)}
@@ -351,7 +380,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                         <span className="text-(--text-muted)">
                             Scope outcome:{" "}
                             <strong className="font-medium text-(--text-secondary)">
-                                {scopeResolution.outcome.replaceAll("_", " ")}
+                                {SCOPE_OUTCOME_LABELS[scopeResolution.outcome]}
                             </strong>
                         </span>
                         <span className="text-(--text-muted)">

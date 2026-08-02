@@ -295,3 +295,55 @@ describe("AskDevAnswer answer hierarchy (CHAOS-3291)", () => {
         expect(evidenceLabelEl.className).not.toMatch(/text-\(--text-primary\)/u);
     });
 });
+
+describe("AskDevAnswer sanctioned copy (CHAOS-3291)", () => {
+    beforeAll(() => {
+        window.requestAnimationFrame = (callback: FrameRequestCallback) => {
+            callback(0);
+            return 0;
+        };
+    });
+
+    beforeEach(() => {
+        Object.values(actions).forEach((action) => action.mockReset());
+    });
+
+    // The status pill previously rendered answer.status verbatim
+    // (`insufficient_evidence`, underscores and all). It must go through
+    // the sanctioned copy map instead.
+    it("renders sanctioned copy for the status pill, never the raw enum value", () => {
+        const statusAnswer = {
+            ...answer,
+            status: "insufficient_evidence",
+        } as unknown as DevAnswer;
+        render(<AskDevAnswer answer={statusAnswer} />);
+
+        expect(screen.getByText("Insufficient evidence")).toBeVisible();
+        expect(screen.queryByText("insufficient_evidence")).not.toBeInTheDocument();
+        expect(screen.queryByText(/insufficient_evidence/u)).not.toBeInTheDocument();
+    });
+
+    // The reported leak: scope outcome "forbidden_or_not_found" rendered
+    // verbatim as "forbidden or not found". The backend deliberately
+    // collapses forbidden vs. not-found into one outcome (so scope
+    // resolution can't be used to enumerate what exists); the sanctioned
+    // copy must preserve that, never re-split or expose the raw member.
+    it("renders sanctioned copy for a forbidden_or_not_found scope outcome, never the raw enum value", () => {
+        const forbiddenAnswer = {
+            ...answer,
+            resolved_scope: {
+                authorized_repository_ids: [],
+                candidates: [],
+                outcome: "forbidden_or_not_found",
+                resolved_at: "2026-07-29T00:00:00Z",
+                schema_version: "dev_scope_resolution.v1",
+                warnings: [],
+            },
+        } as unknown as DevAnswer;
+        render(<AskDevAnswer answer={forbiddenAnswer} />);
+
+        expect(screen.getByText("Not accessible")).toBeVisible();
+        expect(screen.queryByText(/forbidden/iu)).not.toBeInTheDocument();
+        expect(screen.queryByText(/not found/iu)).not.toBeInTheDocument();
+    });
+});
