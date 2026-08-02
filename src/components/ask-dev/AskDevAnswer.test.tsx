@@ -258,3 +258,40 @@ describe("AskDevAnswer status explanations (CHAOS-3215)", () => {
         expect(screen.queryByText(/not a silent success/u)).not.toBeInTheDocument();
     });
 });
+
+describe("AskDevAnswer answer hierarchy (CHAOS-3291)", () => {
+    beforeAll(() => {
+        window.requestAnimationFrame = (callback: FrameRequestCallback) => {
+            callback(0);
+            return 0;
+        };
+    });
+
+    beforeEach(() => {
+        Object.values(actions).forEach((action) => action.mockReset());
+    });
+
+    // Regression guard for the reported inversion: the direct answer must
+    // carry the primary (display-font, heading-scale) typography, while an
+    // Evidence entry's label must NOT carry that same primary treatment —
+    // it is supporting material, not the headline. Planting the old classes
+    // back on either element is exactly the defect this issue fixed.
+    it("gives the direct answer primary typographic weight and keeps evidence entries secondary", () => {
+        const thinAnswer = {
+            ...answer,
+            claims: [],
+            direct_summary: "Status: partial.",
+            metrics: [],
+            status: "partial",
+        } as unknown as DevAnswer;
+        render(<AskDevAnswer answer={thinAnswer} />);
+
+        const summaryEl = screen.getByText("Status: partial.");
+        expect(summaryEl.className).toMatch(/text-h3/u);
+
+        const evidenceLabelEl = screen.getByText("Pull request 451");
+        expect(evidenceLabelEl.className).not.toMatch(/text-h3/u);
+        expect(evidenceLabelEl.className).not.toMatch(/font-medium/u);
+        expect(evidenceLabelEl.className).not.toMatch(/text-\(--text-primary\)/u);
+    });
+});

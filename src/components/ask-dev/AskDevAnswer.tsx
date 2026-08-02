@@ -83,30 +83,33 @@ function EvidenceRow({
         <div
             id={anchorId}
             tabIndex={-1}
-            className="scroll-mt-6 space-y-2 border-l-2 border-(--border) pl-3 outline-none focus-visible:border-(--accent)"
+            className="scroll-mt-6 space-y-1.5 border-l-2 border-(--border) pl-3 outline-none focus-visible:border-(--accent)"
         >
             <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="flex min-w-0 flex-col gap-1">
-                    <span className="font-medium text-(--text-primary)">
+                <div className="flex min-w-0 flex-col gap-0.5">
+                    <span className="text-sm text-(--text-secondary)">
                         {evidence.display_label}
                     </span>
                     <span className="text-xs text-(--text-muted)">
                         {evidence.provenance} · {formatTimestamp(evidence.observed_at)}
                     </span>
                 </div>
+                {/*
+                 * Quiet by default (text-muted, no fill) — this is a
+                 * secondary, on-demand affordance, not a primary CTA; it
+                 * only picks up accent color on hover/focus (CHAOS-3291).
+                 */}
                 <button
                     type="button"
                     onClick={() => void openExpansion()}
                     disabled={loading}
-                    className="rounded-(--radius-sm) px-2 py-1 text-xs font-medium text-(--accent) hover:bg-(--accent)/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45 disabled:opacity-50"
+                    className="rounded-(--radius-sm) px-2 py-1 text-xs font-medium text-(--text-muted) hover:bg-(--accent)/10 hover:text-(--accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45 disabled:opacity-50"
                 >
                     {loading ? "Opening…" : CTA_LABELS.openEvidence}
                 </button>
             </div>
             {evidence.citation_text ? (
-                <p className="text-sm leading-6 text-(--text-secondary)">
-                    {evidence.citation_text}
-                </p>
+                <p className="text-xs leading-5 text-(--text-muted)">{evidence.citation_text}</p>
             ) : null}
             {expansion ? (
                 <div className="rounded-(--radius-md) bg-(--background)/60 p-3 text-sm leading-6 text-(--text-secondary)">
@@ -315,11 +318,29 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                 </span>
             </div>
 
-            {statusExplanation ? (
-                <p className="text-xs text-(--text-muted)">{statusExplanation}</p>
-            ) : null}
-
-            <p className="text-body leading-7 text-(--text-primary)">{answer.direct_summary}</p>
+            {/*
+             * The direct answer is the primary content (TRD §16: scope →
+             * question → answer → evidence/metrics → follow-up; CHAOS-3291).
+             * Previously the status caption rendered as an isolated text-xs
+             * line and direct_summary as plain text-body — same visual
+             * weight as the supporting chrome below it, so a thin answer
+             * (e.g. "Status: partial.") read as smaller and less important
+             * than the Evidence block. Keeping the caption tightly coupled
+             * to the summary (one block, no separating chrome) and giving
+             * the summary the same display-font treatment used for section
+             * headings elsewhere makes it read as one coherent answer
+             * rather than badge + boilerplate + terse line.
+             */}
+            <div className="space-y-1.5">
+                {statusExplanation ? (
+                    <p className="text-sm leading-6 text-(--text-secondary)">
+                        {statusExplanation}
+                    </p>
+                ) : null}
+                <p className="font-(--font-display) text-h3 text-(--text-primary)">
+                    {answer.direct_summary}
+                </p>
+            </div>
 
             {scopeResolution ? (
                 <section
@@ -573,7 +594,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                     <h3 id={evidenceHeadingId} className="text-label-caps text-(--text-muted)">
                         Evidence
                     </h3>
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         {answer.evidence.map((evidence) => (
                             <EvidenceRow
                                 key={evidence.evidence_ref_id}
