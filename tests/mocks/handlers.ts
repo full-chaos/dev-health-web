@@ -743,6 +743,10 @@ const MOCK_ORG_ENTITLEMENTS = {
     licensed_repos: null,
     features: {
         customer_push_ingest: true,
+        // Ask Dev is enabled for the default e2e org so the deterministic
+        // CHAOS-3287 Playwright coverage can exercise the real /dev route
+        // and persistent window gate, not a stubbed-out "unavailable" state.
+        ask_dev: true,
     },
     features_override: null,
     limits_override: null,
@@ -2124,7 +2128,9 @@ export const handlers = [
                       ? { ...MOCK_ORG_ENTITLEMENTS.features, canonical_incident_ingestion: true }
                       : scenario === "canonical-disabled"
                         ? { ...MOCK_ORG_ENTITLEMENTS.features, canonical_incident_ingestion: false }
-                        : MOCK_ORG_ENTITLEMENTS.features,
+                        : scenario === "ask-dev-disabled"
+                          ? { ...MOCK_ORG_ENTITLEMENTS.features, ask_dev: false }
+                          : MOCK_ORG_ENTITLEMENTS.features,
         });
     }),
 
