@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DevProgressState } from "@/lib/dev/client";
 
@@ -9,6 +9,38 @@ vi.mock("next/navigation", () => ({
     usePathname: () => "/cockpit",
     useRouter: () => ({ replace: vi.fn() }),
     useSearchParams: () => new URLSearchParams(),
+}));
+
+// The error-guidance tests need to drive `stream` per case, so the mock reads
+// it from here instead of closing over a literal. Reset in beforeEach.
+type MockStream = {
+    phase: "idle" | "running" | "completed" | "failed";
+    delta: string;
+    warnings: string[];
+    error: { code: string; safe_message: string; retryable: boolean } | null;
+    progress: null;
+};
+const IDLE_STREAM: Readonly<MockStream> = Object.freeze({
+    phase: "idle",
+    delta: "",
+    warnings: [],
+    error: null,
+    progress: null,
+});
+const askDevState = vi.hoisted(() => ({
+    stream: {
+        phase: "idle",
+        delta: "",
+        warnings: [],
+        error: null,
+        progress: null,
+    } as {
+        phase: "idle" | "running" | "completed" | "failed";
+        delta: string;
+        warnings: string[];
+        error: { code: string; safe_message: string; retryable: boolean } | null;
+        progress: null;
+    },
 }));
 
 vi.mock("./AskDevProvider", () => ({
@@ -42,7 +74,7 @@ vi.mock("./AskDevProvider", () => ({
         renameConversation: vi.fn(),
         retryLastQuestion: vi.fn(),
         startNewConversation: vi.fn(),
-        stream: { phase: "idle" as const, delta: "", warnings: [], error: null, progress: null },
+        stream: askDevState.stream,
         submitQuestion: vi.fn(),
         transcript: [],
     }),
@@ -96,5 +128,65 @@ describe("Ask Dev progress copy", () => {
             expect(label, phase).not.toContain(phase);
             expect(label, phase).not.toContain(phase.replaceAll("_", " "));
         }
+    });
+});
+
+describe("Ask Dev error guidance", () => {
+    beforeAll(() => {
+        Element.prototype.scrollIntoView = vi.fn();
+    });
+
+    beforeEach(() => {
+        askDevState.stream = { ...IDLE_STREAM };
+    });
+
+    function renderWithError(code: string) {
+        askDevState.stream = {
+            ...IDLE_STREAM,
+            phase: "failed",
+            error: { code, safe_message: "Ask Dev stopped.", retryable: true },
+        };
+        return render(<AskDevConversation />);
+    }
+
+    // CHAOS-3339. The guidance names the provider as the faulting side and
+    // says a retry is worth trying — the opposite of the allowance guidance,
+    // which exists to tell you a retry cannot help.
+    it("explains a provider contract violation as a provider-side fault", () => {
+        renderWithError("provider_contract_violation");
+
+        expect(
+            screen.getByText(/provider returned a response that violated its contract/iu),
+        ).toBeVisible();
+        expect(screen.getByText(/retrying may help/iu)).toBeVisible();
+    });
+
+    it("keeps the retry affordance for a provider contract violation", () => {
+        renderWithError("provider_contract_violation");
+
+        expect(screen.getByRole("button", { name: /retry/iu })).toBeVisible();
+    });
+
+    // The pre-existing behaviour this must not disturb: an exhausted
+    // allowance replaces the retry button rather than sitting beside it.
+    it("replaces the retry affordance for an exhausted allowance", () => {
+        renderWithError("cost_limit_reached");
+
+        expect(screen.getByText(/Retrying immediately will not help/iu)).toBeVisible();
+        expect(screen.queryByRole("button", { name: /retry/iu })).not.toBeInTheDocument();
+    });
+
+    it("shows no tailored guidance for an unrelated error code", () => {
+        renderWithError("internal_error");
+
+        expect(screen.queryByText(/violated its contract/iu)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Retrying immediately will not help/iu)).not.toBeInTheDocument();
+    });
+
+    it("never renders the raw error code", () => {
+        renderWithError("provider_contract_violation");
+
+        expect(screen.queryByText(/provider_contract_violation/u)).not.toBeInTheDocument();
+        expect(screen.queryByText(/provider contract violation/iu)).not.toBeInTheDocument();
     });
 });

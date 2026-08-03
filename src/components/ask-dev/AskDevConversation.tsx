@@ -37,6 +37,20 @@ function platformAllowanceGuidance(
 }
 
 /**
+ * CHAOS-3339. Kept separate from `platformAllowanceGuidance` because the two
+ * pull opposite ways on the retry affordance: an exhausted allowance means
+ * retrying cannot help (so that guidance replaces the retry button), while a
+ * provider contract violation is transient and worth retrying. Provisional
+ * copy — product may refine the wording.
+ */
+function providerContractGuidance(
+    error: ReturnType<typeof useAskDev>["stream"]["error"],
+): string | null {
+    if (error?.code !== "provider_contract_violation") return null;
+    return "The AI provider returned a response that violated its contract. This is a provider-side fault — retrying may help.";
+}
+
+/**
  * Sanctioned copy for every pinned progress phase, TOTAL over
  * `DevProgressState`.
  *
@@ -108,6 +122,9 @@ export function AskDevConversation({
     const searchParams = useSearchParams();
     const filters = useMemo(() => decodeFilter(searchParams.get("f")), [searchParams]);
     const allowanceGuidance = platformAllowanceGuidance(stream.error);
+    // Only the allowance case replaces the retry button; see
+    // providerContractGuidance for why the two are not one function.
+    const errorGuidance = allowanceGuidance ?? providerContractGuidance(stream.error);
     // "Powered by Context Fabric" is the sanctioned relationship framing
     // (CHAOS-3215): Ask Dev is the customer interaction layer, Context
     // Fabric Validation is a separate platform-administrator diagnostic
@@ -686,9 +703,9 @@ export function AskDevConversation({
                                         {stream.error?.safe_message ??
                                             "Ask Dev could not complete that request."}
                                     </p>
-                                    {allowanceGuidance ? (
+                                    {errorGuidance ? (
                                         <p className="mt-2 text-xs leading-5 text-(--text-secondary)">
-                                            {allowanceGuidance}
+                                            {errorGuidance}
                                         </p>
                                     ) : null}
                                     {stream.error?.retryable && !allowanceGuidance ? (
