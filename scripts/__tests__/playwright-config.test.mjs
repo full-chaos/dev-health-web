@@ -62,22 +62,15 @@ describe("default Playwright web servers", () => {
         );
     });
 
-    it("runs the complete dedicated PagerDuty matrix separately in CI", () => {
+    it("keeps the PagerDuty matrix as a manual tier, out of CI (concurrency budget)", () => {
+        // The signoff evidence pack stays runnable by hand…
         expect(ciRunner).toContain("run_pagerduty_final_qa()");
         expect(ciRunner).toContain(
             "run_isolated_e2e_suite pagerduty-final-qa test:e2e:pagerduty-final-qa",
         );
         expect(ciRunner).toMatch(/pagerduty-final-qa\)\n    run_pagerduty_final_qa/);
-        expect(testsWorkflow).toMatch(
-            /pagerduty-final-qa:\n        name: PagerDuty final QA matrix/,
-        );
-        expect(testsWorkflow).toContain("bash ci/run_tests.sh pagerduty-final-qa");
-        expect(ciRunner).toContain(
-            'run_pagerduty_final_qa "${PLAYWRIGHT_REPORT_ROOT}/pagerduty-final-qa" "${PLAYWRIGHT_RESULTS_ROOT}/pagerduty-final-qa"',
-        );
-        expect(staticBuildWorkflow).toContain("bash ci/run_tests.sh pagerduty-final-qa");
-        expect(staticBuildWorkflow).toContain(
-            "PLAYWRIGHT_RESULTS_DIR=test-results/playwright/pagerduty-final-qa",
-        );
+        // …but no workflow spends a runner on it per PR.
+        expect(testsWorkflow).not.toContain("pagerduty-final-qa");
+        expect(staticBuildWorkflow).not.toContain("pagerduty-final-qa");
     });
 });

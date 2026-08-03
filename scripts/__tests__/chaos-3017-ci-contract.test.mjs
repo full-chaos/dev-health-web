@@ -36,7 +36,7 @@ describe("CHAOS-3017 CI contracts", () => {
         const aggregator = job(contents(TESTS_WORKFLOW), "test");
 
         expect(aggregator).toMatch(
-            /needs: \[changes, format, quality, build, unit, integration, e2e-default, e2e-onboarding, e2e-context-fabric, pagerduty-final-qa\]/,
+            /needs: \[changes, format, quality, build, unit, integration, e2e-default, e2e-onboarding\]/,
         );
         expect(aggregator).toMatch(/^        if: always\(\)$/mu);
         expect(aggregator).not.toContain("toJson(needs)");
@@ -84,10 +84,12 @@ describe("CHAOS-3017 CI contracts", () => {
         expect(defaultE2e).toMatch(
             /^            - run: bash ci\/run_tests\.sh e2e-default \$\{\{ matrix\.shard \}\}\/3$/mu,
         );
+        // Context Fabric shares the onboarding runner (GitHub concurrency
+        // limits); both suites must still run, in one job.
         expect(job(workflow, "e2e-onboarding")).toMatch(
             /^            - run: bash ci\/run_tests\.sh e2e-onboarding$/mu,
         );
-        expect(job(workflow, "e2e-context-fabric")).toMatch(
+        expect(job(workflow, "e2e-onboarding")).toMatch(
             /^            - run: bash ci\/run_tests\.sh e2e-context-fabric$/mu,
         );
     });
@@ -141,12 +143,10 @@ describe("CHAOS-3017 CI contracts", () => {
             ...workflow.matchAll(/^\s+name: (playwright-(?:report|results)-[^\n]+)$/gm),
         ].map(([, name]) => name);
 
-        expect(names).toHaveLength(8);
+        expect(names).toHaveLength(4);
         expect(new Set(names).size).toBe(names.length);
         expect(names.join("\n")).toContain("default-${{ matrix.shard }}");
-        expect(names.join("\n")).toContain("onboarding");
-        expect(names.join("\n")).toContain("context-fabric");
-        expect(names.join("\n")).toContain("pagerduty-final-qa");
+        expect(names.join("\n")).toContain("onboarding-context-fabric");
     });
 
     it("runs static E2E only for tags and manual dispatch", () => {
