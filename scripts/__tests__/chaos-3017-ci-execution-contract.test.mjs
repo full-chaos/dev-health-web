@@ -79,11 +79,10 @@ const GENERAL_TIERS = [
         tier: "integration",
     },
 ];
-const E2E_STAGES = ["e2e-default", "e2e-onboarding", "e2e-context-fabric"];
-const DEDICATED_E2E = [
-    ["e2e-onboarding", "e2e-onboarding"],
-    ["e2e-context-fabric", "e2e-context-fabric"],
-];
+const E2E_STAGES = ["e2e-default", "e2e-onboarding"];
+// Context Fabric's tier runs inside the e2e-onboarding job (one runner,
+// two sequential suites — GitHub concurrency limits).
+const DEDICATED_E2E = [["e2e-onboarding", "e2e-onboarding"]];
 const E2E_HARNESS_CASES = [
     ...["1/3", "2/3", "3/3"].map((shard) => ({
         args: ["e2e-default", shard],
@@ -102,12 +101,6 @@ const E2E_HARNESS_CASES = [
         expectedCommand: "test:e2e:context-fabric",
         failScript: "test:e2e:context-fabric",
         name: "Context Fabric",
-    },
-    {
-        args: ["pagerduty-final-qa"],
-        expectedCommand: "test:e2e:pagerduty-final-qa",
-        failScript: "test:e2e:pagerduty-final-qa",
-        name: "PagerDuty final QA",
     },
 ];
 
@@ -217,11 +210,10 @@ describe("CHAOS-3017 executable CI boundaries", () => {
             );
         }
 
-        const pagerDutyJob = job(workflow, "pagerduty-final-qa");
-        expect(pagerDutyJob).toMatch(/^        if: needs\.changes\.outputs\.code == 'true'$/mu);
-        expect(runStep(pagerDutyJob, "bash ci/run_tests.sh pagerduty-final-qa")).toBe(
-            "            - run: bash ci/run_tests.sh pagerduty-final-qa",
-        );
+        // Context Fabric runs as a second step of the onboarding job.
+        expect(
+            runStep(job(workflow, "e2e-onboarding"), "bash ci/run_tests.sh e2e-context-fabric"),
+        ).toBe("            - run: bash ci/run_tests.sh e2e-context-fabric");
     });
 
     it.each(E2E_HARNESS_CASES)(

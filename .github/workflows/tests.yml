@@ -189,7 +189,11 @@ jobs:
                   retention-days: 14
 
     e2e-onboarding:
-        name: E2E tests (onboarding)
+        # Context Fabric runs sequentially in this job rather than as its own
+        # runner: GitHub's concurrency limits make every extra parallel job a
+        # queue liability, and the two suites are isolated by run_tests.sh
+        # regardless of which runner hosts them.
+        name: E2E tests (onboarding + Context Fabric)
         needs: [changes]
         if: needs.changes.outputs.e2e == 'true'
         runs-on: ubuntu-latest
@@ -202,42 +206,12 @@ jobs:
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
             - run: bash ci/run_tests.sh e2e-onboarding
-            - name: Upload Playwright report
-              if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-              with:
-                  name: playwright-report-onboarding-${{ github.run_id }}-${{ github.run_attempt }}
-                  path: test-results/playwright-html/
-                  if-no-files-found: warn
-                  retention-days: 14
-            - name: Upload Playwright raw results and JUnit
-              if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-              with:
-                  name: playwright-results-onboarding-${{ github.run_id }}-${{ github.run_attempt }}
-                  path: test-results/playwright/
-                  if-no-files-found: warn
-                  retention-days: 14
-
-    e2e-context-fabric:
-        name: E2E tests (Context Fabric)
-        needs: [changes]
-        if: needs.changes.outputs.e2e == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-            - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install --frozen-lockfile
             - run: bash ci/run_tests.sh e2e-context-fabric
             - name: Upload Playwright report
               if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
               with:
-                  name: playwright-report-context-fabric-${{ github.run_id }}-${{ github.run_attempt }}
+                  name: playwright-report-onboarding-context-fabric-${{ github.run_id }}-${{ github.run_attempt }}
                   path: test-results/playwright-html/
                   if-no-files-found: warn
                   retention-days: 14
@@ -245,41 +219,11 @@ jobs:
               if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
               with:
-                  name: playwright-results-context-fabric-${{ github.run_id }}-${{ github.run_attempt }}
+                  name: playwright-results-onboarding-context-fabric-${{ github.run_id }}-${{ github.run_attempt }}
                   path: test-results/playwright/
                   if-no-files-found: warn
                   retention-days: 14
 
-    pagerduty-final-qa:
-        name: PagerDuty final QA matrix
-        needs: [changes]
-        if: needs.changes.outputs.code == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-            - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install --frozen-lockfile
-            - run: bash ci/run_tests.sh pagerduty-final-qa
-            - name: Upload Playwright report
-              if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-              with:
-                  name: playwright-report-pagerduty-final-qa-${{ github.run_id }}-${{ github.run_attempt }}
-                  path: test-results/playwright-html/
-                  if-no-files-found: warn
-                  retention-days: 14
-            - name: Upload Playwright raw results and JUnit
-              if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-              with:
-                  name: playwright-results-pagerduty-final-qa-${{ github.run_id }}-${{ github.run_attempt }}
-                  path: test-results/playwright/
-                  if-no-files-found: warn
-                  retention-days: 14
     design-lint:
         name: Design lint advisory
         needs: [changes]
@@ -299,7 +243,7 @@ jobs:
 
     test:
         name: test
-        needs: [changes, format, quality, build, unit, integration, e2e-default, e2e-onboarding, e2e-context-fabric, pagerduty-final-qa]
+        needs: [changes, format, quality, build, unit, integration, e2e-default, e2e-onboarding]
         if: always()
         runs-on: ubuntu-latest
         steps:
@@ -320,18 +264,12 @@ jobs:
             - name: Check E2E test stages
               if: needs.changes.result == 'success' && needs.changes.outputs.e2e == 'true'
               run: |
-                  if [[ "${{ needs.e2e-default.result }}" != 'success' || "${{ needs.e2e-onboarding.result }}" != 'success' || "${{ needs.e2e-context-fabric.result }}" != 'success' ]]; then
+                  if [[ "${{ needs.e2e-default.result }}" != 'success' || "${{ needs.e2e-onboarding.result }}" != 'success' ]]; then
                     exit 1
                   fi
             - name: Check E2E test stages were skipped
               if: needs.changes.result == 'success' && needs.changes.outputs.code == 'true' && needs.changes.outputs.e2e != 'true'
               run: |
-                  if [[ "${{ needs.e2e-default.result }}" != 'skipped' || "${{ needs.e2e-onboarding.result }}" != 'skipped' || "${{ needs.e2e-context-fabric.result }}" != 'skipped' ]]; then
-                    exit 1
-                  fi
-            - name: Check PagerDuty final QA matrix
-              if: needs.changes.result == 'success' && needs.changes.outputs.code == 'true'
-              run: |
-                  if [[ "${{ needs.pagerduty-final-qa.result }}" != 'success' ]]; then
+                  if [[ "${{ needs.e2e-default.result }}" != 'skipped' || "${{ needs.e2e-onboarding.result }}" != 'skipped' ]]; then
                     exit 1
                   fi
