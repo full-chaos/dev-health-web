@@ -1,6 +1,6 @@
 {
   "schema_version": "ask_dev_web_contract_source.v1",
-  "source_commit": "b469dd35caa46c347b120517bb4c779dc129cf91",
+  "source_commit": "4838e026e08d20bd62090a85218add2761733edd",
   "files": [
     {
       "path": "examples/negative/dev_answer.v1.invalid_complete_state.json",
@@ -196,11 +196,11 @@
     },
     {
       "path": "manifest.json",
-      "sha256": "b10c1f190dd0a9ea1b6f7f0071fbe0cea68b10c88d7019c0a1c30cd796b8eeff"
+      "sha256": "b3a78704667c25583b71750e92194d513cc3929bcf194e42d9010f453f23e450"
     },
     {
       "path": "schemas/dev_answer.v1.schema.json",
-      "sha256": "5178e487e3d2b8cbcde7ffea08ea0d3121937db7357c861c3738b2c9120e9039"
+      "sha256": "e156ced39c676bae4e08f5c5e5acc86a4d7120b472ab628ba20f1a605a8ce6fc"
     },
     {
       "path": "schemas/dev_capabilities.v1.schema.json",
@@ -220,7 +220,7 @@
     },
     {
       "path": "schemas/dev_conversation_transcript.v1.schema.json",
-      "sha256": "635befb43b9080a935d49df136f51508a5b5e1b152809cba67d42de27bc2b60a"
+      "sha256": "d0df8dccbf190a280412e6d4872006459072128d87c7cf8d9e9facc016ab62a3"
     },
     {
       "path": "schemas/dev_error.v1.schema.json",
@@ -256,7 +256,7 @@
     },
     {
       "path": "schemas/dev_stream_event.v1.schema.json",
-      "sha256": "eeb3461c25d455140d30e7a779e1480ddd2773fdec29f67b8d053ae4b2cdcc6f"
+      "sha256": "694eeacf026c3c6abe6363625d1188fa59c3b1d194713acd8754babeeaa0dfad"
     },
     {
       "path": "schemas/dev_tool_request.v1.schema.json",

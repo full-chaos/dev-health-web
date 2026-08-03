@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-namespace */
-// Generated from full-chaos/dev-health-ops b469dd35caa46c347b120517bb4c779dc129cf91. Do not edit.
+// Generated from full-chaos/dev-health-ops 4838e026e08d20bd62090a85218add2761733edd. Do not edit.
 export namespace DevAnswerContract {
     export type AnswerId = string;
     export type AsOf = string;
@@ -1136,6 +1136,10 @@ export namespace DevAnswerContract {
     export type ConversationId = string;
     export type AsOf1 = string;
     export type AvailableSourceCount = number;
+    /**
+     * @maxItems 25
+     */
+    export type DegradedRequiredSources = string[];
     export type RequiredSourceCount = number;
     /**
      * @maxItems 25
@@ -2509,6 +2513,7 @@ export namespace DevAnswerContract {
     export interface DevCoverage {
         as_of: AsOf1;
         available_source_count: AvailableSourceCount;
+        degraded_required_sources?: DegradedRequiredSources;
         required_source_count: RequiredSourceCount;
         stale_required_sources?: StaleRequiredSources;
         unavailable_required_sources?: UnavailableRequiredSources;
@@ -4953,6 +4958,10 @@ export namespace DevConversationTranscriptContract {
     export type ConversationId1 = string;
     export type AsOf1 = string;
     export type AvailableSourceCount = number;
+    /**
+     * @maxItems 25
+     */
+    export type DegradedRequiredSources = string[];
     export type RequiredSourceCount = number;
     /**
      * @maxItems 25
@@ -6377,6 +6386,7 @@ export namespace DevConversationTranscriptContract {
     export interface DevCoverage {
         as_of: AsOf1;
         available_source_count: AvailableSourceCount;
+        degraded_required_sources?: DegradedRequiredSources;
         required_source_count: RequiredSourceCount;
         stale_required_sources?: StaleRequiredSources;
         unavailable_required_sources?: UnavailableRequiredSources;
@@ -13781,6 +13791,10 @@ export namespace DevStreamEventContract {
     export type ConversationId = string;
     export type AsOf1 = string;
     export type AvailableSourceCount = number;
+    /**
+     * @maxItems 25
+     */
+    export type DegradedRequiredSources = string[];
     export type RequiredSourceCount = number;
     /**
      * @maxItems 25
@@ -15232,6 +15246,7 @@ export namespace DevStreamEventContract {
     export interface DevCoverage {
         as_of: AsOf1;
         available_source_count: AvailableSourceCount;
+        degraded_required_sources?: DegradedRequiredSources;
         required_source_count: RequiredSourceCount;
         stale_required_sources?: StaleRequiredSources;
         unavailable_required_sources?: UnavailableRequiredSources;
