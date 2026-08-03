@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
+import type { DevProgressState } from "@/lib/dev/client";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 import { formatDateUTC } from "@/lib/formatters";
@@ -35,7 +36,19 @@ function platformAllowanceGuidance(
     return `Retrying before ${resetLabel} will not help. New platform-backed runs resume at that reset.`;
 }
 
-const PROGRESS_LABELS: Record<string, string> = {
+/**
+ * Sanctioned copy for every pinned progress phase, TOTAL over
+ * `DevProgressState`.
+ *
+ * The `?? "Investigating"` fallback below is not a compatibility path: every
+ * stream event is validated against the pinned schema in client.ts
+ * (`assertStreamEvent`) before it reaches this state, so a phase the pin does
+ * not know is rejected at the boundary and never renders. Totality here is
+ * what keeps the fallback genuinely unreachable — while this was
+ * `Record<string, string>`, a re-pin could add a phase that quietly rendered
+ * as the generic label instead of failing anything.
+ */
+export const PROGRESS_LABELS: Record<DevProgressState, string> = {
     resolving_scope: "Resolving the committed scope",
     checking_status: "Checking current status",
     querying_metrics: "Querying registered metrics",

@@ -3,11 +3,14 @@ import path from "node:path";
 
 import { expect, test } from "@playwright/test";
 
+import * as askDevContracts from "./fixtures/askDevContracts";
 import {
     ANSWER_STATUS_VALUES,
     assertExhaustivePartition,
     assertKnownToSchema,
+    assertVocabularyIsExhaustive,
     SCOPE_RESOLUTION_OUTCOME_VALUES,
+    VOCABULARY_COUNT,
 } from "./fixtures/askDevContracts";
 import { ASK_DEV_OUTCOME_TABLE } from "./fixtures/askDevOutcomes";
 
@@ -56,6 +59,35 @@ function exportedLabelMapKeys(sourceText: string, exportName: string): readonly 
 //
 // No page/server interaction here — pure data assertions, safe to run
 // standalone.
+
+test.describe("Ask Dev — declared unions vs. pinned contract vocabulary", () => {
+    // askDevContracts.ts casts each schema-extracted array to its declared
+    // union without TypeScript checking the cast. CHAOS-3298's re-pin added
+    // "provider_contract_violation" to DevErrorCode and
+    // "interpreting"/"resolving_subjects" to DevTranscriptRunState; before
+    // this check existed, the casts absorbed all three silently.
+    test("every declared union names exactly what the pinned schema enum contains", () => {
+        expect(() => assertVocabularyIsExhaustive()).not.toThrow();
+    });
+
+    // Guards the table `assertVocabularyIsExhaustive` walks: a new vocabulary
+    // exported from askDevContracts.ts but left out of VOCABULARIES would
+    // otherwise be checked by nothing at all. The expected count is read off
+    // the module's real exports rather than a second hand-kept list here —
+    // a list maintained beside the one it checks would agree with itself.
+    test("every exported vocabulary is enrolled in the exhaustiveness table", () => {
+        const exportedVocabularies = Object.entries(askDevContracts).filter(
+            ([, value]) =>
+                Array.isArray(value) &&
+                value.length > 0 &&
+                value.every((member) => typeof member === "string"),
+        );
+        expect(
+            exportedVocabularies.map(([name]) => name).sort(),
+            "askDevContracts.ts exports a string-array vocabulary that VOCABULARIES does not enroll",
+        ).toHaveLength(VOCABULARY_COUNT);
+    });
+});
 
 test.describe("Ask Dev — outcome table vs. pinned contract vocabulary", () => {
     test("every ASK_DEV_OUTCOME_TABLE status is a real, pinned AnswerStatus value", () => {

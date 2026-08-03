@@ -13,7 +13,12 @@ import {
     BYO_LLM_FEATURE,
     devCapabilitiesFromEntitlements,
 } from "../entitlements";
-import { validateAskDevSemanticInvariants, validateAskDevStream } from "../contractValidation";
+import {
+    SCOPE_OUTCOMES_REQUIRING_RESOLVED_SCOPE,
+    SCOPE_OUTCOMES_WITHOUT_RESOLVED_SCOPE,
+    validateAskDevSemanticInvariants,
+    validateAskDevStream,
+} from "../contractValidation";
 
 type ManifestCase = Readonly<{ case: string; path: string; sha256: string }>;
 type ManifestContract = Readonly<{
@@ -69,7 +74,7 @@ describe("Ask Dev generated contract boundary", () => {
         const source = readJson<SourceManifest>("source.json");
         const manifest = readJson<OpsManifest>("manifest.json");
 
-        expect(source.source_commit).toBe("f8f541c35f971b19e26ce8c14f9b52d0801cc8df");
+        expect(source.source_commit).toBe("b469dd35caa46c347b120517bb4c779dc129cf91");
         expect(manifest.schema_version).toBe("ask_dev_contract_manifest.v1");
         expect(manifest.compatibility).toBe("additive-within-v1");
         expect(manifest.contracts.map((contract) => contract.schema_version)).toEqual(
@@ -105,6 +110,122 @@ describe("Ask Dev generated contract boundary", () => {
             .readdirSync(path.join(CONTRACT_ROOT, "examples/negative"))
             .map((name) => `examples/negative/${name}`);
         expect([...checkedNegativePaths].sort()).toEqual(copiedNegativePaths.sort());
+    });
+
+    // The pinned manifest only carries a dangling-evidence negative for
+    // `status_facts`. The ops rule (DevToolResult.validate_evidence_closure)
+    // covers six fact arrays plus three slots hanging off `actual_completion`,
+    // so each of those cells is planted separately rather than inferred from the
+    // one fixture ops happens to ship — a single combined case would die on the
+    // first cell and leave the rest unproven.
+    const DANGLING_CITATION = { evidence_ref_ids: ["ev_not_in_evidence_array"] } as const;
+    const CITING_SLOTS: readonly (readonly [string, Record<string, unknown>])[] = [
+        ["status_facts", { status_facts: [DANGLING_CITATION] }],
+        ["graph_edges", { graph_edges: [DANGLING_CITATION] }],
+        ["pull_requests", { pull_requests: [DANGLING_CITATION] }],
+        ["ci_checks", { ci_checks: [DANGLING_CITATION] }],
+        ["deployments", { deployments: [DANGLING_CITATION] }],
+        ["incidents", { incidents: [DANGLING_CITATION] }],
+        ["actual_completion", { actual_completion: { ...DANGLING_CITATION } }],
+        [
+            "actual_completion.required_children",
+            { actual_completion: { required_children: [DANGLING_CITATION] } },
+        ],
+        ["actual_completion.conflicts", { actual_completion: { conflicts: [DANGLING_CITATION] } }],
+    ];
+
+    it("accepts the unmodified tool-result golden", () => {
+        expect(
+            validateAskDevSemanticInvariants(readJson("examples/positive/dev_tool_result.v1.json")),
+        ).toBe(true);
+    });
+
+    it.each(CITING_SLOTS)("rejects a dangling evidence reference from %s", (_slot, plant) => {
+        const golden = readJson<Record<string, unknown>>(
+            "examples/positive/dev_tool_result.v1.json",
+        );
+        expect(validateAskDevSemanticInvariants({ ...golden, ...plant })).toBe(false);
+    });
+
+    // CHAOS-3298's re-pin admitted `team` to DirectScope/EntityType (ops
+    // CHAOS-3301). Ops ships no team-scope golden in either contract tree, so
+    // the base below is derived from the canonical repository-scope golden
+    // rather than emitted by a fixture producer. It was checked against the
+    // real producer before being written down: ops' own DevScope model
+    // accepts this exact object, and its `validate_direct_scope` rejects
+    // every mutation listed below.
+    const TEAM_ENTITY_REF = {
+        display_label: "Platform team",
+        entity_id: "team_platform",
+        entity_type: "team",
+        repository_id: null,
+    } as const;
+    function teamScopeGolden(): Record<string, unknown> {
+        return {
+            ...readJson<Record<string, unknown>>("examples/positive/dev_scope.v1.json"),
+            direct_scope: "team",
+            entity_refs: [TEAM_ENTITY_REF],
+            // A team direct scope carries no repository list of its own and
+            // asserts no page surface context — both are ops invariants, not
+            // conveniences of this fixture.
+            repositories: [],
+            team_ids: ["team_platform"],
+            surface_context: null,
+        };
+    }
+    const REJECTED_TEAM_SCOPES: readonly (readonly [string, Record<string, unknown>])[] = [
+        ["team_ids empty", { team_ids: [] }],
+        ["team_ids names another team", { team_ids: ["team_other"] }],
+        ["team_ids carries an extra team", { team_ids: ["team_platform", "team_other"] }],
+        ["repositories non-empty", { repositories: ["repo_dev_health"] }],
+        [
+            "entity_type is not team",
+            { entity_refs: [{ ...TEAM_ENTITY_REF, entity_type: "project" }] },
+        ],
+        ["two entity_refs", { entity_refs: [TEAM_ENTITY_REF, TEAM_ENTITY_REF] }],
+        [
+            "surface context asserts a team entity",
+            {
+                surface_context: {
+                    entity_refs: [TEAM_ENTITY_REF],
+                    filter_fingerprint: "filters_01",
+                    route_id: "diagnose_overview",
+                },
+            },
+        ],
+    ];
+
+    it("accepts a well-formed team direct scope", () => {
+        expect(validateAskDevSemanticInvariants(teamScopeGolden())).toBe(true);
+    });
+
+    it.each(REJECTED_TEAM_SCOPES)("rejects a team direct scope whose %s", (_case, mutation) => {
+        expect(validateAskDevSemanticInvariants({ ...teamScopeGolden(), ...mutation })).toBe(false);
+    });
+
+    // The resolved/unresolved split is a hand-kept subset of a pinned enum,
+    // and it fails OPEN: an outcome that ops treats as resolved but that is
+    // missing from both sets here would let web accept a resolution ops
+    // rejects. Read the enum out of the schema rather than restating it, so a
+    // re-pin that adds a member lands in neither set and fails this.
+    it("partitions every pinned ScopeResolutionOutcome into resolved or unresolved", () => {
+        const schema = readJson<Record<string, Record<string, { enum?: string[] }>>>(
+            "schemas/dev_scope_resolution.v1.schema.json",
+        );
+        const pinned = schema.$defs?.ScopeResolutionOutcome?.enum;
+        // A silently-absent enum would make every assertion below vacuous.
+        expect(Array.isArray(pinned) && pinned.length > 0).toBe(true);
+
+        const overlap = [...SCOPE_OUTCOMES_REQUIRING_RESOLVED_SCOPE].filter((value) =>
+            SCOPE_OUTCOMES_WITHOUT_RESOLVED_SCOPE.has(value),
+        );
+        expect(overlap, "an outcome cannot be both resolved and unresolved").toEqual([]);
+
+        const partition = [
+            ...SCOPE_OUTCOMES_REQUIRING_RESOLVED_SCOPE,
+            ...SCOPE_OUTCOMES_WITHOUT_RESOLVED_SCOPE,
+        ].sort();
+        expect(partition).toEqual([...pinned!].sort());
     });
 
     it("validates every manifest stream sequence and exactly one terminal", () => {

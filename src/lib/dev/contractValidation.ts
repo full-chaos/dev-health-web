@@ -86,6 +86,7 @@ function validateScope(scope: JsonRecord): boolean {
         work_unit: "work_unit",
         issue: "issue",
         pull_request: "pull_request",
+        team: "team",
     };
     if (
         typeof directScope === "string" &&
@@ -93,6 +94,17 @@ function validateScope(scope: JsonRecord): boolean {
         (entityRefs.length !== 1 || entityRefs[0]?.entity_type !== expectedEntityType[directScope])
     ) {
         return false;
+    }
+    if (directScope === "team") {
+        // CHAOS-3301: a team *subject* and the pre-existing team_ids *filter*
+        // stay structurally separate. team_ids must name exactly the one
+        // committed team, and a team scope carries no repository list of its
+        // own — team-to-repository attribution is re-derived server-side, so
+        // a foreign `repositories` list here would otherwise be consumed by
+        // the status source seam rather than rejected.
+        const teamIdList = teamIds as unknown[];
+        if (teamIdList.length !== 1 || teamIdList[0] !== entityRefs[0]?.entity_id) return false;
+        if ((repositories as unknown[]).length > 0) return false;
     }
     if (!validateSurfaceContext(scope, entityRefs)) return false;
 
@@ -107,11 +119,32 @@ function validateScope(scope: JsonRecord): boolean {
     return true;
 }
 
+/**
+ * Outcomes that ops requires a `resolved_scope` for, mirroring
+ * `DevScopeResolution.validate_outcome`. This one is exported because it
+ * fails OPEN on drift: a new "resolved" outcome missing from this set makes
+ * web accept a resolution ops would reject, silently. The pinned enum's
+ * remaining members are the unresolved side of the partition, and
+ * `contracts.test.ts` holds the two against the schema.
+ */
+export const SCOPE_OUTCOMES_REQUIRING_RESOLVED_SCOPE: ReadonlySet<string> = new Set([
+    "exact",
+    "filtered",
+    "inherited",
+    "organization_fallback",
+]);
+
+export const SCOPE_OUTCOMES_WITHOUT_RESOLVED_SCOPE: ReadonlySet<string> = new Set([
+    "ambiguous",
+    "unresolved",
+    "forbidden_or_not_found",
+]);
+
 function validateScopeResolution(resolution: JsonRecord): boolean {
     const outcome = resolution.outcome;
     const candidates = asRecords(resolution.candidates);
     const resolvedScope = resolution.resolved_scope;
-    const resolvedOutcomes = new Set(["exact", "filtered", "inherited", "organization_fallback"]);
+    const resolvedOutcomes = SCOPE_OUTCOMES_REQUIRING_RESOLVED_SCOPE;
     if (typeof outcome === "string" && resolvedOutcomes.has(outcome) && !isRecord(resolvedScope)) {
         return false;
     }
@@ -174,6 +207,29 @@ function validateAnswer(answer: JsonRecord): boolean {
         );
     }
     return true;
+}
+
+function validateToolResult(result: JsonRecord): boolean {
+    if (result.status === "error" ? !isRecord(result.error) : result.error != null) return false;
+
+    const knownEvidence = new Set(asRecords(result.evidence).map((item) => item.evidence_ref_id));
+    const citing = [
+        ...asRecords(result.status_facts),
+        ...asRecords(result.graph_edges),
+        ...asRecords(result.pull_requests),
+        ...asRecords(result.ci_checks),
+        ...asRecords(result.deployments),
+        ...asRecords(result.incidents),
+    ];
+    const completion = result.actual_completion;
+    if (isRecord(completion)) {
+        citing.push(
+            completion,
+            ...asRecords(completion.required_children),
+            ...asRecords(completion.conflicts),
+        );
+    }
+    return citing.every((fact) => referencesOnlyKnown(fact.evidence_ref_ids ?? [], knownEvidence));
 }
 
 function validateStreamEvent(event: JsonRecord): boolean {
@@ -269,7 +325,7 @@ function validateOneSemanticObject(value: JsonRecord): boolean {
                     ).byteLength
             );
         case "dev_tool_result.v1":
-            return value.status === "error" ? isRecord(value.error) : value.error == null;
+            return validateToolResult(value);
         case "dev_stream_event.v1":
             return validateStreamEvent(value);
         case "dev_transcript_entry.v1":

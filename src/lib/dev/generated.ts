@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-namespace */
-// Generated from full-chaos/dev-health-ops f8f541c35f971b19e26ce8c14f9b52d0801cc8df. Do not edit.
+// Generated from full-chaos/dev-health-ops b469dd35caa46c347b120517bb4c779dc129cf91. Do not edit.
 export namespace DevAnswerContract {
     export type AnswerId = string;
     export type AsOf = string;
@@ -51,7 +51,7 @@ export namespace DevAnswerContract {
     export type Start = string;
     export type Timezone = string;
     export type DirectScope =
-        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request";
+        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     /**
      * @maxItems 20
      */
@@ -282,7 +282,8 @@ export namespace DevAnswerContract {
           ];
     export type DisplayLabel = string;
     export type EntityId = string;
-    export type EntityType = "repository" | "project" | "work_unit" | "issue" | "pull_request";
+    export type EntityType =
+        "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     export type RepositoryId = string | null;
     export type OrganizationId = string;
     /**
@@ -2909,7 +2910,7 @@ export namespace DevClaimContract {
     export type Start = string;
     export type Timezone = string;
     export type DirectScope =
-        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request";
+        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     /**
      * @maxItems 20
      */
@@ -3140,7 +3141,8 @@ export namespace DevClaimContract {
           ];
     export type DisplayLabel = string;
     export type EntityId = string;
-    export type EntityType = "repository" | "project" | "work_unit" | "issue" | "pull_request";
+    export type EntityType =
+        "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     export type RepositoryId = string | null;
     export type OrganizationId = string;
     /**
@@ -3794,7 +3796,7 @@ export type DevClaim = DevClaimContract.DevClaim;
 export namespace DevConversationSummaryContract {
     export type ConversationId = string;
     export type DirectScope =
-        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request";
+        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     export type ExpiresAt = string | null;
     export type MessageCount = number;
     export type SchemaVersion = "dev_conversation_summary.v1";
@@ -3866,7 +3868,7 @@ export namespace DevConversationTranscriptContract {
     export type Start = string;
     export type Timezone = string;
     export type DirectScope =
-        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request";
+        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     /**
      * @maxItems 20
      */
@@ -4097,7 +4099,8 @@ export namespace DevConversationTranscriptContract {
           ];
     export type DisplayLabel = string;
     export type EntityId = string;
-    export type EntityType = "repository" | "project" | "work_unit" | "issue" | "pull_request";
+    export type EntityType =
+        "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     export type RepositoryId = string | null;
     export type OrganizationId = string;
     /**
@@ -6260,6 +6263,8 @@ export namespace DevConversationTranscriptContract {
     export type RunState =
         | "accepted"
         | "resolving_scope"
+        | "interpreting"
+        | "resolving_subjects"
         | "model_decision"
         | "tool_validation"
         | "tool_execution"
@@ -6470,7 +6475,7 @@ export namespace DevConversationContract {
     export type Start = string;
     export type Timezone = string;
     export type DirectScope =
-        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request";
+        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     /**
      * @maxItems 20
      */
@@ -6701,7 +6706,8 @@ export namespace DevConversationContract {
           ];
     export type DisplayLabel = string;
     export type EntityId = string;
-    export type EntityType = "repository" | "project" | "work_unit" | "issue" | "pull_request";
+    export type EntityType =
+        "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     export type RepositoryId = string | null;
     export type OrganizationId = string;
     /**
@@ -7379,6 +7385,7 @@ export namespace DevErrorContract {
         | "insufficient_evidence"
         | "answer_validation_failed"
         | "cancelled"
+        | "provider_contract_violation"
         | "internal_error";
     export type LimitResetAt = string | null;
     /**
@@ -8482,7 +8489,7 @@ export namespace DevMessageRequestContract {
     export type Start = string;
     export type Timezone = string;
     export type DirectScope =
-        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request";
+        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     /**
      * @maxItems 20
      */
@@ -8713,7 +8720,8 @@ export namespace DevMessageRequestContract {
           ];
     export type DisplayLabel = string;
     export type EntityId = string;
-    export type EntityType = "repository" | "project" | "work_unit" | "issue" | "pull_request";
+    export type EntityType =
+        "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     export type RepositoryId = string | null;
     export type OrganizationId = string;
     /**
@@ -9414,7 +9422,7 @@ export namespace DevMetricRefContract {
     export type MetricRefId = string;
     export type QueryVersion = string;
     export type DirectScope =
-        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request";
+        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     /**
      * @maxItems 20
      */
@@ -9645,7 +9653,8 @@ export namespace DevMetricRefContract {
           ];
     export type DisplayLabel = string;
     export type EntityId = string;
-    export type EntityType = "repository" | "project" | "work_unit" | "issue" | "pull_request";
+    export type EntityType =
+        "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     export type RepositoryId = string | null;
     export type OrganizationId = string;
     /**
@@ -10673,7 +10682,8 @@ export namespace DevScopeResolutionContract {
           ];
     export type DisplayLabel = string;
     export type EntityId = string;
-    export type EntityType = "repository" | "project" | "work_unit" | "issue" | "pull_request";
+    export type EntityType =
+        "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     export type RepositoryId = string | null;
     export type Reason = string;
     export type RepositoryId1 = string | null;
@@ -10708,7 +10718,7 @@ export namespace DevScopeResolutionContract {
     export type Start = string;
     export type Timezone = string;
     export type DirectScope =
-        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request";
+        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     /**
      * @maxItems 20
      */
@@ -11770,7 +11780,7 @@ export namespace DevScopeContract {
     export type Start = string;
     export type Timezone = string;
     export type DirectScope =
-        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request";
+        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     /**
      * @maxItems 20
      */
@@ -12001,7 +12011,8 @@ export namespace DevScopeContract {
           ];
     export type DisplayLabel = string;
     export type EntityId = string;
-    export type EntityType = "repository" | "project" | "work_unit" | "issue" | "pull_request";
+    export type EntityType =
+        "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     export type RepositoryId = string | null;
     export type OrganizationId = string;
     /**
@@ -12685,7 +12696,7 @@ export namespace DevStreamEventContract {
     export type Start = string;
     export type Timezone = string;
     export type DirectScope =
-        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request";
+        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     /**
      * @maxItems 20
      */
@@ -12916,7 +12927,8 @@ export namespace DevStreamEventContract {
           ];
     export type DisplayLabel = string;
     export type EntityId = string;
-    export type EntityType = "repository" | "project" | "work_unit" | "issue" | "pull_request";
+    export type EntityType =
+        "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     export type RepositoryId = string | null;
     export type OrganizationId = string;
     /**
@@ -15094,6 +15106,7 @@ export namespace DevStreamEventContract {
         | "insufficient_evidence"
         | "answer_validation_failed"
         | "cancelled"
+        | "provider_contract_violation"
         | "internal_error";
     export type LimitResetAt = string | null;
     /**
@@ -15342,7 +15355,7 @@ export namespace DevToolRequestContract {
     export type Start = string;
     export type Timezone = string;
     export type DirectScope =
-        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request";
+        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     /**
      * @maxItems 20
      */
@@ -15573,7 +15586,8 @@ export namespace DevToolRequestContract {
           ];
     export type DisplayLabel = string;
     export type EntityId = string;
-    export type EntityType = "repository" | "project" | "work_unit" | "issue" | "pull_request";
+    export type EntityType =
+        "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     export type RepositoryId = string | null;
     export type OrganizationId = string;
     /**
@@ -16230,6 +16244,293 @@ export namespace DevToolRequestContract {
 }
 export type DevToolRequest = DevToolRequestContract.DevToolRequest;
 export namespace DevToolResultContract {
+    /**
+     * @maxItems 20
+     */
+    export type Conflicts =
+        | []
+        | [DevStatusConflict]
+        | [DevStatusConflict, DevStatusConflict]
+        | [DevStatusConflict, DevStatusConflict, DevStatusConflict]
+        | [DevStatusConflict, DevStatusConflict, DevStatusConflict, DevStatusConflict]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ]
+        | [
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+              DevStatusConflict,
+          ];
+    export type Code = string;
+    /**
+     * @maxItems 25
+     */
+    export type EvidenceRefIds = string[];
+    export type Message = string;
+    export type Severity = "warning" | "blocking";
+    export type DisplayTruncated = boolean;
+    /**
+     * @maxItems 25
+     */
+    export type EvidenceRefIds1 = string[];
+    /**
+     * @maxItems 25
+     */
+    export type ReasonCodes = string[];
+    export type RequiredChildComplete = number | null;
+    export type RequiredChildTotal = number | null;
+    /**
+     * @maxItems 25
+     */
+    export type EvidenceRefIds2 = string[];
+    export type FactId = string;
+    export type Status = string;
+    export type Text = string;
+    /**
+     * @maxItems 100
+     */
+    export type RequiredChildren = DevRequiredChildFact[];
+    export type RuleId = string;
+    export type RuleVersion = string;
+    export type State = "ready" | "not_ready" | "indeterminate";
+    export type Conclusion = string;
+    export type DisplayLabel = string;
+    export type EntityId = string;
+    /**
+     * @maxItems 25
+     */
+    export type EvidenceRefIds3 = string[];
+    export type ObservedAt = string;
+    export type Required = boolean | null;
+    export type SkippedRequiredWork = boolean | null;
+    /**
+     * @maxItems 100
+     */
+    export type CiChecks = DevCIFact[];
     export type Coverage = number;
     export type FreshnessState = "fresh" | "stale" | "unavailable" | "unknown";
     export type LastSuccessfulAt = string | null;
@@ -16239,7 +16540,21 @@ export namespace DevToolResultContract {
      * @maxItems 25
      */
     export type DataHealth = DevDataHealth[];
-    export type Code =
+    export type DisplayLabel1 = string;
+    export type EntityId1 = string;
+    export type Environment = string | null;
+    /**
+     * @maxItems 25
+     */
+    export type EvidenceRefIds4 = string[];
+    export type ObservedAt1 = string;
+    export type Required1 = boolean;
+    export type Status1 = string;
+    /**
+     * @maxItems 100
+     */
+    export type Deployments = DevDeploymentFact[];
+    export type Code1 =
         | "unauthenticated"
         | "forbidden"
         | "feature_not_enabled"
@@ -16262,6 +16577,7 @@ export namespace DevToolResultContract {
         | "insufficient_evidence"
         | "answer_validation_failed"
         | "cancelled"
+        | "provider_contract_violation"
         | "internal_error";
     export type LimitResetAt = string | null;
     /**
@@ -16280,8 +16596,8 @@ export namespace DevToolResultContract {
     export type SchemaVersion = "dev_error.v1";
     export type CitationText = string | null;
     export type Confidence = number;
-    export type DisplayLabel = string;
-    export type EntityId = string;
+    export type DisplayLabel2 = string;
+    export type EntityId2 = string;
     export type EntityType = string;
     export type EvidenceRefId = string;
     export type Conflicting = boolean;
@@ -16293,7 +16609,7 @@ export namespace DevToolResultContract {
     export type UntrustedContent = boolean;
     export type InternalPath = string | null;
     export type SourceUrl = string | null;
-    export type ObservedAt = string;
+    export type ObservedAt2 = string;
     export type Provenance = string;
     /**
      * @maxItems 20
@@ -16658,10 +16974,13 @@ export namespace DevToolResultContract {
      * @maxItems 25
      */
     export type Evidence = DevEvidenceRef[];
+    export type Confidence1 = number;
     /**
      * @maxItems 25
      */
-    export type EvidenceRefIds = string[];
+    export type EvidenceRefIds5 = string[];
+    export type ObservedAt3 = string;
+    export type Provenance1 = string;
     export type Relationship = string;
     export type SourceEntityId = string;
     export type TargetEntityId = string;
@@ -16669,6 +16988,20 @@ export namespace DevToolResultContract {
      * @maxItems 100
      */
     export type GraphEdges = DevGraphEdge[];
+    export type Active = boolean;
+    export type Blocking = boolean;
+    export type DisplayLabel3 = string;
+    export type EntityId3 = string;
+    /**
+     * @maxItems 25
+     */
+    export type EvidenceRefIds6 = string[];
+    export type ObservedAt4 = string;
+    export type Status2 = string;
+    /**
+     * @maxItems 100
+     */
+    export type Incidents = DevIncidentFact[];
     /**
      * @maxItems 12
      */
@@ -16836,7 +17169,7 @@ export namespace DevToolResultContract {
               DirectScope,
           ];
     export type DirectScope =
-        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request";
+        "organization" | "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     /**
      * @maxItems 12
      */
@@ -16989,7 +17322,7 @@ export namespace DevToolResultContract {
     /**
      * @maxItems 25
      */
-    export type EvidenceRefIds1 = string[];
+    export type EvidenceRefIds7 = string[];
     export type Label1 = string;
     export type MetricRefId = string;
     export type QueryVersion = string;
@@ -17221,9 +17554,10 @@ export namespace DevToolResultContract {
               DevEntityRef,
               DevEntityRef,
           ];
-    export type DisplayLabel1 = string;
-    export type EntityId1 = string;
-    export type EntityType1 = "repository" | "project" | "work_unit" | "issue" | "pull_request";
+    export type DisplayLabel4 = string;
+    export type EntityId4 = string;
+    export type EntityType1 =
+        "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
     export type RepositoryId = string | null;
     export type OrganizationId = string;
     /**
@@ -17836,6 +18170,22 @@ export namespace DevToolResultContract {
     export type SourceVersion1 = string;
     export type Unit1 = string;
     export type Value1 = number | null;
+    export type ChangesRequested = number;
+    export type DisplayLabel5 = string;
+    export type EntityId5 = string;
+    /**
+     * @maxItems 25
+     */
+    export type EvidenceRefIds8 = string[];
+    export type Merged = boolean;
+    export type ObservedAt5 = string;
+    export type Required2 = boolean;
+    export type ReviewState = string | null;
+    export type State1 = string;
+    /**
+     * @maxItems 100
+     */
+    export type PullRequests = DevPullRequestFact[];
     export type RunId = string;
     export type SchemaVersion4 = "dev_tool_result.v1";
     /**
@@ -18404,14 +18754,21 @@ export namespace DevToolResultContract {
               string,
           ];
     export type SerializedBytes = number;
-    export type Status = "success" | "partial" | "unavailable" | "error";
+    export type RefId = string;
+    export type SourceSystem2 = string;
+    export type Watermark = string | null;
+    /**
+     * @maxItems 25
+     */
+    export type SourceHealth = DevSourceHealth[];
+    export type Status3 = "success" | "partial" | "unavailable" | "error";
     /**
      * @minItems 1
      * @maxItems 25
      */
-    export type EvidenceRefIds2 = [string, ...string[]];
-    export type FactId = string;
-    export type Text = string;
+    export type EvidenceRefIds9 = [string, ...string[]];
+    export type FactId1 = string;
+    export type Text1 = string;
     /**
      * @maxItems 100
      */
@@ -18607,21 +18964,63 @@ export namespace DevToolResultContract {
           ];
 
     export interface DevToolResult {
+        actual_completion?: DevActualCompletion | null;
+        ci_checks?: CiChecks;
         data_health?: DataHealth;
+        deployments?: Deployments;
         error?: DevError | null;
         evidence?: Evidence;
         graph_edges?: GraphEdges;
+        incidents?: Incidents;
         metric_definitions?: MetricDefinitions;
         metrics?: Metrics;
+        pull_requests?: PullRequests;
         run_id: RunId;
         schema_version: SchemaVersion4;
         scope_resolution?: DevScopeResolution | null;
         serialized_bytes: SerializedBytes;
-        status: Status;
+        source_health?: SourceHealth;
+        status: Status3;
         status_facts?: StatusFacts;
         tool_call_id: ToolCallId;
         tool_id: ToolID;
         warnings?: Warnings1;
+    }
+    /**
+     * Server-computed ``actual-completion`` rule result; the LLM explains, never derives, it.
+     */
+    export interface DevActualCompletion {
+        conflicts?: Conflicts;
+        display_truncated?: DisplayTruncated;
+        evidence_ref_ids?: EvidenceRefIds1;
+        reason_codes?: ReasonCodes;
+        required_child_complete?: RequiredChildComplete;
+        required_child_total?: RequiredChildTotal;
+        required_children?: RequiredChildren;
+        rule_id: RuleId;
+        rule_version: RuleVersion;
+        state: State;
+    }
+    export interface DevStatusConflict {
+        code: Code;
+        evidence_ref_ids?: EvidenceRefIds;
+        message: Message;
+        severity: Severity;
+    }
+    export interface DevRequiredChildFact {
+        evidence_ref_ids?: EvidenceRefIds2;
+        fact_id: FactId;
+        status: Status;
+        text: Text;
+    }
+    export interface DevCIFact {
+        conclusion: Conclusion;
+        display_label: DisplayLabel;
+        entity_id: EntityId;
+        evidence_ref_ids?: EvidenceRefIds3;
+        observed_at: ObservedAt;
+        required?: Required;
+        skipped_required_work?: SkippedRequiredWork;
     }
     export interface DevDataHealth {
         coverage: Coverage;
@@ -18630,8 +19029,17 @@ export namespace DevToolResultContract {
         source_system: SourceSystem;
         warning?: Warning;
     }
+    export interface DevDeploymentFact {
+        display_label: DisplayLabel1;
+        entity_id: EntityId1;
+        environment?: Environment;
+        evidence_ref_ids?: EvidenceRefIds4;
+        observed_at: ObservedAt1;
+        required: Required1;
+        status: Status1;
+    }
     export interface DevError {
-        code: Code;
+        code: Code1;
         limit_reset_at?: LimitResetAt;
         remediation?: Remediation;
         request_id: RequestId;
@@ -18642,14 +19050,14 @@ export namespace DevToolResultContract {
     export interface DevEvidenceRef {
         citation_text?: CitationText;
         confidence: Confidence;
-        display_label: DisplayLabel;
-        entity_id: EntityId;
+        display_label: DisplayLabel2;
+        entity_id: EntityId2;
         entity_type: EntityType;
         evidence_ref_id: EvidenceRefId;
         flags: DevEvidenceFlags;
         freshness: FreshnessState;
         link?: DevCitationLink | null;
-        observed_at: ObservedAt;
+        observed_at: ObservedAt2;
         provenance: Provenance;
         repository_ids?: RepositoryIds;
         schema_version: SchemaVersion1;
@@ -18671,10 +19079,22 @@ export namespace DevToolResultContract {
         source_url?: SourceUrl;
     }
     export interface DevGraphEdge {
-        evidence_ref_ids?: EvidenceRefIds;
+        confidence: Confidence1;
+        evidence_ref_ids?: EvidenceRefIds5;
+        observed_at: ObservedAt3;
+        provenance: Provenance1;
         relationship: Relationship;
         source_entity_id: SourceEntityId;
         target_entity_id: TargetEntityId;
+    }
+    export interface DevIncidentFact {
+        active: Active;
+        blocking: Blocking;
+        display_label: DisplayLabel3;
+        entity_id: EntityId3;
+        evidence_ref_ids?: EvidenceRefIds6;
+        observed_at: ObservedAt4;
+        status: Status2;
     }
     export interface DevMetricDefinition {
         definition_version: DefinitionVersion;
@@ -18696,7 +19116,7 @@ export namespace DevToolResultContract {
         definition_version: DefinitionVersion1;
         dimensions?: Dimensions;
         display_precision: DisplayPrecision;
-        evidence_ref_ids?: EvidenceRefIds1;
+        evidence_ref_ids?: EvidenceRefIds7;
         freshness: FreshnessState;
         label: Label1;
         metric_id: MetricID;
@@ -18726,8 +19146,8 @@ export namespace DevToolResultContract {
         time_range: DevTimeRange;
     }
     export interface DevEntityRef {
-        display_label: DisplayLabel1;
-        entity_id: EntityId1;
+        display_label: DisplayLabel4;
+        entity_id: EntityId4;
         entity_type: EntityType1;
         repository_id?: RepositoryId;
     }
@@ -18739,6 +19159,17 @@ export namespace DevToolResultContract {
     export interface DevMetricPoint {
         timestamp: Timestamp;
         value: Value;
+    }
+    export interface DevPullRequestFact {
+        changes_requested: ChangesRequested;
+        display_label: DisplayLabel5;
+        entity_id: EntityId5;
+        evidence_ref_ids?: EvidenceRefIds8;
+        merged: Merged;
+        observed_at: ObservedAt5;
+        required: Required2;
+        review_state?: ReviewState;
+        state: State1;
     }
     export interface DevScopeResolution {
         authorized_entity_ids?: AuthorizedEntityIds;
@@ -18757,10 +19188,16 @@ export namespace DevToolResultContract {
         reason: Reason;
         repository_id?: RepositoryId1;
     }
+    export interface DevSourceHealth {
+        freshness: FreshnessState;
+        ref_id: RefId;
+        source_system: SourceSystem2;
+        watermark?: Watermark;
+    }
     export interface DevStatusFact {
-        evidence_ref_ids: EvidenceRefIds2;
-        fact_id: FactId;
-        text: Text;
+        evidence_ref_ids: EvidenceRefIds9;
+        fact_id: FactId1;
+        text: Text1;
     }
 }
 export type DevToolResult = DevToolResultContract.DevToolResult;

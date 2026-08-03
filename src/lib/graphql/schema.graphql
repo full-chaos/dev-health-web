@@ -710,6 +710,9 @@ type DevActualCompletion {
   ruleVersion: String!
   reasonCodes: [String!]!
   requiredChildren: [DevStatusFact!]!
+  requiredChildTotal: Int
+  requiredChildComplete: Int
+  displayTruncated: Boolean!
   conflicts: [DevStatusConflict!]!
   sourceRefIds: [ID!]!
   evidenceRefIds: [ID!]!

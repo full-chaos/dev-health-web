@@ -90,13 +90,14 @@ jobs:
             ASK_DEV_OPS_ROOT: dev-health-ops
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-            # This SHA is on the Ask Dev Wave 3 branch. Publish that ops
-            # branch/PR before opening or updating the dependent web PR.
+            # Must stay equal to SOURCE_COMMIT in scripts/ask-dev-contracts.mjs
+            # (scripts/__tests__/chaos-3017-ci-execution-contract.test.mjs reads
+            # that script and asserts the two match). This SHA is ops main.
             - name: Checkout canonical Ask Dev ops contracts
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
               with:
                   repository: full-chaos/dev-health-ops
-                  ref: f8f541c35f971b19e26ce8c14f9b52d0801cc8df
+                  ref: b469dd35caa46c347b120517bb4c779dc129cf91
                   path: dev-health-ops
                   persist-credentials: false
             - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271

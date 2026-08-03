@@ -32,14 +32,19 @@ import {
 //
 // Wave 3.1's dev_answer.v2 public-outcome taxonomy (answered_with_gaps,
 // needs_clarification, not_found, temporarily_unavailable, unsupported,
-// denied, failed — CHAOS-3294) is NOT yet consumed by this frontend
-// (CHAOS-3298 is still Backlog): the components here still render the prior
-// dev_answer.v1 status enum (complete/partial/degraded/insufficient_
-// evidence/refused/error). This spec exercises every outcome the app can
-// actually reach today, plus the shared request-lifecycle/internal-state-
-// isolation/evidence-hierarchy invariants that do not depend on v2. It
-// intentionally does not fabricate v2-only outcomes against a UI that does
-// not render them — see CHAOS-3298 for that follow-up adoption work.
+// denied, failed — CHAOS-3294) is NOT consumed by this frontend, and
+// CHAOS-3298's contract re-pin did not change that: ops' v2 frame stays
+// server-internal and is projected back down to a v1 answer before it
+// reaches the wire (api/dev/router.py's v2-to-v1 projector), so
+// dev_answer.v1 is still the whole transport contract. The components here
+// render the v1 status enum (complete/partial/degraded/insufficient_
+// evidence/refused/error) because that is what the server actually sends.
+// This spec exercises every outcome the app can reach today, plus the
+// shared request-lifecycle/internal-state-isolation/evidence-hierarchy
+// invariants that do not depend on v2. It intentionally does not fabricate
+// v2-only outcomes against a UI that does not render them and a server that
+// does not emit them — that adoption unblocks when the backend serves v2 on
+// the wire, not when web re-pins.
 
 test.beforeEach(async ({ request }) => {
     await resetAskDevMock(request);

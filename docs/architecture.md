@@ -269,9 +269,15 @@ digests in `src/lib/dev/contracts/source.json`, and generates
 The repositories land in order: first publish the ops foundation branch and
 open/merge its contract PR, then update the full ops commit pinned in both the
 web sync script and `.github/workflows/tests.yml`, and only then open the
-dependent web PR. The pinned commit must be reachable from an ops branch so the
-web quality job can check it out; web CI compares against that checkout rather
-than trusting its vendored `source.json`.
+dependent web PR. Those two must name the same commit — the quality job checks
+ops out at the workflow's ref and then runs a check that refuses any source
+whose HEAD is not exactly the script's `SOURCE_COMMIT` — so
+`scripts/__tests__/chaos-3017-ci-execution-contract.test.mjs` reads the ref out
+of the sync script and asserts the workflow matches, turning a half-finished
+re-pin into a unit-test failure instead of a CI-only one. The pinned commit
+must be reachable from an ops branch so the web quality job can check it out;
+web CI compares against that checkout rather than trusting its vendored
+`source.json`.
 
 After an approved ops contract change, regenerate from a clean sibling checkout:
 

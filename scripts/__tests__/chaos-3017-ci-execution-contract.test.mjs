@@ -16,6 +16,23 @@ import {
 
 const TESTS_WORKFLOW = path.join(ROOT, ".github/workflows/tests.yml");
 const PACKAGE_JSON = path.join(ROOT, "package.json");
+const ASK_DEV_CONTRACTS_SCRIPT = path.join(ROOT, "scripts/ask-dev-contracts.mjs");
+
+/**
+ * The ops commit the Ask Dev contracts are pinned to, read from the sync
+ * script that owns it rather than transcribed here. The quality job checks
+ * out ops at this ref and then runs `ask-dev:contracts:check`, which refuses
+ * any source whose HEAD is not exactly SOURCE_COMMIT — so a re-pin that
+ * moved one and not the other would fail in CI only. Deriving it means the
+ * workflow and the script cannot disagree in the first place.
+ */
+function pinnedOpsCommit() {
+    const match = /^const SOURCE_COMMIT = "([0-9a-f]{40})";$/mu.exec(
+        contents(ASK_DEV_CONTRACTS_SCRIPT),
+    );
+    if (!match) throw new Error("Could not read SOURCE_COMMIT from scripts/ask-dev-contracts.mjs.");
+    return match[1];
+}
 const GENERAL_TIERS = [
     {
         commands: ["format:check:changed"],
@@ -142,7 +159,7 @@ describe("CHAOS-3017 executable CI boundaries", () => {
                     "        env:\n            ASK_DEV_OPS_ROOT: dev-health-ops",
                 );
                 expect(workflowJob).toContain("repository: full-chaos/dev-health-ops");
-                expect(workflowJob).toContain("ref: f8f541c35f971b19e26ce8c14f9b52d0801cc8df");
+                expect(workflowJob).toContain(`ref: ${pinnedOpsCommit()}`);
                 expect(workflowJob).toContain("path: dev-health-ops");
             }
             for (const [name, implementation] of Object.entries(packageScripts)) {
