@@ -9,9 +9,12 @@
  * of this file included "interpreting"/"resolving_subjects" in
  * DEV_TRANSCRIPT_RUN_STATE_VALUES and "provider_contract_violation" in
  * DEV_ERROR_CODES — both present in ops' *live* contracts.py source but
- * NOT in what's actually pinned here, which is what the running app
- * really validates against). Extracting from the schema files themselves
- * makes that class of drift impossible to reintroduce.
+ * NOT in what was pinned at the time, which is what the running app
+ * really validates against; CHAOS-3298's re-pin then brought all three
+ * into the pinned schemas, and `assertVocabularyIsExhaustive` below is
+ * what forced them back into the declared unions rather than leaving the
+ * casts quietly lying). Extracting from the schema files themselves makes
+ * that class of drift impossible to reintroduce.
  *
  * tests/mocks/devScenario.ts and this file's own self-check
  * (assertVocabularyIsExhaustive, exercised by
@@ -70,14 +73,42 @@ function extractEnum(schema: JsonSchema, ...path: readonly string[]): readonly s
     return values as readonly string[];
 }
 
+/**
+ * Each vocabulary below declares its members twice on purpose: a `const`
+ * tuple (the compile-time union every consumer types against) and a
+ * runtime extraction from the pinned schema. The `as readonly T[]` cast on
+ * the extraction is unchecked by TypeScript, so on its own it would let the
+ * declared union drift silently away from what is really pinned — exactly
+ * the drift the header describes. `assertVocabularyIsExhaustive` closes
+ * that by comparing the two sets, and the spec suite runs it.
+ */
+const DECLARED_ANSWER_STATUS = [
+    "complete",
+    "partial",
+    "degraded",
+    "insufficient_evidence",
+    "refused",
+    "error",
+] as const;
+export type AnswerStatus = (typeof DECLARED_ANSWER_STATUS)[number];
+
 /** Pinned `dev_answer.v1.schema.json` `$defs.AnswerStatus.enum`. */
 export const ANSWER_STATUS_VALUES = extractEnum(
     answerSchema as JsonSchema,
     "$defs",
     "AnswerStatus",
 ) as readonly AnswerStatus[];
-export type AnswerStatus =
-    "complete" | "partial" | "degraded" | "insufficient_evidence" | "refused" | "error";
+
+const DECLARED_SCOPE_RESOLUTION_OUTCOME = [
+    "exact",
+    "filtered",
+    "inherited",
+    "organization_fallback",
+    "ambiguous",
+    "unresolved",
+    "forbidden_or_not_found",
+] as const;
+export type ScopeResolutionOutcome = (typeof DECLARED_SCOPE_RESOLUTION_OUTCOME)[number];
 
 /** Pinned `dev_scope_resolution.v1.schema.json` `properties.outcome` (→ `$defs.ScopeResolutionOutcome.enum`). */
 export const SCOPE_RESOLUTION_OUTCOME_VALUES = extractEnum(
@@ -85,14 +116,36 @@ export const SCOPE_RESOLUTION_OUTCOME_VALUES = extractEnum(
     "properties",
     "outcome",
 ) as readonly ScopeResolutionOutcome[];
-export type ScopeResolutionOutcome =
-    | "exact"
-    | "filtered"
-    | "inherited"
-    | "organization_fallback"
-    | "ambiguous"
-    | "unresolved"
-    | "forbidden_or_not_found";
+
+const DECLARED_DEV_ERROR_CODE = [
+    "unauthenticated",
+    "forbidden",
+    "feature_not_enabled",
+    "byo_llm_not_enabled",
+    "provider_not_configured",
+    "model_not_supported",
+    "provider_unavailable",
+    "rate_limited",
+    "concurrency_limited",
+    "cost_limit_reached",
+    "invalid_request",
+    "scope_ambiguous",
+    "scope_not_found",
+    "scope_forbidden",
+    "conversation_not_found",
+    "conversation_expired",
+    "tool_limit_reached",
+    "tool_unavailable",
+    "source_unavailable",
+    "insufficient_evidence",
+    "answer_validation_failed",
+    "cancelled",
+    // Reached the pinned contract with CHAOS-3298's re-pin; ops added it
+    // when it started enforcing sequential tool decisions.
+    "provider_contract_violation",
+    "internal_error",
+] as const;
+export type DevErrorCode = (typeof DECLARED_DEV_ERROR_CODE)[number];
 
 /** Pinned `dev_error.v1.schema.json` `properties.code.enum`. */
 export const DEV_ERROR_CODES = extractEnum(
@@ -100,30 +153,27 @@ export const DEV_ERROR_CODES = extractEnum(
     "properties",
     "code",
 ) as readonly DevErrorCode[];
-export type DevErrorCode =
-    | "unauthenticated"
-    | "forbidden"
-    | "feature_not_enabled"
-    | "byo_llm_not_enabled"
-    | "provider_not_configured"
-    | "model_not_supported"
-    | "provider_unavailable"
-    | "rate_limited"
-    | "concurrency_limited"
-    | "cost_limit_reached"
-    | "invalid_request"
-    | "scope_ambiguous"
-    | "scope_not_found"
-    | "scope_forbidden"
-    | "conversation_not_found"
-    | "conversation_expired"
-    | "tool_limit_reached"
-    | "tool_unavailable"
-    | "source_unavailable"
-    | "insufficient_evidence"
-    | "answer_validation_failed"
-    | "cancelled"
-    | "internal_error";
+
+const DECLARED_DEV_TRANSCRIPT_RUN_STATE = [
+    "accepted",
+    "resolving_scope",
+    // Reached the pinned contract with CHAOS-3298's re-pin; ops added both
+    // for CHAOS-3292's server-owned intent interpretation and named-subject
+    // preflight. Neither is rendered — see AskDevProvider's `runState`,
+    // which is stored and never read.
+    "interpreting",
+    "resolving_subjects",
+    "model_decision",
+    "tool_validation",
+    "tool_execution",
+    "answer_validation",
+    "completed",
+    "insufficient_evidence",
+    "refused",
+    "failed",
+    "cancelled",
+] as const;
+export type DevTranscriptRunState = (typeof DECLARED_DEV_TRANSCRIPT_RUN_STATE)[number];
 
 /** Pinned `dev_conversation_transcript.v1.schema.json` `$defs.DevTranscriptEntry.properties.run_state.enum`. */
 export const DEV_TRANSCRIPT_RUN_STATE_VALUES = extractEnum(
@@ -133,18 +183,15 @@ export const DEV_TRANSCRIPT_RUN_STATE_VALUES = extractEnum(
     "properties",
     "run_state",
 ) as readonly DevTranscriptRunState[];
-export type DevTranscriptRunState =
-    | "accepted"
-    | "resolving_scope"
-    | "model_decision"
-    | "tool_validation"
-    | "tool_execution"
-    | "answer_validation"
-    | "completed"
-    | "insufficient_evidence"
-    | "refused"
-    | "failed"
-    | "cancelled";
+
+const DECLARED_DEV_CAPABILITIES_READINESS = [
+    "ready",
+    "unsupported_model",
+    "missing_credentials",
+    "disabled",
+    "degraded",
+] as const;
+export type DevCapabilitiesReadiness = (typeof DECLARED_DEV_CAPABILITIES_READINESS)[number];
 
 /** Pinned `dev_capabilities.v1.schema.json` `properties.readiness.enum`. */
 export const DEV_CAPABILITIES_READINESS_VALUES = extractEnum(
@@ -152,8 +199,51 @@ export const DEV_CAPABILITIES_READINESS_VALUES = extractEnum(
     "properties",
     "readiness",
 ) as readonly DevCapabilitiesReadiness[];
-export type DevCapabilitiesReadiness =
-    "ready" | "unsupported_model" | "missing_credentials" | "disabled" | "degraded";
+
+/**
+ * Every vocabulary this file publishes, paired with the union declared
+ * alongside it. `assertVocabularyIsExhaustive` walks this table, so adding
+ * a vocabulary above without adding it here is itself caught (the spec
+ * asserts the table's size against the exported `*_VALUES` count).
+ */
+const VOCABULARIES = [
+    ["AnswerStatus", ANSWER_STATUS_VALUES, DECLARED_ANSWER_STATUS],
+    ["ScopeResolutionOutcome", SCOPE_RESOLUTION_OUTCOME_VALUES, DECLARED_SCOPE_RESOLUTION_OUTCOME],
+    ["DevErrorCode", DEV_ERROR_CODES, DECLARED_DEV_ERROR_CODE],
+    ["DevTranscriptRunState", DEV_TRANSCRIPT_RUN_STATE_VALUES, DECLARED_DEV_TRANSCRIPT_RUN_STATE],
+    [
+        "DevCapabilitiesReadiness",
+        DEV_CAPABILITIES_READINESS_VALUES,
+        DECLARED_DEV_CAPABILITIES_READINESS,
+    ],
+] as const satisfies readonly (readonly [string, readonly string[], readonly string[]])[];
+
+export const VOCABULARY_COUNT = VOCABULARIES.length;
+
+/**
+ * Asserts that every declared union in this file names exactly the members
+ * the pinned schema really has. The `as readonly T[]` casts on the
+ * extractions are unchecked, so without this a re-pin that adds a member
+ * leaves the union silently short — consumers keep compiling, mocks keep
+ * omitting the new value, and the "extracted from the schema, never
+ * hand-transcribed" guarantee holds only for the runtime array while the
+ * type it is cast to still lies.
+ */
+export function assertVocabularyIsExhaustive(): void {
+    for (const [label, pinned, declared] of VOCABULARIES) {
+        const declaredSet = new Set<string>(declared);
+        const pinnedSet = new Set<string>(pinned);
+        const missing = [...pinnedSet].filter((value) => !declaredSet.has(value));
+        const extra = [...declaredSet].filter((value) => !pinnedSet.has(value));
+        if (missing.length > 0 || extra.length > 0) {
+            throw new Error(
+                `${label}: the declared union and the pinned schema enum disagree. ` +
+                    `Pinned but not declared: ${missing.join(", ") || "(none)"}. ` +
+                    `Declared but not pinned: ${extra.join(", ") || "(none)"}.`,
+            );
+        }
+    }
+}
 
 /**
  * Every internal enum value, plus its cosmetic `replaceAll("_", " ")` form

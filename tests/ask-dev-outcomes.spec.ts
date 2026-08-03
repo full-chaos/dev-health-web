@@ -20,9 +20,9 @@ import {
 //
 // The status/copy pairing for each scenario below is NOT hardcoded here —
 // it's read from tests/fixtures/askDevOutcomes.ts, the same table
-// tests/mocks/devScenario.ts uses to build the canned answer. CHAOS-3298
-// only needs to re-point that one table at dev_answer.v2 shapes; this loop
-// stays correct un-touched.
+// tests/mocks/devScenario.ts uses to build the canned answer. Whoever
+// eventually points that one table at dev_answer.v2 shapes leaves this loop
+// correct un-touched.
 
 test.beforeEach(async ({ request }) => {
     await resetAskDevMock(request);

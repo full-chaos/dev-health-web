@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
+import type { DevProgressState } from "@/lib/dev/client";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 import { formatDateUTC } from "@/lib/formatters";
@@ -35,7 +36,33 @@ function platformAllowanceGuidance(
     return `Retrying before ${resetLabel} will not help. New platform-backed runs resume at that reset.`;
 }
 
-const PROGRESS_LABELS: Record<string, string> = {
+/**
+ * CHAOS-3339. Kept separate from `platformAllowanceGuidance` because the two
+ * pull opposite ways on the retry affordance: an exhausted allowance means
+ * retrying cannot help (so that guidance replaces the retry button), while a
+ * provider contract violation is transient and worth retrying. Provisional
+ * copy — product may refine the wording.
+ */
+function providerContractGuidance(
+    error: ReturnType<typeof useAskDev>["stream"]["error"],
+): string | null {
+    if (error?.code !== "provider_contract_violation") return null;
+    return "The AI provider returned a response that violated its contract. This is a provider-side fault — retrying may help.";
+}
+
+/**
+ * Sanctioned copy for every pinned progress phase, TOTAL over
+ * `DevProgressState`.
+ *
+ * The `?? "Investigating"` fallback below is not a compatibility path: every
+ * stream event is validated against the pinned schema in client.ts
+ * (`assertStreamEvent`) before it reaches this state, so a phase the pin does
+ * not know is rejected at the boundary and never renders. Totality here is
+ * what keeps the fallback genuinely unreachable — while this was
+ * `Record<string, string>`, a re-pin could add a phase that quietly rendered
+ * as the generic label instead of failing anything.
+ */
+export const PROGRESS_LABELS: Record<DevProgressState, string> = {
     resolving_scope: "Resolving the committed scope",
     checking_status: "Checking current status",
     querying_metrics: "Querying registered metrics",
@@ -95,6 +122,9 @@ export function AskDevConversation({
     const searchParams = useSearchParams();
     const filters = useMemo(() => decodeFilter(searchParams.get("f")), [searchParams]);
     const allowanceGuidance = platformAllowanceGuidance(stream.error);
+    // Only the allowance case replaces the retry button; see
+    // providerContractGuidance for why the two are not one function.
+    const errorGuidance = allowanceGuidance ?? providerContractGuidance(stream.error);
     // "Powered by Context Fabric" is the sanctioned relationship framing
     // (CHAOS-3215): Ask Dev is the customer interaction layer, Context
     // Fabric Validation is a separate platform-administrator diagnostic
@@ -673,9 +703,9 @@ export function AskDevConversation({
                                         {stream.error?.safe_message ??
                                             "Ask Dev could not complete that request."}
                                     </p>
-                                    {allowanceGuidance ? (
+                                    {errorGuidance ? (
                                         <p className="mt-2 text-xs leading-5 text-(--text-secondary)">
-                                            {allowanceGuidance}
+                                            {errorGuidance}
                                         </p>
                                     ) : null}
                                     {stream.error?.retryable && !allowanceGuidance ? (

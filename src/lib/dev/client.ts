@@ -66,10 +66,19 @@ export type DevFeedbackInput = Readonly<{
     comment?: string | null;
 }>;
 
+/**
+ * The pinned `dev_stream_event.v1` progress phase. Held as the generated
+ * union rather than `string` so a re-pin that adds a phase puts compile-time
+ * pressure on everything that maps one to display copy. `assertStreamEvent`
+ * already rejects any phase outside the pinned enum, so widening this to
+ * `string` bought no real tolerance — it only hid that pressure.
+ */
+export type DevProgressState = NonNullable<DevStreamEvent["progress"]>;
+
 export type DevConversationStreamState = Readonly<{
     phase: "idle" | "running" | "completed" | "failed";
     runId: string | null;
-    progress: string | null;
+    progress: DevProgressState | null;
     delta: string;
     answer: DevAnswer | null;
     error: DevWebError | null;

@@ -776,8 +776,11 @@ export type DateRangeInput = {
 export type DevActualCompletion = {
   __typename?: 'DevActualCompletion';
   conflicts: Array<DevStatusConflict>;
+  displayTruncated: Scalars['Boolean']['output'];
   evidenceRefIds: Array<Scalars['ID']['output']>;
   reasonCodes: Array<Scalars['String']['output']>;
+  requiredChildComplete?: Maybe<Scalars['Int']['output']>;
+  requiredChildTotal?: Maybe<Scalars['Int']['output']>;
   requiredChildren: Array<DevStatusFact>;
   ruleId: Scalars['String']['output'];
   ruleVersion: Scalars['String']['output'];

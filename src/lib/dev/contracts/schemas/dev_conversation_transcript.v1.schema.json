@@ -1211,6 +1211,8 @@
           "enum": [
             "accepted",
             "resolving_scope",
+            "interpreting",
+            "resolving_subjects",
             "model_decision",
             "tool_validation",
             "tool_execution",
@@ -1259,7 +1261,8 @@
         "project",
         "work_unit",
         "issue",
-        "pull_request"
+        "pull_request",
+        "team"
       ],
       "title": "DirectScope",
       "type": "string"
@@ -1270,7 +1273,8 @@
         "project",
         "work_unit",
         "issue",
-        "pull_request"
+        "pull_request",
+        "team"
       ],
       "title": "EntityType",
       "type": "string"

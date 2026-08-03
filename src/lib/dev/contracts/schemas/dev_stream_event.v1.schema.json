@@ -532,6 +532,7 @@
             "insufficient_evidence",
             "answer_validation_failed",
             "cancelled",
+            "provider_contract_violation",
             "internal_error"
           ],
           "title": "Code",
@@ -1230,7 +1231,8 @@
         "project",
         "work_unit",
         "issue",
-        "pull_request"
+        "pull_request",
+        "team"
       ],
       "title": "DirectScope",
       "type": "string"
@@ -1241,7 +1243,8 @@
         "project",
         "work_unit",
         "issue",
-        "pull_request"
+        "pull_request",
+        "team"
       ],
       "title": "EntityType",
       "type": "string"
