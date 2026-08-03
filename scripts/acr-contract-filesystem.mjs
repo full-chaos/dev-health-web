@@ -423,11 +423,22 @@ function recoverDeadLock(lockPath, recoveryPath, root) {
     }
 }
 
-export function acquireArtifactLock(artifactRoot) {
+/**
+ * `timeoutMillis` exists so a caller can bound its own wait against the REAL
+ * clock (CHAOS-3341). The test that proves this wait is bounded used to script
+ * `Date.now` with `vi.spyOn(Date, "now").mockReturnValueOnce(0)` instead —
+ * scripting a process-wide global, where anything else reading the clock
+ * between the spy and the first read below silently consumes the once-value.
+ * Losing it puts `deadline` a full timeout beyond every later reading, so this
+ * loop never terminates; and because the loop is synchronous, no test timeout
+ * can interrupt it — the whole file hangs. Injecting the bound removes the
+ * global mutation rather than re-scoping it.
+ */
+export function acquireArtifactLock(artifactRoot, { timeoutMillis = LOCK_TIMEOUT_MILLIS } = {}) {
     const { root } = artifactRootDirectories(artifactRoot);
     const lockPath = path.join(root, ".acr-contract-sync.lock");
     const recoveryPath = `${lockPath}.recovery`;
-    const deadline = Date.now() + LOCK_TIMEOUT_MILLIS;
+    const deadline = Date.now() + timeoutMillis;
     while (true) {
         if (recoveryInProgress(recoveryPath, root)) {
             if (Date.now() >= deadline) throw new Error("artifact generation lock timed out");

@@ -11,6 +11,7 @@ import {
     currentArtifacts,
     writeArtifacts,
 } from "../acr-contract-artifacts.mjs";
+import { isNotLockState } from "./acr-fixture-copy.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const SCRIPT = path.join(ROOT, "scripts/sync-acr-contracts.mjs");
@@ -65,8 +66,7 @@ function createTemporaryProject() {
     const artifactRoot = path.join(root, "src/lib/acr/contracts");
     const script = path.join(root, "scripts/sync-acr-contracts.mjs");
     fs.mkdirSync(path.dirname(artifactRoot), { recursive: true });
-    fs.cpSync(ARTIFACT_ROOT, artifactRoot, { recursive: true });
-    fs.rmSync(path.join(artifactRoot, ".acr-contract-sync.lock"), { force: true });
+    fs.cpSync(ARTIFACT_ROOT, artifactRoot, { recursive: true, filter: isNotLockState });
     fs.mkdirSync(path.dirname(script), { recursive: true });
     fs.copyFileSync(SCRIPT, script);
     fs.copyFileSync(
@@ -204,17 +204,23 @@ describe("ACR contract artifact filesystem boundaries", () => {
         expect(fs.readFileSync(lockPath, "utf8")).toBe("replacement\n");
     });
 
+    // The bound is injected, not mocked (CHAOS-3341). This used to script the
+    // process-wide clock with `vi.spyOn(Date, "now").mockReturnValueOnce(0)`,
+    // where any other reader between the spy and acquireArtifactLock's first
+    // reading consumes the once-value and pushes the deadline permanently out
+    // of reach — and since the wait loop is synchronous, the resulting hang
+    // cannot be cut short by a test timeout. A real 50ms bound against the
+    // real clock cannot be stolen, still crosses the deadline through the
+    // genuine wait-and-recheck loop, and leaves no global to restore.
     it("bounds a live-owner wait without leaking a failed contender lock file", () => {
         const project = createTemporaryProject();
         const release = acquireArtifactLock(project.artifactRoot);
-        const now = vi.spyOn(Date, "now").mockReturnValueOnce(0).mockReturnValue(30_000);
 
         try {
-            expect(() => acquireArtifactLock(project.artifactRoot)).toThrow(
+            expect(() => acquireArtifactLock(project.artifactRoot, { timeoutMillis: 50 })).toThrow(
                 "artifact generation lock timed out",
             );
         } finally {
-            now.mockRestore();
             release();
         }
 
@@ -224,6 +230,38 @@ describe("ACR contract artifact filesystem boundaries", () => {
                 (entry) => entry.startsWith(".acr-contract-sync.lock.") && entry.endsWith(".tmp"),
             );
         expect(leftovers).toEqual([]);
+    });
+
+    // CHAOS-3341 regression guard, and the deterministic form of the flake
+    // that motivated it. The committed artifact root is a live lock directory
+    // during a unit run — sync-acr-contracts.test.mjs shells the real sync
+    // script at it from a parallel worker — so an isolated fixture must never
+    // inherit whatever lock state is in flight when it is copied. Planting the
+    // exact contender temp file that used to be copied in makes that failure
+    // reproducible on demand: without the copy filter the fixture below
+    // contains it, and the leftover assertion in the timeout test above then
+    // fails on a file no test ever wrote.
+    //
+    // The plant goes into the real artifact root, so cleanup is armed BEFORE
+    // the write: a write that fails partway (ENOSPC, EIO) still leaves the
+    // file, and an uncleaned lock-family file in a tracked directory dirties
+    // the checkout — which the new copy filter would then hide from every
+    // later fixture assertion.
+    it("keeps a planted contender lock out of an isolated fixture copy", () => {
+        const planted = path.join(ARTIFACT_ROOT, `.acr-contract-sync.lock.${randomUUID()}.tmp`);
+
+        try {
+            fs.writeFileSync(planted, "contender\n", { mode: 0o600 });
+            const project = createTemporaryProject();
+
+            expect(
+                fs
+                    .readdirSync(project.artifactRoot)
+                    .filter((entry) => entry.startsWith(".acr-contract-sync.lock")),
+            ).toEqual([]);
+        } finally {
+            fs.rmSync(planted, { force: true });
+        }
     });
 
     it("recovers a lock only after proving its owner process is dead", () => {
