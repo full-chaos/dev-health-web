@@ -140,30 +140,42 @@ describe("Ask Dev error guidance", () => {
         askDevState.stream = { ...IDLE_STREAM };
     });
 
-    function renderWithError(code: string) {
+    function renderWithError(code: string, retryable = true) {
         askDevState.stream = {
             ...IDLE_STREAM,
             phase: "failed",
-            error: { code, safe_message: "Ask Dev stopped.", retryable: true },
+            error: { code, safe_message: "Ask Dev stopped.", retryable },
         };
         return render(<AskDevConversation />);
     }
 
-    // CHAOS-3339. The guidance names the provider as the faulting side and
-    // says a retry is worth trying — the opposite of the allowance guidance,
-    // which exists to tell you a retry cannot help.
-    it("explains a provider contract violation as a provider-side fault", () => {
-        renderWithError("provider_contract_violation");
+    // CHAOS-3339. `retryable: false` is what ops emits today: the sole raise
+    // site (openai_compatible.py) omits `retryable`, taking
+    // AgentProviderError's `retryable=False` default, and the orchestrator
+    // passes that straight through. An earlier revision of this copy claimed
+    // "retrying may help" regardless; this asserts against that by name.
+    it("explains a provider contract violation as a provider-side fault a retry cannot fix", () => {
+        renderWithError("provider_contract_violation", false);
 
         expect(
             screen.getByText(/provider returned a response that violated its contract/iu),
         ).toBeVisible();
-        expect(screen.getByText(/retrying may help/iu)).toBeVisible();
+        expect(screen.getByText(/provider-side fault/iu)).toBeVisible();
+        expect(screen.getByText(/Retrying will not help/iu)).toBeVisible();
+        expect(screen.queryByText(/retrying may help/iu)).not.toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /retry/iu })).not.toBeInTheDocument();
     });
 
-    it("keeps the retry affordance for a provider contract violation", () => {
-        renderWithError("provider_contract_violation");
+    // The version-skew case, and the reason the retry sentence is read off
+    // `error.retryable` instead of hard-coded: web pins ops' contracts and
+    // re-pins later, so an ops that decides this fault is recoverable must not
+    // meet a web build that insists otherwise and hides the only retry button.
+    // The fault attribution still holds — only the retry advice moves.
+    it("drops the retry advice, not the fault attribution, when ops calls the violation retryable", () => {
+        renderWithError("provider_contract_violation", true);
 
+        expect(screen.getByText(/provider-side fault/iu)).toBeVisible();
+        expect(screen.queryByText(/Retrying will not help/iu)).not.toBeInTheDocument();
         expect(screen.getByRole("button", { name: /retry/iu })).toBeVisible();
     });
 
@@ -176,11 +188,16 @@ describe("Ask Dev error guidance", () => {
         expect(screen.queryByRole("button", { name: /retry/iu })).not.toBeInTheDocument();
     });
 
-    it("shows no tailored guidance for an unrelated error code", () => {
+    // Also the guard on the allowance override: it is the one arm allowed to
+    // suppress the retry button against a retryable error, so an override
+    // predicate that widened past the allowance codes would silently strip the
+    // affordance from every failure. This is the case that fails if it does.
+    it("shows no tailored guidance for an unrelated error code, and keeps its retry button", () => {
         renderWithError("internal_error");
 
         expect(screen.queryByText(/violated its contract/iu)).not.toBeInTheDocument();
         expect(screen.queryByText(/Retrying immediately will not help/iu)).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /retry/iu })).toBeVisible();
     });
 
     it("never renders the raw error code", () => {

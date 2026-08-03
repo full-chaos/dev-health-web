@@ -38,16 +38,38 @@ function platformAllowanceGuidance(
 
 /**
  * CHAOS-3339. Kept separate from `platformAllowanceGuidance` because the two
- * pull opposite ways on the retry affordance: an exhausted allowance means
- * retrying cannot help (so that guidance replaces the retry button), while a
- * provider contract violation is transient and worth retrying. Provisional
- * copy — product may refine the wording.
+ * treat `retryable` oppositely — see the call site.
+ *
+ * Naming the provider as the faulting side is safe to state unconditionally.
+ * The retry sentence is not: it is READ OFF `error.retryable` rather than
+ * assumed, so this copy cannot contradict the retry button beside it, which is
+ * gated on the same field. That matters because web pins ops' contracts and
+ * re-pins later, so the two deploy independently: hard-coding "retrying cannot
+ * help" here would start lying the moment ops decided this fault was
+ * recoverable, and would take the only retry affordance with it.
+ *
+ * Today ops emits it non-retryable, which is why the futile wording is the one
+ * users will actually see. The sole raise site (the
+ * `_SequentialToolContractViolation` handler in
+ * `llm/agent/openai_compatible.py`) constructs `AgentProviderError` without a
+ * `retryable` argument, taking the class default `retryable: bool = False`
+ * (`llm/agent/errors.py`), and `DevOrchestrator._provider_error`
+ * (`api/dev/orchestrator.py`) projects it straight through as
+ * `retryable=exc.retryable`. Ops treats it as a standing capability defect
+ * elsewhere too: its remediation asks an operator to confirm the endpoint
+ * honours `parallel_tool_calls=false` (`api/dev/contracts.py`), and readiness
+ * maps the code to the `unsupported_model` role state
+ * (`llm/agent/readiness.py`). An earlier revision of this copy said "retrying
+ * may help", which contradicted all of that.
  */
 function providerContractGuidance(
     error: ReturnType<typeof useAskDev>["stream"]["error"],
 ): string | null {
     if (error?.code !== "provider_contract_violation") return null;
-    return "The AI provider returned a response that violated its contract. This is a provider-side fault — retrying may help.";
+    const fault =
+        "The AI provider returned a response that violated its contract. This is a provider-side fault, not a problem with your question.";
+    if (error.retryable) return fault;
+    return `${fault} Retrying will not help until an administrator corrects the configured model or endpoint.`;
 }
 
 /**
@@ -121,9 +143,14 @@ export function AskDevConversation({
     const router = useRouter();
     const searchParams = useSearchParams();
     const filters = useMemo(() => decodeFilter(searchParams.get("f")), [searchParams]);
+    // Only the allowance case overrides the server's `retryable` and replaces
+    // the retry button: an exhausted monthly platform allowance is a
+    // product-side fact that ops' per-error `retryable` does not model (it
+    // reports the provider call itself as retryable). Provider-contract
+    // guidance instead derives its retry sentence from `error.retryable`, so
+    // it never needs to override the button to stay consistent with it — see
+    // providerContractGuidance.
     const allowanceGuidance = platformAllowanceGuidance(stream.error);
-    // Only the allowance case replaces the retry button; see
-    // providerContractGuidance for why the two are not one function.
     const errorGuidance = allowanceGuidance ?? providerContractGuidance(stream.error);
     // "Powered by Context Fabric" is the sanctioned relationship framing
     // (CHAOS-3215): Ask Dev is the customer interaction layer, Context

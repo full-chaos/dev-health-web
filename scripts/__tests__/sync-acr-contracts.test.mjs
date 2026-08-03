@@ -5,6 +5,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { isNotLockState } from "./acr-fixture-copy.mjs";
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const SCRIPT = path.join(ROOT, "scripts/sync-acr-contracts.mjs");
 const SOURCE = process.env.ACR_ROOT;
@@ -47,8 +49,7 @@ function createTemporaryProject() {
     const artifactRoot = path.join(root, "src/lib/acr/contracts");
     const script = path.join(root, "scripts/sync-acr-contracts.mjs");
 
-    fs.cpSync(ARTIFACT_ROOT, artifactRoot, { recursive: true });
-    fs.rmSync(path.join(artifactRoot, ".acr-contract-sync.lock"), { force: true });
+    fs.cpSync(ARTIFACT_ROOT, artifactRoot, { recursive: true, filter: isNotLockState });
     fs.mkdirSync(path.dirname(script), { recursive: true });
     fs.copyFileSync(SCRIPT, script);
     fs.copyFileSync(
