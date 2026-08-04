@@ -319,6 +319,12 @@ export const CTA_LABELS = {
     saveOverride: "Save Override",
     manageEntitlements: "Manage Entitlements",
     clearThemeScope: "Clear theme scope",
+    exploreContextFabricUseCases: "Explore use cases",
+    openContextFabricOverview: "Context Fabric overview",
+    seeContextFabricInAction: "See Context Fabric in action",
+    readAskDevGuide: "Read the Ask Dev guide",
+    configureAcrMcpSidecar: "Configure the ACR MCP sidecar",
+    configureAcrAndMcp: "Configure ACR and MCP",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
