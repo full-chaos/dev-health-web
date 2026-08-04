@@ -15,6 +15,7 @@ import {
     findInternalToken,
     NEVER_ATTESTABLE_TOKENS,
     safeCopy,
+    WITHHELD_COPY,
 } from "@/lib/dev/internalTokens";
 import { formatMetricValue, formatNumber, formatPercent, formatTimestamp } from "@/lib/formatters";
 
@@ -137,6 +138,66 @@ export function isNoMatchAnswer(answer: DevAnswer): boolean {
 }
 
 /**
+ * Whether this answer is labelled Refused despite carrying material
+ * grounding -- CHAOS-3377 defect 1's client-side backstop.
+ *
+ * Ops now server-renders an honest, never-Refused status for a NEW run
+ * whose tool results include a completion assessment
+ * (`status_answer_render.deterministic_answer_status`), and validates that
+ * a self-declared `refused` status cannot coexist with real grounding for
+ * every other path (`answer_validator.py`'s "refused_with_material_
+ * grounding" check). Neither of those can reach a row persisted, or
+ * replayed, before this fix existed -- the client has to notice the
+ * contradiction itself, exactly as `contradictsCommittedScope` already does
+ * for the CHAOS-3367 scope-outcome case this mirrors. "Material grounding"
+ * uses the same signal ops's own floor/ceiling checks do: a real claim,
+ * metric, or evidence entry -- not just a non-empty array of any shape.
+ */
+export function refusedDespiteMaterialGrounding(answer: DevAnswer): boolean {
+    if (answer.status !== "refused") return false;
+    return (
+        (answer.metrics?.length ?? 0) > 0 ||
+        (answer.evidence?.length ?? 0) > 0 ||
+        (answer.claims ?? []).some(
+            (claim) =>
+                (claim.evidence_ref_ids?.length ?? 0) > 0 ||
+                (claim.metric_ref_ids?.length ?? 0) > 0,
+        )
+    );
+}
+
+/**
+ * The status pill copy for `refusedDespiteMaterialGrounding`.
+ *
+ * CHAOS-3377 HIGH (codex adversarial web review, round 2): an earlier
+ * revision relabeled this contradiction "Answered" while STILL rendering
+ * the model's original (rejected-shaped) `direct_summary`/`claims`
+ * underneath -- the ops contract never does that (a refused-with-grounding
+ * candidate is either repaired or has its narrative DISCARDED and replaced
+ * with server-owned content; see `answer_validator.py` /
+ * `Orchestrator._server_grounded_answer`). Labelling this "Answered" while
+ * showing the rejected prose invents a coherent answer the server never
+ * produced. This is now a genuinely neutral, non-committal label -- content
+ * is withheld alongside it (see `refusedWithGrounding` below in the
+ * component body), never invented around.
+ *
+ * The authoritative fix for a NEW run's persisted row is server-side
+ * (`no_match_terminal._normalize_refused_with_grounding`, run on every
+ * replay/transcript read); this remains only as defense-in-depth for a row
+ * that somehow reaches the client without having gone through that
+ * normalization.
+ */
+export const REFUSED_WITH_GROUNDING_STATUS_LABEL = "Inconsistent result";
+
+/** The caption shown in place of `STATUS_EXPLANATIONS` when
+ * `refusedWithGrounding` is true -- explains the withholding, not the
+ * (rejected) content underneath it. */
+export const REFUSED_WITH_GROUNDING_EXPLANATION =
+    "Inconsistent result: this answer's recorded status and its own content " +
+    "disagree. The original narrative has been withheld; any structured " +
+    "metrics or evidence below are unaffected.";
+
+/**
  * Every string in this answer with a server-authorized provenance, joined for
  * the token guard. Read off the answer's OWN scope, candidates, evidence and
  * metrics — never a catalog lookup: an entity that is not already part of this
@@ -181,6 +242,32 @@ function validityScopeLabel(scope: DevScope | null | undefined): string | null {
                   .length ?? 0);
     const label = scope.direct_scope.replaceAll("_", " ");
     return count > 0 ? `${count} ${label}${count === 1 ? "" : "s"}` : label;
+}
+
+/**
+ * The scope-outcome row's secondary line (CHAOS-3377 defect 4).
+ *
+ * Previously always rendered "{authorized_repository_ids.length} authorized
+ * repositories", regardless of the resolved scope's own kind -- correct for
+ * a REPOSITORY-scoped answer, but for a PROJECT (or any other non-repository)
+ * scope the repository count is at best incidental and at worst reads as
+ * "0 authorized repositories" for a subject that has real, substantive
+ * content and simply carries no repository dimension on the wire (see
+ * ops's `ScopeResolutionService`/`DevScope.repositories`, which is only
+ * ever populated for a REPOSITORY commit). Reuses `validityScopeLabel` --
+ * the same "name the subject, not a count" logic `claim.validity_scope`
+ * already renders -- so a project scope shows its subject ("Falcon Nine")
+ * instead. Falls back to the repository count whenever the scope itself is
+ * missing or genuinely repository-scoped, which is unchanged behavior.
+ */
+function scopeCoverageLabel(scopeResolution: NonNullable<DevAnswer["resolved_scope"]>): string {
+    const scope = scopeResolution.resolved_scope ?? scopeResolution.requested_scope;
+    if (scope && scope.direct_scope !== "repository") {
+        const subjectLabel = validityScopeLabel(scope);
+        if (subjectLabel) return subjectLabel;
+    }
+    const count = scopeResolution.authorized_repository_ids?.length ?? 0;
+    return `${count} authorized repositories`;
 }
 
 function EvidenceRow({
@@ -286,13 +373,28 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
     // status. The server's own summary carries the explanation, so a second
     // boilerplate caption above it would only repeat it less accurately.
     const noMatch = isNoMatchAnswer(answer);
+    // CHAOS-3377 defect 1. A refusal that carries real claim/metric/evidence
+    // grounding is the same class of self-contradiction as a no-match whose
+    // scope outcome says "exact" -- a result with content is not a refusal
+    // (PRD §12). Checked only when `noMatch` didn't already claim this row
+    // (the two are mutually exclusive in practice, but `noMatch` is the more
+    // specific, better-understood diagnosis when both could apply).
+    const refusedWithGrounding = !noMatch && refusedDespiteMaterialGrounding(answer);
     // A contradictory legacy row's scope outcome is not trustworthy — showing
     // "Exact match" beside a not-found summary is the §12 juxtaposition
     // itself. The row is kept (the repository count beside it is still real)
     // but the outcome value is withheld rather than asserted.
     const scopeOutcomeTrusted = !contradictsCommittedScope(answer);
-    const statusLabel = noMatch ? NO_MATCH_STATUS_LABEL : ANSWER_STATUS_LABELS[answer.status];
-    const statusExplanation = noMatch ? undefined : STATUS_EXPLANATIONS[answer.status];
+    const statusLabel = noMatch
+        ? NO_MATCH_STATUS_LABEL
+        : refusedWithGrounding
+          ? REFUSED_WITH_GROUNDING_STATUS_LABEL
+          : ANSWER_STATUS_LABELS[answer.status];
+    const statusExplanation = noMatch
+        ? undefined
+        : refusedWithGrounding
+          ? REFUSED_WITH_GROUNDING_EXPLANATION
+          : STATUS_EXPLANATIONS[answer.status];
     // The coverage row is meaningless when no source plan ran -- "0 of 0
     // sources" reads as a measurement, and the live defect's "1 of 1 sources"
     // read as a completed source plan for a subject that was never resolved.
@@ -485,7 +587,9 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                     <p className="text-sm leading-6 text-(--text-secondary)">{statusExplanation}</p>
                 ) : null}
                 <p className="font-(--font-display) text-h3 text-(--text-primary)">
-                    {safeCopy(answer.direct_summary, INTERNAL_TOKEN_DENYLIST, attested)}
+                    {refusedWithGrounding
+                        ? WITHHELD_COPY
+                        : safeCopy(answer.direct_summary, INTERNAL_TOKEN_DENYLIST, attested)}
                 </p>
             </div>
 
@@ -504,8 +608,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                             </strong>
                         </span>
                         <span className="text-(--text-muted)">
-                            {scopeResolution.authorized_repository_ids?.length ?? 0} authorized
-                            repositories
+                            {scopeCoverageLabel(scopeResolution)}
                         </span>
                     </div>
                     {scopeResolution.candidates?.length ? (
@@ -585,7 +688,13 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                 </section>
             ) : null}
 
-            {answer.claims?.length ? (
+            {/*
+             * CHAOS-3377 HIGH: claims are model-authored prose, exactly
+             * like direct_summary above -- a refused-with-grounding row's
+             * claims are withheld the same way, never rendered alongside a
+             * relabeled-but-invented status.
+             */}
+            {!refusedWithGrounding && answer.claims?.length ? (
                 <section
                     className="space-y-3 border-t border-(--border) pt-4"
                     aria-labelledby={findingsHeadingId}
