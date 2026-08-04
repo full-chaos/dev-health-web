@@ -22,6 +22,7 @@ const FOOTER_LINKS: Record<
     ReadonlyArray<{ label: string; href: string; external?: boolean }>
 > = {
     Product: [
+        { label: "Context Fabric", href: "/marketing/context-fabric" },
         { label: "Features", href: "/#features" },
         { label: "Pricing", href: "/marketing/pricing" },
         { label: "How it works", href: "/#how-it-works" },
