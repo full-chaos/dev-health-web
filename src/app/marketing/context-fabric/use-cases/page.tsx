@@ -169,7 +169,7 @@ export default function ContextFabricUseCasesPage() {
                             href="/marketing/context-fabric"
                             className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
                         >
-                            Context Fabric overview
+                            {CTA_LABELS.openContextFabricOverview}
                         </Link>
                         <Link
                             href="/auth/signup"
@@ -263,9 +263,7 @@ export default function ContextFabricUseCasesPage() {
                             <p className="text-xs uppercase tracking-[0.16em] text-(--accent)">
                                 {useCase.eyebrow}
                             </p>
-                            <h3 className="mt-4 font-(--font-display) text-2xl">
-                                {useCase.title}
-                            </h3>
+                            <h3 className="mt-4 font-(--font-display) text-2xl">{useCase.title}</h3>
                             <p className="mt-5 rounded-2xl border border-(--card-stroke) bg-(--card) p-4 text-sm font-medium">
                                 “{useCase.question}”
                             </p>
@@ -335,8 +333,8 @@ export default function ContextFabricUseCasesPage() {
                             Useful context preserves its limits.
                         </h2>
                         <p className="mt-5 text-sm leading-relaxed text-(--ink-muted)">
-                            Context Fabric does not turn a missing denominator into a workload claim,
-                            one bad week into a team judgment, semantic similarity into a
+                            Context Fabric does not turn a missing denominator into a workload
+                            claim, one bad week into a team judgment, semantic similarity into a
                             relationship, or incomplete source coverage into certainty.
                         </p>
                     </div>
@@ -380,7 +378,7 @@ export default function ContextFabricUseCasesPage() {
                             rel="noopener noreferrer"
                             className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
                         >
-                            Configure ACR and MCP
+                            {CTA_LABELS.configureAcrAndMcp}
                         </a>
                     </div>
                 </div>

@@ -16,10 +16,16 @@ test.describe("Context Fabric marketing pages", () => {
                 name: /understand the engineering ecosystem around the work/i,
             }),
         ).toBeVisible();
-        await expect(page.getByRole("heading", { name: "Who" })).toBeVisible();
-        await expect(page.getByRole("heading", { name: "What" })).toBeVisible();
-        await expect(page.getByRole("heading", { name: "Why" })).toBeVisible();
-        await expect(page.getByRole("heading", { name: "How" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Who", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "What", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Why", exact: true })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "How", exact: true })).toBeVisible();
+        await expect(
+            page.getByRole("img", {
+                name: "Context Fabric connects the engineering ecosystem to Ask Dev and ACR MCP consumers",
+                exact: true,
+            }),
+        ).toBeVisible();
         await expect(page.getByRole("heading", { name: "Ask Dev" })).toBeVisible();
         await expect(page.getByRole("heading", { name: "ACR and MCP" })).toBeVisible();
         await expect(page.getByRole("link", { name: "Explore use cases" }).first()).toHaveAttribute(

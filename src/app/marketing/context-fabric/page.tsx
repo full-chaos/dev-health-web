@@ -105,7 +105,7 @@ function QuestionList({ questions }: Readonly<{ questions: readonly string[] }>)
 export default function ContextFabricMarketingPage() {
     return (
         <>
-            <section className="mx-auto grid max-w-7xl gap-12 px-6 pb-20 pt-16 sm:pt-24 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.8fr)] lg:items-center">
+            <section className="mx-auto grid max-w-7xl gap-12 px-6 pb-20 pt-16 sm:pt-24 lg:grid-cols-[minmax(0,1fr)_minmax(22.5rem,0.8fr)] lg:items-center">
                 <div>
                     <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">
                         Context Fabric
@@ -116,15 +116,15 @@ export default function ContextFabricMarketingPage() {
                     <p className="mt-6 max-w-2xl text-lg leading-relaxed text-(--ink-muted)">
                         Context Fabric turns the engineering evidence already flowing through Dev
                         Health into shared operating context: who owns and is affected by the work,
-                        what is actually happening, why it matters, how systems and decisions relate,
-                        and what evidence should guide the next action.
+                        what is actually happening, why it matters, how systems and decisions
+                        relate, and what evidence should guide the next action.
                     </p>
                     <div className="mt-10 flex flex-wrap gap-4">
                         <Link
                             href="/marketing/context-fabric/use-cases"
                             className="rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
                         >
-                            Explore use cases
+                            {CTA_LABELS.exploreContextFabricUseCases}
                         </Link>
                         <Link
                             href="/auth/signup"
@@ -137,6 +137,7 @@ export default function ContextFabricMarketingPage() {
 
                 <div
                     className="rounded-[2rem] border border-(--card-stroke) bg-(--card-80) p-5 shadow-2xl shadow-black/10 sm:p-7"
+                    role="img"
                     aria-label="Context Fabric connects the engineering ecosystem to Ask Dev and ACR MCP consumers"
                 >
                     <div className="grid grid-cols-2 gap-3">
@@ -227,7 +228,7 @@ export default function ContextFabricMarketingPage() {
                             href="/marketing/context-fabric/use-cases"
                             className="mt-7 inline-flex rounded-full bg-(--accent) px-6 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
                         >
-                            See Context Fabric in action
+                            {CTA_LABELS.seeContextFabricInAction}
                         </Link>
                     </div>
                     <div className="grid gap-3 sm:grid-cols-2">
@@ -270,7 +271,7 @@ export default function ContextFabricMarketingPage() {
                             rel="noopener noreferrer"
                             className="mt-8 inline-flex rounded-full border border-(--card-stroke) bg-(--card-70) px-6 py-2.5 text-sm font-medium transition hover:border-foreground/30"
                         >
-                            Read the Ask Dev guide
+                            {CTA_LABELS.readAskDevGuide}
                         </a>
                     </article>
                     <article className="rounded-[2rem] border border-(--card-stroke) bg-(--card-80) p-7 sm:p-9">
@@ -290,7 +291,7 @@ export default function ContextFabricMarketingPage() {
                             rel="noopener noreferrer"
                             className="mt-8 inline-flex rounded-full border border-(--card-stroke) bg-(--card-70) px-6 py-2.5 text-sm font-medium transition hover:border-foreground/30"
                         >
-                            Configure the ACR MCP sidecar
+                            {CTA_LABELS.configureAcrMcpSidecar}
                         </a>
                     </article>
                 </div>
@@ -338,7 +339,7 @@ export default function ContextFabricMarketingPage() {
                             href="/marketing/context-fabric/use-cases"
                             className="rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-white transition hover:opacity-90"
                         >
-                            Explore use cases
+                            {CTA_LABELS.exploreContextFabricUseCases}
                         </Link>
                         <Link
                             href="/auth/signup"
