@@ -15,3 +15,14 @@ describe("static build E2E artifact retention", () => {
         expect(workflow).not.toContain("path: playwright-report/");
     });
 });
+
+describe("static build change filtering", () => {
+    it("skips pnpm setup when no build-relevant files changed", () => {
+        const workflow = fs.readFileSync(WORKFLOW, "utf8");
+        const buildJob = workflow.match(/\n    build:\n([\s\S]*?)\n    test-e2e:/)?.[1];
+
+        expect(buildJob).toMatch(
+            /- name: Setup pnpm\n\s+if: env\.SHOULD_BUILD == 'true'\n\s+uses: pnpm\/action-setup/,
+        );
+    });
+});
