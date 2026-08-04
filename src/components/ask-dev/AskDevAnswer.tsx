@@ -10,6 +10,12 @@ import type {
     DevEvidenceRef,
     DevScope,
 } from "@/lib/dev/generated";
+import {
+    buildInternalTokenDenylist,
+    findInternalToken,
+    NEVER_ATTESTABLE_TOKENS,
+    safeCopy,
+} from "@/lib/dev/internalTokens";
 import { formatMetricValue, formatNumber, formatPercent, formatTimestamp } from "@/lib/formatters";
 
 import { useAskDev } from "./AskDevProvider";
@@ -58,15 +64,97 @@ export const ANSWER_STATUS_LABELS: Record<DevAnswer["status"], string> = {
 // distinction (the backend deliberately collapses forbidden vs. not-found
 // into one outcome so scope resolution can't be used to enumerate what
 // exists; the label must preserve that, not re-split it).
+//
+// `forbidden_or_not_found` reads "No authorized match found" rather than the
+// earlier "Not accessible" (CHAOS-3367). Both collapse the forbidden/not-found
+// distinction, which is what that comment above is about; "Not accessible" is
+// additionally authorization-shaped, and Wave 3.1 PRD §12 forbids an
+// authorization-shaped statement unless access was actually denied — which
+// this outcome, by construction, cannot tell us. The wording is the TRD §7.1
+// public class for the same internal outcome. It lives here rather than being
+// mirrored on the ops side: no ops code path renders it, and a constant only
+// its own test reads is a coverage claim with nothing behind it.
 export const SCOPE_OUTCOME_LABELS: Record<DevAnswer["resolved_scope"]["outcome"], string> = {
     ambiguous: "Ambiguous",
     exact: "Exact match",
     filtered: "Filtered",
-    forbidden_or_not_found: "Not accessible",
+    forbidden_or_not_found: "No authorized match found",
     inherited: "Inherited",
     organization_fallback: "Organization-wide",
     unresolved: "Unresolved",
 };
+
+// The status pill copy a no-match answer gets instead of its raw
+// `AnswerStatus`. §12 prohibits labelling a no-match result as a refusal, and
+// the server now terminates these as `insufficient_evidence` — but "Insufficient
+// evidence" is also wrong here: there is no evidence problem, the named subject
+// simply is not in the authorized catalog. Keyed off the resolution outcome
+// rather than the status so it stays correct whichever status a replayed older
+// row carries.
+export const NO_MATCH_STATUS_LABEL = "No match found";
+
+// The internal-token denylist, derived from the two TOTAL label maps above so
+// it cannot fall behind the generated unions. See lib/dev/internalTokens.ts.
+export const INTERNAL_TOKEN_DENYLIST = buildInternalTokenDenylist(
+    Object.keys(ANSWER_STATUS_LABELS),
+    Object.keys(SCOPE_OUTCOME_LABELS),
+);
+
+/**
+ * Whether this answer's own copy contradicts the scope row it carries.
+ *
+ * The reported live payload is the reason this exists, and keying only off
+ * `resolved_scope.outcome` missed it: that row carries `outcome: "exact"`
+ * while its summary says a named subject was not found, so it is an ordinary
+ * committed-scope answer as far as the outcome field is concerned. It is
+ * already persisted and still schema-valid, so the server-side fix cannot
+ * reach it — the client has to notice the contradiction itself.
+ *
+ * The signal is a scope-resolution token in the answer's own prose. Those
+ * tokens are `NEVER_ATTESTABLE_TOKENS`, so no entity label can produce a
+ * false positive here, and prose that narrates the resolver's verdict while
+ * the scope row claims a commit cannot both be true. When they disagree the
+ * scope row is the one that loses: it is the field that would otherwise put
+ * "Exact match" beside a not-found statement.
+ */
+export function contradictsCommittedScope(answer: DevAnswer): boolean {
+    const prose = [
+        answer.direct_summary,
+        ...(answer.warnings ?? []),
+        ...(answer.claims ?? []).map((claim) => claim.text),
+    ];
+    return prose.some((text) => {
+        const token = findInternalToken(text, INTERNAL_TOKEN_DENYLIST);
+        return token !== null && NEVER_ATTESTABLE_TOKENS.has(token);
+    });
+}
+
+export function isNoMatchAnswer(answer: DevAnswer): boolean {
+    return (
+        answer.resolved_scope?.outcome === "forbidden_or_not_found" ||
+        contradictsCommittedScope(answer)
+    );
+}
+
+/**
+ * Every string in this answer with a server-authorized provenance, joined for
+ * the token guard. Read off the answer's OWN scope, candidates, evidence and
+ * metrics — never a catalog lookup: an entity that is not already part of this
+ * answer has no business exempting a token in it. Mirrors ops
+ * `no_match_terminal.attested_strings`.
+ */
+export function attestedText(answer: DevAnswer): string {
+    const scope = answer.resolved_scope;
+    return [
+        ...(scope?.requested_scope?.entity_refs ?? []).map((ref) => ref.display_label),
+        ...(scope?.requested_scope?.repositories ?? []),
+        ...(scope?.resolved_scope?.entity_refs ?? []).map((ref) => ref.display_label),
+        ...(scope?.resolved_scope?.repositories ?? []),
+        ...(scope?.candidates ?? []).map((candidate) => candidate.entity_ref.display_label),
+        ...(answer.evidence ?? []).map((item) => item.display_label),
+        ...(answer.metrics ?? []).map((metric) => metric.label),
+    ].join(" ");
+}
 
 const STATUS_EXPLANATIONS: Partial<Record<DevAnswer["status"], string>> = {
     partial:
@@ -192,7 +280,35 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
     );
     const [openMetricIds, setOpenMetricIds] = useState<ReadonlySet<string>>(() => new Set());
     const scopeResolution = answer.resolved_scope;
-    const statusExplanation = STATUS_EXPLANATIONS[answer.status];
+    // CHAOS-3367. A no-match gets its own presentation rather than the generic
+    // status treatment: no "Refused" chip, no status caption claiming Ask Dev
+    // declined to answer, and the sanctioned outcome label in place of the raw
+    // status. The server's own summary carries the explanation, so a second
+    // boilerplate caption above it would only repeat it less accurately.
+    const noMatch = isNoMatchAnswer(answer);
+    // A contradictory legacy row's scope outcome is not trustworthy — showing
+    // "Exact match" beside a not-found summary is the §12 juxtaposition
+    // itself. The row is kept (the repository count beside it is still real)
+    // but the outcome value is withheld rather than asserted.
+    const scopeOutcomeTrusted = !contradictsCommittedScope(answer);
+    const statusLabel = noMatch ? NO_MATCH_STATUS_LABEL : ANSWER_STATUS_LABELS[answer.status];
+    const statusExplanation = noMatch ? undefined : STATUS_EXPLANATIONS[answer.status];
+    // The coverage row is meaningless when no source plan ran -- "0 of 0
+    // sources" reads as a measurement, and the live defect's "1 of 1 sources"
+    // read as a completed source plan for a subject that was never resolved.
+    // Hidden only when there is genuinely nothing to report. `required_source_count: 0`
+    // alone is not enough: the contract permits zero required sources alongside a
+    // non-empty unavailable/stale list, and removing the whole block would take the
+    // only source-specific explanation with it. A contradictory legacy row is also
+    // suppressed — its counts describe a source plan that provably did not run for
+    // the subject its own summary says was not found.
+    const coverage = answer.coverage;
+    const showCoverage =
+        !noMatch &&
+        ((coverage?.required_source_count ?? 0) > 0 ||
+            (coverage?.unavailable_required_sources?.length ?? 0) > 0 ||
+            (coverage?.stale_required_sources?.length ?? 0) > 0);
+    const attested = useMemo(() => attestedText(answer), [answer]);
     const evidenceById = useMemo(
         () =>
             new Map(
@@ -344,7 +460,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                     AI-generated
                 </span>
                 <span className="rounded-(--radius-pill) border border-(--border) px-2.5 py-1 text-label-caps text-(--text-muted)">
-                    {ANSWER_STATUS_LABELS[answer.status]}
+                    {statusLabel}
                 </span>
                 <span className="text-xs text-(--text-muted)">
                     As of {formatTimestamp(answer.as_of)}
@@ -369,7 +485,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                     <p className="text-sm leading-6 text-(--text-secondary)">{statusExplanation}</p>
                 ) : null}
                 <p className="font-(--font-display) text-h3 text-(--text-primary)">
-                    {answer.direct_summary}
+                    {safeCopy(answer.direct_summary, INTERNAL_TOKEN_DENYLIST, attested)}
                 </p>
             </div>
 
@@ -382,7 +498,9 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                         <span className="text-(--text-muted)">
                             Scope outcome:{" "}
                             <strong className="font-medium text-(--text-secondary)">
-                                {SCOPE_OUTCOME_LABELS[scopeResolution.outcome]}
+                                {scopeOutcomeTrusted
+                                    ? SCOPE_OUTCOME_LABELS[scopeResolution.outcome]
+                                    : SCOPE_OUTCOME_LABELS.forbidden_or_not_found}
                             </strong>
                         </span>
                         <span className="text-(--text-muted)">
@@ -392,8 +510,18 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                     </div>
                     {scopeResolution.candidates?.length ? (
                         <div className="mt-3">
+                            {/*
+                             * Two different situations share this list.
+                             * Ambiguity means several authorized entities DID
+                             * match and one must be picked; a no-match means
+                             * none did and these are only the nearest names
+                             * (CHAOS-3366 fills them; empty today). Calling
+                             * the second "possible scope matches" would assert
+                             * the subject exists, which is the substitution
+                             * §12 prohibits.
+                             */}
                             <p className="text-label-caps text-(--caution)">
-                                Possible scope matches
+                                {noMatch ? "Closest matches" : "Possible scope matches"}
                             </p>
                             <ul className="mt-2 space-y-1 text-sm text-(--text-secondary)">
                                 {scopeResolution.candidates.map((candidate) => (
@@ -418,41 +546,44 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                                 ))}
                             </ul>
                             <p className="mt-2 text-xs text-(--text-muted)">
-                                Choose or remove the proposed context before asking the next
-                                question.
+                                {noMatch
+                                    ? "None of these is the subject you named. Pick one to ask about it instead."
+                                    : "Choose or remove the proposed context before asking the next question."}
                             </p>
                         </div>
                     ) : null}
                 </section>
             ) : null}
 
-            <section
-                aria-label="Evidence coverage"
-                className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-(--text-muted)"
-            >
-                <span>
-                    Coverage:{" "}
-                    {formatNumber(answer.coverage?.available_source_count ?? 0, {
-                        maximumFractionDigits: 0,
-                    })}{" "}
-                    of{" "}
-                    {formatNumber(answer.coverage?.required_source_count ?? 0, {
-                        maximumFractionDigits: 0,
-                    })}{" "}
-                    sources
-                </span>
-                {answer.coverage?.unavailable_required_sources?.length ? (
-                    <span className="text-(--caution)">
-                        {answer.coverage.unavailable_required_sources.length} required sources
-                        unavailable
+            {showCoverage ? (
+                <section
+                    aria-label="Evidence coverage"
+                    className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-(--text-muted)"
+                >
+                    <span>
+                        Coverage:{" "}
+                        {formatNumber(answer.coverage?.available_source_count ?? 0, {
+                            maximumFractionDigits: 0,
+                        })}{" "}
+                        of{" "}
+                        {formatNumber(answer.coverage?.required_source_count ?? 0, {
+                            maximumFractionDigits: 0,
+                        })}{" "}
+                        sources
                     </span>
-                ) : null}
-                {answer.coverage?.stale_required_sources?.length ? (
-                    <span className="text-(--caution)">
-                        {answer.coverage.stale_required_sources.length} required sources stale
-                    </span>
-                ) : null}
-            </section>
+                    {answer.coverage?.unavailable_required_sources?.length ? (
+                        <span className="text-(--caution)">
+                            {answer.coverage.unavailable_required_sources.length} required sources
+                            unavailable
+                        </span>
+                    ) : null}
+                    {answer.coverage?.stale_required_sources?.length ? (
+                        <span className="text-(--caution)">
+                            {answer.coverage.stale_required_sources.length} required sources stale
+                        </span>
+                    ) : null}
+                </section>
+            ) : null}
 
             {answer.claims?.length ? (
                 <section
@@ -468,7 +599,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                                 <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-(--accent)" />
                                 <div className="min-w-0">
                                     <p>
-                                        {claim.text}
+                                        {safeCopy(claim.text, INTERNAL_TOKEN_DENYLIST, attested)}
                                         {renderInlineCitations(
                                             claim.evidence_ref_ids,
                                             claim.metric_ref_ids,
@@ -522,7 +653,9 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                     <p className="text-label-caps text-(--caution)">Conflicting evidence</p>
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-(--text-secondary)">
                         {answer.conflicts.map((conflict) => (
-                            <li key={conflict.summary}>{conflict.summary}</li>
+                            <li key={conflict.summary}>
+                                {safeCopy(conflict.summary, INTERNAL_TOKEN_DENYLIST, attested)}
+                            </li>
                         ))}
                     </ul>
                 </section>
@@ -651,7 +784,9 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                     <p className="text-label-caps text-(--caution)">Limitations</p>
                     <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-(--text-secondary)">
                         {answer.warnings.map((warning) => (
-                            <li key={warning}>{warning}</li>
+                            <li key={warning}>
+                                {safeCopy(warning, INTERNAL_TOKEN_DENYLIST, attested)}
+                            </li>
                         ))}
                     </ul>
                 </section>
@@ -671,7 +806,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                                 onClick={() => void submitQuestion(question)}
                                 className="rounded-(--radius-pill) border border-(--border) px-3 py-1.5 text-left text-xs text-(--text-secondary) hover:border-(--accent)/45 hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
                             >
-                                {question}
+                                {safeCopy(question, INTERNAL_TOKEN_DENYLIST, attested)}
                             </button>
                         ))}
                     </div>

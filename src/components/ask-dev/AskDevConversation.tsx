@@ -7,10 +7,11 @@ import type { DevProgressState } from "@/lib/dev/client";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 import { formatDateUTC } from "@/lib/formatters";
+import { safeCopy } from "@/lib/dev/internalTokens";
 import { runtimeConfig } from "@/lib/runtimeConfig";
 import { DataState } from "@/components/ui/DataState";
 
-import { AskDevAnswer } from "./AskDevAnswer";
+import { AskDevAnswer, attestedText, INTERNAL_TOKEN_DENYLIST } from "./AskDevAnswer";
 import { useAskDev } from "./AskDevProvider";
 
 function platformAllowanceGuidance(
@@ -662,8 +663,18 @@ export function AskDevConversation({
                                                 The investigation stopped safely.
                                             </p>
                                             <p className="mt-1 text-sm text-(--text-secondary)">
-                                                {entry.answer.direct_summary ||
-                                                    "Ask Dev could not complete that request."}
+                                                {/*
+                                                 * This branch bypasses AskDevAnswer entirely, so
+                                                 * it needs its own copy guard: an older persisted
+                                                 * error answer whose summary narrates an internal
+                                                 * token would otherwise leak it here while the
+                                                 * ordinary answer path is protected (CHAOS-3367).
+                                                 */}
+                                                {safeCopy(
+                                                    entry.answer.direct_summary,
+                                                    INTERNAL_TOKEN_DENYLIST,
+                                                    attestedText(entry.answer),
+                                                ) || "Ask Dev could not complete that request."}
                                             </p>
                                         </div>
                                     ) : (

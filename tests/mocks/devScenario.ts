@@ -170,7 +170,31 @@ function buildAnswer(
             // (`scopeResolution.outcome.replaceAll("_", " ")`). Public
             // copy must never disclose which of "forbidden" or "not found"
             // applies (that would itself leak hidden-entity existence).
-            base.direct_summary = "No authorized match was found for this question.";
+            // CHAOS-3367: mirrors what ops
+            // (no_match_terminal.named_subject_not_found_answer) actually
+            // emits now, not an approximation of it -- the PRD's verbatim
+            // sentence, insufficient_evidence rather than refused, no
+            // warnings, and a zero coverage block because no source plan ran
+            // for a subject that was never resolved. A mock that kept the old
+            // shape would let the e2e suite assert a payload production no
+            // longer produces.
+            base.status = "insufficient_evidence";
+            base.direct_summary =
+                "I couldn't find an authorized project named 'Zed' in the selected " +
+                "organization. I did not substitute organization-wide data. Here are " +
+                "the closest matches, if any.";
+            base.claims = [];
+            base.evidence = [];
+            base.metrics = [];
+            base.warnings = [];
+            base.suggested_follow_up_questions = [];
+            (base.coverage as JsonRecord) = {
+                ...(base.coverage as JsonRecord),
+                available_source_count: 0,
+                required_source_count: 0,
+                unavailable_required_sources: [],
+                stale_required_sources: [],
+            };
             const resolvedScope = base.resolved_scope as JsonRecord;
             resolvedScope.outcome = "forbidden_or_not_found";
             resolvedScope.resolved_scope = null;
