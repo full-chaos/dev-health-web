@@ -250,15 +250,34 @@ describe("AskDevAnswer status explanations (CHAOS-3215)", () => {
             "insufficient_evidence",
             "Insufficient evidence: there isn't enough evidence to answer with confidence. A result with limitations, not a silent success.",
         ],
-        [
-            "refused",
-            "Refused: Ask Dev did not answer this question. A result with limitations, not a silent success.",
-        ],
     ] as const)("shows the sanctioned explanation for a %s answer", (status, expectedText) => {
         const statusAnswer = { ...answer, status } as unknown as DevAnswer;
         render(<AskDevAnswer answer={statusAnswer} />);
 
         expect(screen.getByText(expectedText)).toBeVisible();
+    });
+
+    // CHAOS-3377: a GENUINE refusal (no claim/metric/evidence grounding at
+    // all) still gets the sanctioned "Refused:" caption -- the shared
+    // `answer` fixture above carries real claims/metrics/evidence, so it is
+    // no longer a valid fixture for this case (see the
+    // `refusedDespiteMaterialGrounding` describe block below for what
+    // happens when `status: "refused"` is combined with THAT fixture).
+    it("shows the sanctioned Refused explanation for a genuine refusal with no grounding", () => {
+        const statusAnswer = {
+            ...answer,
+            status: "refused",
+            claims: [],
+            metrics: [],
+            evidence: [],
+        } as unknown as DevAnswer;
+        render(<AskDevAnswer answer={statusAnswer} />);
+
+        expect(
+            screen.getByText(
+                "Refused: Ask Dev did not answer this question. A result with limitations, not a silent success.",
+            ),
+        ).toBeVisible();
     });
 
     it("renders no status explanation for a complete answer", () => {
@@ -500,6 +519,141 @@ describe("AskDevAnswer no-match presentation (CHAOS-3367)", () => {
 
         expect(screen.getByText("Closest matches")).toBeVisible();
         expect(screen.queryByText("Possible scope matches")).not.toBeInTheDocument();
+    });
+});
+
+describe("AskDevAnswer refused-with-grounding presentation (CHAOS-3377)", () => {
+    beforeAll(() => {
+        window.requestAnimationFrame = (callback: FrameRequestCallback) => {
+            callback(0);
+            return 0;
+        };
+    });
+
+    it("never shows a Refused chip or caption over a substantive body", () => {
+        // The live defect: the model self-declared `status=refused` while
+        // `answer` above carries a real claim, metric, and evidence entry.
+        render(<AskDevAnswer answer={{ ...answer, status: "refused" } as DevAnswer} />);
+
+        expect(screen.queryByText("Refused")).not.toBeInTheDocument();
+        expect(screen.queryByText(/Ask Dev did not answer this question/u)).not.toBeInTheDocument();
+        // The body itself is untouched -- this is presentation-only.
+        expect(screen.getByText("The evidence suggests delivery flow improved.")).toBeVisible();
+    });
+
+    it("still shows Refused for a genuine refusal with no grounding (negative control)", () => {
+        const genuineRefusal = {
+            ...answer,
+            status: "refused",
+            claims: [],
+            metrics: [],
+            evidence: [],
+        } as unknown as DevAnswer;
+        render(<AskDevAnswer answer={genuineRefusal} />);
+
+        expect(screen.getByText("Refused")).toBeVisible();
+        expect(screen.getByText(/Ask Dev did not answer this question/u)).toBeVisible();
+    });
+
+    it("catches material grounding carried only by a claim's metric_ref_ids", () => {
+        // A claim can ground itself with a metric reference alone (no
+        // evidence_ref_ids, and no top-level metrics/evidence arrays either)
+        // -- the guard must still catch that shape as "material grounding".
+        const claimMetricOnlyGrounding = {
+            ...answer,
+            status: "refused",
+            metrics: [],
+            evidence: [],
+            claims: [
+                {
+                    ...answer.claims?.[0],
+                    evidence_ref_ids: [],
+                    metric_ref_ids: ["metric-internal-1"],
+                },
+            ],
+        } as unknown as DevAnswer;
+        render(<AskDevAnswer answer={claimMetricOnlyGrounding} />);
+
+        expect(screen.queryByText("Refused")).not.toBeInTheDocument();
+    });
+});
+
+describe("AskDevAnswer CHAOS-3377 acceptance", () => {
+    beforeAll(() => {
+        window.requestAnimationFrame = (callback: FrameRequestCallback) => {
+            callback(0);
+            return 0;
+        };
+    });
+
+    // PRD-prohibited strings for a substantive project-status answer, bound
+    // as literals -- never derived from the module under test.
+    const PROHIBITED_STRINGS = [
+        "actual_completion",
+        "not_ready",
+        "open_blocker",
+        "required_child_incomplete",
+        "required_release_evidence_missing",
+        "ev1_",
+        "}}}{",
+    ];
+
+    it("a substantive project-status answer is never Refused and never leaks internal vocabulary", () => {
+        const projectStatusAnswer = {
+            ...answer,
+            status: "partial",
+            direct_summary:
+                "39 of 69 required items are complete for Falcon Nine. Open items: one or more blocking items are still open; one or more required sub-items are not complete.",
+            resolved_scope: {
+                outcome: "exact",
+                authorized_repository_ids: [],
+                authorized_entity_ids: ["project-falcon-nine"],
+                candidates: [],
+                requested_scope: {
+                    direct_scope: "project",
+                    entity_refs: [
+                        {
+                            display_label: "Falcon Nine",
+                            entity_id: "project-falcon-nine",
+                            entity_type: "project",
+                        },
+                    ],
+                    organization_id: "org-internal-1",
+                    repositories: [],
+                },
+                resolved_scope: {
+                    direct_scope: "project",
+                    entity_refs: [
+                        {
+                            display_label: "Falcon Nine",
+                            entity_id: "project-falcon-nine",
+                            entity_type: "project",
+                        },
+                    ],
+                    organization_id: "org-internal-1",
+                    repositories: [],
+                },
+            },
+        } as unknown as DevAnswer;
+
+        const { container } = render(<AskDevAnswer answer={projectStatusAnswer} />);
+
+        expect(screen.queryByText("Refused")).not.toBeInTheDocument();
+        const rendered = container.textContent ?? "";
+        for (const forbidden of PROHIBITED_STRINGS) {
+            expect(rendered).not.toContain(forbidden);
+        }
+        // Defect 4: a project scope renders its subject, not a repository
+        // count.
+        expect(screen.getByText("Falcon Nine")).toBeVisible();
+        expect(screen.queryByText(/authorized repositories/u)).not.toBeInTheDocument();
+    });
+
+    it("a genuinely refused/no-match result still renders its canonical copy (negative control)", () => {
+        render(<AskDevAnswer answer={{ ...noMatchAnswer, status: "refused" } as DevAnswer} />);
+
+        expect(screen.getByText("No match found")).toBeVisible();
+        expect(screen.queryByText("Refused")).not.toBeInTheDocument();
     });
 });
 

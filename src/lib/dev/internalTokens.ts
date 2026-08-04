@@ -54,6 +54,49 @@ const DEV_ERROR_CODE_TOKENS: readonly string[] = [
 ];
 
 /**
+ * CHAOS-3377 defect 2: the `dev_status_snapshot`/`ActualCompletion` internal
+ * vocabulary -- the completion `state` Literal plus every reason code
+ * `status_change_service._assess` can emit (ops
+ * `status_change_service.STATUS_REASON_CODES` / `status_completion_copy.py`
+ * is the source of truth this list mirrors; kept in sync by
+ * `AskDevAnswer.test.tsx`'s totality test against the PRD's literal
+ * prohibited strings, the same way `DEV_ERROR_CODE_TOKENS` above is pinned).
+ *
+ * Ops now server-renders this vocabulary through a closed translation table
+ * before it ever reaches `dev_answer.v1` (`status_answer_render.py`), so a
+ * NEW run cannot leak these. This list is the client-side backstop for an
+ * already-persisted or replayed row written before that fix existed --
+ * mirrors `no_match_terminal.py`'s own read-time `redact_persisted_answer`
+ * rationale for the CHAOS-3367 scope-resolution vocabulary.
+ *
+ * `"ev1_"` is not a StrEnum member but an evidence-handle PREFIX
+ * (`ev1_<40 hex>`, ops `contracts_v2/base.py`); included directly since the
+ * substring-based scan below matches a prefix exactly the same way it
+ * matches a whole token.
+ */
+const STATUS_ASSESSMENT_TOKENS: readonly string[] = [
+    "actual_completion",
+    "not_ready",
+    "child_requirement_unknown",
+    "declared_status_missing",
+    "required_source_not_fresh",
+    "assessment_source_limit_reached",
+    "required_release_evidence_missing",
+    "required_child_incomplete",
+    "open_blocker",
+    "required_pull_request_unmerged",
+    "required_review_unresolved",
+    "review_changes_requested",
+    "ci_requirement_unknown",
+    "required_ci_skip_state_unknown",
+    "required_ci_work_skipped",
+    "required_ci_not_passing",
+    "required_deployment_not_succeeded",
+    "active_blocking_incident",
+    "ev1_",
+];
+
+/**
  * Tokens no provenance may ever exempt, mirroring ops
  * `no_match_terminal.NEVER_ATTESTABLE_TOKENS`.
  *
@@ -76,7 +119,9 @@ export function buildInternalTokenDenylist(
     ...vocabularies: readonly (readonly string[])[]
 ): ReadonlySet<string> {
     return new Set(
-        [...vocabularies, DEV_ERROR_CODE_TOKENS].flat().filter((token) => token.includes("_")),
+        [...vocabularies, DEV_ERROR_CODE_TOKENS, STATUS_ASSESSMENT_TOKENS]
+            .flat()
+            .filter((token) => token.includes("_")),
     );
 }
 
