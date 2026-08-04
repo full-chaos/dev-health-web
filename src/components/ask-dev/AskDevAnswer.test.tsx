@@ -2,9 +2,18 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import type { DevAnswer } from "@/lib/dev/generated";
+import type { DevAnswer, DevError } from "@/lib/dev/generated";
 
-import { ANSWER_STATUS_LABELS, AskDevAnswer, SCOPE_OUTCOME_LABELS } from "./AskDevAnswer";
+import { findInternalToken } from "@/lib/dev/internalTokens";
+
+import {
+    ANSWER_STATUS_LABELS,
+    AskDevAnswer,
+    INTERNAL_TOKEN_DENYLIST,
+    SCOPE_OUTCOME_LABELS,
+} from "./AskDevAnswer";
+
+type DevErrorCode = NonNullable<DevError>["code"];
 
 const actions = vi.hoisted(() => ({
     expandEvidence: vi.fn(),
@@ -449,7 +458,12 @@ describe("AskDevAnswer no-match presentation (CHAOS-3367)", () => {
         expect(screen.queryByLabelText("Evidence coverage")).not.toBeInTheDocument();
     });
 
-    it("renders the PRD's own no-match sentence unaltered", () => {
+    // NOT a RED control, and labelled as one: the pre-change component
+    // rendered direct_summary verbatim too, so this stays green with the
+    // component reverted. It is a compatibility check — the new token guard
+    // must not mangle the server's own sentence — and it earns its place for
+    // that, not as evidence the fix works.
+    it("passes the PRD's own no-match sentence through the token guard unaltered", () => {
         render(<AskDevAnswer answer={noMatchAnswer} />);
 
         expect(
@@ -574,8 +588,8 @@ describe("AskDevAnswer token-guard provenance (CHAOS-3367)", () => {
         ...answer,
         claims: [],
         conflicts: [],
-        direct_summary: "The authorized project not_found has validated status data.",
-        evidence: [{ ...answer.evidence[0], display_label: "not_found" }],
+        direct_summary: "The insufficient_evidence branch was merged last week.",
+        evidence: [{ ...answer.evidence![0], display_label: "insufficient_evidence" }],
         metrics: [],
         warnings: [],
     } as unknown as DevAnswer;
@@ -584,7 +598,7 @@ describe("AskDevAnswer token-guard provenance (CHAOS-3367)", () => {
         render(<AskDevAnswer answer={attestedAnswer} />);
 
         expect(
-            screen.getByText("The authorized project not_found has validated status data."),
+            screen.getByText("The insufficient_evidence branch was merged last week."),
         ).toBeVisible();
     });
 
@@ -602,5 +616,143 @@ describe("AskDevAnswer token-guard provenance (CHAOS-3367)", () => {
 
         expect(document.body.textContent).not.toContain("forbidden_or_not_found");
         expect(screen.getByText("This part of the answer could not be shown.")).toBeVisible();
+    });
+});
+
+describe("AskDevAnswer legacy contradictory payload (CHAOS-3367)", () => {
+    beforeAll(() => {
+        window.requestAnimationFrame = (callback: FrameRequestCallback) => {
+            callback(0);
+            return 0;
+        };
+    });
+
+    // The reported screenshot's actual shape, and the one the first revision
+    // of this fix missed: `resolved_scope.outcome` is "exact", so keying the
+    // no-match presentation off that field alone left every §12 violation on
+    // screen. The row is already persisted and still schema-valid, so no
+    // server-side change can reach it — the client has to notice that the
+    // summary and the scope row cannot both be true.
+    const legacyAnswer = {
+        ...answer,
+        claims: [],
+        conflicts: [],
+        coverage: { available_source_count: 1, required_source_count: 1 },
+        direct_summary:
+            "Scope resolution for the requested entity returned forbidden_or_not_found. " +
+            "No authorized entity matched the requested name under the current authorization.",
+        evidence: [],
+        metrics: [],
+        resolved_scope: {
+            authorized_repository_ids: [],
+            candidates: [],
+            outcome: "exact",
+            resolved_at: "2026-07-29T00:00:00Z",
+            schema_version: "dev_scope_resolution.v1",
+            warnings: [],
+        },
+        status: "refused",
+        warnings: [],
+    } as unknown as DevAnswer;
+
+    it("shows none of the four prohibited elements for the live legacy payload", () => {
+        render(<AskDevAnswer answer={legacyAnswer} />);
+
+        const body = document.body.textContent ?? "";
+        expect(body).not.toContain("forbidden_or_not_found");
+        expect(screen.queryByText("Refused")).not.toBeInTheDocument();
+        expect(screen.queryByText("Exact match")).not.toBeInTheDocument();
+        expect(screen.queryByText(/sources/u)).not.toBeInTheDocument();
+        expect(screen.getByText("No match found")).toBeVisible();
+    });
+
+    it("does not reclassify an ordinary answer that merely mentions a source", () => {
+        // The classifier keys off scope-resolution tokens only, so a normal
+        // committed-scope answer keeps its own presentation.
+        render(<AskDevAnswer answer={answer} />);
+
+        expect(screen.queryByText("No match found")).not.toBeInTheDocument();
+        expect(screen.getByText(/1 of 1/u)).toBeVisible();
+    });
+});
+
+describe("AskDevAnswer coverage suppression (CHAOS-3367)", () => {
+    beforeAll(() => {
+        window.requestAnimationFrame = (callback: FrameRequestCallback) => {
+            callback(0);
+            return 0;
+        };
+    });
+
+    it("keeps the coverage block when zero were required but sources are unavailable", () => {
+        // The contract permits required_source_count: 0 beside a non-empty
+        // unavailable list. Hiding the whole block on the count alone would
+        // take the only source-specific explanation with it.
+        render(
+            <AskDevAnswer
+                answer={
+                    {
+                        ...answer,
+                        coverage: {
+                            available_source_count: 0,
+                            required_source_count: 0,
+                            unavailable_required_sources: ["github"],
+                        },
+                    } as unknown as DevAnswer
+                }
+            />,
+        );
+
+        expect(screen.getByText("1 required sources unavailable")).toBeVisible();
+    });
+});
+
+describe("internal-token guard vocabulary (CHAOS-3367)", () => {
+    it("never lets provenance exempt a scope-resolution token", () => {
+        // Codex round 2: an evidence label named `scope_forbidden` would
+        // otherwise exempt a genuinely leaked `scope_forbidden` elsewhere in
+        // the same answer.
+        expect(
+            findInternalToken(
+                "Resolution returned scope_forbidden.",
+                INTERNAL_TOKEN_DENYLIST,
+                "scope_forbidden",
+            ),
+        ).toBe("scope_forbidden");
+    });
+
+    it("pins the DevError code vocabulary against the generated union", () => {
+        // The hand-written half of the denylist. Anything here that stops
+        // being a real code, or any underscore-bearing code missing from it,
+        // fails at build time rather than becoming a silent gap.
+        const codes: Record<NonNullable<DevErrorCode>, true> = {
+            answer_validation_failed: true,
+            byo_llm_not_enabled: true,
+            cancelled: true,
+            concurrency_limited: true,
+            conversation_expired: true,
+            conversation_not_found: true,
+            cost_limit_reached: true,
+            feature_not_enabled: true,
+            forbidden: true,
+            insufficient_evidence: true,
+            internal_error: true,
+            invalid_request: true,
+            model_not_supported: true,
+            provider_contract_violation: true,
+            provider_not_configured: true,
+            provider_unavailable: true,
+            rate_limited: true,
+            scope_ambiguous: true,
+            scope_forbidden: true,
+            scope_not_found: true,
+            source_unavailable: true,
+            tool_limit_reached: true,
+            tool_unavailable: true,
+            unauthenticated: true,
+        };
+        for (const code of Object.keys(codes).filter((value) => value.includes("_"))) {
+            expect(INTERNAL_TOKEN_DENYLIST.has(code)).toBe(true);
+        }
     });
 });

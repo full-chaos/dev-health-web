@@ -53,6 +53,25 @@ const DEV_ERROR_CODE_TOKENS: readonly string[] = [
     "tool_unavailable",
 ];
 
+/**
+ * Tokens no provenance may ever exempt, mirroring ops
+ * `no_match_terminal.NEVER_ATTESTABLE_TOKENS`.
+ *
+ * Left unbounded, `attested` was itself a hole: an evidence label named
+ * `scope_forbidden` would exempt a genuinely leaked `scope_forbidden` anywhere
+ * else in the same answer. These tokens describe Ask Dev's own scope-resolution
+ * decision — an entity cannot plausibly be named after one, and they are
+ * exactly what PRD §12 prohibits by name — so the escape hatch does not apply
+ * to them at all.
+ */
+export const NEVER_ATTESTABLE_TOKENS: ReadonlySet<string> = new Set([
+    "forbidden_or_not_found",
+    "organization_fallback",
+    "scope_ambiguous",
+    "scope_forbidden",
+    "scope_not_found",
+]);
+
 export function buildInternalTokenDenylist(
     ...vocabularies: readonly (readonly string[])[]
 ): ReadonlySet<string> {
@@ -86,7 +105,8 @@ export function findInternalToken(
     const lowered = value.toLowerCase();
     const attestedText = attested.toLowerCase();
     for (const token of denylist) {
-        if (lowered.includes(token) && !attestedText.includes(token)) return token;
+        if (!lowered.includes(token)) continue;
+        if (NEVER_ATTESTABLE_TOKENS.has(token) || !attestedText.includes(token)) return token;
     }
     return null;
 }

@@ -10,7 +10,12 @@ import type {
     DevEvidenceRef,
     DevScope,
 } from "@/lib/dev/generated";
-import { buildInternalTokenDenylist, safeCopy } from "@/lib/dev/internalTokens";
+import {
+    buildInternalTokenDenylist,
+    findInternalToken,
+    NEVER_ATTESTABLE_TOKENS,
+    safeCopy,
+} from "@/lib/dev/internalTokens";
 import { formatMetricValue, formatNumber, formatPercent, formatTimestamp } from "@/lib/formatters";
 
 import { useAskDev } from "./AskDevProvider";
@@ -95,8 +100,40 @@ export const INTERNAL_TOKEN_DENYLIST = buildInternalTokenDenylist(
     Object.keys(SCOPE_OUTCOME_LABELS),
 );
 
+/**
+ * Whether this answer's own copy contradicts the scope row it carries.
+ *
+ * The reported live payload is the reason this exists, and keying only off
+ * `resolved_scope.outcome` missed it: that row carries `outcome: "exact"`
+ * while its summary says a named subject was not found, so it is an ordinary
+ * committed-scope answer as far as the outcome field is concerned. It is
+ * already persisted and still schema-valid, so the server-side fix cannot
+ * reach it — the client has to notice the contradiction itself.
+ *
+ * The signal is a scope-resolution token in the answer's own prose. Those
+ * tokens are `NEVER_ATTESTABLE_TOKENS`, so no entity label can produce a
+ * false positive here, and prose that narrates the resolver's verdict while
+ * the scope row claims a commit cannot both be true. When they disagree the
+ * scope row is the one that loses: it is the field that would otherwise put
+ * "Exact match" beside a not-found statement.
+ */
+export function contradictsCommittedScope(answer: DevAnswer): boolean {
+    const prose = [
+        answer.direct_summary,
+        ...(answer.warnings ?? []),
+        ...(answer.claims ?? []).map((claim) => claim.text),
+    ];
+    return prose.some((text) => {
+        const token = findInternalToken(text, INTERNAL_TOKEN_DENYLIST);
+        return token !== null && NEVER_ATTESTABLE_TOKENS.has(token);
+    });
+}
+
 export function isNoMatchAnswer(answer: DevAnswer): boolean {
-    return answer.resolved_scope?.outcome === "forbidden_or_not_found";
+    return (
+        answer.resolved_scope?.outcome === "forbidden_or_not_found" ||
+        contradictsCommittedScope(answer)
+    );
 }
 
 /**
@@ -249,12 +286,28 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
     // status. The server's own summary carries the explanation, so a second
     // boilerplate caption above it would only repeat it less accurately.
     const noMatch = isNoMatchAnswer(answer);
+    // A contradictory legacy row's scope outcome is not trustworthy — showing
+    // "Exact match" beside a not-found summary is the §12 juxtaposition
+    // itself. The row is kept (the repository count beside it is still real)
+    // but the outcome value is withheld rather than asserted.
+    const scopeOutcomeTrusted = !contradictsCommittedScope(answer);
     const statusLabel = noMatch ? NO_MATCH_STATUS_LABEL : ANSWER_STATUS_LABELS[answer.status];
     const statusExplanation = noMatch ? undefined : STATUS_EXPLANATIONS[answer.status];
     // The coverage row is meaningless when no source plan ran -- "0 of 0
     // sources" reads as a measurement, and the live defect's "1 of 1 sources"
     // read as a completed source plan for a subject that was never resolved.
-    const showCoverage = (answer.coverage?.required_source_count ?? 0) > 0;
+    // Hidden only when there is genuinely nothing to report. `required_source_count: 0`
+    // alone is not enough: the contract permits zero required sources alongside a
+    // non-empty unavailable/stale list, and removing the whole block would take the
+    // only source-specific explanation with it. A contradictory legacy row is also
+    // suppressed — its counts describe a source plan that provably did not run for
+    // the subject its own summary says was not found.
+    const coverage = answer.coverage;
+    const showCoverage =
+        !noMatch &&
+        ((coverage?.required_source_count ?? 0) > 0 ||
+            (coverage?.unavailable_required_sources?.length ?? 0) > 0 ||
+            (coverage?.stale_required_sources?.length ?? 0) > 0);
     const attested = useMemo(() => attestedText(answer), [answer]);
     const evidenceById = useMemo(
         () =>
@@ -445,7 +498,9 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                         <span className="text-(--text-muted)">
                             Scope outcome:{" "}
                             <strong className="font-medium text-(--text-secondary)">
-                                {SCOPE_OUTCOME_LABELS[scopeResolution.outcome]}
+                                {scopeOutcomeTrusted
+                                    ? SCOPE_OUTCOME_LABELS[scopeResolution.outcome]
+                                    : SCOPE_OUTCOME_LABELS.forbidden_or_not_found}
                             </strong>
                         </span>
                         <span className="text-(--text-muted)">
@@ -751,7 +806,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                                 onClick={() => void submitQuestion(question)}
                                 className="rounded-(--radius-pill) border border-(--border) px-3 py-1.5 text-left text-xs text-(--text-secondary) hover:border-(--accent)/45 hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
                             >
-                                {question}
+                                {safeCopy(question, INTERNAL_TOKEN_DENYLIST, attested)}
                             </button>
                         ))}
                     </div>
