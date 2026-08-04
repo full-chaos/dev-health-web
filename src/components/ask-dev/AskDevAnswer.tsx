@@ -15,6 +15,7 @@ import {
     findInternalToken,
     NEVER_ATTESTABLE_TOKENS,
     safeCopy,
+    WITHHELD_COPY,
 } from "@/lib/dev/internalTokens";
 import { formatMetricValue, formatNumber, formatPercent, formatTimestamp } from "@/lib/formatters";
 
@@ -165,13 +166,36 @@ export function refusedDespiteMaterialGrounding(answer: DevAnswer): boolean {
     );
 }
 
-/** The status pill copy for `refusedDespiteMaterialGrounding` -- mirrors
- * `NO_MATCH_STATUS_LABEL`'s rationale: neither the raw status nor a
- * boilerplate "Refused" caption is accurate, so a neutral, honest label
- * takes their place instead of asserting a specific status the client
- * cannot itself verify from a legacy row.
+/**
+ * The status pill copy for `refusedDespiteMaterialGrounding`.
+ *
+ * CHAOS-3377 HIGH (codex adversarial web review, round 2): an earlier
+ * revision relabeled this contradiction "Answered" while STILL rendering
+ * the model's original (rejected-shaped) `direct_summary`/`claims`
+ * underneath -- the ops contract never does that (a refused-with-grounding
+ * candidate is either repaired or has its narrative DISCARDED and replaced
+ * with server-owned content; see `answer_validator.py` /
+ * `Orchestrator._server_grounded_answer`). Labelling this "Answered" while
+ * showing the rejected prose invents a coherent answer the server never
+ * produced. This is now a genuinely neutral, non-committal label -- content
+ * is withheld alongside it (see `refusedWithGrounding` below in the
+ * component body), never invented around.
+ *
+ * The authoritative fix for a NEW run's persisted row is server-side
+ * (`no_match_terminal._normalize_refused_with_grounding`, run on every
+ * replay/transcript read); this remains only as defense-in-depth for a row
+ * that somehow reaches the client without having gone through that
+ * normalization.
  */
-export const REFUSED_WITH_GROUNDING_STATUS_LABEL = "Answered";
+export const REFUSED_WITH_GROUNDING_STATUS_LABEL = "Inconsistent result";
+
+/** The caption shown in place of `STATUS_EXPLANATIONS` when
+ * `refusedWithGrounding` is true -- explains the withholding, not the
+ * (rejected) content underneath it. */
+export const REFUSED_WITH_GROUNDING_EXPLANATION =
+    "Inconsistent result: this answer's recorded status and its own content " +
+    "disagree. The original narrative has been withheld; any structured " +
+    "metrics or evidence below are unaffected.";
 
 /**
  * Every string in this answer with a server-authorized provenance, joined for
@@ -366,8 +390,11 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
         : refusedWithGrounding
           ? REFUSED_WITH_GROUNDING_STATUS_LABEL
           : ANSWER_STATUS_LABELS[answer.status];
-    const statusExplanation =
-        noMatch || refusedWithGrounding ? undefined : STATUS_EXPLANATIONS[answer.status];
+    const statusExplanation = noMatch
+        ? undefined
+        : refusedWithGrounding
+          ? REFUSED_WITH_GROUNDING_EXPLANATION
+          : STATUS_EXPLANATIONS[answer.status];
     // The coverage row is meaningless when no source plan ran -- "0 of 0
     // sources" reads as a measurement, and the live defect's "1 of 1 sources"
     // read as a completed source plan for a subject that was never resolved.
@@ -560,7 +587,9 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                     <p className="text-sm leading-6 text-(--text-secondary)">{statusExplanation}</p>
                 ) : null}
                 <p className="font-(--font-display) text-h3 text-(--text-primary)">
-                    {safeCopy(answer.direct_summary, INTERNAL_TOKEN_DENYLIST, attested)}
+                    {refusedWithGrounding
+                        ? WITHHELD_COPY
+                        : safeCopy(answer.direct_summary, INTERNAL_TOKEN_DENYLIST, attested)}
                 </p>
             </div>
 
@@ -659,7 +688,13 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                 </section>
             ) : null}
 
-            {answer.claims?.length ? (
+            {/*
+             * CHAOS-3377 HIGH: claims are model-authored prose, exactly
+             * like direct_summary above -- a refused-with-grounding row's
+             * claims are withheld the same way, never rendered alongside a
+             * relabeled-but-invented status.
+             */}
+            {!refusedWithGrounding && answer.claims?.length ? (
                 <section
                     className="space-y-3 border-t border-(--border) pt-4"
                     aria-labelledby={findingsHeadingId}

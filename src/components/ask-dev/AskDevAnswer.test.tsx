@@ -530,15 +530,26 @@ describe("AskDevAnswer refused-with-grounding presentation (CHAOS-3377)", () => 
         };
     });
 
-    it("never shows a Refused chip or caption over a substantive body", () => {
+    it("never shows a Refused chip, and withholds the rejected-shaped body instead of inventing Answered around it", () => {
         // The live defect: the model self-declared `status=refused` while
         // `answer` above carries a real claim, metric, and evidence entry.
+        // CHAOS-3377 HIGH (round 2): an earlier revision relabeled this
+        // "Answered" while STILL rendering the model's original prose --
+        // the ops contract never does that (it discards rejected narrative,
+        // never shows it under an invented label). The chip must read
+        // neutrally AND the original summary/claims must be withheld.
         render(<AskDevAnswer answer={{ ...answer, status: "refused" } as DevAnswer} />);
 
         expect(screen.queryByText("Refused")).not.toBeInTheDocument();
+        expect(screen.queryByText("Answered")).not.toBeInTheDocument();
         expect(screen.queryByText(/Ask Dev did not answer this question/u)).not.toBeInTheDocument();
-        // The body itself is untouched -- this is presentation-only.
-        expect(screen.getByText("The evidence suggests delivery flow improved.")).toBeVisible();
+        expect(screen.getByText("Inconsistent result")).toBeVisible();
+        // The rejected-shaped body/claims are withheld, never rendered.
+        expect(
+            screen.queryByText("The evidence suggests delivery flow improved."),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText("Cycle time appears to have improved.")).not.toBeInTheDocument();
+        expect(screen.getByText("This part of the answer could not be shown.")).toBeVisible();
     });
 
     it("still shows Refused for a genuine refusal with no grounding (negative control)", () => {
