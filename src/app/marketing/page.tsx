@@ -82,9 +82,9 @@ export default function MarketingHubPage() {
                             Context Fabric
                         </h2>
                         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-(--ink-muted)">
-                            Connect planning, code, delivery, reliability, and source-health evidence
-                            so people and agents can understand what is actually happening—not just
-                            what one tracker says.
+                            Connect planning, code, delivery, reliability, and source-health
+                            evidence so people and agents can understand what is actually
+                            happening—not just what one tracker says.
                         </p>
                         <p className="mt-6 inline-flex items-center gap-1 text-sm font-medium text-(--accent)">
                             {CTA_LABELS.viewAskDevDocs}

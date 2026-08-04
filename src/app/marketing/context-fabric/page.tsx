@@ -249,8 +249,9 @@ export default function ContextFabricMarketingPage() {
                         </p>
                         <h3 className="mt-4 font-(--font-display) text-3xl">Ask Dev</h3>
                         <p className="mt-4 text-sm leading-relaxed text-(--ink-muted)">
-                            Dev is embedded in the Dev Health application and answers questions about
-                            project, team, and organizational health across the connected ecosystem.
+                            Dev is embedded in the Dev Health application and answers questions
+                            about project, team, and organizational health across the connected
+                            ecosystem.
                         </p>
                         <ul className="mt-7 space-y-3">
                             {ASK_DEV_QUESTIONS.map((question) => (
@@ -308,8 +309,8 @@ export default function ContextFabricMarketingPage() {
                             An answer should show its work.
                         </h2>
                         <p className="mt-5 text-sm leading-relaxed text-(--ink-muted)">
-                            Context Fabric does not quietly turn incomplete data into certainty. What
-                            it can answer depends on the sources, permissions, freshness, and
+                            Context Fabric does not quietly turn incomplete data into certainty.
+                            What it can answer depends on the sources, permissions, freshness, and
                             capabilities available to the organization.
                         </p>
                     </div>
