@@ -140,6 +140,18 @@ export const SCOPE_OUTCOMES_WITHOUT_RESOLVED_SCOPE: ReadonlySet<string> = new Se
     "forbidden_or_not_found",
 ]);
 
+/**
+ * Outcomes a resolution may carry `candidates` for, mirroring ops
+ * `contracts.CANDIDATE_BEARING_OUTCOMES` (CHAOS-3367). This one fails CLOSED
+ * on drift — a new candidate-bearing outcome missing from this set makes web
+ * reject a payload ops would accept, which surfaces as a visible validation
+ * failure rather than as silently-accepted contradictory data.
+ */
+export const CANDIDATE_BEARING_SCOPE_OUTCOMES: ReadonlySet<string> = new Set([
+    "ambiguous",
+    "forbidden_or_not_found",
+]);
+
 function validateScopeResolution(resolution: JsonRecord): boolean {
     const outcome = resolution.outcome;
     const candidates = asRecords(resolution.candidates);
@@ -148,7 +160,15 @@ function validateScopeResolution(resolution: JsonRecord): boolean {
     if (typeof outcome === "string" && resolvedOutcomes.has(outcome) && !isRecord(resolvedScope)) {
         return false;
     }
-    if (outcome === "ambiguous" ? candidates.length === 0 : candidates.length > 0) return false;
+    // Mirrors ops `DevScopeResolution.CANDIDATE_BEARING_OUTCOMES`. `ambiguous`
+    // REQUIRES candidates; `forbidden_or_not_found` MAY carry them — the PRD's
+    // no-match sentence ends "Here are the closest matches, if any", and the
+    // closest-match list lives here rather than in a second, parallel field
+    // (CHAOS-3367; CHAOS-3366 fills it). Every other outcome still forbids
+    // them: an `exact` commit with candidates beside it is a contradiction.
+    if (outcome === "ambiguous" && candidates.length === 0) return false;
+    if (!CANDIDATE_BEARING_SCOPE_OUTCOMES.has(String(outcome)) && candidates.length > 0)
+        return false;
     return !(
         outcome === "organization_fallback" &&
         (!isRecord(resolvedScope) || resolvedScope.direct_scope !== "organization")

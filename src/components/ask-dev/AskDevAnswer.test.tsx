@@ -342,9 +342,15 @@ describe("AskDevAnswer sanctioned copy (CHAOS-3291)", () => {
         } as unknown as DevAnswer;
         render(<AskDevAnswer answer={forbiddenAnswer} />);
 
-        expect(screen.getByText("Not accessible")).toBeVisible();
+        // CHAOS-3367 changed this label from "Not accessible" to the TRD §7.1
+        // public class for the same outcome. It still collapses forbidden and
+        // not-found into one statement, which is what this test guards; what
+        // changed is that "Not accessible" additionally asserted an access
+        // denial the backend cannot actually distinguish, and PRD §12 forbids
+        // an authorization-shaped statement unless access was really denied.
+        expect(screen.getByText("No authorized match found")).toBeVisible();
         expect(screen.queryByText(/forbidden/iu)).not.toBeInTheDocument();
-        expect(screen.queryByText(/not found/iu)).not.toBeInTheDocument();
+        expect(screen.queryByText(/not accessible/iu)).not.toBeInTheDocument();
     });
 
     // Totality guard, independent of any single render: these reference
@@ -377,5 +383,224 @@ describe("AskDevAnswer sanctioned copy (CHAOS-3291)", () => {
             unresolved: true,
         };
         expect(Object.keys(SCOPE_OUTCOME_LABELS).sort()).toEqual(Object.keys(knownOutcomes).sort());
+    });
+});
+
+// --- CHAOS-3367: the Wave 3.1 PRD §12 prohibitions, as string-level negative
+// --- controls against the exact payload a live screenshot showed rendering.
+
+const noMatchAnswer = {
+    ...answer,
+    claims: [],
+    conflicts: [],
+    coverage: { available_source_count: 0, required_source_count: 0 },
+    direct_summary:
+        "I couldn't find an authorized project named 'Falcon' in the selected " +
+        "organization. I did not substitute organization-wide data. Here are the " +
+        "closest matches, if any.",
+    evidence: [],
+    metrics: [],
+    resolved_scope: {
+        authorized_repository_ids: [],
+        candidates: [],
+        outcome: "forbidden_or_not_found",
+        resolved_at: "2026-07-29T00:00:00Z",
+        schema_version: "dev_scope_resolution.v1",
+        warnings: [],
+    },
+    status: "insufficient_evidence",
+    warnings: [],
+} as unknown as DevAnswer;
+
+describe("AskDevAnswer no-match presentation (CHAOS-3367)", () => {
+    beforeAll(() => {
+        window.requestAnimationFrame = (callback: FrameRequestCallback) => {
+            callback(0);
+            return 0;
+        };
+    });
+
+    it("never shows a Refused chip for a no-match result", () => {
+        // The live screenshot: the model marked its own answer `refused` after
+        // a not-found resolution. Keyed off the resolution outcome rather than
+        // the status, so a replayed row written before the server fix still
+        // renders honestly.
+        render(<AskDevAnswer answer={{ ...noMatchAnswer, status: "refused" } as DevAnswer} />);
+
+        expect(screen.getByText("No match found")).toBeVisible();
+        expect(screen.queryByText("Refused")).not.toBeInTheDocument();
+        expect(screen.queryByText(/Ask Dev did not answer this question/u)).not.toBeInTheDocument();
+    });
+
+    it("never shows an Exact match scope outcome beside a no-match summary", () => {
+        render(<AskDevAnswer answer={noMatchAnswer} />);
+
+        expect(screen.getByText("No authorized match found")).toBeVisible();
+        expect(screen.queryByText("Exact match")).not.toBeInTheDocument();
+    });
+
+    it("hides the sources line entirely when no source plan ran", () => {
+        render(<AskDevAnswer answer={noMatchAnswer} />);
+
+        // The live defect read "Coverage: 1 of 1 sources" for a subject that
+        // was never resolved. "0 of 0 sources" is no better: it still reads as
+        // a measurement that happened.
+        expect(screen.queryByText(/sources/u)).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Evidence coverage")).not.toBeInTheDocument();
+    });
+
+    it("renders the PRD's own no-match sentence unaltered", () => {
+        render(<AskDevAnswer answer={noMatchAnswer} />);
+
+        expect(
+            screen.getByText(/I couldn't find an authorized project named 'Falcon'/u),
+        ).toBeVisible();
+        expect(screen.getByText(/I did not substitute organization-wide data\./u)).toBeVisible();
+    });
+
+    it("calls a no-match candidate list closest matches, not possible scope matches", () => {
+        // CHAOS-3366 fills this list; the contract slot and its copy exist now
+        // so that work is additive.
+        render(
+            <AskDevAnswer
+                answer={
+                    {
+                        ...noMatchAnswer,
+                        resolved_scope: {
+                            ...noMatchAnswer.resolved_scope,
+                            candidates: [
+                                {
+                                    entity_ref: {
+                                        display_label: "Falcon Nine",
+                                        entity_id: "project-falcon-nine",
+                                        entity_type: "project",
+                                    },
+                                    reason: "Closest authorized name match.",
+                                },
+                            ],
+                        },
+                    } as unknown as DevAnswer
+                }
+            />,
+        );
+
+        expect(screen.getByText("Closest matches")).toBeVisible();
+        expect(screen.queryByText("Possible scope matches")).not.toBeInTheDocument();
+    });
+});
+
+describe("AskDevAnswer internal-token guard (CHAOS-3367)", () => {
+    beforeAll(() => {
+        window.requestAnimationFrame = (callback: FrameRequestCallback) => {
+            callback(0);
+            return 0;
+        };
+    });
+
+    // ops fails these terminals closed at the server boundary. This is the
+    // last layer before a human reads it, and it is the only one that covers
+    // a row persisted before that server check existed.
+    it.each([
+        [
+            "direct_summary",
+            {
+                direct_summary:
+                    "Scope resolution for the requested entity returned " +
+                    "forbidden_or_not_found. No authorized entity matched.",
+            },
+        ],
+        [
+            "a warning",
+            { warnings: ["The request was rejected with scope_forbidden for this repository."] },
+        ],
+        [
+            "a claim",
+            {
+                claims: [
+                    {
+                        claim_id: "claim-leak-1",
+                        confidence: 0.5,
+                        evidence_ref_ids: [],
+                        flags: {},
+                        kind: "inferred",
+                        metric_ref_ids: [],
+                        text: "The scope came back forbidden_or_not_found for this project.",
+                    },
+                ],
+            },
+        ],
+        [
+            "a conflict",
+            {
+                conflicts: [
+                    { evidence_ref_ids: [], summary: "Two sources disagree: scope_forbidden." },
+                ],
+            },
+        ],
+    ])("never renders an internal token that arrived in %s", (_field, overrides) => {
+        render(<AskDevAnswer answer={{ ...noMatchAnswer, ...overrides } as DevAnswer} />);
+
+        for (const token of ["forbidden_or_not_found", "scope_forbidden"]) {
+            expect(document.body.textContent).not.toContain(token);
+        }
+        expect(screen.getByText("This part of the answer could not be shown.")).toBeVisible();
+    });
+
+    it("leaves ordinary prose untouched", () => {
+        // The guard must not fire on English that happens to contain the enum
+        // members' individual words -- otherwise it silently eats real answers.
+        const prose =
+            "The exact match was filtered because the source was unavailable, so " +
+            "nothing was found.";
+        render(<AskDevAnswer answer={{ ...noMatchAnswer, direct_summary: prose } as DevAnswer} />);
+
+        expect(screen.getByText(prose)).toBeVisible();
+    });
+});
+
+describe("AskDevAnswer token-guard provenance (CHAOS-3367)", () => {
+    beforeAll(() => {
+        window.requestAnimationFrame = (callback: FrameRequestCallback) => {
+            callback(0);
+            return 0;
+        };
+    });
+
+    // Codex adversarial review round 1: a substring scan with no provenance
+    // blanks a healthy answer whose authorized entity is genuinely named like
+    // an enum member. The exemption is earned by the answer carrying that
+    // name as an authorized label, not by a hard-coded exception.
+    const attestedAnswer = {
+        ...answer,
+        claims: [],
+        conflicts: [],
+        direct_summary: "The authorized project not_found has validated status data.",
+        evidence: [{ ...answer.evidence[0], display_label: "not_found" }],
+        metrics: [],
+        warnings: [],
+    } as unknown as DevAnswer;
+
+    it("keeps copy naming an authorized entity that looks like an enum member", () => {
+        render(<AskDevAnswer answer={attestedAnswer} />);
+
+        expect(
+            screen.getByText("The authorized project not_found has validated status data."),
+        ).toBeVisible();
+    });
+
+    it("still blanks a real leak in the same answer", () => {
+        render(
+            <AskDevAnswer
+                answer={
+                    {
+                        ...attestedAnswer,
+                        direct_summary: "The project not_found returned forbidden_or_not_found.",
+                    } as DevAnswer
+                }
+            />,
+        );
+
+        expect(document.body.textContent).not.toContain("forbidden_or_not_found");
+        expect(screen.getByText("This part of the answer could not be shown.")).toBeVisible();
     });
 });
