@@ -149,7 +149,11 @@ export type SyncCoverageStatus =
     | "insufficient_data"
     | "paused"
     | "not_scheduled"
-    | "running";
+    | "running"
+    // Provider supports this dataset but no enabled IntegrationDataset row
+    // exists for it -- never selected by an operator, distinct from
+    // "insufficient_data" (enabled, zero rows so far). CHAOS-3399.
+    | "not_enabled";
 
 export type SyncCoverageDataBasis = "planner" | "legacy";
 
@@ -1046,8 +1050,17 @@ export const PROVIDER_LABELS: Record<Provider, string> = {
 };
 
 export const PROVIDER_SYNC_TARGETS: Record<Provider, string[]> = {
-    github: ["git", "prs", "cicd", "deployments", "incidents", "work-items"],
-    gitlab: ["git", "prs", "cicd", "deployments", "incidents", "work-items", "feature-flags"],
+    github: ["git", "prs", "cicd", "tests", "deployments", "incidents", "work-items"],
+    gitlab: [
+        "git",
+        "prs",
+        "cicd",
+        "tests",
+        "deployments",
+        "incidents",
+        "work-items",
+        "feature-flags",
+    ],
     jira: ["work-items"],
     linear: ["work-items"],
     launchdarkly: ["feature-flags"],

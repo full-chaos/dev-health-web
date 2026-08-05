@@ -18,6 +18,12 @@ export const ALL_SYNC_TARGETS = [
         description: "Pulls pipeline runs, build status, and duration for delivery health.",
     },
     {
+        id: "tests",
+        label: "Test Results (JUnit reports)",
+        description:
+            "Downloads CI test-report artifacts to pull test suite/case results and job-level CI data. Heavier than other datasets and off by default -- artifact retention is typically 14 days, so backfills only recover a recent window.",
+    },
+    {
         id: "deployments",
         label: "Deployments",
         description: "Pulls deployment events for release frequency and stability tracking.",
