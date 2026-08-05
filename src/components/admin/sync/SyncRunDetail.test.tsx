@@ -7,6 +7,7 @@ import {
     SAMPLE_SYNC_RUN_UNIT_SUMMARY_WITH_BUDGET_UNITS,
     SAMPLE_BUDGET_BLOCKED_UNIT,
     SAMPLE_BUDGET_EXHAUSTED_UNIT,
+    SAMPLE_DEFERRALS_EXHAUSTED_UNIT,
 } from "@/data/syncRunDetailSample";
 import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
 
@@ -273,6 +274,47 @@ describe("SyncRunDetailLive", () => {
 
         expect(screen.queryByText("Budget exhausted")).not.toBeInTheDocument();
         expect(screen.getByText(/Category: budget_deferred/)).toBeInTheDocument();
+    });
+
+    it("renders a distinct 'Deferrals exhausted' treatment and the actionable error text for error_category=deferral_exhausted", () => {
+        // Third terminal category (CHAOS-3412, ops-exhaustion lane): the
+        // aggregate deferral cap — a unit that oscillated between budget and
+        // rate-limit episodes without ever running. Exact persisted string is
+        // "deferral_exhausted" (owned by the ops-exhaustion lane) — do not
+        // invent variants.
+        render(
+            <SyncRunDetailLive
+                initialRun={{
+                    ...SAMPLE_SYNC_RUN,
+                    total_units: SAMPLE_SYNC_RUN_UNIT_SUMMARY.unit_count + 1,
+                }}
+                initialSummary={{
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                    by_status: { ...SAMPLE_SYNC_RUN_UNIT_SUMMARY.by_status, failed: 2 },
+                    failed_unit_count: 2,
+                    failed_unit_ids: [
+                        ...SAMPLE_SYNC_RUN_UNIT_SUMMARY.failed_unit_ids,
+                        SAMPLE_DEFERRALS_EXHAUSTED_UNIT.id,
+                    ],
+                    unit_count: SAMPLE_SYNC_RUN_UNIT_SUMMARY.unit_count + 1,
+                    units: [...SAMPLE_SYNC_RUN_UNIT_SUMMARY.units, SAMPLE_DEFERRALS_EXHAUSTED_UNIT],
+                }}
+                testMode
+            />,
+        );
+
+        // Badge (attention panel + unit table) — same exhausted-style treatment
+        // as budget_deferral_exhausted, distinct label.
+        expect(screen.getAllByText("Deferrals exhausted").length).toBe(2);
+        // The actionable error text (naming the last episode kind and both
+        // counters) surfaces prominently, same path as any failed unit.
+        expect(
+            screen.getAllByText(/Deferral cap exceeded after oscillating between budget and/)
+                .length,
+        ).toBeGreaterThan(0);
+        // Not mistaken for the other two categories' treatments.
+        expect(screen.queryByText("Blocked: budget")).not.toBeInTheDocument();
+        expect(screen.queryByText("Budget exhausted")).not.toBeInTheDocument();
     });
 
     it("renders a row per unit in the unit table", () => {

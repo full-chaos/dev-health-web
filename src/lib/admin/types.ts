@@ -336,10 +336,13 @@ export interface SyncRunUnit {
     error: string | null;
     /**
      * Extracted failure category (e.g. rate_limit), or null. Budget-guard
-     * values: "budget_deferred" (retrying, still within caps) and
-     * "budget_deferral_exhausted" (terminal failure — the `error` text
-     * names the bucket, cap, and remedies). Persisted strings — render
-     * verbatim, never invent variants.
+     * values: "budget_deferred" (retrying, still within caps),
+     * "budget_deferral_exhausted" (terminal — the `error` text names the
+     * bucket, cap, and remedies), and "deferral_exhausted" (terminal —
+     * aggregate cap: the unit oscillated between budget and rate-limit
+     * deferral episodes without ever running; `error` names the last
+     * episode kind and both counters). Persisted strings — render verbatim,
+     * never invent variants.
      */
     error_category: string | null;
     last_heartbeat_at: string | null;

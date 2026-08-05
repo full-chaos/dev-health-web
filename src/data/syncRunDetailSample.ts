@@ -238,6 +238,39 @@ export const SAMPLE_BUDGET_EXHAUSTED_UNIT: SyncRunUnit = {
     updated_at: COMPLETED_AT,
 };
 
+/** Terminal: hit the aggregate deferral cap (budget + rate-limit episodes combined). */
+export const SAMPLE_DEFERRALS_EXHAUSTED_UNIT: SyncRunUnit = {
+    id: "sample-unit-budget33",
+    org_id: SAMPLE_ORG_ID,
+    sync_run_id: SAMPLE_RUN_ID,
+    integration_id: SAMPLE_INTEGRATION_ID,
+    source_id: "sample-source-2",
+    source_name: "billing-service",
+    source_full_name: "fullchaos/billing-service",
+    provider: "github",
+    dataset_key: "files",
+    cost_class: "heavy",
+    mode: "incremental",
+    since_at: "2026-03-28T00:00:00.000Z",
+    before_at: "2026-06-26T11:00:00.000Z",
+    status: "failed",
+    attempts: 0,
+    available_at: null,
+    rate_limit_deferrals: 5,
+    budget_deferrals: 7,
+    budget_first_deferred_at: BUDGET_EXHAUSTED_FIRST_DEFERRED_AT,
+    duration_seconds: null,
+    error:
+        "Deferral cap exceeded after oscillating between budget and rate-limit episodes " +
+        "(last episode: rate_limit; 7 budget deferrals, 5 rate-limit deferrals); scope a " +
+        "backfill window or raise the relevant bucket/rate-limit cap",
+    error_category: "deferral_exhausted",
+    last_heartbeat_at: null,
+    result: null,
+    created_at: STARTED_AT,
+    updated_at: COMPLETED_AT,
+};
+
 /**
  * SAMPLE_SYNC_RUN_UNIT_SUMMARY + the two budget-guard sample units, for tests
  * exercising the "Blocked: budget" / "Budget exhausted" treatments and the

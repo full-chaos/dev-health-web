@@ -76,6 +76,16 @@ function isBudgetExhaustedUnit(unit: SyncRunUnit): boolean {
 }
 
 /**
+ * A `failed` unit that hit the aggregate deferral cap (CHAOS-3412) — it
+ * oscillated between budget and rate-limit deferral episodes without ever
+ * running. Terminal, with an actionable `error` naming the last episode kind
+ * and both counters.
+ */
+function isDeferralsExhaustedUnit(unit: SyncRunUnit): boolean {
+    return unit.status === "failed" && unit.error_category === "deferral_exhausted";
+}
+
+/**
  * Distinct badge treatment for budget-guard states, styled with the same
  * theme-aware token idiom used elsewhere for warning/negative tones
  * (ByoLlmErrorStates.tsx) — soft opacity border, never a bright literal one.
@@ -692,6 +702,11 @@ export function SyncRunDetailLive({
                                                     tone="exhausted"
                                                     label="Budget exhausted"
                                                 />
+                                            ) : isDeferralsExhaustedUnit(unit) ? (
+                                                <BudgetGuardBadge
+                                                    tone="exhausted"
+                                                    label="Deferrals exhausted"
+                                                />
                                             ) : (
                                                 <SyncStatusBadge
                                                     status={unitBadgeStatus(unit.status)}
@@ -895,6 +910,11 @@ export function SyncRunDetailLive({
                                                     <BudgetGuardBadge
                                                         tone="exhausted"
                                                         label="Budget exhausted"
+                                                    />
+                                                ) : isDeferralsExhaustedUnit(unit) ? (
+                                                    <BudgetGuardBadge
+                                                        tone="exhausted"
+                                                        label="Deferrals exhausted"
                                                     />
                                                 ) : (
                                                     <SyncStatusBadge
