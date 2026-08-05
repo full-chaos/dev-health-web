@@ -155,6 +155,35 @@ describe("AskDevProvider permanent window", () => {
         expect(client.streamMessage).not.toHaveBeenCalled();
     });
 
+    it("shows the route's suggested questions when the plain launcher opens on an approved ambient route without an explicit contextual-entry click (CHAOS-3410)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        navigation.pathname = "/data-health";
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Data Health</main>
+            </AskDevProvider>,
+        );
+
+        // No entity-scoped "Ask Dev about this" trigger exists on this route
+        // (it is an organization-wide admin page, not tied to one entity) --
+        // the only way in is the permanent floating launcher.
+        expect(screen.queryByRole("button", { name: "Ask Dev about this" })).not.toBeInTheDocument();
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+
+        const permanentWindow = screen.getByRole("region", { name: "Ask Dev" });
+        // The scope banner already resolves this page's implicit context (this
+        // assertion passes today) -- the suggested-question buttons driven by
+        // that same implicit context do not, which is the bug this test pins.
+        expect(permanentWindow).toHaveTextContent("Data Confidence");
+        expect(
+            screen.getByRole("button", {
+                name: "What changed in this scope during the selected time range?",
+            }),
+        ).toBeVisible();
+        expect(client.createConversation).not.toHaveBeenCalled();
+    });
+
     it("preserves one conversation and run across expand, minimize, navigation, and the /dev workspace", async () => {
         const user = userEvent.setup();
         const client = makeClient();

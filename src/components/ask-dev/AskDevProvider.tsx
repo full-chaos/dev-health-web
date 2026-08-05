@@ -126,17 +126,18 @@ function availabilityFromCapabilities(capabilities: DevCapabilities): AskDevAvai
     return { state: "ready", capabilities };
 }
 
-function createScope(orgId: string, pathname: string, filters: MetricFilter): DevScope {
+function createScope(
+    orgId: string,
+    pathname: string,
+    filters: MetricFilter,
+    implicitContext: AskDevSurfaceContext | null,
+): DevScope {
     const end = filters.time.end_date ? new Date(filters.time.end_date) : new Date();
     const start = filters.time.start_date ? new Date(filters.time.start_date) : new Date(end);
     if (!filters.time.start_date) start.setUTCDate(start.getUTCDate() - filters.time.range_days);
     const comparisonEnd = new Date(start);
     const comparisonStart = new Date(comparisonEnd);
     comparisonStart.setUTCDate(comparisonStart.getUTCDate() - filters.time.compare_days);
-    const implicitContext = askDevContextForPathname(
-        pathname,
-        fingerprintAskDevFilter(encodeFilter(filters)),
-    );
     const filtersApplyToScope = pathname === "/dev" || implicitContext !== null;
     const repositoryIds = (
         filtersApplyToScope
@@ -305,9 +306,22 @@ export function AskDevProvider({
                 : filterFromQueryParams(Object.fromEntries(new URLSearchParams(searchString))),
         [encodedFilter, searchString],
     );
+    // Approved ambient routes (data_health, diagnose_overview, flow_metrics,
+    // investment, cognitive_load, bottlenecks) get an implicit scope context
+    // with no user action required -- it already silently drives `routeScope`
+    // below (the "Proposed context:" banner). Suggested questions must follow
+    // the same implicit context, not just an explicit `setProposedContext`
+    // call from a per-entity "Ask Dev about this" trigger: many ambient
+    // routes (e.g. /data-health) have no such trigger at all, so the only way
+    // in is the permanent floating launcher, and it must not open to a
+    // contextually-blank composer with zero suggested questions (CHAOS-3410).
+    const ambientContext = useMemo(
+        () => askDevContextForPathname(pathname, fingerprintAskDevFilter(encodeFilter(filters))),
+        [pathname, filters],
+    );
     const routeScope = useMemo(
-        () => createScope(orgId, pathname, filters),
-        [filters, orgId, pathname],
+        () => createScope(orgId, pathname, filters, ambientContext),
+        [ambientContext, filters, orgId, pathname],
     );
     const [surfaceProposal, setSurfaceProposal] = useState<{
         context: AskDevSurfaceContext;
@@ -326,10 +340,10 @@ export function AskDevProvider({
         (routeScope.surface_context || pathname === "/dev"
             ? (navTitleForPathname(pathname) ?? "Current page")
             : "Organization");
-    const proposedQuestions = useMemo(
-        () => (proposedContext ? askDevSuggestedQuestions(proposedContext) : []),
-        [proposedContext],
-    );
+    const proposedQuestions = useMemo(() => {
+        const context = proposedContext ?? ambientContext;
+        return context ? askDevSuggestedQuestions(context) : [];
+    }, [ambientContext, proposedContext]);
 
     useEffect(() => {
         const controller = new AbortController();
