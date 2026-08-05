@@ -169,7 +169,9 @@ describe("AskDevProvider permanent window", () => {
         // No entity-scoped "Ask Dev about this" trigger exists on this route
         // (it is an organization-wide admin page, not tied to one entity) --
         // the only way in is the permanent floating launcher.
-        expect(screen.queryByRole("button", { name: "Ask Dev about this" })).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: "Ask Dev about this" }),
+        ).not.toBeInTheDocument();
         await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
 
         const permanentWindow = screen.getByRole("region", { name: "Ask Dev" });
