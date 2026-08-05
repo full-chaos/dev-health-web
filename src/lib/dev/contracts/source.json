@@ -1,6 +1,6 @@
 {
   "schema_version": "ask_dev_web_contract_source.v1",
-  "source_commit": "4838e026e08d20bd62090a85218add2761733edd",
+  "source_commit": "c31b9c6de1b4b7dbdfc82d84850e4e09fb71960e",
   "files": [
     {
       "path": "examples/negative/dev_answer.v1.invalid_complete_state.json",
@@ -91,8 +91,24 @@
       "sha256": "9231bdb93fd8ca9071b94eddab8efe18117d779a36bd9c98a460645a53a913c7"
     },
     {
+      "path": "examples/negative/dev_scope.v1.team_scope_entity_ref_is_not_a_team.json",
+      "sha256": "29d0ec2641b0605f52e377ecb19422a01a63f331da161472cf05c39a76032614"
+    },
+    {
+      "path": "examples/negative/dev_scope.v1.team_scope_with_repository_list.json",
+      "sha256": "9be0e272c2f64d88b3045fa75190d56291e306a6f16a12ffc70b11dddc607a71"
+    },
+    {
+      "path": "examples/negative/dev_scope.v1.team_scope_without_matching_team_id.json",
+      "sha256": "6ed6b7870fbbc05695b85b3b537f86427aa9cde17dbaab9b5038729842a3c84c"
+    },
+    {
       "path": "examples/negative/dev_scope_resolution.v1.ambiguous_without_candidates.json",
       "sha256": "7fed2de44881a812e39df698ac9f70d17ad2687b5152c8deddfa16f0f49627b2"
+    },
+    {
+      "path": "examples/negative/dev_scope_resolution.v1.team_resolution_scope_with_repository_list.json",
+      "sha256": "ecac58395a2e44a2172dca0589fade71c71103fe8e91a0452af02242d5a48e27"
     },
     {
       "path": "examples/negative/dev_stream_event.v1.private_reasoning_payload.json",
@@ -163,8 +179,16 @@
       "sha256": "dde80325d67210773c48c173a87a10d28175cbfe749de68031ad0aea498b22a8"
     },
     {
+      "path": "examples/positive/dev_scope.v1.team_direct_scope.json",
+      "sha256": "fcfa27343f3c8495cdb53bfedecad7563b88270397eb8510dbfa3a3a44e78689"
+    },
+    {
       "path": "examples/positive/dev_scope_resolution.v1.json",
       "sha256": "c6b8c0117a8d43b2d9cb2307ff84790b09cef16dae6261b0a06bcecce47aa98e"
+    },
+    {
+      "path": "examples/positive/dev_scope_resolution.v1.team_direct_scope.json",
+      "sha256": "7bba6a7be653b7c2fbc0889b29a3a5828683107a0c6a0fe2da5251b68980efdb"
     },
     {
       "path": "examples/positive/dev_stream_event.v1.json",
@@ -196,7 +220,7 @@
     },
     {
       "path": "manifest.json",
-      "sha256": "b3a78704667c25583b71750e92194d513cc3929bcf194e42d9010f453f23e450"
+      "sha256": "2540bfed0a73c1cce242d5fd3264a3882b5542ab14ba4e423a65df5b8142c647"
     },
     {
       "path": "schemas/dev_answer.v1.schema.json",
@@ -264,7 +288,11 @@
     },
     {
       "path": "schemas/dev_tool_result.v1.schema.json",
-      "sha256": "984a7b92cc1476b929f895c009c4c7c061d7ad594427777329b7271a9b8a4f1f"
+      "sha256": "ec2b36b4b4f20f5203002e0661db826ae78b862a20880d74d3618b059397a5dd"
+    },
+    {
+      "path": "vocabulary/internal_prose_denylist.v1.json",
+      "sha256": "621ed38192bb17f3c9e9f826a3b3572c29cc8cd58865c77e9ea4ad9296990e7a"
     }
   ]
 }
