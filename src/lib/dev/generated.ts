@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-namespace */
-// Generated from full-chaos/dev-health-ops 4838e026e08d20bd62090a85218add2761733edd. Do not edit.
+// Generated from full-chaos/dev-health-ops c31b9c6de1b4b7dbdfc82d84850e4e09fb71960e. Do not edit.
 export namespace DevAnswerContract {
     export type AnswerId = string;
     export type AsOf = string;
@@ -16260,6 +16260,17 @@ export namespace DevToolRequestContract {
 export type DevToolRequest = DevToolRequestContract.DevToolRequest;
 export namespace DevToolResultContract {
     /**
+     * @maxItems 25
+     */
+    export type EvidenceRefIds = string[];
+    export type FactId = string;
+    export type Status = string;
+    export type Text = string;
+    /**
+     * @maxItems 100
+     */
+    export type Blockers = DevRequiredChildFact[];
+    /**
      * @maxItems 20
      */
     export type Conflicts =
@@ -16504,27 +16515,20 @@ export namespace DevToolResultContract {
     /**
      * @maxItems 25
      */
-    export type EvidenceRefIds = string[];
+    export type EvidenceRefIds1 = string[];
     export type Message = string;
     export type Severity = "warning" | "blocking";
     export type DisplayTruncated = boolean;
     /**
      * @maxItems 25
      */
-    export type EvidenceRefIds1 = string[];
+    export type EvidenceRefIds2 = string[];
     /**
      * @maxItems 25
      */
     export type ReasonCodes = string[];
     export type RequiredChildComplete = number | null;
     export type RequiredChildTotal = number | null;
-    /**
-     * @maxItems 25
-     */
-    export type EvidenceRefIds2 = string[];
-    export type FactId = string;
-    export type Status = string;
-    export type Text = string;
     /**
      * @maxItems 100
      */
@@ -16555,6 +16559,12 @@ export namespace DevToolResultContract {
      * @maxItems 25
      */
     export type DataHealth = DevDataHealth[];
+    /**
+     * @maxItems 25
+     */
+    export type DeclaredProjectEvidenceRefIds = string[];
+    export type DeclaredProjectState = string | null;
+    export type DeclaredProjectTargetDate = string | null;
     export type DisplayLabel1 = string;
     export type EntityId1 = string;
     export type Environment = string | null;
@@ -18982,6 +18992,9 @@ export namespace DevToolResultContract {
         actual_completion?: DevActualCompletion | null;
         ci_checks?: CiChecks;
         data_health?: DataHealth;
+        declared_project_evidence_ref_ids?: DeclaredProjectEvidenceRefIds;
+        declared_project_state?: DeclaredProjectState;
+        declared_project_target_date?: DeclaredProjectTargetDate;
         deployments?: Deployments;
         error?: DevError | null;
         evidence?: Evidence;
@@ -19005,9 +19018,10 @@ export namespace DevToolResultContract {
      * Server-computed ``actual-completion`` rule result; the LLM explains, never derives, it.
      */
     export interface DevActualCompletion {
+        blockers?: Blockers;
         conflicts?: Conflicts;
         display_truncated?: DisplayTruncated;
-        evidence_ref_ids?: EvidenceRefIds1;
+        evidence_ref_ids?: EvidenceRefIds2;
         reason_codes?: ReasonCodes;
         required_child_complete?: RequiredChildComplete;
         required_child_total?: RequiredChildTotal;
@@ -19016,17 +19030,17 @@ export namespace DevToolResultContract {
         rule_version: RuleVersion;
         state: State;
     }
-    export interface DevStatusConflict {
-        code: Code;
-        evidence_ref_ids?: EvidenceRefIds;
-        message: Message;
-        severity: Severity;
-    }
     export interface DevRequiredChildFact {
-        evidence_ref_ids?: EvidenceRefIds2;
+        evidence_ref_ids?: EvidenceRefIds;
         fact_id: FactId;
         status: Status;
         text: Text;
+    }
+    export interface DevStatusConflict {
+        code: Code;
+        evidence_ref_ids?: EvidenceRefIds1;
+        message: Message;
+        severity: Severity;
     }
     export interface DevCIFact {
         conclusion: Conclusion;
