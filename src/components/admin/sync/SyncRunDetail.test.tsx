@@ -1,7 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render, screen, userEvent, within } from "@/test/utils";
 import { SyncRunDetailLive } from "./SyncRunDetailLive";
-import { SAMPLE_SYNC_RUN, SAMPLE_SYNC_RUN_UNIT_SUMMARY } from "@/data/syncRunDetailSample";
+import {
+    SAMPLE_SYNC_RUN,
+    SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+    SAMPLE_SYNC_RUN_UNIT_SUMMARY_WITH_BUDGET_UNITS,
+    SAMPLE_BUDGET_BLOCKED_UNIT,
+    SAMPLE_BUDGET_EXHAUSTED_UNIT,
+    SAMPLE_DEFERRALS_EXHAUSTED_UNIT,
+} from "@/data/syncRunDetailSample";
 import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
 
 // The detail component imports the admin server actions for live polling. The
@@ -123,6 +130,191 @@ describe("SyncRunDetailLive", () => {
         expect(screen.getAllByText("Secondary rate limit hit; backing off").length).toBeGreaterThan(
             0,
         );
+    });
+
+    it("renders a distinct 'Blocked: budget' treatment with deferral count, next attempt, and the rollup chip", () => {
+        render(
+            <SyncRunDetailLive
+                initialRun={{
+                    ...SAMPLE_SYNC_RUN,
+                    total_units: SAMPLE_SYNC_RUN_UNIT_SUMMARY_WITH_BUDGET_UNITS.unit_count,
+                }}
+                initialSummary={SAMPLE_SYNC_RUN_UNIT_SUMMARY_WITH_BUDGET_UNITS}
+                testMode
+            />,
+        );
+
+        // Badge (attention panel + unit table) replaces the generic "retrying" look.
+        expect(screen.getAllByText("Blocked: budget").length).toBe(2);
+        // Deferral count + next attempt render from the persisted fields.
+        expect(screen.getByText(/6 deferrals/)).toBeInTheDocument();
+        expect(screen.getByText(/Next attempt/)).toBeInTheDocument();
+        // Summary rollup chip.
+        expect(screen.getByText(/Budget blocked: 1/)).toBeInTheDocument();
+        // The badge replaces the generic category line for this unit — it is
+        // not ALSO rendered as raw "Category: budget_deferred" text.
+        expect(screen.queryByText(/Category: budget_deferred/)).not.toBeInTheDocument();
+    });
+
+    it("surfaces the actionable error text for a budget_deferral_exhausted unit", () => {
+        render(
+            <SyncRunDetailLive
+                initialRun={{
+                    ...SAMPLE_SYNC_RUN,
+                    total_units: SAMPLE_SYNC_RUN_UNIT_SUMMARY_WITH_BUDGET_UNITS.unit_count,
+                }}
+                initialSummary={SAMPLE_SYNC_RUN_UNIT_SUMMARY_WITH_BUDGET_UNITS}
+                testMode
+            />,
+        );
+
+        expect(screen.getAllByText("Budget exhausted").length).toBe(2);
+        expect(
+            screen.getAllByText(/Budget deferral cap exceeded for REST_CORE bucket/).length,
+        ).toBeGreaterThan(0);
+    });
+
+    it("renders the blocked-budget badge without the deferral count or rollup chip when the backend field is absent", () => {
+        const { budget_deferrals: _omit, ...unitWithoutCount } = SAMPLE_BUDGET_BLOCKED_UNIT;
+        render(
+            <SyncRunDetailLive
+                initialRun={SAMPLE_SYNC_RUN}
+                initialSummary={{
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                    by_status: { ...SAMPLE_SYNC_RUN_UNIT_SUMMARY.by_status, retrying: 2 },
+                    unit_count: 5,
+                    units: [...SAMPLE_SYNC_RUN_UNIT_SUMMARY.units, unitWithoutCount],
+                }}
+                testMode
+            />,
+        );
+
+        expect(screen.getAllByText("Blocked: budget").length).toBe(2);
+        expect(screen.queryByText(/deferral/)).not.toBeInTheDocument();
+        expect(screen.getByText(/Next attempt/)).toBeInTheDocument();
+        // budget_blocked_unit_count wasn't set on this summary — chip omitted.
+        expect(screen.queryByText(/Budget blocked:/)).not.toBeInTheDocument();
+    });
+
+    it("keeps the persisted next-attempt timestamp visible for a budget-blocked unit, not just the label", () => {
+        // Negative control on codex's "the blocked branch hides retry-at info"
+        // claim: the label alone proves nothing — assert the actual formatted
+        // clock time renders alongside it (TZ-agnostic: matches the hh:mm AM/PM
+        // shape formatTimestamp produces, not a hardcoded date/offset).
+        render(
+            <SyncRunDetailLive
+                initialRun={{
+                    ...SAMPLE_SYNC_RUN,
+                    total_units: SAMPLE_SYNC_RUN_UNIT_SUMMARY_WITH_BUDGET_UNITS.unit_count,
+                }}
+                initialSummary={SAMPLE_SYNC_RUN_UNIT_SUMMARY_WITH_BUDGET_UNITS}
+                testMode
+            />,
+        );
+
+        const nextAttemptSpan = screen.getByText(/Next attempt/).closest("span");
+        expect(nextAttemptSpan).not.toBeNull();
+        expect(nextAttemptSpan?.textContent).toMatch(/Next attempt.*\d{1,2}:\d{2}\s*[AP]M/);
+    });
+
+    it("does NOT apply the budget-blocked treatment to a retrying unit with a different error_category", () => {
+        // Guards key on status AND the exact persisted error_category string —
+        // a retrying unit that merely carries some other category (e.g. a
+        // stale/unrelated one) must render the pre-existing generic look.
+        const nonBudgetRetryingUnit = {
+            ...SAMPLE_BUDGET_BLOCKED_UNIT,
+            id: "sample-unit-worker-lost",
+            error_category: "worker_lost",
+            error: "Worker lost heartbeat mid-run",
+        };
+        render(
+            <SyncRunDetailLive
+                initialRun={SAMPLE_SYNC_RUN}
+                initialSummary={{
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                    by_status: { ...SAMPLE_SYNC_RUN_UNIT_SUMMARY.by_status, retrying: 2 },
+                    unit_count: 5,
+                    units: [...SAMPLE_SYNC_RUN_UNIT_SUMMARY.units, nonBudgetRetryingUnit],
+                }}
+                testMode
+            />,
+        );
+
+        expect(screen.queryByText("Blocked: budget")).not.toBeInTheDocument();
+        expect(screen.getByText(/Category: worker_lost/)).toBeInTheDocument();
+    });
+
+    it("does NOT apply the budget-exhausted treatment to a failed unit whose category is the non-terminal budget_deferred", () => {
+        // The exhausted badge must key strictly on the terminal category that
+        // only the terminalize path stamps — a failed unit that (incorrectly,
+        // hypothetically) still carries the non-terminal "budget_deferred"
+        // category must never read as exhausted.
+        const failedButNotExhausted = {
+            ...SAMPLE_BUDGET_EXHAUSTED_UNIT,
+            id: "sample-unit-not-exhausted",
+            error_category: "budget_deferred",
+        };
+        render(
+            <SyncRunDetailLive
+                initialRun={SAMPLE_SYNC_RUN}
+                initialSummary={{
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                    by_status: { ...SAMPLE_SYNC_RUN_UNIT_SUMMARY.by_status, failed: 2 },
+                    failed_unit_count: 2,
+                    failed_unit_ids: [
+                        ...SAMPLE_SYNC_RUN_UNIT_SUMMARY.failed_unit_ids,
+                        failedButNotExhausted.id,
+                    ],
+                    unit_count: 5,
+                    units: [...SAMPLE_SYNC_RUN_UNIT_SUMMARY.units, failedButNotExhausted],
+                }}
+                testMode
+            />,
+        );
+
+        expect(screen.queryByText("Budget exhausted")).not.toBeInTheDocument();
+        expect(screen.getByText(/Category: budget_deferred/)).toBeInTheDocument();
+    });
+
+    it("renders a distinct 'Deferrals exhausted' treatment and the actionable error text for error_category=deferral_exhausted", () => {
+        // Third terminal category (CHAOS-3412, ops-exhaustion lane): the
+        // aggregate deferral cap — a unit that oscillated between budget and
+        // rate-limit episodes without ever running. Exact persisted string is
+        // "deferral_exhausted" (owned by the ops-exhaustion lane) — do not
+        // invent variants.
+        render(
+            <SyncRunDetailLive
+                initialRun={{
+                    ...SAMPLE_SYNC_RUN,
+                    total_units: SAMPLE_SYNC_RUN_UNIT_SUMMARY.unit_count + 1,
+                }}
+                initialSummary={{
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                    by_status: { ...SAMPLE_SYNC_RUN_UNIT_SUMMARY.by_status, failed: 2 },
+                    failed_unit_count: 2,
+                    failed_unit_ids: [
+                        ...SAMPLE_SYNC_RUN_UNIT_SUMMARY.failed_unit_ids,
+                        SAMPLE_DEFERRALS_EXHAUSTED_UNIT.id,
+                    ],
+                    unit_count: SAMPLE_SYNC_RUN_UNIT_SUMMARY.unit_count + 1,
+                    units: [...SAMPLE_SYNC_RUN_UNIT_SUMMARY.units, SAMPLE_DEFERRALS_EXHAUSTED_UNIT],
+                }}
+                testMode
+            />,
+        );
+
+        // Badge (attention panel + unit table) — same exhausted-style treatment
+        // as budget_deferral_exhausted, distinct label.
+        expect(screen.getAllByText("Deferrals exhausted").length).toBe(2);
+        // The actionable error text (naming the last episode kind and both
+        // counters) surfaces prominently, same path as any failed unit.
+        expect(
+            screen.getAllByText(/Deferral cap exceeded after oscillating between budget and/)
+                .length,
+        ).toBeGreaterThan(0);
+        // Not mistaken for the other two categories' treatments.
+        expect(screen.queryByText("Blocked: budget")).not.toBeInTheDocument();
+        expect(screen.queryByText("Budget exhausted")).not.toBeInTheDocument();
     });
 
     it("renders a row per unit in the unit table", () => {

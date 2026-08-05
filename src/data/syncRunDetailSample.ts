@@ -161,3 +161,140 @@ export const SAMPLE_SYNC_RUN_UNIT_SUMMARY: SyncRunUnitSummary = {
     next_retry_at: NEXT_RETRY_AT,
     units: SAMPLE_UNITS,
 };
+
+// ── Budget-guard sample units (CHAOS-3412) ────────────────────────────────
+//
+// Separate from SAMPLE_UNITS/SAMPLE_SYNC_RUN_UNIT_SUMMARY above (which many
+// existing tests assert exact counts/percentages against) — exported for
+// tests that build their own run+summary fixture, mirroring the pattern
+// already used by "renders every returned unit without a client-side table
+// cap" in SyncRunDetail.test.tsx. Exact persisted vocabulary per the
+// CHAOS-3412 design record: error_category values "budget_deferred" (still
+// retrying, within caps) and "budget_deferral_exhausted" (terminal, actionable
+// error naming the bucket/cap/remedies) — do not invent variants.
+const BUDGET_FIRST_DEFERRED_AT = "2026-06-26T09:00:00.000Z";
+const BUDGET_NEXT_ATTEMPT_AT = "2026-06-26T12:00:00.000Z";
+const BUDGET_EXHAUSTED_FIRST_DEFERRED_AT = "2026-06-26T06:00:00.000Z";
+
+/** Still retrying, blocked on the sync budget guard but within its caps. */
+export const SAMPLE_BUDGET_BLOCKED_UNIT: SyncRunUnit = {
+    id: "sample-unit-budget11",
+    org_id: SAMPLE_ORG_ID,
+    sync_run_id: SAMPLE_RUN_ID,
+    integration_id: SAMPLE_INTEGRATION_ID,
+    source_id: "sample-source-1",
+    source_name: "platform-api",
+    source_full_name: "fullchaos/platform-api",
+    provider: "github",
+    dataset_key: "tests",
+    cost_class: "heavy",
+    mode: "incremental",
+    since_at: "2026-03-28T00:00:00.000Z",
+    before_at: "2026-06-26T11:00:00.000Z",
+    status: "retrying",
+    attempts: 0,
+    available_at: BUDGET_NEXT_ATTEMPT_AT,
+    rate_limit_deferrals: 0,
+    budget_deferrals: 6,
+    budget_first_deferred_at: BUDGET_FIRST_DEFERRED_AT,
+    duration_seconds: null,
+    error: "Deferred by sync budget guard: REST_CORE estimate 360 exceeds bucket cap",
+    error_category: "budget_deferred",
+    last_heartbeat_at: null,
+    result: null,
+    created_at: STARTED_AT,
+    updated_at: COMPLETED_AT,
+};
+
+/** Terminal: exhausted its budget-deferral caps. */
+export const SAMPLE_BUDGET_EXHAUSTED_UNIT: SyncRunUnit = {
+    id: "sample-unit-budget22",
+    org_id: SAMPLE_ORG_ID,
+    sync_run_id: SAMPLE_RUN_ID,
+    integration_id: SAMPLE_INTEGRATION_ID,
+    source_id: "sample-source-2",
+    source_name: "billing-service",
+    source_full_name: "fullchaos/billing-service",
+    provider: "github",
+    dataset_key: "commit-stats",
+    cost_class: "heavy",
+    mode: "incremental",
+    since_at: "2026-03-28T00:00:00.000Z",
+    before_at: "2026-06-26T11:00:00.000Z",
+    status: "failed",
+    attempts: 0,
+    available_at: null,
+    rate_limit_deferrals: 0,
+    budget_deferrals: 10,
+    budget_first_deferred_at: BUDGET_EXHAUSTED_FIRST_DEFERRED_AT,
+    duration_seconds: null,
+    error:
+        "Budget deferral cap exceeded for REST_CORE bucket (estimate 360 > cap 200) after " +
+        "10 deferrals over 6h; scope a backfill window or raise SYNC_BUDGET_BUCKET_LIMITS[REST_CORE]",
+    error_category: "budget_deferral_exhausted",
+    last_heartbeat_at: null,
+    result: null,
+    created_at: STARTED_AT,
+    updated_at: COMPLETED_AT,
+};
+
+/** Terminal: hit the aggregate deferral cap (budget + rate-limit episodes combined). */
+export const SAMPLE_DEFERRALS_EXHAUSTED_UNIT: SyncRunUnit = {
+    id: "sample-unit-budget33",
+    org_id: SAMPLE_ORG_ID,
+    sync_run_id: SAMPLE_RUN_ID,
+    integration_id: SAMPLE_INTEGRATION_ID,
+    source_id: "sample-source-2",
+    source_name: "billing-service",
+    source_full_name: "fullchaos/billing-service",
+    provider: "github",
+    dataset_key: "files",
+    cost_class: "heavy",
+    mode: "incremental",
+    since_at: "2026-03-28T00:00:00.000Z",
+    before_at: "2026-06-26T11:00:00.000Z",
+    status: "failed",
+    attempts: 0,
+    available_at: null,
+    rate_limit_deferrals: 5,
+    budget_deferrals: 7,
+    budget_first_deferred_at: BUDGET_EXHAUSTED_FIRST_DEFERRED_AT,
+    duration_seconds: null,
+    error:
+        "Deferral cap exceeded after oscillating between budget and rate-limit episodes " +
+        "(last episode: rate_limit; 7 budget deferrals, 5 rate-limit deferrals); scope a " +
+        "backfill window or raise the relevant bucket/rate-limit cap",
+    error_category: "deferral_exhausted",
+    last_heartbeat_at: null,
+    result: null,
+    created_at: STARTED_AT,
+    updated_at: COMPLETED_AT,
+};
+
+/**
+ * SAMPLE_SYNC_RUN_UNIT_SUMMARY + the two budget-guard sample units, for tests
+ * exercising the "Blocked: budget" / "Budget exhausted" treatments and the
+ * budget_blocked_unit_count rollup. Independent of the base summary above so
+ * existing count/percentage assertions never shift.
+ */
+export const SAMPLE_SYNC_RUN_UNIT_SUMMARY_WITH_BUDGET_UNITS: SyncRunUnitSummary = {
+    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+    by_status: { success: 2, failed: 2, retrying: 2 },
+    by_source: {
+        "sample-source-1": { success: 2, retrying: 1 },
+        "sample-source-2": { failed: 2, retrying: 1 },
+    },
+    by_dataset: {
+        git: { success: 1 },
+        prs: { success: 1, failed: 1 },
+        cicd: { retrying: 1 },
+        tests: { retrying: 1 },
+        "commit-stats": { failed: 1 },
+    },
+    by_cost_class: { standard: 2, expensive: 2, heavy: 2 },
+    failed_unit_ids: ["sample-unit-ee55ff66", "sample-unit-budget22"],
+    failed_unit_count: 2,
+    budget_blocked_unit_count: 1,
+    unit_count: 6,
+    units: [...SAMPLE_UNITS, SAMPLE_BUDGET_BLOCKED_UNIT, SAMPLE_BUDGET_EXHAUSTED_UNIT],
+};
