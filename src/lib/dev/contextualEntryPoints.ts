@@ -305,12 +305,24 @@ const APPROVED_EMPTY_CONTEXT_PATHS: Readonly<
     "/bottleneck": "bottlenecks",
 };
 
+/**
+ * True for `/data-health` itself and any of its descendants
+ * (`/data-health/connectors`, `/data-health/identity`, ...). A bare
+ * `startsWith(DATA_HEALTH_PATH)` also matches an unrelated sibling route that
+ * merely shares the prefix (e.g. a hypothetical `/data-health-legacy`) --
+ * this requires the boundary to be the path itself or a `/`-delimited
+ * descendant (CHAOS-3410 codex round).
+ */
+function isDataHealthPathname(pathname: string): boolean {
+    return pathname === DATA_HEALTH_PATH || pathname.startsWith(`${DATA_HEALTH_PATH}/`);
+}
+
 /** Resolve only approved pages where an organization-level context is valid. */
 export function askDevContextForPathname(
     pathname: string,
     filterFingerprint?: string,
 ): AskDevSurfaceContext | null {
-    const routeId = pathname.startsWith(DATA_HEALTH_PATH)
+    const routeId = isDataHealthPathname(pathname)
         ? "data_health"
         : APPROVED_EMPTY_CONTEXT_PATHS[pathname];
     if (!routeId) return null;

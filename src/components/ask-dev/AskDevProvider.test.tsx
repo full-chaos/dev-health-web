@@ -12,6 +12,7 @@ import type {
     DevStreamEvent,
 } from "@/lib/dev/generated";
 
+import { AskDevContextRegistration } from "./AskDevContextRegistration";
 import { AskDevProvider } from "./AskDevProvider";
 import { AskDevWorkspace } from "./AskDevWorkspace";
 
@@ -182,6 +183,109 @@ describe("AskDevProvider permanent window", () => {
             }),
         ).toBeVisible();
         expect(client.createConversation).not.toHaveBeenCalled();
+    });
+
+    it("shows the ambient route's suggested questions on a real descendant path (CHAOS-3410 codex round)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        navigation.pathname = "/data-health/connectors";
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Connectors</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+
+        expect(
+            screen.getByRole("button", {
+                name: "What changed in this scope during the selected time range?",
+            }),
+        ).toBeVisible();
+        expect(
+            screen.getByRole("button", {
+                name: "How complete and fresh is the evidence for this scope?",
+            }),
+        ).toBeVisible();
+    });
+
+    it("does not show suggested questions on a sibling route that merely shares the /data-health prefix (CHAOS-3410 codex round)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        navigation.pathname = "/data-health-legacy";
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Legacy</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+
+        expect(screen.getByText("Proposed context:")).toHaveTextContent("Organization");
+        expect(
+            screen.queryByRole("button", {
+                name: "What changed in this scope during the selected time range?",
+            }),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByLabelText("Suggested questions")).not.toBeInTheDocument();
+    });
+
+    it("does not show suggested questions on an unrelated, non-approved route (CHAOS-3410 codex round)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        navigation.pathname = "/dashboard";
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+
+        expect(screen.getByText("Proposed context:")).toHaveTextContent("Organization");
+        expect(screen.queryByLabelText("Suggested questions")).not.toBeInTheDocument();
+    });
+
+    it("lets an explicit contextual-entry proposal on an ambient route override that route's ambient suggested questions (CHAOS-3410 codex round)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        navigation.pathname = "/data-health";
+        render(
+            <AskDevProvider client={client} orgId="org-1" contextualEntrypointsEnabled>
+                <AskDevContextRegistration
+                    context={{
+                        routeId: "data_health",
+                        entityRefs: [
+                            {
+                                entity_type: "repository",
+                                entity_id: "repo-1",
+                                display_label: "dev-health-web",
+                            },
+                        ],
+                        suggestedQuestionIds: ["data_trust"],
+                    }}
+                />
+                <main>Data Health</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+
+        const permanentWindow = screen.getByRole("region", { name: "Ask Dev" });
+        expect(permanentWindow).toHaveTextContent("Data Confidence · dev-health-web");
+        expect(
+            screen.getByRole("button", {
+                name: "How complete and fresh is the evidence for this scope?",
+            }),
+        ).toBeVisible();
+        // The ambient route's other default question must not also appear --
+        // the explicit proposal replaces the ambient list, it does not merge
+        // with it.
+        expect(
+            screen.queryByRole("button", {
+                name: "What changed in this scope during the selected time range?",
+            }),
+        ).not.toBeInTheDocument();
     });
 
     it("preserves one conversation and run across expand, minimize, navigation, and the /dev workspace", async () => {
