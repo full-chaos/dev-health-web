@@ -321,9 +321,26 @@ export interface SyncRunUnit {
     /** Earliest retry timestamp for a retrying unit, else null. */
     available_at: string | null;
     rate_limit_deferrals: number;
+    /**
+     * Count of times this unit was deferred by the sync budget guard
+     * (`error_category: "budget_deferred"`). Optional: backend field is
+     * in-flight (CHAOS-3412) and may be absent until that PR merges.
+     */
+    budget_deferrals?: number;
+    /**
+     * Timestamp of the first budget deferral for this unit, else null.
+     * Optional: backend field is in-flight (CHAOS-3412).
+     */
+    budget_first_deferred_at?: string | null;
     duration_seconds: number | null;
     error: string | null;
-    /** Extracted failure category (e.g. rate_limit), or null. */
+    /**
+     * Extracted failure category (e.g. rate_limit), or null. Budget-guard
+     * values: "budget_deferred" (retrying, still within caps) and
+     * "budget_deferral_exhausted" (terminal failure — the `error` text
+     * names the bucket, cap, and remedies). Persisted strings — render
+     * verbatim, never invent variants.
+     */
     error_category: string | null;
     last_heartbeat_at: string | null;
     result: Record<string, unknown> | null;
@@ -347,6 +364,12 @@ export interface SyncRunUnitSummary {
     slowest_unit_ids: string[];
     failed_unit_ids: string[];
     failed_unit_count: number;
+    /**
+     * Count of units currently blocked on the sync budget guard (`retrying`
+     * with `error_category: "budget_deferred"`). Optional: backend field is
+     * in-flight (CHAOS-3412) and may be absent until that PR merges.
+     */
+    budget_blocked_unit_count?: number;
     unit_count: number;
     partial_failure_summary: Record<string, unknown> | null;
     /** Earliest available_at among retrying units, else null. */

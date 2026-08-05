@@ -58,6 +58,42 @@ function unitBadgeStatus(status: string): SyncStatus {
     }
 }
 
+/**
+ * A `retrying` unit currently blocked on the sync budget guard (CHAOS-3412):
+ * still within its deferral caps, waiting for the next scheduled attempt.
+ * Distinct from a generic retry so operators don't read it as silent nothing.
+ */
+function isBudgetBlockedUnit(unit: SyncRunUnit): boolean {
+    return unit.status === "retrying" && unit.error_category === "budget_deferred";
+}
+
+/**
+ * A `failed` unit that exhausted its budget-deferral caps (CHAOS-3412) —
+ * terminal, with an actionable `error` naming the bucket, cap, and remedies.
+ */
+function isBudgetExhaustedUnit(unit: SyncRunUnit): boolean {
+    return unit.status === "failed" && unit.error_category === "budget_deferral_exhausted";
+}
+
+/**
+ * Distinct badge treatment for budget-guard states, styled with the same
+ * theme-aware token idiom used elsewhere for warning/negative tones
+ * (ByoLlmErrorStates.tsx) — soft opacity border, never a bright literal one.
+ */
+function BudgetGuardBadge({ tone, label }: { tone: "blocked" | "exhausted"; label: string }) {
+    const toneClasses =
+        tone === "blocked"
+            ? "border-(--accent-3)/40 bg-(--accent-3)/10 text-(--accent-3)"
+            : "border-(--accent-negative)/40 bg-(--accent-negative)/10 text-(--accent-negative)";
+    return (
+        <span
+            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${toneClasses}`}
+        >
+            {label}
+        </span>
+    );
+}
+
 function statusCount(summary: SyncRunUnitSummary | null, status: string): number | null {
     if (!summary) return null;
     return summary.by_status[status] ?? 0;
@@ -617,15 +653,24 @@ export function SyncRunDetailLive({
                                 <h3 className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
                                     Needs attention
                                 </h3>
-                                {summary.next_retry_at && (
-                                    <span className="text-xs text-(--ink-muted)">
-                                        Next retry{" "}
-                                        <ClientTimestamp
-                                            value={summary.next_retry_at}
-                                            fallback="—"
-                                        />
-                                    </span>
-                                )}
+                                <div className="flex flex-wrap items-center gap-3">
+                                    {typeof summary.budget_blocked_unit_count === "number" &&
+                                        summary.budget_blocked_unit_count > 0 && (
+                                            <span className="text-xs text-(--ink-muted)">
+                                                Budget blocked:{" "}
+                                                {formatNumber(summary.budget_blocked_unit_count)}
+                                            </span>
+                                        )}
+                                    {summary.next_retry_at && (
+                                        <span className="text-xs text-(--ink-muted)">
+                                            Next retry{" "}
+                                            <ClientTimestamp
+                                                value={summary.next_retry_at}
+                                                fallback="—"
+                                            />
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                             <ul className="space-y-3">
                                 {attentionUnits.map((unit) => (
@@ -637,24 +682,64 @@ export function SyncRunDetailLive({
                                             <span className="font-medium text-foreground">
                                                 {sourceLabel(unit.source_id)} · {unit.dataset_key}
                                             </span>
-                                            <SyncStatusBadge
-                                                status={unitBadgeStatus(unit.status)}
-                                                label={unit.status}
-                                            />
+                                            {isBudgetBlockedUnit(unit) ? (
+                                                <BudgetGuardBadge
+                                                    tone="blocked"
+                                                    label="Blocked: budget"
+                                                />
+                                            ) : isBudgetExhaustedUnit(unit) ? (
+                                                <BudgetGuardBadge
+                                                    tone="exhausted"
+                                                    label="Budget exhausted"
+                                                />
+                                            ) : (
+                                                <SyncStatusBadge
+                                                    status={unitBadgeStatus(unit.status)}
+                                                    label={unit.status}
+                                                />
+                                            )}
                                         </div>
                                         <div className="mt-1 text-xs text-(--ink-muted)">
-                                            {unit.error_category && (
-                                                <span>Category: {unit.error_category}</span>
-                                            )}
-                                            {unit.error_category && unit.available_at && " · "}
-                                            {unit.available_at && (
-                                                <span>
-                                                    Retry at{" "}
-                                                    <ClientTimestamp
-                                                        value={unit.available_at}
-                                                        fallback="—"
-                                                    />
-                                                </span>
+                                            {isBudgetBlockedUnit(unit) ? (
+                                                <>
+                                                    {typeof unit.budget_deferrals === "number" && (
+                                                        <span>
+                                                            {formatNumber(unit.budget_deferrals)}{" "}
+                                                            deferral
+                                                            {unit.budget_deferrals === 1 ? "" : "s"}
+                                                        </span>
+                                                    )}
+                                                    {typeof unit.budget_deferrals === "number" &&
+                                                        unit.available_at &&
+                                                        " · "}
+                                                    {unit.available_at && (
+                                                        <span>
+                                                            Next attempt{" "}
+                                                            <ClientTimestamp
+                                                                value={unit.available_at}
+                                                                fallback="—"
+                                                            />
+                                                        </span>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {unit.error_category && (
+                                                        <span>Category: {unit.error_category}</span>
+                                                    )}
+                                                    {unit.error_category &&
+                                                        unit.available_at &&
+                                                        " · "}
+                                                    {unit.available_at && (
+                                                        <span>
+                                                            Retry at{" "}
+                                                            <ClientTimestamp
+                                                                value={unit.available_at}
+                                                                fallback="—"
+                                                            />
+                                                        </span>
+                                                    )}
+                                                </>
                                             )}
                                         </div>
                                         {unit.error && (
@@ -801,10 +886,22 @@ export function SyncRunDetailLive({
                                                 {unit.cost_class}
                                             </td>
                                             <td className="px-4 py-3">
-                                                <SyncStatusBadge
-                                                    status={unitBadgeStatus(unit.status)}
-                                                    label={unit.status}
-                                                />
+                                                {isBudgetBlockedUnit(unit) ? (
+                                                    <BudgetGuardBadge
+                                                        tone="blocked"
+                                                        label="Blocked: budget"
+                                                    />
+                                                ) : isBudgetExhaustedUnit(unit) ? (
+                                                    <BudgetGuardBadge
+                                                        tone="exhausted"
+                                                        label="Budget exhausted"
+                                                    />
+                                                ) : (
+                                                    <SyncStatusBadge
+                                                        status={unitBadgeStatus(unit.status)}
+                                                        label={unit.status}
+                                                    />
+                                                )}
                                             </td>
                                             <td className="px-4 py-3 text-sm text-(--ink-muted)">
                                                 {formatNumber(unit.attempts)}
