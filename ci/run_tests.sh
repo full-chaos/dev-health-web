@@ -141,8 +141,8 @@ run_quality() {
 }
 
 run_unit() {
-  echo "==> pnpm exec vitest run"
-  pnpm exec vitest run
+  echo "==> pnpm exec vitest run --coverage"
+  pnpm exec vitest run --coverage --coverage.reporter=text --coverage.reporter=lcov
 }
 
 run_e2e() {
