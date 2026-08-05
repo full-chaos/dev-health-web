@@ -154,9 +154,34 @@ describe("Ask Dev contextual entry point registry", () => {
             entityRefs: [],
             filterFingerprint: "filter-v1-deadbeef",
         });
+        expect(askDevContextForPathname("/data-health")?.routeId).toBe("data_health");
         expect(askDevContextForPathname("/data-health/connectors")?.routeId).toBe("data_health");
         expect(askDevContextForPathname("/deployments/deploy-1")).toBeNull();
         expect(askDevContextForPathname("/issues/CHAOS-3216")).toBeNull();
+    });
+
+    // `/data-health` was matched with a bare `pathname.startsWith("/data-health")`,
+    // which also matches an unrelated sibling route that merely shares the
+    // prefix -- there is no `/`-delimited boundary check. Every OTHER ambient
+    // route (diagnose_overview, flow_metrics, investment, cognitive_load,
+    // bottlenecks) is looked up by exact key in a plain
+    // `Record<string, RouteId>`, which cannot suffer this collision --
+    // `record["/diagnose-legacy"]` is simply `undefined`. `/data-health` is
+    // the only prefix-style matcher in this module, so it is the only one
+    // that needed tightening (CHAOS-3410 codex round).
+    it("does not treat an unrelated sibling route that merely shares the /data-health prefix as the data_health entry point", () => {
+        expect(askDevContextForPathname("/data-health-legacy")).toBeNull();
+        expect(askDevContextForPathname("/data-health-legacy/connectors")).toBeNull();
+        // A same-prefix route with no separator at all must not match either.
+        expect(askDevContextForPathname("/data-healthy")).toBeNull();
+    });
+
+    it("does not let a sibling route sharing another ambient route's prefix match by accident", () => {
+        expect(askDevContextForPathname("/diagnose-legacy")).toBeNull();
+        expect(askDevContextForPathname("/metrics-v2")).toBeNull();
+        expect(askDevContextForPathname("/investment-portfolio")).toBeNull();
+        expect(askDevContextForPathname("/cognitive-load-v2")).toBeNull();
+        expect(askDevContextForPathname("/bottleneck-analysis")).toBeNull();
     });
 });
 
