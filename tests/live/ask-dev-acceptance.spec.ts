@@ -170,7 +170,7 @@ test("permanent contextual window continues one grounded run in /dev without dup
 
     const permanentWindow = page.getByRole("region", { name: "Ask Dev" });
     await expect(permanentWindow).toBeVisible();
-    await expect(permanentWindow.getByText(/Proposed context:/u)).toContainText("Data health");
+    await expect(permanentWindow.getByText(/Proposed context:/u)).toContainText("Data Confidence");
     const composer = permanentWindow.getByRole("textbox", { name: "Ask Dev question" });
     await expect(composer).toHaveValue("");
     expect(

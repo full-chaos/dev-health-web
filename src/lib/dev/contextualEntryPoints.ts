@@ -1,3 +1,5 @@
+import { navTitleForPathname } from "@/lib/navigation/areas";
+
 import type { DevScope, DevScopeContract } from "./generated";
 
 type DevEntityRef = DevScopeContract.DevEntityRef;
@@ -21,6 +23,13 @@ export const ASK_DEV_APPROVED_ROUTE_IDS = [
 
 export type ApprovedAskDevRouteId = (typeof ASK_DEV_APPROVED_ROUTE_IDS)[number];
 export type ApprovedAskDevEntityType = DevEntityRef["entity_type"];
+
+/**
+ * Canonical route for the Data Confidence admin destination. Shared between
+ * the pathname match below and the entry-point label derivation so the two
+ * can never point at different pages.
+ */
+const DATA_HEALTH_PATH = "/data-health";
 
 export const ASK_DEV_SUGGESTED_QUESTION_IDS = [
     "delivery_status",
@@ -128,7 +137,11 @@ export const ASK_DEV_CONTEXTUAL_ENTRYPOINTS = {
         suggestedQuestionIds: ["delivery_status", "remaining_work", "data_trust"],
     },
     data_health: {
-        label: "Data health",
+        // Derived, not hardcoded: `/lib/navigation/areas.ts` is the single
+        // source of truth for destination labels (sidebar, breadcrumbs, page
+        // title). Hardcoding a second copy here is exactly what drifted out
+        // of sync with the "Data Confidence" rename (CHAOS-3397).
+        label: navTitleForPathname(DATA_HEALTH_PATH),
         allowEmptyEntityRefs: true,
         allowedEntityTypes: ["repository"],
         suggestedQuestionIds: ["data_trust", "observed_change"],
@@ -297,7 +310,7 @@ export function askDevContextForPathname(
     pathname: string,
     filterFingerprint?: string,
 ): AskDevSurfaceContext | null {
-    const routeId = pathname.startsWith("/data-health")
+    const routeId = pathname.startsWith(DATA_HEALTH_PATH)
         ? "data_health"
         : APPROVED_EMPTY_CONTEXT_PATHS[pathname];
     if (!routeId) return null;

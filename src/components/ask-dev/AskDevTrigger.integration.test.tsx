@@ -199,7 +199,7 @@ const approvedSurfaceCases = [
             routeId: "data_health" as const,
             entityRefs: [],
         },
-        label: "Data health",
+        label: "Data Confidence",
     },
 ] as const;
 
