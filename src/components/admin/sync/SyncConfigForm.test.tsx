@@ -299,9 +299,7 @@ describe("SyncConfigForm", () => {
             expect(testsCheckbox).toBeInTheDocument();
             // Opt-in: unlike git/prs, never pre-checked.
             expect(testsCheckbox).not.toBeChecked();
-            expect(
-                screen.getByText(/artifact retention is typically 14 days/),
-            ).toBeInTheDocument();
+            expect(screen.getByText(/artifact retention is typically 14 days/)).toBeInTheDocument();
 
             await userEvent.click(testsCheckbox);
             expect(testsCheckbox).toBeChecked();
