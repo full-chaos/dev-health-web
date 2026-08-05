@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen, userEvent, within } from "@/test/utils"
 import { SyncRunDetailLive } from "./SyncRunDetailLive";
 import {
     SAMPLE_SYNC_RUN,
+    SAMPLE_SYNC_RUN_DATASET_FRESHNESS,
     SAMPLE_SYNC_RUN_UNIT_SUMMARY,
     SAMPLE_SYNC_RUN_UNIT_SUMMARY_WITH_BUDGET_UNITS,
     SAMPLE_BUDGET_BLOCKED_UNIT,
@@ -10,6 +11,7 @@ import {
     SAMPLE_DEFERRALS_EXHAUSTED_UNIT,
 } from "@/data/syncRunDetailSample";
 import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
+import type { SyncRunUnitSummary } from "@/lib/admin/types";
 
 // The detail component imports the admin server actions for live polling. The
 // real module pulls in next-auth (which fails to resolve next/server under
@@ -606,5 +608,182 @@ describe("SyncRunDetailLive — live poll error handling", () => {
         expect(screen.queryByText(/Units \(0\)/)).not.toBeInTheDocument();
         // Terminal run → no polling occurred.
         expect(getSyncRunStatus).not.toHaveBeenCalled();
+    });
+
+    // ── CHAOS-3430: watermark lag for ratcheting heavy datasets ──────────────
+    //
+    // A capped incremental window finalizes as an ordinary SUCCESS, so the run
+    // header reads "complete" while the dataset may still be weeks behind.
+    // These pin that the catch-up state renders from the PERSISTED backend
+    // fields only — never re-derived from a timestamp at render time.
+    describe("catching-up datasets", () => {
+        function renderWithFreshness(
+            freshness: SyncRunUnitSummary["dataset_freshness"],
+            catchingUpCount?: number,
+        ) {
+            return render(
+                <SyncRunDetailLive
+                    initialRun={SAMPLE_SYNC_RUN}
+                    initialSummary={{
+                        ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                        dataset_freshness: freshness,
+                        catching_up_dataset_count: catchingUpCount,
+                    }}
+                    testMode
+                />,
+            );
+        }
+
+        it("renders the catching-up dataset with its watermark and ticks behind", () => {
+            renderWithFreshness(SAMPLE_SYNC_RUN_DATASET_FRESHNESS, 1);
+
+            const panel = screen.getByRole("region", { name: /catching up/i });
+            expect(panel).toBeInTheDocument();
+
+            // The one heavy dataset mid-ratchet, by resolved source name.
+            expect(within(panel).getByText(/fullchaos\/platform-api · git/)).toBeInTheDocument();
+            // Ticks behind comes straight from the persisted field.
+            expect(within(panel).getByText(/~12 ticks behind/)).toBeInTheDocument();
+            // The watermark itself is surfaced, not just "behind".
+            expect(within(panel).getByText(/Watermark/)).toBeInTheDocument();
+        });
+
+        it("omits datasets that are not catching up", () => {
+            renderWithFreshness(SAMPLE_SYNC_RUN_DATASET_FRESHNESS, 1);
+            const panel = screen.getByRole("region", { name: /catching up/i });
+
+            // Caught-up dataset on the same source: nothing to report.
+            expect(within(panel).queryByText(/prs/)).not.toBeInTheDocument();
+            // Light dataset trailing ~169 days: only heavy families ratchet, so
+            // this must NOT be presented as catch-up.
+            expect(within(panel).queryByText(/billing-service/)).not.toBeInTheDocument();
+        });
+
+        it("omits the panel entirely when nothing is catching up", () => {
+            renderWithFreshness(
+                SAMPLE_SYNC_RUN_DATASET_FRESHNESS.filter((entry) => !entry.catching_up),
+                0,
+            );
+
+            expect(screen.queryByRole("region", { name: /catching up/i })).not.toBeInTheDocument();
+        });
+
+        it("omits the panel when the backend does not return the field", () => {
+            // Forward-compat: an older backend sends no dataset_freshness. That
+            // must read as "no lag information", never as "nothing is behind" —
+            // and must not throw.
+            renderWithFreshness(undefined, undefined);
+
+            expect(screen.queryByRole("region", { name: /catching up/i })).not.toBeInTheDocument();
+            // The rest of the run detail still renders.
+            expect(screen.getByText(/Units \(4\)/)).toBeInTheDocument();
+        });
+
+        it("renders a single outstanding tick in the singular", () => {
+            renderWithFreshness([{ ...SAMPLE_SYNC_RUN_DATASET_FRESHNESS[0], ticks_behind: 1 }], 1);
+
+            const panel = screen.getByRole("region", { name: /catching up/i });
+            expect(within(panel).getByText(/~1 tick behind/)).toBeInTheDocument();
+            expect(within(panel).queryByText(/~1 ticks behind/)).not.toBeInTheDocument();
+        });
+
+        it("still renders the entry when ticks_behind is absent", () => {
+            // Defensive: the verdict is the backend's, so a flagged entry with
+            // no tick estimate must still be surfaced rather than dropped.
+            renderWithFreshness(
+                [{ ...SAMPLE_SYNC_RUN_DATASET_FRESHNESS[0], ticks_behind: null }],
+                1,
+            );
+
+            const panel = screen.getByRole("region", { name: /catching up/i });
+            expect(within(panel).getByText(/fullchaos\/platform-api · git/)).toBeInTheDocument();
+            expect(within(panel).queryByText(/ticks behind/)).not.toBeInTheDocument();
+        });
+
+        it("does not claim measurable lag for an entry with no watermark", () => {
+            // A flagged entry can arrive carrying no watermark. The persisted
+            // `catching_up` verdict is still the backend's to make and we render
+            // it — but copy asserting a MEASURED distance ("behind the current
+            // time", a tick count) is not licensed by an entry with no
+            // measurement behind it.
+            renderWithFreshness(
+                [
+                    {
+                        ...SAMPLE_SYNC_RUN_DATASET_FRESHNESS[0],
+                        watermark_at: null,
+                        lag_seconds: null,
+                        ticks_behind: null,
+                    },
+                ],
+                1,
+            );
+
+            const panel = screen.getByRole("region", { name: /catching up/i });
+            // The verdict IS licensed: entry and badge still render. Scope the
+            // badge lookup to the row — "Catching up" is also the panel heading.
+            const row = within(panel).getByRole("listitem");
+            expect(within(row).getByText(/fullchaos\/platform-api · git/)).toBeInTheDocument();
+            expect(within(row).getByText("Catching up")).toBeInTheDocument();
+            // The measurement is NOT licensed.
+            expect(panel).not.toHaveTextContent(/behind the current time/i);
+            expect(panel).not.toHaveTextContent(/ticks? behind/i);
+            // The absence is stated, not rendered as a bare dash.
+            expect(within(panel).getByText(/watermark unavailable/i)).toBeInTheDocument();
+        });
+
+        it("still states measurable lag when a watermark IS present", () => {
+            // Control for the test above: the copy must not go vague for entries
+            // that genuinely carry a measurement.
+            renderWithFreshness([SAMPLE_SYNC_RUN_DATASET_FRESHNESS[0]], 1);
+
+            const panel = screen.getByRole("region", { name: /catching up/i });
+            expect(within(panel).getByText(/~12 ticks behind/)).toBeInTheDocument();
+            expect(within(panel).queryByText(/watermark unavailable/i)).not.toBeInTheDocument();
+        });
+    });
+
+    // ── CHAOS-3430 F2: the sample fixture must be a join production can emit ──
+    //
+    // The ops builder derives each freshness row FROM a planned unit, copying the
+    // unit's resolved source label and cost class. A fixture whose freshness rows
+    // name (source, dataset) pairs that no unit contains — or that contradict a
+    // unit's cost class — is a shape production cannot produce, so any test or
+    // screenshot resting on it validates nothing.
+    describe("sample fixture integrity", () => {
+        it("derives every freshness row from a real unit in the same run", () => {
+            const units = SAMPLE_SYNC_RUN_UNIT_SUMMARY.units;
+            const freshness = SAMPLE_SYNC_RUN_UNIT_SUMMARY.dataset_freshness ?? [];
+            expect(freshness.length).toBeGreaterThan(0);
+
+            for (const entry of freshness) {
+                const match = units.find(
+                    (unit) =>
+                        unit.source_id === entry.source_id &&
+                        unit.dataset_key === entry.dataset_key,
+                );
+                expect(
+                    match,
+                    `freshness row ${entry.source_id}/${entry.dataset_key} has no matching unit`,
+                ).toBeDefined();
+                // Same source label the builder would have copied across.
+                expect(entry.source_name).toBe(match?.source_full_name ?? match?.source_name);
+                // Same cost class — the builder copies it from the unit.
+                expect(entry.cost_class).toBe(match?.cost_class);
+            }
+        });
+
+        it("only flags heavy datasets as catching up", () => {
+            // Mirrors the ops rule: only HEAVY families ratchet, so no other
+            // cost class can legitimately carry catching_up.
+            for (const entry of SAMPLE_SYNC_RUN_UNIT_SUMMARY.dataset_freshness ?? []) {
+                if (entry.catching_up) expect(entry.cost_class).toBe("heavy");
+            }
+        });
+
+        it("agrees with the catching_up_dataset_count rollup", () => {
+            const freshness = SAMPLE_SYNC_RUN_UNIT_SUMMARY.dataset_freshness ?? [];
+            const flagged = freshness.filter((entry) => entry.catching_up).length;
+            expect(SAMPLE_SYNC_RUN_UNIT_SUMMARY.catching_up_dataset_count).toBe(flagged);
+        });
     });
 });
