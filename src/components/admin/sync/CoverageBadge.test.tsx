@@ -45,6 +45,13 @@ describe("CoverageBadge", () => {
         expect(statusLabel("not_scheduled")).toBe("Not scheduled");
     });
 
+    it("distinguishes a never-enabled dataset from one enabled with zero rows (CHAOS-3399)", () => {
+        expect(statusLabel("not_enabled")).toBe("Not enabled");
+        expect(statusLabel("insufficient_data")).toBe("Insufficient data");
+        expect(statusLabel("not_enabled")).not.toBe(statusLabel("insufficient_data"));
+        expect(statusTone("not_enabled")).toBe("muted");
+    });
+
     it("maps job coverage results derived from persisted unit counts", () => {
         expect(jobCoverageTone("complete")).toBe("positive");
         expect(jobCoverageTone("partial")).toBe("caution");

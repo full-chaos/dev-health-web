@@ -286,6 +286,25 @@ describe("SyncConfigForm", () => {
             expect(gitDataCheckbox).not.toBeChecked();
         });
 
+        it("datasets step: surfaces the tests dataset as an opt-in toggle for GitHub (CHAOS-3399)", async () => {
+            render(<SyncConfigForm credentials={mockCredentials} />);
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "Tests Dataset");
+            await clickContinue();
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await clickContinue();
+            await clickContinue(); // scope, skip owner
+
+            const testsCheckbox = screen.getByLabelText("Test Results (JUnit reports)");
+            expect(testsCheckbox).toBeInTheDocument();
+            // Opt-in: unlike git/prs, never pre-checked.
+            expect(testsCheckbox).not.toBeChecked();
+            expect(screen.getByText(/artifact retention is typically 14 days/)).toBeInTheDocument();
+
+            await userEvent.click(testsCheckbox);
+            expect(testsCheckbox).toBeChecked();
+        });
+
         it("datasets step shows user-facing consequence copy for each dataset", async () => {
             render(<SyncConfigForm credentials={mockCredentials} />);
 
