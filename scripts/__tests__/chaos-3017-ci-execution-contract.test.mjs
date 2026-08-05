@@ -64,7 +64,7 @@ const GENERAL_TIERS = [
         tier: "build",
     },
     {
-        commands: ["exec vitest run"],
+        commands: ["exec vitest run --coverage --coverage.reporter=text --coverage.reporter=lcov"],
         jobId: "unit",
         packageScripts: {},
         tier: "unit",
@@ -176,7 +176,9 @@ describe("CHAOS-3017 executable CI boundaries", () => {
 
         const success = recordHarnessPackageCommands(["ci"]);
         expectSuccessfulProcess(success.result);
-        expect(success.commands).toContain("exec vitest run");
+        expect(success.commands).toContain(
+            "exec vitest run --coverage --coverage.reporter=text --coverage.reporter=lcov",
+        );
         expect(success.commands).not.toContain("test:unit");
 
         const failed = recordHarnessPackageCommands(["ci"], { failScript: "exec" });

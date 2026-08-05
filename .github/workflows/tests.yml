@@ -137,6 +137,14 @@ jobs:
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
             - run: bash ci/run_tests.sh unit
+            - name: Upload coverage lcov
+              if: always()
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+              with:
+                  name: coverage-lcov-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: coverage/lcov.info
+                  if-no-files-found: error
+                  retention-days: 90
 
     integration:
         name: Integration tests
@@ -178,7 +186,7 @@ jobs:
                   name: playwright-report-default-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
                   path: test-results/playwright-html/
                   if-no-files-found: warn
-                  retention-days: 14
+                  retention-days: 90
             - name: Upload Playwright raw results and JUnit
               if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -186,7 +194,7 @@ jobs:
                   name: playwright-results-default-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
                   path: test-results/playwright/
                   if-no-files-found: warn
-                  retention-days: 14
+                  retention-days: 90
 
     e2e-onboarding:
         # Context Fabric runs sequentially in this job rather than as its own
@@ -214,7 +222,7 @@ jobs:
                   name: playwright-report-onboarding-context-fabric-${{ github.run_id }}-${{ github.run_attempt }}
                   path: test-results/playwright-html/
                   if-no-files-found: warn
-                  retention-days: 14
+                  retention-days: 90
             - name: Upload Playwright raw results and JUnit
               if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -222,7 +230,7 @@ jobs:
                   name: playwright-results-onboarding-context-fabric-${{ github.run_id }}-${{ github.run_attempt }}
                   path: test-results/playwright/
                   if-no-files-found: warn
-                  retention-days: 14
+                  retention-days: 90
 
     design-lint:
         name: Design lint advisory
