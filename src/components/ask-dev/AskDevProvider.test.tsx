@@ -13,7 +13,7 @@ import type {
 } from "@/lib/dev/generated";
 
 import { AskDevContextRegistration } from "./AskDevContextRegistration";
-import { AskDevProvider } from "./AskDevProvider";
+import { AskDevProvider, useAskDev } from "./AskDevProvider";
 import { AskDevWorkspace } from "./AskDevWorkspace";
 
 const navigation = vi.hoisted(() => ({ pathname: "/dashboard", query: "", replace: vi.fn() }));
@@ -1584,6 +1584,137 @@ describe("AskDevProvider permanent window", () => {
         fireEvent.keyDown(dialog, { key: "Escape" });
         await waitFor(() =>
             expect(screen.getByRole("button", { name: "Open Ask Dev" })).toHaveFocus(),
+        );
+    });
+});
+
+// CHAOS-3470. `ask_dev_contextual_entrypoints` gates SURFACE entry points —
+// the launchers and typed context a route offers. A clarification candidate
+// is not one: it arrives inside an answer the organization was fully
+// entitled to receive, so committing one is answer semantics, not an entry
+// point. Before this fix `selectProposedEntity` went through the same
+// flag-gated path as surface proposals, so for an org with `ask_dev` on and
+// contextual entry points off the "Use this scope" button rendered and did
+// nothing at all — no state change, no error — leaving a clarification turn
+// with no in-product resolution.
+describe("AskDev candidate selection vs contextual-entrypoint gating (CHAOS-3470)", () => {
+    beforeAll(() => {
+        Element.prototype.scrollIntoView = vi.fn();
+    });
+
+    beforeEach(() => {
+        navigation.pathname = "/dashboard";
+        navigation.query = "";
+        navigation.replace.mockClear();
+    });
+
+    function SetSurfaceContext() {
+        const { setProposedContext } = useAskDev();
+        return (
+            <button
+                type="button"
+                onClick={() =>
+                    setProposedContext({
+                        routeId: "data_health",
+                        entityRefs: [
+                            {
+                                entity_type: "repository",
+                                entity_id: "repo-1",
+                                display_label: "dev-health-web",
+                            },
+                        ],
+                    })
+                }
+            >
+                Register surface context
+            </button>
+        );
+    }
+
+    function SelectCandidate() {
+        const { selectProposedEntity } = useAskDev();
+        return (
+            <button
+                type="button"
+                onClick={() =>
+                    selectProposedEntity({
+                        entity_type: "repository",
+                        entity_id: "repo-1",
+                        display_label: "dev-health-web",
+                    })
+                }
+            >
+                Use this scope
+            </button>
+        );
+    }
+
+    it("commits an answer's candidate even when contextual entry points are disabled", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        navigation.pathname = "/data-health";
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <SelectCandidate />
+                <main>Data Health</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.click(screen.getByRole("button", { name: "Use this scope" }));
+
+        await waitFor(() =>
+            expect(screen.getByText("Proposed context:")).toHaveTextContent("dev-health-web"),
+        );
+    });
+
+    it("still ignores a SURFACE proposal when contextual entry points are disabled", async () => {
+        // The other half of the ruling: ungating candidate selection must not
+        // ungate entry points. Same flag state, same target entity — only the
+        // origin differs, and only the answer-driven origin is exempt.
+        //
+        // This calls the provider's `setProposedContext` DIRECTLY rather than
+        // going through AskDevContextRegistration. That component carries its
+        // own `contextualEntrypointsEnabled` early return
+        // (AskDevContextRegistration.tsx:53), so a registration-based test
+        // passes on the component's guard and stays green even if the
+        // provider's guard is deleted — it would prove the wrong layer
+        // (codex adversarial review round 3, MEDIUM). Probing the provider is
+        // the only way to assert the split this change actually made.
+        const user = userEvent.setup();
+        const client = makeClient();
+        navigation.pathname = "/data-health";
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <SetSurfaceContext />
+                <main>Data Health</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.click(screen.getByRole("button", { name: "Register surface context" }));
+
+        expect(screen.getByText("Proposed context:")).not.toHaveTextContent("dev-health-web");
+    });
+
+    it("accepts the same SURFACE proposal once contextual entry points are enabled", async () => {
+        // Positive control for the guard above: without this, the negative
+        // test could pass because the probe never worked at all.
+        const user = userEvent.setup();
+        const client = makeClient();
+        navigation.pathname = "/data-health";
+        render(
+            <AskDevProvider client={client} orgId="org-1" contextualEntrypointsEnabled>
+                <SetSurfaceContext />
+                <main>Data Health</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.click(screen.getByRole("button", { name: "Register surface context" }));
+
+        await waitFor(() =>
+            expect(screen.getByText("Proposed context:")).toHaveTextContent("dev-health-web"),
         );
     });
 });

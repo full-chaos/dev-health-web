@@ -277,4 +277,33 @@ describe("Ask Dev generated contract boundary", () => {
             }),
         ).toMatchObject({ ask_dev: false, byo_llm: true, agent_context_runtime: true });
     });
+
+    // CHAOS-3219 W4 follow-up. `fully_covered` in ops' projector
+    // (contracts_v2/compat.py:303-309) requires ALL THREE required-source
+    // lists to be empty before an answered outcome may become `complete`:
+    // unavailable, stale AND degraded. Web's semantic mirror checked only
+    // the first two, so it accepted a `complete` answer with degraded
+    // required sources — a payload ops cannot emit. Same omission as the
+    // rendering defect this row fixed, in a second place; there is no
+    // pinned negative example for it because ops did not ship one, so the
+    // case is asserted directly.
+    it("rejects a complete answer that still carries degraded required sources", () => {
+        const positive = readJson<Record<string, unknown>>("examples/positive/dev_answer.v1.json");
+        expect(validateAskDevSemanticInvariants(positive)).toBe(true);
+
+        const degradedWhileComplete = {
+            ...positive,
+            coverage: {
+                ...(positive.coverage as Record<string, unknown>),
+                degraded_required_sources: ["work_graph"],
+            },
+        };
+        expect(validateAskDevSemanticInvariants(degradedWhileComplete)).toBe(false);
+
+        // The same coverage is legitimate on a non-complete status, so the
+        // rule must key on the status and not simply reject the field.
+        expect(
+            validateAskDevSemanticInvariants({ ...degradedWhileComplete, status: "degraded" }),
+        ).toBe(true);
+    });
 });

@@ -404,11 +404,19 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
     // only source-specific explanation with it. A contradictory legacy row is also
     // suppressed — its counts describe a source plan that provably did not run for
     // the subject its own summary says was not found.
+    // `degraded_required_sources` belongs in this predicate for the same
+    // reason the other two lists do: it is a required source in a state that
+    // independently blocks a `complete` answer (ops contracts_v2/compat.py
+    // treats degraded exactly as unavailable and stale). Omitting it meant a
+    // degraded-only answer rendered no coverage block at all — a visibly
+    // downgraded answer with nothing on screen explaining the downgrade
+    // (CHAOS-3219 W4).
     const coverage = answer.coverage;
     const showCoverage =
         !noMatch &&
         ((coverage?.required_source_count ?? 0) > 0 ||
             (coverage?.unavailable_required_sources?.length ?? 0) > 0 ||
+            (coverage?.degraded_required_sources?.length ?? 0) > 0 ||
             (coverage?.stale_required_sources?.length ?? 0) > 0);
     const attested = useMemo(() => attestedText(answer), [answer]);
     const evidenceById = useMemo(
@@ -678,6 +686,12 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                         <span className="text-(--caution)">
                             {answer.coverage.unavailable_required_sources.length} required sources
                             unavailable
+                        </span>
+                    ) : null}
+                    {answer.coverage?.degraded_required_sources?.length ? (
+                        <span className="text-(--caution)">
+                            {answer.coverage.degraded_required_sources.length} required sources
+                            degraded
                         </span>
                     ) : null}
                     {answer.coverage?.stale_required_sources?.length ? (

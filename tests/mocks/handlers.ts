@@ -747,6 +747,16 @@ const MOCK_ORG_ENTITLEMENTS = {
         // CHAOS-3287 Playwright coverage can exercise the real /dev route
         // and persistent window gate, not a stubbed-out "unavailable" state.
         ask_dev: true,
+        // CHAOS-3219 W3. An Ask-Dev-enabled organization is provisioned with
+        // BOTH overrides -- the acceptance seeder
+        // (ops prepare_ask_dev_acceptance.py) turns on `ask_dev` and
+        // `ask_dev_contextual_entrypoints` together. Leaving this one unset
+        // left the default e2e org in a shape the seeded product does not
+        // have, which silently disabled every proposed-context code path
+        // (AskDevProvider.setProposedContext returns early without it) --
+        // including clarification candidate selection, whose CTA renders
+        // regardless.
+        ask_dev_contextual_entrypoints: true,
     },
     features_override: null,
     limits_override: null,

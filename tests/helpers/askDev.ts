@@ -1,6 +1,6 @@
 import { expect, type APIRequestContext, type Page } from "@playwright/test";
 
-import type { DevAnswerScenario } from "../mocks/devScenario";
+import type { DevAnswerScenario, DevCapabilitiesState } from "../mocks/devScenario";
 
 /**
  * The mock backend's own base URL (not the Next.js app's). Existing specs
@@ -29,7 +29,7 @@ export async function resetAskDevMock(request: APIRequestContext): Promise<void>
 
 export async function setAskDevCapabilities(
     request: APIRequestContext,
-    state: "ready" | "not_ready" | "disabled",
+    state: DevCapabilitiesState,
 ): Promise<void> {
     const response = await request.post(`${MOCK_SERVER_URL}/__test/dev-capabilities`, {
         data: { state },
@@ -54,7 +54,7 @@ export async function setAskDevEntitlement(
 
 export async function getAskDevRequestCounts(
     request: APIRequestContext,
-): Promise<{ messages: number; conversationsCreated: number }> {
+): Promise<{ messages: number; conversationsCreated: number; lastMessageScope: unknown }> {
     const response = await request.get(`${MOCK_SERVER_URL}/__test/dev-requests`);
     expect(response.ok()).toBe(true);
     return response.json();

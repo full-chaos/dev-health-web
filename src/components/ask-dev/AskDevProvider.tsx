@@ -443,9 +443,16 @@ export function AskDevProvider({
     }, [orgId]);
 
     const clearProposedContext = useCallback(() => setSurfaceProposal(null), []);
-    const setProposedContext = useCallback(
+
+    /**
+     * Applies an approved proposal. The approval check
+     * (`isApprovedAskDevSurfaceContext`) is unconditional and stays here —
+     * only the ENTITLEMENT check differs by origin, and it lives in the two
+     * callers below.
+     */
+    const applyProposedContext = useCallback(
         (context: AskDevSurfaceContext) => {
-            if (!contextualEntrypointsEnabled || !isApprovedAskDevSurfaceContext(context)) return;
+            if (!isApprovedAskDevSurfaceContext(context)) return;
             const surfaceContext = toDevSurfaceContext(context);
             const directScope = askDevDirectScope(context);
             setSurfaceProposal({
@@ -459,7 +466,20 @@ export function AskDevProvider({
                 sourcePathname: pathname,
             });
         },
-        [contextualEntrypointsEnabled, pathname, routeScope],
+        [pathname, routeScope],
+    );
+
+    /**
+     * A SURFACE proposal: typed context a route offers before the user has
+     * asked anything. This is what `ask_dev_contextual_entrypoints` governs,
+     * so it stays gated.
+     */
+    const setProposedContext = useCallback(
+        (context: AskDevSurfaceContext) => {
+            if (!contextualEntrypointsEnabled) return;
+            applyProposedContext(context);
+        },
+        [applyProposedContext, contextualEntrypointsEnabled],
     );
 
     const selectProposedEntity = useCallback(
@@ -477,9 +497,19 @@ export function AskDevProvider({
                             ? "pull_request_detail"
                             : null;
             if (!routeId) return;
-            setProposedContext({ routeId, entityRefs: [entity] });
+            // CHAOS-3470: NOT gated on `contextualEntrypointsEnabled`. This
+            // entity came from a clarification answer the organization was
+            // entitled to receive, so committing it is answer semantics, not
+            // a surface entry point. Routing it through the gated
+            // `setProposedContext` made the "Use this scope" button inert for
+            // any org with `ask_dev` on and contextual entry points off — the
+            // button still rendered (AskDevAnswer has no feature check) and
+            // silently did nothing, leaving a clarification turn with no
+            // in-product resolution. Entry-point gating is unaffected: only
+            // this origin is exempt.
+            applyProposedContext({ routeId, entityRefs: [entity] });
         },
-        [setProposedContext],
+        [applyProposedContext],
     );
 
     const loadHistory = useCallback(async () => {
