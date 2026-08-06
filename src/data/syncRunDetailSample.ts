@@ -6,7 +6,12 @@
 // without a live backend. Values are CLEARLY SAMPLE — fixed dates, sample-*
 // ids — and resolve source NAMES (never bare source ids) per the web DoD.
 
-import type { SyncRun, SyncRunUnit, SyncRunUnitSummary } from "@/lib/admin/types";
+import type {
+    SyncRun,
+    SyncRunDatasetFreshness,
+    SyncRunUnit,
+    SyncRunUnitSummary,
+} from "@/lib/admin/types";
 
 const SAMPLE_RUN_ID = "sample-run-2703";
 const SAMPLE_ORG_ID = "sample-org";
@@ -44,7 +49,9 @@ const SAMPLE_UNITS: SyncRunUnit[] = [
         source_full_name: "fullchaos/platform-api",
         provider: "github",
         dataset_key: "git",
-        cost_class: "standard",
+        // HEAVY: this family ratchets under the CHAOS-3412 window cap, which is
+        // what makes its freshness row eligible to read as "catching up".
+        cost_class: "heavy",
         mode: "incremental",
         since_at: null,
         before_at: "2026-06-26T11:00:00.000Z",
@@ -140,6 +147,62 @@ const SAMPLE_UNITS: SyncRunUnit[] = [
     },
 ];
 
+/**
+ * Sample watermark lag per (source, dataset) (CHAOS-3430).
+ *
+ * Every row here is DERIVED FROM a unit in `SAMPLE_UNITS` above — same
+ * `source_id`, same `dataset_key`, same resolved source label, same cost class
+ * — because that is the only shape the backend can emit: the ops builder walks
+ * the run's planned units and copies those fields across. A row naming a pair
+ * no unit contains, or contradicting a unit's cost class, would be a join
+ * production cannot produce, and any test or screenshot resting on it would be
+ * validating nothing. `SyncRunDetail.test.tsx` asserts that invariant.
+ *
+ * The mix: one HEAVY dataset mid-ratchet (the only one flagged), one costly
+ * dataset already caught up, and one standard dataset trailing far behind —
+ * the last must never read as "catching up", since only heavy families ratchet.
+ */
+export const SAMPLE_SYNC_RUN_DATASET_FRESHNESS: SyncRunDatasetFreshness[] = [
+    {
+        // <- sample-unit-aa11bb22 (success): a capped tick that finalized fine
+        //    while its watermark stayed ~12 windows behind. The whole defect.
+        source_id: "sample-source-1",
+        source_name: "fullchaos/platform-api",
+        dataset_key: "git",
+        cost_class: "heavy",
+        watermark_at: "2026-04-04T11:00:00.000Z",
+        lag_seconds: 7_171_200,
+        catching_up: true,
+        ticks_behind: 12,
+        window_cap_days: 7,
+    },
+    {
+        // <- sample-unit-cc33dd44: caught up, so nothing to surface.
+        source_id: "sample-source-1",
+        source_name: "fullchaos/platform-api",
+        dataset_key: "prs",
+        cost_class: "expensive",
+        watermark_at: "2026-06-26T09:00:00.000Z",
+        lag_seconds: 7_200,
+        catching_up: false,
+        ticks_behind: null,
+        window_cap_days: 7,
+    },
+    {
+        // <- sample-unit-77aa88bb: trailing ~169 days, but NOT heavy, so it
+        //    never ratchets and must never be presented as catching up.
+        source_id: "sample-source-2",
+        source_name: "fullchaos/billing-service",
+        dataset_key: "cicd",
+        cost_class: "standard",
+        watermark_at: "2026-01-10T11:00:00.000Z",
+        lag_seconds: 14_601_600,
+        catching_up: false,
+        ticks_behind: null,
+        window_cap_days: 7,
+    },
+];
+
 /** Sample SyncRunUnitSummary used by the detail page in test mode. */
 export const SAMPLE_SYNC_RUN_UNIT_SUMMARY: SyncRunUnitSummary = {
     by_status: { success: 2, failed: 1, retrying: 1 },
@@ -152,13 +215,17 @@ export const SAMPLE_SYNC_RUN_UNIT_SUMMARY: SyncRunUnitSummary = {
         prs: { success: 1, failed: 1 },
         cicd: { retrying: 1 },
     },
-    by_cost_class: { standard: 2, expensive: 2 },
+    // Mirrors SAMPLE_UNITS: aa11bb22 heavy, cc33dd44 + ee55ff66 expensive,
+    // 77aa88bb standard.
+    by_cost_class: { heavy: 1, expensive: 2, standard: 1 },
     slowest_unit_ids: ["sample-unit-cc33dd44"],
     failed_unit_ids: ["sample-unit-ee55ff66"],
     failed_unit_count: 1,
     unit_count: 4,
     partial_failure_summary: { failed_datasets: ["prs"] },
     next_retry_at: NEXT_RETRY_AT,
+    dataset_freshness: SAMPLE_SYNC_RUN_DATASET_FRESHNESS,
+    catching_up_dataset_count: 1,
     units: SAMPLE_UNITS,
 };
 

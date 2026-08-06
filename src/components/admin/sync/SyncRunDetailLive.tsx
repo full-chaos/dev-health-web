@@ -104,6 +104,19 @@ function BudgetGuardBadge({ tone, label }: { tone: "blocked" | "exhausted"; labe
     );
 }
 
+/**
+ * Chip for a dataset still ratcheting toward the current time (CHAOS-3430).
+ * Uses the theme-aware token idiom already used for warning tones — soft
+ * opacity border, never a bright literal one, so it reads correctly in dark.
+ */
+function CatchingUpBadge() {
+    return (
+        <span className="inline-flex items-center rounded-full border border-(--accent-3)/40 bg-(--accent-3)/10 px-2.5 py-0.5 text-xs font-semibold text-(--accent-3)">
+            Catching up
+        </span>
+    );
+}
+
 function statusCount(summary: SyncRunUnitSummary | null, status: string): number | null {
     if (!summary) return null;
     return summary.by_status[status] ?? 0;
@@ -443,6 +456,16 @@ export function SyncRunDetailLive({
     // Both are simple min/max display aggregates over persisted fields —
     // counts below come from the persisted `by_status` rollup, never
     // recomputed client-side.
+    // Datasets still ratcheting (CHAOS-3430). Filters the persisted freshness
+    // rollup to entries the BACKEND flagged — the verdict, the tick estimate,
+    // and the lag are all backend state; nothing here is recomputed from a
+    // timestamp. An absent field means "no lag information", which renders as
+    // no panel rather than as "nothing is behind".
+    const catchingUpDatasets = useMemo(
+        () => (summary?.dataset_freshness ?? []).filter((entry) => entry.catching_up),
+        [summary],
+    );
+
     const requestedWindow = useMemo(() => computeWindow(summary?.units ?? []), [summary]);
     const coveredWindow = useMemo(
         () => computeWindow((summary?.units ?? []).filter((unit) => unit.status === "success")),
@@ -557,6 +580,83 @@ export function SyncRunDetailLive({
                         </div>
                     </dl>
                 </div>
+            )}
+
+            {/* Catching up (CHAOS-3430): a high-cost dataset syncs through
+                capped incremental windows, one per scheduled tick, and each
+                capped tick finalizes as an ordinary SUCCESS. Run status alone
+                therefore reads "complete" while coverage is still weeks back.
+                Every value below is persisted backend state from the units
+                summary — the catch-up verdict, the tick estimate, and the
+                watermark. Nothing is re-derived at render time. */}
+            {catchingUpDatasets.length > 0 && (
+                <section
+                    aria-labelledby="catching-up-heading"
+                    className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6"
+                >
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <h3
+                            id="catching-up-heading"
+                            className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider"
+                        >
+                            Catching up
+                        </h3>
+                        <span className="text-xs text-(--ink-muted)">
+                            {formatNumber(catchingUpDatasets.length)} dataset
+                            {catchingUpDatasets.length === 1 ? "" : "s"} still catching up
+                        </span>
+                    </div>
+                    <p className="mb-3 text-xs text-(--ink-muted)">
+                        These datasets synchronize one capped window per scheduled run, so a
+                        successful run does not yet mean full coverage. Scoped to this run — it
+                        covers only the sources and datasets this run planned, not the whole
+                        workspace.
+                    </p>
+                    <ul className="space-y-3">
+                        {catchingUpDatasets.map((entry) => (
+                            <li
+                                key={`${entry.source_id}:${entry.dataset_key}`}
+                                className="rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 text-sm"
+                            >
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className="font-medium text-foreground">
+                                        {entry.source_name ?? sourceLabel(entry.source_id)} ·{" "}
+                                        {entry.dataset_key}
+                                    </span>
+                                    <CatchingUpBadge />
+                                </div>
+                                {/* The persisted `catching_up` verdict is the
+                                    backend's and is rendered above regardless.
+                                    The DISTANCE, though, is only claimable when
+                                    a watermark was actually recorded: with none,
+                                    say so plainly rather than asserting a
+                                    measured lag (or printing a bare dash that
+                                    reads as one). */}
+                                <div className="mt-1 text-xs text-(--ink-muted)">
+                                    {entry.watermark_at ? (
+                                        <>
+                                            <span>
+                                                Watermark at{" "}
+                                                <ClientTimestamp
+                                                    value={entry.watermark_at}
+                                                    fallback="—"
+                                                />
+                                            </span>
+                                            {entry.ticks_behind != null && (
+                                                <span>
+                                                    {" · "}~{formatNumber(entry.ticks_behind)} tick
+                                                    {entry.ticks_behind === 1 ? "" : "s"} behind
+                                                </span>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <span>Watermark unavailable — progress not measurable</span>
+                                    )}
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
             )}
 
             {/* Overall progress */}

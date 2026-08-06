@@ -352,6 +352,31 @@ export interface SyncRunUnit {
 }
 
 /**
+ * Watermark-vs-now lag for one (source, dataset) pair (CHAOS-3430). Mirrors
+ * dev-health-ops api/admin/schemas/integrations.py:SyncRunDatasetFreshness.
+ *
+ * Every field is computed backend-side from the persisted `sync_watermarks`
+ * rows. The UI renders them verbatim — it never recomputes lag from a
+ * timestamp, re-derives the catch-up verdict, or counts ticks itself.
+ */
+export interface SyncRunDatasetFreshness {
+    /** IntegrationSource id, matching SyncRunUnit.source_id for label reuse. */
+    source_id: string;
+    source_name: string | null;
+    dataset_key: string;
+    cost_class: string;
+    /** Stored watermark (ISO, UTC); null when the dataset never stamped one. */
+    watermark_at: string | null;
+    /** `now - watermark_at` in whole seconds; null without a watermark. */
+    lag_seconds: number | null;
+    /** True only for a heavy dataset trailing by more than window_cap_days. */
+    catching_up: boolean;
+    /** Scheduled ticks still needed to reach now; null unless catching_up. */
+    ticks_behind: number | null;
+    window_cap_days: number;
+}
+
+/**
  * Aggregate unit-level progress for a planner sync run, returned by
  * GET /sync-runs/{run_id}/units. Mirrors
  * dev-health-ops api/admin/schemas/integrations.py:SyncRunUnitSummary.
@@ -377,6 +402,18 @@ export interface SyncRunUnitSummary {
     partial_failure_summary: Record<string, unknown> | null;
     /** Earliest available_at among retrying units, else null. */
     next_retry_at: string | null;
+    /**
+     * Watermark lag per (source, dataset) pair planned by this run, for
+     * datasets that carry a watermark (CHAOS-3430). Optional: absent when the
+     * backend predates the field, which must render as "no lag information",
+     * never as "nothing is behind".
+     */
+    dataset_freshness?: SyncRunDatasetFreshness[];
+    /**
+     * How many of those pairs are a heavy dataset still ratcheting toward the
+     * current time. Optional for the same forward-compat reason.
+     */
+    catching_up_dataset_count?: number;
     units: SyncRunUnit[];
 }
 
