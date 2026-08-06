@@ -216,6 +216,23 @@ function validateAnswer(answer: JsonRecord): boolean {
         return false;
     }
 
+    // Mirrors `fully_covered` in ops' v2->v1 projector
+    // (contracts_v2/compat.py): an answered outcome becomes `complete` only
+    // when the counts agree AND all three required-source lists are empty.
+    // `degraded_required_sources` was missing here, so web accepted a
+    // `complete` answer ops cannot emit — the same omission as the coverage
+    // block that never rendered the field (CHAOS-3469), in a second place.
+    // There is no pinned negative example for it; ops did not ship one.
+    //
+    // The new clause treats an ABSENT list as satisfied, deliberately: all
+    // three lists are optional in `DevCoverage` (only the two counts and
+    // `as_of` are required), and absent means empty, which is exactly when
+    // `complete` is legal. Note the asymmetry this exposes — the two older
+    // clauses demand `Array.isArray(...)` and so reject a schema-valid
+    // `complete` answer that simply omits an optional list. Ops always
+    // serialises them, so nothing hits it today; left as-is rather than
+    // loosened here, because relaxing an existing acceptance rule is a
+    // contract decision and not part of this row.
     const coverage = answer.coverage;
     if (answer.status === "complete" && isRecord(coverage)) {
         return (
@@ -223,7 +240,10 @@ function validateAnswer(answer: JsonRecord): boolean {
             Array.isArray(coverage.unavailable_required_sources) &&
             coverage.unavailable_required_sources.length === 0 &&
             Array.isArray(coverage.stale_required_sources) &&
-            coverage.stale_required_sources.length === 0
+            coverage.stale_required_sources.length === 0 &&
+            (coverage.degraded_required_sources === undefined ||
+                (Array.isArray(coverage.degraded_required_sources) &&
+                    coverage.degraded_required_sources.length === 0))
         );
     }
     return true;

@@ -219,6 +219,78 @@ describe("AskDevAnswer citations", () => {
         );
         expect(document.getElementById("ask-dev-evidence-answer-1-1")).not.toHaveFocus();
     });
+
+    // CHAOS-3435. `answer.evidence` carries no ordering contract: it is
+    // first-seen assembly order across tool results, and the upstream evidence
+    // search ranks by relevance/source precedence/freshness independently of
+    // what the model cites. A cited ref therefore lands at an arbitrary index,
+    // and the citation ordinal + detail-panel anchor must both follow that
+    // index. This is the unit-tier control for the live acceptance spec's
+    // id-derived assertions.
+    it("numbers a citation by the cited ref's index in answer.evidence, not by assuming it is first", async () => {
+        const user = userEvent.setup();
+        const citedEvidence = answer.evidence![0]!;
+        const decoyEvidence = Array.from({ length: 23 }, (_, index) => ({
+            ...citedEvidence,
+            display_label: `Pull request ${500 + index}`,
+            entity_id: String(500 + index),
+            evidence_ref_id: `evidence-decoy-${index + 1}`,
+        }));
+        // Cited ref sits at index 23 -> ordinal 24, exactly the live shape.
+        const rankedAnswer = {
+            ...answer,
+            evidence: [...decoyEvidence, citedEvidence],
+        } as unknown as DevAnswer;
+
+        render(<AskDevAnswer answer={rankedAnswer} />);
+
+        expect(
+            screen.queryByRole("button", { name: "Open evidence citation 1 for claim" }),
+        ).not.toBeInTheDocument();
+
+        await user.click(
+            screen.getByRole("button", { name: "Open evidence citation 24 for claim" }),
+        );
+
+        expect(actions.expandEvidence).toHaveBeenCalledWith("evidence-internal-1", "answer-1");
+        await waitFor(() =>
+            expect(document.getElementById("ask-dev-evidence-answer-1-24")).toHaveFocus(),
+        );
+        expect(document.getElementById("ask-dev-evidence-answer-1-1")).not.toHaveFocus();
+    });
+
+    // The metric half of the same contract. The evidence control above left
+    // metrics unguarded: a renderer hardcoded to metric citation 1 passes
+    // whenever the cited metric happens to be first, which it is in every
+    // other fixture here (codex adversarial review, MEDIUM). The live
+    // acceptance spec derives the metric ordinal too, but it runs in no
+    // workflow, so this is the control that can actually gate.
+    it("numbers a metric citation by the cited ref's index in answer.metrics, not by assuming it is first", async () => {
+        const user = userEvent.setup();
+        const citedMetric = answer.metrics![0]!;
+        const decoyMetrics = Array.from({ length: 4 }, (_, index) => ({
+            ...citedMetric,
+            label: `Decoy metric ${index + 1}`,
+            metric_id: `decoy_${index + 1}`,
+            metric_ref_id: `metric-decoy-${index + 1}`,
+        }));
+        // Cited ref sits at index 4 -> ordinal 5.
+        const rankedAnswer = {
+            ...answer,
+            metrics: [...decoyMetrics, citedMetric],
+        } as unknown as DevAnswer;
+
+        render(<AskDevAnswer answer={rankedAnswer} />);
+
+        expect(
+            screen.queryByRole("button", { name: "Open metric citation 1 for claim" }),
+        ).not.toBeInTheDocument();
+
+        await user.click(screen.getByRole("button", { name: "Open metric citation 5 for claim" }));
+
+        expect(document.getElementById("ask-dev-metric-answer-1-5")).toHaveFocus();
+        expect(document.getElementById("ask-dev-metric-answer-1-1")).not.toHaveFocus();
+    });
 });
 
 describe("AskDevAnswer status explanations (CHAOS-3215)", () => {
@@ -869,6 +941,35 @@ describe("AskDevAnswer coverage suppression (CHAOS-3367)", () => {
         );
 
         expect(screen.getByText("1 required sources unavailable")).toBeVisible();
+    });
+
+    // CHAOS-3219 W4. `degraded_required_sources` is a real DevCoverage field
+    // in both v1 and v2, and it blocks a `complete` answer exactly as
+    // `unavailable`/`stale` do (ops contracts_v2/compat.py). It was absent
+    // from both the `showCoverage` predicate and the rendered block, so a
+    // degraded-only answer showed no coverage section at all — a downgraded
+    // answer with nothing on screen to explain the downgrade.
+    it("reports degraded required sources, and keeps the coverage block for a degraded-only answer", () => {
+        render(
+            <AskDevAnswer
+                answer={
+                    {
+                        ...answer,
+                        status: "degraded",
+                        coverage: {
+                            available_source_count: 0,
+                            required_source_count: 0,
+                            degraded_required_sources: ["work_graph", "deployments"],
+                            stale_required_sources: [],
+                            unavailable_required_sources: [],
+                        },
+                    } as unknown as DevAnswer
+                }
+            />,
+        );
+
+        expect(screen.getByLabelText("Evidence coverage")).toBeVisible();
+        expect(screen.getByText("2 required sources degraded")).toBeVisible();
     });
 });
 

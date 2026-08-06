@@ -351,6 +351,42 @@ test("permanent contextual window continues one grounded run in /dev without dup
         `The claim must cite seeded ${EXPECTED_EVIDENCE_FRAGMENT} evidence.`,
     ).toBeDefined();
     expect(claims[0]!.evidence_ref_ids).toEqual([repositoryEvidence!.evidence_ref_id]);
+
+    // Citation ordinals and detail-panel anchors are DERIVED from the payload,
+    // never assumed (CHAOS-3435). `answer.evidence` carries no ordering
+    // contract -- it is first-seen assembly order across tool results, and the
+    // upstream evidence search deliberately ranks by relevance/source
+    // precedence/freshness, so a cited ref legitimately lands at any index.
+    // The UI numbers a citation by the cited ref's index in `answer.evidence`
+    // (E{index+1}) and scopes the detail-panel id per answer
+    // (`ask-dev-evidence-${answer_id}-${index+1}`, CHAOS-3215 M6).
+    const answerId = answer.answer_id;
+    expect(
+        typeof answerId,
+        "answer.answer_id scopes every citation anchor id (CHAOS-3215 M6).",
+    ).toBe("string");
+    expect(answerId as string).not.toBe("");
+
+    const citedEvidenceRefId = (claims[0]!.evidence_ref_ids as string[])[0]!;
+    const citedEvidenceIndex = evidence.findIndex(
+        (item) => item.evidence_ref_id === citedEvidenceRefId,
+    );
+    expect(
+        citedEvidenceIndex,
+        "The claim's cited evidence ref must resolve inside answer.evidence.",
+    ).toBeGreaterThanOrEqual(0);
+    const evidenceOrdinal = citedEvidenceIndex + 1;
+
+    const citedMetricRefId = (claims[0]!.metric_ref_ids as string[])[0]!;
+    const citedMetricIndex = metrics.findIndex(
+        (metric) => metric.metric_ref_id === citedMetricRefId,
+    );
+    expect(
+        citedMetricIndex,
+        "The claim's cited metric ref must resolve inside answer.metrics.",
+    ).toBeGreaterThanOrEqual(0);
+    const metricOrdinal = citedMetricIndex + 1;
+
     const done = events.find((event) => event.name === "done")!.data;
     expect(done).toMatchObject({ run_id: runId, terminal_kind: "answer" });
 
@@ -362,14 +398,28 @@ test("permanent contextual window continues one grounded run in /dev without dup
             response.request().method() === "GET",
     );
     await permanentAnswer
-        .getByRole("button", { name: "Open evidence citation 1 for claim" })
+        .getByRole("button", {
+            name: `Open evidence citation ${evidenceOrdinal} for claim`,
+            exact: true,
+        })
         .click();
     expect((await expansionResponsePromise).ok(), "Authorized evidence expansion failed.").toBe(
         true,
     );
-    await expect(page.locator("#ask-dev-evidence-1")).toContainText(/available/u);
-    await permanentAnswer.getByRole("button", { name: "Open metric citation 1 for claim" }).click();
-    await expect(page.locator("#ask-dev-metric-1 details")).toHaveAttribute("open", "");
+    // Attribute selector, not `#id`: answer ids are opaque and need not be
+    // valid bare CSS identifiers.
+    await expect(
+        page.locator(`[id="ask-dev-evidence-${answerId as string}-${evidenceOrdinal}"]`),
+    ).toContainText(/available/u);
+    await permanentAnswer
+        .getByRole("button", {
+            name: `Open metric citation ${metricOrdinal} for claim`,
+            exact: true,
+        })
+        .click();
+    await expect(
+        page.locator(`[id="ask-dev-metric-${answerId as string}-${metricOrdinal}"] details`),
+    ).toHaveAttribute("open", "");
     await page.screenshot({
         path: testInfo.outputPath("ask-dev-permanent-window-grounded-answer.png"),
         fullPage: true,

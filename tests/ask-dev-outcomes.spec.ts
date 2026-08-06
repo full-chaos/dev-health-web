@@ -5,6 +5,7 @@ import {
     askDevAnswerArticle,
     askDevFailedAlert,
     askDevLauncher,
+    getAskDevRequestCounts,
     openAskDevWindow,
     resetAskDevMock,
     scenarioQuestion,
@@ -12,6 +13,12 @@ import {
     setAskDevEntitlement,
     submitAskDevQuestion,
 } from "./helpers/askDev";
+import {
+    CLARIFICATION_CANDIDATE_REFS,
+    CLARIFICATION_COPY,
+    NO_ANSWER_OUTCOMES,
+    NOT_READY_READINESS_VALUES,
+} from "./mocks/devScenario";
 
 // CHAOS-3287: every public outcome the current dev_answer.v1 contract can
 // actually produce gets a distinct, accessible rendering test here. See
@@ -70,7 +77,14 @@ test.describe("Ask Dev — answer status outcomes", () => {
         });
     }
 
-    test("needs_clarification (ambiguous scope): presents candidates without evidence", async ({
+    // CHAOS-3219 W2. `needs_clarification` is one of the v2 contract's
+    // EMPTY_CONTENT_OUTCOMES and projects to v1 as `insufficient_evidence`
+    // with an `ambiguous` scope row and no content (ops
+    // contracts_v2/compat.py). Before this test the mock served the
+    // canonical fixture's `status: "complete"` here, so the suite asserted a
+    // payload production cannot emit — coverage that could not fail for the
+    // reason it claimed to exist.
+    test("needs_clarification (ambiguous scope): renders the clarification status the backend actually projects, with candidates and no content", async ({
         page,
     }) => {
         await page.goto("/diagnose", { waitUntil: "domcontentloaded" });
@@ -82,12 +96,217 @@ test.describe("Ask Dev — answer status outcomes", () => {
 
         const answer = askDevAnswerArticle(page);
         await expect(answer).toBeVisible();
-        await expect(answer).toContainText("More than one match was found");
+        await expect(answer).toContainText(CLARIFICATION_COPY.ambiguous);
+
+        // The projected status, not the fixture's. `Complete` beside a
+        // request for clarification is the exact contradiction W2 closes.
+        await expect(answer.getByText("Insufficient evidence", { exact: true })).toBeVisible();
+        await expect(answer.getByText("Complete", { exact: true })).not.toBeVisible();
+        await expect(answer).toContainText("isn't enough evidence");
+
+        // Ambiguity is NOT a no-match: several authorized entities did
+        // match. Rendering "Closest matches" here would assert the opposite
+        // (AskDevAnswer.tsx's `noMatch` branch) and is the misclassification
+        // this pair of assertions pins.
         await expect(answer.getByText("Possible scope matches")).toBeVisible();
-        const useScope = answer.getByRole("button", { name: "Use this scope" }).first();
-        await expect(useScope).toBeVisible();
-        await useScope.click();
+        await expect(answer.getByText("Closest matches")).not.toBeVisible();
+        for (const candidate of CLARIFICATION_CANDIDATE_REFS) {
+            await expect(answer).toContainText(candidate.display_label);
+        }
+        await expect(answer).toContainText(
+            "Choose or remove the proposed context before asking the next question.",
+        );
+
+        // No source plan ran for a subject that was never committed, so the
+        // answer carries no claims, metrics or evidence to expand.
+        await expect(page.getByRole("button", { name: "Open evidence" })).not.toBeVisible();
+        await expect(askDevFailedAlert(page)).not.toBeVisible();
     });
+
+    // CHAOS-3219 W3. The prior revision clicked this button and asserted
+    // nothing, so the entire effect of candidate selection — the whole point
+    // of a clarification turn — was unverified.
+    test("needs_clarification: choosing a candidate commits it as proposed context and does not auto-submit", async ({
+        page,
+        request,
+    }) => {
+        await page.goto("/diagnose", { waitUntil: "domcontentloaded" });
+        await openAskDevWindow(page);
+        await submitAskDevQuestion(
+            page,
+            scenarioQuestion("needs_clarification", "What is the status of dev-health?"),
+        );
+
+        const answer = askDevAnswerArticle(page);
+        await expect(answer).toBeVisible();
+        const countsBefore = await getAskDevRequestCounts(request);
+        const proposedRow = page.getByText(/^Proposed context:/u).first();
+        const committedRow = page.getByText(/^Committed scope:/u).first();
+        const committedBefore = (await committedRow.innerText()).trim();
+
+        const chosen = CLARIFICATION_CANDIDATE_REFS[0];
+        await answer
+            .getByRole("listitem")
+            .filter({ hasText: chosen.display_label })
+            .getByRole("button", { name: "Use this scope" })
+            .click();
+
+        // The choice becomes visible PROPOSED context — and only proposed.
+        // Committing is the user's next act, so the committed row must not
+        // move underneath them (CHAOS-3219 group 2: proposed and committed
+        // subjects are both visible, and scope never mutates silently).
+        await expect(proposedRow).toContainText(chosen.display_label);
+        expect(
+            (await committedRow.innerText()).trim(),
+            "Selecting a candidate proposes a scope; it must not silently re-commit one.",
+        ).toBe(committedBefore);
+
+        // Group 5 is explicit that an approved action never auto-submits:
+        // selecting a candidate must not execute a run by itself.
+        const countsAfterSelect = await getAskDevRequestCounts(request);
+        expect(
+            countsAfterSelect.messages,
+            "Selecting a clarification candidate must not execute a run.",
+        ).toBe(countsBefore.messages);
+        expect(
+            countsAfterSelect.conversationsCreated,
+            "Selecting a clarification candidate must not create a conversation.",
+        ).toBe(countsBefore.conversationsCreated);
+
+        // The user still drives the next turn, and it is one run — and that
+        // run must actually CARRY the chosen subject. Displayed state is not
+        // proof of what went on the wire: a defect that renders the chosen
+        // candidate while submitting the old or an organization-wide scope
+        // passes every assertion above (codex adversarial review, HIGH).
+        await submitAskDevQuestion(page, "And how is delivery trending?");
+        await expect(askDevAnswerArticle(page).nth(1)).toBeVisible();
+        const countsAfterAsk = await getAskDevRequestCounts(request);
+        expect(countsAfterAsk.messages).toBe(countsBefore.messages + 1);
+        expect(countsAfterAsk.conversationsCreated).toBe(countsBefore.conversationsCreated);
+
+        const submitted = countsAfterAsk.lastMessageScope as {
+            direct_scope?: string;
+            repositories?: string[];
+            entity_refs?: { entity_id?: string }[];
+        } | null;
+        expect(submitted, "The message request carried no scope at all.").not.toBeNull();
+        const submittedIds = [
+            ...(submitted?.repositories ?? []),
+            ...(submitted?.entity_refs ?? []).map((ref) => ref.entity_id),
+        ];
+        expect(submittedIds, "The chosen candidate was displayed but not submitted.").toContain(
+            chosen.entity_id,
+        );
+        expect(
+            submitted?.direct_scope,
+            "Choosing a specific repository must not widen the submitted scope to the organization.",
+        ).not.toBe("organization");
+    });
+
+    // CHAOS-3219 W4. The coverage block is the only place the UI explains
+    // WHY an answer was downgraded. Each required-source failure state must
+    // reach the screen, and a satisfied answer must claim no failure it does
+    // not have.
+    const COVERAGE_MATRIX = [
+        {
+            scenario: "complete",
+            question: "How much work completed?",
+            expected: "Coverage: 1 of 1 sources",
+            absent: [
+                "required sources unavailable",
+                "required sources degraded",
+                "required sources stale",
+            ],
+        },
+        {
+            scenario: "partial",
+            question: "How much work completed?",
+            expected: "1 required sources unavailable",
+            absent: ["required sources degraded", "required sources stale"],
+        },
+        {
+            scenario: "degraded",
+            question: "How much work completed?",
+            expected: "1 required sources stale",
+            absent: ["required sources unavailable", "required sources degraded"],
+        },
+        {
+            scenario: "degraded_sources_only",
+            question: "How much work completed?",
+            expected: "1 required sources degraded",
+            absent: ["required sources unavailable", "required sources stale"],
+        },
+    ] as const;
+
+    for (const row of COVERAGE_MATRIX) {
+        test(`${row.scenario}: the coverage block names the required-source states this answer actually has`, async ({
+            page,
+        }) => {
+            await page.goto("/diagnose", { waitUntil: "domcontentloaded" });
+            await openAskDevWindow(page);
+            await submitAskDevQuestion(page, scenarioQuestion(row.scenario, row.question));
+
+            const answer = askDevAnswerArticle(page);
+            await expect(answer).toBeVisible();
+            const coverage = answer.getByLabel("Evidence coverage");
+            await expect(coverage).toBeVisible();
+            await expect(coverage).toContainText(row.expected);
+            for (const absent of row.absent) {
+                await expect(coverage).not.toContainText(absent);
+            }
+        });
+    }
+
+    // CHAOS-3219 W1. Five of the eight dev_answer.v2 public outcomes never
+    // become an answer at all: the projector turns each into a DevError
+    // carrying server-owned canonical copy (ops
+    // contracts_v2/compat.py:484-494). Those sentences are therefore the
+    // ENTIRE user-visible artifact of those outcomes, and until now the
+    // default suite emitted 2 of 24 DevErrorCodes and asserted none of them.
+    for (const outcome of NO_ANSWER_OUTCOMES) {
+        test(`${outcome.outcome}: renders the canonical no-answer copy and the correct retry affordance`, async ({
+            page,
+        }) => {
+            await page.goto("/diagnose", { waitUntil: "domcontentloaded" });
+            await openAskDevWindow(page);
+            await submitAskDevQuestion(
+                page,
+                scenarioQuestion(outcome.scenario, `A question that ends in ${outcome.outcome}`),
+            );
+
+            const alert = askDevFailedAlert(page);
+            await expect(alert).toBeVisible();
+            await expect(alert).toContainText(outcome.safeMessage);
+
+            // A no-answer outcome is not an answer: the answer article must
+            // not also render (a "blank answer" is its own launch-threshold
+            // failure).
+            await expect(askDevAnswerArticle(page)).not.toBeVisible();
+
+            // Only the retryable outcome offers a retry. Offering it on a
+            // terminal outcome invites a pointless second run; withholding
+            // it on the retryable one strands a recoverable failure.
+            const retry = alert.getByRole("button", { name: "Retry" });
+            if (outcome.retryable) {
+                await expect(retry).toBeVisible();
+            } else {
+                await expect(retry).not.toBeVisible();
+            }
+
+            // The copy is outcome-specific, not one fixed apology reused for
+            // everything — a renderer that printed a constant would satisfy
+            // the assertion above and fail this one.
+            for (const other of NO_ANSWER_OUTCOMES) {
+                if (other.outcome === outcome.outcome) continue;
+                await expect(alert).not.toContainText(other.safeMessage);
+            }
+
+            // The raw code behind the outcome never reaches the alert.
+            const alertText = await alert.innerText();
+            expect(alertText).not.toContain(outcome.code);
+            expect(alertText).not.toContain(outcome.code.replaceAll("_", " "));
+        });
+    }
 
     test("a stream-level failure (source_unavailable) renders the alert treatment, not a silent blank", async ({
         page,
@@ -129,6 +348,28 @@ test.describe("Ask Dev — availability gating", () => {
         ).toBeVisible();
         await expect(page.getByRole("region", { name: "Ask Dev workspace" })).not.toBeVisible();
     });
+
+    // CHAOS-3219 W14. Only 3 of the 5 pinned DevCapabilitiesReadiness values
+    // were ever served by the mock. `unsupported_model` and `degraded` are
+    // real enum members an administrator can land on, and neither had any
+    // assertion that its copy stays administrator-safe.
+    for (const readiness of NOT_READY_READINESS_VALUES) {
+        test(`readiness ${readiness}: surfaces an administrator-safe explanation, never the raw enum`, async ({
+            page,
+            request,
+        }) => {
+            await setAskDevCapabilities(request, readiness);
+            await page.goto("/diagnose", { waitUntil: "domcontentloaded" });
+            await askDevLauncher(page).click();
+
+            await expect(page.getByText("needs administrator attention")).toBeVisible();
+            const bodyText = await page.locator("body").innerText();
+            expect(bodyText, `The raw ${readiness} enum reached the page.`).not.toContain(
+                readiness,
+            );
+            expect(bodyText).not.toContain(readiness.replaceAll("_", " "));
+        });
+    }
 
     test("not_ready capabilities surface the administrator-safe reason, not an internal code", async ({
         page,
