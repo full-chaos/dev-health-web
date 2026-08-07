@@ -151,7 +151,10 @@ describe("AskDevProvider permanent window", () => {
         await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
 
         expect(screen.getByRole("region", { name: "Ask Dev" })).toHaveFocus();
-        expect(screen.getByText("Proposed context:")).toHaveTextContent("Organization");
+        // CHAOS-3524: the persistent scope bar (which used to echo the
+        // default "Organization" label here) is gone — the load-bearing
+        // claim is just that opening the launcher doesn't itself create a
+        // conversation or run, checked below.
         expect(client.createConversation).not.toHaveBeenCalled();
         expect(client.streamMessage).not.toHaveBeenCalled();
     });
@@ -175,10 +178,12 @@ describe("AskDevProvider permanent window", () => {
         await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
 
         const permanentWindow = screen.getByRole("region", { name: "Ask Dev" });
-        // The scope banner already resolves this page's implicit context (this
-        // assertion passes today) -- the suggested-question buttons driven by
-        // that same implicit context do not, which is the bug this test pins.
-        expect(permanentWindow).toHaveTextContent("Data Confidence");
+        // CHAOS-3524: this used to also assert the (now-removed) persistent
+        // scope bar displayed "Data Confidence" for this ambient route —
+        // display-only, and the bar is gone. What this test actually pins
+        // is the suggested-question buttons below, driven by that same
+        // implicit context.
+        expect(permanentWindow).toBeVisible();
         expect(
             screen.getByRole("button", {
                 name: "What changed in this scope during the selected time range?",
@@ -223,7 +228,10 @@ describe("AskDevProvider permanent window", () => {
 
         await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
 
-        expect(screen.getByText("Proposed context:")).toHaveTextContent("Organization");
+        // CHAOS-3524: the removed persistent bar used to also echo the
+        // "Organization" fallback label here — display-only, now gone. The
+        // load-bearing claim (this route gets no ambient treatment) is
+        // fully proven by the suggested-questions absence below.
         expect(
             screen.queryByRole("button", {
                 name: "What changed in this scope during the selected time range?",
@@ -244,7 +252,6 @@ describe("AskDevProvider permanent window", () => {
 
         await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
 
-        expect(screen.getByText("Proposed context:")).toHaveTextContent("Organization");
         expect(screen.queryByLabelText("Suggested questions")).not.toBeInTheDocument();
     });
 
@@ -329,13 +336,24 @@ describe("AskDevProvider permanent window", () => {
         navigation.pathname = "/metrics";
         navigation.query = "tab=flow";
         rendered.rerender(view());
-        expect(screen.getByText("Proposed context:")).toHaveTextContent("Flow");
-        expect(screen.getByText("Committed scope:")).toHaveTextContent("Organization");
+        // CHAOS-3524: previously also asserted the removed persistent bar's
+        // "Proposed context: Flow" / "Committed scope: Organization" —
+        // display-only. What actually proves the conversation/run survived
+        // this navigation (not silently re-scoped or re-run) is that the
+        // SAME answer is still showing and streamMessage was never called
+        // again — both checked here and again after the /dev round trip
+        // below.
+        expect(screen.getByText(answer.direct_summary)).toBeVisible();
         expect(client.streamMessage).toHaveBeenCalledOnce();
+        // CHAOS-3524: previously asserted "/dev" — a raw href that silently
+        // dropped the current page's filter scope (web AGENTS.md's
+        // withFilterParam rule). Fixed to carry it across, symmetric with
+        // `returnLink` below (the /dev workspace's link back to this page),
+        // which already preserved it in the other direction.
         await waitFor(() =>
             expect(screen.getByRole("link", { name: "Ask Dev workspace" })).toHaveAttribute(
                 "href",
-                "/dev",
+                "/dev?tab=flow",
             ),
         );
 
@@ -891,14 +909,18 @@ describe("AskDevProvider permanent window", () => {
         expect(screen.queryByText(answer.direct_summary)).not.toBeInTheDocument();
         expect(screen.getByText("Checking Ask Dev availability…")).toBeVisible();
 
-        expect(await screen.findByText("Committed scope:")).toHaveTextContent(
-            "Commits when you ask",
-        );
+        // CHAOS-3524: previously asserted the removed persistent bar's
+        // "Committed scope: Commits when you ask" — this was really a
+        // wait-for-ready gate (an async `findByText`) disguised as a scope
+        // check, since the composer doesn't exist at all while availability
+        // is still "loading" (see the early-return guards in
+        // AskDevConversation). The composer reappearing, empty, IS the
+        // fresh-state proof now: a stale value here would mean the old
+        // org's draft or a stale committed run leaked across the switch.
+        const composer = await screen.findByRole("textbox", { name: "Ask Dev question" });
+        expect(composer).toHaveValue("");
 
-        await user.type(
-            screen.getByRole("textbox", { name: "Ask Dev question" }),
-            "New org question",
-        );
+        await user.type(composer, "New org question");
         await user.click(screen.getByRole("button", { name: "Ask" }));
         await waitFor(() => expect(client.createConversation).toHaveBeenCalledTimes(2));
     });
@@ -1663,8 +1685,10 @@ describe("AskDev candidate selection vs contextual-entrypoint gating (CHAOS-3470
         await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
         await user.click(screen.getByRole("button", { name: "Use this scope" }));
 
+        // CHAOS-3524: the persistent scope bar is gone; a real proposal now
+        // surfaces as the "Scoped to ..." chip above the composer.
         await waitFor(() =>
-            expect(screen.getByText("Proposed context:")).toHaveTextContent("dev-health-web"),
+            expect(screen.getByText("Scoped to")).toHaveTextContent("dev-health-web"),
         );
     });
 
@@ -1694,7 +1718,11 @@ describe("AskDev candidate selection vs contextual-entrypoint gating (CHAOS-3470
         await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
         await user.click(screen.getByRole("button", { name: "Register surface context" }));
 
-        expect(screen.getByText("Proposed context:")).not.toHaveTextContent("dev-health-web");
+        // CHAOS-3524: an ignored proposal never sets proposedContext, so
+        // there's no "Scoped to" chip at all now — stronger than the old
+        // "doesn't contain the label" check, since it proves the whole
+        // chip is absent, not just its wording.
+        expect(screen.queryByText("Scoped to")).not.toBeInTheDocument();
     });
 
     it("accepts the same SURFACE proposal once contextual entry points are enabled", async () => {
@@ -1714,7 +1742,7 @@ describe("AskDev candidate selection vs contextual-entrypoint gating (CHAOS-3470
         await user.click(screen.getByRole("button", { name: "Register surface context" }));
 
         await waitFor(() =>
-            expect(screen.getByText("Proposed context:")).toHaveTextContent("dev-health-web"),
+            expect(screen.getByText("Scoped to")).toHaveTextContent("dev-health-web"),
         );
     });
 });

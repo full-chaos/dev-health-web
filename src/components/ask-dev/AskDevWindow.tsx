@@ -43,7 +43,10 @@ function useIsMobileFullScreen(): boolean {
 }
 
 export function AskDevWindow() {
-    const { closePanel, panelMode, openPanel, setPanelMode } = useAskDev();
+    // askDevWorkspaceHref (CHAOS-3524) comes from the provider, not a local
+    // useSearchParams() call here — see its declaration in AskDevProvider.tsx
+    // for why (AskDevWindow.test.tsx renders without a next/navigation mock).
+    const { askDevWorkspaceHref, closePanel, panelMode, openPanel, setPanelMode } = useAskDev();
     const launcherRef = useRef<HTMLButtonElement>(null);
     const panelRef = useRef<HTMLElement>(null);
     const isMobileFullScreen = useIsMobileFullScreen();
@@ -155,7 +158,7 @@ export function AskDevWindow() {
                 </div>
                 <div className="flex items-center gap-1">
                     <Link
-                        href="/dev"
+                        href={askDevWorkspaceHref}
                         className="rounded-(--radius-sm) px-2 py-1.5 text-xs font-medium text-(--text-secondary) transition hover:bg-(--surface-raised) hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-ai)/45"
                     >
                         {CTA_LABELS.askDevWorkspace}

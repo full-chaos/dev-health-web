@@ -273,13 +273,13 @@ export const navAreas: readonly NavArea[] = [
                 path: "/bottleneck",
                 navVisible: true,
             },
-            {
-                id: "ask-dev",
-                label: "Ask Dev",
-                path: "/dev",
-                navVisible: true,
-                requiredFeature: "ask_dev",
-            },
+            // CHAOS-3524 (chris's ruling): Ask Dev is deliberately NOT a
+            // left-nav destination — one ingress only, the in-context
+            // trigger/window → workspace path (AskDevWindow's "Ask Dev
+            // workspace" link). The route itself (`/dev`) and its
+            // ownedPathPrefixes membership above are untouched, so landing
+            // on it via that trigger still highlights Diagnose correctly;
+            // only the always-visible sidebar row is gone.
             { id: "people", label: "People", path: "/people", navVisible: true },
             { id: "code", label: "Code", path: "/code", navVisible: true },
         ],

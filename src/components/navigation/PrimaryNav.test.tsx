@@ -140,23 +140,18 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
         expect(screen.getByRole("link", { name: /^Experiments$/i })).toBeInTheDocument();
     });
 
-    it("renders exactly one Ask Dev link when ask_dev is provisioned", () => {
-        navigationMock.pathname = "/work";
-        render(
-            <AdminTierProvider tier="enterprise" features={{ ask_dev: true }} limits={{}}>
-                <PrimaryNav filters={makeFilter()} active="work" />
-            </AdminTierProvider>,
-        );
-
-        const askDev = screen.getByRole("link", { name: /^Ask Dev$/i });
-        expect(askDev).toHaveAttribute("href", expect.stringContaining("/dev"));
-        expect(screen.getAllByRole("link", { name: /^Ask Dev$/i })).toHaveLength(1);
-    });
-
+    // CHAOS-3524 (chris's ruling): Ask Dev is deliberately NOT a left-nav
+    // destination anymore — one ingress only, the in-context
+    // trigger/window → workspace path. Previously this suite asserted the
+    // opposite (a link rendered when `ask_dev` was provisioned, gated by
+    // `requiredFeature`); that entry is gone from the nav config entirely
+    // now, so the correct regression guard is that no such link ever
+    // appears, regardless of feature state.
     it.each([
+        ["provisioned", { ask_dev: true }],
         ["missing", {}],
-        ["false", { ask_dev: false }],
-    ] as const)("hides Ask Dev when the required feature is %s", (_state, features) => {
+        ["explicitly false", { ask_dev: false }],
+    ] as const)("never renders an Ask Dev nav link, feature %s", (_state, features) => {
         navigationMock.pathname = "/work";
         render(
             <AdminTierProvider tier="enterprise" features={features} limits={{}}>

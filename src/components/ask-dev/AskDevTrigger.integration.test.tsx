@@ -231,7 +231,12 @@ describe("Ask Dev registered context handoff", () => {
             ).not.toBeInTheDocument();
             await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
 
-            expect(screen.getByText("Proposed context:")).toHaveTextContent(label);
+            // CHAOS-3524: the persistent scope bar is gone (display-only —
+            // the request payload this proves lower in the file is
+            // unaffected); a real typed proposal (this is one, via
+            // AskDevContextRegistration) now surfaces as the small
+            // "Scoped to ..." chip above the composer instead.
+            expect(screen.getByText("Scoped to")).toHaveTextContent(label);
             expect(client.createConversation).not.toHaveBeenCalled();
             expect(client.streamMessage).not.toHaveBeenCalled();
         },
@@ -257,7 +262,10 @@ describe("Ask Dev registered context handoff", () => {
         await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
 
         expect(screen.getByRole("region", { name: "Ask Dev" })).toHaveFocus();
-        expect(screen.getByText("Proposed context:")).toHaveTextContent("Issue · CHAOS-3216");
+        // CHAOS-3524: the persistent scope bar is gone; a real typed
+        // proposal (this one, via AskDevContextRegistration) now surfaces
+        // as the "Scoped to ..." chip above the composer instead.
+        expect(screen.getByText("Scoped to")).toHaveTextContent("Issue · CHAOS-3216");
         expect(
             screen.getByRole("button", {
                 name: "What work appears to remain in this scope?",
@@ -268,7 +276,7 @@ describe("Ask Dev registered context handoff", () => {
 
         navigation.pathname = "/dev";
         rendered.rerender(view(true));
-        expect(screen.getByText("Proposed context:")).toHaveTextContent("Issue · CHAOS-3216");
+        expect(screen.getByText("Scoped to")).toHaveTextContent("Issue · CHAOS-3216");
         expect(client.createConversation).not.toHaveBeenCalled();
         expect(client.streamMessage).not.toHaveBeenCalled();
 
@@ -306,7 +314,7 @@ describe("Ask Dev registered context handoff", () => {
         );
 
         await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
-        expect(screen.getByText("Proposed context:")).toHaveTextContent("Issue · CHAOS-3216");
+        expect(screen.getByText("Scoped to")).toHaveTextContent("Issue · CHAOS-3216");
 
         navigation.pathname = "/metrics";
         rendered.rerender(
@@ -315,10 +323,26 @@ describe("Ask Dev registered context handoff", () => {
             </AskDevProvider>,
         );
 
-        expect(screen.getByText("Proposed context:")).toHaveTextContent("Flow");
-        expect(screen.getByText("Proposed context:")).not.toHaveTextContent("CHAOS-3216");
+        // CHAOS-3524: the persistent scope bar (which used to show the
+        // fallback ambient label, e.g. "Flow") is gone — an ambient
+        // pathname-derived label with no explicit registered proposal has
+        // no display affordance anymore, only a genuine typed proposal
+        // does (checked above). What must still hold is the actual leak
+        // guard: nothing on the page references the issue that was
+        // registered on the page just navigated away from, and a
+        // submitted question doesn't carry its scope either.
+        expect(screen.queryByText(/CHAOS-3216/u)).not.toBeInTheDocument();
         expect(client.createConversation).not.toHaveBeenCalled();
         expect(client.streamMessage).not.toHaveBeenCalled();
+
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What changed?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        expect(client.createConversation).toHaveBeenCalledOnce();
+        const [createArgs] = vi.mocked(client.createConversation).mock.calls[0]!;
+        expect(createArgs.current_scope.direct_scope).not.toBe("issue");
+        expect(createArgs.current_scope.entity_refs).toEqual([]);
+        expect(JSON.stringify(createArgs)).not.toContain("CHAOS-3216");
     });
 
     it("does not resurrect a cleared contextual scope when later opening /dev from an unrelated route (CHAOS-3215 M1)", async () => {
@@ -331,16 +355,19 @@ describe("Ask Dev registered context handoff", () => {
         );
 
         await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
-        expect(screen.getByText("Proposed context:")).toHaveTextContent("Issue · CHAOS-3216");
+        expect(screen.getByText("Scoped to")).toHaveTextContent("Issue · CHAOS-3216");
 
-        // Navigate away to an unrelated route — the proposal correctly hides here.
+        // Navigate away to an unrelated route — the proposal correctly clears here.
         navigation.pathname = "/metrics";
         rendered.rerender(
             <AskDevProvider client={client} contextualEntrypointsEnabled orgId="org-1">
                 <p>Flow metrics</p>
             </AskDevProvider>,
         );
-        expect(screen.getByText("Proposed context:")).toHaveTextContent("Flow");
+        // CHAOS-3524: no chip for an ambient-only label anymore (see the
+        // sibling "does not leak..." test) — the load-bearing check is
+        // that the issue reference is gone, proven below on /dev too.
+        expect(screen.queryByText("Scoped to")).not.toBeInTheDocument();
 
         // Now land on /dev from that unrelated route (not directly from the page
         // that registered the context). Because the scope was never actually
@@ -352,7 +379,8 @@ describe("Ask Dev registered context handoff", () => {
                 <AskDevWorkspace />
             </AskDevProvider>,
         );
-        expect(screen.getByText("Proposed context:")).not.toHaveTextContent("CHAOS-3216");
+        expect(screen.queryByText("Scoped to")).not.toBeInTheDocument();
+        expect(screen.queryByText(/CHAOS-3216/u)).not.toBeInTheDocument();
     });
 
     it("ignores registered context when contextual entry points are disabled", async () => {
@@ -368,9 +396,23 @@ describe("Ask Dev registered context handoff", () => {
         ).not.toBeInTheDocument();
         const user = userEvent.setup();
         await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
-        expect(screen.getByText("Proposed context:")).toHaveTextContent("Organization");
+        // CHAOS-3524: disabled entry points means no proposal was ever
+        // registered, so there's no "Scoped to" chip to show at all — that
+        // absence, plus the request payload below carrying no trace of the
+        // issue, is what proves the registered context was truly ignored
+        // (not merely hidden from a display that no longer exists).
+        expect(screen.queryByText("Scoped to")).not.toBeInTheDocument();
         expect(client.createConversation).not.toHaveBeenCalled();
         expect(client.streamMessage).not.toHaveBeenCalled();
+
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What changed?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        expect(client.createConversation).toHaveBeenCalledOnce();
+        const [createArgs] = vi.mocked(client.createConversation).mock.calls[0]!;
+        expect(createArgs.current_scope.direct_scope).not.toBe("issue");
+        expect(createArgs.current_scope.surface_context).toBeNull();
+        expect(JSON.stringify(createArgs)).not.toContain("CHAOS-3216");
     });
 
     it("lets the user remove proposed context before asking", async () => {
@@ -383,13 +425,23 @@ describe("Ask Dev registered context handoff", () => {
         );
 
         await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
-        expect(screen.getByText("Proposed context:")).toHaveTextContent("Issue · CHAOS-3216");
+        expect(screen.getByText("Scoped to")).toHaveTextContent("Issue · CHAOS-3216");
 
+        // CHAOS-3524: "Clear context" now lives inside the "Scoped to" chip
+        // rather than the removed persistent bar — same action, same
+        // accessible name, new home.
         await user.click(screen.getByRole("button", { name: "Clear context" }));
 
-        expect(screen.getByText("Proposed context:")).toHaveTextContent("Organization");
-        expect(client.createConversation).not.toHaveBeenCalled();
-        expect(client.streamMessage).not.toHaveBeenCalled();
+        expect(screen.queryByText("Scoped to")).not.toBeInTheDocument();
+
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What changed?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        expect(client.createConversation).toHaveBeenCalledOnce();
+        const [createArgs] = vi.mocked(client.createConversation).mock.calls[0]!;
+        expect(createArgs.current_scope.direct_scope).not.toBe("issue");
+        expect(createArgs.current_scope.surface_context).toBeNull();
+        expect(JSON.stringify(createArgs)).not.toContain("CHAOS-3216");
     });
 
     it("does not turn deferred supporting-evidence routes into direct context", async () => {
@@ -408,8 +460,11 @@ describe("Ask Dev registered context handoff", () => {
         );
 
         await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
-        expect(screen.getByText("Proposed context:")).toHaveTextContent("Organization");
-        expect(screen.getByText("Direct scope:")).toHaveTextContent("organization");
+        // CHAOS-3524: a deferred route never registers a proposal, so
+        // there's no chip — proven properly below via the actual request
+        // payload (direct_scope: organization, surface_context: null),
+        // which is the stronger, load-bearing form of this claim anyway.
+        expect(screen.queryByText("Scoped to")).not.toBeInTheDocument();
         expect(client.createConversation).not.toHaveBeenCalled();
         expect(client.streamMessage).not.toHaveBeenCalled();
 
@@ -457,7 +512,11 @@ describe("Ask Dev registered context handoff", () => {
         );
 
         await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
-        expect(screen.getByText("Teams:")).toHaveTextContent("1 selected");
+        // CHAOS-3524: the persistent bar's "Teams: 1 selected" readout is
+        // gone; the team-scoping claim this test makes ("consistently with
+        // the visible proposal") is proven properly below via the actual
+        // request payload (team_ids: ["team-a"]) instead — that was always
+        // the real assertion, this was a redundant pre-submit echo of it.
         expect(client.createConversation).not.toHaveBeenCalled();
         expect(client.streamMessage).not.toHaveBeenCalled();
 
