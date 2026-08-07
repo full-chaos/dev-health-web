@@ -67,6 +67,9 @@ export const NO_ANSWER_OUTCOMES = [
         retryable: false,
         safeMessage: "No matching subject was found for this question.",
         remediation: ["Check the name and try again."],
+        // See `SCOPE_RESOLUTION_OUTCOME_BY_NO_ANSWER` below for what this
+        // field means and where it comes from.
+        scopeResolutionOutcome: "unresolved",
     },
     {
         outcome: "temporarily_unavailable",
@@ -75,6 +78,7 @@ export const NO_ANSWER_OUTCOMES = [
         retryable: true,
         safeMessage: "This answer is temporarily unavailable. Please try again shortly.",
         remediation: ["Try the question again in a few minutes."],
+        scopeResolutionOutcome: "exact",
     },
     {
         outcome: "unsupported",
@@ -83,6 +87,7 @@ export const NO_ANSWER_OUTCOMES = [
         retryable: false,
         safeMessage: "This question is not supported yet.",
         remediation: ["Try a status, health, or metric question instead."],
+        scopeResolutionOutcome: null,
     },
     {
         outcome: "denied",
@@ -91,6 +96,7 @@ export const NO_ANSWER_OUTCOMES = [
         retryable: false,
         safeMessage: "You do not have access to ask about this.",
         remediation: ["Ask an administrator for access to this area."],
+        scopeResolutionOutcome: null,
     },
     {
         outcome: "failed",
@@ -99,8 +105,38 @@ export const NO_ANSWER_OUTCOMES = [
         retryable: false,
         safeMessage: "Something went wrong while preparing this answer.",
         remediation: ["Try the question again."],
+        scopeResolutionOutcome: "exact",
     },
 ] as const;
+
+/**
+ * What `scope.resolved` outcome (if any) each `NO_ANSWER_OUTCOMES` entry's
+ * stream carries, immediately before its `error` frame (CHAOS-3526).
+ *
+ * As of CHAOS-3497, ops emits `scope.resolved` on every terminal whose run
+ * completed scope resolution -- including a no-answer error terminal --
+ * built from `OrchestratorResult.scope_resolution`
+ * (`streaming.stream_orchestrator`). Which outcome each of these five
+ * carries is pinned against the real producer, not invented: the ops
+ * acceptance corpus's own `resolution-profiles/deterministic-v1.json` maps
+ * every corpus case's `expected_public_outcome` to an
+ * `expected_scope_resolution_outcome`, and every case sharing one of these
+ * five public outcomes agrees on a single value --
+ *   not_found               -> unresolved
+ *   temporarily_unavailable -> exact
+ *   unsupported             -> null
+ *   denied                  -> null
+ *   failed                  -> exact
+ * `null` means no `scope.resolved` event at all, not a placeholder
+ * resolution: `unsupported` (an oversized/unsupported request rejected by
+ * `subject_preflight`'s bound) and `denied` (a provider-level refusal) are
+ * both rejected before any catalog round trip ever runs, so
+ * `OrchestratorResult.scope_resolution` is `None` and streaming's own
+ * negative control applies ("a run that never resolved scope emits no
+ * scope frame") -- inventing a resolution here would assert something the
+ * run never reached, the same overclaiming CHAOS-3497 exists to prevent in
+ * the other direction.
+ */
 
 type NoAnswerScenario = (typeof NO_ANSWER_OUTCOMES)[number]["scenario"];
 
@@ -644,6 +680,36 @@ function nextRunId(): string {
     return `run_e2e_${runCounter}`;
 }
 
+/**
+ * A schema-valid `dev_scope_resolution.v1` for an error terminal's
+ * `scope.resolved` frame (CHAOS-3526), derived from the checked-in
+ * canonical `exact` fixture rather than hand-authored.
+ *
+ * `"exact"` returns the fixture's own resolution unchanged -- it is already
+ * a real, schema-valid `exact` commit. The two unhealthy outcomes clear
+ * `resolved_scope`/the authorization lists/`candidates` the same way the
+ * `forbidden_or_not_found_scope` and `scope_unresolved` answer scenarios
+ * above do, so this cannot describe a shape those scenarios' own pinned
+ * tests would reject: `unresolved` and `forbidden_or_not_found` both sit on
+ * DevScopeResolution's un-resolved side (`resolved_scope` is `None`), and
+ * neither carries the fixture's repository-scoped authorization.
+ * `forbidden_or_not_found` MAY carry `candidates` (CHAOS-3367) but is never
+ * required to; none are offered here since the mock has no closest-match
+ * catalog to draw them from.
+ */
+function buildScopeResolution(
+    outcome: "exact" | "unresolved" | "forbidden_or_not_found",
+): JsonRecord {
+    const resolution = clone((answerFixture as JsonRecord).resolved_scope) as JsonRecord;
+    if (outcome === "exact") return resolution;
+    resolution.outcome = outcome;
+    resolution.resolved_scope = null;
+    resolution.authorized_repository_ids = [];
+    resolution.authorized_entity_ids = [];
+    resolution.candidates = [];
+    return resolution;
+}
+
 /** Builds one schema-valid, semantically-valid dev_stream_event.v1[] run. */
 export function buildStreamEvents(
     scenario: DevAnswerScenario,
@@ -677,6 +743,16 @@ export function buildStreamEvents(
 
     const noAnswer = NO_ANSWER_BY_SCENARIO.get(scenario);
     if (noAnswer) {
+        // CHAOS-3526: `scope.resolved` immediately before the terminal, and
+        // only when this run's outcome family actually reached scope
+        // resolution -- see the block comment above `NO_ANSWER_OUTCOMES`
+        // for the per-outcome sourcing.
+        if (noAnswer.scopeResolutionOutcome !== null) {
+            push({
+                event: "scope.resolved",
+                scope_resolution: buildScopeResolution(noAnswer.scopeResolutionOutcome),
+            });
+        }
         push({
             event: "error",
             error: {
@@ -693,6 +769,26 @@ export function buildStreamEvents(
     }
 
     if (scenario === "scope_forbidden_error" || scenario === "source_unavailable_error") {
+        // CHAOS-3526: both scenarios reach an error only after scope
+        // resolution completed, so both carry `scope.resolved` immediately
+        // before it. `scope_forbidden_error` mirrors ops
+        // `orchestrator.run()`'s top-level resolve-outcome branch (a
+        // resolution outcome outside `{ambiguous, unresolved,
+        // forbidden_or_not_found}` still forbidden by an authorization
+        // check downstream of scope resolution) with the "genuinely
+        // unhealthy" `forbidden_or_not_found` outcome CHAOS-3497 uses for
+        // this family elsewhere -- never a healthy `exact` beside a "you
+        // don't have access" error, which is the exact juxtaposition
+        // CHAOS-3497 removed from ops. `source_unavailable_error` mirrors
+        // the `temporarily_unavailable` no-answer outcome: the scope
+        // resolved fine and a downstream source failed, so `exact` is
+        // honest here.
+        const scopeResolutionOutcome =
+            scenario === "scope_forbidden_error" ? "forbidden_or_not_found" : "exact";
+        push({
+            event: "scope.resolved",
+            scope_resolution: buildScopeResolution(scopeResolutionOutcome),
+        });
         const error =
             scenario === "scope_forbidden_error"
                 ? {
