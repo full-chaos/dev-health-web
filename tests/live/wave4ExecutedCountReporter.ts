@@ -25,6 +25,24 @@ import type { FullResult, Reporter, TestCase, TestResult } from "@playwright/tes
 export default class Wave4ExecutedCountReporter implements Reporter {
     private executed = 0;
     private readonly skipped: string[] = [];
+    private readonly listOnly: boolean;
+
+    /**
+     * `--list` enumerates tests without running any, so zero-executed is its
+     * CORRECT outcome, not a false green. Failing there would break test
+     * discovery for CI, editors and anyone inspecting the suite.
+     *
+     * Playwright constructs reporters with the OPTIONS OBJECT from the reporter
+     * tuple in the config — never with argv. An earlier version of this
+     * signature took `argv` positionally with a `process.argv` default; the unit
+     * tests passed because they injected an array, and the real run died with
+     * "argv.includes is not a function" on the first `--list`. Hence the object
+     * shape, and hence the end-to-end check in the PR rather than unit tests
+     * alone.
+     */
+    constructor(options: { readonly argv?: readonly string[] } = {}) {
+        this.listOnly = (options.argv ?? process.argv).includes("--list");
+    }
 
     onTestEnd(test: TestCase, result: TestResult): void {
         if (result.status === "skipped") {
@@ -38,6 +56,7 @@ export default class Wave4ExecutedCountReporter implements Reporter {
     // preserves it, so this guard can only ever turn a pass into a failure —
     // never rescue a genuine failure into a pass.
     onEnd(_result: FullResult): { status: FullResult["status"] } | undefined {
+        if (this.listOnly) return undefined;
         const failures: string[] = [];
         if (this.executed === 0) {
             failures.push(

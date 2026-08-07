@@ -86,6 +86,28 @@ describe("Wave4ExecutedCountReporter", () => {
         expect(reporter.executedCount).toBe(2);
     });
 
+    it("stays out of the way of --list, where zero executed is the correct outcome", () => {
+        // Found by running `playwright test --list` against the real config and
+        // watching it exit 1: test discovery is not a false green, and failing
+        // it would break CI enumeration and editor integrations.
+        const reporter = new Wave4ExecutedCountReporter({
+            argv: ["node", "playwright", "test", "--list"],
+        });
+
+        expect(reporter.onEnd(PASSED)).toBeUndefined();
+        expect(reporter.executedCount).toBe(0);
+    });
+
+    it("still guards a real run when --list is absent from argv", () => {
+        // The paired positive: the exemption must key on --list specifically and
+        // not simply disable the guard for every invocation.
+        const reporter = new Wave4ExecutedCountReporter({ argv: ["node", "playwright", "test"] });
+        const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+
+        expect(reporter.onEnd(PASSED)).toEqual({ status: "failed" });
+        errors.mockRestore();
+    });
+
     it("leaves a genuine failure failing rather than masking it", () => {
         const reporter = new Wave4ExecutedCountReporter();
 
