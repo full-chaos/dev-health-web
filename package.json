@@ -25,6 +25,7 @@
         "acr:contracts:check": "node scripts/sync-acr-contracts.mjs check",
         "ask-dev:contracts:generate": "node scripts/ask-dev-contracts.mjs generate --allow-write",
         "ask-dev:contracts:check": "node scripts/ask-dev-contracts.mjs check",
+        "ask-dev:contracts:check-currency": "node scripts/ask-dev-contracts.mjs check-currency",
         "test:e2e": "playwright test --project=authenticated --project=unauthenticated",
         "test:e2e:pagerduty-final-qa": "playwright test --project=pagerduty-final-qa",
         "test:e2e:pagerduty-final-qa:smoke": "playwright test --project=pagerduty-final-qa tests/pagerduty-final-qa-p0.spec.ts",

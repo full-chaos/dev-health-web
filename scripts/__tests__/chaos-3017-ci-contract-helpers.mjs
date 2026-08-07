@@ -46,6 +46,7 @@ export function recordHarnessPackageCommands(args, { failScript } = {}) {
     try {
         const result = runHarness(args, {
             ASK_DEV_OPS_ROOT: path.join(ROOT, "dev-health-ops"),
+            ASK_DEV_OPS_MAIN_ROOT: path.join(ROOT, "dev-health-ops-main"),
             CI_CONTRACT_COMMAND_LOG: commandLog,
             CI_CONTRACT_FAIL_SCRIPT: failScript ?? "",
             PATH: `${temporaryDirectory}:${process.env.PATH}`,

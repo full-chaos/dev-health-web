@@ -88,6 +88,7 @@ jobs:
         runs-on: ubuntu-latest
         env:
             ASK_DEV_OPS_ROOT: dev-health-ops
+            ASK_DEV_OPS_MAIN_ROOT: dev-health-ops-main
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             # Must stay equal to SOURCE_COMMIT in scripts/ask-dev-contracts.mjs
@@ -97,8 +98,19 @@ jobs:
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
               with:
                   repository: full-chaos/dev-health-ops
-                  ref: c31b9c6de1b4b7dbdfc82d84850e4e09fb71960e
+                  ref: 5913cd3c9a737249a0f2fcf70796fedc4c466e66
                   path: dev-health-ops
+                  persist-credentials: false
+            # CHAOS-3511 currency guard: ops main's tip as of this run, checked
+            # out to a SEPARATE path so it never disturbs the pinned checkout's
+            # exact-SHA requirement above. ask-dev:contracts:check-currency
+            # diffs the two over the consumed surface only.
+            - name: Checkout current ops main
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+              with:
+                  repository: full-chaos/dev-health-ops
+                  ref: main
+                  path: dev-health-ops-main
                   persist-credentials: false
             - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
             - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020

@@ -45,6 +45,7 @@ const GENERAL_TIERS = [
             "audit --audit-level=high --prod",
             "codegen:check",
             `ask-dev:contracts:check --source ${path.join(ROOT, "dev-health-ops")}`,
+            `ask-dev:contracts:check-currency --pinned ${path.join(ROOT, "dev-health-ops")} --current ${path.join(ROOT, "dev-health-ops-main")}`,
             "lint",
             "typecheck",
         ],
@@ -52,6 +53,7 @@ const GENERAL_TIERS = [
         packageScripts: {
             "codegen:check": "graphql-codegen --config codegen.ts --check",
             "ask-dev:contracts:check": "node scripts/ask-dev-contracts.mjs check",
+            "ask-dev:contracts:check-currency": "node scripts/ask-dev-contracts.mjs check-currency",
             lint: "eslint src",
             typecheck: "tsc --noEmit",
         },
@@ -140,11 +142,18 @@ describe("CHAOS-3017 executable CI boundaries", () => {
             );
             if (jobId === "quality") {
                 expect(workflowJob).toContain(
-                    "        env:\n            ASK_DEV_OPS_ROOT: dev-health-ops",
+                    "        env:\n            ASK_DEV_OPS_ROOT: dev-health-ops\n" +
+                        "            ASK_DEV_OPS_MAIN_ROOT: dev-health-ops-main",
                 );
                 expect(workflowJob).toContain("repository: full-chaos/dev-health-ops");
                 expect(workflowJob).toContain(`ref: ${pinnedOpsCommit()}`);
                 expect(workflowJob).toContain("path: dev-health-ops");
+                // CHAOS-3511 currency guard: a SECOND, separate ops checkout
+                // at main's current tip -- never the same path as the pinned
+                // one, or the pinned checkout's exact-SHA requirement above
+                // would be violated by whichever checkout runs second.
+                expect(workflowJob).toContain("ref: main");
+                expect(workflowJob).toContain("path: dev-health-ops-main");
             }
             for (const [name, implementation] of Object.entries(packageScripts)) {
                 expect(scripts[name]).toBe(implementation);

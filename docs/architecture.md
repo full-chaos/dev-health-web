@@ -293,6 +293,23 @@ integrity check, but it is not release evidence. The quality gate requires
 stream changes require a new contract version and the PRD/TRD change-control
 process; do not patch generated TypeScript or vendored JSON by hand.
 
+`check` is a CONSISTENCY guard only — it proves the vendored artifacts match
+`SOURCE_COMMIT`, never that `SOURCE_COMMIT` is still current (CHAOS-3511: the
+pin went 54 commits stale with nothing detecting it). `pnpm ask-dev:contracts:check-currency
+--pinned <ops checkout at SOURCE_COMMIT> --current <ops checkout at main>`
+is the CURRENCY guard: it diffs the consumed surface
+(`contracts/ask-dev/v1/`) between the two by content, ignoring v2-only churn
+web does not consume, and fails loudly — naming every added/removed/changed
+file — when they disagree. The quality gate requires `ASK_DEV_OPS_MAIN_ROOT`
+(a second, independent ops checkout at main's current tip) and runs this
+unconditionally, immediately after `check`; a stale pin is a red quality job,
+not a silent gap. Regenerate the same way as any other re-pin (`generate` +
+`check` above, from a checkout at the new commit), then update
+`SOURCE_COMMIT` in `scripts/ask-dev-contracts.mjs` and the pinned `ref` in
+`.github/workflows/tests.yml` together — the same half-finished-re-pin guard
+`chaos-3017-ci-execution-contract.test.mjs` already runs for `check` covers
+this pair too.
+
 ### Ask Dev browser and surface ownership
 
 The authenticated app layout owns one `AskDevProvider` for both interaction

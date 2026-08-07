@@ -136,6 +136,15 @@ run_quality() {
   fi
   echo "==> pnpm ask-dev:contracts:check --source ${ASK_DEV_OPS_ROOT}"
   pnpm ask-dev:contracts:check --source "${ASK_DEV_OPS_ROOT}"
+  # CHAOS-3511: the pin's CURRENCY, not only its internal consistency -- a
+  # separate ops checkout at main's current tip, diffed against the pinned
+  # commit over the consumed surface only (contracts/ask-dev/v1/).
+  if [[ -z "${ASK_DEV_OPS_MAIN_ROOT:-}" ]]; then
+    echo "ASK_DEV_OPS_MAIN_ROOT must name a clean dev-health-ops checkout at ops main (CHAOS-3511 currency guard)." >&2
+    return 1
+  fi
+  echo "==> pnpm ask-dev:contracts:check-currency --pinned ${ASK_DEV_OPS_ROOT} --current ${ASK_DEV_OPS_MAIN_ROOT}"
+  pnpm ask-dev:contracts:check-currency --pinned "${ASK_DEV_OPS_ROOT}" --current "${ASK_DEV_OPS_MAIN_ROOT}"
   run_pnpm_script lint
   run_pnpm_script typecheck
 }

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-namespace */
-// Generated from full-chaos/dev-health-ops c31b9c6de1b4b7dbdfc82d84850e4e09fb71960e. Do not edit.
+// Generated from full-chaos/dev-health-ops 5913cd3c9a737249a0f2fcf70796fedc4c466e66. Do not edit.
 export namespace DevAnswerContract {
     export type AnswerId = string;
     export type AsOf = string;
@@ -16533,6 +16533,7 @@ export namespace DevToolResultContract {
      * @maxItems 100
      */
     export type RequiredChildren = DevRequiredChildFact[];
+    export type RequiredChildrenNotApplicable = boolean;
     export type RuleId = string;
     export type RuleVersion = string;
     export type State = "ready" | "not_ready" | "indeterminate";
@@ -19026,6 +19027,7 @@ export namespace DevToolResultContract {
         required_child_complete?: RequiredChildComplete;
         required_child_total?: RequiredChildTotal;
         required_children?: RequiredChildren;
+        required_children_not_applicable?: RequiredChildrenNotApplicable;
         rule_id: RuleId;
         rule_version: RuleVersion;
         state: State;
