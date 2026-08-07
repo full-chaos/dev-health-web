@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|integration|e2e|e2e-default|e2e-onboarding|e2e-context-fabric|pagerduty-final-qa|live-e2e|design-lint|ci> [current/total]" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|e2e|e2e-default|e2e-onboarding|e2e-context-fabric|pagerduty-final-qa|live-e2e|design-lint|ci> [current/total]" >&2
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -268,9 +268,6 @@ case "${tier}" in
   unit)
     run_unit
     ;;
-  integration)
-    run_pnpm_script test:integration
-    ;;
   e2e)
     run_e2e
     ;;
@@ -298,7 +295,6 @@ case "${tier}" in
     run_quality
     run_pnpm_script build
     run_unit
-    run_pnpm_script test:integration
     run_e2e
     run_pagerduty_final_qa "${PLAYWRIGHT_REPORT_ROOT}/pagerduty-final-qa" "${PLAYWRIGHT_RESULTS_ROOT}/pagerduty-final-qa"
     ;;

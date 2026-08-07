@@ -9,7 +9,7 @@ import { expect } from "vitest";
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 export const NON_SUCCESS_RESULTS = ["failure", "cancelled", "skipped"];
 export const REQUIRED_STAGE_GROUPS = [
-    ["general", "Check general test stages", ["format", "quality", "build", "unit", "integration"]],
+    ["general", "Check general test stages", ["format", "quality", "build", "unit"]],
     ["E2E", "Check E2E test stages", ["e2e-default", "e2e-onboarding"]],
 ];
 const execFileAsync = promisify(execFile);

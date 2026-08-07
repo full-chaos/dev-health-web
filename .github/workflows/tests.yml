@@ -146,21 +146,6 @@ jobs:
                   if-no-files-found: error
                   retention-days: 90
 
-    integration:
-        name: Integration tests
-        needs: [changes]
-        if: needs.changes.outputs.code == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-            - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install --frozen-lockfile
-            - run: bash ci/run_tests.sh integration
-
     e2e-default:
         name: E2E tests (default, shard ${{ matrix.shard }}/3)
         needs: [changes]
@@ -251,7 +236,7 @@ jobs:
 
     test:
         name: test
-        needs: [changes, format, quality, build, unit, integration, e2e-default, e2e-onboarding]
+        needs: [changes, format, quality, build, unit, e2e-default, e2e-onboarding]
         if: always()
         runs-on: ubuntu-latest
         steps:
@@ -266,7 +251,7 @@ jobs:
             - name: Check general test stages
               if: needs.changes.result == 'success' && needs.changes.outputs.code == 'true'
               run: |
-                  if [[ "${{ needs.format.result }}" != 'success' || "${{ needs.quality.result }}" != 'success' || "${{ needs.build.result }}" != 'success' || "${{ needs.unit.result }}" != 'success' || "${{ needs.integration.result }}" != 'success' ]]; then
+                  if [[ "${{ needs.format.result }}" != 'success' || "${{ needs.quality.result }}" != 'success' || "${{ needs.build.result }}" != 'success' || "${{ needs.unit.result }}" != 'success' ]]; then
                     exit 1
                   fi
             - name: Check E2E test stages

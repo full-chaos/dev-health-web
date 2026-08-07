@@ -33,7 +33,6 @@
         "test:e2e:live": "playwright test -c playwright.live.config.ts",
         "test:ask-dev-acceptance": "playwright test -c playwright.ask-dev-acceptance.config.ts",
         "test:unit": "vitest run",
-        "test:integration": "node -e \"console.log('Integration tests are not implemented yet (placeholder).')\"",
         "test:ci": "bash ci/run_tests.sh ci"
     },
     "dependencies": {

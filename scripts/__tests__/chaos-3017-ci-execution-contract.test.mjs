@@ -69,15 +69,6 @@ const GENERAL_TIERS = [
         packageScripts: {},
         tier: "unit",
     },
-    {
-        commands: ["test:integration"],
-        jobId: "integration",
-        packageScripts: {
-            "test:integration":
-                "node -e \"console.log('Integration tests are not implemented yet (placeholder).')\"",
-        },
-        tier: "integration",
-    },
 ];
 const E2E_STAGES = ["e2e-default", "e2e-onboarding"];
 // Context Fabric's tier runs inside the e2e-onboarding job (one runner,

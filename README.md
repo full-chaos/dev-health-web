@@ -91,25 +91,24 @@ Copy `.env.example` to `.env.local` and configure as needed.
 
 ## Scripts
 
-| Script                     | Description                                                   |
-| -------------------------- | ------------------------------------------------------------- |
-| `npm run dev`              | Start development server                                      |
-| `npm run build`            | Build for production                                          |
-| `npm run start`            | Start production server                                       |
-| `npm run lint`             | Run ESLint                                                    |
-| `npm run typecheck`        | Run TypeScript checks                                         |
-| `npm run test:unit`        | Run unit tests (Vitest)                                       |
-| `npm run test:integration` | Run integration tier placeholder (currently no suite)         |
-| `npm run test:e2e`         | Run e2e tests (Playwright)                                    |
-| `npm run test:e2e:live`    | Run live-backend e2e smoke tests (Playwright)                 |
-| `npm run test:ci`          | Run CI gates (lint, typecheck, build, unit, integration, e2e) |
+| Script                  | Description                                      |
+| ----------------------- | ------------------------------------------------ |
+| `npm run dev`           | Start development server                         |
+| `npm run build`         | Build for production                             |
+| `npm run start`         | Start production server                          |
+| `npm run lint`          | Run ESLint                                       |
+| `npm run typecheck`     | Run TypeScript checks                            |
+| `npm run test:unit`     | Run unit tests (Vitest)                          |
+| `npm run test:e2e`      | Run e2e tests (Playwright)                       |
+| `npm run test:e2e:live` | Run live-backend e2e smoke tests (Playwright)    |
+| `npm run test:ci`       | Run CI gates (lint, typecheck, build, unit, e2e) |
 
 ## Test Tiers (Phase 0 Contract)
 
 Use the runner-agnostic entrypoint:
 
 ```bash
-bash ci/run_tests.sh <unit|integration|e2e|live-e2e|ci>
+bash ci/run_tests.sh <unit|e2e|live-e2e|ci>
 ```
 
 Examples:

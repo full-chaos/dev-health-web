@@ -36,7 +36,7 @@ describe("CHAOS-3017 CI contracts", () => {
         const aggregator = job(contents(TESTS_WORKFLOW), "test");
 
         expect(aggregator).toMatch(
-            /needs: \[changes, format, quality, build, unit, integration, e2e-default, e2e-onboarding\]/,
+            /needs: \[changes, format, quality, build, unit, e2e-default, e2e-onboarding\]/,
         );
         expect(aggregator).toMatch(/^        if: always\(\)$/mu);
         expect(aggregator).not.toContain("toJson(needs)");
