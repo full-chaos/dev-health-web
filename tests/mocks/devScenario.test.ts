@@ -137,3 +137,113 @@ describe("Ask Dev mock fidelity — no-answer outcomes", () => {
         });
     }
 });
+
+describe("Ask Dev mock fidelity — scope.resolved on error terminals (CHAOS-3526)", () => {
+    // CHAOS-3497 (ops `streaming.stream_orchestrator`): a `scope.resolved`
+    // frame is emitted for EVERY terminal whose run got as far as completing
+    // scope resolution -- not only the answering ones -- immediately before
+    // the terminal frame. Before this fix the mock never emitted it on an
+    // error path at all, so the default e2e suite exercised a stream shape
+    // production no longer produces.
+    //
+    // Which outcome each scenario carries is pinned against the ops
+    // acceptance corpus's own `resolution-profiles/deterministic-v1.json`
+    // (`expected_public_outcome` -> `expected_scope_resolution_outcome`),
+    // the real producer's own recorded mapping, not an invented one:
+    //   not_found              -> unresolved
+    //   temporarily_unavailable -> exact
+    //   unsupported            -> null (no scope.resolved at all)
+    //   denied                 -> null (no scope.resolved at all)
+    //   failed                 -> exact
+    // `unsupported`/`denied` are refused before any catalog round trip (a
+    // preflight bound, or a provider-level refusal) -- the run never
+    // resolves scope at all, so publishing a resolution for either would be
+    // inventing one the run never reached (`streaming.py`'s own negative
+    // control: "a run that never resolved scope emits no scope frame").
+    const SCOPE_RESOLUTION_BY_OUTCOME: Record<
+        (typeof NO_ANSWER_OUTCOMES)[number]["outcome"],
+        string | null
+    > = {
+        not_found: "unresolved",
+        temporarily_unavailable: "exact",
+        unsupported: null,
+        denied: null,
+        failed: "exact",
+    };
+
+    function eventsFor(scenario: DevAnswerScenario) {
+        return buildStreamEvents(scenario, "conversation_test", "A question");
+    }
+
+    for (const outcome of NO_ANSWER_OUTCOMES) {
+        const expected = SCOPE_RESOLUTION_BY_OUTCOME[outcome.outcome];
+        if (expected === null) {
+            it(`${outcome.outcome} emits no scope.resolved event (scope was never resolved)`, () => {
+                const events = eventsFor(outcome.scenario);
+                expect(events.some((event) => event.event === "scope.resolved")).toBe(false);
+            });
+            continue;
+        }
+        it(`${outcome.outcome} emits scope.resolved (${expected}) immediately before the error frame`, () => {
+            const events = eventsFor(outcome.scenario);
+            const kinds = events.map((event) => event.event);
+            const scopeIndex = kinds.indexOf("scope.resolved");
+            const errorIndex = kinds.indexOf("error");
+
+            expect(scopeIndex, "no scope.resolved event was emitted").toBeGreaterThanOrEqual(0);
+            expect(errorIndex).toBe(scopeIndex + 1);
+            expect(kinds.slice(-2)).toEqual(["error", "done"]);
+            expect(events.map((event) => event.sequence)).toEqual(events.map((_, index) => index));
+
+            const resolution = events[scopeIndex]!.scope_resolution as JsonRecord;
+            expect(resolution.schema_version).toBe("dev_scope_resolution.v1");
+            expect(resolution.outcome).toBe(expected);
+            if (expected === "unresolved") {
+                expect(resolution.resolved_scope).toBeNull();
+                expect(resolution.candidates).toEqual([]);
+            } else {
+                expect(resolution.resolved_scope).not.toBeNull();
+            }
+        });
+    }
+
+    // `scope_forbidden_error` / `source_unavailable_error` are hand-built
+    // (not part of `NO_ANSWER_OUTCOMES`), mirroring the top-level
+    // `orchestrator.run()` resolve-outcome branch and the stream-level
+    // source-unavailable shape respectively. `scope_forbidden` carries
+    // `forbidden_or_not_found` -- the same "genuinely unhealthy" outcome
+    // CHAOS-3497 uses elsewhere, never a healthy `exact` beside a "you don't
+    // have access" error (the exact juxtaposition CHAOS-3497 removed from
+    // ops). `source_unavailable` mirrors `temporarily_unavailable`: the
+    // scope resolved fine and a downstream source failed, so `exact` is
+    // honest here.
+    it("scope_forbidden_error emits scope.resolved (forbidden_or_not_found) immediately before the error frame", () => {
+        const events = eventsFor("scope_forbidden_error");
+        const kinds = events.map((event) => event.event);
+        const scopeIndex = kinds.indexOf("scope.resolved");
+
+        expect(scopeIndex).toBeGreaterThanOrEqual(0);
+        expect(kinds[scopeIndex + 1]).toBe("error");
+        expect(kinds.slice(-2)).toEqual(["error", "done"]);
+        expect(events.map((event) => event.sequence)).toEqual(events.map((_, index) => index));
+
+        const resolution = events[scopeIndex]!.scope_resolution as JsonRecord;
+        expect(resolution.outcome).toBe("forbidden_or_not_found");
+        expect(resolution.resolved_scope).toBeNull();
+    });
+
+    it("source_unavailable_error emits scope.resolved (exact) immediately before the error frame", () => {
+        const events = eventsFor("source_unavailable_error");
+        const kinds = events.map((event) => event.event);
+        const scopeIndex = kinds.indexOf("scope.resolved");
+
+        expect(scopeIndex).toBeGreaterThanOrEqual(0);
+        expect(kinds[scopeIndex + 1]).toBe("error");
+        expect(kinds.slice(-2)).toEqual(["error", "done"]);
+        expect(events.map((event) => event.sequence)).toEqual(events.map((_, index) => index));
+
+        const resolution = events[scopeIndex]!.scope_resolution as JsonRecord;
+        expect(resolution.outcome).toBe("exact");
+        expect(resolution.resolved_scope).not.toBeNull();
+    });
+});
