@@ -25,6 +25,14 @@ export default defineConfig({
                         "src/app/**/*.test.ts",
                         "scripts/**/__tests__/**/*.test.mjs",
                         "tests/mocks/**/*.test.ts",
+                        // CHAOS-3219 Phase 4 Lane 4d. The Wave 4 access matrix
+                        // runs only under an armed Compose launcher, so its
+                        // false-green guard cannot be proven by that suite —
+                        // the guard exists precisely for the case where that
+                        // suite executes nothing. Its control lives here
+                        // instead, in the required unit job, where it always
+                        // runs.
+                        "tests/live/**/__tests__/**/*.test.ts",
                     ],
                 },
             },
