@@ -18,7 +18,8 @@
  *   - old-route four-way branch selection ......... src/app/(app)/agent-context/
  *                                                   context-packet/page.test.tsx
  *
- * Every identity minted here is unique per run and self-contained, so re-runs
+ * Row A3 pins the CHAOS-3587 ruling (impersonation is intended); see its own
+ * block comment. Every identity minted here is unique per run and self-contained, so re-runs
  * cannot pass by inheriting a previous run's state.
  */
 import { expect, test, type APIRequestContext, type Browser, type Page } from "@playwright/test";
@@ -307,23 +308,21 @@ test("a member of the never-entitled org is sent to Diagnose and gets no Ask Dev
 });
 
 // ---------------------------------------------------------------------------
-// Row A3 — impersonation. CHARACTERIZATION SPEC.
+// Row A3 — impersonation. RULED INTENDED, CHAOS-3587 (2026-08-07).
 //
-// This pins what the system does TODAY. It is deliberately NOT a judgement
-// that today's behaviour is correct: `requireSuperuser` (src/lib/auth.ts:514)
-// reads only `is_superuser`, which impersonation never mutates, while the page
-// resolves its org through the EFFECTIVE (impersonated) org id and keeps
-// `showRetrievalDebug` on. So an impersonating platform admin runs Context
-// Fabric Validation against the target tenant's data with retrieval debug
-// visible.
+// A platform admin acting on behalf of a struggling user keeps the validation
+// surface, works inside the TARGET org (consuming that org's budget), and
+// retains retrieval debug. That is the product's intent, not an accident of
+// `requireSuperuser` (src/lib/auth.ts:514) reading only `is_superuser`.
 //
-// Whether that is intended is an OPEN PRODUCT QUESTION tracked by CHAOS-3587.
-// If it is ruled unintended, this spec inverts into a RED-first deny guard
-// under that ticket. Until then, pinning beats both asserting a deny nobody
-// ruled on and leaving the behaviour entirely unobserved.
+// This spec is therefore the PERMANENT pin of the ruled semantics, asserted
+// affirmatively rather than merely observed. No deny-guard variant exists or
+// will: a future change that closes the surface while impersonating, or that
+// silently resolves the admin's OWN org instead of the target's, is a
+// REGRESSION against CHAOS-3587 and must fail here.
 // ---------------------------------------------------------------------------
 
-test("CHARACTERIZATION (CHAOS-3587): impersonation does not close the platform validation surface", async ({
+test("RULED INTENDED (CHAOS-3587): an impersonating platform admin keeps validation, scoped to the target org", async ({
     page,
     request,
 }, testInfo) => {
@@ -370,18 +369,62 @@ test("CHARACTERIZATION (CHAOS-3587): impersonation does not close the platform v
             waitUntil: "domcontentloaded",
         });
 
-        // PINNED BEHAVIOUR — today's answers, not endorsements:
-        // 1. the platform-admin route stays reachable while impersonating,
+        // RULED SEMANTICS (CHAOS-3587), asserted affirmatively.
+        //
+        // 1. The platform-admin route stays reachable while impersonating.
         await expect(page).toHaveURL(/\/superadmin\/context-fabric\/validation(?:[?#]|$)/u);
         await expect(
             page.getByRole("heading", { name: "Context Fabric Validation", level: 1 }),
         ).toBeVisible();
-        // 2. the validator is fully operable there, and
+
+        // 2. The validator is fully operable there — "reachable but inert"
+        //    would satisfy (1) while defeating the point of the ruling.
         await expect(page.getByRole("main").getByTestId("context-packet-form")).toBeVisible();
-        // 3. the impersonation banner remains visible on it, so the operator is
-        //    at least told whose tenant they are pointed at.
+
+        // 3. THE EFFECTIVE ORG IS THE TARGET'S, not the admin's. This is the
+        //    load-bearing half of the ruling — target-org budget consumption is
+        //    explicitly allowed — and it is the half a URL/heading check cannot
+        //    see. Read from the real session rather than inferred from the UI.
+        const session = (await (await page.request.get("/api/auth/session")).json()) as JsonObject;
+        const sessionUser = session.user as JsonObject | undefined;
+        expect(sessionUser, "The impersonating session exposed no user.").toBeTruthy();
+        expect(sessionUser).toMatchObject({
+            is_impersonating: true,
+            // Superuser identity survives impersonation — this is WHY the
+            // surface stays open, and pinning it makes the mechanism explicit.
+            is_superuser: true,
+            impersonated_user_id: target.userId,
+            // Effective org follows the target; the validator therefore reads
+            // the target tenant's context, which the ruling permits.
+            org_id: disabledEntitlementOrgId,
+        });
+        // And the admin's own org is still tracked separately, so "effective"
+        // is genuinely distinct from "real" rather than both having collapsed
+        // onto the same value (which would make the assertion above vacuous).
+        expect(
+            sessionUser?.real_org_id,
+            "real_org_id collapsed onto the impersonated org; the effective-org assertion above would be vacuous.",
+        ).not.toBe(disabledEntitlementOrgId);
+
+        // 4. The impersonation banner stays visible on this surface, so the
+        //    operator is always told whose tenant they are pointed at.
         await expect(page.getByText(/Viewing as/u).first()).toBeVisible();
 
+        // NOT ASSERTED, and deliberately so: the third clause of the ruling —
+        // retrieval debug remains AVAILABLE. The validation page hardcodes
+        // `showRetrievalDebug` (page.tsx:68), but that prop only ever surfaces
+        // as `packet.retrieval_debug_summary` text inside a GENERATED packet
+        // (ContextPacketExplorer.test.tsx:527-537). Reaching it needs a real
+        // ACR-backed generation, and this launcher defaults to acr_armed=0 —
+        // so on a normal run there is nothing to assert against. Asserting the
+        // prop's presence some other way would be asserting the source, not the
+        // behaviour, and an assertion that silently passes when ACR is off is
+        // exactly the false coverage this suite exists to avoid.
+        //
+        // Residual, stated rather than hidden: clauses 1, 2 and 3 of CHAOS-3587
+        // are pinned here; the debug-availability clause is unproven at any
+        // tier. Closing it needs an ACR-armed run (ASK_DEV_ACCEPTANCE_ACR=1),
+        // which no CI workflow currently performs.
         await page.screenshot({
             path: testInfo.outputPath("validation-while-impersonating.png"),
             fullPage: true,
