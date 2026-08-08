@@ -144,6 +144,7 @@ const DECLARED_DEV_ERROR_CODE = [
     // when it started enforcing sequential tool decisions.
     "provider_contract_violation",
     "internal_error",
+    "refused",
 ] as const;
 export type DevErrorCode = (typeof DECLARED_DEV_ERROR_CODE)[number];
 
