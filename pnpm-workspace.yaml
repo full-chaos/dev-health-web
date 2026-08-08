@@ -15,6 +15,13 @@ overrides:
     # postcss: next pins 8.4.31 exactly, so GHSA-6g55-p6wh-862q / GHSA-r28c-9q8g-f849
     # cannot be cleared by upgrading a direct dependency.
     postcss: ">=8.5.18"
+    # nanoid: reached only transitively, via @sentry/nextjs (its webpack and its
+    # next > postcss chains — 6 paths, no direct dependency to upgrade). Floor
+    # raised past GHSA-2v37-7h3g-55p8 (custom generators can loop indefinitely when
+    # size is zero, fixed in 3.3.17); the tree resolved a single nanoid@3.3.16, one
+    # patch below the fix. Held inside major 3: postcss declares ^3.3.x and nanoid 5+
+    # is ESM-only, so an unbounded floor would break the consumers that need it.
+    nanoid: ">=3.3.17 <4"
     # brace-expansion: reached via @sentry/nextjs > @sentry/bundler-plugin-core > glob >
     # minimatch; 10.68.0 is the newest release in the declared ^10 range (GHSA-mh99-v99m-4gvg).
     # Scoped to minimatch@10 deliberately: an unscoped floor also hits minimatch@3, whose
