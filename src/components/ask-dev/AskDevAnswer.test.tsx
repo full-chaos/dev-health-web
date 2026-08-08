@@ -1009,6 +1009,7 @@ describe("internal-token guard vocabulary (CHAOS-3367)", () => {
             provider_not_configured: true,
             provider_unavailable: true,
             rate_limited: true,
+            refused: true,
             scope_ambiguous: true,
             scope_forbidden: true,
             scope_not_found: true,
