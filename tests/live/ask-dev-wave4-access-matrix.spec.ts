@@ -26,7 +26,7 @@ import { expect, test, type APIRequestContext, type Browser, type Page } from "@
 import { readFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 
-import { authHeaders, liveBackendUrl, loginUser, signInCanonicalUser } from "./helpers";
+import { authHeaders, liveBackendUrl, signInCanonicalUser } from "./helpers";
 
 type JsonObject = Record<string, unknown>;
 
@@ -86,15 +86,52 @@ function readProvisionedOrgIds(): {
     };
 }
 
+/**
+ * Cached for the whole file. `/api/v1/auth/login` is rate limited per IP
+ * (`AUTH_LOGIN_IP_LIMIT = "20/15minutes"`), and that budget is shared by
+ * EVERYTHING the acceptance launcher does from this host: the world-principal
+ * login proof, provision_multi_org's org-scoped logins, the Phase 1 spec, and
+ * then these rows. Logging in once per test burned four of those for no reason
+ * and exhausted the budget mid-suite on the first live run. One login, reused.
+ */
+let cachedSuperadminToken: string | undefined;
+
 async function superadminToken(request: APIRequestContext): Promise<string> {
-    const login = (await loginUser(
-        request,
-        process.env.TEST_SUPERUSER_EMAIL!,
-        process.env.TEST_SUPERUSER_PASSWORD!,
-    )) as JsonObject;
-    const token = login.access_token;
-    expect(typeof token, "The seeded platform admin could not log in.").toBe("string");
-    return token as string;
+    if (cachedSuperadminToken) return cachedSuperadminToken;
+
+    const response = await request.post(`${liveBackendUrl}/api/v1/auth/login`, {
+        data: {
+            email: process.env.TEST_SUPERUSER_EMAIL,
+            password: process.env.TEST_SUPERUSER_PASSWORD,
+        },
+    });
+    const body = await response.text();
+
+    // A 429 is an environment condition, not a credentials problem. The first
+    // version of this helper reported both as "the platform admin could not log
+    // in", which sent the reader hunting for a bad password when the real cause
+    // was an exhausted per-IP login budget. Say which it is.
+    if (response.status() === 429) {
+        throw new Error(
+            "Ask Dev Wave 4 access matrix could not authenticate: the login endpoint returned 429. " +
+                "This is the per-IP login budget (AUTH_LOGIN_IP_LIMIT, 20/15minutes) exhausted by " +
+                "earlier logins in this acceptance run — NOT bad credentials. Re-run once the window " +
+                `clears, or reduce logins before this point. Body: ${body}`,
+        );
+    }
+    if (!response.ok()) {
+        throw new Error(
+            `Ask Dev Wave 4 access matrix could not authenticate the seeded platform admin: ` +
+                `HTTP ${response.status()}. Body: ${body}`,
+        );
+    }
+
+    const token = (JSON.parse(body) as JsonObject).access_token;
+    if (typeof token !== "string" || !token) {
+        throw new Error(`Login succeeded but returned no access_token. Body: ${body}`);
+    }
+    cachedSuperadminToken = token;
+    return token;
 }
 
 /**
