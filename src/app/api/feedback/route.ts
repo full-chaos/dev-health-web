@@ -88,7 +88,10 @@ export async function POST(request: Request) {
     const ip = getClientIp(request, { trustProxy: isTrustProxyEnabled(env.TRUST_PROXY) });
     const rateLimitKey = session.user?.id ?? ip;
 
-    if (await isRateLimited(rateLimitKey)) {
+    // failClosed: rate limiting has no in-memory fallback (CHAOS-3589), so an
+    // unreachable Redis must refuse rather than allow unlimited ingestion. A
+    // feedback form briefly unavailable during an outage is the better trade.
+    if (await isRateLimited(rateLimitKey, { failClosed: true, namespace: "feedback" })) {
         const response: FeedbackResponse = {
             success: false,
             error: "Rate limit exceeded. Please try again later.",

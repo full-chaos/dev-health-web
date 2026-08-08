@@ -712,15 +712,11 @@ describe("POST /api/feedback", () => {
         expect(data.error).toBe("Rate limit exceeded. Please try again later.");
     });
 
-    it("is NOT rate limited when Redis is unavailable (fail-open, CHAOS-3589)", async () => {
-        // This route passes no `failClosed`, so with the in-memory fallback gone
-        // an unreachable Redis means no limit at all — requests are no longer
-        // silently counted in-process. Asserted here so the degraded posture is a
-        // stated property of the route rather than an accident of the limiter.
-        //
-        // NOTE: this is a real reduction in protection during a Redis outage.
-        // Flipping this route to `failClosed: true` is a one-line change and is
-        // pending a call from the team lead.
+    it("returns 429 when Redis is unavailable (fail-closed, CHAOS-3589)", async () => {
+        // Ruling: a feedback form briefly unavailable during a Redis outage is
+        // acceptable; unlimited un-rate-limited ingestion is not. This route
+        // therefore passes `failClosed: true`, so an unreachable Redis refuses
+        // rather than waving every request through.
         redisState.client = null;
         process.env.LINEAR_API_KEY = "key-123";
         process.env.LINEAR_TEAM_ID = "team-123";
@@ -757,7 +753,8 @@ describe("POST /api/feedback", () => {
             timestamp: "2024-01-01T00:00:00Z",
         });
 
-        for (let i = 0; i < 8; i++) {
+        // Every request, from the very first — there is no local budget to spend.
+        for (let i = 0; i < 3; i++) {
             const response = await POST(
                 new Request("http://localhost/api/feedback", {
                     method: "POST",
@@ -765,8 +762,11 @@ describe("POST /api/feedback", () => {
                     body,
                 }),
             );
-            expect(response.status).toBe(200);
+            expect(response.status).toBe(429);
         }
+
+        // And the Linear API is never reached while the limiter is degraded.
+        expect(global.fetch).not.toHaveBeenCalled();
     });
 
     it("allows requests from different users independently", async () => {
