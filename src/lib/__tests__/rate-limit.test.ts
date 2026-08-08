@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // NOTE (CHAOS-3589): there is deliberately NO `vi.mock("ioredis", ...)` here.
@@ -31,6 +29,9 @@ vi.mock("@sentry/nextjs", () => ({
     ),
     captureException: vi.fn(),
     captureMessage: vi.fn(),
+    // instrumentation.ts re-exports this at module scope; the startup-hook
+    // tests import that module for real.
+    captureRequestError: vi.fn(),
 }));
 
 // Mock logger to avoid pino in test
@@ -446,15 +447,29 @@ describe("verifyRateLimitConfig", () => {
         expect(() => verifyRateLimitConfig()).not.toThrow();
     });
 
-    it("is wired into the server startup hook", async () => {
-        // A verification nothing calls is not a guard. `instrumentation.register()`
-        // is Next.js's once-per-boot server hook — the seam that corresponds to
-        // ops calling verify_rate_limit_config() at import.
-        const source = await readFile(
-            new URL("../../../instrumentation.ts", import.meta.url),
-            "utf8",
-        );
-        expect(source).toContain("verifyRateLimitConfig");
+    it("refuses to boot the production server, through the real startup hook", async () => {
+        // A verification nothing calls is not a guard. This drives Next.js's
+        // actual `register()` rather than grepping the file for a symbol: an
+        // earlier version of this test asserted the source merely CONTAINED
+        // "verifyRateLimitConfig", and happily passed when the call was deleted
+        // and only the import remained.
+        vi.stubEnv("NODE_ENV", "production");
+        vi.stubEnv("REDIS_URL", undefined);
+        vi.stubEnv("NEXT_RUNTIME", "nodejs");
+        vi.doMock("../../../sentry.server.config", () => ({}));
+
+        const { register } = await import("../../../instrumentation");
+        await expect(register()).rejects.toThrow(/REDIS_URL/);
+    });
+
+    it("boots the production server when REDIS_URL is set", async () => {
+        vi.stubEnv("NODE_ENV", "production");
+        vi.stubEnv("REDIS_URL", "redis://redis:6379/0");
+        vi.stubEnv("NEXT_RUNTIME", "nodejs");
+        vi.doMock("../../../sentry.server.config", () => ({}));
+
+        const { register } = await import("../../../instrumentation");
+        await expect(register()).resolves.toBeUndefined();
     });
 });
 
