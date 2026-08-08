@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-namespace */
-// Generated from full-chaos/dev-health-ops 5913cd3c9a737249a0f2fcf70796fedc4c466e66. Do not edit.
+// Generated from full-chaos/dev-health-ops 6b7517364eee330efd01e1c238eb50245760a62d. Do not edit.
 export namespace DevAnswerContract {
     export type AnswerId = string;
     export type AsOf = string;
@@ -7396,7 +7396,8 @@ export namespace DevErrorContract {
         | "answer_validation_failed"
         | "cancelled"
         | "provider_contract_violation"
-        | "internal_error";
+        | "internal_error"
+        | "refused";
     export type LimitResetAt = string | null;
     /**
      * @maxItems 5
@@ -15121,7 +15122,8 @@ export namespace DevStreamEventContract {
         | "answer_validation_failed"
         | "cancelled"
         | "provider_contract_violation"
-        | "internal_error";
+        | "internal_error"
+        | "refused";
     export type LimitResetAt = string | null;
     /**
      * @maxItems 5
@@ -16604,7 +16606,8 @@ export namespace DevToolResultContract {
         | "answer_validation_failed"
         | "cancelled"
         | "provider_contract_violation"
-        | "internal_error";
+        | "internal_error"
+        | "refused";
     export type LimitResetAt = string | null;
     /**
      * @maxItems 5
