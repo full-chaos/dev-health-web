@@ -1,27 +1,30 @@
 /**
- * Rate limiter with Redis backend and in-memory fallback.
+ * Rate limiter backed by Redis. No fallback: Redis or nothing.
  *
- * Redis strategy: fixed-window counter, incremented and expired atomically in
- * one Lua call (see `INCR_AND_EXPIRE_LUA`).
- * In-memory strategy: sliding-window timestamp array (matches the original
- * feedback route implementation), bounded by `MEMORY_STORE_MAX_KEYS`.
+ * Fixed-window counter, incremented and expired atomically in one Lua call
+ * (see `INCR_AND_EXPIRE_LUA`).
  *
- * ## This is NOT the ops fallback pattern
+ * ## Why there is no in-memory fallback (CHAOS-3589)
  *
- * This module used to claim it mirrored "the graceful-fallback pattern from
- * dev-health-ops (`api/middleware/rate_limit.py` — Redis when available, memory
- * when not)". That was wrong in the direction that matters: ops selects its
- * backend once at import, and `verify_rate_limit_config()` REFUSES TO BOOT in
+ * There used to be one, and this module claimed it mirrored "the graceful
+ * fallback pattern from dev-health-ops". It did not. Ops selects its backend
+ * once at import and `verify_rate_limit_config()` refuses to boot in
  * non-development environments without `REDIS_URL`, because "in-memory
  * rate-limit storage (memory://) is per-process and ineffective across multiple
  * replicas". slowapi's own `in_memory_fallback` is left switched off there.
  *
- * The silent degrade to a per-process store is therefore this module's own
- * design choice, not an inherited one, and it carries that known weakness: with
- * N replicas the effective limit is N x maxRequests, and it resets on deploy.
- * Callers that must not degrade pass `failClosed: true` — every auth route in
- * `src/proxy.ts` does. Whether the remaining callers should keep the fallback at
- * all is an open question (CHAOS-3589 follow-up).
+ * The per-process store was worse than ineffective. Under N replicas it enforced
+ * N x maxRequests while reporting success, it reset on every deploy, and it was
+ * the sole home of two real defects: it keyed without the namespace, so routes
+ * sharing a client IP shared a counter AND a short-window caller could truncate
+ * and persist a long-window caller's history — clearing a limit that had already
+ * been reached. Both vanish with the store.
+ *
+ * `verifyRateLimitConfig()` now enforces the ops rule at startup, from
+ * `instrumentation.ts`. At runtime an unreachable Redis follows the caller's
+ * `failClosed` flag: auth routes (every limited route in `src/proxy.ts`) return
+ * 429; the rest are allowed through, and every such decision is logged and sent
+ * to Sentry rather than hidden behind a store that looked like it was working.
  *
  * ## Client IP trust model
  *
@@ -29,10 +32,10 @@
  * `getClientIp()` from `@/lib/client-ip`, NOT by reading `x-forwarded-for`
  * directly. The helper enforces the following policy:
  *
- *   - `TRUST_PROXY=true`  → reads the leftmost `X-Forwarded-For` hop, then
+ *   - `TRUST_PROXY=true`  -> reads the leftmost `X-Forwarded-For` hop, then
  *     falls back to `X-Real-IP`. Use only when the app is deployed behind a
  *     known, trusted reverse proxy that strips/rewrites these headers.
- *   - `TRUST_PROXY=false` (default) → ignores `X-Forwarded-For` entirely to
+ *   - `TRUST_PROXY=false` (default) -> ignores `X-Forwarded-For` entirely to
  *     prevent IP spoofing. Falls back to platform-injected headers
  *     (`x-vercel-forwarded-for`, `cf-connecting-ip`) and then to an
  *     anonymous SHA-256 fingerprint of stable request headers.
@@ -43,7 +46,6 @@
  *   import { isRateLimited, RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_MS } from "@/lib/rate-limit";
  *   if (await isRateLimited(key)) { return 429; }
  */
-
 import { createHash } from "node:crypto";
 
 import * as Sentry from "@sentry/nextjs";
@@ -58,10 +60,6 @@ export const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000;
 /** Maximum requests allowed per window. */
 export const RATE_LIMIT_MAX_REQUESTS = 5;
 
-// ---------------------------------------------------------------------------
-// In-memory fallback (per-process, resets on restart)
-// ---------------------------------------------------------------------------
-
 export type RateLimitOptions = {
     failClosed?: boolean;
     windowMs?: number;
@@ -73,35 +71,6 @@ export type RateLimitResult = {
     limited: boolean;
     retryAfter: number;
 };
-
-/**
- * Requests still inside this key's window, plus the point after which the whole
- * entry is garbage.
- *
- * `expiresAt` is what lets the store be swept without knowing which caller's
- * window applies — it plays the role Redis's TTL plays on the other backend.
- */
-type MemoryEntry = { hits: number[]; expiresAt: number };
-
-const memoryStore = new Map<string, MemoryEntry>();
-
-/**
- * Hard ceiling on tracked keys. The store is keyed by client IP or anonymous
- * fingerprint, so without a bound a long-lived server retains one entry per
- * unique caller for the life of the process (CHAOS-3589).
- */
-const MEMORY_STORE_MAX_KEYS = 10_000;
-
-/**
- * How far a cap-triggered sweep evicts past the ceiling. Without this headroom
- * every single request past the cap would re-trigger a full sweep.
- */
-const MEMORY_STORE_LOW_WATER_KEYS = 9_000;
-
-/** Sweeping is amortised — walking the map on every request would be O(n) per call. */
-const MEMORY_SWEEP_INTERVAL_MS = 60_000;
-
-let nextMemorySweepAt = 0;
 
 function windowMs(options: RateLimitOptions): number {
     return options.windowMs ?? RATE_LIMIT_WINDOW_MS;
@@ -133,30 +102,6 @@ function scopedKey(key: string, options: RateLimitOptions): string {
     return options.namespace ? `rate_limit:${options.namespace}:${key}` : `rate_limit:${key}`;
 }
 
-/**
- * Drop entries whose window has elapsed, then enforce the size ceiling by
- * evicting the entries closest to expiry.
- *
- * Eviction can only forget requests, never invent them, so a store under
- * pressure degrades toward "more permissive". That is bounded by
- * `MEMORY_STORE_MAX_KEYS` and only reachable while Redis is already down.
- */
-function sweepMemoryStore(now: number): void {
-    for (const [key, entry] of memoryStore) {
-        if (entry.expiresAt <= now) memoryStore.delete(key);
-    }
-
-    if (memoryStore.size > MEMORY_STORE_MAX_KEYS) {
-        const byExpiry = [...memoryStore.entries()].sort(
-            ([, a], [, b]) => a.expiresAt - b.expiresAt,
-        );
-        const excess = memoryStore.size - MEMORY_STORE_LOW_WATER_KEYS;
-        for (const [key] of byExpiry.slice(0, excess)) memoryStore.delete(key);
-    }
-
-    nextMemorySweepAt = now + MEMORY_SWEEP_INTERVAL_MS;
-}
-
 function safeKeyHash(key: string): string {
     return createHash("sha256").update(key).digest("hex");
 }
@@ -164,12 +109,13 @@ function safeKeyHash(key: string): string {
 const failClosedLogKeys = new Map<string, number>();
 const FAIL_CLOSED_LOG_INTERVAL_MS = 60_000;
 
-function reportRequiredRedisUnavailable(
+function reportRedisUnavailable(
     key: string,
     options: RateLimitOptions,
     reason: "missing_redis_url" | "client_unavailable" | "redis_command_failed",
     err?: unknown,
 ): void {
+    const failClosed = options.failClosed === true;
     const namespace = options.namespace ?? "default";
     const dedupeKey = `${namespace}:${reason}`;
     const now = Date.now();
@@ -178,8 +124,10 @@ function reportRequiredRedisUnavailable(
     if (now - lastLogged >= FAIL_CLOSED_LOG_INTERVAL_MS) {
         failClosedLogKeys.set(dedupeKey, now);
         logger.error(
-            { err, key_hash: safeKeyHash(key), namespace, failClosed: true, reason },
-            "Redis rate-limit backend required but unavailable — failing closed",
+            { err, key_hash: safeKeyHash(key), namespace, failClosed, reason },
+            failClosed
+                ? "Redis rate-limit backend unavailable — failing closed"
+                : "Redis rate-limit backend unavailable — request NOT rate limited",
         );
     }
 
@@ -188,7 +136,7 @@ function reportRequiredRedisUnavailable(
         scope.setTag("rate_limit.namespace", namespace);
         scope.setTag("rate_limit.reason", reason);
         scope.setContext("rate_limit", {
-            failClosed: true,
+            failClosed,
             key_hash: safeKeyHash(key),
             namespace,
             reason,
@@ -196,34 +144,9 @@ function reportRequiredRedisUnavailable(
         if (err instanceof Error) {
             Sentry.captureException(err);
         } else {
-            Sentry.captureMessage("Redis rate-limit backend required but unavailable");
+            Sentry.captureMessage("Redis rate-limit backend unavailable");
         }
     });
-}
-
-function checkRateLimitedInMemory(key: string, options: RateLimitOptions): RateLimitResult {
-    const now = Date.now();
-    const limitWindowMs = windowMs(options);
-    const limitMaxRequests = maxRequests(options);
-
-    if (now >= nextMemorySweepAt || memoryStore.size > MEMORY_STORE_MAX_KEYS) {
-        sweepMemoryStore(now);
-    }
-
-    const storeKey = scopedKey(key, options);
-    const hits = (memoryStore.get(storeKey)?.hits ?? []).filter((ts) => now - ts < limitWindowMs);
-    // The entry is garbage once its newest hit has fallen out of the window.
-    const expiresAt = now + limitWindowMs;
-
-    if (hits.length >= limitMaxRequests) {
-        memoryStore.set(storeKey, { hits, expiresAt });
-        const oldest = hits[0] ?? now;
-        return { limited: true, retryAfter: retryAfterSeconds(limitWindowMs - (now - oldest)) };
-    }
-
-    hits.push(now);
-    memoryStore.set(storeKey, { hits, expiresAt });
-    return { limited: false, retryAfter: 0 };
 }
 
 // ---------------------------------------------------------------------------
@@ -254,19 +177,34 @@ end
 return current
 `;
 
+/**
+ * The one place that decides what an unreachable Redis means.
+ *
+ * There is no second backend to consult, so the caller's `failClosed` flag is
+ * the whole policy: set, the request is refused; unset, it is allowed. Either
+ * way it is reported — an unenforced limit must never be silent.
+ */
+function onRedisUnavailable(
+    key: string,
+    options: RateLimitOptions,
+    reason: "missing_redis_url" | "client_unavailable" | "redis_command_failed",
+    err?: unknown,
+): RateLimitResult {
+    reportRedisUnavailable(key, options, reason, err);
+
+    return options.failClosed
+        ? { limited: true, retryAfter: retryAfterSeconds(windowMs(options)) }
+        : { limited: false, retryAfter: 0 };
+}
+
 async function checkRateLimitedRedis(
     key: string,
     options: RateLimitOptions,
 ): Promise<RateLimitResult> {
     const redis = getRedis();
     if (!redis) {
-        if (options.failClosed) {
-            const reason = getServerEnv().REDIS_URL ? "client_unavailable" : "missing_redis_url";
-            reportRequiredRedisUnavailable(key, options, reason);
-            return { limited: true, retryAfter: retryAfterSeconds(windowMs(options)) };
-        }
-
-        return checkRateLimitedInMemory(key, options);
+        const reason = getServerEnv().REDIS_URL ? "client_unavailable" : "missing_redis_url";
+        return onRedisUnavailable(key, options, reason);
     }
 
     const redisKey = scopedKey(key, options);
@@ -282,13 +220,7 @@ async function checkRateLimitedRedis(
 
         return { limited: false, retryAfter: 0 };
     } catch (err) {
-        if (options.failClosed) {
-            reportRequiredRedisUnavailable(key, options, "redis_command_failed", err);
-            return { limited: true, retryAfter: retryAfterSeconds(windowMs(options)) };
-        }
-
-        logger.warn({ err, key }, "Redis rate-limit check failed — falling back to in-memory");
-        return checkRateLimitedInMemory(key, options);
+        return onRedisUnavailable(key, options, "redis_command_failed", err);
     }
 }
 
@@ -315,19 +247,24 @@ export async function isRateLimited(key: string, options: RateLimitOptions = {})
 }
 
 /**
- * Reset the in-memory store (for testing only).
- * @internal
+ * Fail the boot when the only supported backend is not configured.
+ *
+ * Mirrors `verify_rate_limit_config()` in dev-health-ops. A limiter with no
+ * shared store does not under-enforce loudly, it under-enforces silently, so
+ * this must stop the deploy rather than surface per-request. Called from
+ * `instrumentation.ts`, Next.js's once-per-boot server hook.
+ *
+ * Development and test are exempt, matching ops's `_is_dev_or_test()`.
  */
-export function _resetMemoryStore(): void {
-    memoryStore.clear();
-    nextMemorySweepAt = 0;
-}
+export function verifyRateLimitConfig(): void {
+    const env = getServerEnv();
+    if (env.NODE_ENV !== "production") return;
 
-/**
- * Number of keys currently tracked by the in-memory fallback (for testing only).
- * Exposed so the size bound is assertable rather than assumed.
- * @internal
- */
-export function _memoryStoreSize(): number {
-    return memoryStore.size;
+    if (!env.REDIS_URL) {
+        throw new Error(
+            "REDIS_URL must be set in production. Rate limiting has no in-memory " +
+                "fallback: a per-process store is ineffective across replicas and " +
+                "would under-enforce every limit silently (CHAOS-3589).",
+        );
+    }
 }

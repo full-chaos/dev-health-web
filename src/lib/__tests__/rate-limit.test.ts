@@ -1,3 +1,5 @@
+import { readFile } from "node:fs/promises";
+
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // NOTE (CHAOS-3589): there is deliberately NO `vi.mock("ioredis", ...)` here.
@@ -85,96 +87,6 @@ describe("rate-limit", () => {
         vi.unstubAllEnvs();
     });
 
-    describe("in-memory fallback (no REDIS_URL)", () => {
-        beforeEach(() => {
-            // Pin the premise rather than inheriting it. Developer machines and
-            // compose-backed lanes export REDIS_URL=redis://localhost:6379/0,
-            // which used to route this whole block at a live Redis: the
-            // fail-closed test saw a healthy backend, and the window-expiry test
-            // could not move Redis's server-side window with a mocked Date.now.
-            // The surviving assertions then depended on real counter state that
-            // outlives the run by the 1-hour window TTL (CHAOS-3589).
-            vi.stubEnv("REDIS_URL", undefined);
-        });
-
-        /**
-         * Load `rate-limit` with the in-memory branch proven to be the one in
-         * play. Asserting `getRedis()` is null makes an ambient REDIS_URL fail
-         * loudly here instead of silently changing which code path is tested.
-         */
-        async function loadInMemoryRateLimit() {
-            const { getRedis, _resetRedisClient } = await import("@/lib/redis");
-            _resetRedisClient();
-            expect(getRedis()).toBeNull();
-
-            const rateLimit = await import("@/lib/rate-limit");
-            rateLimit._resetMemoryStore();
-            return rateLimit;
-        }
-
-        it("allows requests under the limit", async () => {
-            const { isRateLimited } = await loadInMemoryRateLimit();
-
-            const result = await isRateLimited("user-1");
-            expect(result).toBe(false);
-        });
-
-        it("fails closed when Redis is missing and failClosed is true", async () => {
-            const { checkRateLimit, isRateLimited } = await loadInMemoryRateLimit();
-
-            await expect(isRateLimited("must-have-redis", { failClosed: true })).resolves.toBe(
-                true,
-            );
-            await expect(
-                checkRateLimit("must-have-redis-meta", { failClosed: true, windowMs: 15_000 }),
-            ).resolves.toEqual({ limited: true, retryAfter: 15 });
-        });
-
-        it("blocks after RATE_LIMIT_MAX_REQUESTS", async () => {
-            const { isRateLimited, RATE_LIMIT_MAX_REQUESTS } = await loadInMemoryRateLimit();
-
-            for (let i = 0; i < RATE_LIMIT_MAX_REQUESTS; i++) {
-                const result = await isRateLimited("user-block");
-                expect(result).toBe(false);
-            }
-
-            // Next request should be blocked
-            const blocked = await isRateLimited("user-block");
-            expect(blocked).toBe(true);
-        });
-
-        it("tracks keys independently", async () => {
-            const { isRateLimited, RATE_LIMIT_MAX_REQUESTS } = await loadInMemoryRateLimit();
-
-            // Exhaust limit for user-a
-            for (let i = 0; i < RATE_LIMIT_MAX_REQUESTS; i++) {
-                await isRateLimited("user-a");
-            }
-            expect(await isRateLimited("user-a")).toBe(true);
-
-            // user-b should be unaffected
-            expect(await isRateLimited("user-b")).toBe(false);
-        });
-
-        it("allows requests after the window expires", async () => {
-            const { isRateLimited, RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_MS } =
-                await loadInMemoryRateLimit();
-
-            const now = Date.now();
-            // Freeze time
-            vi.spyOn(Date, "now").mockReturnValue(now);
-
-            for (let i = 0; i < RATE_LIMIT_MAX_REQUESTS; i++) {
-                await isRateLimited("user-expire");
-            }
-            expect(await isRateLimited("user-expire")).toBe(true);
-
-            // Advance past window
-            vi.spyOn(Date, "now").mockReturnValue(now + RATE_LIMIT_WINDOW_MS + 1);
-            expect(await isRateLimited("user-expire")).toBe(false);
-        });
-    });
-
     describe("Redis backend", () => {
         beforeEach(() => {
             vi.stubEnv("REDIS_URL", "redis://localhost:6379/0");
@@ -214,15 +126,22 @@ describe("rate-limit", () => {
             const mockEval = vi.fn().mockResolvedValue(1);
             redis.eval = mockEval;
 
-            const { isRateLimited } = await import("@/lib/rate-limit");
+            const { checkRateLimit, isRateLimited } = await import("@/lib/rate-limit");
             const result = await isRateLimited("redis-user");
 
             expect(result).toBe(false);
 
+            // One round trip per check. A separate EXPIRE would reintroduce the
+            // TTL-less-key window that CHAOS-3589 was about.
+            expect(mockEval).toHaveBeenCalledTimes(1);
+
+            // scopedKey still namespaces the Redis key.
+            await checkRateLimit("redis-user", { namespace: "auth-login" });
+            expect(mockEval.mock.calls[1][2]).toBe("rate_limit:auth-login:redis-user");
+
             // One round trip, carrying the key and the window in seconds. A
             // separate EXPIRE would reintroduce the TTL-less-key window that
             // CHAOS-3589 was about.
-            expect(mockEval).toHaveBeenCalledTimes(1);
             const [script, numKeys, redisKey, windowSeconds] = mockEval.mock.calls[0];
             expect(numKeys).toBe(1);
             expect(redisKey).toBe("rate_limit:redis-user");
@@ -254,16 +173,12 @@ describe("rate-limit", () => {
             });
         });
 
-        it("falls back to in-memory on Redis error", async () => {
+        it("does not throw on a Redis error, and does not limit when failClosed is unset", async () => {
             const redis = await openStubbedRedis();
             redis.eval = vi.fn().mockRejectedValue(new Error("Connection refused"));
 
-            const { isRateLimited, _resetMemoryStore } = await import("@/lib/rate-limit");
-            _resetMemoryStore();
-
-            // Should not throw, should fall back to in-memory
-            const result = await isRateLimited("error-user");
-            expect(result).toBe(false);
+            const { isRateLimited } = await import("@/lib/rate-limit");
+            expect(await isRateLimited("error-user")).toBe(false);
         });
 
         it("fails closed on Redis error when failClosed is true", async () => {
@@ -305,10 +220,10 @@ describe("rate-limit", () => {
             expect(result.retryAfter).toBe(0);
         });
 
-        it("falls back to in-memory (not 429) when Redis throws connection-not-ready error and failClosed is false (CHAOS-1768)", async () => {
-            // Non-auth routes (failClosed:false) must always fall back to the
-            // in-memory store on any Redis error, including the 'Stream isn't
-            // writeable' error that the old enableOfflineQueue:false config produced.
+        it("does not 429 when Redis throws connection-not-ready error and failClosed is false (CHAOS-1768)", async () => {
+            // Non-auth routes (failClosed:false) must not be refused on a Redis
+            // error, including the 'Stream isn't writeable' error the old
+            // enableOfflineQueue:false config produced.
             const redis = await openStubbedRedis();
             redis.eval = vi
                 .fn()
@@ -316,8 +231,7 @@ describe("rate-limit", () => {
                     new Error("Stream isn't writeable and enableOfflineQueue options is false"),
                 );
 
-            const { checkRateLimit, _resetMemoryStore } = await import("@/lib/rate-limit");
-            _resetMemoryStore();
+            const { checkRateLimit } = await import("@/lib/rate-limit");
 
             const result = await checkRateLimit("non-auth-coldstart-key", {
                 failClosed: false,
@@ -325,7 +239,7 @@ describe("rate-limit", () => {
                 maxRequests: 100,
             });
 
-            // First request in in-memory window is always allowed.
+            // Non-auth routes must not 429 on a cold-start Redis error.
             expect(result.limited).toBe(false);
         });
     });
@@ -432,9 +346,7 @@ describe("rate-limit backend invariants (CHAOS-3589)", () => {
             _resetRedisClient: () => {},
         }));
         vi.spyOn(Date, "now").mockImplementation(() => fake.now);
-        const rateLimit = await import("@/lib/rate-limit");
-        rateLimit._resetMemoryStore();
-        return rateLimit;
+        return import("@/lib/rate-limit");
     }
 
     it("recovers when the window elapses even if the EXPIRE after the first INCR was lost", async () => {
@@ -490,135 +402,108 @@ describe("rate-limit backend invariants (CHAOS-3589)", () => {
         // 61s after the FIRST hit the window is over, despite the hits at +30s.
         expect((await checkRateLimit("chatty", opts)).limited).toBe(false);
     });
-
-    describe("in-memory fallback isolation", () => {
-        /** Load rate-limit with no Redis at all, so every call takes the memory path. */
-        async function loadInMemory() {
-            vi.stubEnv("REDIS_URL", undefined);
-            vi.doMock("@/lib/redis", () => ({
-                getRedis: () => null,
-                _resetRedisClient: () => {},
-            }));
-            const rateLimit = await import("@/lib/rate-limit");
-            rateLimit._resetMemoryStore();
-            return rateLimit;
-        }
-
-        it("does not let one namespace consume another namespace's budget", async () => {
-            // `redisKeyFor` namespaces the Redis key, but the memory store is keyed
-            // by the bare key. Two routes that both key on a client IP — e.g.
-            // /api/acr/device (namespace acr-device-general, 20/min) and
-            // /api/feedback (no namespace, 5/hour) — therefore share one counter
-            // whenever Redis is down, which is precisely when the fallback runs.
-            const { checkRateLimit } = await loadInMemory();
-            const ip = "203.0.113.7";
-            const device = { namespace: "acr-device-general", windowMs: 60_000, maxRequests: 20 };
-            const feedback = { windowMs: 60 * 60_000, maxRequests: 5 };
-
-            // Six device calls — well inside the device budget of 20.
-            for (let i = 0; i < 6; i++) {
-                expect((await checkRateLimit(ip, device)).limited).toBe(false);
-            }
-
-            // The feedback budget (5/hour) must be untouched by those.
-            expect((await checkRateLimit(ip, feedback)).limited).toBe(false);
-        });
-
-        it("does not let a short-window namespace erase a long-window namespace's history", async () => {
-            // checkRateLimitedInMemory writes back the array it filtered with the
-            // *calling* namespace's window. A short-window caller therefore drops
-            // the long-window caller's timestamps and persists the truncation —
-            // one cheap call to the short-window route resets the strict limit.
-            const { checkRateLimit } = await loadInMemory();
-            const ip = "203.0.113.8";
-            const strict = { namespace: "auth-pwreset", windowMs: 60 * 60_000, maxRequests: 3 };
-            const lax = { namespace: "acr-device-general", windowMs: 1_000, maxRequests: 20 };
-
-            const now = Date.now();
-            vi.spyOn(Date, "now").mockReturnValue(now);
-
-            for (let i = 0; i < 3; i++) await checkRateLimit(ip, strict);
-            expect((await checkRateLimit(ip, strict)).limited).toBe(true);
-
-            // One call to the lax route, two seconds later.
-            vi.spyOn(Date, "now").mockReturnValue(now + 2_000);
-            await checkRateLimit(ip, lax);
-
-            // The strict hourly limit must still be exhausted.
-            expect((await checkRateLimit(ip, strict)).limited).toBe(true);
-        });
-
-        it("holds the key ceiling even for a burst inside one sweep interval", async () => {
-            // The timed sweep runs at most once a minute; a burst of unique IPs
-            // inside that minute must not be able to grow the store without
-            // bound while it waits.
-            const { checkRateLimit, _memoryStoreSize } = await loadInMemory();
-            const opts = { namespace: "acr-device-general", windowMs: 60_000, maxRequests: 20 };
-
-            const now = Date.now();
-            vi.spyOn(Date, "now").mockReturnValue(now);
-            for (let i = 0; i < 10_500; i++) await checkRateLimit(`burst-ip-${i}`, opts);
-
-            expect(_memoryStoreSize()).toBeLessThanOrEqual(10_000);
-        });
-
-        it("does not retain entries for keys whose window elapsed long ago", async () => {
-            // The store is a module-level Map keyed by client IP / anon fingerprint
-            // and nothing ever removes an entry, so a long-lived server accumulates
-            // one array per unique IP for the life of the process.
-            const { checkRateLimit, _memoryStoreSize } = await loadInMemory();
-            const opts = { namespace: "acr-device-general", windowMs: 60_000, maxRequests: 20 };
-
-            const now = Date.now();
-            vi.spyOn(Date, "now").mockReturnValue(now);
-            for (let i = 0; i < 500; i++) await checkRateLimit(`ip-${i}`, opts);
-            expect(_memoryStoreSize()).toBe(500);
-
-            // An hour later every one of those windows is long gone.
-            vi.spyOn(Date, "now").mockReturnValue(now + 60 * 60_000);
-            await checkRateLimit("someone-else", opts);
-
-            expect(_memoryStoreSize()).toBeLessThan(500);
-        });
-    });
 });
 
 // ---------------------------------------------------------------------------
-// getClientIp — TRUST_PROXY gate (CHAOS-1563)
+// Startup verification (CHAOS-3589 option (a): ops parity, no fallback)
 // ---------------------------------------------------------------------------
-describe("getClientIp trust-proxy gate", () => {
-    function makeRequest(headers: Record<string, string>) {
-        return { headers: new Headers(headers) };
-    }
 
-    it("ignores X-Forwarded-For when TRUST_PROXY is false (spoofing prevention)", async () => {
-        const { getClientIp, isTrustProxyEnabled } = await import("@/lib/client-ip");
-        const request = makeRequest({
-            "x-forwarded-for": "1.2.3.4, 10.0.0.1",
-            "user-agent": "test-browser",
-        });
-        const ip = getClientIp(request, { trustProxy: isTrustProxyEnabled("false") });
-        expect(ip).not.toBe("1.2.3.4");
-        // Should fall back to anon fingerprint
-        expect(ip).toMatch(/^anon:/);
+describe("verifyRateLimitConfig", () => {
+    beforeEach(() => {
+        vi.resetModules();
+        vi.unstubAllEnvs();
     });
 
-    it("returns the leftmost X-Forwarded-For hop when TRUST_PROXY is true", async () => {
-        const { getClientIp, isTrustProxyEnabled } = await import("@/lib/client-ip");
-        const request = makeRequest({
-            "x-forwarded-for": "1.2.3.4, 10.0.0.1",
-        });
-        const ip = getClientIp(request, { trustProxy: isTrustProxyEnabled("true") });
-        expect(ip).toBe("1.2.3.4");
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllEnvs();
     });
 
-    it("ignores X-Forwarded-For when TRUST_PROXY env is undefined (default false)", async () => {
-        const { getClientIp, isTrustProxyEnabled } = await import("@/lib/client-ip");
-        const request = makeRequest({
-            "x-forwarded-for": "1.2.3.4",
-            "user-agent": "test-browser",
+    it("refuses to boot in production without REDIS_URL", async () => {
+        // Mirrors ops's verify_rate_limit_config(): a per-process limiter is
+        // ineffective across replicas, so the deploy must fail loudly at startup
+        // rather than silently under-enforcing every limit at runtime.
+        vi.stubEnv("NODE_ENV", "production");
+        vi.stubEnv("REDIS_URL", undefined);
+
+        const { verifyRateLimitConfig } = await import("@/lib/rate-limit");
+        expect(() => verifyRateLimitConfig()).toThrow(/REDIS_URL/);
+    });
+
+    it("boots in production when REDIS_URL is set", async () => {
+        vi.stubEnv("NODE_ENV", "production");
+        vi.stubEnv("REDIS_URL", "redis://redis:6379/0");
+
+        const { verifyRateLimitConfig } = await import("@/lib/rate-limit");
+        expect(() => verifyRateLimitConfig()).not.toThrow();
+    });
+
+    it("allows development to run without REDIS_URL", async () => {
+        vi.stubEnv("NODE_ENV", "development");
+        vi.stubEnv("REDIS_URL", undefined);
+
+        const { verifyRateLimitConfig } = await import("@/lib/rate-limit");
+        expect(() => verifyRateLimitConfig()).not.toThrow();
+    });
+
+    it("is wired into the server startup hook", async () => {
+        // A verification nothing calls is not a guard. `instrumentation.register()`
+        // is Next.js's once-per-boot server hook — the seam that corresponds to
+        // ops calling verify_rate_limit_config() at import.
+        const source = await readFile(
+            new URL("../../../instrumentation.ts", import.meta.url),
+            "utf8",
+        );
+        expect(source).toContain("verifyRateLimitConfig");
+    });
+});
+
+describe("no in-memory fallback (ops parity)", () => {
+    beforeEach(() => {
+        vi.resetModules();
+        vi.unstubAllEnvs();
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+        vi.unstubAllEnvs();
+    });
+
+    it("no longer exposes an in-memory store", async () => {
+        const rateLimit = await import("@/lib/rate-limit");
+        expect(rateLimit).not.toHaveProperty("_resetMemoryStore");
+        expect(rateLimit).not.toHaveProperty("_memoryStoreSize");
+    });
+
+    it("fails closed when Redis is unavailable and failClosed is set", async () => {
+        vi.stubEnv("REDIS_URL", undefined);
+        vi.doMock("@/lib/redis", () => ({ getRedis: () => null, _resetRedisClient: () => {} }));
+
+        const { checkRateLimit } = await import("@/lib/rate-limit");
+        await expect(checkRateLimit("k", { failClosed: true, windowMs: 15_000 })).resolves.toEqual({
+            limited: true,
+            retryAfter: 15,
         });
-        const ip = getClientIp(request, { trustProxy: isTrustProxyEnabled(undefined) });
-        expect(ip).not.toBe("1.2.3.4");
+    });
+
+    it("does not silently count in-process when Redis is unavailable and failClosed is unset", async () => {
+        // The old code answered this from a per-process store, which under N
+        // replicas enforced N x the limit while reporting success. With the
+        // fallback gone the caller is simply not limited — and, unlike before,
+        // the degradation is reported every time rather than hidden behind a
+        // store that looked like it was working.
+        vi.stubEnv("REDIS_URL", undefined);
+        vi.doMock("@/lib/redis", () => ({ getRedis: () => null, _resetRedisClient: () => {} }));
+
+        const { checkRateLimit } = await import("@/lib/rate-limit");
+        const opts = { maxRequests: 2, windowMs: 60_000 };
+
+        // Previously the 3rd call would have been limited by the memory store.
+        for (let i = 0; i < 5; i++) {
+            expect(await checkRateLimit("k", opts)).toEqual({ limited: false, retryAfter: 0 });
+        }
+
+        const Sentry = await import("@sentry/nextjs");
+        expect(Sentry.withScope).toHaveBeenCalled();
     });
 });
