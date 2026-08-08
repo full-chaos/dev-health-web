@@ -1,12 +1,9 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type RefObject } from "react";
 
 import type { DevProgressState } from "@/lib/dev/client";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
-import { formatDateUTC } from "@/lib/formatters";
 import { safeCopy } from "@/lib/dev/internalTokens";
 import { runtimeConfig } from "@/lib/runtimeConfig";
 import { DataState } from "@/components/ui/DataState";
@@ -95,6 +92,120 @@ export const PROGRESS_LABELS: Record<DevProgressState, string> = {
     preparing_answer: "Preparing an evidence-backed answer",
 };
 
+/** Matches Tailwind's `lg` breakpoint — the width at which the History drawer defaults open (CHAOS-3524). */
+const HISTORY_DRAWER_DESKTOP_QUERY = "(min-width: 1024px)";
+
+function matchesHistoryDesktopDefault(): boolean {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+    return window.matchMedia(HISTORY_DRAWER_DESKTOP_QUERY).matches;
+}
+
+/**
+ * CHAOS-3524: starter prompts for the empty state's "Quick Topics" chip row.
+ * Chris's 2026-08-07 design pass left this vocabulary explicitly undecided
+ * ("Quick Topics: variable / up to be determined (or can be deferred) — do
+ * not hardcode a final set"). This list is a provisional placeholder to
+ * satisfy the visual layout, not a decided taxonomy — swap, reorder, or
+ * source it from configuration whenever that decision lands.
+ */
+const ASK_DEV_QUICK_TOPICS_PROVISIONAL: readonly {
+    id: string;
+    label: string;
+    prompt: string;
+}[] = [
+    { id: "overview", label: "Overview", prompt: "Give me an overview of the current status." },
+    { id: "pipelines", label: "Pipelines", prompt: "How are the pipelines performing?" },
+    { id: "tests", label: "Tests", prompt: "What is the state of test health?" },
+    { id: "coverage", label: "Coverage", prompt: "What does coverage look like right now?" },
+];
+
+type AskDevComposerProps = {
+    composerId: string;
+    composerRef: RefObject<HTMLTextAreaElement | null>;
+    draft: string;
+    setDraft: (value: string) => void;
+    onSubmit: () => void;
+    disabled: boolean;
+};
+
+/**
+ * The question composer. CHAOS-3524's "the input stays FIXED at the bottom"
+ * requirement is met literally: this is the ONE call site, rendered as the
+ * last child of the conversation column in every state (empty or not) —
+ * never conditionally mounted/unmounted based on isEmptyState. An earlier
+ * version rendered a second, differently-positioned instance for the empty
+ * state; that broke two things at once: the composer's DOM node (and any
+ * text mid-typed into it) no longer survived the empty→conversation
+ * transition since React sees two distinct call sites as two distinct
+ * elements, and the CHAOS-3215 M5 modal focus-trap test — which relies on
+ * the disabled submit button being excluded from the focusable set so the
+ * textarea is genuinely the last focusable element — broke once other
+ * (enabled) focusable content could land after the composer in DOM order.
+ * Declared at module scope, not nested inside AskDevConversation, so its
+ * component identity is stable across renders — an inline nested component
+ * would remount (and drop focus/composition state) on every keystroke.
+ */
+function AskDevComposer({
+    composerId,
+    composerRef,
+    draft,
+    setDraft,
+    onSubmit,
+    disabled,
+}: AskDevComposerProps) {
+    return (
+        <form
+            className="border-t border-(--border) bg-(--surface-raised) p-3 sm:p-4"
+            onSubmit={(event) => {
+                event.preventDefault();
+                onSubmit();
+            }}
+        >
+            <label htmlFor={composerId} className="sr-only">
+                Ask Dev question
+            </label>
+            <div className="flex items-end gap-2 rounded-(--radius-lg) border border-(--border) bg-(--background)/75 p-2 focus-within:border-(--accent)/60 focus-within:ring-2 focus-within:ring-(--accent)/15">
+                <textarea
+                    ref={composerRef}
+                    id={composerId}
+                    value={draft}
+                    onChange={(event) => setDraft(event.target.value)}
+                    onKeyDown={(event) => {
+                        if (event.key === "Enter" && !event.shiftKey) {
+                            event.preventDefault();
+                            onSubmit();
+                        }
+                    }}
+                    rows={3}
+                    maxLength={4000}
+                    placeholder="Ask about the evidence in this scope…"
+                    className="max-h-40 min-h-12 flex-1 resize-y bg-transparent px-2 py-2 text-sm leading-6 text-(--text-primary) outline-none placeholder:text-(--text-muted)"
+                />
+                <button
+                    type="submit"
+                    disabled={disabled}
+                    aria-label={CTA_LABELS.askDev}
+                    className="inline-flex h-10 shrink-0 items-center justify-center rounded-(--radius-md) bg-(--accent) px-4 text-sm font-semibold text-(--accent-foreground) transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50 disabled:cursor-not-allowed disabled:opacity-45"
+                >
+                    {CTA_LABELS.askDev}
+                </button>
+            </div>
+            {/*
+             * No per-conversation retention selector: retention is an
+             * org-admin-only 0/30-day policy (PATCH
+             * /api/v1/admin/ask-dev/settings). The backend always applied
+             * org policy and silently ignored any per-conversation
+             * `retention_days` sent from here, so the selector was a
+             * misleading affordance — removed per CHAOS-3215 M7 /
+             * CHAOS-3217.
+             */}
+            <div className="mt-2 text-xs text-(--text-muted)">
+                <span>Enter to ask · Shift+Enter for a new line</span>
+            </div>
+        </form>
+    );
+}
+
 export function AskDevConversation({
     compact = false,
     showHistory = false,
@@ -104,7 +215,6 @@ export function AskDevConversation({
 }) {
     const {
         availability,
-        committedScopeLabel,
         cancelRun,
         clearProposedContext,
         conversations,
@@ -116,7 +226,6 @@ export function AskDevConversation({
         orgId,
         proposedContext,
         proposedQuestions,
-        proposedScope,
         proposedScopeLabel,
         renameConversation,
         retryLastQuestion,
@@ -130,20 +239,53 @@ export function AskDevConversation({
     const [editingTitle, setEditingTitle] = useState("");
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
     const [historyActionError, setHistoryActionError] = useState<string | null>(null);
-    const [historyPanelOpen, setHistoryPanelOpen] = useState(false);
+    // CHAOS-3524: chris's ruling is that History is a SLIDING DRAWER, not a
+    // fixed rail — one state, one toggle button, at every breakpoint. It
+    // slides in from the right over the conversation (an overlay, not a
+    // second grid column — matches this codebase's other drawer,
+    // BugReportButton.tsx's `fixed ... translate-x-0 transition-transform`).
+    //
+    // The lazy initializer guesses closed (SSR-safe: `window` doesn't exist
+    // on the server, so it can't ask the real viewport width yet) and a
+    // mount-time effect immediately corrects it to the actual default below
+    // — the same two-step pattern AskDevWindow's useIsMobileFullScreen
+    // already uses in this codebase, for the same hydration-safety reason.
+    // Desktop (`lg:` and up, matching Tailwind's 1024px) defaults OPEN — the
+    // shape tests/live/ask-dev-acceptance.spec.ts and
+    // tests/ask-dev-continuity.spec.ts assume with no prior toggle click.
+    // Below `lg`, and in jsdom component tests (no real `matchMedia`, so the
+    // SSR-safe guess never gets corrected), it defaults CLOSED — the shape
+    // AskDevProvider.test.tsx's CHAOS-3215 M4 test assumes.
+    //
+    // Guarded on `showHistory` (never calls matchMedia at all when it's
+    // false, not just skips acting on the result): AskDevWindow renders
+    // this component (compact, showHistory=false) inside its OWN
+    // matchMedia consumer (useIsMobileFullScreen), and
+    // AskDevProvider.test.tsx's matchMedia mock tracks one query object at
+    // a time — an unconditional call here, even just to read `.matches`,
+    // overwrites that shared tracking object and silently breaks
+    // useIsMobileFullScreen's own test (CHAOS-3215 M5).
+    const [historyPanelOpen, setHistoryPanelOpen] = useState(() =>
+        showHistory ? matchesHistoryDesktopDefault() : false,
+    );
     const composerId = useId();
     const historyPanelId = useId();
     const transcriptEnd = useRef<HTMLDivElement>(null);
+    const scrollContainerRef = useRef<HTMLDivElement>(null);
+    // CHAOS-3524: standard chat convention — once the reader scrolls away
+    // from the bottom (e.g. into a large evidence block on an earlier
+    // answer), a new streamed chunk or a newly-appended transcript entry
+    // must not yank the viewport back down. Only a genuinely new
+    // user-initiated question (submit(), below) forces the pin back on. No
+    // prior "stick to bottom" pattern exists elsewhere in this codebase to
+    // reuse (checked before adding this).
+    const pinnedToBottom = useRef(true);
     const composerRef = useRef<HTMLTextAreaElement>(null);
     const renameInputRef = useRef<HTMLInputElement>(null);
     // Declared here (ahead of the effects below that reference it) rather than
     // inline where it was originally introduced, so the org-switch reset
     // effect can clear it too — see that effect's comment (CHAOS-3215).
     const runInProgress = useRef(false);
-    const pathname = usePathname();
-    const router = useRouter();
-    const searchParams = useSearchParams();
-    const filters = useMemo(() => decodeFilter(searchParams.get("f")), [searchParams]);
     // Only the allowance case overrides the server's `retryable` and replaces
     // the retry button: an exhausted monthly platform allowance is a
     // product-side fact that ops' per-error `retryable` does not model (it
@@ -181,7 +323,10 @@ export function AskDevConversation({
         setEditingTitle("");
         setPendingDeleteId(null);
         setHistoryActionError(null);
-        setHistoryPanelOpen(false);
+        // Guarded on `showHistory` — see historyPanelOpen's declaration
+        // above for why this must never call matchMedia when the drawer
+        // isn't even rendered.
+        setHistoryPanelOpen(showHistory ? matchesHistoryDesktopDefault() : false);
     }
 
     // `runInProgress` is a ref, not visible state, so clearing it does not
@@ -192,9 +337,51 @@ export function AskDevConversation({
         runInProgress.current = false;
     }, [orgId]);
 
+    // Corrects historyPanelOpen's SSR-safe closed guess to the real
+    // viewport's default, and keeps it in sync with the `lg` breakpoint —
+    // the same matchMedia subscribe-and-sync shape as AskDevWindow's
+    // useIsMobileFullScreen (mirrored here rather than shared, it's a few
+    // lines). `react-hooks/set-state-in-effect` requires setState to flow
+    // from an external-system subscription, not a bare effect body — the
+    // `addEventListener` below is that subscription; `update()` also
+    // primes the initial value synchronously so the drawer doesn't sit on
+    // its SSR-safe closed guess until the viewport actually changes.
+    //
+    // Gated on `showHistory`: AskDevWindow renders this component (compact,
+    // showHistory=false) INSIDE its own matchMedia consumer
+    // (useIsMobileFullScreen). AskDevProvider.test.tsx's single-query
+    // matchMedia mock tracks one addEventListener registration at a time —
+    // an unconditional subscription here re-registers over
+    // useIsMobileFullScreen's listener the moment this component mounts,
+    // silently breaking that component's own modal-focus-trap test. There
+    // is nothing to default anyway when the drawer itself never renders.
     useEffect(() => {
+        if (!showHistory) return;
+        if (typeof window.matchMedia !== "function") return;
+        const query = window.matchMedia(HISTORY_DRAWER_DESKTOP_QUERY);
+        const update = () => setHistoryPanelOpen(query.matches);
+        update();
+        query.addEventListener("change", update);
+        return () => query.removeEventListener("change", update);
+    }, [showHistory]);
+
+    useEffect(() => {
+        // CHAOS-3524: don't yank the viewport back to the bottom while the
+        // reader has deliberately scrolled up — see pinnedToBottom's
+        // declaration above and handleTranscriptScroll below.
+        if (!pinnedToBottom.current) return;
         transcriptEnd.current?.scrollIntoView({ block: "nearest" });
     }, [stream.delta, stream.phase, transcript]);
+
+    // Tracks whether the reader is at (or very near) the bottom of the
+    // transcript. Re-pins on scrolling back down, so resuming to read live
+    // output restores the normal auto-follow behavior without a page reload.
+    const handleTranscriptScroll = () => {
+        const el = scrollContainerRef.current;
+        if (!el) return;
+        const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+        pinnedToBottom.current = distanceFromBottom < 80;
+    };
 
     // The rAF focus-move callbacks below bail if the user has moved on to
     // something else by the time they fire — either the composer (typing the
@@ -254,19 +441,12 @@ export function AskDevConversation({
         const question = draft.trim();
         if (!question) return;
         setDraft("");
+        // Sending a question is a deliberate user act — it always jumps the
+        // conversation back to the bottom, even if the reader had scrolled
+        // up to reread something (standard chat UX, and the one case that
+        // must override the "don't yank" guard above).
+        pinnedToBottom.current = true;
         await submitQuestion(question);
-    };
-
-    const setComparisonDays = (compareDays: number) => {
-        const params = new URLSearchParams(searchParams.toString());
-        params.set(
-            "f",
-            encodeFilterParam({
-                ...filters,
-                time: { ...filters.time, compare_days: compareDays },
-            }),
-        );
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false });
     };
 
     const saveConversationTitle = async (conversationId: string) => {
@@ -296,6 +476,11 @@ export function AskDevConversation({
             );
         }
     };
+
+    // CHAOS-3524: drives the centered "What would you like to know?" empty
+    // state vs. the scrolling-transcript + fixed-bottom-composer chat layout.
+    const isEmptyState = transcript.length === 0 && stream.phase === "idle";
+    const composerDisabled = !draft.trim() || stream.phase === "running";
 
     if (availability.state === "loading") {
         return (
@@ -339,235 +524,42 @@ export function AskDevConversation({
 
     return (
         <div
-            // Base `flex-col` stacks the mobile toggle bar, the (conditionally
-            // shown) history aside, and the conversation column vertically —
-            // without it these were unstyled row siblings below `lg`, so a
-            // narrow viewport could squeeze/collapse the primary workspace.
-            // `lg:grid` replaces that stacked layout with the two-column
-            // desktop layout (CHAOS-3215 M-mobile-layout).
-            className={`flex min-h-0 flex-1 flex-col ${showHistory ? "lg:grid lg:grid-cols-[15rem_minmax(0,1fr)]" : ""}`}
+            // CHAOS-3524: History is a sliding drawer that OVERLAYS the
+            // conversation from the right (chris's ruling — not a second
+            // grid column reserving permanent width), so this is a plain
+            // `relative` flex column, not the `lg:grid` two-column layout
+            // an earlier draft used. `overflow-hidden` clips the drawer
+            // while it's translated off-screen so it can't force a
+            // horizontal scrollbar.
+            className="relative flex min-h-0 flex-1 flex-col overflow-hidden"
         >
             {showHistory ? (
-                <div className="border-b border-(--border) bg-(--surface)/65 px-4 py-2 lg:hidden">
-                    <button
-                        type="button"
-                        aria-expanded={historyPanelOpen}
-                        aria-controls={historyPanelId}
-                        onClick={() => setHistoryPanelOpen((open) => !open)}
-                        className="rounded-(--radius-sm) border border-(--border) px-2.5 py-1.5 text-xs font-medium text-(--text-secondary) transition hover:border-(--accent)/45 hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
-                    >
-                        {historyPanelOpen
-                            ? CTA_LABELS.hideAskDevHistory
-                            : CTA_LABELS.showAskDevHistory}
-                    </button>
-                </div>
-            ) : null}
-            {showHistory ? (
-                <aside
-                    id={historyPanelId}
-                    className={`${historyPanelOpen ? "block" : "hidden"} border-r border-(--border) bg-(--surface)/65 p-4 lg:block`}
-                    aria-label="Ask Dev history"
+                // One toggle, every breakpoint (mobile and desktop share
+                // it) — see historyPanelOpen's declaration for why there
+                // is deliberately no second, breakpoint-specific control.
+                <button
+                    type="button"
+                    aria-expanded={historyPanelOpen}
+                    aria-controls={historyPanelId}
+                    onClick={() => setHistoryPanelOpen((open) => !open)}
+                    className="absolute right-3 top-3 z-20 rounded-(--radius-sm) border border-(--border) bg-(--surface-raised) px-2.5 py-1.5 text-xs font-medium text-(--text-secondary) shadow-(--elevation-card) transition hover:border-(--accent)/45 hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
                 >
-                    <div className="flex items-center justify-between gap-2">
-                        <h2 className="text-label-caps text-(--text-muted)">Conversations</h2>
-                        <button
-                            type="button"
-                            onClick={startNewConversation}
-                            className="rounded-(--radius-sm) border border-(--border) px-2.5 py-1.5 text-xs font-medium text-(--text-secondary) transition hover:border-(--accent)/45 hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
-                        >
-                            {CTA_LABELS.newAskDevConversation}
-                        </button>
-                    </div>
-                    {historyLoading ? (
-                        <p role="status" className="mt-4 text-sm text-(--text-muted)">
-                            Loading history…
-                        </p>
-                    ) : historyError ? (
-                        <div className="mt-4 space-y-2 text-sm text-(--negative)">
-                            <p>{historyError}</p>
-                            <button
-                                type="button"
-                                onClick={() => void loadHistory()}
-                                className="font-medium underline"
-                            >
-                                {CTA_LABELS.retry}
-                            </button>
-                        </div>
-                    ) : conversations.length ? (
-                        <ul className="mt-3 space-y-1">
-                            {conversations.map((conversation) => (
-                                <li key={conversation.conversation_id}>
-                                    {editingConversationId === conversation.conversation_id ? (
-                                        <div className="space-y-2 rounded-(--radius-md) border border-(--border) p-2">
-                                            <label
-                                                className="sr-only"
-                                                htmlFor={`title-${conversation.conversation_id}`}
-                                            >
-                                                Conversation title
-                                            </label>
-                                            <input
-                                                ref={renameInputRef}
-                                                id={`title-${conversation.conversation_id}`}
-                                                value={editingTitle}
-                                                onChange={(event) =>
-                                                    setEditingTitle(event.target.value)
-                                                }
-                                                maxLength={120}
-                                                className="w-full rounded-(--radius-sm) border border-(--border) bg-(--background) px-2 py-1.5 text-sm"
-                                            />
-                                            <div className="flex gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        void saveConversationTitle(
-                                                            conversation.conversation_id,
-                                                        )
-                                                    }
-                                                    className="text-xs font-medium text-(--accent)"
-                                                >
-                                                    {CTA_LABELS.save}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setEditingConversationId(null)}
-                                                    className="text-xs text-(--text-muted)"
-                                                >
-                                                    {CTA_LABELS.cancel}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="rounded-(--radius-md) px-3 py-2 hover:bg-(--surface-raised)">
-                                            <button
-                                                type="button"
-                                                onClick={() =>
-                                                    void openConversation(
-                                                        conversation.conversation_id,
-                                                    )
-                                                }
-                                                className="w-full text-left text-sm text-(--text-secondary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
-                                            >
-                                                <span className="line-clamp-2 font-medium">
-                                                    {conversation.title || "Untitled investigation"}
-                                                </span>
-                                                <span className="mt-1 block text-xs text-(--text-muted)">
-                                                    {conversation.message_count === 1
-                                                        ? "1 message"
-                                                        : `${conversation.message_count} messages`}
-                                                </span>
-                                            </button>
-                                            <div className="mt-2 flex gap-3">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setEditingConversationId(
-                                                            conversation.conversation_id,
-                                                        );
-                                                        setEditingTitle(conversation.title ?? "");
-                                                    }}
-                                                    className="text-xs text-(--text-muted) hover:text-(--text-primary)"
-                                                >
-                                                    {CTA_LABELS.edit}
-                                                </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() =>
-                                                        void removeConversation(
-                                                            conversation.conversation_id,
-                                                        )
-                                                    }
-                                                    className="text-xs text-(--text-muted) hover:text-(--negative)"
-                                                >
-                                                    {pendingDeleteId ===
-                                                    conversation.conversation_id
-                                                        ? CTA_LABELS.confirmDelete
-                                                        : CTA_LABELS.delete}
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
-                                </li>
-                            ))}
-                        </ul>
-                    ) : (
-                        <p className="mt-4 text-sm leading-6 text-(--text-muted)">
-                            No retained conversations yet. Your first investigation will appear
-                            here.
-                        </p>
-                    )}
-                    {historyActionError ? (
-                        <p role="alert" className="mt-3 text-xs text-(--negative)">
-                            {historyActionError}
-                        </p>
-                    ) : null}
-                </aside>
+                    {historyPanelOpen ? CTA_LABELS.hideAskDevHistory : CTA_LABELS.showAskDevHistory}
+                </button>
             ) : null}
 
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-                <div className="border-b border-(--border) bg-(--surface)/65 px-4 py-3">
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-                        <span className="text-(--text-muted)">
-                            Proposed context:{" "}
-                            <strong className="font-medium text-(--text-secondary)">
-                                {proposedScopeLabel}
-                            </strong>
-                        </span>
-                        <span className="text-(--text-muted)">
-                            Committed scope:{" "}
-                            <strong className="font-medium text-(--text-secondary)">
-                                {committedScopeLabel ?? "Commits when you ask"}
-                            </strong>
-                        </span>
-                        <span className="text-(--text-muted)">
-                            Direct scope:{" "}
-                            <strong className="font-medium text-(--text-secondary)">
-                                {proposedScope.direct_scope.replaceAll("_", " ")}
-                            </strong>
-                        </span>
-                        <span className="text-(--text-muted)">
-                            Teams:{" "}
-                            <strong className="font-medium text-(--text-secondary)">
-                                {proposedScope.team_ids?.length
-                                    ? `${proposedScope.team_ids.length} selected`
-                                    : "All"}
-                            </strong>
-                        </span>
-                        <span className="text-(--text-muted)">
-                            Time:{" "}
-                            <strong className="font-medium text-(--text-secondary)">
-                                {formatDateUTC(proposedScope.time_range.start)} –{" "}
-                                {formatDateUTC(proposedScope.time_range.end)}
-                            </strong>
-                        </span>
-                        <label className="flex items-center gap-2 text-(--text-muted)">
-                            Comparison
-                            <select
-                                value={filters.time.compare_days > 0 ? "previous" : "none"}
-                                onChange={(event) =>
-                                    setComparisonDays(
-                                        event.target.value === "previous"
-                                            ? filters.time.range_days
-                                            : 0,
-                                    )
-                                }
-                                className="rounded-(--radius-sm) border border-(--border) bg-(--surface) px-2 py-1 text-xs text-(--text-secondary)"
-                            >
-                                <option value="previous">Previous period</option>
-                                <option value="none">No comparison</option>
-                            </select>
-                        </label>
-                        {proposedContext ? (
-                            <button
-                                type="button"
-                                onClick={clearProposedContext}
-                                className="font-medium text-(--accent) hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
-                            >
-                                {CTA_LABELS.clearContext}
-                            </button>
-                        ) : null}
-                    </div>
-                </div>
-
+            <div
+                // CHAOS-3524: reserve room for the History drawer at desktop
+                // widths while it's open, so its overlay never sits on top
+                // of the composer's "Ask" button (found via live visual
+                // verification — the drawer's `absolute` overlay could
+                // intercept clicks meant for the button underneath it).
+                // Below `lg`, and while the drawer is closed, no padding —
+                // the conversation column uses the full width.
+                className={`flex min-h-0 min-w-0 flex-1 flex-col transition-[padding] duration-200 ${
+                    showHistory && historyPanelOpen ? "lg:pr-80" : ""
+                }`}
+            >
                 {/*
                  * No aria-live here: the transcript's running/failed states carry
                  * their own role="status"/role="alert" regions below, which
@@ -576,22 +568,59 @@ export function AskDevConversation({
                  * every streamed answer.delta chunk as it arrives (CHAOS-3215 M3).
                  */}
                 <div
+                    ref={scrollContainerRef}
+                    onScroll={handleTranscriptScroll}
                     className={`min-h-0 flex-1 overflow-y-auto px-4 ${compact ? "py-4" : "py-6 sm:px-6"}`}
                     aria-label="Ask Dev transcript"
                 >
-                    {transcript.length === 0 && stream.phase === "idle" ? (
-                        <div className="mx-auto flex h-full max-w-xl flex-col justify-center py-8">
-                            <p className="text-label-caps text-(--accent-ai)">
-                                Evidence before certainty
-                            </p>
-                            <h2 className="mt-3 font-(--font-display) text-h2 text-(--text-primary)">
-                                Ask what changed, what remains, or what the data supports.
+                    {isEmptyState ? (
+                        <div className="mx-auto flex h-full max-w-2xl flex-col items-center justify-center text-center">
+                            <h2 className="font-(--font-display) text-h1 text-(--text-primary)">
+                                What would you like to know?
                             </h2>
-                            <p className="mt-3 text-sm leading-6 text-(--text-secondary)">
-                                Ask Dev works from persisted metrics and evidence. It shows the
-                                scope it used and calls out missing or stale sources.
-                            </p>
-                            <p className="mt-2 text-xs text-(--text-muted)">
+
+                            {proposedQuestions.length ? (
+                                <div className="mt-6 w-full" aria-label="Suggested questions">
+                                    <p className="text-label-caps text-(--text-muted)">
+                                        Suggested for this page
+                                    </p>
+                                    <div className="mt-2 flex flex-wrap justify-center gap-2">
+                                        {proposedQuestions.map((question) => (
+                                            <button
+                                                key={question.id}
+                                                type="button"
+                                                onClick={() => setDraft(question.label)}
+                                                className="rounded-(--radius-pill) border border-(--border) px-3 py-1.5 text-left text-xs text-(--text-secondary) hover:border-(--accent-ai)/45 hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-ai)/45"
+                                            >
+                                                {question.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : null}
+
+                            <div className="mt-6 w-full">
+                                <p className="text-label-caps text-(--text-muted)">Quick Topics</p>
+                                <div className="mt-2 flex flex-wrap justify-center gap-2">
+                                    {ASK_DEV_QUICK_TOPICS_PROVISIONAL.map((topic) => (
+                                        <button
+                                            key={topic.id}
+                                            type="button"
+                                            onClick={() => setDraft(topic.prompt)}
+                                            aria-pressed={draft === topic.prompt}
+                                            className={`rounded-(--radius-pill) border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-ai)/45 ${
+                                                draft === topic.prompt
+                                                    ? "border-(--accent) bg-(--accent)/15 text-(--text-primary)"
+                                                    : "border-(--border) text-(--text-secondary) hover:border-(--accent-ai)/45 hover:text-(--text-primary)"
+                                            }`}
+                                        >
+                                            {topic.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <p className="mt-8 text-xs text-(--text-muted)">
                                 Powered by Context Fabric.{" "}
                                 {/*
                                  * Plain <a>, not next/link's <Link>: this
@@ -613,23 +642,6 @@ export function AskDevConversation({
                                     <span aria-hidden="true"> ↗</span>
                                 </a>
                             </p>
-                            {proposedQuestions.length ? (
-                                <div
-                                    className="mt-5 flex flex-wrap gap-2"
-                                    aria-label="Suggested questions"
-                                >
-                                    {proposedQuestions.map((question) => (
-                                        <button
-                                            key={question.id}
-                                            type="button"
-                                            onClick={() => setDraft(question.label)}
-                                            className="rounded-(--radius-pill) border border-(--border) px-3 py-1.5 text-left text-xs text-(--text-secondary) hover:border-(--accent-ai)/45 hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-ai)/45"
-                                        >
-                                            {question.label}
-                                        </button>
-                                    ))}
-                                </div>
-                            ) : null}
                         </div>
                     ) : (
                         <ol className="mx-auto max-w-3xl space-y-6">
@@ -768,56 +780,199 @@ export function AskDevConversation({
                     <div ref={transcriptEnd} />
                 </div>
 
-                <form
-                    className="border-t border-(--border) bg-(--surface-raised) p-3 sm:p-4"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        void submit();
-                    }}
-                >
-                    <label htmlFor={composerId} className="sr-only">
-                        Ask Dev question
-                    </label>
-                    <div className="flex items-end gap-2 rounded-(--radius-lg) border border-(--border) bg-(--background)/75 p-2 focus-within:border-(--accent)/60 focus-within:ring-2 focus-within:ring-(--accent)/15">
-                        <textarea
-                            ref={composerRef}
-                            id={composerId}
-                            value={draft}
-                            onChange={(event) => setDraft(event.target.value)}
-                            onKeyDown={(event) => {
-                                if (event.key === "Enter" && !event.shiftKey) {
-                                    event.preventDefault();
-                                    void submit();
-                                }
-                            }}
-                            rows={compact ? 2 : 3}
-                            maxLength={4000}
-                            placeholder="Ask about the evidence in this scope…"
-                            className="max-h-40 min-h-12 flex-1 resize-y bg-transparent px-2 py-2 text-sm leading-6 text-(--text-primary) outline-none placeholder:text-(--text-muted)"
-                        />
+                {
+                    // CHAOS-3524 (chris, follow-up ruling): the persistent
+                    // "Proposed context / Committed scope / Direct scope /
+                    // Teams / Time / Comparison" bar that used to sit above
+                    // the transcript was dashboard chrome, not something an
+                    // LLM chat surface should show — removed. What survives
+                    // is display-only: a real surface-context proposal from
+                    // a content page (proposedContext — e.g. "Ask Dev about
+                    // this repository") still needs a visible accept/clear
+                    // affordance, now a small chip directly above the
+                    // composer instead of a persistent bar. It does NOT
+                    // change what's sent — proposedScope/surface_context
+                    // still flow into the request exactly as before; only
+                    // this always-on display of it is gone. Per-answer
+                    // committed-scope disclosure inside AskDevAnswer is
+                    // untouched.
+                }
+                {proposedContext ? (
+                    <div className="flex flex-wrap items-center gap-2 border-t border-(--border) bg-(--surface)/65 px-4 py-2 text-xs sm:px-6">
+                        <span className="text-(--text-muted)">
+                            Scoped to{" "}
+                            <strong className="font-medium text-(--text-secondary)">
+                                {proposedScopeLabel}
+                            </strong>
+                        </span>
                         <button
-                            type="submit"
-                            disabled={!draft.trim() || stream.phase === "running"}
-                            aria-label={CTA_LABELS.askDev}
-                            className="inline-flex h-10 shrink-0 items-center justify-center rounded-(--radius-md) bg-(--accent) px-4 text-sm font-semibold text-(--accent-foreground) transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50 disabled:cursor-not-allowed disabled:opacity-45"
+                            type="button"
+                            onClick={clearProposedContext}
+                            className="font-medium text-(--accent) hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
                         >
-                            {CTA_LABELS.askDev}
+                            {CTA_LABELS.clearContext}
                         </button>
                     </div>
-                    {/*
-                     * No per-conversation retention selector: retention is an
-                     * org-admin-only 0/30-day policy (PATCH
-                     * /api/v1/admin/ask-dev/settings). The backend always applied
-                     * org policy and silently ignored any per-conversation
-                     * `retention_days` sent from here, so the selector was a
-                     * misleading affordance — removed per CHAOS-3215 M7 /
-                     * CHAOS-3217.
-                     */}
-                    <div className="mt-2 text-xs text-(--text-muted)">
-                        <span>Enter to ask · Shift+Enter for a new line</span>
-                    </div>
-                </form>
+                ) : null}
+
+                <AskDevComposer
+                    composerId={composerId}
+                    composerRef={composerRef}
+                    draft={draft}
+                    setDraft={setDraft}
+                    onSubmit={() => void submit()}
+                    disabled={composerDisabled}
+                />
             </div>
+
+            {showHistory ? (
+                <aside
+                    id={historyPanelId}
+                    // Overlay drawer, slides in from the right over the
+                    // conversation (CHAOS-3524) — `translate-x-full`
+                    // parks it just off the right edge when closed;
+                    // `pointer-events-none` there too, so a closed-but-
+                    // still-in-the-DOM drawer can never intercept clicks
+                    // meant for the conversation underneath it.
+                    className={`absolute inset-y-0 right-0 z-10 w-72 overflow-y-auto border-l border-(--border) bg-(--surface-raised) p-4 pt-14 shadow-(--elevation-drawer) transition-transform duration-200 ease-out sm:w-80 ${
+                        historyPanelOpen ? "translate-x-0" : "pointer-events-none translate-x-full"
+                    }`}
+                    aria-label="Ask Dev history"
+                >
+                    <div className="flex items-center justify-between gap-2">
+                        <h2 className="text-label-caps text-(--text-muted)">Conversations</h2>
+                        <button
+                            type="button"
+                            onClick={startNewConversation}
+                            className="rounded-(--radius-sm) border border-(--border) px-2.5 py-1.5 text-xs font-medium text-(--text-secondary) transition hover:border-(--accent)/45 hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
+                        >
+                            {CTA_LABELS.newAskDevConversation}
+                        </button>
+                    </div>
+                    {historyLoading ? (
+                        <p role="status" className="mt-4 text-sm text-(--text-muted)">
+                            Loading history…
+                        </p>
+                    ) : historyError ? (
+                        <div className="mt-4 space-y-2 text-sm text-(--negative)">
+                            <p>{historyError}</p>
+                            <button
+                                type="button"
+                                onClick={() => void loadHistory()}
+                                className="font-medium underline"
+                            >
+                                {CTA_LABELS.retry}
+                            </button>
+                        </div>
+                    ) : conversations.length ? (
+                        <ul className="mt-3 space-y-1">
+                            {conversations.map((conversation) => (
+                                <li key={conversation.conversation_id}>
+                                    {editingConversationId === conversation.conversation_id ? (
+                                        <div className="space-y-2 rounded-(--radius-md) border border-(--border) p-2">
+                                            <label
+                                                className="sr-only"
+                                                htmlFor={`title-${conversation.conversation_id}`}
+                                            >
+                                                Conversation title
+                                            </label>
+                                            <input
+                                                ref={renameInputRef}
+                                                id={`title-${conversation.conversation_id}`}
+                                                value={editingTitle}
+                                                onChange={(event) =>
+                                                    setEditingTitle(event.target.value)
+                                                }
+                                                maxLength={120}
+                                                className="w-full rounded-(--radius-sm) border border-(--border) bg-(--background) px-2 py-1.5 text-sm"
+                                            />
+                                            <div className="flex gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        void saveConversationTitle(
+                                                            conversation.conversation_id,
+                                                        )
+                                                    }
+                                                    className="text-xs font-medium text-(--accent)"
+                                                >
+                                                    {CTA_LABELS.save}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditingConversationId(null)}
+                                                    className="text-xs text-(--text-muted)"
+                                                >
+                                                    {CTA_LABELS.cancel}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-(--radius-md) px-3 py-2 hover:bg-(--surface-raised)">
+                                            <button
+                                                type="button"
+                                                onClick={() =>
+                                                    void openConversation(
+                                                        conversation.conversation_id,
+                                                    )
+                                                }
+                                                className="w-full text-left text-sm text-(--text-secondary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
+                                            >
+                                                <span className="line-clamp-2 font-medium">
+                                                    {conversation.title || "Untitled investigation"}
+                                                </span>
+                                                <span className="mt-1 block text-xs text-(--text-muted)">
+                                                    {conversation.message_count === 1
+                                                        ? "1 message"
+                                                        : `${conversation.message_count} messages`}
+                                                </span>
+                                            </button>
+                                            <div className="mt-2 flex gap-3">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setEditingConversationId(
+                                                            conversation.conversation_id,
+                                                        );
+                                                        setEditingTitle(conversation.title ?? "");
+                                                    }}
+                                                    className="text-xs text-(--text-muted) hover:text-(--text-primary)"
+                                                >
+                                                    {CTA_LABELS.edit}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                        void removeConversation(
+                                                            conversation.conversation_id,
+                                                        )
+                                                    }
+                                                    className="text-xs text-(--text-muted) hover:text-(--negative)"
+                                                >
+                                                    {pendingDeleteId ===
+                                                    conversation.conversation_id
+                                                        ? CTA_LABELS.confirmDelete
+                                                        : CTA_LABELS.delete}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="mt-4 text-sm leading-6 text-(--text-muted)">
+                            No retained conversations yet. Your first investigation will appear
+                            here.
+                        </p>
+                    )}
+                    {historyActionError ? (
+                        <p role="alert" className="mt-3 text-xs text-(--negative)">
+                            {historyActionError}
+                        </p>
+                    ) : null}
+                </aside>
+            ) : null}
         </div>
     );
 }

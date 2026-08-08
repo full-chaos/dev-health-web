@@ -75,6 +75,7 @@ export type AskDevAvailability =
 type AskDevEntityRef = NonNullable<DevScope["entity_refs"]>[number];
 
 type AskDevContextValue = {
+    askDevWorkspaceHref: string;
     availability: AskDevAvailability;
     committedScopeLabel: string | null;
     conversationId: string | null;
@@ -260,6 +261,14 @@ export function AskDevProvider({
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const searchString = searchParams.toString();
+    // CHAOS-3524: the floating window's "Ask Dev workspace" link must carry
+    // the current page's filter scope across to /dev (a raw `/dev` href
+    // drops it — web AGENTS.md's withFilterParam rule). Computed here,
+    // rather than with its own useSearchParams() call in AskDevWindow,
+    // because AskDevWindow.test.tsx renders the component without a
+    // next/navigation mock; every other consumer of query state already
+    // goes through this provider, which the tests that need it DO mock.
+    const askDevWorkspaceHref = searchString ? `/dev?${searchString}` : "/dev";
     const [panelMode, setPanelMode] = useState<AskDevPanelMode>("closed");
     const [persistentReturnHref, setPersistentReturnHref] = useState("/dashboard");
     const [conversationId, setConversationId] = useState<string | null>(null);
@@ -309,7 +318,9 @@ export function AskDevProvider({
     // Approved ambient routes (data_health, diagnose_overview, flow_metrics,
     // investment, cognitive_load, bottlenecks) get an implicit scope context
     // with no user action required -- it already silently drives `routeScope`
-    // below (the "Proposed context:" banner). Suggested questions must follow
+    // below (CHAOS-3524 removed the "Proposed context:" banner that used to
+    // display this; the scope itself still flows into every request
+    // unchanged). Suggested questions must follow
     // the same implicit context, not just an explicit `setProposedContext`
     // call from a per-entity "Ask Dev about this" trigger: many ambient
     // routes (e.g. /data-health) have no such trigger at all, so the only way
@@ -813,6 +824,7 @@ export function AskDevProvider({
 
     const value = useMemo<AskDevContextValue>(
         () => ({
+            askDevWorkspaceHref,
             availability,
             committedScopeLabel,
             conversationId,
@@ -848,6 +860,7 @@ export function AskDevProvider({
             submitQuestion,
         }),
         [
+            askDevWorkspaceHref,
             availability,
             committedScopeLabel,
             conversationId,

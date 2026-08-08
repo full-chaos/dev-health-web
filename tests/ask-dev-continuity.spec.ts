@@ -215,14 +215,16 @@ test.describe("Ask Dev — window <-> /dev continuity", () => {
         );
         await expect(askDevAnswerArticle(page)).toBeVisible();
 
-        const committedRow = page.getByText(/^Committed scope:/u).first();
-        const committedBefore = (await committedRow.innerText()).trim();
+        // CHAOS-3524: the persistent scope bar (which used to carry a
+        // "Committed scope: ..." readout this test read from directly) is
+        // gone. "Stays put" is proven below the same way "not silently
+        // re-scoped" is proven throughout this suite: the same answer, by
+        // id, with no new backend request — committedScopeLabel only ever
+        // changes as a side effect of one of those two, so an unchanged id
+        // and unchanged request counts is the stronger, load-bearing form
+        // of this claim, not merely an echo of it.
         const answerIdBefore = await askDevAnswerArticle(page).getAttribute("id");
         const countsBefore = await getAskDevRequestCounts(request);
-        expect(
-            committedBefore,
-            "The scope must be committed before this test can prove it stays put.",
-        ).not.toContain("Commits when you ask");
 
         // Client-side navigation, not page.goto: the requirement is about
         // moving around the app with the window open. A hard reload remounts
@@ -238,15 +240,6 @@ test.describe("Ask Dev — window <-> /dev continuity", () => {
         await expect(
             askDevTranscript(page).getByText("How many items completed this period?"),
         ).toBeVisible();
-        expect(
-            (
-                await page
-                    .getByText(/^Committed scope:/u)
-                    .first()
-                    .innerText()
-            ).trim(),
-            "Navigating to another route silently re-scoped the conversation.",
-        ).toBe(committedBefore);
 
         // Same answer carried across, not a re-run that happened to produce
         // identical canned text (codex adversarial review round 2, HIGH).

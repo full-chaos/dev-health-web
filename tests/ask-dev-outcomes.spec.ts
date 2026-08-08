@@ -140,9 +140,15 @@ test.describe("Ask Dev — answer status outcomes", () => {
         const answer = askDevAnswerArticle(page);
         await expect(answer).toBeVisible();
         const countsBefore = await getAskDevRequestCounts(request);
-        const proposedRow = page.getByText(/^Proposed context:/u).first();
-        const committedRow = page.getByText(/^Committed scope:/u).first();
-        const committedBefore = (await committedRow.innerText()).trim();
+        // CHAOS-3524: the persistent "Committed scope:" bar this test used
+        // to read directly is gone (display-only removal — see
+        // AskDevConversation.tsx). The answer id is the load-bearing proof
+        // that the committed run wasn't silently touched: committing only
+        // ever happens by submitting a new question or opening a different
+        // conversation, neither of which happens between here and the
+        // check below, so an unchanged answer id is strictly stronger than
+        // an unchanged label string would have been.
+        const answerIdBefore = await answer.getAttribute("id");
 
         const chosen = CLARIFICATION_CANDIDATE_REFS[0];
         await answer
@@ -152,14 +158,16 @@ test.describe("Ask Dev — answer status outcomes", () => {
             .click();
 
         // The choice becomes visible PROPOSED context — and only proposed.
-        // Committing is the user's next act, so the committed row must not
-        // move underneath them (CHAOS-3219 group 2: proposed and committed
-        // subjects are both visible, and scope never mutates silently).
-        await expect(proposedRow).toContainText(chosen.display_label);
+        // Committing is the user's next act, so the committed answer must
+        // not move underneath them (CHAOS-3219 group 2: proposed and
+        // committed subjects are both visible, and scope never mutates
+        // silently). CHAOS-3524: the proposal now surfaces as the "Scoped
+        // to ..." chip above the composer instead of the removed bar.
+        await expect(page.getByText("Scoped to")).toContainText(chosen.display_label);
         expect(
-            (await committedRow.innerText()).trim(),
+            await answer.getAttribute("id"),
             "Selecting a candidate proposes a scope; it must not silently re-commit one.",
-        ).toBe(committedBefore);
+        ).toBe(answerIdBefore);
 
         // Group 5 is explicit that an approved action never auto-submits:
         // selecting a candidate must not execute a run by itself.

@@ -558,7 +558,12 @@ test.describe("Ask Dev — self-contradiction presentation", () => {
         await expect(answer.getByText("Answered", { exact: true })).not.toBeVisible();
         await expect(answer).toContainText("This part of the answer could not be shown.");
         await expect(answer).not.toContainText("Delivery improved by twelve items this period.");
-        // Structured grounding is unaffected by the withholding.
+        // Structured grounding is unaffected by the withholding. CHAOS-3524:
+        // evidence is now a folded-by-default accordion (chris's evidence-
+        // layout ruling) — "Unfold all evidence" opens the lane and every
+        // row in one click so the underlying "Open evidence" action is
+        // reachable to assert on.
+        await answer.getByRole("button", { name: "Unfold all evidence" }).click();
         await expect(
             answer.getByRole("button", { name: "Open evidence", exact: true }),
         ).toBeVisible();
@@ -710,6 +715,9 @@ test.describe("Ask Dev — evidence hierarchy", () => {
         );
         await expect(askDevAnswerArticle(page)).toBeVisible();
 
+        // CHAOS-3524: evidence is a folded-by-default accordion now — open
+        // it before the "Open evidence" fetch action inside it is reachable.
+        await page.getByRole("button", { name: "Unfold all evidence" }).click();
         await page.getByRole("button", { name: "Open evidence", exact: true }).click();
         await expect(page.getByText("Evidence excerpt")).toBeVisible();
     });

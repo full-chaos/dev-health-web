@@ -42,6 +42,12 @@ export const CTA_LABELS = {
     devHealthCockpit: "Full Chaos Dev Health cockpit",
     /** Open the evidence trail behind a signal / metric / work unit. */
     openEvidence: "Open evidence",
+    /** Expand the Ask Dev answer's evidence lane accordion (CHAOS-3524, icon-only control — aria-label). */
+    expandEvidenceLane: "Expand evidence",
+    /** Collapse the Ask Dev answer's evidence lane accordion (CHAOS-3524, icon-only control — aria-label). */
+    collapseEvidenceLane: "Collapse evidence",
+    /** Expand every row in the Ask Dev answer's evidence accordion in one action (CHAOS-3524, icon-only control — aria-label). */
+    unfoldAllEvidence: "Unfold all evidence",
     generateContext: "Generate context",
     markContextIncorrect: "Mark context as incorrect",
     markContextStale: "Mark context as stale",
@@ -341,6 +347,16 @@ export function backToArea(area: string): string {
 
 export function upgradeToPlan(plan: string): string {
     return `Upgrade to ${plan}`;
+}
+
+/**
+ * Per-item accessible name for an Ask Dev evidence accordion row's icon-only
+ * fold toggle (CHAOS-3524). `label` names the specific evidence item so
+ * assistive tech can distinguish rows that would otherwise all announce as
+ * "Expand evidence" / "Collapse evidence".
+ */
+export function toggleEvidenceItem(label: string, open: boolean): string {
+    return `${open ? "Collapse" : "Expand"} evidence: ${label}`;
 }
 
 /**

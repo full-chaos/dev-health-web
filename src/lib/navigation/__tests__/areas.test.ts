@@ -75,7 +75,9 @@ describe("navArea.children — locked child navigation", () => {
                 "Complexity",
                 "Cognitive Load",
                 "Bottlenecks",
-                "Ask Dev",
+                // CHAOS-3524 (chris's ruling): Ask Dev removed as a
+                // left-nav destination — one ingress only, the in-context
+                // trigger/window path.
                 "People",
                 "Code",
             ],
@@ -205,7 +207,11 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
         { areaId: "diagnose", pathname: "/metrics", childId: "flow" },
         { areaId: "diagnose", pathname: "/investment", childId: "investment" },
         { areaId: "diagnose", pathname: "/landscape", childId: "landscape" },
-        { areaId: "diagnose", pathname: "/dev", childId: "ask-dev" },
+        // CHAOS-3524 (chris's ruling): Ask Dev is no longer a left-nav
+        // destination — /dev resolves to Diagnose (see the
+        // selectedAreaIdForPathname case above) but selects no CHILD row
+        // anymore, covered by its own dedicated test below rather than a
+        // case in this table.
         {
             areaId: "plan",
             pathname: "/plan",
@@ -294,6 +300,14 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
     it("returns undefined for an owned area route with no matching child", () => {
         expect(selectedChildForPathname(areaById("admin"), "/org/admin/users")).toBeUndefined();
     });
+
+    // CHAOS-3524 (chris's ruling): Ask Dev is deliberately NOT a left-nav
+    // destination — one ingress only (the in-context trigger/window path).
+    // /dev stays inside Diagnose's ownedPathPrefixes (so landing there via
+    // the trigger still highlights Diagnose), but selects no child row.
+    it("returns undefined for /dev — Ask Dev has no left-nav row", () => {
+        expect(selectedChildForPathname(areaById("diagnose"), "/dev")).toBeUndefined();
+    });
 });
 
 describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
@@ -302,11 +316,12 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/diagnose/work-graph")).toBe("Work Graph");
         expect(navTitleForPathname("/metrics")).toBe("Flow");
         expect(navTitleForPathname("/landscape")).toBe("Landscape");
-        expect(navTitleForPathname("/dev")).toBe("Ask Dev");
-        expect(navTrailForPathname("/dev")).toEqual([
-            { label: "Diagnose", href: "/diagnose" },
-            { label: "Ask Dev" },
-        ]);
+        // CHAOS-3524 (chris's ruling): Ask Dev has no left-nav child row
+        // anymore, so /dev now titles/trails as the area-only case (rule
+        // A6 still holds — it just resolves one level up, to Diagnose,
+        // since there's no child label to use instead).
+        expect(navTitleForPathname("/dev")).toBe("Diagnose");
+        expect(navTrailForPathname("/dev")).toEqual([{ label: "Diagnose" }]);
         expect(navTitleForPathname("/agent-context/context-packet")).toBe("Diagnose");
         expect(navTitleForPathname("/plan")).toBe("Overview");
         expect(navTitleForPathname("/plan/delivery-forecast")).toBe("Overview");

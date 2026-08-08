@@ -170,7 +170,15 @@ test("permanent contextual window continues one grounded run in /dev without dup
 
     const permanentWindow = page.getByRole("region", { name: "Ask Dev" });
     await expect(permanentWindow).toBeVisible();
-    await expect(permanentWindow.getByText(/Proposed context:/u)).toContainText("Data Confidence");
+    // CHAOS-3524: the persistent scope bar (which used to echo the ambient
+    // "Data Confidence" label here) is gone — dashboard chrome that doesn't
+    // belong in an LLM chat surface, per chris's design ruling. This route's
+    // ambient context is an implicit, un-registered label with no display
+    // affordance anymore (only a genuine registered proposal gets the small
+    // "Scoped to ..." chip now — not the case here). The load-bearing proof
+    // that /data-health's implicit context is actually applied is the
+    // request-payload assertion further down (`surface_context.route_id:
+    // "data_health"`), which is unaffected by this display change.
     const composer = permanentWindow.getByRole("textbox", { name: "Ask Dev question" });
     await expect(composer).toHaveValue("");
     expect(
@@ -558,8 +566,8 @@ test("permanent contextual window continues one grounded run in /dev without dup
         // there is no "Conversation retention" selector to interact with
         // (CHAOS-3215 M7). The conversation created below inherits the org
         // policy purely from the backend, which the assertions after it
-        // verify (retention_days: 0, expires_at: null, and 404 after the run
-        // completes).
+        // verify (retention_days: 0, a GRACED expires_at, and 404 after the
+        // run completes).
         const ephemeralComposer = page
             .getByRole("region", { name: "Ask Dev workspace" })
             .getByRole("textbox", { name: "Ask Dev question" });
@@ -575,6 +583,18 @@ test("permanent contextual window continues one grounded run in /dev without dup
                     new URL(response.url()).pathname,
                 ) && response.request().method() === "POST",
         );
+        // CHAOS-3581 / ops CHAOS-3544: a 0-day-retention conversation is no
+        // longer stamped `expires_at: null` at creation. Two reachable
+        // shapes (created-and-abandoned before any message; a run left
+        // non-terminal by a crash) used to be retained forever under the
+        // null stamp, so ops now stamps `now + EPHEMERAL_ABANDONED_GRACE`
+        // (one hour, `api/dev/persistence/service.py`) at creation, and
+        // moves it earlier to the completion time once a run actually
+        // terminates. `beforeEphemeralCreate` is captured client-side,
+        // before the request round-trip, so the server's `now` is slightly
+        // later than it — the assertion below checks a window around the
+        // one-hour grace rather than an exact value for that reason.
+        const beforeEphemeralCreate = Date.now();
         await page
             .getByRole("region", { name: "Ask Dev workspace" })
             .getByRole("button", {
@@ -583,7 +603,23 @@ test("permanent contextual window continues one grounded run in /dev without dup
             })
             .click();
         const ephemeralCreate = (await (await ephemeralCreatePromise).json()) as JsonObject;
-        expect(ephemeralCreate).toMatchObject({ retention_days: 0, expires_at: null });
+        expect(ephemeralCreate).toMatchObject({ retention_days: 0 });
+        expect(
+            typeof ephemeralCreate.expires_at,
+            "0-day retention must stamp a graced expiry, not null (CHAOS-3544/CHAOS-3581).",
+        ).toBe("string");
+        const gracedExpiryMs =
+            Date.parse(ephemeralCreate.expires_at as string) - beforeEphemeralCreate;
+        const ONE_HOUR_MS = 60 * 60 * 1000;
+        const GRACE_TOLERANCE_MS = 5 * 60 * 1000;
+        expect(
+            gracedExpiryMs,
+            `expires_at must land ~1h after creation (EPHEMERAL_ABANDONED_GRACE), got ${String(gracedExpiryMs)}ms.`,
+        ).toBeGreaterThan(ONE_HOUR_MS - GRACE_TOLERANCE_MS);
+        expect(
+            gracedExpiryMs,
+            `expires_at must land ~1h after creation (EPHEMERAL_ABANDONED_GRACE), got ${String(gracedExpiryMs)}ms.`,
+        ).toBeLessThan(ONE_HOUR_MS + GRACE_TOLERANCE_MS);
         const ephemeralId = ephemeralCreate.conversation_id as string;
         const ephemeralMessage = await ephemeralMessagePromise;
         expect(ephemeralMessage.ok()).toBe(true);

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { CTA_LABELS } from "@/lib/design/cta";
+import { CTA_LABELS, toggleEvidenceItem } from "@/lib/design/cta";
 import type {
     DevAnswer,
     DevEvidenceExpansion,
@@ -270,12 +270,26 @@ function scopeCoverageLabel(scopeResolution: NonNullable<DevAnswer["resolved_sco
     return `${count} authorized repositories`;
 }
 
+/**
+ * CHAOS-3524 (chris's evidence-layout ruling): each evidence item is its own
+ * accordion row, default folded. The row's header (label + provenance) stays
+ * visible even folded — that's the disclosure trigger a reader sees and
+ * clicks — only the detail beneath it (citation text, the "Open evidence"
+ * fetch action, the fetched excerpt, errors, the artifact link) is hidden
+ * until `open`. The fold toggle itself is icon-only (a chevron, aria-label
+ * carries the real name) per chris's "buttons/iconography only, no text
+ * labels" rule; `evidence.display_label` sitting in the same clickable
+ * header is the row's identifying TITLE, not an instructional fold/unfold
+ * label, so it stays as visible text.
+ */
 function EvidenceRow({
     anchorId,
     error,
     evidence,
     expansion,
     loading,
+    onToggleOpen,
+    open,
     openExpansion,
 }: {
     anchorId: string;
@@ -283,6 +297,8 @@ function EvidenceRow({
     evidence: DevEvidenceRef;
     expansion: DevEvidenceExpansion | null;
     loading: boolean;
+    onToggleOpen: () => void;
+    open: boolean;
     openExpansion: () => Promise<void>;
 }) {
     const internalPath = evidence.link?.internal_path;
@@ -293,61 +309,80 @@ function EvidenceRow({
             tabIndex={-1}
             className="scroll-mt-6 space-y-1.5 border-l-2 border-(--border) pl-3 outline-none focus-visible:border-(--accent)"
         >
-            <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="flex min-w-0 flex-col gap-0.5">
+            <button
+                type="button"
+                onClick={onToggleOpen}
+                aria-expanded={open}
+                aria-label={toggleEvidenceItem(evidence.display_label, open)}
+                className="flex w-full min-w-0 items-start gap-2 rounded-(--radius-sm) py-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
+            >
+                <span aria-hidden="true" className="mt-0.5 shrink-0 text-(--text-muted)">
+                    {open ? "▾" : "▸"}
+                </span>
+                <span className="flex min-w-0 flex-col gap-0.5">
                     <span className="text-sm text-(--text-secondary)">
                         {evidence.display_label}
                     </span>
                     <span className="text-xs text-(--text-muted)">
                         {evidence.provenance} · {formatTimestamp(evidence.observed_at)}
                     </span>
-                </div>
-                {/*
-                 * Quiet by default (text-muted, no fill) — this is a
-                 * secondary, on-demand affordance, not a primary CTA; it
-                 * only picks up accent color on hover/focus (CHAOS-3291).
-                 */}
-                <button
-                    type="button"
-                    onClick={() => void openExpansion()}
-                    disabled={loading}
-                    className="rounded-(--radius-sm) px-2 py-1 text-xs font-medium text-(--text-muted) hover:bg-(--accent)/10 hover:text-(--accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45 disabled:opacity-50"
-                >
-                    {loading ? "Opening…" : CTA_LABELS.openEvidence}
-                </button>
-            </div>
-            {evidence.citation_text ? (
-                <p className="text-xs leading-5 text-(--text-muted)">{evidence.citation_text}</p>
-            ) : null}
-            {expansion ? (
-                <div className="rounded-(--radius-md) bg-(--background)/60 p-3 text-sm leading-6 text-(--text-secondary)">
-                    <p className="text-label-caps text-(--text-muted)">
-                        {expansion.state.replaceAll("_", " ")}
-                    </p>
-                    {safeExcerpt(expansion.safe_excerpt) ? (
-                        <p className="mt-2 whitespace-pre-wrap">
-                            {safeExcerpt(expansion.safe_excerpt)}
+                </span>
+            </button>
+            {open ? (
+                <div className="space-y-1.5 pl-5">
+                    {evidence.citation_text ? (
+                        <p className="text-xs leading-5 text-(--text-muted)">
+                            {evidence.citation_text}
                         </p>
-                    ) : (
-                        <p className="mt-2">No additional excerpt is available.</p>
-                    )}
-                    {expansion.warning ? (
-                        <p className="mt-2 text-(--caution)">{expansion.warning}</p>
+                    ) : null}
+                    {/*
+                     * Quiet by default (text-muted, no fill) — this is a
+                     * secondary, on-demand affordance, not a primary CTA; it
+                     * only picks up accent color on hover/focus (CHAOS-3291).
+                     * Unlike the fold toggle above, this triggers a real
+                     * server fetch (the deep excerpt) rather than showing
+                     * already-loaded content, so it keeps its sanctioned
+                     * text label rather than becoming icon-only.
+                     */}
+                    <button
+                        type="button"
+                        onClick={() => void openExpansion()}
+                        disabled={loading}
+                        className="rounded-(--radius-sm) px-2 py-1 text-xs font-medium text-(--text-muted) hover:bg-(--accent)/10 hover:text-(--accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45 disabled:opacity-50"
+                    >
+                        {loading ? "Opening…" : CTA_LABELS.openEvidence}
+                    </button>
+                    {expansion ? (
+                        <div className="rounded-(--radius-md) bg-(--background)/60 p-3 text-sm leading-6 text-(--text-secondary)">
+                            <p className="text-label-caps text-(--text-muted)">
+                                {expansion.state.replaceAll("_", " ")}
+                            </p>
+                            {safeExcerpt(expansion.safe_excerpt) ? (
+                                <p className="mt-2 whitespace-pre-wrap">
+                                    {safeExcerpt(expansion.safe_excerpt)}
+                                </p>
+                            ) : (
+                                <p className="mt-2">No additional excerpt is available.</p>
+                            )}
+                            {expansion.warning ? (
+                                <p className="mt-2 text-(--caution)">{expansion.warning}</p>
+                            ) : null}
+                        </div>
+                    ) : null}
+                    {error ? (
+                        <p role="alert" className="text-xs text-(--negative)">
+                            {error}
+                        </p>
+                    ) : null}
+                    {internalPath ? (
+                        <Link
+                            href={internalPath}
+                            className="inline-flex text-xs font-medium text-(--accent) underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
+                        >
+                            {CTA_LABELS.openArtifact}
+                        </Link>
                     ) : null}
                 </div>
-            ) : null}
-            {error ? (
-                <p role="alert" className="text-xs text-(--negative)">
-                    {error}
-                </p>
-            ) : null}
-            {internalPath ? (
-                <Link
-                    href={internalPath}
-                    className="inline-flex text-xs font-medium text-(--accent) underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
-                >
-                    {CTA_LABELS.openArtifact}
-                </Link>
             ) : null}
         </div>
     );
@@ -366,6 +401,14 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
         () => new Set(),
     );
     const [openMetricIds, setOpenMetricIds] = useState<ReadonlySet<string>>(() => new Set());
+    // CHAOS-3524 (chris's evidence-layout ruling): the evidence LANE
+    // (this whole section) and each evidence ROW are independently
+    // foldable accordions, both default folded. `evidenceLaneOpen` gates
+    // the row list; `openEvidenceRowIds` gates each row's own detail.
+    const [evidenceLaneOpen, setEvidenceLaneOpen] = useState(false);
+    const [openEvidenceRowIds, setOpenEvidenceRowIds] = useState<ReadonlySet<string>>(
+        () => new Set(),
+    );
     const scopeResolution = answer.resolved_scope;
     // CHAOS-3367. A no-match gets its own presentation rather than the generic
     // status treatment: no "Refused" chip, no status caption claiming Ask Dev
@@ -453,6 +496,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
     const findingsHeadingId = `ask-dev-findings-${answer.answer_id}`;
     const metricsHeadingId = `ask-dev-metrics-${answer.answer_id}`;
     const evidenceHeadingId = `ask-dev-evidence-heading-${answer.answer_id}`;
+    const evidenceListId = `ask-dev-evidence-list-${answer.answer_id}`;
 
     const focusDetail = (anchorId: string) => {
         requestAnimationFrame(() => {
@@ -460,10 +504,20 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
         });
     };
 
+    // CHAOS-3524: unfolds the lane and this specific row BEFORE the async
+    // fetch below, synchronously in the same event-handler flush — so by
+    // the time `focusDetail`'s requestAnimationFrame callback runs (after
+    // the fetch resolves, well past this point), React has already
+    // committed the row as present/expanded in the DOM for
+    // `getElementById`/`.focus()` to find. This is what "clicking an
+    // evidence reference unfolds the lane and unfolds+scrolls to that
+    // item" resolves to: the citation buttons already call this function.
     const openEvidenceDetail = async (evidenceRefId: string) => {
         const position = evidencePositionById.get(evidenceRefId);
         if (position === undefined || !evidenceById.has(evidenceRefId)) return;
         const anchorId = evidenceAnchorId(position);
+        setEvidenceLaneOpen(true);
+        setOpenEvidenceRowIds((current) => new Set(current).add(evidenceRefId));
         setLoadingEvidenceIds((current) => new Set(current).add(evidenceRefId));
         setEvidenceErrors((current) => {
             const next = { ...current };
@@ -495,6 +549,23 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
         if (position === undefined) return;
         setOpenMetricIds((current) => new Set(current).add(metricRefId));
         focusDetail(metricAnchorId(position));
+    };
+
+    const toggleEvidenceRow = (evidenceRefId: string) => {
+        setOpenEvidenceRowIds((current) => {
+            const next = new Set(current);
+            if (next.has(evidenceRefId)) next.delete(evidenceRefId);
+            else next.add(evidenceRefId);
+            return next;
+        });
+    };
+
+    // CHAOS-3524: the "unfold all" affordance chris asked for — expands the
+    // lane and every row in one action, independent of the two accordion
+    // levels' individual toggles above.
+    const unfoldAllEvidence = () => {
+        setEvidenceLaneOpen(true);
+        setOpenEvidenceRowIds(new Set((answer.evidence ?? []).map((item) => item.evidence_ref_id)));
     };
 
     const renderInlineCitations = (
@@ -878,10 +949,57 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                     className="space-y-3 border-t border-(--border) pt-4"
                     aria-labelledby={evidenceHeadingId}
                 >
-                    <h3 id={evidenceHeadingId} className="text-label-caps text-(--text-muted)">
-                        Evidence
-                    </h3>
-                    <div className="space-y-3">
+                    {/*
+                     * CHAOS-3524: the lane's own fold toggle and the
+                     * "unfold all" action are icon-only buttons (chevron /
+                     * unfold glyph, aria-label carries the name) — "Evidence"
+                     * is the section's static title, not itself a
+                     * fold/unfold instruction, so it stays outside both
+                     * buttons as plain heading text.
+                     */}
+                    <div className="flex items-center justify-between gap-2">
+                        <h3 id={evidenceHeadingId} className="text-label-caps text-(--text-muted)">
+                            Evidence
+                        </h3>
+                        <div className="flex items-center gap-1">
+                            <button
+                                type="button"
+                                onClick={unfoldAllEvidence}
+                                aria-label={CTA_LABELS.unfoldAllEvidence}
+                                className="rounded-(--radius-sm) p-1 text-(--text-muted) hover:bg-(--accent)/10 hover:text-(--accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
+                            >
+                                <span aria-hidden="true">⤢</span>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setEvidenceLaneOpen((open) => !open)}
+                                aria-expanded={evidenceLaneOpen}
+                                aria-controls={evidenceListId}
+                                aria-label={
+                                    evidenceLaneOpen
+                                        ? CTA_LABELS.collapseEvidenceLane
+                                        : CTA_LABELS.expandEvidenceLane
+                                }
+                                className="rounded-(--radius-sm) p-1 text-(--text-muted) hover:bg-(--accent)/10 hover:text-(--accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
+                            >
+                                <span aria-hidden="true">{evidenceLaneOpen ? "▾" : "▸"}</span>
+                            </button>
+                        </div>
+                    </div>
+                    {/*
+                     * Native `hidden` attribute, not a conditional
+                     * unmount/CSS-class toggle: this codebase's tests run
+                     * without compiled Tailwind CSS (a `hidden` class
+                     * wouldn't actually hide anything for `toBeVisible()`
+                     * purposes), but the native attribute is a real HTML5 UA
+                     * behavior jsdom honors directly. Keeping the rows
+                     * always mounted (just hidden) also means
+                     * `document.getElementById(anchorId)` keeps working
+                     * immediately when a citation click both unfolds the
+                     * lane and focuses a row in the same flow, with no
+                     * mount-timing race to reason about.
+                     */}
+                    <div id={evidenceListId} hidden={!evidenceLaneOpen} className="space-y-3">
                         {answer.evidence.map((evidence) => (
                             <EvidenceRow
                                 key={evidence.evidence_ref_id}
@@ -892,6 +1010,8 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
                                 evidence={evidence}
                                 expansion={evidenceExpansions[evidence.evidence_ref_id] ?? null}
                                 loading={loadingEvidenceIds.has(evidence.evidence_ref_id)}
+                                onToggleOpen={() => toggleEvidenceRow(evidence.evidence_ref_id)}
+                                open={openEvidenceRowIds.has(evidence.evidence_ref_id)}
                                 openExpansion={() => openEvidenceDetail(evidence.evidence_ref_id)}
                             />
                         ))}
