@@ -216,6 +216,26 @@ function validateAnswer(answer: JsonRecord): boolean {
         return false;
     }
 
+    // `graph_assisted.ranked_drivers[].evidence_ref_ids` cites into this SAME
+    // answer's `evidence[]` array -- ops documents this on
+    // `DevAnswerDriverEntry` and enforces it server-side
+    // (`DevAnswer.validate_answer_invariants`). Schema-only surface today (no
+    // W3-W5 rendering here), but the citation-closure rule still has to hold
+    // wherever `graph_assisted` is present, the same as every other
+    // evidence-citing array above; `graph_assisted` itself is optional and
+    // `None`/absent outside a completed, cohort-shaped answer.
+    const graphAssisted = answer.graph_assisted;
+    if (isRecord(graphAssisted)) {
+        const rankedDrivers = asRecords(graphAssisted.ranked_drivers);
+        if (
+            rankedDrivers.some(
+                (driver) => !referencesOnlyKnown(driver.evidence_ref_ids, knownEvidence),
+            )
+        ) {
+            return false;
+        }
+    }
+
     // Mirrors `fully_covered` in ops' v2->v1 projector
     // (contracts_v2/compat.py): an answered outcome becomes `complete` only
     // when the counts agree AND all three required-source lists are empty.
@@ -277,6 +297,7 @@ function validateStreamEvent(event: JsonRecord): boolean {
         "run.started": undefined,
         "scope.resolved": "scope_resolution",
         progress: "progress",
+        "graph.state": "graph_state",
         "answer.delta": "delta",
         "answer.completed": "answer",
         warning: "warning",
@@ -288,6 +309,7 @@ function validateStreamEvent(event: JsonRecord): boolean {
     const payloadNames = [
         "progress",
         "scope_resolution",
+        "graph_state",
         "delta",
         "answer",
         "warning",

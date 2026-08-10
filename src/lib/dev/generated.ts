@@ -1,5 +1,432 @@
 /* eslint-disable @typescript-eslint/no-namespace */
-// Generated from full-chaos/dev-health-ops 9999706083eee17a60ad9c8f69ad8df50293958c. Do not edit.
+// Generated from full-chaos/dev-health-ops cfe94369368ca3c81f0d6a3ce9e80a8f3530320e. Do not edit.
+export namespace DevAnswerGraphAssistanceContract {
+    export type AsOf = string;
+    export type CohortComplete = boolean;
+    export type EntityType =
+        "repository" | "project" | "work_unit" | "issue" | "pull_request" | "team";
+    /**
+     * @minItems 1
+     * @maxItems 25
+     */
+    export type Members = [DevAnswerCohortMember, ...DevAnswerCohortMember[]];
+    export type DisplayLabel = string;
+    export type EntityId = string;
+    /**
+     * CHAOS-3660 §8(d). The production-side classification signal for a
+     * discovered-cohort question. Reserved fresh here for the same reason as
+     * :class:`GraphAssistedAvailability` above -- the owning module
+     * (``graph_investigation_query.py``) is feature-branch-only today; must
+     * be reconciled to that module's definition when it lands on ``main``.
+     */
+    export type CohortDiscoveryFamily = "team_pressure" | "project_capacity";
+    /**
+     * @maxItems 20
+     */
+    export type Warnings =
+        | []
+        | [string]
+        | [string, string]
+        | [string, string, string]
+        | [string, string, string, string]
+        | [string, string, string, string, string]
+        | [string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string, string]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ];
+    /**
+     * @maxItems 10
+     */
+    export type EvidenceLineage =
+        | []
+        | [DevAnswerLineageHop]
+        | [DevAnswerLineageHop, DevAnswerLineageHop]
+        | [DevAnswerLineageHop, DevAnswerLineageHop, DevAnswerLineageHop]
+        | [DevAnswerLineageHop, DevAnswerLineageHop, DevAnswerLineageHop, DevAnswerLineageHop]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ];
+    export type Label = string;
+    /**
+     * @maxItems 8
+     */
+    export type Limitations =
+        | []
+        | [PacketLimitationKind]
+        | [PacketLimitationKind, PacketLimitationKind]
+        | [PacketLimitationKind, PacketLimitationKind, PacketLimitationKind]
+        | [PacketLimitationKind, PacketLimitationKind, PacketLimitationKind, PacketLimitationKind]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ];
+    /**
+     * CHAOS-3660 §8(d)/(h). Reserved fresh here for the same reason as the
+     * two enums above -- the owning module
+     * (``investigation_contract/vocabulary.py``) is feature-branch-only
+     * today; must be reconciled to that module's definition when it lands on
+     * ``main``.
+     */
+    export type PacketLimitationKind =
+        | "missing_source"
+        | "stale_source"
+        | "conflicting_evidence"
+        | "authorization_filtered"
+        | "truncated_traversal"
+        | "absent_staffing_denominator"
+        | "historical_slice_not_comparable"
+        | "interpretation_uncertainty";
+    export type Contribution = number;
+    /**
+     * @minItems 1
+     * @maxItems 10
+     */
+    export type EvidenceRefIds =
+        | [string]
+        | [string, string]
+        | [string, string, string]
+        | [string, string, string, string]
+        | [string, string, string, string, string]
+        | [string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string];
+    export type Rank = number;
+    /**
+     * @maxItems 25
+     */
+    export type RankedDrivers = DevAnswerDriverEntry[];
+    export type SchemaVersion = "dev_answer_graph_assistance.v1";
+    /**
+     * CHAOS-3660 §8(b)/(c)/(d). Web-facing degradation-state vocabulary for
+     * graph-assisted Ask Dev routing (the CHAOS-3502 wave). Reserved fresh
+     * here because the module that owns it on the feature branch
+     * (``graph_routing_policy.py``) has not landed on ``main`` yet -- see
+     * that module's own docstring there for the full derivation (it is
+     * explicitly NOT an independent source of truth: composed from the org
+     * entitlement decision, the graph query's transport-level outcome, and
+     * the packet's own truncation/staleness disclosure). When that module
+     * lands on ``main``, this definition must be reconciled to it as the
+     * single source of truth, not kept as a second, independently-drifting
+     * copy.
+     */
+    export type GraphAssistedAvailability =
+        "enabled" | "unavailable" | "stale" | "lagging" | "truncated" | "fallback";
+
+    /**
+     * CHAOS-3660 §8(b)/(c)/(d). Everything the graph route (CHAOS-3502
+     * wave) contributed to an answer, in one namespace. ``cohort``,
+     * ``ranked_drivers``, ``evidence_lineage``, and ``limitations`` are
+     * populated only when ``state`` reflects a completed, cohort-shaped
+     * answer; ``None``/empty otherwise. Schema-only on ``main`` today -- see
+     * ``DevAnswer.graph_assisted``'s own docstring.
+     */
+    export interface DevAnswerGraphAssistance {
+        as_of: AsOf;
+        cohort?: DevAnswerCohortSlot | null;
+        evidence_lineage?: EvidenceLineage;
+        limitations?: Limitations;
+        ranked_drivers?: RankedDrivers;
+        schema_version: SchemaVersion;
+        state: GraphAssistedAvailability;
+    }
+    /**
+     * CHAOS-3660 §8(d). Deliberately narrower than v2's ``DevSubjectSet``:
+     * v1's ``DevScope``/``DirectScope`` is single-subject shaped and has
+     * nowhere else to represent a multi-entity cohort.
+     */
+    export interface DevAnswerCohortSlot {
+        cohort_complete: CohortComplete;
+        entity_kind: EntityType;
+        members: Members;
+        warnings?: Warnings;
+    }
+    /**
+     * CHAOS-3660 §8(d). One named member of a discovered cohort.
+     *
+     * Deliberately no "excluded candidate" counterpart: an excluded candidate
+     * is never named on the wire, since that would disclose a judgment about
+     * an entity nobody asked about. Disclosure of "N candidates considered,
+     * not included" rides ``DevAnswerCohortSlot.warnings`` instead -- the
+     * same mechanism v2's ``DevSubjectSet.warnings`` already uses for
+     * truncation disclosure, not a new one.
+     */
+    export interface DevAnswerCohortMember {
+        display_label: DisplayLabel;
+        entity_id: EntityId;
+        inclusion_basis: CohortDiscoveryFamily;
+    }
+    /**
+     * CHAOS-3660 §8(d). One user-safe hop label in an evidence-lineage
+     * path, e.g. ``"Team"`` -> ``"Project"`` -> ``"Pull Request"``. Content-safe
+     * by construction: ``ShortText``, never a raw graph node id or internal
+     * traversal vocabulary.
+     */
+    export interface DevAnswerLineageHop {
+        label: Label;
+    }
+    /**
+     * CHAOS-3660 §8(d). ``evidence_ref_ids`` point into the SAME answer's
+     * own ``evidence[]`` array -- see ``DevAnswer.validate_answer_invariants``
+     * below, which enforces that as a real constraint, not just a naming
+     * convention.
+     */
+    export interface DevAnswerDriverEntry {
+        contribution: Contribution;
+        evidence_ref_ids: EvidenceRefIds;
+        rank: Rank;
+    }
+}
+export type DevAnswerGraphAssistance = DevAnswerGraphAssistanceContract.DevAnswerGraphAssistance;
 export namespace DevAnswerContract {
     export type AnswerId = string;
     export type AsOf = string;
@@ -1533,6 +1960,364 @@ export namespace DevAnswerContract {
      */
     export type Evidence = DevEvidenceRef[];
     export type GeneratedAt = string;
+    export type AsOf2 = string;
+    export type CohortComplete = boolean;
+    /**
+     * @minItems 1
+     * @maxItems 25
+     */
+    export type Members = [DevAnswerCohortMember, ...DevAnswerCohortMember[]];
+    export type DisplayLabel2 = string;
+    export type EntityId2 = string;
+    /**
+     * CHAOS-3660 §8(d). The production-side classification signal for a
+     * discovered-cohort question. Reserved fresh here for the same reason as
+     * :class:`GraphAssistedAvailability` above -- the owning module
+     * (``graph_investigation_query.py``) is feature-branch-only today; must
+     * be reconciled to that module's definition when it lands on ``main``.
+     */
+    export type CohortDiscoveryFamily = "team_pressure" | "project_capacity";
+    /**
+     * @maxItems 20
+     */
+    export type Warnings =
+        | []
+        | [string]
+        | [string, string]
+        | [string, string, string]
+        | [string, string, string, string]
+        | [string, string, string, string, string]
+        | [string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string, string]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ];
+    /**
+     * @maxItems 10
+     */
+    export type EvidenceLineage =
+        | []
+        | [DevAnswerLineageHop]
+        | [DevAnswerLineageHop, DevAnswerLineageHop]
+        | [DevAnswerLineageHop, DevAnswerLineageHop, DevAnswerLineageHop]
+        | [DevAnswerLineageHop, DevAnswerLineageHop, DevAnswerLineageHop, DevAnswerLineageHop]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ];
+    export type Label = string;
+    /**
+     * @maxItems 8
+     */
+    export type Limitations =
+        | []
+        | [PacketLimitationKind]
+        | [PacketLimitationKind, PacketLimitationKind]
+        | [PacketLimitationKind, PacketLimitationKind, PacketLimitationKind]
+        | [PacketLimitationKind, PacketLimitationKind, PacketLimitationKind, PacketLimitationKind]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ];
+    /**
+     * CHAOS-3660 §8(d)/(h). Reserved fresh here for the same reason as the
+     * two enums above -- the owning module
+     * (``investigation_contract/vocabulary.py``) is feature-branch-only
+     * today; must be reconciled to that module's definition when it lands on
+     * ``main``.
+     */
+    export type PacketLimitationKind =
+        | "missing_source"
+        | "stale_source"
+        | "conflicting_evidence"
+        | "authorization_filtered"
+        | "truncated_traversal"
+        | "absent_staffing_denominator"
+        | "historical_slice_not_comparable"
+        | "interpretation_uncertainty";
+    export type Contribution = number;
+    /**
+     * @minItems 1
+     * @maxItems 10
+     */
+    export type EvidenceRefIds2 =
+        | [string]
+        | [string, string]
+        | [string, string, string]
+        | [string, string, string, string]
+        | [string, string, string, string, string]
+        | [string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string];
+    export type Rank = number;
+    /**
+     * @maxItems 25
+     */
+    export type RankedDrivers = DevAnswerDriverEntry[];
+    export type SchemaVersion3 = "dev_answer_graph_assistance.v1";
+    /**
+     * CHAOS-3660 §8(b)/(c)/(d). Web-facing degradation-state vocabulary for
+     * graph-assisted Ask Dev routing (the CHAOS-3502 wave). Reserved fresh
+     * here because the module that owns it on the feature branch
+     * (``graph_routing_policy.py``) has not landed on ``main`` yet -- see
+     * that module's own docstring there for the full derivation (it is
+     * explicitly NOT an independent source of truth: composed from the org
+     * entitlement decision, the graph query's transport-level outcome, and
+     * the packet's own truncation/staleness disclosure). When that module
+     * lands on ``main``, this definition must be reconciled to it as the
+     * single source of truth, not kept as a second, independently-drifting
+     * copy.
+     */
+    export type GraphAssistedAvailability =
+        "enabled" | "unavailable" | "stale" | "lagging" | "truncated" | "fallback";
     /**
      * @maxItems 12
      */
@@ -1651,8 +2436,8 @@ export namespace DevAnswerContract {
     /**
      * @maxItems 25
      */
-    export type EvidenceRefIds2 = string[];
-    export type Label = string;
+    export type EvidenceRefIds3 = string[];
+    export type Label1 = string;
     export type MetricID =
         | "items_completed"
         | "cycle_time_p50_hours"
@@ -1664,7 +2449,7 @@ export namespace DevAnswerContract {
         | "compounding_risk_score";
     export type MetricRefId = string;
     export type QueryVersion = string;
-    export type SchemaVersion3 = "dev_metric_ref.v1";
+    export type SchemaVersion4 = "dev_metric_ref.v1";
     export type Timestamp = string;
     export type Value = number;
     /**
@@ -2063,11 +2848,11 @@ export namespace DevAnswerContract {
         | "unresolved"
         | "forbidden_or_not_found";
     export type ResolvedAt = string;
-    export type SchemaVersion4 = "dev_scope_resolution.v1";
+    export type SchemaVersion5 = "dev_scope_resolution.v1";
     /**
      * @maxItems 20
      */
-    export type Warnings =
+    export type Warnings1 =
         | []
         | [string]
         | [string, string]
@@ -2242,7 +3027,7 @@ export namespace DevAnswerContract {
               string,
               string,
           ];
-    export type SchemaVersion5 = "dev_answer.v1";
+    export type SchemaVersion6 = "dev_answer.v1";
     export type AnswerStatus =
         "complete" | "partial" | "degraded" | "insufficient_evidence" | "refused" | "error";
     /**
@@ -2267,7 +3052,7 @@ export namespace DevAnswerContract {
     /**
      * @maxItems 20
      */
-    export type Warnings1 =
+    export type Warnings2 =
         | []
         | [string]
         | [string, string]
@@ -2453,14 +3238,15 @@ export namespace DevAnswerContract {
         direct_summary: DirectSummary;
         evidence?: Evidence;
         generated_at: GeneratedAt;
+        graph_assisted?: DevAnswerGraphAssistance | null;
         metrics?: Metrics;
         model: DevModelMetadata;
         resolved_scope: DevScopeResolution;
-        schema_version: SchemaVersion5;
+        schema_version: SchemaVersion6;
         status: AnswerStatus;
         suggested_follow_up_questions?: SuggestedFollowUpQuestions;
         versions: DevContractVersions;
-        warnings?: Warnings1;
+        warnings?: Warnings2;
     }
     export interface DevClaim {
         claim_id: ClaimId;
@@ -2551,6 +3337,69 @@ export namespace DevAnswerContract {
         internal_path?: InternalPath;
         source_url?: SourceUrl;
     }
+    /**
+     * CHAOS-3660 §8(b)/(c)/(d). Everything the graph route (CHAOS-3502
+     * wave) contributed to an answer, in one namespace. ``cohort``,
+     * ``ranked_drivers``, ``evidence_lineage``, and ``limitations`` are
+     * populated only when ``state`` reflects a completed, cohort-shaped
+     * answer; ``None``/empty otherwise. Schema-only on ``main`` today -- see
+     * ``DevAnswer.graph_assisted``'s own docstring.
+     */
+    export interface DevAnswerGraphAssistance {
+        as_of: AsOf2;
+        cohort?: DevAnswerCohortSlot | null;
+        evidence_lineage?: EvidenceLineage;
+        limitations?: Limitations;
+        ranked_drivers?: RankedDrivers;
+        schema_version: SchemaVersion3;
+        state: GraphAssistedAvailability;
+    }
+    /**
+     * CHAOS-3660 §8(d). Deliberately narrower than v2's ``DevSubjectSet``:
+     * v1's ``DevScope``/``DirectScope`` is single-subject shaped and has
+     * nowhere else to represent a multi-entity cohort.
+     */
+    export interface DevAnswerCohortSlot {
+        cohort_complete: CohortComplete;
+        entity_kind: EntityType;
+        members: Members;
+        warnings?: Warnings;
+    }
+    /**
+     * CHAOS-3660 §8(d). One named member of a discovered cohort.
+     *
+     * Deliberately no "excluded candidate" counterpart: an excluded candidate
+     * is never named on the wire, since that would disclose a judgment about
+     * an entity nobody asked about. Disclosure of "N candidates considered,
+     * not included" rides ``DevAnswerCohortSlot.warnings`` instead -- the
+     * same mechanism v2's ``DevSubjectSet.warnings`` already uses for
+     * truncation disclosure, not a new one.
+     */
+    export interface DevAnswerCohortMember {
+        display_label: DisplayLabel2;
+        entity_id: EntityId2;
+        inclusion_basis: CohortDiscoveryFamily;
+    }
+    /**
+     * CHAOS-3660 §8(d). One user-safe hop label in an evidence-lineage
+     * path, e.g. ``"Team"`` -> ``"Project"`` -> ``"Pull Request"``. Content-safe
+     * by construction: ``ShortText``, never a raw graph node id or internal
+     * traversal vocabulary.
+     */
+    export interface DevAnswerLineageHop {
+        label: Label;
+    }
+    /**
+     * CHAOS-3660 §8(d). ``evidence_ref_ids`` point into the SAME answer's
+     * own ``evidence[]`` array -- see ``DevAnswer.validate_answer_invariants``
+     * below, which enforces that as a real constraint, not just a naming
+     * convention.
+     */
+    export interface DevAnswerDriverEntry {
+        contribution: Contribution;
+        evidence_ref_ids: EvidenceRefIds2;
+        rank: Rank;
+    }
     export interface DevMetricRef {
         aggregation: Aggregation;
         comparison_value?: ComparisonValue;
@@ -2560,14 +3409,14 @@ export namespace DevAnswerContract {
         definition_version: DefinitionVersion;
         dimensions?: Dimensions;
         display_precision: DisplayPrecision;
-        evidence_ref_ids?: EvidenceRefIds2;
+        evidence_ref_ids?: EvidenceRefIds3;
         freshness: FreshnessState;
-        label: Label;
+        label: Label1;
         metric_id: MetricID;
         metric_ref_id: MetricRefId;
         query_version: QueryVersion;
         resolved_scope: DevScope;
-        schema_version: SchemaVersion3;
+        schema_version: SchemaVersion4;
         series?: Series;
         source_version: SourceVersion1;
         unit: Unit;
@@ -2591,8 +3440,8 @@ export namespace DevAnswerContract {
         requested_scope: DevScope;
         resolved_at: ResolvedAt;
         resolved_scope?: DevScope | null;
-        schema_version: SchemaVersion4;
-        warnings?: Warnings;
+        schema_version: SchemaVersion5;
+        warnings?: Warnings1;
     }
     export interface DevDisambiguationCandidate {
         entity_ref: DevEntityRef;
@@ -5359,6 +6208,364 @@ export namespace DevConversationTranscriptContract {
      */
     export type Evidence = DevEvidenceRef[];
     export type GeneratedAt = string;
+    export type AsOf2 = string;
+    export type CohortComplete = boolean;
+    /**
+     * @minItems 1
+     * @maxItems 25
+     */
+    export type Members = [DevAnswerCohortMember, ...DevAnswerCohortMember[]];
+    export type DisplayLabel2 = string;
+    export type EntityId2 = string;
+    /**
+     * CHAOS-3660 §8(d). The production-side classification signal for a
+     * discovered-cohort question. Reserved fresh here for the same reason as
+     * :class:`GraphAssistedAvailability` above -- the owning module
+     * (``graph_investigation_query.py``) is feature-branch-only today; must
+     * be reconciled to that module's definition when it lands on ``main``.
+     */
+    export type CohortDiscoveryFamily = "team_pressure" | "project_capacity";
+    /**
+     * @maxItems 20
+     */
+    export type Warnings =
+        | []
+        | [string]
+        | [string, string]
+        | [string, string, string]
+        | [string, string, string, string]
+        | [string, string, string, string, string]
+        | [string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string, string]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ];
+    /**
+     * @maxItems 10
+     */
+    export type EvidenceLineage =
+        | []
+        | [DevAnswerLineageHop]
+        | [DevAnswerLineageHop, DevAnswerLineageHop]
+        | [DevAnswerLineageHop, DevAnswerLineageHop, DevAnswerLineageHop]
+        | [DevAnswerLineageHop, DevAnswerLineageHop, DevAnswerLineageHop, DevAnswerLineageHop]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ];
+    export type Label = string;
+    /**
+     * @maxItems 8
+     */
+    export type Limitations =
+        | []
+        | [PacketLimitationKind]
+        | [PacketLimitationKind, PacketLimitationKind]
+        | [PacketLimitationKind, PacketLimitationKind, PacketLimitationKind]
+        | [PacketLimitationKind, PacketLimitationKind, PacketLimitationKind, PacketLimitationKind]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ];
+    /**
+     * CHAOS-3660 §8(d)/(h). Reserved fresh here for the same reason as the
+     * two enums above -- the owning module
+     * (``investigation_contract/vocabulary.py``) is feature-branch-only
+     * today; must be reconciled to that module's definition when it lands on
+     * ``main``.
+     */
+    export type PacketLimitationKind =
+        | "missing_source"
+        | "stale_source"
+        | "conflicting_evidence"
+        | "authorization_filtered"
+        | "truncated_traversal"
+        | "absent_staffing_denominator"
+        | "historical_slice_not_comparable"
+        | "interpretation_uncertainty";
+    export type Contribution = number;
+    /**
+     * @minItems 1
+     * @maxItems 10
+     */
+    export type EvidenceRefIds2 =
+        | [string]
+        | [string, string]
+        | [string, string, string]
+        | [string, string, string, string]
+        | [string, string, string, string, string]
+        | [string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string];
+    export type Rank = number;
+    /**
+     * @maxItems 25
+     */
+    export type RankedDrivers = DevAnswerDriverEntry[];
+    export type SchemaVersion3 = "dev_answer_graph_assistance.v1";
+    /**
+     * CHAOS-3660 §8(b)/(c)/(d). Web-facing degradation-state vocabulary for
+     * graph-assisted Ask Dev routing (the CHAOS-3502 wave). Reserved fresh
+     * here because the module that owns it on the feature branch
+     * (``graph_routing_policy.py``) has not landed on ``main`` yet -- see
+     * that module's own docstring there for the full derivation (it is
+     * explicitly NOT an independent source of truth: composed from the org
+     * entitlement decision, the graph query's transport-level outcome, and
+     * the packet's own truncation/staleness disclosure). When that module
+     * lands on ``main``, this definition must be reconciled to it as the
+     * single source of truth, not kept as a second, independently-drifting
+     * copy.
+     */
+    export type GraphAssistedAvailability =
+        "enabled" | "unavailable" | "stale" | "lagging" | "truncated" | "fallback";
     /**
      * @maxItems 12
      */
@@ -5477,8 +6684,8 @@ export namespace DevConversationTranscriptContract {
     /**
      * @maxItems 25
      */
-    export type EvidenceRefIds2 = string[];
-    export type Label = string;
+    export type EvidenceRefIds3 = string[];
+    export type Label1 = string;
     export type MetricID =
         | "items_completed"
         | "cycle_time_p50_hours"
@@ -5490,7 +6697,7 @@ export namespace DevConversationTranscriptContract {
         | "compounding_risk_score";
     export type MetricRefId = string;
     export type QueryVersion = string;
-    export type SchemaVersion3 = "dev_metric_ref.v1";
+    export type SchemaVersion4 = "dev_metric_ref.v1";
     export type Timestamp = string;
     export type Value = number;
     /**
@@ -5889,11 +7096,11 @@ export namespace DevConversationTranscriptContract {
         | "unresolved"
         | "forbidden_or_not_found";
     export type ResolvedAt = string;
-    export type SchemaVersion4 = "dev_scope_resolution.v1";
+    export type SchemaVersion5 = "dev_scope_resolution.v1";
     /**
      * @maxItems 20
      */
-    export type Warnings =
+    export type Warnings1 =
         | []
         | [string]
         | [string, string]
@@ -6068,7 +7275,7 @@ export namespace DevConversationTranscriptContract {
               string,
               string,
           ];
-    export type SchemaVersion5 = "dev_answer.v1";
+    export type SchemaVersion6 = "dev_answer.v1";
     export type AnswerStatus =
         "complete" | "partial" | "degraded" | "insufficient_evidence" | "refused" | "error";
     /**
@@ -6093,7 +7300,7 @@ export namespace DevConversationTranscriptContract {
     /**
      * @maxItems 20
      */
-    export type Warnings1 =
+    export type Warnings2 =
         | []
         | [string]
         | [string, string]
@@ -6288,13 +7495,13 @@ export namespace DevConversationTranscriptContract {
         | "refused"
         | "failed"
         | "cancelled";
-    export type SchemaVersion6 = "dev_transcript_entry.v1";
+    export type SchemaVersion7 = "dev_transcript_entry.v1";
     /**
      * @maxItems 100
      */
     export type Items = DevTranscriptEntry[];
     export type NextCursor = string | null;
-    export type SchemaVersion7 = "dev_conversation_transcript.v1";
+    export type SchemaVersion8 = "dev_conversation_transcript.v1";
 
     /**
      * A bounded page from one retained, owned canonical conversation.
@@ -6303,7 +7510,7 @@ export namespace DevConversationTranscriptContract {
         conversation_id: ConversationId;
         items?: Items;
         next_cursor?: NextCursor;
-        schema_version: SchemaVersion7;
+        schema_version: SchemaVersion8;
     }
     /**
      * One safe persisted turn artifact in the canonical conversation history.
@@ -6317,7 +7524,7 @@ export namespace DevConversationTranscriptContract {
         role: Role;
         run_id: RunId;
         run_state: RunState;
-        schema_version: SchemaVersion6;
+        schema_version: SchemaVersion7;
         scope?: DevScope | null;
     }
     export interface DevAnswer {
@@ -6330,14 +7537,15 @@ export namespace DevConversationTranscriptContract {
         direct_summary: DirectSummary;
         evidence?: Evidence;
         generated_at: GeneratedAt;
+        graph_assisted?: DevAnswerGraphAssistance | null;
         metrics?: Metrics;
         model: DevModelMetadata;
         resolved_scope: DevScopeResolution;
-        schema_version: SchemaVersion5;
+        schema_version: SchemaVersion6;
         status: AnswerStatus;
         suggested_follow_up_questions?: SuggestedFollowUpQuestions;
         versions: DevContractVersions;
-        warnings?: Warnings1;
+        warnings?: Warnings2;
     }
     export interface DevClaim {
         claim_id: ClaimId;
@@ -6428,6 +7636,69 @@ export namespace DevConversationTranscriptContract {
         internal_path?: InternalPath;
         source_url?: SourceUrl;
     }
+    /**
+     * CHAOS-3660 §8(b)/(c)/(d). Everything the graph route (CHAOS-3502
+     * wave) contributed to an answer, in one namespace. ``cohort``,
+     * ``ranked_drivers``, ``evidence_lineage``, and ``limitations`` are
+     * populated only when ``state`` reflects a completed, cohort-shaped
+     * answer; ``None``/empty otherwise. Schema-only on ``main`` today -- see
+     * ``DevAnswer.graph_assisted``'s own docstring.
+     */
+    export interface DevAnswerGraphAssistance {
+        as_of: AsOf2;
+        cohort?: DevAnswerCohortSlot | null;
+        evidence_lineage?: EvidenceLineage;
+        limitations?: Limitations;
+        ranked_drivers?: RankedDrivers;
+        schema_version: SchemaVersion3;
+        state: GraphAssistedAvailability;
+    }
+    /**
+     * CHAOS-3660 §8(d). Deliberately narrower than v2's ``DevSubjectSet``:
+     * v1's ``DevScope``/``DirectScope`` is single-subject shaped and has
+     * nowhere else to represent a multi-entity cohort.
+     */
+    export interface DevAnswerCohortSlot {
+        cohort_complete: CohortComplete;
+        entity_kind: EntityType;
+        members: Members;
+        warnings?: Warnings;
+    }
+    /**
+     * CHAOS-3660 §8(d). One named member of a discovered cohort.
+     *
+     * Deliberately no "excluded candidate" counterpart: an excluded candidate
+     * is never named on the wire, since that would disclose a judgment about
+     * an entity nobody asked about. Disclosure of "N candidates considered,
+     * not included" rides ``DevAnswerCohortSlot.warnings`` instead -- the
+     * same mechanism v2's ``DevSubjectSet.warnings`` already uses for
+     * truncation disclosure, not a new one.
+     */
+    export interface DevAnswerCohortMember {
+        display_label: DisplayLabel2;
+        entity_id: EntityId2;
+        inclusion_basis: CohortDiscoveryFamily;
+    }
+    /**
+     * CHAOS-3660 §8(d). One user-safe hop label in an evidence-lineage
+     * path, e.g. ``"Team"`` -> ``"Project"`` -> ``"Pull Request"``. Content-safe
+     * by construction: ``ShortText``, never a raw graph node id or internal
+     * traversal vocabulary.
+     */
+    export interface DevAnswerLineageHop {
+        label: Label;
+    }
+    /**
+     * CHAOS-3660 §8(d). ``evidence_ref_ids`` point into the SAME answer's
+     * own ``evidence[]`` array -- see ``DevAnswer.validate_answer_invariants``
+     * below, which enforces that as a real constraint, not just a naming
+     * convention.
+     */
+    export interface DevAnswerDriverEntry {
+        contribution: Contribution;
+        evidence_ref_ids: EvidenceRefIds2;
+        rank: Rank;
+    }
     export interface DevMetricRef {
         aggregation: Aggregation;
         comparison_value?: ComparisonValue;
@@ -6437,14 +7708,14 @@ export namespace DevConversationTranscriptContract {
         definition_version: DefinitionVersion;
         dimensions?: Dimensions;
         display_precision: DisplayPrecision;
-        evidence_ref_ids?: EvidenceRefIds2;
+        evidence_ref_ids?: EvidenceRefIds3;
         freshness: FreshnessState;
-        label: Label;
+        label: Label1;
         metric_id: MetricID;
         metric_ref_id: MetricRefId;
         query_version: QueryVersion;
         resolved_scope: DevScope;
-        schema_version: SchemaVersion3;
+        schema_version: SchemaVersion4;
         series?: Series;
         source_version: SourceVersion1;
         unit: Unit;
@@ -6468,8 +7739,8 @@ export namespace DevConversationTranscriptContract {
         requested_scope: DevScope;
         resolved_at: ResolvedAt;
         resolved_scope?: DevScope | null;
-        schema_version: SchemaVersion4;
-        warnings?: Warnings;
+        schema_version: SchemaVersion5;
+        warnings?: Warnings1;
     }
     export interface DevDisambiguationCandidate {
         entity_ref: DevEntityRef;
@@ -15150,6 +16421,364 @@ export namespace DevStreamEventContract {
      */
     export type Evidence = DevEvidenceRef[];
     export type GeneratedAt = string;
+    export type AsOf2 = string;
+    export type CohortComplete = boolean;
+    /**
+     * @minItems 1
+     * @maxItems 25
+     */
+    export type Members = [DevAnswerCohortMember, ...DevAnswerCohortMember[]];
+    export type DisplayLabel2 = string;
+    export type EntityId2 = string;
+    /**
+     * CHAOS-3660 §8(d). The production-side classification signal for a
+     * discovered-cohort question. Reserved fresh here for the same reason as
+     * :class:`GraphAssistedAvailability` above -- the owning module
+     * (``graph_investigation_query.py``) is feature-branch-only today; must
+     * be reconciled to that module's definition when it lands on ``main``.
+     */
+    export type CohortDiscoveryFamily = "team_pressure" | "project_capacity";
+    /**
+     * @maxItems 20
+     */
+    export type Warnings =
+        | []
+        | [string]
+        | [string, string]
+        | [string, string, string]
+        | [string, string, string, string]
+        | [string, string, string, string, string]
+        | [string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string, string]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ]
+        | [
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+              string,
+          ];
+    /**
+     * @maxItems 10
+     */
+    export type EvidenceLineage =
+        | []
+        | [DevAnswerLineageHop]
+        | [DevAnswerLineageHop, DevAnswerLineageHop]
+        | [DevAnswerLineageHop, DevAnswerLineageHop, DevAnswerLineageHop]
+        | [DevAnswerLineageHop, DevAnswerLineageHop, DevAnswerLineageHop, DevAnswerLineageHop]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ]
+        | [
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+              DevAnswerLineageHop,
+          ];
+    export type Label = string;
+    /**
+     * @maxItems 8
+     */
+    export type Limitations =
+        | []
+        | [PacketLimitationKind]
+        | [PacketLimitationKind, PacketLimitationKind]
+        | [PacketLimitationKind, PacketLimitationKind, PacketLimitationKind]
+        | [PacketLimitationKind, PacketLimitationKind, PacketLimitationKind, PacketLimitationKind]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ]
+        | [
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+              PacketLimitationKind,
+          ];
+    /**
+     * CHAOS-3660 §8(d)/(h). Reserved fresh here for the same reason as the
+     * two enums above -- the owning module
+     * (``investigation_contract/vocabulary.py``) is feature-branch-only
+     * today; must be reconciled to that module's definition when it lands on
+     * ``main``.
+     */
+    export type PacketLimitationKind =
+        | "missing_source"
+        | "stale_source"
+        | "conflicting_evidence"
+        | "authorization_filtered"
+        | "truncated_traversal"
+        | "absent_staffing_denominator"
+        | "historical_slice_not_comparable"
+        | "interpretation_uncertainty";
+    export type Contribution = number;
+    /**
+     * @minItems 1
+     * @maxItems 10
+     */
+    export type EvidenceRefIds2 =
+        | [string]
+        | [string, string]
+        | [string, string, string]
+        | [string, string, string, string]
+        | [string, string, string, string, string]
+        | [string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string];
+    export type Rank = number;
+    /**
+     * @maxItems 25
+     */
+    export type RankedDrivers = DevAnswerDriverEntry[];
+    export type SchemaVersion3 = "dev_answer_graph_assistance.v1";
+    /**
+     * CHAOS-3660 §8(b)/(c)/(d). Web-facing degradation-state vocabulary for
+     * graph-assisted Ask Dev routing (the CHAOS-3502 wave). Reserved fresh
+     * here because the module that owns it on the feature branch
+     * (``graph_routing_policy.py``) has not landed on ``main`` yet -- see
+     * that module's own docstring there for the full derivation (it is
+     * explicitly NOT an independent source of truth: composed from the org
+     * entitlement decision, the graph query's transport-level outcome, and
+     * the packet's own truncation/staleness disclosure). When that module
+     * lands on ``main``, this definition must be reconciled to it as the
+     * single source of truth, not kept as a second, independently-drifting
+     * copy.
+     */
+    export type GraphAssistedAvailability =
+        "enabled" | "unavailable" | "stale" | "lagging" | "truncated" | "fallback";
     /**
      * @maxItems 12
      */
@@ -15268,8 +16897,8 @@ export namespace DevStreamEventContract {
     /**
      * @maxItems 25
      */
-    export type EvidenceRefIds2 = string[];
-    export type Label = string;
+    export type EvidenceRefIds3 = string[];
+    export type Label1 = string;
     export type MetricID =
         | "items_completed"
         | "cycle_time_p50_hours"
@@ -15281,7 +16910,7 @@ export namespace DevStreamEventContract {
         | "compounding_risk_score";
     export type MetricRefId = string;
     export type QueryVersion = string;
-    export type SchemaVersion3 = "dev_metric_ref.v1";
+    export type SchemaVersion4 = "dev_metric_ref.v1";
     export type Timestamp = string;
     export type Value = number;
     /**
@@ -15680,11 +17309,11 @@ export namespace DevStreamEventContract {
         | "unresolved"
         | "forbidden_or_not_found";
     export type ResolvedAt = string;
-    export type SchemaVersion4 = "dev_scope_resolution.v1";
+    export type SchemaVersion5 = "dev_scope_resolution.v1";
     /**
      * @maxItems 20
      */
-    export type Warnings =
+    export type Warnings1 =
         | []
         | [string]
         | [string, string]
@@ -15859,7 +17488,7 @@ export namespace DevStreamEventContract {
               string,
               string,
           ];
-    export type SchemaVersion5 = "dev_answer.v1";
+    export type SchemaVersion6 = "dev_answer.v1";
     export type AnswerStatus =
         "complete" | "partial" | "degraded" | "insufficient_evidence" | "refused" | "error";
     /**
@@ -15884,7 +17513,7 @@ export namespace DevStreamEventContract {
     /**
      * @maxItems 20
      */
-    export type Warnings1 =
+    export type Warnings2 =
         | []
         | [string]
         | [string, string]
@@ -16100,11 +17729,12 @@ export namespace DevStreamEventContract {
     export type RequestId = string;
     export type Retryable = boolean;
     export type SafeMessage = string;
-    export type SchemaVersion6 = "dev_error.v1";
+    export type SchemaVersion7 = "dev_error.v1";
     export type StreamEventType =
         | "run.started"
         | "scope.resolved"
         | "progress"
+        | "graph.state"
         | "answer.delta"
         | "answer.completed"
         | "warning"
@@ -16120,7 +17750,7 @@ export namespace DevStreamEventContract {
         | "checking_data_freshness"
         | "preparing_answer";
     export type RunId = string;
-    export type SchemaVersion7 = "dev_stream_event.v1";
+    export type SchemaVersion8 = "dev_stream_event.v1";
     export type Sequence = number;
     export type TerminalKind = ("answer" | "error") | null;
     export type Warning = string | null;
@@ -16130,10 +17760,11 @@ export namespace DevStreamEventContract {
         delta?: Delta;
         error?: DevError | null;
         event: StreamEventType;
+        graph_state?: DevAnswerGraphAssistance | null;
         occurred_at: OccurredAt;
         progress?: ProgressState | null;
         run_id: RunId;
-        schema_version: SchemaVersion7;
+        schema_version: SchemaVersion8;
         scope_resolution?: DevScopeResolution | null;
         sequence: Sequence;
         terminal_kind?: TerminalKind;
@@ -16149,14 +17780,15 @@ export namespace DevStreamEventContract {
         direct_summary: DirectSummary;
         evidence?: Evidence;
         generated_at: GeneratedAt;
+        graph_assisted?: DevAnswerGraphAssistance | null;
         metrics?: Metrics;
         model: DevModelMetadata;
         resolved_scope: DevScopeResolution;
-        schema_version: SchemaVersion5;
+        schema_version: SchemaVersion6;
         status: AnswerStatus;
         suggested_follow_up_questions?: SuggestedFollowUpQuestions;
         versions: DevContractVersions;
-        warnings?: Warnings1;
+        warnings?: Warnings2;
     }
     export interface DevClaim {
         claim_id: ClaimId;
@@ -16247,6 +17879,69 @@ export namespace DevStreamEventContract {
         internal_path?: InternalPath;
         source_url?: SourceUrl;
     }
+    /**
+     * CHAOS-3660 §8(b)/(c)/(d). Everything the graph route (CHAOS-3502
+     * wave) contributed to an answer, in one namespace. ``cohort``,
+     * ``ranked_drivers``, ``evidence_lineage``, and ``limitations`` are
+     * populated only when ``state`` reflects a completed, cohort-shaped
+     * answer; ``None``/empty otherwise. Schema-only on ``main`` today -- see
+     * ``DevAnswer.graph_assisted``'s own docstring.
+     */
+    export interface DevAnswerGraphAssistance {
+        as_of: AsOf2;
+        cohort?: DevAnswerCohortSlot | null;
+        evidence_lineage?: EvidenceLineage;
+        limitations?: Limitations;
+        ranked_drivers?: RankedDrivers;
+        schema_version: SchemaVersion3;
+        state: GraphAssistedAvailability;
+    }
+    /**
+     * CHAOS-3660 §8(d). Deliberately narrower than v2's ``DevSubjectSet``:
+     * v1's ``DevScope``/``DirectScope`` is single-subject shaped and has
+     * nowhere else to represent a multi-entity cohort.
+     */
+    export interface DevAnswerCohortSlot {
+        cohort_complete: CohortComplete;
+        entity_kind: EntityType;
+        members: Members;
+        warnings?: Warnings;
+    }
+    /**
+     * CHAOS-3660 §8(d). One named member of a discovered cohort.
+     *
+     * Deliberately no "excluded candidate" counterpart: an excluded candidate
+     * is never named on the wire, since that would disclose a judgment about
+     * an entity nobody asked about. Disclosure of "N candidates considered,
+     * not included" rides ``DevAnswerCohortSlot.warnings`` instead -- the
+     * same mechanism v2's ``DevSubjectSet.warnings`` already uses for
+     * truncation disclosure, not a new one.
+     */
+    export interface DevAnswerCohortMember {
+        display_label: DisplayLabel2;
+        entity_id: EntityId2;
+        inclusion_basis: CohortDiscoveryFamily;
+    }
+    /**
+     * CHAOS-3660 §8(d). One user-safe hop label in an evidence-lineage
+     * path, e.g. ``"Team"`` -> ``"Project"`` -> ``"Pull Request"``. Content-safe
+     * by construction: ``ShortText``, never a raw graph node id or internal
+     * traversal vocabulary.
+     */
+    export interface DevAnswerLineageHop {
+        label: Label;
+    }
+    /**
+     * CHAOS-3660 §8(d). ``evidence_ref_ids`` point into the SAME answer's
+     * own ``evidence[]`` array -- see ``DevAnswer.validate_answer_invariants``
+     * below, which enforces that as a real constraint, not just a naming
+     * convention.
+     */
+    export interface DevAnswerDriverEntry {
+        contribution: Contribution;
+        evidence_ref_ids: EvidenceRefIds2;
+        rank: Rank;
+    }
     export interface DevMetricRef {
         aggregation: Aggregation;
         comparison_value?: ComparisonValue;
@@ -16256,14 +17951,14 @@ export namespace DevStreamEventContract {
         definition_version: DefinitionVersion;
         dimensions?: Dimensions;
         display_precision: DisplayPrecision;
-        evidence_ref_ids?: EvidenceRefIds2;
+        evidence_ref_ids?: EvidenceRefIds3;
         freshness: FreshnessState;
-        label: Label;
+        label: Label1;
         metric_id: MetricID;
         metric_ref_id: MetricRefId;
         query_version: QueryVersion;
         resolved_scope: DevScope;
-        schema_version: SchemaVersion3;
+        schema_version: SchemaVersion4;
         series?: Series;
         source_version: SourceVersion1;
         unit: Unit;
@@ -16287,8 +17982,8 @@ export namespace DevStreamEventContract {
         requested_scope: DevScope;
         resolved_at: ResolvedAt;
         resolved_scope?: DevScope | null;
-        schema_version: SchemaVersion4;
-        warnings?: Warnings;
+        schema_version: SchemaVersion5;
+        warnings?: Warnings1;
     }
     export interface DevDisambiguationCandidate {
         entity_ref: DevEntityRef;
@@ -16308,7 +18003,7 @@ export namespace DevStreamEventContract {
         request_id: RequestId;
         retryable: Retryable;
         safe_message: SafeMessage;
-        schema_version: SchemaVersion6;
+        schema_version: SchemaVersion7;
     }
 }
 export type DevStreamEvent = DevStreamEventContract.DevStreamEvent;
