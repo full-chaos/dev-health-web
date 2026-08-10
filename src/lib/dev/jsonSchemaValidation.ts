@@ -1,5 +1,23 @@
 type JsonSchema = Readonly<Record<string, unknown>>;
 
+/**
+ * A property the server sent that this pinned schema does not declare.
+ *
+ * Carries the KEY NAME and its location only -- never the value. An unknown
+ * property is by definition content this build cannot reason about, so copying
+ * it anywhere (a log, a breadcrumb, telemetry) risks moving payload data
+ * somewhere it was never cleared for. The name is enough to tell us a re-pin is
+ * due; the value is never needed to know that.
+ */
+export type UnknownContractProperty = Readonly<{
+    /** JSON-pointer-ish path of the OBJECT carrying the key. "" is the root. */
+    path: string;
+    /** The undeclared key's name. */
+    key: string;
+}>;
+
+type UnknownPropertyReporter = (property: UnknownContractProperty) => void;
+
 const patternCache = new Map<string, RegExp>();
 const RFC3339_DATE_TIME =
     /^(\d{4})-(\d{2})-(\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(?:[Zz]|[+-](\d{2}):(\d{2}))$/;
@@ -85,14 +103,22 @@ function validateString(value: string, schema: JsonSchema): boolean {
     return schema.format !== "date-time" || isDateTime(value);
 }
 
-function validateNode(value: unknown, schema: JsonSchema, root: JsonSchema): boolean {
+function validateNode(
+    value: unknown,
+    schema: JsonSchema,
+    root: JsonSchema,
+    path: string,
+    onUnknownProperty: UnknownPropertyReporter | undefined,
+): boolean {
     if (schema.$ref !== undefined) {
         const resolved = localRef(root, schema.$ref);
-        return resolved !== null && validateNode(value, resolved, root);
+        return resolved !== null && validateNode(value, resolved, root, path, onUnknownProperty);
     }
     if (Array.isArray(schema.anyOf)) {
         return schema.anyOf.some(
-            (candidate) => isRecord(candidate) && validateNode(value, candidate, root),
+            (candidate) =>
+                isRecord(candidate) &&
+                validateNode(value, candidate, root, path, onUnknownProperty),
         );
     }
     if (schema.const !== undefined && !Object.is(value, schema.const)) return false;
@@ -113,7 +139,12 @@ function validateNode(value: unknown, schema: JsonSchema, root: JsonSchema): boo
         if (typeof schema.minItems === "number" && value.length < schema.minItems) return false;
         if (typeof schema.maxItems === "number" && value.length > schema.maxItems) return false;
         const itemSchema = isRecord(schema.items) ? schema.items : null;
-        if (itemSchema && !value.every((item) => validateNode(item, itemSchema, root))) {
+        if (
+            itemSchema &&
+            !value.every((item, index) =>
+                validateNode(item, itemSchema, root, `${path}/${index}`, onUnknownProperty),
+            )
+        ) {
             return false;
         }
     }
@@ -125,13 +156,37 @@ function validateNode(value: unknown, schema: JsonSchema, root: JsonSchema): boo
         ) {
             return false;
         }
-        if (schema.additionalProperties === false) {
-            if (Object.keys(value).some((key) => !Object.hasOwn(properties, key))) return false;
+        // FORWARD COMPATIBILITY (must-ignore).
+        //
+        // Every object in the pinned Ask Dev contract sets
+        // `additionalProperties: false`, and this validator used to REJECT any
+        // undeclared key. Combined with `assertStreamEvent`/`assertAnswer`
+        // throwing on a failed validation, that made every additive server
+        // change a run-killing break for a web build pinned to an older
+        // commit -- despite the contract manifest declaring
+        // "additive-within-v1". A reader saw a failed run rather than the
+        // canonical fallback.
+        //
+        // Undeclared keys are now IGNORED for parsing and REPORTED instead, so
+        // the tripwire survives as observability rather than an outage. Every
+        // other constraint stays strict: a declared field with the wrong shape,
+        // a missing required field, or a bad enum value still fails.
+        if (schema.additionalProperties === false && onUnknownProperty) {
+            for (const key of Object.keys(value)) {
+                if (!Object.hasOwn(properties, key)) onUnknownProperty({ path, key });
+            }
         }
         for (const [key, propertySchema] of Object.entries(properties)) {
             if (
                 Object.hasOwn(value, key) &&
-                (!isRecord(propertySchema) || !validateNode(value[key], propertySchema, root))
+                (!isRecord(propertySchema) ||
+                    !validateNode(
+                        value[key],
+                        propertySchema,
+                        root,
+                        `${path}/${key}`,
+                        onUnknownProperty,
+                    ))
             ) {
                 return false;
             }
@@ -140,7 +195,18 @@ function validateNode(value: unknown, schema: JsonSchema, root: JsonSchema): boo
     return true;
 }
 
-/** CSP-safe validation for the pinned browser contract subset; performs no code generation. */
-export function validatePinnedJsonSchema(value: unknown, schema: unknown): boolean {
-    return isRecord(schema) && validateNode(value, schema, schema);
+/**
+ * CSP-safe validation for the pinned browser contract subset; performs no code
+ * generation.
+ *
+ * Undeclared properties do not fail validation -- see the must-ignore note in
+ * `validateNode`. Pass `onUnknownProperty` to observe them; omit it and they
+ * are ignored silently, which is why the client always passes one.
+ */
+export function validatePinnedJsonSchema(
+    value: unknown,
+    schema: unknown,
+    onUnknownProperty?: UnknownPropertyReporter,
+): boolean {
+    return isRecord(schema) && validateNode(value, schema, schema, "", onUnknownProperty);
 }

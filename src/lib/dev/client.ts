@@ -18,6 +18,7 @@ import type {
     DevMessageRequest,
     DevStreamEvent,
 } from "./generated";
+import { reportUnknownEnumValue, unknownPropertyReporter } from "./contractDrift";
 import { validatePinnedJsonSchema } from "./jsonSchemaValidation";
 
 export type DevWebError = Readonly<{
@@ -95,20 +96,93 @@ export const initialDevConversationStreamState: DevConversationStreamState = Obj
     warnings: [],
 });
 
-const validateAnswerSchema = (value: unknown) => validatePinnedJsonSchema(value, answerSchema);
+const validateAnswerSchema = (value: unknown) =>
+    validatePinnedJsonSchema(value, answerSchema, unknownPropertyReporter("dev_answer.v1"));
 const validateCapabilitiesSchema = (value: unknown) =>
-    validatePinnedJsonSchema(value, capabilitiesSchema);
+    validatePinnedJsonSchema(
+        value,
+        capabilitiesSchema,
+        unknownPropertyReporter("dev_capabilities.v1"),
+    );
 const validateConversationSchema = (value: unknown) =>
-    validatePinnedJsonSchema(value, conversationSchema);
+    validatePinnedJsonSchema(
+        value,
+        conversationSchema,
+        unknownPropertyReporter("dev_conversation.v1"),
+    );
 const validateConversationSummarySchema = (value: unknown) =>
-    validatePinnedJsonSchema(value, conversationSummarySchema);
+    validatePinnedJsonSchema(
+        value,
+        conversationSummarySchema,
+        unknownPropertyReporter("dev_conversation_summary.v1"),
+    );
 const validateConversationTranscriptSchema = (value: unknown) =>
-    validatePinnedJsonSchema(value, conversationTranscriptSchema);
+    validatePinnedJsonSchema(
+        value,
+        conversationTranscriptSchema,
+        unknownPropertyReporter("dev_conversation_transcript.v1"),
+    );
 const validateEvidenceExpansionSchema = (value: unknown) =>
-    validatePinnedJsonSchema(value, evidenceExpansionSchema);
-const validateFeedbackSchema = (value: unknown) => validatePinnedJsonSchema(value, feedbackSchema);
+    validatePinnedJsonSchema(
+        value,
+        evidenceExpansionSchema,
+        unknownPropertyReporter("dev_evidence_expansion.v1"),
+    );
 const validateStreamEventSchema = (value: unknown) =>
-    validatePinnedJsonSchema(value, streamEventSchema);
+    validatePinnedJsonSchema(
+        value,
+        streamEventSchema,
+        unknownPropertyReporter("dev_stream_event.v1"),
+    );
+
+/**
+ * The stream event names this build understands, read from the pinned schema
+ * rather than restated, so the tolerance below can never disagree with what the
+ * validator accepts.
+ */
+const KNOWN_STREAM_EVENTS: ReadonlySet<string> = new Set(
+    ((streamEventSchema as { $defs?: { StreamEventType?: { enum?: unknown } } }).$defs
+        ?.StreamEventType?.enum ?? []) as readonly string[],
+);
+
+/**
+ * `dev_feedback.v1` with the `reasons` member list relaxed.
+ *
+ * A rating echoed back carrying a reason this build's enum lacks is a stale pin,
+ * not a corrupt response -- and rejecting it would fail a submission the server
+ * accepted and stored. Every other feedback constraint (required fields, item
+ * bounds, comment length) stays enforced; unrecognised members are reported.
+ */
+const feedbackSchemaRelaxedReasons = (() => {
+    const clone = structuredClone(feedbackSchema) as {
+        properties?: { reasons?: { items?: { enum?: unknown } } };
+    };
+    delete clone.properties?.reasons?.items?.enum;
+    return clone;
+})();
+
+const KNOWN_FEEDBACK_REASONS: ReadonlySet<string> = new Set(
+    ((feedbackSchema as { properties?: { reasons?: { items?: { enum?: unknown } } } }).properties
+        ?.reasons?.items?.enum ?? []) as readonly string[],
+);
+
+const validateFeedbackSchema = (value: unknown) => {
+    const valid = validatePinnedJsonSchema(
+        value,
+        feedbackSchemaRelaxedReasons,
+        unknownPropertyReporter("dev_feedback.v1"),
+    );
+    if (!valid) return false;
+    const reasons = (value as { reasons?: unknown }).reasons;
+    if (Array.isArray(reasons)) {
+        for (const member of reasons) {
+            if (typeof member === "string" && !KNOWN_FEEDBACK_REASONS.has(member)) {
+                reportUnknownEnumValue("dev_feedback.v1", "/reasons", member);
+            }
+        }
+    }
+    return true;
+};
 
 function fromStreamError(event: DevStreamEvent): DevWebError | null {
     if (!event.error) return null;
@@ -289,6 +363,22 @@ function decodeFrame(frame: string): { eventName: string; value: unknown } {
     }
 }
 
+/**
+ * Whether a decoded frame names an event this build does not understand.
+ *
+ * Deliberately narrow: the frame must still be an object carrying a STRING
+ * event name that simply is not in the pinned vocabulary. Anything else (a
+ * non-object payload, a missing or non-string name, a name that disagrees with
+ * the SSE `event:` line) is malformed rather than merely newer, and must keep
+ * failing.
+ */
+function isUnknownStreamEvent(decoded: { eventName: string; value: unknown }): boolean {
+    if (typeof decoded.value !== "object" || decoded.value === null) return false;
+    const name = (decoded.value as { event?: unknown }).event;
+    if (typeof name !== "string" || name !== decoded.eventName) return false;
+    return !KNOWN_STREAM_EVENTS.has(name);
+}
+
 export async function consumeDevSseStream(
     response: Response,
     options: DevStreamOptions = {},
@@ -311,6 +401,28 @@ export async function consumeDevSseStream(
 
     const consumeFrame = (frame: string): void => {
         const decoded = decodeFrame(frame);
+        // FORWARD COMPATIBILITY: an event name this build does not know is a
+        // server ahead of our pin, not a corrupt stream. Ignoring it must still
+        // CONSUME its sequence number, or every later frame reads as
+        // out-of-order and the run dies for a different reason.
+        //
+        // Only tolerated once the run has properly started: a stream whose
+        // FIRST frame is unrecognised tells us nothing about the run at all, so
+        // that stays a hard failure rather than a run with no identity.
+        if (isUnknownStreamEvent(decoded)) {
+            if (runId === undefined || done) {
+                throw invalidResponse("Ask Dev stream did not start correctly.");
+            }
+            const unknown = decoded.value as { run_id?: unknown; sequence?: unknown };
+            if (unknown.sequence !== expectedSequence || unknown.run_id !== runId) {
+                throw invalidResponse("Ask Dev returned an out-of-order stream.");
+            }
+            reportUnknownEnumValue("dev_stream_event.v1", "/event", decoded.eventName);
+            expectedSequence += 1;
+            count += 1;
+            if (count > 100_000) throw invalidResponse("Ask Dev returned too many stream events.");
+            return;
+        }
         assertStreamEvent(decoded.value);
         const event = decoded.value;
         if (decoded.eventName !== event.event || done || event.sequence !== expectedSequence) {
