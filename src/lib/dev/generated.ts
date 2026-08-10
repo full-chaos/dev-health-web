@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-namespace */
-// Generated from full-chaos/dev-health-ops 6b7517364eee330efd01e1c238eb50245760a62d. Do not edit.
+// Generated from full-chaos/dev-health-ops ddafad6d0d145e44ff791f6a28c8cf98fca37e6c. Do not edit.
 export namespace DevAnswerContract {
     export type AnswerId = string;
     export type AsOf = string;
@@ -1168,6 +1168,7 @@ export namespace DevAnswerContract {
     export type SourceUrl = string | null;
     export type ObservedAt = string;
     export type Provenance = string;
+    export type RecordLocator = string | null;
     /**
      * @maxItems 20
      */
@@ -2530,6 +2531,7 @@ export namespace DevAnswerContract {
         link?: DevCitationLink | null;
         observed_at: ObservedAt;
         provenance: Provenance;
+        record_locator?: RecordLocator;
         repository_ids?: RepositoryIds;
         schema_version: SchemaVersion2;
         source_system: SourceSystem;
@@ -2609,6 +2611,7 @@ export namespace DevCapabilitiesContract {
     export type AdministratorSafeFailureReason = string | null;
     export type AgentContextRuntime = boolean;
     export type AskDev = boolean;
+    export type AskDevGraphRouting = boolean;
     export type ByoLlm = boolean;
     export type CanManage = boolean;
     export type CanRead = boolean;
@@ -2840,6 +2843,7 @@ export namespace DevCapabilitiesContract {
         administrator_safe_failure_reason?: AdministratorSafeFailureReason;
         agent_context_runtime?: AgentContextRuntime;
         ask_dev?: AskDev;
+        ask_dev_graph_routing?: AskDevGraphRouting;
         byo_llm?: ByoLlm;
         can_manage?: CanManage;
         can_read?: CanRead;
@@ -4990,6 +4994,7 @@ export namespace DevConversationTranscriptContract {
     export type SourceUrl = string | null;
     export type ObservedAt = string;
     export type Provenance = string;
+    export type RecordLocator = string | null;
     /**
      * @maxItems 20
      */
@@ -6403,6 +6408,7 @@ export namespace DevConversationTranscriptContract {
         link?: DevCitationLink | null;
         observed_at: ObservedAt;
         provenance: Provenance;
+        record_locator?: RecordLocator;
         repository_ids?: RepositoryIds;
         schema_version: SchemaVersion2;
         source_system: SourceSystem;
@@ -7444,6 +7450,7 @@ export namespace DevEvidenceExpansionContract {
     export type SourceUrl = string | null;
     export type ObservedAt = string;
     export type Provenance = string;
+    export type RecordLocator = string | null;
     /**
      * @maxItems 20
      */
@@ -7832,6 +7839,7 @@ export namespace DevEvidenceExpansionContract {
         link?: DevCitationLink | null;
         observed_at: ObservedAt;
         provenance: Provenance;
+        record_locator?: RecordLocator;
         repository_ids?: RepositoryIds;
         schema_version: SchemaVersion;
         source_system: SourceSystem;
@@ -7872,6 +7880,7 @@ export namespace DevEvidenceRefContract {
     export type SourceUrl = string | null;
     export type ObservedAt = string;
     export type Provenance = string;
+    export type RecordLocator = string | null;
     /**
      * @maxItems 20
      */
@@ -8244,6 +8253,7 @@ export namespace DevEvidenceRefContract {
         link?: DevCitationLink | null;
         observed_at: ObservedAt;
         provenance: Provenance;
+        record_locator?: RecordLocator;
         repository_ids?: RepositoryIds;
         schema_version: SchemaVersion;
         source_system: SourceSystem;
@@ -8461,6 +8471,7 @@ export namespace DevFeedbackContract {
 }
 export type DevFeedback = DevFeedbackContract.DevFeedback;
 export namespace DevMessageRequestContract {
+    export type ClientContractVersion = string | null;
     export type ClientMessageId = string;
     export type ConversationId = string | null;
     export type Question = string;
@@ -9337,6 +9348,7 @@ export namespace DevMessageRequestContract {
           ];
 
     export interface DevMessageRequest {
+        client_contract_version?: ClientContractVersion;
         client_message_id: ClientMessageId;
         conversation_id?: ConversationId;
         question: Question;
@@ -13824,6 +13836,7 @@ export namespace DevStreamEventContract {
     export type SourceUrl = string | null;
     export type ObservedAt = string;
     export type Provenance = string;
+    export type RecordLocator = string | null;
     /**
      * @maxItems 20
      */
@@ -15265,6 +15278,7 @@ export namespace DevStreamEventContract {
         link?: DevCitationLink | null;
         observed_at: ObservedAt;
         provenance: Provenance;
+        record_locator?: RecordLocator;
         repository_ids?: RepositoryIds;
         schema_version: SchemaVersion2;
         source_system: SourceSystem;
@@ -16640,6 +16654,7 @@ export namespace DevToolResultContract {
     export type SourceUrl = string | null;
     export type ObservedAt2 = string;
     export type Provenance = string;
+    export type RecordLocator = string | null;
     /**
      * @maxItems 20
      */
@@ -19093,6 +19108,7 @@ export namespace DevToolResultContract {
         link?: DevCitationLink | null;
         observed_at: ObservedAt2;
         provenance: Provenance;
+        record_locator?: RecordLocator;
         repository_ids?: RepositoryIds;
         schema_version: SchemaVersion1;
         source_system: SourceSystem1;

@@ -74,7 +74,7 @@ describe("Ask Dev generated contract boundary", () => {
         const source = readJson<SourceManifest>("source.json");
         const manifest = readJson<OpsManifest>("manifest.json");
 
-        expect(source.source_commit).toBe("6b7517364eee330efd01e1c238eb50245760a62d");
+        expect(source.source_commit).toBe("ddafad6d0d145e44ff791f6a28c8cf98fca37e6c");
         expect(manifest.schema_version).toBe("ask_dev_contract_manifest.v1");
         expect(manifest.compatibility).toBe("additive-within-v1");
         expect(manifest.contracts.map((contract) => contract.schema_version)).toEqual(
