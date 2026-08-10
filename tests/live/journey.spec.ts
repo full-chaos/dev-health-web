@@ -32,6 +32,31 @@ declare const process: { env: Record<string, string | undefined> };
 const liveGuidedOnboarding =
     process.env.LIVE_GUIDED_ONBOARDING === "true" || process.env.LIVE_GUIDED_ONBOARDING === "1";
 
+/**
+ * Every credential id this identity can currently see, asserted retrievable.
+ *
+ * Shared by the create-time existence proof and the listing test so the two
+ * cannot drift apart -- they are answering the same question ("is this row
+ * really there?") and a second copy of the response-shape handling would be a
+ * place for them to start disagreeing.
+ */
+async function listCredentialIds(
+    request: import("@playwright/test").APIRequestContext,
+    token: string,
+): Promise<readonly string[]> {
+    const res = await request.get(`${liveBackendUrl}/api/v1/admin/credentials`, {
+        headers: authHeaders(token),
+    });
+    expect(res.status(), "listing credentials failed, so existence cannot be established").toBe(
+        200,
+    );
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : ((data as { items?: unknown[] }).items ?? []);
+    return (list as Array<Record<string, unknown>>)
+        .map((entry) => (entry.id ?? entry.credential_id ?? "") as string)
+        .filter((id) => id.length > 0);
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Registration & Login (2 tests — independent, no serial needed)
 // ──────────────────────────────────────────────────────────────────────────────
@@ -222,6 +247,24 @@ test.describe("credentials journey", () => {
         const data = (await res.json()) as Record<string, unknown>;
         credentialId = (data.id ?? data.credential_id ?? "") as string;
         expect(credentialId).toBeTruthy();
+
+        // Prove the credential EXISTS server-side here, rather than inferring it
+        // from "the create call handed us an id".
+        //
+        // This is load-bearing for the next test. `POST /credentials/test`
+        // answers 404 "Credential not found" for THREE different states: the row
+        // is absent, the row carries no encrypted payload, or decrypting it
+        // failed. Without an independent existence check, a 404 there cannot be
+        // told apart from any of them, and the failure reads as a mystery. With
+        // the row confirmed present in this org's own listing first, that 404
+        // narrows to "exists but the server cannot read it".
+        const ids = await listCredentialIds(request, token);
+        expect(
+            ids,
+            "the credential the create call reported was not retrievable immediately " +
+                "afterwards -- it was never persisted, or it is not visible to the " +
+                "identity that created it",
+        ).toContain(credentialId);
     });
 
     test("POST /credentials/test → success false (fake token expected)", async ({ request }) => {
@@ -236,7 +279,22 @@ test.describe("credentials journey", () => {
         });
         // The endpoint returns 200 with success:false when credential validation runs and fails.
         // Some backend versions return 422 before validation for malformed invalid credentials.
-        expect([200, 422]).toContain(res.status());
+        //
+        // Deliberately NOT widened to accept 404. The previous test proved this
+        // credential is retrievable, so a 404 here cannot mean "no such
+        // credential" -- it means the server found the row and could not use it
+        // (empty encrypted payload, or a decrypt/parse failure, both of which ops
+        // currently reports with the same status). Accepting 404 would also
+        // silence the genuinely-missing case, which is most of what this
+        // assertion exists to catch.
+        expect(
+            [200, 422],
+            "credentials/test answered 404 for a credential proven retrievable by the " +
+                "previous test: the row exists but the server could not read it. Check the " +
+                'ops API log for "Failed to decrypt/parse integration config" -- that line ' +
+                "distinguishes a decrypt failure from an empty payload. Do not widen this " +
+                "assertion to accept 404.",
+        ).toContain(res.status());
 
         if (res.status() === 200) {
             const data = (await res.json()) as { success?: boolean };
@@ -250,15 +308,7 @@ test.describe("credentials journey", () => {
             return;
         }
 
-        const res = await request.get(`${liveBackendUrl}/api/v1/admin/credentials`, {
-            headers: authHeaders(token),
-        });
-        expect(res.status()).toBe(200);
-
-        const data = await res.json();
-        const list = Array.isArray(data) ? data : ((data as { items?: unknown[] }).items ?? []);
-        const ids = (list as Array<Record<string, unknown>>).map((c) => c.id ?? c.credential_id);
-        expect(ids).toContain(credentialId);
+        expect(await listCredentialIds(request, token)).toContain(credentialId);
     });
 
     // Best-effort cleanup
