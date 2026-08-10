@@ -509,6 +509,25 @@ describe("AskDevProvider permanent window", () => {
         await waitFor(() => expect(client.streamMessage).toHaveBeenCalledOnce());
     });
 
+    it("declares the pinned stream contract on the production message path", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "What changed?");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        await waitFor(() => expect(client.streamMessage).toHaveBeenCalledOnce());
+        expect(vi.mocked(client.streamMessage).mock.calls[0]?.[1]).toMatchObject({
+            client_contract_version: "dev_stream_event.v1",
+        });
+    });
+
     it("aborts the active stream and retries in the same conversation", async () => {
         const user = userEvent.setup();
         const client = makeClient();

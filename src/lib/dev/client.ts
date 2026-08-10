@@ -45,6 +45,14 @@ export class DevApiError extends Error {
 export type DevRequestOptions = Readonly<{ signal?: AbortSignal }>;
 export type DevStreamOptions = DevRequestOptions &
     Readonly<{ onEvent?: (event: DevStreamEvent) => void }>;
+
+/**
+ * The newest streamed contract this web pin can parse. The server uses the
+ * request declaration to decide whether it may emit additive stream members
+ * such as `graph.state`; keep the value tied to the generated v1 contract.
+ */
+export const PINNED_DEV_STREAM_CONTRACT_VERSION: DevStreamEvent["schema_version"] =
+    "dev_stream_event.v1";
 export type DevListConversationsOptions = DevRequestOptions &
     Readonly<{ cursor?: string; limit?: number }>;
 export type DevConversationTranscriptOptions = DevRequestOptions &
@@ -673,7 +681,14 @@ export function createDevApiClient(options: ClientOptions = {}): DevApiClient {
         async streamMessage(conversationId, input, streamOptions = {}) {
             const response = await request(
                 `/api/v1/dev/conversations/${encodeId(conversationId)}/messages`,
-                jsonMutation("POST", input, streamOptions.signal),
+                jsonMutation(
+                    "POST",
+                    {
+                        ...input,
+                        client_contract_version: PINNED_DEV_STREAM_CONTRACT_VERSION,
+                    },
+                    streamOptions.signal,
+                ),
             );
             return consumeDevSseStream(response, streamOptions);
         },
