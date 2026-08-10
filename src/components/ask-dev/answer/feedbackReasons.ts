@@ -80,3 +80,34 @@ export const POSITIVE_FEEDBACK_REASON: DevFeedbackReason = "useful";
 
 /** The wire cap on `comment`, mirrored so the field can bound its own input. */
 export const FEEDBACK_COMMENT_MAX_LENGTH = 2048;
+
+/**
+ * Sanctioned copy for a reason this build does not recognise.
+ *
+ * The tolerance layer accepts a reason member the pinned contract lacks rather
+ * than failing the submission (a rating the server stored must not be rejected
+ * on its way back). That acceptance would be worthless if the value then
+ * reached a reader as `wrong_cohort` -- an internal machine token on screen is
+ * exactly what the beta forbids. So the lookup below has no raw-value branch at
+ * all: an unrecognised member resolves to this phrase.
+ *
+ * Deliberately vague rather than guessing. Naming a reason we do not have copy
+ * for would be inventing a meaning; "another reason" is true of every member
+ * this build has not been taught.
+ */
+export const UNKNOWN_FEEDBACK_REASON_LABEL = "Another reason";
+
+/**
+ * Reader-facing copy for any reason value, recognised or not.
+ *
+ * The single lookup used everywhere reasons are displayed. Written as a function
+ * rather than leaving callers to index `FEEDBACK_REASON_LABELS` directly so the
+ * fallback cannot be forgotten at a future call site -- indexing the record with
+ * an unknown key yields `undefined`, and React renders that as nothing, which
+ * would silently drop a reason instead of naming it.
+ */
+export function feedbackReasonLabel(reason: string): string {
+    return Object.hasOwn(FEEDBACK_REASON_LABELS, reason)
+        ? FEEDBACK_REASON_LABELS[reason as DevFeedbackReason]
+        : UNKNOWN_FEEDBACK_REASON_LABEL;
+}

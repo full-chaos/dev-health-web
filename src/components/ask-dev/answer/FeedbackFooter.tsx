@@ -6,9 +6,9 @@ import { CTA_LABELS } from "@/lib/design/cta";
 
 import {
     FEEDBACK_COMMENT_MAX_LENGTH,
-    FEEDBACK_REASON_LABELS,
     NEGATIVE_FEEDBACK_REASONS,
     POSITIVE_FEEDBACK_REASON,
+    feedbackReasonLabel,
     type DevFeedbackReason,
 } from "./feedbackReasons";
 
@@ -136,7 +136,7 @@ export function FeedbackFooter({
                                         : "rounded-(--radius-pill) border border-(--border) px-3 py-1 text-xs text-(--text-secondary) hover:border-(--caution)/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--caution)/45 disabled:opacity-55"
                                 }
                             >
-                                {FEEDBACK_REASON_LABELS[reason]}
+                                {feedbackReasonLabel(reason)}
                             </button>
                         ))}
                     </div>
