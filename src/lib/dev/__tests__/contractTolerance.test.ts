@@ -213,8 +213,14 @@ describe("feedback echoed with a reason this pin lacks", () => {
     }
 
     it("is accepted by the client, and the unrecognised member is reported", async () => {
+        // `wrong_cohort` was this test's example of "a reason this pin lacks"
+        // -- and the re-pin that declared it (alongside five siblings) promptly
+        // falsified that premise, same as `record_locator` did above. This uses
+        // a reserved sentinel instead, so the assertion stays true across every
+        // future re-pin.
+        const undeclaredReason = "__unpinned_test_reason_sentinel";
         const feedback = structuredClone(feedbackFixture) as Record<string, unknown>;
-        feedback.reasons = ["wrong_cohort"];
+        feedback.reasons = [undeclaredReason];
         const client = clientReturning(feedback);
 
         await expect(
@@ -222,11 +228,12 @@ describe("feedback echoed with a reason this pin lacks", () => {
                 rating: "not_helpful",
                 reasons: ["incorrect"],
             }),
-        ).resolves.toMatchObject({ reasons: ["wrong_cohort"] });
+        ).resolves.toMatchObject({ reasons: [undeclaredReason] });
 
         expect(
             observedContractDrift().some(
-                (record) => record.kind === "unknown_enum_value" && record.name === "wrong_cohort",
+                (record) =>
+                    record.kind === "unknown_enum_value" && record.name === undeclaredReason,
             ),
         ).toBe(true);
     });

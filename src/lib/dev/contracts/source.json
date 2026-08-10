@@ -1,6 +1,6 @@
 {
   "schema_version": "ask_dev_web_contract_source.v1",
-  "source_commit": "ddafad6d0d145e44ff791f6a28c8cf98fca37e6c",
+  "source_commit": "9999706083eee17a60ad9c8f69ad8df50293958c",
   "files": [
     {
       "path": "examples/negative/dev_answer.v1.invalid_complete_state.json",
@@ -61,6 +61,10 @@
     {
       "path": "examples/negative/dev_evidence_ref.v1.invalid_confidence.json",
       "sha256": "90c394280673269b04e613b12d1945ac9cb4924370ebad7de9b80ab0de1ffda2"
+    },
+    {
+      "path": "examples/negative/dev_feedback.v1.unspecified_combined_with_a_specific_reason.json",
+      "sha256": "9a2bc84c5703621fbc95549c99b5cab0fa87054b1a7f355bc7100039237c86e4"
     },
     {
       "path": "examples/negative/dev_feedback.v1.unsupported_reason.json",
@@ -167,6 +171,10 @@
       "sha256": "f4e15f005ae9314210900993a791b5ab358375997f7dc28b30d4d76487101ba0"
     },
     {
+      "path": "examples/positive/dev_feedback.v1.unspecified_alone.json",
+      "sha256": "dcc828a05f8b35e522bf62b61a7be0502df2c7ffde041d084ae2494e83226522"
+    },
+    {
       "path": "examples/positive/dev_message_request.v1.json",
       "sha256": "bf3e37433e31bb6df754365523d22bcbcbdde51e5ac187d5c040805d989c2193"
     },
@@ -220,7 +228,7 @@
     },
     {
       "path": "manifest.json",
-      "sha256": "d0e546f7766188f2e14bf6159e546aaa3033e5db8ae2e0ca2beed0c86753ed90"
+      "sha256": "c18e2493189d31c07cc2c49acd6d3ad6d3e11f19b99642affe05b870448b7818"
     },
     {
       "path": "schemas/dev_answer.v1.schema.json",
@@ -260,7 +268,7 @@
     },
     {
       "path": "schemas/dev_feedback.v1.schema.json",
-      "sha256": "9c792cd80995e4e6eba066d50e495d77e0337621dffaf12fd59ed468af69b545"
+      "sha256": "f4354fbad987b827bec6a8e0aa753838361758072dc6a656e375a7ce06536185"
     },
     {
       "path": "schemas/dev_message_request.v1.schema.json",
@@ -293,6 +301,10 @@
     {
       "path": "vocabulary/internal_prose_denylist.v1.json",
       "sha256": "621ed38192bb17f3c9e9f826a3b3572c29cc8cd58865c77e9ea4ad9296990e7a"
+    },
+    {
+      "path": "vocabulary/source_health_labels.v1.json",
+      "sha256": "f141c442d84b55d59d40e5b20deba5ad810ee8d5a7c91f59c68545006d66ef7e"
     }
   ]
 }
