@@ -1,15 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { CTA_LABELS, toggleEvidenceItem } from "@/lib/design/cta";
-import type {
-    DevAnswer,
-    DevEvidenceExpansion,
-    DevEvidenceRef,
-    DevScope,
-} from "@/lib/dev/generated";
+import type { DevAnswer, DevEvidenceExpansion } from "@/lib/dev/generated";
 import {
     buildInternalTokenDenylist,
     findInternalToken,
@@ -17,14 +10,20 @@ import {
     safeCopy,
     WITHHELD_COPY,
 } from "@/lib/dev/internalTokens";
-import { formatMetricValue, formatNumber, formatPercent, formatTimestamp } from "@/lib/formatters";
 
+import { AnswerHeaderSection } from "./answer/AnswerHeaderSection";
+import { ClaimsSection } from "./answer/ClaimsSection";
+import { ConflictsSection } from "./answer/ConflictsSection";
+import { CoverageSection } from "./answer/CoverageSection";
+import { EvidenceSection } from "./answer/EvidenceSection";
+import { FeedbackFooter, type FeedbackState } from "./answer/FeedbackFooter";
+import { FollowUpSection } from "./answer/FollowUpSection";
+import type { CitationTargets } from "./answer/InlineCitations";
+import type { SafeProse } from "./answer/labels";
+import { LimitationsSection } from "./answer/LimitationsSection";
+import { MetricsSection } from "./answer/MetricsSection";
+import { ScopeSection } from "./answer/ScopeSection";
 import { useAskDev } from "./AskDevProvider";
-
-function safeExcerpt(value: string | null | undefined): string | null {
-    if (!value) return null;
-    return value.replace(/^UNTRUSTED_DATA\r?\n/u, "").replace(/\r?\nEND_UNTRUSTED_DATA$/u, "");
-}
 
 // Grounded in the sanctioned framing from ops/docs/use/ai-workflows/index.md
 // ("Ask Dev: window and full-page workspace"): "A partial, degraded,
@@ -50,6 +49,15 @@ function safeExcerpt(value: string | null | undefined): string | null {
 // AskDevAnswer.test.tsx can assert Object.keys(...) coverage against the
 // real generated union directly, instead of duplicating a second copy of
 // the member list in the test file that could itself drift.
+//
+// This file is also read as TEXT by tests/ask-dev-vocabulary.spec.ts, which
+// locates `export const <NAME> = {` by name to cross-check the keys against
+// the pinned JSON Schema enums (it cannot import this module: the "use
+// client" graph reaches a PNG asset that Playwright's standalone esbuild
+// transform has no loader for). Both label maps below must therefore stay in
+// THIS file, in that literal shape — moving them to a sibling module is a
+// loud test failure, not a silent one, but a failure with a cause that is
+// invisible from the constant's new home.
 export const ANSWER_STATUS_LABELS: Record<DevAnswer["status"], string> = {
     complete: "Complete",
     degraded: "Degraded",
@@ -228,170 +236,21 @@ const STATUS_EXPLANATIONS: Partial<Record<DevAnswer["status"], string>> = {
         "Refused: Ask Dev did not answer this question. A result with limitations, not a silent success.",
 };
 
-function validityScopeLabel(scope: DevScope | null | undefined): string | null {
-    if (!scope) return null;
-    const namedEntity = scope.entity_refs?.find(
-        (entity) => entity.entity_type === scope.direct_scope,
-    );
-    if (namedEntity) return namedEntity.display_label;
-    if (scope.direct_scope === "organization") return "Organization";
-    const count =
-        scope.direct_scope === "repository"
-            ? (scope.repositories?.length ?? 0)
-            : (scope.entity_refs?.filter((entity) => entity.entity_type === scope.direct_scope)
-                  .length ?? 0);
-    const label = scope.direct_scope.replaceAll("_", " ");
-    return count > 0 ? `${count} ${label}${count === 1 ? "" : "s"}` : label;
-}
-
 /**
- * The scope-outcome row's secondary line (CHAOS-3377 defect 4).
+ * The answer container.
  *
- * Previously always rendered "{authorized_repository_ids.length} authorized
- * repositories", regardless of the resolved scope's own kind -- correct for
- * a REPOSITORY-scoped answer, but for a PROJECT (or any other non-repository)
- * scope the repository count is at best incidental and at worst reads as
- * "0 authorized repositories" for a subject that has real, substantive
- * content and simply carries no repository dimension on the wire (see
- * ops's `ScopeResolutionService`/`DevScope.repositories`, which is only
- * ever populated for a REPOSITORY commit). Reuses `validityScopeLabel` --
- * the same "name the subject, not a count" logic `claim.validity_scope`
- * already renders -- so a project scope shows its subject ("Falcon Nine")
- * instead. Falls back to the repository count whenever the scope itself is
- * missing or genuinely repository-scoped, which is unchanged behavior.
+ * Owns every piece of state, every handler, and every judgement about what
+ * this answer is (no-match, refused-with-grounding, trustworthy scope row).
+ * The `answer/*` components it composes are presentational: they receive
+ * resolved copy, an already-bound `safeProse` sanitizer, and callbacks. That
+ * split is what keeps a new section additive — and it is why no section can
+ * render model-authored prose without a sanitizer, since it never holds the
+ * denylist to forget in the first place.
  */
-function scopeCoverageLabel(scopeResolution: NonNullable<DevAnswer["resolved_scope"]>): string {
-    const scope = scopeResolution.resolved_scope ?? scopeResolution.requested_scope;
-    if (scope && scope.direct_scope !== "repository") {
-        const subjectLabel = validityScopeLabel(scope);
-        if (subjectLabel) return subjectLabel;
-    }
-    const count = scopeResolution.authorized_repository_ids?.length ?? 0;
-    return `${count} authorized repositories`;
-}
-
-/**
- * CHAOS-3524 (chris's evidence-layout ruling): each evidence item is its own
- * accordion row, default folded. The row's header (label + provenance) stays
- * visible even folded — that's the disclosure trigger a reader sees and
- * clicks — only the detail beneath it (citation text, the "Open evidence"
- * fetch action, the fetched excerpt, errors, the artifact link) is hidden
- * until `open`. The fold toggle itself is icon-only (a chevron, aria-label
- * carries the real name) per chris's "buttons/iconography only, no text
- * labels" rule; `evidence.display_label` sitting in the same clickable
- * header is the row's identifying TITLE, not an instructional fold/unfold
- * label, so it stays as visible text.
- */
-function EvidenceRow({
-    anchorId,
-    error,
-    evidence,
-    expansion,
-    loading,
-    onToggleOpen,
-    open,
-    openExpansion,
-}: {
-    anchorId: string;
-    error: string | null;
-    evidence: DevEvidenceRef;
-    expansion: DevEvidenceExpansion | null;
-    loading: boolean;
-    onToggleOpen: () => void;
-    open: boolean;
-    openExpansion: () => Promise<void>;
-}) {
-    const internalPath = evidence.link?.internal_path;
-
-    return (
-        <div
-            id={anchorId}
-            tabIndex={-1}
-            className="scroll-mt-6 space-y-1.5 border-l-2 border-(--border) pl-3 outline-none focus-visible:border-(--accent)"
-        >
-            <button
-                type="button"
-                onClick={onToggleOpen}
-                aria-expanded={open}
-                aria-label={toggleEvidenceItem(evidence.display_label, open)}
-                className="flex w-full min-w-0 items-start gap-2 rounded-(--radius-sm) py-0.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
-            >
-                <span aria-hidden="true" className="mt-0.5 shrink-0 text-(--text-muted)">
-                    {open ? "▾" : "▸"}
-                </span>
-                <span className="flex min-w-0 flex-col gap-0.5">
-                    <span className="text-sm text-(--text-secondary)">
-                        {evidence.display_label}
-                    </span>
-                    <span className="text-xs text-(--text-muted)">
-                        {evidence.provenance} · {formatTimestamp(evidence.observed_at)}
-                    </span>
-                </span>
-            </button>
-            {open ? (
-                <div className="space-y-1.5 pl-5">
-                    {evidence.citation_text ? (
-                        <p className="text-xs leading-5 text-(--text-muted)">
-                            {evidence.citation_text}
-                        </p>
-                    ) : null}
-                    {/*
-                     * Quiet by default (text-muted, no fill) — this is a
-                     * secondary, on-demand affordance, not a primary CTA; it
-                     * only picks up accent color on hover/focus (CHAOS-3291).
-                     * Unlike the fold toggle above, this triggers a real
-                     * server fetch (the deep excerpt) rather than showing
-                     * already-loaded content, so it keeps its sanctioned
-                     * text label rather than becoming icon-only.
-                     */}
-                    <button
-                        type="button"
-                        onClick={() => void openExpansion()}
-                        disabled={loading}
-                        className="rounded-(--radius-sm) px-2 py-1 text-xs font-medium text-(--text-muted) hover:bg-(--accent)/10 hover:text-(--accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45 disabled:opacity-50"
-                    >
-                        {loading ? "Opening…" : CTA_LABELS.openEvidence}
-                    </button>
-                    {expansion ? (
-                        <div className="rounded-(--radius-md) bg-(--background)/60 p-3 text-sm leading-6 text-(--text-secondary)">
-                            <p className="text-label-caps text-(--text-muted)">
-                                {expansion.state.replaceAll("_", " ")}
-                            </p>
-                            {safeExcerpt(expansion.safe_excerpt) ? (
-                                <p className="mt-2 whitespace-pre-wrap">
-                                    {safeExcerpt(expansion.safe_excerpt)}
-                                </p>
-                            ) : (
-                                <p className="mt-2">No additional excerpt is available.</p>
-                            )}
-                            {expansion.warning ? (
-                                <p className="mt-2 text-(--caution)">{expansion.warning}</p>
-                            ) : null}
-                        </div>
-                    ) : null}
-                    {error ? (
-                        <p role="alert" className="text-xs text-(--negative)">
-                            {error}
-                        </p>
-                    ) : null}
-                    {internalPath ? (
-                        <Link
-                            href={internalPath}
-                            className="inline-flex text-xs font-medium text-(--accent) underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
-                        >
-                            {CTA_LABELS.openArtifact}
-                        </Link>
-                    ) : null}
-                </div>
-            ) : null}
-        </div>
-    );
-}
-
 export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
     const { expandEvidence, selectProposedEntity, submitAnswerFeedback, submitQuestion } =
         useAskDev();
-    const [feedback, setFeedback] = useState<"helpful" | "not_helpful" | "saving" | null>(null);
+    const [feedback, setFeedback] = useState<FeedbackState>(null);
     const [feedbackError, setFeedbackError] = useState<string | null>(null);
     const [evidenceExpansions, setEvidenceExpansions] = useState<
         Readonly<Record<string, DevEvidenceExpansion>>
@@ -481,6 +340,12 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
         [answer.metrics],
     );
 
+    // Bound once here, handed to every section that renders model-authored
+    // prose. Not a hook: it closes over `attested` and is cheap, and keeping
+    // it a plain function means the sections re-render exactly as often as
+    // they did when this logic was inline in one component.
+    const safeProse: SafeProse = (value) => safeCopy(value, INTERNAL_TOKEN_DENYLIST, attested);
+
     // Detail-panel ids are scoped by answer.answer_id, not just position: a
     // transcript can contain many answers, and position-only ids (e.g.
     // "ask-dev-evidence-1") collide across every one of them, so
@@ -568,51 +433,12 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
         setOpenEvidenceRowIds(new Set((answer.evidence ?? []).map((item) => item.evidence_ref_id)));
     };
 
-    const renderInlineCitations = (
-        evidenceRefIds: readonly string[] = [],
-        metricRefIds: readonly string[] = [],
-        ownerLabel: string,
-    ) => {
-        const knownEvidenceRefs = evidenceRefIds.filter((id) => evidencePositionById.has(id));
-        const knownMetricRefs = metricRefIds.filter((id) => metricPositionById.has(id));
-        if (!knownEvidenceRefs.length && !knownMetricRefs.length) return null;
-
-        return (
-            <span
-                className="ml-2 inline-flex flex-wrap gap-1 align-baseline"
-                aria-label="Citations"
-            >
-                {knownEvidenceRefs.map((evidenceRefId) => {
-                    const position = evidencePositionById.get(evidenceRefId)!;
-                    return (
-                        <button
-                            key={evidenceRefId}
-                            type="button"
-                            onClick={() => void openEvidenceDetail(evidenceRefId)}
-                            disabled={loadingEvidenceIds.has(evidenceRefId)}
-                            aria-label={`Open evidence citation ${position + 1} for ${ownerLabel}`}
-                            className="rounded-(--radius-sm) bg-(--accent)/10 px-1.5 py-0.5 font-mono text-[0.6875rem] font-medium leading-none text-(--accent) hover:bg-(--accent)/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45 disabled:opacity-50"
-                        >
-                            E{position + 1}
-                        </button>
-                    );
-                })}
-                {knownMetricRefs.map((metricRefId) => {
-                    const position = metricPositionById.get(metricRefId)!;
-                    return (
-                        <button
-                            key={metricRefId}
-                            type="button"
-                            onClick={() => openMetricDetail(metricRefId)}
-                            aria-label={`Open metric citation ${position + 1} for ${ownerLabel}`}
-                            className="rounded-(--radius-sm) bg-(--accent-ai)/10 px-1.5 py-0.5 font-mono text-[0.6875rem] font-medium leading-none text-(--accent-ai) hover:bg-(--accent-ai)/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-ai)/45"
-                        >
-                            M{position + 1}
-                        </button>
-                    );
-                })}
-            </span>
-        );
+    const citationTargets: CitationTargets = {
+        evidencePositionById,
+        metricPositionById,
+        loadingEvidenceIds,
+        openEvidence: (evidenceRefId) => void openEvidenceDetail(evidenceRefId),
+        openMetric: openMetricDetail,
     };
 
     const sendFeedback = async (rating: "helpful" | "not_helpful") => {
@@ -636,142 +462,27 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
             className="space-y-5 outline-none"
             aria-label="Ask Dev answer"
         >
-            <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-(--radius-pill) bg-(--accent-ai)/12 px-2.5 py-1 text-label-caps text-(--accent-ai)">
-                    AI-generated
-                </span>
-                <span className="rounded-(--radius-pill) border border-(--border) px-2.5 py-1 text-label-caps text-(--text-muted)">
-                    {statusLabel}
-                </span>
-                <span className="text-xs text-(--text-muted)">
-                    As of {formatTimestamp(answer.as_of)}
-                </span>
-            </div>
-
-            {/*
-             * The direct answer is the primary content (TRD §16: scope →
-             * question → answer → evidence/metrics → follow-up; CHAOS-3291).
-             * Previously the status caption rendered as an isolated text-xs
-             * line and direct_summary as plain text-body — same visual
-             * weight as the supporting chrome below it, so a thin answer
-             * (e.g. "Status: partial.") read as smaller and less important
-             * than the Evidence block. Keeping the caption tightly coupled
-             * to the summary (one block, no separating chrome) and giving
-             * the summary the same display-font treatment used for section
-             * headings elsewhere makes it read as one coherent answer
-             * rather than badge + boilerplate + terse line.
-             */}
-            <div className="space-y-1.5">
-                {statusExplanation ? (
-                    <p className="text-sm leading-6 text-(--text-secondary)">{statusExplanation}</p>
-                ) : null}
-                <p className="font-(--font-display) text-h3 text-(--text-primary)">
-                    {refusedWithGrounding
-                        ? WITHHELD_COPY
-                        : safeCopy(answer.direct_summary, INTERNAL_TOKEN_DENYLIST, attested)}
-                </p>
-            </div>
+            <AnswerHeaderSection
+                asOf={answer.as_of}
+                statusExplanation={statusExplanation}
+                statusLabel={statusLabel}
+                summary={refusedWithGrounding ? WITHHELD_COPY : safeProse(answer.direct_summary)}
+            />
 
             {scopeResolution ? (
-                <section
-                    className="border-y border-(--border) py-3"
-                    aria-label="Resolved answer scope"
-                >
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-                        <span className="text-(--text-muted)">
-                            Scope outcome:{" "}
-                            <strong className="font-medium text-(--text-secondary)">
-                                {scopeOutcomeTrusted
-                                    ? SCOPE_OUTCOME_LABELS[scopeResolution.outcome]
-                                    : SCOPE_OUTCOME_LABELS.forbidden_or_not_found}
-                            </strong>
-                        </span>
-                        <span className="text-(--text-muted)">
-                            {scopeCoverageLabel(scopeResolution)}
-                        </span>
-                    </div>
-                    {scopeResolution.candidates?.length ? (
-                        <div className="mt-3">
-                            {/*
-                             * Two different situations share this list.
-                             * Ambiguity means several authorized entities DID
-                             * match and one must be picked; a no-match means
-                             * none did and these are only the nearest names
-                             * (CHAOS-3366 fills them; empty today). Calling
-                             * the second "possible scope matches" would assert
-                             * the subject exists, which is the substitution
-                             * §12 prohibits.
-                             */}
-                            <p className="text-label-caps text-(--caution)">
-                                {noMatch ? "Closest matches" : "Possible scope matches"}
-                            </p>
-                            <ul className="mt-2 space-y-1 text-sm text-(--text-secondary)">
-                                {scopeResolution.candidates.map((candidate) => (
-                                    <li
-                                        key={`${candidate.entity_ref.entity_type}:${candidate.entity_ref.entity_id}`}
-                                        className="flex flex-wrap items-center justify-between gap-2"
-                                    >
-                                        <span>
-                                            {candidate.entity_ref.display_label} —{" "}
-                                            {candidate.reason}
-                                        </span>
-                                        <button
-                                            type="button"
-                                            onClick={() =>
-                                                selectProposedEntity(candidate.entity_ref)
-                                            }
-                                            className="rounded-(--radius-sm) border border-(--border) px-2 py-1 text-xs font-medium hover:border-(--accent)/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
-                                        >
-                                            {CTA_LABELS.useAskDevScope}
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                            <p className="mt-2 text-xs text-(--text-muted)">
-                                {noMatch
-                                    ? "None of these is the subject you named. Pick one to ask about it instead."
-                                    : "Choose or remove the proposed context before asking the next question."}
-                            </p>
-                        </div>
-                    ) : null}
-                </section>
+                <ScopeSection
+                    noMatch={noMatch}
+                    onSelectCandidate={selectProposedEntity}
+                    outcomeLabel={
+                        scopeOutcomeTrusted
+                            ? SCOPE_OUTCOME_LABELS[scopeResolution.outcome]
+                            : SCOPE_OUTCOME_LABELS.forbidden_or_not_found
+                    }
+                    scopeResolution={scopeResolution}
+                />
             ) : null}
 
-            {showCoverage ? (
-                <section
-                    aria-label="Evidence coverage"
-                    className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-(--text-muted)"
-                >
-                    <span>
-                        Coverage:{" "}
-                        {formatNumber(answer.coverage?.available_source_count ?? 0, {
-                            maximumFractionDigits: 0,
-                        })}{" "}
-                        of{" "}
-                        {formatNumber(answer.coverage?.required_source_count ?? 0, {
-                            maximumFractionDigits: 0,
-                        })}{" "}
-                        sources
-                    </span>
-                    {answer.coverage?.unavailable_required_sources?.length ? (
-                        <span className="text-(--caution)">
-                            {answer.coverage.unavailable_required_sources.length} required sources
-                            unavailable
-                        </span>
-                    ) : null}
-                    {answer.coverage?.degraded_required_sources?.length ? (
-                        <span className="text-(--caution)">
-                            {answer.coverage.degraded_required_sources.length} required sources
-                            degraded
-                        </span>
-                    ) : null}
-                    {answer.coverage?.stale_required_sources?.length ? (
-                        <span className="text-(--caution)">
-                            {answer.coverage.stale_required_sources.length} required sources stale
-                        </span>
-                    ) : null}
-                </section>
-            ) : null}
+            {showCoverage ? <CoverageSection coverage={answer.coverage} /> : null}
 
             {/*
              * CHAOS-3377 HIGH: claims are model-authored prose, exactly
@@ -780,311 +491,65 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
              * relabeled-but-invented status.
              */}
             {!refusedWithGrounding && answer.claims?.length ? (
-                <section
-                    className="space-y-3 border-t border-(--border) pt-4"
-                    aria-labelledby={findingsHeadingId}
-                >
-                    <h3 id={findingsHeadingId} className="text-label-caps text-(--text-muted)">
-                        What the evidence suggests
-                    </h3>
-                    <ul className="space-y-3">
-                        {answer.claims.map((claim) => (
-                            <li key={claim.claim_id} className="flex gap-3 text-sm leading-6">
-                                <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-(--accent)" />
-                                <div className="min-w-0">
-                                    <p>
-                                        {safeCopy(claim.text, INTERNAL_TOKEN_DENYLIST, attested)}
-                                        {renderInlineCitations(
-                                            claim.evidence_ref_ids,
-                                            claim.metric_ref_ids,
-                                            "claim",
-                                        )}
-                                    </p>
-                                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-(--text-muted)">
-                                        <span>
-                                            {claim.kind.replaceAll("_", " ")} ·{" "}
-                                            {formatPercent(claim.confidence * 100)} confidence
-                                        </span>
-                                        {validityScopeLabel(claim.validity_scope) ? (
-                                            <span>
-                                                Applies to{" "}
-                                                {validityScopeLabel(claim.validity_scope)}
-                                            </span>
-                                        ) : null}
-                                        {claim.flags.stale ? (
-                                            <span className="rounded-(--radius-pill) bg-(--caution)/10 px-2 text-(--caution)">
-                                                Stale
-                                            </span>
-                                        ) : null}
-                                        {claim.flags.uncertain ? (
-                                            <span className="rounded-(--radius-pill) bg-(--caution)/10 px-2 text-(--caution)">
-                                                Uncertain
-                                            </span>
-                                        ) : null}
-                                        {claim.flags.conflicting ? (
-                                            <span className="rounded-(--radius-pill) bg-(--caution)/10 px-2 text-(--caution)">
-                                                Conflicting
-                                            </span>
-                                        ) : null}
-                                        {claim.flags.untrusted_source ? (
-                                            <span className="rounded-(--radius-pill) bg-(--negative)/10 px-2 text-(--negative)">
-                                                Untrusted source
-                                            </span>
-                                        ) : null}
-                                    </div>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
-                </section>
+                <ClaimsSection
+                    claims={answer.claims}
+                    headingId={findingsHeadingId}
+                    safeProse={safeProse}
+                    targets={citationTargets}
+                />
             ) : null}
 
             {answer.conflicts?.length ? (
-                <section
-                    className="rounded-(--radius-md) border border-(--caution)/30 bg-(--caution)/8 p-3"
-                    aria-label="Conflicting evidence"
-                >
-                    <p className="text-label-caps text-(--caution)">Conflicting evidence</p>
-                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-(--text-secondary)">
-                        {answer.conflicts.map((conflict) => (
-                            <li key={conflict.summary}>
-                                {safeCopy(conflict.summary, INTERNAL_TOKEN_DENYLIST, attested)}
-                            </li>
-                        ))}
-                    </ul>
-                </section>
+                <ConflictsSection conflicts={answer.conflicts} safeProse={safeProse} />
             ) : null}
 
             {answer.metrics?.length ? (
-                <section
-                    className="border-t border-(--border) pt-4"
-                    aria-labelledby={metricsHeadingId}
-                >
-                    <h3 id={metricsHeadingId} className="text-label-caps text-(--text-muted)">
-                        Metrics
-                    </h3>
-                    <dl className="mt-2 divide-y divide-(--border)">
-                        {answer.metrics.map((metric) => (
-                            <div
-                                key={metric.metric_ref_id}
-                                id={metricAnchorId(
-                                    metricPositionById.get(metric.metric_ref_id) ?? 0,
-                                )}
-                                tabIndex={-1}
-                                className="scroll-mt-6 grid gap-1 py-3 outline-none focus-visible:ring-2 focus-visible:ring-(--accent-ai)/45 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-baseline"
-                            >
-                                <dt className="text-sm text-(--text-secondary)">
-                                    {metric.label}
-                                    {renderInlineCitations(
-                                        metric.evidence_ref_ids,
-                                        [],
-                                        `metric ${metric.label}`,
-                                    )}
-                                    <span className="mt-0.5 block text-xs text-(--text-muted)">
-                                        {metric.aggregation} · {metric.freshness} ·{" "}
-                                        {formatPercent(metric.coverage * 100)} coverage
-                                    </span>
-                                </dt>
-                                <dd className="text-left sm:text-right">
-                                    <span className="font-(--font-display) text-h3 text-(--text-primary)">
-                                        {metric.value == null
-                                            ? "Unavailable"
-                                            : formatMetricValue(metric.value, metric.unit)}
-                                    </span>
-                                    {metric.comparison_value != null ? (
-                                        <span className="ml-2 text-xs text-(--text-muted)">
-                                            vs{" "}
-                                            {formatMetricValue(
-                                                metric.comparison_value,
-                                                metric.unit,
-                                            )}
-                                        </span>
-                                    ) : null}
-                                    <details
-                                        open={openMetricIds.has(metric.metric_ref_id) || undefined}
-                                        className="mt-1 text-xs text-(--text-muted)"
-                                    >
-                                        <summary className="cursor-pointer font-medium text-(--text-secondary)">
-                                            Metric definition
-                                        </summary>
-                                        <dl className="mt-2 grid gap-x-3 gap-y-1 text-left sm:grid-cols-[auto_minmax(0,1fr)]">
-                                            <dt>Unit</dt>
-                                            <dd>{metric.unit}</dd>
-                                            <dt>Definition version</dt>
-                                            <dd>{metric.definition_version}</dd>
-                                            <dt>Query version</dt>
-                                            <dd>{metric.query_version}</dd>
-                                            <dt>Source version</dt>
-                                            <dd>{metric.source_version}</dd>
-                                            <dt>Current window</dt>
-                                            <dd>
-                                                {formatTimestamp(metric.current_window.start)} –{" "}
-                                                {formatTimestamp(metric.current_window.end)}
-                                            </dd>
-                                            {metric.comparison_window ? (
-                                                <>
-                                                    <dt>Comparison window</dt>
-                                                    <dd>
-                                                        {formatTimestamp(
-                                                            metric.comparison_window.start,
-                                                        )}{" "}
-                                                        –{" "}
-                                                        {formatTimestamp(
-                                                            metric.comparison_window.end,
-                                                        )}
-                                                    </dd>
-                                                </>
-                                            ) : null}
-                                        </dl>
-                                    </details>
-                                </dd>
-                            </div>
-                        ))}
-                    </dl>
-                </section>
+                <MetricsSection
+                    headingId={metricsHeadingId}
+                    metricAnchorId={metricAnchorId}
+                    metricPositionById={metricPositionById}
+                    metrics={answer.metrics}
+                    openMetricIds={openMetricIds}
+                    targets={citationTargets}
+                />
             ) : null}
 
             {answer.evidence?.length ? (
-                <section
-                    className="space-y-3 border-t border-(--border) pt-4"
-                    aria-labelledby={evidenceHeadingId}
-                >
-                    {/*
-                     * CHAOS-3524: the lane's own fold toggle and the
-                     * "unfold all" action are icon-only buttons (chevron /
-                     * unfold glyph, aria-label carries the name) — "Evidence"
-                     * is the section's static title, not itself a
-                     * fold/unfold instruction, so it stays outside both
-                     * buttons as plain heading text.
-                     */}
-                    <div className="flex items-center justify-between gap-2">
-                        <h3 id={evidenceHeadingId} className="text-label-caps text-(--text-muted)">
-                            Evidence
-                        </h3>
-                        <div className="flex items-center gap-1">
-                            <button
-                                type="button"
-                                onClick={unfoldAllEvidence}
-                                aria-label={CTA_LABELS.unfoldAllEvidence}
-                                className="rounded-(--radius-sm) p-1 text-(--text-muted) hover:bg-(--accent)/10 hover:text-(--accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
-                            >
-                                <span aria-hidden="true">⤢</span>
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setEvidenceLaneOpen((open) => !open)}
-                                aria-expanded={evidenceLaneOpen}
-                                aria-controls={evidenceListId}
-                                aria-label={
-                                    evidenceLaneOpen
-                                        ? CTA_LABELS.collapseEvidenceLane
-                                        : CTA_LABELS.expandEvidenceLane
-                                }
-                                className="rounded-(--radius-sm) p-1 text-(--text-muted) hover:bg-(--accent)/10 hover:text-(--accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
-                            >
-                                <span aria-hidden="true">{evidenceLaneOpen ? "▾" : "▸"}</span>
-                            </button>
-                        </div>
-                    </div>
-                    {/*
-                     * Native `hidden` attribute, not a conditional
-                     * unmount/CSS-class toggle: this codebase's tests run
-                     * without compiled Tailwind CSS (a `hidden` class
-                     * wouldn't actually hide anything for `toBeVisible()`
-                     * purposes), but the native attribute is a real HTML5 UA
-                     * behavior jsdom honors directly. Keeping the rows
-                     * always mounted (just hidden) also means
-                     * `document.getElementById(anchorId)` keeps working
-                     * immediately when a citation click both unfolds the
-                     * lane and focuses a row in the same flow, with no
-                     * mount-timing race to reason about.
-                     */}
-                    <div id={evidenceListId} hidden={!evidenceLaneOpen} className="space-y-3">
-                        {answer.evidence.map((evidence) => (
-                            <EvidenceRow
-                                key={evidence.evidence_ref_id}
-                                anchorId={evidenceAnchorId(
-                                    evidencePositionById.get(evidence.evidence_ref_id) ?? 0,
-                                )}
-                                error={evidenceErrors[evidence.evidence_ref_id] ?? null}
-                                evidence={evidence}
-                                expansion={evidenceExpansions[evidence.evidence_ref_id] ?? null}
-                                loading={loadingEvidenceIds.has(evidence.evidence_ref_id)}
-                                onToggleOpen={() => toggleEvidenceRow(evidence.evidence_ref_id)}
-                                open={openEvidenceRowIds.has(evidence.evidence_ref_id)}
-                                openExpansion={() => openEvidenceDetail(evidence.evidence_ref_id)}
-                            />
-                        ))}
-                    </div>
-                </section>
+                <EvidenceSection
+                    evidence={answer.evidence}
+                    evidenceAnchorId={evidenceAnchorId}
+                    evidenceErrors={evidenceErrors}
+                    evidenceExpansions={evidenceExpansions}
+                    evidencePositionById={evidencePositionById}
+                    headingId={evidenceHeadingId}
+                    laneOpen={evidenceLaneOpen}
+                    listId={evidenceListId}
+                    loadingEvidenceIds={loadingEvidenceIds}
+                    onOpenExpansion={openEvidenceDetail}
+                    onToggleLane={() => setEvidenceLaneOpen((open) => !open)}
+                    onToggleRow={toggleEvidenceRow}
+                    onUnfoldAll={unfoldAllEvidence}
+                    openEvidenceRowIds={openEvidenceRowIds}
+                />
             ) : null}
 
             {answer.warnings?.length ? (
-                <section
-                    className="rounded-(--radius-md) border border-(--caution)/30 bg-(--caution)/8 p-3"
-                    aria-label="Answer limitations"
-                >
-                    <p className="text-label-caps text-(--caution)">Limitations</p>
-                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-(--text-secondary)">
-                        {answer.warnings.map((warning) => (
-                            <li key={warning}>
-                                {safeCopy(warning, INTERNAL_TOKEN_DENYLIST, attested)}
-                            </li>
-                        ))}
-                    </ul>
-                </section>
+                <LimitationsSection safeProse={safeProse} warnings={answer.warnings} />
             ) : null}
 
             {answer.suggested_follow_up_questions?.length ? (
-                <section
-                    className="space-y-2 border-t border-(--border) pt-4"
-                    aria-label="Suggested follow-up questions"
-                >
-                    <p className="text-label-caps text-(--text-muted)">Ask next</p>
-                    <div className="flex flex-wrap gap-2">
-                        {answer.suggested_follow_up_questions.map((question) => (
-                            <button
-                                key={question}
-                                type="button"
-                                onClick={() => void submitQuestion(question)}
-                                className="rounded-(--radius-pill) border border-(--border) px-3 py-1.5 text-left text-xs text-(--text-secondary) hover:border-(--accent)/45 hover:text-(--text-primary) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
-                            >
-                                {safeCopy(question, INTERNAL_TOKEN_DENYLIST, attested)}
-                            </button>
-                        ))}
-                    </div>
-                </section>
+                <FollowUpSection
+                    onAsk={(question) => void submitQuestion(question)}
+                    questions={answer.suggested_follow_up_questions}
+                    safeProse={safeProse}
+                />
             ) : null}
 
-            <footer className="flex flex-wrap items-center gap-2 border-t border-(--border) pt-4">
-                <span className="mr-1 text-xs text-(--text-muted)">Was this useful?</span>
-                <button
-                    type="button"
-                    disabled={feedback === "saving" || feedback === "helpful"}
-                    onClick={() => void sendFeedback("helpful")}
-                    className="rounded-(--radius-sm) border border-(--border) px-2.5 py-1.5 text-xs text-(--text-secondary) hover:border-(--positive)/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--positive)/45 disabled:opacity-55"
-                >
-                    {CTA_LABELS.askDevHelpful}
-                </button>
-                <button
-                    type="button"
-                    disabled={feedback === "saving" || feedback === "not_helpful"}
-                    onClick={() => void sendFeedback("not_helpful")}
-                    className="rounded-(--radius-sm) border border-(--border) px-2.5 py-1.5 text-xs text-(--text-secondary) hover:border-(--caution)/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--caution)/45 disabled:opacity-55"
-                >
-                    {CTA_LABELS.askDevNotHelpful}
-                </button>
-                {feedback === "helpful" || feedback === "not_helpful" ? (
-                    <span role="status" className="text-xs text-(--positive)">
-                        Feedback saved.
-                    </span>
-                ) : null}
-                {feedbackError ? (
-                    <span role="alert" className="text-xs text-(--negative)">
-                        {feedbackError}
-                    </span>
-                ) : null}
-            </footer>
+            <FeedbackFooter
+                error={feedbackError}
+                onRate={(rating) => void sendFeedback(rating)}
+                state={feedback}
+            />
         </article>
     );
 }
