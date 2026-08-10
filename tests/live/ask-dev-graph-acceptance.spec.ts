@@ -53,7 +53,29 @@ function assertTerminalStream(events: Sse[]): JsonObject {
     expect(names).not.toContain("error");
     const runIds = new Set(events.map((event) => event.data.run_id).filter(Boolean));
     expect(runIds.size, "All stream events must belong to one backend run.").toBe(1);
+    assertNarrativeSafe(events.map((event) => event.data));
     return events.find((event) => event.name === "answer.completed")!.data;
+}
+
+function assertClarificationTerminalStream(events: Sse[]): JsonObject {
+    const names = events.map((event) => event.name);
+    expect(names.filter((name) => name === "run.started")).toHaveLength(1);
+    expect(names.filter((name) => name === "scope.resolved")).toHaveLength(1);
+    expect(names.filter((name) => name === "error")).toHaveLength(1);
+    expect(names.filter((name) => name === "done")).toHaveLength(1);
+    expect(names).not.toContain("answer.completed");
+    expect(names).not.toContain("graph.state");
+    expect(names.slice(-3), "Clarification must end scope.resolved → error → done.").toEqual([
+        "scope.resolved",
+        "error",
+        "done",
+    ]);
+    const runIds = new Set(events.map((event) => event.data.run_id).filter(Boolean));
+    expect(runIds.size, "All clarification events must belong to one backend run.").toBe(1);
+    const terminal = events.find((event) => event.name === "error")!.data;
+    expect((terminal.error as JsonObject | undefined)?.code).toBe("scope_ambiguous");
+    assertNarrativeSafe(events.map((event) => event.data));
+    return events.find((event) => event.name === "scope.resolved")!.data;
 }
 
 function assertNoInternalTokens(text: string): void {
@@ -78,6 +100,7 @@ function assertNarrativeSafe(value: unknown): void {
         if (
             [
                 "direct_summary",
+                "delta",
                 "text",
                 "label",
                 "safe_message",
@@ -150,6 +173,37 @@ async function submit(page: Page, question: string, regionName = "Ask Dev"): Pro
     return assertTerminalStream(parseSse(body));
 }
 
+async function submitAmbiguity(
+    page: Page,
+    question: string,
+    regionName = "Ask Dev",
+): Promise<{ scopeEvent: JsonObject; rendered: string }> {
+    const region = page.getByRole("region", { name: regionName });
+    const before = await page.evaluate(
+        () => (window as Window & { __graphSse?: string[] }).__graphSse?.length ?? 0,
+    );
+    const composer = region.getByRole("textbox", { name: "Ask Dev question" });
+    await composer.fill(question);
+    await region.getByRole("button", { name: "Ask", exact: true }).click();
+    const failed = page.locator("#ask-dev-run-failed");
+    await expect(failed).toBeVisible({ timeout: 100_000 });
+    await expect(page.getByRole("article", { name: "Ask Dev answer" })).not.toBeVisible();
+    await page.waitForFunction(
+        (minimum) =>
+            ((window as Window & { __graphSse?: string[] }).__graphSse?.length ?? 0) > minimum,
+        before,
+    );
+    const body = await page.evaluate(
+        (index) => (window as Window & { __graphSse?: string[] }).__graphSse?.[index] ?? "",
+        before,
+    );
+    expect(body, "The browser must capture the complete clarification SSE response.").not.toBe("");
+    return {
+        scopeEvent: assertClarificationTerminalStream(parseSse(body)),
+        rendered: await failed.innerText(),
+    };
+}
+
 async function openSurface(page: Page, route: string): Promise<void> {
     await page.goto(route);
     const open = page.getByRole("button", { name: "Open Ask Dev" });
@@ -169,7 +223,7 @@ test("graph route, canonical fallback, ambiguity refusal, and continuity are mea
             request.method() === "POST" &&
             /^\/api\/v1\/dev\/conversations(?:\/[^/]+\/messages)?$/u.test(path)
         ) {
-            devPostUrls.push(path);
+            devPostUrls.push(request.url());
         }
     });
     page.on("console", (message) => consoleLines.push(message.text()));
@@ -250,9 +304,10 @@ test("graph route, canonical fallback, ambiguity refusal, and continuity are mea
     assertNoInternalTokens(await workspace.getByLabel("Ask Dev transcript").innerText());
 
     await workspace.getByRole("button", { name: "New conversation" }).click();
-    const ambiguous = await submit(page, ambiguousQuestion);
-    const ambiguousAnswer = (ambiguous.answer ?? ambiguous) as JsonObject;
-    const scope = ambiguousAnswer.resolved_scope as JsonObject | undefined;
+    await openSurface(page, "/diagnose");
+    const ambiguityPostCount = devPostUrls.length;
+    const ambiguous = await submitAmbiguity(page, ambiguousQuestion);
+    const scope = ambiguous.scopeEvent.scope_resolution as JsonObject | undefined;
     expect(scope?.outcome).toBe("ambiguous");
     expect(Array.isArray(scope?.candidates)).toBe(true);
     expect((scope?.candidates as unknown[]).length).toBeGreaterThan(1);
@@ -260,10 +315,19 @@ test("graph route, canonical fallback, ambiguity refusal, and continuity are mea
         scope?.resolved_scope ?? null,
         "Ambiguity must not commit a first candidate.",
     ).toBeNull();
-    expect(ambiguousAnswer.graph_assisted ?? null).toBeNull();
-    assertNoInternalTokens(String(ambiguousAnswer.direct_summary ?? ""));
-    assertNarrativeSafe(ambiguous);
-    assertNoInternalTokens(await workspace.getByLabel("Ask Dev transcript").innerText());
+    assertNarrativeSafe(ambiguous.scopeEvent);
+    assertNoInternalTokens(ambiguous.rendered);
+    await page
+        .getByRole("region", { name: "Ask Dev" })
+        .getByRole("link", { name: "Ask Dev workspace" })
+        .click();
+    await expect(page).toHaveURL(/\/dev(?:\?|$)/u);
+    const workspaceFailure = page.locator("#ask-dev-run-failed");
+    await expect(workspaceFailure).toBeVisible();
+    expect(await workspaceFailure.innerText()).toBe(ambiguous.rendered);
+    expect(devPostUrls).toHaveLength(ambiguityPostCount + 2);
+    assertNoInternalTokens(await workspaceFailure.innerText());
+    for (const url of devPostUrls) assertNoInternalTokens(url);
     for (const line of consoleLines) assertNoInternalTokens(line);
     await testInfo.attach("graph-acceptance-summary.json", {
         body: JSON.stringify(
