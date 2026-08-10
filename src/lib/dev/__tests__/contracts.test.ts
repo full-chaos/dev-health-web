@@ -25,6 +25,7 @@ type ManifestContract = Readonly<{
     schema_version: string;
     schema: Readonly<{ path: string; sha256: string }>;
     positive: Readonly<{ path: string; sha256: string }>;
+    positive_variants: readonly ManifestCase[];
     negative: readonly ManifestCase[];
 }>;
 type OpsManifest = Readonly<{
@@ -47,6 +48,7 @@ const EXPECTED_CONTRACTS = [
     "dev_conversation_transcript.v1",
     "dev_message_request.v1",
     "dev_answer.v1",
+    "dev_answer_graph_assistance.v1",
     "dev_claim.v1",
     "dev_metric_ref.v1",
     "dev_evidence_ref.v1",
@@ -74,7 +76,7 @@ describe("Ask Dev generated contract boundary", () => {
         const source = readJson<SourceManifest>("source.json");
         const manifest = readJson<OpsManifest>("manifest.json");
 
-        expect(source.source_commit).toBe("ddafad6d0d145e44ff791f6a28c8cf98fca37e6c");
+        expect(source.source_commit).toBe("cfe94369368ca3c81f0d6a3ce9e80a8f3530320e");
         expect(manifest.schema_version).toBe("ask_dev_contract_manifest.v1");
         expect(manifest.compatibility).toBe("additive-within-v1");
         expect(manifest.contracts.map((contract) => contract.schema_version)).toEqual(
@@ -84,7 +86,7 @@ describe("Ask Dev generated contract boundary", () => {
         for (const file of source.files) expect(digest(file.path)).toBe(file.sha256);
     });
 
-    it("accepts every positive golden and rejects every manifest negative", () => {
+    it("accepts every positive golden (and variant) and rejects every manifest negative", () => {
         const manifest = readJson<OpsManifest>("manifest.json");
         const checkedNegativePaths = new Set<string>();
 
@@ -95,6 +97,18 @@ describe("Ask Dev generated contract boundary", () => {
             const positive = readJson(contract.positive.path);
             expect(validate(positive), contract.schema_version).toBe(true);
             expect(validateAskDevSemanticInvariants(positive), contract.schema_version).toBe(true);
+            // `positive_variants` exercises a shape the canonical positive
+            // doesn't (e.g. a populated optional nested object) against this
+            // build's own validator, not just ops' schema -- a variant that
+            // only ajv sees is a gap this loop existed to close.
+            for (const variant of contract.positive_variants) {
+                const fixture = readJson(variant.path);
+                expect(validate(fixture), `${contract.schema_version}/${variant.case}`).toBe(true);
+                expect(
+                    validateAskDevSemanticInvariants(fixture),
+                    `${contract.schema_version}/${variant.case}`,
+                ).toBe(true);
+            }
             expect(contract.negative.length, contract.schema_version).toBeGreaterThan(0);
             for (const negative of contract.negative) {
                 checkedNegativePaths.add(negative.path);

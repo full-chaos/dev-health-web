@@ -19,17 +19,32 @@ export type DevFeedbackReason = DevFeedback["reasons"][number];
  *
  * Wording stays faithful to the member it names and no wider. `wrong_scope`
  * reads "Wrong scope", not "Wrong subject or scope": the beta's own
- * requirements list a distinct wrong-subject dimension, and borrowing that
- * meaning now would make the two indistinguishable in the corpus the moment
- * the real member lands.
+ * requirements list a distinct wrong-subject dimension, now landed as its own
+ * member (`wrong_subject`) rather than folded into `wrong_scope`, so the two
+ * stay distinguishable in the corpus.
+ *
+ * `wrong_cohort` and `wrong_driver` are the same additive-sibling pattern for
+ * the graph-assisted answer fields: each names a distinct thing the answer
+ * can get wrong, never merged into a broader existing member.
+ *
+ * `unspecified` reads "Declined to say" rather than the literal member name:
+ * the ops contract documents it as a neutral placeholder for "the reader
+ * declined to say", and that is the honest reader-facing sentence, not a
+ * restatement of the wire token.
  */
 export const FEEDBACK_REASON_LABELS: Record<DevFeedbackReason, string> = {
     incorrect: "Incorrect",
     missing_evidence: "Missing evidence",
+    other: "Other",
     stale_data: "Stale data",
     unclear: "Unclear",
+    unsafe_certainty: "Unsafe certainty",
+    unspecified: "Declined to say",
     useful: "Useful",
+    wrong_cohort: "Wrong cohort",
+    wrong_driver: "Wrong driver",
     wrong_scope: "Wrong scope",
+    wrong_subject: "Wrong subject",
 };
 
 /**
@@ -42,6 +57,11 @@ export const FEEDBACK_REASON_LABELS: Record<DevFeedbackReason, string> = {
  * option to click, it is what gets recorded when nothing was clicked. Having
  * the third case here means such a member classifies correctly on arrival
  * instead of being forced into `negative` and silently appearing as a chip.
+ *
+ * `unspecified` is exactly that member, now landed: `neutral`, so it is never
+ * offered as a negative chip and the schema-level unspecified-exclusivity
+ * constraint (it may never combine with another reason) never has a chance to
+ * be violated from this UI, because this UI never emits it at all.
  */
 export const FEEDBACK_REASON_POLARITY: Record<
     DevFeedbackReason,
@@ -49,10 +69,16 @@ export const FEEDBACK_REASON_POLARITY: Record<
 > = {
     incorrect: "negative",
     missing_evidence: "negative",
+    other: "negative",
     stale_data: "negative",
     unclear: "negative",
+    unsafe_certainty: "negative",
+    unspecified: "neutral",
     useful: "positive",
+    wrong_cohort: "negative",
+    wrong_driver: "negative",
     wrong_scope: "negative",
+    wrong_subject: "negative",
 };
 
 /**

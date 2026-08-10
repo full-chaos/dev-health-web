@@ -92,13 +92,21 @@ describe("feedback reason vocabulary vs. the pinned dev_feedback.v1 schema", () 
 
 describe("a reason value this build does not recognise", () => {
     it("resolves to sanctioned copy, never to the raw member", () => {
-        // `wrong_cohort` is a real member arriving in a later contract revision.
-        // The tolerance layer accepts it rather than failing the submission; this
-        // is the other half of that promise -- it must not reach a reader as a
-        // machine token.
-        expect(feedbackReasonLabel("wrong_cohort")).toBe(UNKNOWN_FEEDBACK_REASON_LABEL);
-        expect(feedbackReasonLabel("wrong_cohort")).not.toBe("wrong_cohort");
-        expect(feedbackReasonLabel("wrong_cohort")).not.toContain("_");
+        // `wrong_cohort` WAS this test's example of a real member arriving in a
+        // later contract revision -- and the re-pin that declared it (alongside
+        // five siblings) promptly falsified that premise, the same way
+        // `record_locator` did for the forward-compatibility tests in
+        // contractTolerance.test.ts. A name the contract may adopt is a test
+        // with a built-in expiry, so this uses a reserved sentinel instead: one
+        // no dev_feedback revision will ever declare, so the assertion stays
+        // true across every future re-pin. The tolerance layer accepts an
+        // undeclared member rather than failing the submission; this is the
+        // other half of that promise -- it must not reach a reader as a machine
+        // token.
+        const undeclaredReason = "__unpinned_test_reason_sentinel";
+        expect(feedbackReasonLabel(undeclaredReason)).toBe(UNKNOWN_FEEDBACK_REASON_LABEL);
+        expect(feedbackReasonLabel(undeclaredReason)).not.toBe(undeclaredReason);
+        expect(feedbackReasonLabel(undeclaredReason)).not.toContain("_");
     });
 
     it("never resolves to undefined, which React would render as nothing", () => {

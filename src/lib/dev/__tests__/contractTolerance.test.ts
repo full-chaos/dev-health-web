@@ -33,6 +33,7 @@ import {
 } from "../contractDrift";
 import answerFixture from "../contracts/examples/positive/dev_answer.v1.json";
 import feedbackFixture from "../contracts/examples/positive/dev_feedback.v1.json";
+import graphStateEventFixture from "../contracts/examples/positive/dev_stream_event.v1.graph_state.json";
 import answerSchema from "../contracts/schemas/dev_answer.v1.schema.json";
 import { DevApiError, consumeDevSseStream, createDevApiClient } from "../client";
 import type { DevStreamEvent } from "../generated";
@@ -158,34 +159,48 @@ describe("everything else stays strict", () => {
 });
 
 describe("a stream from a newer server still delivers its answer", () => {
-    const graphStateEvent = {
-        event: "graph.state",
+    // `graph.state` WAS this block's worked example of an event name this pin
+    // does not recognise -- and the re-pin that declared it (StreamEventType
+    // now lists it, alongside the `graph_assisted` answer object) promptly
+    // falsified that premise, the same way `record_locator` did for the
+    // property-level forward-compatibility tests above and `wrong_cohort` did
+    // for the feedback-reason tests. A name the contract may adopt is a test
+    // with a built-in expiry, so this uses a reserved sentinel event name
+    // instead: one no `StreamEventType` revision will ever declare, so the
+    // assertion stays true across every future re-pin. See the dedicated
+    // "a declared graph.state event" block below for coverage of the real,
+    // now-known event.
+    const unrecognisedEvent = {
+        event: "__unpinned_test_event_sentinel",
         occurred_at: "2026-07-29T12:00:00.5Z",
         run_id: "run_01",
         schema_version: "dev_stream_event.v1",
         sequence: 1,
-        graph_state: "truncated",
     };
 
     it("ignores an unrecognised event type, consumes its sequence, and completes", async () => {
         const answer = await consumeDevSseStream(
-            streamOf(runWith(futureAnswer(), [graphStateEvent])),
+            streamOf(runWith(futureAnswer(), [unrecognisedEvent])),
         );
         // The whole point: the reader gets the answer.
         expect(answer.answer_id).toBe((answerFixture as { answer_id: string }).answer_id);
-        expect(observedContractDrift().some((record) => record.name === "graph.state")).toBe(true);
+        expect(
+            observedContractDrift().some(
+                (record) => record.name === "__unpinned_test_event_sentinel",
+            ),
+        ).toBe(true);
     });
 
     it("still rejects a stream whose FIRST frame is unrecognised", async () => {
         await expect(
-            consumeDevSseStream(streamOf([{ ...graphStateEvent, sequence: 0 }])),
+            consumeDevSseStream(streamOf([{ ...unrecognisedEvent, sequence: 0 }])),
         ).rejects.toBeInstanceOf(DevApiError);
     });
 
     it("still rejects an unrecognised event that breaks sequence order", async () => {
         await expect(
             consumeDevSseStream(
-                streamOf(runWith(futureAnswer(), [{ ...graphStateEvent, sequence: 9 }])),
+                streamOf(runWith(futureAnswer(), [{ ...unrecognisedEvent, sequence: 9 }])),
             ),
         ).rejects.toBeInstanceOf(DevApiError);
     });
@@ -193,8 +208,35 @@ describe("a stream from a newer server still delivers its answer", () => {
     it("still rejects an unrecognised event claiming a different run", async () => {
         await expect(
             consumeDevSseStream(
-                streamOf(runWith(futureAnswer(), [{ ...graphStateEvent, run_id: "run_99" }])),
+                streamOf(runWith(futureAnswer(), [{ ...unrecognisedEvent, run_id: "run_99" }])),
             ),
+        ).rejects.toBeInstanceOf(DevApiError);
+    });
+});
+
+describe("a declared graph.state event", () => {
+    // `graph.state` is now a KNOWN member of StreamEventType (unlike the
+    // sentinel above), so a well-formed one must go through FULL validation
+    // -- not the unknown-event tolerance path -- consume its sequence number
+    // like any other known event, and let the stream complete normally. Built
+    // from the checked-in canonical example, not a hand-shaped payload, so
+    // this proves the real producer's shape actually validates, not a guess
+    // at one.
+    function eventAt(sequence: number) {
+        return { ...graphStateEventFixture, run_id: "run_01", sequence };
+    }
+
+    it("validates on the known path, consumes its sequence, and completes", async () => {
+        const answer = await consumeDevSseStream(streamOf(runWith(futureAnswer(), [eventAt(1)])));
+        expect(answer.answer_id).toBe((answerFixture as { answer_id: string }).answer_id);
+        // Genuinely known, not merely tolerated: nothing about this event name
+        // reaches the drift-reporting sink used for undeclared members.
+        expect(observedContractDrift().some((record) => record.name === "graph.state")).toBe(false);
+    });
+
+    it("still rejects it if it breaks sequence order, same as any other known event", async () => {
+        await expect(
+            consumeDevSseStream(streamOf(runWith(futureAnswer(), [eventAt(9)]))),
         ).rejects.toBeInstanceOf(DevApiError);
     });
 });
@@ -213,8 +255,14 @@ describe("feedback echoed with a reason this pin lacks", () => {
     }
 
     it("is accepted by the client, and the unrecognised member is reported", async () => {
+        // `wrong_cohort` was this test's example of "a reason this pin lacks"
+        // -- and the re-pin that declared it (alongside five siblings) promptly
+        // falsified that premise, same as `record_locator` did above. This uses
+        // a reserved sentinel instead, so the assertion stays true across every
+        // future re-pin.
+        const undeclaredReason = "__unpinned_test_reason_sentinel";
         const feedback = structuredClone(feedbackFixture) as Record<string, unknown>;
-        feedback.reasons = ["wrong_cohort"];
+        feedback.reasons = [undeclaredReason];
         const client = clientReturning(feedback);
 
         await expect(
@@ -222,11 +270,12 @@ describe("feedback echoed with a reason this pin lacks", () => {
                 rating: "not_helpful",
                 reasons: ["incorrect"],
             }),
-        ).resolves.toMatchObject({ reasons: ["wrong_cohort"] });
+        ).resolves.toMatchObject({ reasons: [undeclaredReason] });
 
         expect(
             observedContractDrift().some(
-                (record) => record.kind === "unknown_enum_value" && record.name === "wrong_cohort",
+                (record) =>
+                    record.kind === "unknown_enum_value" && record.name === undeclaredReason,
             ),
         ).toBe(true);
     });
