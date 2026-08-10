@@ -109,6 +109,25 @@ prepare_playwright_artifacts() {
 
   rm -rf "${PLAYWRIGHT_REPORT_ROOT}" "${PLAYWRIGHT_RESULTS_ROOT}"
   mkdir -p "${PLAYWRIGHT_REPORT_ROOT}" "${PLAYWRIGHT_RESULTS_ROOT}"
+
+  # Drop the dev server's compiled chunks, never the production build.
+  #
+  # The `ci` tier runs `pnpm build` (which writes .next/) and then Playwright
+  # starts `next dev` (which uses .next/dev). On a fresh CI checkout .next
+  # starts empty, so those two never disagree. On a local checkout that already
+  # has a .next from earlier work, the dev server serves stale chunks against
+  # the current tree and fails with "module factory is not available" -- and the
+  # symptom is not a build error. It surfaces as unrelated PRODUCT tests
+  # failing: a broken app/global-error.tsx chunk stops an error toast
+  # rendering and stops a post-signin redirect completing, so auth specs go
+  # red and look like a real regression. Two of them cost a full gate run
+  # before the durations gave it away (10.7s and ~31s timeout-shaped failures,
+  # the same specs finishing in 575ms and 4.9s once .next was cleared).
+  #
+  # Scoped to .next/dev on purpose: wiping .next entirely would discard the
+  # production build this tier just made, so the e2e stage would silently stop
+  # exercising it.
+  rm -rf .next/dev
 }
 
 print_playwright_artifact_summary() {
