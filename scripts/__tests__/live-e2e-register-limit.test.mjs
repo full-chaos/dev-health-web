@@ -1,5 +1,5 @@
 /**
- * Guards the registration-limit override for the live-e2e backend.
+ * Guards runtime dependencies for the live-e2e backend workflow.
  *
  * Ops defaults `AUTH_REGISTER_LIMIT` to `3/hour` per IP. The live suite is
  * self-bootstrapping — nearly every describe group registers its own user — and
@@ -50,6 +50,54 @@ function registerLimit(block) {
     return { count: Number(match[1]), per: match[2] };
 }
 
+function jobBlock(source, jobName) {
+    const jobHeader = `\n    ${jobName}:\n`;
+    const jobStart = source.indexOf(jobHeader);
+    if (jobStart === -1) return null;
+
+    const rest = source.slice(jobStart + jobHeader.length);
+    const nextJob = rest.search(/\n    [A-Za-z0-9_-]+:\n/u);
+    return nextJob === -1 ? rest : rest.slice(0, nextJob);
+}
+
+function serviceBlock(source, serviceName) {
+    const servicesHeader = "\n        services:\n";
+    const servicesStart = source.indexOf(servicesHeader);
+    if (servicesStart === -1) return null;
+
+    const serviceHeader = `\n            ${serviceName}:\n`;
+    const serviceStart = source.indexOf(serviceHeader, servicesStart + servicesHeader.length);
+    if (serviceStart === -1) return null;
+
+    const rest = source.slice(serviceStart + serviceHeader.length);
+    const nextService = rest.search(/\n            [A-Za-z0-9_-]+:/u);
+    return nextService === -1 ? rest : rest.slice(0, nextService);
+}
+
+function serviceValue(block, propertyName) {
+    if (block === null) return null;
+    const match = new RegExp(`^\\s+${propertyName}:\\s*([^\\s#]+)\\s*$`, "mu").exec(block);
+    return match?.[1] ?? null;
+}
+
+function hasPortMapping(block, port) {
+    if (block === null) return false;
+    return new RegExp(`^\\s+-\\s+${port}:${port}\\s*$`, "mu").test(block);
+}
+
+function healthCommand(block) {
+    if (block === null) return null;
+    const match = /^\s+--health-cmd\s+"([^"]+)"/mu.exec(block);
+    return match?.[1] ?? null;
+}
+
+function envValue(block, variableName) {
+    const match = new RegExp(`^\\s+${variableName}:\\s*"?([^"\\s#]+)"?\\s*$`, "mu").exec(block);
+    return match?.[1] ?? null;
+}
+
+const REDIS_URL = "redis://localhost:6379/0";
+
 describe("live-e2e backend raises the registration limit", () => {
     it("sets AUTH_REGISTER_LIMIT in the step that starts the API", () => {
         const block = stepBlock(readFileSync(WORKFLOW_PATH, "utf8"), START_STEP);
@@ -73,5 +121,34 @@ describe("live-e2e backend raises the registration limit", () => {
         const inStartStep = registerLimit(stepBlock(source, START_STEP)) !== null;
         expect(inStartStep).toBe(true);
         expect(occurrences.length).toBeGreaterThan(0);
+    });
+});
+
+describe("live-e2e backend supplies Celery Redis", () => {
+    it("declares a healthy Redis service on the job", () => {
+        // Given: the live-e2e workflow source.
+        const source = readFileSync(WORKFLOW_PATH, "utf8");
+
+        // When: the Redis service mapping is selected from the live-e2e job.
+        const liveE2eJob = jobBlock(source, "live-e2e");
+        const redis = liveE2eJob === null ? null : serviceBlock(liveE2eJob, "redis");
+
+        // Then: GitHub Actions can start and health-check the Redis endpoint.
+        expect(serviceValue(redis, "image")).toBe("redis:7");
+        expect(hasPortMapping(redis, 6379)).toBe(true);
+        expect(healthCommand(redis)).toBe("redis-cli ping");
+    });
+
+    it("passes explicit Celery broker and result-backend URLs to API startup", () => {
+        // Given: the environment mapping for the API-start step.
+        const block = stepBlock(readFileSync(WORKFLOW_PATH, "utf8"), START_STEP);
+
+        // When: the Celery endpoint values are read from that step's env mapping.
+        const brokerUrl = envValue(block, "CELERY_BROKER_URL");
+        const resultBackendUrl = envValue(block, "CELERY_RESULT_BACKEND");
+
+        // Then: both Celery roles point at the published Redis service.
+        expect(brokerUrl).toBe(REDIS_URL);
+        expect(resultBackendUrl).toBe(REDIS_URL);
     });
 });

@@ -60,6 +60,12 @@ jobs:
                     - 5432:5432
                 options: >-
                     --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+            redis:
+                image: redis:7
+                ports:
+                    - 6379:6379
+                options: >-
+                    --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
             clickhouse:
                 image: clickhouse/clickhouse-server:25.1
                 env:
@@ -155,10 +161,13 @@ jobs:
                   DATABASE_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
                   CLICKHOUSE_URI: clickhouse://ch:ch@localhost:8123/default
                   POSTGRES_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+                  REDIS_URL: redis://localhost:6379/0
+                  CELERY_BROKER_URL: redis://localhost:6379/0
+                  CELERY_RESULT_BACKEND: redis://localhost:6379/0
                   CORS_ALLOWED_ORIGINS: "http://127.0.0.1:3002,http://localhost:3002,http://127.0.0.1:8000"
                   # Ops CHAOS-1553/1554 fail-closed rate-limit posture refuses to start
-                  # without REDIS_URL unless ENVIRONMENT=development. Live-e2e runs a
-                  # single ops replica and does not need shared Redis state.
+                  # without REDIS_URL unless ENVIRONMENT=development. Live-e2e provides
+                  # a local Redis service for rate limiting and Celery endpoints.
                   ENVIRONMENT: development
                   # Backend auth service requires a JWT signing secret; derivation
                   # from SETTINGS_ENCRYPTION_KEY was removed. Without this every
