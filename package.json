@@ -33,6 +33,7 @@
         "test:e2e:onboarding": "playwright test -c playwright.onboarding.config.ts",
         "test:e2e:live": "playwright test -c playwright.live.config.ts",
         "test:ask-dev-acceptance": "playwright test -c playwright.ask-dev-acceptance.config.ts",
+        "test:ask-dev-graph-acceptance": "playwright test -c playwright.ask-dev-graph-acceptance.config.ts",
         "test:unit": "vitest run",
         "test:ci": "bash ci/run_tests.sh ci"
     },
