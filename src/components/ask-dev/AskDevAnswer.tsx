@@ -16,7 +16,11 @@ import { ClaimsSection } from "./answer/ClaimsSection";
 import { ConflictsSection } from "./answer/ConflictsSection";
 import { CoverageSection } from "./answer/CoverageSection";
 import { EvidenceSection } from "./answer/EvidenceSection";
-import { FeedbackFooter, type FeedbackState } from "./answer/FeedbackFooter";
+import {
+    FeedbackFooter,
+    type FeedbackState,
+    type FeedbackSubmission,
+} from "./answer/FeedbackFooter";
 import { FollowUpSection } from "./answer/FollowUpSection";
 import type { CitationTargets } from "./answer/InlineCitations";
 import type { SafeProse } from "./answer/labels";
@@ -441,12 +445,16 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
         openMetric: openMetricDetail,
     };
 
-    const sendFeedback = async (rating: "helpful" | "not_helpful") => {
+    const sendFeedback = async (submission: FeedbackSubmission) => {
         setFeedback("saving");
         setFeedbackError(null);
         try {
-            await submitAnswerFeedback(answer.answer_id, rating);
-            setFeedback(rating);
+            await submitAnswerFeedback(answer.answer_id, {
+                rating: submission.rating,
+                reasons: submission.reasons,
+                comment: submission.comment,
+            });
+            setFeedback(submission.rating);
         } catch (caught) {
             setFeedback(null);
             setFeedbackError(
@@ -547,7 +555,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
 
             <FeedbackFooter
                 error={feedbackError}
-                onRate={(rating) => void sendFeedback(rating)}
+                onSubmit={(submission) => void sendFeedback(submission)}
                 state={feedback}
             />
         </article>

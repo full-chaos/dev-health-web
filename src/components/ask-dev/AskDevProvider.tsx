@@ -12,7 +12,12 @@ import {
     type ReactNode,
 } from "react";
 
-import type { DevApiClient, DevConversationList, DevWebError } from "@/lib/dev/client";
+import type {
+    DevApiClient,
+    DevConversationList,
+    DevFeedbackInput,
+    DevWebError,
+} from "@/lib/dev/client";
 import {
     devApiClient,
     initialDevConversationStreamState,
@@ -107,7 +112,7 @@ type AskDevContextValue = {
     returnToPersistentWindow: () => void;
     setPanelMode: (mode: AskDevPanelMode) => void;
     startNewConversation: () => void;
-    submitAnswerFeedback: (answerId: string, rating: "helpful" | "not_helpful") => Promise<void>;
+    submitAnswerFeedback: (answerId: string, input: DevFeedbackInput) => Promise<void>;
     submitQuestion: (question: string) => Promise<void>;
 };
 
@@ -656,12 +661,19 @@ export function AskDevProvider({
         [client],
     );
 
+    /**
+     * Forward exactly what the reader expressed.
+     *
+     * This previously derived `reasons` from the rating alone
+     * (`helpful -> ["useful"]`, `not_helpful -> ["unclear"]`). The positive half
+     * was faithful; the negative half recorded the specific diagnosis "unclear"
+     * for every unhelpful rating, chosen by nobody. The wire requires at least
+     * one reason, so the caller now collects real ones -- see `FeedbackFooter`
+     * for why the two paths differ.
+     */
     const submitAnswerFeedback = useCallback(
-        async (answerId: string, rating: "helpful" | "not_helpful") => {
-            await client.submitFeedback(answerId, {
-                rating,
-                reasons: rating === "helpful" ? ["useful"] : ["unclear"],
-            });
+        async (answerId: string, input: DevFeedbackInput) => {
+            await client.submitFeedback(answerId, input);
         },
         [client],
     );

@@ -59,11 +59,19 @@ export type DevConversationCreateInput = Readonly<{
     title?: string | null;
 }>;
 export type DevConversationRenameInput = Readonly<{ title: string | null }>;
+/**
+ * The feedback request body.
+ *
+ * `rating` and `reasons` are DERIVED from the generated `dev_feedback.v1` types
+ * rather than restated. They were previously hand-written copies of the same
+ * unions, which meant a re-pin that added a reason (or a rating) kept compiling
+ * against the stale vocabulary and the new member could never be sent -- the
+ * exact drift the pinned-contract workflow exists to prevent, reintroduced one
+ * layer above it.
+ */
 export type DevFeedbackInput = Readonly<{
-    rating: "helpful" | "not_helpful";
-    reasons: (
-        "incorrect" | "missing_evidence" | "wrong_scope" | "stale_data" | "unclear" | "useful"
-    )[];
+    rating: DevFeedback["rating"];
+    reasons: readonly DevFeedback["reasons"][number][];
     comment?: string | null;
 }>;
 

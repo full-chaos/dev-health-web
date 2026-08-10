@@ -1,0 +1,89 @@
+/**
+ * The feedback vocabulary against the pinned contract.
+ *
+ * `FEEDBACK_REASON_LABELS` and `FEEDBACK_REASON_POLARITY` are TOTAL `Record`s
+ * over a union derived from the generated types, so a re-pin that adds a reason
+ * already fails to compile until both are extended. TypeScript is not the whole
+ * guard though: totality is only as good as the union, and the union is only as
+ * good as the generated file. This reads the pinned JSON Schema itself — the
+ * artifact the generator consumed — so a generator that dropped a member, or a
+ * generated file edited by hand, is caught rather than believed.
+ */
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+import { describe, expect, it } from "vitest";
+
+import {
+    FEEDBACK_REASON_LABELS,
+    FEEDBACK_REASON_POLARITY,
+    NEGATIVE_FEEDBACK_REASONS,
+    POSITIVE_FEEDBACK_REASON,
+} from "./feedbackReasons";
+
+const SCHEMA_PATH = path.join(
+    __dirname,
+    "..",
+    "..",
+    "..",
+    "lib",
+    "dev",
+    "contracts",
+    "schemas",
+    "dev_feedback.v1.schema.json",
+);
+
+function pinnedReasonEnum(): readonly string[] {
+    const schema = JSON.parse(readFileSync(SCHEMA_PATH, "utf8")) as {
+        properties?: { reasons?: { items?: { enum?: unknown } } };
+    };
+    const members = schema.properties?.reasons?.items?.enum;
+    if (!Array.isArray(members) || members.length === 0) {
+        throw new Error("dev_feedback.v1 reasons enum missing — schema shape changed.");
+    }
+    return members as readonly string[];
+}
+
+describe("feedback reason vocabulary vs. the pinned dev_feedback.v1 schema", () => {
+    it("labels cover exactly the pinned reason enum", () => {
+        expect(Object.keys(FEEDBACK_REASON_LABELS).slice().sort()).toEqual(
+            pinnedReasonEnum().slice().sort(),
+        );
+    });
+
+    it("polarity covers exactly the pinned reason enum", () => {
+        expect(Object.keys(FEEDBACK_REASON_POLARITY).slice().sort()).toEqual(
+            pinnedReasonEnum().slice().sort(),
+        );
+    });
+
+    it("no reason is left unlabelled or labelled with its raw member name", () => {
+        for (const [reason, label] of Object.entries(FEEDBACK_REASON_LABELS)) {
+            expect(label.length, `${reason} has no copy`).toBeGreaterThan(0);
+            // A raw member would leak an internal token: every member is
+            // underscore-or-lowercase machine vocabulary, never sanctioned copy.
+            expect(label, `${reason} renders its raw member name`).not.toBe(reason);
+        }
+    });
+
+    it("offers every negative reason as a chip and no positive or neutral one", () => {
+        const expectedNegative = Object.keys(FEEDBACK_REASON_POLARITY).filter(
+            (reason) =>
+                FEEDBACK_REASON_POLARITY[reason as keyof typeof FEEDBACK_REASON_POLARITY] ===
+                "negative",
+        );
+        expect(NEGATIVE_FEEDBACK_REASONS.slice().sort()).toEqual(expectedNegative.slice().sort());
+        for (const reason of NEGATIVE_FEEDBACK_REASONS) {
+            expect(FEEDBACK_REASON_POLARITY[reason]).toBe("negative");
+        }
+    });
+
+    it("the one auto-supplied reason is positive, and is never offered as a negative chip", () => {
+        // The positive path records POSITIVE_FEEDBACK_REASON without the reader
+        // choosing it. That is only defensible while the member genuinely means
+        // "this was useful" -- if it were ever reclassified, the one-click
+        // positive submit would start asserting something unchosen AND untrue.
+        expect(FEEDBACK_REASON_POLARITY[POSITIVE_FEEDBACK_REASON]).toBe("positive");
+        expect(NEGATIVE_FEEDBACK_REASONS).not.toContain(POSITIVE_FEEDBACK_REASON);
+    });
+});
