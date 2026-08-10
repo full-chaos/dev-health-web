@@ -29,10 +29,15 @@ export default defineConfig({
             //     ask-dev-acceptance.spec.ts above. It needs the Compose
             //     launcher's org provisioning and arming contract; running it
             //     against this suite's generic backend proves nothing and fails.
+            //
+            //   ask-dev-graph-acceptance.spec.ts — separately armed graph
+            //     acceptance; importing it requires graph oracle variables.
+            //     It is collected only by playwright.ask-dev-graph-acceptance.config.ts.
             testIgnore: [
                 /onboarding-ui\.spec\.ts/,
                 /ask-dev-acceptance\.spec\.ts/,
                 /ask-dev-wave4-access-matrix\.spec\.ts/,
+                /ask-dev-graph-acceptance\.spec\.ts/,
                 /__tests__\//,
             ],
             dependencies: ["onboarding-ui"],
