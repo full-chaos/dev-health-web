@@ -12,6 +12,11 @@ if (process.env.ASK_DEV_GRAPH_LIVE_ACCEPTANCE !== "1") {
 if (process.env.ASK_DEV_COMPOSE_WEB_READY !== "1") {
     throw new Error("Graph acceptance requires the canonical Compose-booted Web service.");
 }
+if (process.env.ASK_DEV_GRAPH_ACCEPTANCE_FALLBACK_ARM !== "1") {
+    throw new Error(
+        "Graph acceptance requires an explicitly armed deterministic graph-unavailable seam.",
+    );
+}
 for (const name of [
     "ASK_DEV_GRAPH_ACCEPTANCE_QUESTION",
     "ASK_DEV_GRAPH_ACCEPTANCE_FALLBACK_QUESTION",
@@ -21,6 +26,13 @@ for (const name of [
     "ASK_DEV_GRAPH_ACCEPTANCE_BACKEND_SHA",
 ])
     required(name);
+
+if (
+    required("ASK_DEV_GRAPH_ACCEPTANCE_QUESTION") ===
+    required("ASK_DEV_GRAPH_ACCEPTANCE_FALLBACK_QUESTION")
+) {
+    throw new Error("Graph and fallback acceptance questions must be distinct.");
+}
 
 export default defineConfig({
     testDir: "./tests/live",
