@@ -46,8 +46,6 @@
  *   import { isRateLimited, RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_MS } from "@/lib/rate-limit";
  *   if (await isRateLimited(key)) { return 429; }
  */
-import { createHash } from "node:crypto";
-
 import * as Sentry from "@sentry/nextjs";
 
 import { getServerEnv } from "@/lib/config";
@@ -102,29 +100,38 @@ function scopedKey(key: string, options: RateLimitOptions): string {
     return options.namespace ? `rate_limit:${options.namespace}:${key}` : `rate_limit:${key}`;
 }
 
-function safeKeyHash(key: string): string {
-    return createHash("sha256").update(key).digest("hex");
+/**
+ * `node:crypto` is unavailable in the Edge runtime (`src/proxy.ts` and this
+ * module's edge-instrumentation import both run there), so this uses the Web
+ * Crypto API instead — supported by both Node.js and Edge.
+ */
+async function safeKeyHash(key: string): Promise<string> {
+    const digest = await globalThis.crypto.subtle.digest("SHA-256", new TextEncoder().encode(key));
+    return Array.from(new Uint8Array(digest))
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
 }
 
 const failClosedLogKeys = new Map<string, number>();
 const FAIL_CLOSED_LOG_INTERVAL_MS = 60_000;
 
-function reportRedisUnavailable(
+async function reportRedisUnavailable(
     key: string,
     options: RateLimitOptions,
     reason: "missing_redis_url" | "client_unavailable" | "redis_command_failed",
     err?: unknown,
-): void {
+): Promise<void> {
     const failClosed = options.failClosed === true;
     const namespace = options.namespace ?? "default";
     const dedupeKey = `${namespace}:${reason}`;
     const now = Date.now();
     const lastLogged = failClosedLogKeys.get(dedupeKey) ?? 0;
+    const keyHash = await safeKeyHash(key);
 
     if (now - lastLogged >= FAIL_CLOSED_LOG_INTERVAL_MS) {
         failClosedLogKeys.set(dedupeKey, now);
         logger.error(
-            { err, key_hash: safeKeyHash(key), namespace, failClosed, reason },
+            { err, key_hash: keyHash, namespace, failClosed, reason },
             failClosed
                 ? "Redis rate-limit backend unavailable — failing closed"
                 : "Redis rate-limit backend unavailable — request NOT rate limited",
@@ -137,7 +144,7 @@ function reportRedisUnavailable(
         scope.setTag("rate_limit.reason", reason);
         scope.setContext("rate_limit", {
             failClosed,
-            key_hash: safeKeyHash(key),
+            key_hash: keyHash,
             namespace,
             reason,
         });
@@ -184,13 +191,13 @@ return current
  * the whole policy: set, the request is refused; unset, it is allowed. Either
  * way it is reported — an unenforced limit must never be silent.
  */
-function onRedisUnavailable(
+async function onRedisUnavailable(
     key: string,
     options: RateLimitOptions,
     reason: "missing_redis_url" | "client_unavailable" | "redis_command_failed",
     err?: unknown,
-): RateLimitResult {
-    reportRedisUnavailable(key, options, reason, err);
+): Promise<RateLimitResult> {
+    await reportRedisUnavailable(key, options, reason, err);
 
     return options.failClosed
         ? { limited: true, retryAfter: retryAfterSeconds(windowMs(options)) }
@@ -204,7 +211,7 @@ async function checkRateLimitedRedis(
     const redis = getRedis();
     if (!redis) {
         const reason = getServerEnv().REDIS_URL ? "client_unavailable" : "missing_redis_url";
-        return onRedisUnavailable(key, options, reason);
+        return await onRedisUnavailable(key, options, reason);
     }
 
     const redisKey = scopedKey(key, options);
@@ -220,7 +227,7 @@ async function checkRateLimitedRedis(
 
         return { limited: false, retryAfter: 0 };
     } catch (err) {
-        return onRedisUnavailable(key, options, "redis_command_failed", err);
+        return await onRedisUnavailable(key, options, "redis_command_failed", err);
     }
 }
 
