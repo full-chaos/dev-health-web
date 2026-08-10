@@ -21,6 +21,7 @@ import type {
 import {
     devApiClient,
     initialDevConversationStreamState,
+    PINNED_DEV_STREAM_CONTRACT_VERSION,
     reduceDevConversationStream,
 } from "@/lib/dev/client";
 import {
@@ -746,6 +747,7 @@ export function AskDevProvider({
 
                 const request: DevMessageRequest = {
                     schema_version: "dev_message_request.v1",
+                    client_contract_version: PINNED_DEV_STREAM_CONTRACT_VERSION,
                     client_message_id: userEntryId,
                     request_id: crypto.randomUUID(),
                     conversation_id: activeConversationId,
