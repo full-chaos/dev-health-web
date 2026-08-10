@@ -9,10 +9,19 @@
  *
  * These assert the state the system exists to reach: a payload from a NEWER
  * server still yields an answer, while a genuinely malformed one still fails.
- * The fixtures are the checked-in canonical examples with the future surface
- * added on top, so they mirror the real producer rather than a hand-shaped
- * guess. `record_locator` and `graph_assisted` are the actual fields on their
- * way, not invented names.
+ * The base fixtures are the checked-in canonical examples, so the shapes and
+ * values around the additions are the real producer's rather than a hand-shaped
+ * guess.
+ *
+ * The UNDECLARED keys, though, are deliberately names no contract will ever
+ * adopt. An earlier revision used `record_locator` and `graph_assisted` because
+ * they were the real fields on their way -- and the re-pin that landed
+ * `record_locator` promptly made this test's premise false, since the key was
+ * no longer unknown. Asserting "this key is undeclared" against a name the
+ * contract may declare is a test that expires. The mechanism under test does not
+ * care what the key is called, only that it is absent from the schema, so the
+ * names below are reserved sentinels that keep the assertion true across every
+ * future re-pin.
  */
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
@@ -43,8 +52,8 @@ afterEach(() => resetContractDrift());
 function futureAnswer(): Record<string, unknown> {
     const answer = structuredClone(answerFixture) as Record<string, unknown>;
     const evidence = answer.evidence as Record<string, unknown>[];
-    evidence[0]!.record_locator = "gh:pr/4821";
-    answer.graph_assisted = { state: "lagging", as_of: "2026-08-10T00:00:00Z" };
+    evidence[0]!.__unpinned_nested_field = "gh:pr/4821";
+    answer.__unpinned_top_level_field = { state: "lagging", as_of: "2026-08-10T00:00:00Z" };
     return answer;
 }
 
@@ -102,11 +111,11 @@ describe("unknown properties are ignored for parsing and reported", () => {
             }),
         );
         const names = captured.map((record) => record.name);
-        expect(names).toContain("graph_assisted");
-        expect(names).toContain("record_locator");
+        expect(names).toContain("__unpinned_top_level_field");
+        expect(names).toContain("__unpinned_nested_field");
         // The nested one must carry WHERE it was, or a report cannot tell you
         // which object drifted.
-        const nested = captured.find((record) => record.name === "record_locator");
+        const nested = captured.find((record) => record.name === "__unpinned_nested_field");
         expect(nested?.path).toBe("/evidence/0");
     });
 
@@ -119,7 +128,7 @@ describe("unknown properties are ignored for parsing and reported", () => {
                 name: property.key,
             }),
         );
-        // "gh:pr/4821" is the value of record_locator; nothing about it may
+        // "gh:pr/4821" is the undeclared nested field's value; nothing about it may
         // appear anywhere in what gets reported.
         const serialized = JSON.stringify(captured);
         expect(serialized).not.toContain("gh:pr/4821");
