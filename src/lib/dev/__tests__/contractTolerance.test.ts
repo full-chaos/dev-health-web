@@ -36,7 +36,6 @@ import feedbackFixture from "../contracts/examples/positive/dev_feedback.v1.json
 import graphStateEventFixture from "../contracts/examples/positive/dev_stream_event.v1.graph_state.json";
 import answerSchema from "../contracts/schemas/dev_answer.v1.schema.json";
 import { DevApiError, consumeDevSseStream, createDevApiClient } from "../client";
-import type { DevStreamEvent } from "../generated";
 import { validatePinnedJsonSchema } from "../jsonSchemaValidation";
 
 const captured: ContractDriftRecord[] = [];

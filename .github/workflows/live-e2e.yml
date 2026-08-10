@@ -167,6 +167,18 @@ jobs:
                   # onboarding-ui regression for weeks.
                   JWT_SECRET_KEY: live-e2e-test-secret-do-not-use-in-production
                   SETTINGS_ENCRYPTION_KEY: live-e2e-test-settings-key-do-not-use
+                  # Ops default is 3/hour per IP (rate_limit.py: AUTH_REGISTER_LIMIT
+                  # falls back to "3/hour" when unset). This suite is
+                  # self-bootstrapping: nearly every describe group registers its own
+                  # user, and in CI every request arrives from one IP -- so past the
+                  # third registration the rest of the run is talking to a throttle
+                  # instead of the API, and the tests that depend on that identity
+                  # skip or fail for reasons unrelated to what they assert.
+                  #
+                  # Raised HERE only. The production default is untouched: it lives in
+                  # the ops fallback, not in this file, so nothing about this line
+                  # changes deployed behaviour.
+                  AUTH_REGISTER_LIMIT: 1000/hour
               run: |
                   nohup python -m dev_health_ops.cli \
                     --db "$DATABASE_URI" \
