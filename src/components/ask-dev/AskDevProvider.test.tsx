@@ -4,6 +4,7 @@ import { useLayoutEffect } from "react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { DevApiClient, DevConversationList } from "@/lib/dev/client";
+import { DevApiError } from "@/lib/dev/client";
 import type {
     DevAnswer,
     DevConversation,
@@ -101,6 +102,7 @@ function makeClient(): DevApiClient {
             } as DevStreamEvent);
             return answer;
         }),
+        resumeRun: vi.fn(),
         expandEvidence: vi.fn(),
         submitFeedback: vi.fn(),
     };
@@ -131,12 +133,14 @@ describe("AskDevProvider permanent window", () => {
         navigation.pathname = "/dashboard";
         navigation.query = "";
         navigation.replace.mockClear();
+        window.localStorage.clear();
     });
 
     afterEach(() => {
         // jsdom does not implement matchMedia by default; remove any per-test stub.
         // @ts-expect-error test cleanup
         delete window.matchMedia;
+        window.localStorage.clear();
     });
 
     it("opens without creating a conversation or submitting a run", async () => {
@@ -575,6 +579,409 @@ describe("AskDevProvider permanent window", () => {
         expect(streamMessage.mock.calls[1]?.[1].request_id).not.toBe(
             streamMessage.mock.calls[0]?.[1].request_id,
         );
+    });
+
+    it("rejoins a dropped stream without creating a second run or changing scope", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        const streamMessage = vi.mocked(client.streamMessage);
+        const resumeRun = vi.mocked(client.resumeRun);
+        streamMessage.mockImplementationOnce(async (_conversationId, _request, options) => {
+            options?.onEvent?.({
+                event: "run.started",
+                run_id: "run-rejoin",
+                sequence: 0,
+            } as DevStreamEvent);
+            options?.onEvent?.({
+                event: "progress",
+                progress: "checking_evidence",
+                run_id: "run-rejoin",
+                sequence: 1,
+            } as DevStreamEvent);
+            throw new Error("The live stream disconnected.");
+        });
+        resumeRun.mockImplementationOnce(async (runId, input, options) => {
+            expect(runId).toBe("run-rejoin");
+            expect(input.conversation_id).toBe("conversation-1");
+            expect(input.last_sequence).toBe(1);
+            options?.onEvent?.({
+                event: "answer.completed",
+                answer,
+                run_id: "run-rejoin",
+                sequence: 2,
+            } as DevStreamEvent);
+            options?.onEvent?.({
+                event: "done",
+                run_id: "run-rejoin",
+                sequence: 3,
+                terminal_kind: "answer",
+            } as DevStreamEvent);
+            return answer;
+        });
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "Check risk");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        expect(await screen.findByText(answer.direct_summary)).toBeVisible();
+        expect(streamMessage).toHaveBeenCalledOnce();
+        expect(resumeRun).toHaveBeenCalledOnce();
+        expect(resumeRun.mock.calls[0]?.[1].scope).toEqual(streamMessage.mock.calls[0]?.[1].scope);
+        expect(screen.getAllByText("Check risk")).toHaveLength(1);
+        expect(screen.getAllByText(answer.direct_summary)).toHaveLength(1);
+    });
+
+    it("does not retry a resume scope mismatch", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        vi.mocked(client.streamMessage).mockImplementationOnce(async (_id, _request, options) => {
+            options?.onEvent?.({
+                event: "run.started",
+                run_id: "run-scope-mismatch",
+                sequence: 0,
+            } as DevStreamEvent);
+            throw new TypeError("The live stream disconnected.");
+        });
+        vi.mocked(client.resumeRun).mockRejectedValueOnce(
+            new DevApiError(409, {
+                schema_version: "dev_web_error.v1",
+                code: "resume_scope_mismatch",
+                safe_message: "The resume scope does not match the accepted run.",
+                retryable: false,
+            }),
+        );
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "Check risk");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+
+        expect(
+            await screen.findByText("The resume scope does not match the accepted run."),
+        ).toBeVisible();
+        expect(client.streamMessage).toHaveBeenCalledOnce();
+        expect(client.resumeRun).toHaveBeenCalledOnce();
+    });
+
+    it("aborts resume polling when the user cancels", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        vi.mocked(client.streamMessage).mockImplementationOnce(async (_id, _request, options) => {
+            options?.onEvent?.({
+                event: "run.started",
+                run_id: "run-polling",
+                sequence: 0,
+            } as DevStreamEvent);
+            throw new TypeError("The live stream disconnected.");
+        });
+        vi.mocked(client.resumeRun).mockRejectedValue(
+            new DevApiError(409, {
+                schema_version: "dev_web_error.v1",
+                code: "resume_unavailable",
+                safe_message: "The live run has no durable event after this cursor.",
+                retryable: true,
+            }),
+        );
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "Check risk");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+        await waitFor(() => expect(client.resumeRun).toHaveBeenCalledOnce());
+        const resumeSignal = vi.mocked(client.resumeRun).mock.calls[0]?.[2]?.signal;
+
+        await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+        expect(await screen.findByText("The investigation was cancelled.")).toBeVisible();
+        expect(resumeSignal?.aborted).toBe(true);
+        expect(client.resumeRun).toHaveBeenCalledOnce();
+    });
+
+    it("resumes a stored live run after reload using its original transcript scope", async () => {
+        const client = makeClient();
+        const resumeRun = vi.mocked(client.resumeRun);
+        const storedScope = { ...scope, repositories: ["repo-original"] } as DevScope;
+        window.localStorage.setItem(
+            "dev-health.ask-dev.active-run.v1:org-1",
+            JSON.stringify({
+                conversationId: "conversation-1",
+                runId: "run-reload",
+                question: "Check the original scope",
+                scope: storedScope,
+                scopeLabel: "Organization",
+                lastSequence: 4,
+            }),
+        );
+        vi.mocked(client.getConversationTranscript).mockResolvedValue({
+            conversation_id: "conversation-1",
+            items: [
+                {
+                    answer: null,
+                    created_at: "2026-07-29T00:00:00Z",
+                    message_id: "message-reload",
+                    question: "Check the original scope",
+                    retry_of_run_id: null,
+                    role: "user",
+                    run_id: "run-reload",
+                    run_state: "accepted",
+                    schema_version: "dev_transcript_entry.v1",
+                    scope: storedScope,
+                },
+            ],
+            next_cursor: null,
+            schema_version: "dev_conversation_transcript.v1",
+        });
+        resumeRun.mockImplementationOnce(async (runId, input, options) => {
+            options?.onEvent?.({
+                event: "answer.completed",
+                answer,
+                run_id: runId,
+                sequence: 5,
+            } as DevStreamEvent);
+            options?.onEvent?.({
+                event: "done",
+                run_id: runId,
+                sequence: 6,
+                terminal_kind: "answer",
+            } as DevStreamEvent);
+            expect(input).toMatchObject({
+                conversation_id: "conversation-1",
+                last_sequence: 4,
+                scope: storedScope,
+            });
+            return answer;
+        });
+
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <AskDevWorkspace />
+            </AskDevProvider>,
+        );
+
+        expect(await screen.findByText(answer.direct_summary)).toBeVisible();
+        expect(client.createConversation).not.toHaveBeenCalled();
+        expect(client.streamMessage).not.toHaveBeenCalled();
+        expect(resumeRun).toHaveBeenCalledOnce();
+        expect(screen.getAllByText("Check the original scope")).toHaveLength(1);
+    });
+
+    it("keeps polling the same stored run when no durable event is available yet", async () => {
+        const client = makeClient();
+        const resumeRun = vi.mocked(client.resumeRun);
+        window.localStorage.setItem(
+            "dev-health.ask-dev.active-run.v1:org-1",
+            JSON.stringify({
+                conversationId: "conversation-1",
+                runId: "run-reload",
+                question: "Wait for the running answer",
+                scope,
+                scopeLabel: "Organization",
+                lastSequence: 4,
+            }),
+        );
+        vi.mocked(client.getConversationTranscript).mockResolvedValue({
+            conversation_id: "conversation-1",
+            items: [
+                {
+                    answer: null,
+                    created_at: "2026-07-29T00:00:00Z",
+                    message_id: "message-reload",
+                    question: "Wait for the running answer",
+                    retry_of_run_id: null,
+                    role: "user",
+                    run_id: "run-reload",
+                    run_state: "accepted",
+                    schema_version: "dev_transcript_entry.v1",
+                    scope,
+                },
+            ],
+            next_cursor: null,
+            schema_version: "dev_conversation_transcript.v1",
+        });
+        resumeRun
+            .mockRejectedValueOnce(
+                new DevApiError(409, {
+                    schema_version: "dev_web_error.v1",
+                    code: "resume_unavailable",
+                    safe_message: "The live run has no durable event after this cursor.",
+                    retryable: true,
+                }),
+            )
+            .mockImplementationOnce(async (runId, _input, options) => {
+                options?.onEvent?.({
+                    event: "progress",
+                    progress: "checking_evidence",
+                    run_id: runId,
+                    sequence: 5,
+                } as DevStreamEvent);
+                return null;
+            })
+            .mockImplementationOnce(async (runId, _input, options) => {
+                options?.onEvent?.({
+                    event: "answer.completed",
+                    answer,
+                    run_id: runId,
+                    sequence: 6,
+                } as DevStreamEvent);
+                options?.onEvent?.({
+                    event: "done",
+                    run_id: runId,
+                    sequence: 7,
+                    terminal_kind: "answer",
+                } as DevStreamEvent);
+                return answer;
+            });
+
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <AskDevWorkspace />
+            </AskDevProvider>,
+        );
+
+        expect(await screen.findByText(answer.direct_summary)).toBeVisible();
+        expect(resumeRun).toHaveBeenCalledTimes(3);
+        expect(resumeRun.mock.calls[0]?.[1].last_sequence).toBe(4);
+        expect(resumeRun.mock.calls[1]?.[1].last_sequence).toBe(4);
+        expect(resumeRun.mock.calls[2]?.[1].last_sequence).toBe(5);
+        expect(resumeRun.mock.calls[2]?.[1].request_id).not.toBe(
+            resumeRun.mock.calls[0]?.[1].request_id,
+        );
+        expect(client.streamMessage).not.toHaveBeenCalled();
+    });
+
+    it("finds the stored run on a later bounded transcript page before resuming", async () => {
+        const client = makeClient();
+        window.localStorage.setItem(
+            "dev-health.ask-dev.active-run.v1:org-1",
+            JSON.stringify({
+                conversationId: "conversation-1",
+                runId: "run-page-2",
+                question: "Resume the newest investigation",
+                scope,
+                scopeLabel: "Organization",
+                lastSequence: 4,
+            }),
+        );
+        vi.mocked(client.getConversationTranscript)
+            .mockResolvedValueOnce({
+                conversation_id: "conversation-1",
+                items: [],
+                next_cursor: "page-2",
+                schema_version: "dev_conversation_transcript.v1",
+            })
+            .mockResolvedValueOnce({
+                conversation_id: "conversation-1",
+                items: [
+                    {
+                        answer: null,
+                        created_at: "2026-07-29T00:00:00Z",
+                        message_id: "message-page-2",
+                        question: "Resume the newest investigation",
+                        retry_of_run_id: null,
+                        role: "user",
+                        run_id: "run-page-2",
+                        run_state: "accepted",
+                        schema_version: "dev_transcript_entry.v1",
+                        scope,
+                    },
+                ],
+                next_cursor: null,
+                schema_version: "dev_conversation_transcript.v1",
+            });
+        vi.mocked(client.resumeRun).mockImplementationOnce(async (runId, _input, options) => {
+            options?.onEvent?.({
+                event: "answer.completed",
+                answer,
+                run_id: runId,
+                sequence: 5,
+            } as DevStreamEvent);
+            options?.onEvent?.({
+                event: "done",
+                run_id: runId,
+                sequence: 6,
+                terminal_kind: "answer",
+            } as DevStreamEvent);
+            return answer;
+        });
+
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <AskDevWorkspace />
+            </AskDevProvider>,
+        );
+
+        expect(await screen.findByText(answer.direct_summary)).toBeVisible();
+        expect(client.getConversationTranscript).toHaveBeenNthCalledWith(1, "conversation-1", {
+            signal: expect.any(AbortSignal),
+            cursor: undefined,
+            limit: 100,
+        });
+        expect(client.getConversationTranscript).toHaveBeenNthCalledWith(2, "conversation-1", {
+            signal: expect.any(AbortSignal),
+            cursor: "page-2",
+            limit: 100,
+        });
+        expect(client.resumeRun).toHaveBeenCalledOnce();
+    });
+
+    it.each([
+        ["failed", "Ask Dev could not complete the investigation."],
+        ["cancelled", "The investigation was cancelled."],
+    ] as const)("restores a terminal %s run without polling forever", async (runState, message) => {
+        const client = makeClient();
+        window.localStorage.setItem(
+            "dev-health.ask-dev.active-run.v1:org-1",
+            JSON.stringify({
+                conversationId: "conversation-1",
+                runId: "run-terminal",
+                question: "Restore the terminal investigation",
+                scope,
+                scopeLabel: "Organization",
+                lastSequence: 5,
+            }),
+        );
+        vi.mocked(client.getConversationTranscript).mockResolvedValue({
+            conversation_id: "conversation-1",
+            items: [
+                {
+                    answer: null,
+                    created_at: "2026-07-29T00:00:00Z",
+                    message_id: "message-terminal",
+                    question: "Restore the terminal investigation",
+                    retry_of_run_id: null,
+                    role: "user",
+                    run_id: "run-terminal",
+                    run_state: runState,
+                    schema_version: "dev_transcript_entry.v1",
+                    scope,
+                },
+            ],
+            next_cursor: null,
+            schema_version: "dev_conversation_transcript.v1",
+        });
+
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <AskDevWorkspace />
+            </AskDevProvider>,
+        );
+
+        expect(await screen.findByText(message)).toBeVisible();
+        expect(client.resumeRun).not.toHaveBeenCalled();
+        expect(window.localStorage.getItem("dev-health.ask-dev.active-run.v1:org-1")).toBeNull();
     });
 
     it("retries the latest question when it fails before a run identifier is issued", async () => {

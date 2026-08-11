@@ -15,6 +15,7 @@ import {
     reduceDevConversationStream,
     type DevApiClient,
     type DevConversationCreateInput,
+    type DevRunResumeInput,
 } from "../client";
 
 function completedEvents(answer: unknown = answerFixture): DevStreamEvent[] {
@@ -60,6 +61,88 @@ describe("Ask Dev browser client", () => {
 
         expect(answer.answer_id).toBe("answer_01");
         expect(onEvent).toHaveBeenCalledTimes(3);
+    });
+
+    it("rejoins an existing run and consumes only the suffix after its cursor", async () => {
+        const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(sse(completedEvents().slice(1)));
+        const client = createDevApiClient({ fetch: fetchMock });
+        const onEvent = vi.fn();
+        const input: DevRunResumeInput = {
+            schema_version: "dev_run_resume_request.v1",
+            request_id: "request_resume_01",
+            conversation_id: "conversation_01",
+            last_sequence: 0,
+            scope: conversationFixture.current_scope as DevMessageRequest["scope"],
+        };
+
+        await expect(client.resumeRun("run_01", input, { onEvent })).resolves.toMatchObject({
+            answer_id: "answer_01",
+        });
+
+        expect(fetchMock).toHaveBeenCalledWith(
+            "/api/v1/dev/runs/run_01/resume",
+            expect.objectContaining({ method: "POST", cache: "no-store" }),
+        );
+        const requestInit = fetchMock.mock.calls[0]?.[1];
+        expect(JSON.parse(String(requestInit?.body))).toEqual(input);
+        expect(onEvent).toHaveBeenCalledTimes(2);
+    });
+
+    it("accepts a nonterminal replay suffix as a still-running run", async () => {
+        const progress = {
+            event: "progress",
+            occurred_at: "2026-07-29T12:00:01Z",
+            progress: "checking_evidence",
+            run_id: "run_01",
+            schema_version: "dev_stream_event.v1",
+            sequence: 1,
+        } as DevStreamEvent;
+        const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(sse([progress]));
+        const client = createDevApiClient({ fetch: fetchMock });
+        const onEvent = vi.fn();
+
+        await expect(
+            client.resumeRun(
+                "run_01",
+                {
+                    schema_version: "dev_run_resume_request.v1",
+                    request_id: "request_resume_01",
+                    conversation_id: "conversation_01",
+                    last_sequence: 0,
+                    scope: conversationFixture.current_scope as DevMessageRequest["scope"],
+                },
+                { onEvent },
+            ),
+        ).resolves.toBeNull();
+        expect(onEvent).toHaveBeenCalledWith(progress);
+    });
+
+    it("preserves the retryable resume-unavailable contract", async () => {
+        const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(
+            Response.json(
+                {
+                    schema_version: "dev_web_error.v1",
+                    code: "resume_unavailable",
+                    safe_message: "The live run has no durable event after this cursor.",
+                    retryable: true,
+                },
+                { status: 409 },
+            ),
+        );
+        const client = createDevApiClient({ fetch: fetchMock });
+
+        await expect(
+            client.resumeRun("run_01", {
+                schema_version: "dev_run_resume_request.v1",
+                request_id: "request_resume_01",
+                conversation_id: "conversation_01",
+                last_sequence: 0,
+                scope: conversationFixture.current_scope as DevMessageRequest["scope"],
+            }),
+        ).rejects.toMatchObject({
+            status: 409,
+            detail: { code: "resume_unavailable", retryable: true },
+        });
     });
 
     it("rejects a schema-valid envelope whose completed answer violates the pinned contract", async () => {
