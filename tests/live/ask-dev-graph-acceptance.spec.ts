@@ -157,9 +157,27 @@ async function submit(page: Page, question: string, regionName = "Ask Dev"): Pro
     await region.getByRole("button", { name: "Ask", exact: true }).click();
     // Compact /diagnose has no New conversation control; the rendered answer
     // is the surface-specific completion signal.
-    await expect(region.getByRole("article", { name: "Ask Dev answer" })).toBeVisible({
-        timeout: 100_000,
-    });
+    const terminal = (await page
+        .waitForFunction(
+            () => {
+                const failed = document.querySelector<HTMLElement>("#ask-dev-run-failed");
+                if (failed) return { kind: "failed", text: failed.innerText };
+                if (document.querySelector('[aria-label="Ask Dev answer"]')) {
+                    return { kind: "answered" };
+                }
+                return null;
+            },
+            undefined,
+            { timeout: 100_000 },
+        )
+        .then((handle) => handle.jsonValue())) as
+        { kind: "answered" } | { kind: "failed"; text: string };
+    expect(
+        terminal.kind,
+        terminal.kind === "failed"
+            ? `Ask Dev run failed: ${terminal.text}`
+            : "Ask Dev must render an answer article.",
+    ).toBe("answered");
     await page.waitForFunction(
         (minimum) =>
             ((window as Window & { __graphSse?: string[] }).__graphSse?.length ?? 0) > minimum,
@@ -206,9 +224,12 @@ async function submitAmbiguity(
 
 async function openSurface(page: Page, route: string): Promise<void> {
     await page.goto(route);
+    const region = page.getByRole("region", { name: "Ask Dev" });
+    if (await region.isVisible()) return;
     const open = page.getByRole("button", { name: "Open Ask Dev" });
-    if (await open.count()) await open.click();
-    await expect(page.getByRole("region", { name: "Ask Dev" })).toBeVisible();
+    await expect(open).toBeVisible();
+    await open.click();
+    await expect(region).toBeVisible();
 }
 
 test("graph route, canonical fallback, ambiguity refusal, and continuity are measured", async ({
