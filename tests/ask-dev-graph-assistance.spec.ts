@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator } from "@playwright/test";
 
 import {
     askDevAnswerArticle,
@@ -17,10 +17,35 @@ const INTERNAL_TERMS = [
     "Graphiti",
     "Cypher",
     "canonical_enrichment",
+    "health:stale_capacity",
+    "metrics:metric:0123456789abcdef0123456789abcdef",
+    "cognitive_workload_pressure",
+    "available_stale",
+    "no_data",
+    "cognitive_load",
 ];
 
 function normalizeAnswerText(value: string): string {
     return value.replace(/\s+/gu, " ").trim();
+}
+
+async function expectRichCohortFacts(answer: Locator): Promise<void> {
+    const includedContext = answer.getByRole("region", { name: "Included context" });
+    await expect(includedContext.getByLabel("Rank 1")).toBeVisible();
+    await expect(includedContext).toContainText("Insufficient current data");
+    await expect(includedContext).toContainText("Cognitive workload pressure");
+    await expect(includedContext).toContainText("Health");
+    await expect(includedContext).toContainText("Unknown");
+    await expect(includedContext).toContainText("Out of date");
+    await expect(includedContext).toContainText("No matching data");
+    await expect(includedContext).toContainText("40% coverage");
+    await expect(includedContext).toContainText("Staffing baseline unavailable.");
+    await expect(includedContext).toContainText("Attribution coverage unavailable.");
+    await expect(includedContext).toContainText("Evidence: Cognitive load");
+    await expect(includedContext).toContainText("Metrics");
+    await expect(includedContext).toContainText("Measured value available");
+    await expect(includedContext).toContainText("Status");
+    await expect(includedContext).toContainText("Coverage unknown");
 }
 
 test.beforeEach(async ({ request }) => {
@@ -50,10 +75,9 @@ test("graph assistance uses one shared answer and evidence path across both surf
     await expect(windowAnswer).toContainText("Additional evidence context");
     await expect(windowAnswer).toContainText("Partial context");
     await expect(windowAnswer).toContainText("Platform");
-    await expect(windowAnswer).toContainText("60% contribution");
-    await expect(windowAnswer).toContainText("Team");
-    await expect(windowAnswer).toContainText("Project");
+    await expect(windowAnswer).not.toContainText("contribution");
     await expect(windowAnswer).toContainText("The evidence path is partial.");
+    await expectRichCohortFacts(windowAnswer);
 
     const answerId = await windowAnswer.getAttribute("id");
     expect(answerId).toMatch(/^ask-dev-answer-/u);
@@ -74,6 +98,7 @@ test("graph assistance uses one shared answer and evidence path across both surf
     expect(await workspaceAnswer.getAttribute("id")).toBe(answerId);
     expect(normalizeAnswerText(await workspaceAnswer.innerText())).toBe(windowText);
     expect(await getAskDevRequestCounts(request)).toEqual(beforeNavigation);
+    await expectRichCohortFacts(workspaceAnswer);
 
     const graphRegion = workspaceAnswer.getByRole("region", {
         name: "Additional evidence context",
@@ -81,7 +106,16 @@ test("graph assistance uses one shared answer and evidence path across both surf
     await graphRegion
         .getByRole("heading", { name: "Additional evidence context" })
         .scrollIntoViewIfNeeded();
+    await graphRegion
+        .getByRole("region", { name: "Included context" })
+        .getByLabel("Rank 1")
+        .scrollIntoViewIfNeeded();
     await testInfo.attach("chaos-3710-graph-assistance-after.png", {
+        body: await page.screenshot({ fullPage: true }),
+        contentType: "image/png",
+    });
+    await graphRegion.getByText("Evidence: Cognitive load").scrollIntoViewIfNeeded();
+    await testInfo.attach("chaos-3669-cohort-rendering-after.png", {
         body: await page.screenshot({ fullPage: true }),
         contentType: "image/png",
     });
@@ -90,11 +124,6 @@ test("graph assistance uses one shared answer and evidence path across both surf
         body: await page.screenshot({ fullPage: true }),
         contentType: "image/png",
     });
-
-    await workspaceAnswer
-        .getByRole("button", { name: "Open evidence citation 1 for driver 1" })
-        .click();
-    await expect(workspaceAnswer.getByText(/Evidence excerpt 1 for answer_e2e_/u)).toBeVisible();
 
     for (const term of INTERNAL_TERMS) {
         expect(await askDevTranscript(page).innerText()).not.toContain(term);

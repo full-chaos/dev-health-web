@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -266,6 +266,96 @@ describe("AskDevAnswer graph assistance rendering", () => {
             screen.getByText("Included based on the project's current capacity signal."),
         ).toBeVisible();
         expect(screen.queryByText("project_capacity")).not.toBeInTheDocument();
+    });
+
+    it("renders ranked canonical cohort facts without exposing machine vocabulary", () => {
+        const cohort = graphAssistance.cohort;
+        if (!cohort) throw new Error("canonical graph fixture must include a cohort");
+        const answer = {
+            ...answerForState("enabled"),
+            graph_assisted: {
+                ...graphAssistance,
+                cohort: {
+                    ...cohort,
+                    members: [
+                        {
+                            ...cohort.members[0],
+                            disposition: "unknown",
+                            inclusion_rationale:
+                                "This project shares relevant delivery evidence with the comparison group.",
+                            pressure_dimensions: ["cognitive_workload_pressure"],
+                            rank: 1,
+                            signals: [
+                                {
+                                    attribution_present: false,
+                                    coverage: 0.4,
+                                    data_semantics: "no_data",
+                                    denominator_present: false,
+                                    dimension: "cognitive_workload_pressure",
+                                    evidence_source_classes: ["work_graph"],
+                                    observed_states: ["available_stale"],
+                                    signal_id: "health:capacity_internal_id",
+                                    source: "health",
+                                    state: "unknown",
+                                },
+                                {
+                                    coverage: 0.4,
+                                    data_semantics: "measured_zero",
+                                    freshness: "stale",
+                                    observed_states: ["available_stale"],
+                                    signal_id: "metrics:delivery_internal_id",
+                                    source: "metrics",
+                                },
+                                {
+                                    data_semantics: "no_data",
+                                    gap: "no_data",
+                                    observed_states: ["available_unknown"],
+                                    signal_id: "status",
+                                    source: "status",
+                                },
+                            ],
+                        },
+                    ],
+                },
+            },
+        } as unknown as DevAnswer;
+
+        const { container } = render(<AskDevAnswer answer={answer} />);
+        const renderedAnswer = within(container);
+        const includedContext = within(
+            renderedAnswer.getByRole("region", { name: "Included context" }),
+        );
+
+        expect(includedContext.getByLabelText("Rank 1")).toBeVisible();
+        expect(includedContext.getByText("Insufficient current data")).toBeVisible();
+        expect(
+            includedContext.getByText(
+                "This project shares relevant delivery evidence with the comparison group.",
+            ),
+        ).toBeVisible();
+        expect(includedContext.getAllByText(/Cognitive workload pressure/u).length).toBeGreaterThan(
+            0,
+        );
+        const canonicalSignals = includedContext.getByRole("list", {
+            name: "Canonical signals",
+        });
+        expect(canonicalSignals).toHaveTextContent(
+            /Health · Cognitive workload pressure · Unknown/u,
+        );
+        expect(canonicalSignals).toHaveTextContent(
+            /Out of date · No matching data · 40% coverage/u,
+        );
+        expect(includedContext.getByText("Staffing baseline unavailable.")).toBeVisible();
+        expect(includedContext.getByText("Attribution coverage unavailable.")).toBeVisible();
+        expect(includedContext.getByText("Evidence: Work graph")).toBeVisible();
+        expect(canonicalSignals).toHaveTextContent(
+            /MetricsOut of date · Measured value available/u,
+        );
+        expect(canonicalSignals).toHaveTextContent(/StatusCoverage unknown · No matching data/u);
+
+        expect(container.textContent).not.toMatch(
+            /health:capacity_internal_id|cognitive_workload_pressure|available_stale|no_data|work_graph/iu,
+        );
     });
 
     it.each(["not_ready", "Graphiti", "Cypher"])(

@@ -461,9 +461,63 @@ function buildAnswer(
             // truncated-traversal limitation to the truncated state, so keep
             // that semantic precedence even though the shape fixture carries
             // the independently valid `enabled` enum example.
+            //
+            // The generated positive example predates CHAOS-3669's public
+            // cohort projection. Add the fields that the production
+            // `_public_cohort_slot` emits from the canonical ranking result,
+            // retaining production-reachable observation, metric, and gap
+            // signal shapes pinned by the ops ranker. This is deliberately a single authorized
+            // member: the public contract never names filtered candidates.
+            const graphAssisted = clone(graphAssistanceFixture);
+            const cohortMember = graphAssisted.cohort?.members[0];
+            if (!cohortMember) {
+                throw new Error("graph assistance fixture must include a cohort member");
+            }
             base.graph_assisted = {
-                ...clone(graphAssistanceFixture),
+                ...graphAssisted,
+                evidence_lineage: [],
+                ranked_drivers: [],
                 state: "truncated",
+                cohort: {
+                    ...graphAssisted.cohort,
+                    members: [
+                        {
+                            ...cohortMember,
+                            disposition: "unknown",
+                            pressure_dimensions: ["cognitive_workload_pressure"],
+                            rank: 1,
+                            signals: [
+                                {
+                                    attribution_present: false,
+                                    coverage: 0.4,
+                                    data_semantics: "no_data",
+                                    denominator_present: false,
+                                    dimension: "cognitive_workload_pressure",
+                                    evidence_source_classes: ["cognitive_load"],
+                                    observed_states: ["available_stale"],
+                                    signal_id: "health:stale_capacity",
+                                    source: "health",
+                                    state: "unknown",
+                                },
+                                {
+                                    coverage: 0.4,
+                                    data_semantics: "measured_zero",
+                                    freshness: "stale",
+                                    observed_states: ["available_stale"],
+                                    signal_id: "metrics:metric:0123456789abcdef0123456789abcdef",
+                                    source: "metrics",
+                                },
+                                {
+                                    data_semantics: "no_data",
+                                    gap: "no_data",
+                                    observed_states: ["available_unknown"],
+                                    signal_id: "status",
+                                    source: "status",
+                                },
+                            ],
+                        },
+                    ],
+                },
             };
             return base;
         }

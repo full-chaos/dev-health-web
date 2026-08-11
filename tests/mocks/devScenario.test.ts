@@ -100,35 +100,106 @@ describe("Ask Dev mock fidelity — graph assistance rendering scenario", () => 
         const answer = answerFor("graph_assisted");
         expect(answer.graph_assisted).toEqual({
             ...graphAssistanceFixture,
+            evidence_lineage: [],
+            ranked_drivers: [],
             state: "truncated",
+            cohort: {
+                ...graphAssistanceFixture.cohort,
+                members: [
+                    {
+                        ...graphAssistanceFixture.cohort.members[0],
+                        disposition: "unknown",
+                        pressure_dimensions: ["cognitive_workload_pressure"],
+                        rank: 1,
+                        signals: [
+                            {
+                                attribution_present: false,
+                                coverage: 0.4,
+                                data_semantics: "no_data",
+                                denominator_present: false,
+                                dimension: "cognitive_workload_pressure",
+                                evidence_source_classes: ["cognitive_load"],
+                                observed_states: ["available_stale"],
+                                signal_id: "health:stale_capacity",
+                                source: "health",
+                                state: "unknown",
+                            },
+                            {
+                                coverage: 0.4,
+                                data_semantics: "measured_zero",
+                                freshness: "stale",
+                                observed_states: ["available_stale"],
+                                signal_id: "metrics:metric:0123456789abcdef0123456789abcdef",
+                                source: "metrics",
+                            },
+                            {
+                                data_semantics: "no_data",
+                                gap: "no_data",
+                                observed_states: ["available_unknown"],
+                                signal_id: "status",
+                                source: "status",
+                            },
+                        ],
+                    },
+                ],
+            },
         });
 
         const graphAssisted = answer.graph_assisted as JsonRecord;
         expect(graphAssisted.schema_version).toBe("dev_answer_graph_assistance.v1");
         expect(graphAssisted.state).toBe("truncated");
-        expect((graphAssisted.cohort as JsonRecord).members).toEqual([
+        const cohort = graphAssisted.cohort as JsonRecord;
+        expect(cohort.members).toEqual([
             {
                 display_label: "Platform",
                 entity_id: "team_platform",
                 inclusion_basis: "team_pressure",
-            },
-        ]);
-        expect(graphAssisted.ranked_drivers).toEqual([
-            {
-                contribution: 0.6,
-                evidence_ref_ids: ["ev_01"],
+                disposition: "unknown",
+                pressure_dimensions: ["cognitive_workload_pressure"],
                 rank: 1,
+                signals: [
+                    {
+                        attribution_present: false,
+                        coverage: 0.4,
+                        data_semantics: "no_data",
+                        denominator_present: false,
+                        dimension: "cognitive_workload_pressure",
+                        evidence_source_classes: ["cognitive_load"],
+                        observed_states: ["available_stale"],
+                        signal_id: "health:stale_capacity",
+                        source: "health",
+                        state: "unknown",
+                    },
+                    {
+                        coverage: 0.4,
+                        data_semantics: "measured_zero",
+                        freshness: "stale",
+                        observed_states: ["available_stale"],
+                        signal_id: "metrics:metric:0123456789abcdef0123456789abcdef",
+                        source: "metrics",
+                    },
+                    {
+                        data_semantics: "no_data",
+                        gap: "no_data",
+                        observed_states: ["available_unknown"],
+                        signal_id: "status",
+                        source: "status",
+                    },
+                ],
             },
         ]);
+        expect((cohort.members as JsonRecord[])[0]?.rank).toBe(1);
+        expect((cohort.members as JsonRecord[])[0]?.disposition).toBe("unknown");
+        expect(((cohort.members as JsonRecord[])[0]?.signals as JsonRecord[])[0]?.source).toBe(
+            "health",
+        );
+        expect(graphAssisted.ranked_drivers).toEqual([]);
+        expect(graphAssisted.evidence_lineage).toEqual([]);
 
         const evidenceIds = new Set(
             (answer.evidence as JsonRecord[]).map((item) => item.evidence_ref_id),
         );
-        for (const driver of graphAssisted.ranked_drivers as JsonRecord[]) {
-            for (const evidenceRefId of driver.evidence_ref_ids as string[]) {
-                expect(evidenceIds.has(evidenceRefId)).toBe(true);
-            }
-        }
+        expect(evidenceIds).toContain("ev_01");
     });
 
     it("keeps the test-only scenario marker out of the customer-visible title", () => {

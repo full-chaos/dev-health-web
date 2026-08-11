@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-namespace */
-// Generated from full-chaos/dev-health-ops cfe94369368ca3c81f0d6a3ce9e80a8f3530320e. Do not edit.
+// Generated from full-chaos/dev-health-ops 42063ceb8f70d03648cc4401b4f37c7e36def38e. Do not edit.
 export namespace DevAnswerGraphAssistanceContract {
     export type AsOf = string;
     export type CohortComplete = boolean;
@@ -11,6 +11,7 @@ export namespace DevAnswerGraphAssistanceContract {
      */
     export type Members = [DevAnswerCohortMember, ...DevAnswerCohortMember[]];
     export type DisplayLabel = string;
+    export type DevAnswerCohortDisposition = "included" | "unknown";
     export type EntityId = string;
     /**
      * CHAOS-3660 §8(d). The production-side classification signal for a
@@ -20,6 +21,310 @@ export namespace DevAnswerGraphAssistanceContract {
      * be reconciled to that module's definition when it lands on ``main``.
      */
     export type CohortDiscoveryFamily = "team_pressure" | "project_capacity";
+    export type InclusionRationale = string | null;
+    /**
+     * @maxItems 12
+     */
+    export type PressureDimensions =
+        | []
+        | [DevAnswerPressureDimension]
+        | [DevAnswerPressureDimension, DevAnswerPressureDimension]
+        | [DevAnswerPressureDimension, DevAnswerPressureDimension, DevAnswerPressureDimension]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ];
+    export type DevAnswerPressureDimension =
+        | "execution_completion"
+        | "delivery_flow"
+        | "reliability_release"
+        | "review_ci_pressure"
+        | "code_ownership_risk"
+        | "cognitive_workload_pressure"
+        | "investment_balance"
+        | "dependencies_blockers"
+        | "data_trust";
+    export type Rank = number | null;
+    export type AttributionPresent = boolean | null;
+    export type Coverage = number | null;
+    export type DataSemantics = "measured_zero" | "no_data" | "not_measured";
+    export type DenominatorPresent = boolean | null;
+    /**
+     * @maxItems 12
+     */
+    export type EvidenceSourceClasses =
+        | []
+        | [DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ];
+    export type DevAnswerEvidenceSourceClass =
+        | "status_change"
+        | "work_item"
+        | "work_graph"
+        | "pull_request"
+        | "code_change"
+        | "review"
+        | "ci_run"
+        | "test_report"
+        | "deployment"
+        | "incident"
+        | "operational_control"
+        | "source_health"
+        | "cognitive_load"
+        | "investment_allocation"
+        | "health_profile"
+        | "deficiency_inventory"
+        | "temporal_context";
+    export type FreshnessState = "fresh" | "stale" | "unavailable" | "unknown";
+    export type DevAnswerEnrichmentGap =
+        "not_applicable" | "unauthorized" | "unavailable" | "no_data";
+    export type Limitation = string | null;
+    /**
+     * @minItems 1
+     * @maxItems 8
+     */
+    export type ObservedStates =
+        | [DevAnswerSourceRequirementState]
+        | [DevAnswerSourceRequirementState, DevAnswerSourceRequirementState]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ];
+    export type DevAnswerSourceRequirementState =
+        | "available_current"
+        | "available_stale"
+        | "available_unknown"
+        | "unconfigured"
+        | "unavailable"
+        | "unauthorized_or_not_visible"
+        | "not_applicable"
+        | "truncated";
+    export type SignalId = string;
+    export type DevAnswerCohortSignalSource =
+        "status" | "health" | "workload" | "readiness" | "metrics" | "canonical_enrichment";
+    export type DevAnswerPressureState =
+        "healthy" | "watch" | "at_risk" | "critical" | "unknown" | "not_applicable";
+    /**
+     * @maxItems 50
+     */
+    export type Signals = DevAnswerCohortSignal[];
     /**
      * @maxItems 20
      */
@@ -340,7 +645,7 @@ export namespace DevAnswerGraphAssistanceContract {
         | [string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string, string];
-    export type Rank = number;
+    export type Rank1 = number;
     /**
      * @maxItems 25
      */
@@ -367,8 +672,9 @@ export namespace DevAnswerGraphAssistanceContract {
      * wave) contributed to an answer, in one namespace. ``cohort``,
      * ``ranked_drivers``, ``evidence_lineage``, and ``limitations`` are
      * populated only when ``state`` reflects a completed, cohort-shaped
-     * answer; ``None``/empty otherwise. Schema-only on ``main`` today -- see
-     * ``DevAnswer.graph_assisted``'s own docstring.
+     * answer; ``None``/empty otherwise. The orchestrator owns the runtime
+     * projection of the route attempt; packet/backend details never cross this
+     * contract boundary.
      */
     export interface DevAnswerGraphAssistance {
         as_of: AsOf;
@@ -402,8 +708,28 @@ export namespace DevAnswerGraphAssistanceContract {
      */
     export interface DevAnswerCohortMember {
         display_label: DisplayLabel;
+        disposition?: DevAnswerCohortDisposition | null;
         entity_id: EntityId;
         inclusion_basis: CohortDiscoveryFamily;
+        inclusion_rationale?: InclusionRationale;
+        pressure_dimensions?: PressureDimensions;
+        rank?: Rank;
+        signals?: Signals;
+    }
+    export interface DevAnswerCohortSignal {
+        attribution_present?: AttributionPresent;
+        coverage?: Coverage;
+        data_semantics: DataSemantics;
+        denominator_present?: DenominatorPresent;
+        dimension?: DevAnswerPressureDimension | null;
+        evidence_source_classes?: EvidenceSourceClasses;
+        freshness?: FreshnessState | null;
+        gap?: DevAnswerEnrichmentGap | null;
+        limitation?: Limitation;
+        observed_states: ObservedStates;
+        signal_id: SignalId;
+        source: DevAnswerCohortSignalSource;
+        state?: DevAnswerPressureState | null;
     }
     /**
      * CHAOS-3660 §8(d). One user-safe hop label in an evidence-lineage
@@ -423,7 +749,7 @@ export namespace DevAnswerGraphAssistanceContract {
     export interface DevAnswerDriverEntry {
         contribution: Contribution;
         evidence_ref_ids: EvidenceRefIds;
-        rank: Rank;
+        rank: Rank1;
     }
 }
 export type DevAnswerGraphAssistance = DevAnswerGraphAssistanceContract.DevAnswerGraphAssistance;
@@ -1968,6 +2294,7 @@ export namespace DevAnswerContract {
      */
     export type Members = [DevAnswerCohortMember, ...DevAnswerCohortMember[]];
     export type DisplayLabel2 = string;
+    export type DevAnswerCohortDisposition = "included" | "unknown";
     export type EntityId2 = string;
     /**
      * CHAOS-3660 §8(d). The production-side classification signal for a
@@ -1977,6 +2304,309 @@ export namespace DevAnswerContract {
      * be reconciled to that module's definition when it lands on ``main``.
      */
     export type CohortDiscoveryFamily = "team_pressure" | "project_capacity";
+    export type InclusionRationale = string | null;
+    /**
+     * @maxItems 12
+     */
+    export type PressureDimensions =
+        | []
+        | [DevAnswerPressureDimension]
+        | [DevAnswerPressureDimension, DevAnswerPressureDimension]
+        | [DevAnswerPressureDimension, DevAnswerPressureDimension, DevAnswerPressureDimension]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ];
+    export type DevAnswerPressureDimension =
+        | "execution_completion"
+        | "delivery_flow"
+        | "reliability_release"
+        | "review_ci_pressure"
+        | "code_ownership_risk"
+        | "cognitive_workload_pressure"
+        | "investment_balance"
+        | "dependencies_blockers"
+        | "data_trust";
+    export type Rank = number | null;
+    export type AttributionPresent = boolean | null;
+    export type Coverage = number | null;
+    export type DataSemantics = "measured_zero" | "no_data" | "not_measured";
+    export type DenominatorPresent = boolean | null;
+    /**
+     * @maxItems 12
+     */
+    export type EvidenceSourceClasses =
+        | []
+        | [DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ];
+    export type DevAnswerEvidenceSourceClass =
+        | "status_change"
+        | "work_item"
+        | "work_graph"
+        | "pull_request"
+        | "code_change"
+        | "review"
+        | "ci_run"
+        | "test_report"
+        | "deployment"
+        | "incident"
+        | "operational_control"
+        | "source_health"
+        | "cognitive_load"
+        | "investment_allocation"
+        | "health_profile"
+        | "deficiency_inventory"
+        | "temporal_context";
+    export type DevAnswerEnrichmentGap =
+        "not_applicable" | "unauthorized" | "unavailable" | "no_data";
+    export type Limitation = string | null;
+    /**
+     * @minItems 1
+     * @maxItems 8
+     */
+    export type ObservedStates =
+        | [DevAnswerSourceRequirementState]
+        | [DevAnswerSourceRequirementState, DevAnswerSourceRequirementState]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ];
+    export type DevAnswerSourceRequirementState =
+        | "available_current"
+        | "available_stale"
+        | "available_unknown"
+        | "unconfigured"
+        | "unavailable"
+        | "unauthorized_or_not_visible"
+        | "not_applicable"
+        | "truncated";
+    export type SignalId = string;
+    export type DevAnswerCohortSignalSource =
+        "status" | "health" | "workload" | "readiness" | "metrics" | "canonical_enrichment";
+    export type DevAnswerPressureState =
+        "healthy" | "watch" | "at_risk" | "critical" | "unknown" | "not_applicable";
+    /**
+     * @maxItems 50
+     */
+    export type Signals = DevAnswerCohortSignal[];
     /**
      * @maxItems 20
      */
@@ -2297,7 +2927,7 @@ export namespace DevAnswerContract {
         | [string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string, string];
-    export type Rank = number;
+    export type Rank1 = number;
     /**
      * @maxItems 25
      */
@@ -2400,7 +3030,7 @@ export namespace DevAnswerContract {
           ];
     export type Aggregation = string;
     export type ComparisonValue = number | null;
-    export type Coverage = number;
+    export type Coverage1 = number;
     export type DefinitionVersion = string;
     /**
      * @maxItems 12
@@ -3342,8 +3972,9 @@ export namespace DevAnswerContract {
      * wave) contributed to an answer, in one namespace. ``cohort``,
      * ``ranked_drivers``, ``evidence_lineage``, and ``limitations`` are
      * populated only when ``state`` reflects a completed, cohort-shaped
-     * answer; ``None``/empty otherwise. Schema-only on ``main`` today -- see
-     * ``DevAnswer.graph_assisted``'s own docstring.
+     * answer; ``None``/empty otherwise. The orchestrator owns the runtime
+     * projection of the route attempt; packet/backend details never cross this
+     * contract boundary.
      */
     export interface DevAnswerGraphAssistance {
         as_of: AsOf2;
@@ -3377,8 +4008,28 @@ export namespace DevAnswerContract {
      */
     export interface DevAnswerCohortMember {
         display_label: DisplayLabel2;
+        disposition?: DevAnswerCohortDisposition | null;
         entity_id: EntityId2;
         inclusion_basis: CohortDiscoveryFamily;
+        inclusion_rationale?: InclusionRationale;
+        pressure_dimensions?: PressureDimensions;
+        rank?: Rank;
+        signals?: Signals;
+    }
+    export interface DevAnswerCohortSignal {
+        attribution_present?: AttributionPresent;
+        coverage?: Coverage;
+        data_semantics: DataSemantics;
+        denominator_present?: DenominatorPresent;
+        dimension?: DevAnswerPressureDimension | null;
+        evidence_source_classes?: EvidenceSourceClasses;
+        freshness?: FreshnessState | null;
+        gap?: DevAnswerEnrichmentGap | null;
+        limitation?: Limitation;
+        observed_states: ObservedStates;
+        signal_id: SignalId;
+        source: DevAnswerCohortSignalSource;
+        state?: DevAnswerPressureState | null;
     }
     /**
      * CHAOS-3660 §8(d). One user-safe hop label in an evidence-lineage
@@ -3398,13 +4049,13 @@ export namespace DevAnswerContract {
     export interface DevAnswerDriverEntry {
         contribution: Contribution;
         evidence_ref_ids: EvidenceRefIds2;
-        rank: Rank;
+        rank: Rank1;
     }
     export interface DevMetricRef {
         aggregation: Aggregation;
         comparison_value?: ComparisonValue;
         comparison_window?: DevTimeRange | null;
-        coverage: Coverage;
+        coverage: Coverage1;
         current_window: DevTimeRange;
         definition_version: DefinitionVersion;
         dimensions?: Dimensions;
@@ -3461,6 +4112,7 @@ export namespace DevCapabilitiesContract {
     export type AgentContextRuntime = boolean;
     export type AskDev = boolean;
     export type AskDevGraphRouting = boolean;
+    export type BackendSha = string | null;
     export type ByoLlm = boolean;
     export type CanManage = boolean;
     export type CanRead = boolean;
@@ -3693,6 +4345,7 @@ export namespace DevCapabilitiesContract {
         agent_context_runtime?: AgentContextRuntime;
         ask_dev?: AskDev;
         ask_dev_graph_routing?: AskDevGraphRouting;
+        backend_sha?: BackendSha;
         byo_llm?: ByoLlm;
         can_manage?: CanManage;
         can_read?: CanRead;
@@ -6216,6 +6869,7 @@ export namespace DevConversationTranscriptContract {
      */
     export type Members = [DevAnswerCohortMember, ...DevAnswerCohortMember[]];
     export type DisplayLabel2 = string;
+    export type DevAnswerCohortDisposition = "included" | "unknown";
     export type EntityId2 = string;
     /**
      * CHAOS-3660 §8(d). The production-side classification signal for a
@@ -6225,6 +6879,309 @@ export namespace DevConversationTranscriptContract {
      * be reconciled to that module's definition when it lands on ``main``.
      */
     export type CohortDiscoveryFamily = "team_pressure" | "project_capacity";
+    export type InclusionRationale = string | null;
+    /**
+     * @maxItems 12
+     */
+    export type PressureDimensions =
+        | []
+        | [DevAnswerPressureDimension]
+        | [DevAnswerPressureDimension, DevAnswerPressureDimension]
+        | [DevAnswerPressureDimension, DevAnswerPressureDimension, DevAnswerPressureDimension]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ];
+    export type DevAnswerPressureDimension =
+        | "execution_completion"
+        | "delivery_flow"
+        | "reliability_release"
+        | "review_ci_pressure"
+        | "code_ownership_risk"
+        | "cognitive_workload_pressure"
+        | "investment_balance"
+        | "dependencies_blockers"
+        | "data_trust";
+    export type Rank = number | null;
+    export type AttributionPresent = boolean | null;
+    export type Coverage = number | null;
+    export type DataSemantics = "measured_zero" | "no_data" | "not_measured";
+    export type DenominatorPresent = boolean | null;
+    /**
+     * @maxItems 12
+     */
+    export type EvidenceSourceClasses =
+        | []
+        | [DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ];
+    export type DevAnswerEvidenceSourceClass =
+        | "status_change"
+        | "work_item"
+        | "work_graph"
+        | "pull_request"
+        | "code_change"
+        | "review"
+        | "ci_run"
+        | "test_report"
+        | "deployment"
+        | "incident"
+        | "operational_control"
+        | "source_health"
+        | "cognitive_load"
+        | "investment_allocation"
+        | "health_profile"
+        | "deficiency_inventory"
+        | "temporal_context";
+    export type DevAnswerEnrichmentGap =
+        "not_applicable" | "unauthorized" | "unavailable" | "no_data";
+    export type Limitation = string | null;
+    /**
+     * @minItems 1
+     * @maxItems 8
+     */
+    export type ObservedStates =
+        | [DevAnswerSourceRequirementState]
+        | [DevAnswerSourceRequirementState, DevAnswerSourceRequirementState]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ];
+    export type DevAnswerSourceRequirementState =
+        | "available_current"
+        | "available_stale"
+        | "available_unknown"
+        | "unconfigured"
+        | "unavailable"
+        | "unauthorized_or_not_visible"
+        | "not_applicable"
+        | "truncated";
+    export type SignalId = string;
+    export type DevAnswerCohortSignalSource =
+        "status" | "health" | "workload" | "readiness" | "metrics" | "canonical_enrichment";
+    export type DevAnswerPressureState =
+        "healthy" | "watch" | "at_risk" | "critical" | "unknown" | "not_applicable";
+    /**
+     * @maxItems 50
+     */
+    export type Signals = DevAnswerCohortSignal[];
     /**
      * @maxItems 20
      */
@@ -6545,7 +7502,7 @@ export namespace DevConversationTranscriptContract {
         | [string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string, string];
-    export type Rank = number;
+    export type Rank1 = number;
     /**
      * @maxItems 25
      */
@@ -6648,7 +7605,7 @@ export namespace DevConversationTranscriptContract {
           ];
     export type Aggregation = string;
     export type ComparisonValue = number | null;
-    export type Coverage = number;
+    export type Coverage1 = number;
     export type DefinitionVersion = string;
     /**
      * @maxItems 12
@@ -7641,8 +8598,9 @@ export namespace DevConversationTranscriptContract {
      * wave) contributed to an answer, in one namespace. ``cohort``,
      * ``ranked_drivers``, ``evidence_lineage``, and ``limitations`` are
      * populated only when ``state`` reflects a completed, cohort-shaped
-     * answer; ``None``/empty otherwise. Schema-only on ``main`` today -- see
-     * ``DevAnswer.graph_assisted``'s own docstring.
+     * answer; ``None``/empty otherwise. The orchestrator owns the runtime
+     * projection of the route attempt; packet/backend details never cross this
+     * contract boundary.
      */
     export interface DevAnswerGraphAssistance {
         as_of: AsOf2;
@@ -7676,8 +8634,28 @@ export namespace DevConversationTranscriptContract {
      */
     export interface DevAnswerCohortMember {
         display_label: DisplayLabel2;
+        disposition?: DevAnswerCohortDisposition | null;
         entity_id: EntityId2;
         inclusion_basis: CohortDiscoveryFamily;
+        inclusion_rationale?: InclusionRationale;
+        pressure_dimensions?: PressureDimensions;
+        rank?: Rank;
+        signals?: Signals;
+    }
+    export interface DevAnswerCohortSignal {
+        attribution_present?: AttributionPresent;
+        coverage?: Coverage;
+        data_semantics: DataSemantics;
+        denominator_present?: DenominatorPresent;
+        dimension?: DevAnswerPressureDimension | null;
+        evidence_source_classes?: EvidenceSourceClasses;
+        freshness?: FreshnessState | null;
+        gap?: DevAnswerEnrichmentGap | null;
+        limitation?: Limitation;
+        observed_states: ObservedStates;
+        signal_id: SignalId;
+        source: DevAnswerCohortSignalSource;
+        state?: DevAnswerPressureState | null;
     }
     /**
      * CHAOS-3660 §8(d). One user-safe hop label in an evidence-lineage
@@ -7697,13 +8675,13 @@ export namespace DevConversationTranscriptContract {
     export interface DevAnswerDriverEntry {
         contribution: Contribution;
         evidence_ref_ids: EvidenceRefIds2;
-        rank: Rank;
+        rank: Rank1;
     }
     export interface DevMetricRef {
         aggregation: Aggregation;
         comparison_value?: ComparisonValue;
         comparison_window?: DevTimeRange | null;
-        coverage: Coverage;
+        coverage: Coverage1;
         current_window: DevTimeRange;
         definition_version: DefinitionVersion;
         dimensions?: Dimensions;
@@ -8666,6 +9644,9 @@ export namespace DevErrorContract {
         | "scope_forbidden"
         | "conversation_not_found"
         | "conversation_expired"
+        | "resume_scope_mismatch"
+        | "resume_unavailable"
+        | "resume_stream_invalid"
         | "tool_limit_reached"
         | "tool_unavailable"
         | "source_unavailable"
@@ -16429,6 +17410,7 @@ export namespace DevStreamEventContract {
      */
     export type Members = [DevAnswerCohortMember, ...DevAnswerCohortMember[]];
     export type DisplayLabel2 = string;
+    export type DevAnswerCohortDisposition = "included" | "unknown";
     export type EntityId2 = string;
     /**
      * CHAOS-3660 §8(d). The production-side classification signal for a
@@ -16438,6 +17420,309 @@ export namespace DevStreamEventContract {
      * be reconciled to that module's definition when it lands on ``main``.
      */
     export type CohortDiscoveryFamily = "team_pressure" | "project_capacity";
+    export type InclusionRationale = string | null;
+    /**
+     * @maxItems 12
+     */
+    export type PressureDimensions =
+        | []
+        | [DevAnswerPressureDimension]
+        | [DevAnswerPressureDimension, DevAnswerPressureDimension]
+        | [DevAnswerPressureDimension, DevAnswerPressureDimension, DevAnswerPressureDimension]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ]
+        | [
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+              DevAnswerPressureDimension,
+          ];
+    export type DevAnswerPressureDimension =
+        | "execution_completion"
+        | "delivery_flow"
+        | "reliability_release"
+        | "review_ci_pressure"
+        | "code_ownership_risk"
+        | "cognitive_workload_pressure"
+        | "investment_balance"
+        | "dependencies_blockers"
+        | "data_trust";
+    export type Rank = number | null;
+    export type AttributionPresent = boolean | null;
+    export type Coverage = number | null;
+    export type DataSemantics = "measured_zero" | "no_data" | "not_measured";
+    export type DenominatorPresent = boolean | null;
+    /**
+     * @maxItems 12
+     */
+    export type EvidenceSourceClasses =
+        | []
+        | [DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ];
+    export type DevAnswerEvidenceSourceClass =
+        | "status_change"
+        | "work_item"
+        | "work_graph"
+        | "pull_request"
+        | "code_change"
+        | "review"
+        | "ci_run"
+        | "test_report"
+        | "deployment"
+        | "incident"
+        | "operational_control"
+        | "source_health"
+        | "cognitive_load"
+        | "investment_allocation"
+        | "health_profile"
+        | "deficiency_inventory"
+        | "temporal_context";
+    export type DevAnswerEnrichmentGap =
+        "not_applicable" | "unauthorized" | "unavailable" | "no_data";
+    export type Limitation = string | null;
+    /**
+     * @minItems 1
+     * @maxItems 8
+     */
+    export type ObservedStates =
+        | [DevAnswerSourceRequirementState]
+        | [DevAnswerSourceRequirementState, DevAnswerSourceRequirementState]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ]
+        | [
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+              DevAnswerSourceRequirementState,
+          ];
+    export type DevAnswerSourceRequirementState =
+        | "available_current"
+        | "available_stale"
+        | "available_unknown"
+        | "unconfigured"
+        | "unavailable"
+        | "unauthorized_or_not_visible"
+        | "not_applicable"
+        | "truncated";
+    export type SignalId = string;
+    export type DevAnswerCohortSignalSource =
+        "status" | "health" | "workload" | "readiness" | "metrics" | "canonical_enrichment";
+    export type DevAnswerPressureState =
+        "healthy" | "watch" | "at_risk" | "critical" | "unknown" | "not_applicable";
+    /**
+     * @maxItems 50
+     */
+    export type Signals = DevAnswerCohortSignal[];
     /**
      * @maxItems 20
      */
@@ -16758,7 +18043,7 @@ export namespace DevStreamEventContract {
         | [string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string, string];
-    export type Rank = number;
+    export type Rank1 = number;
     /**
      * @maxItems 25
      */
@@ -16861,7 +18146,7 @@ export namespace DevStreamEventContract {
           ];
     export type Aggregation = string;
     export type ComparisonValue = number | null;
-    export type Coverage = number;
+    export type Coverage1 = number;
     export type DefinitionVersion = string;
     /**
      * @maxItems 12
@@ -17706,6 +18991,9 @@ export namespace DevStreamEventContract {
         | "scope_forbidden"
         | "conversation_not_found"
         | "conversation_expired"
+        | "resume_scope_mismatch"
+        | "resume_unavailable"
+        | "resume_stream_invalid"
         | "tool_limit_reached"
         | "tool_unavailable"
         | "source_unavailable"
@@ -17884,8 +19172,9 @@ export namespace DevStreamEventContract {
      * wave) contributed to an answer, in one namespace. ``cohort``,
      * ``ranked_drivers``, ``evidence_lineage``, and ``limitations`` are
      * populated only when ``state`` reflects a completed, cohort-shaped
-     * answer; ``None``/empty otherwise. Schema-only on ``main`` today -- see
-     * ``DevAnswer.graph_assisted``'s own docstring.
+     * answer; ``None``/empty otherwise. The orchestrator owns the runtime
+     * projection of the route attempt; packet/backend details never cross this
+     * contract boundary.
      */
     export interface DevAnswerGraphAssistance {
         as_of: AsOf2;
@@ -17919,8 +19208,28 @@ export namespace DevStreamEventContract {
      */
     export interface DevAnswerCohortMember {
         display_label: DisplayLabel2;
+        disposition?: DevAnswerCohortDisposition | null;
         entity_id: EntityId2;
         inclusion_basis: CohortDiscoveryFamily;
+        inclusion_rationale?: InclusionRationale;
+        pressure_dimensions?: PressureDimensions;
+        rank?: Rank;
+        signals?: Signals;
+    }
+    export interface DevAnswerCohortSignal {
+        attribution_present?: AttributionPresent;
+        coverage?: Coverage;
+        data_semantics: DataSemantics;
+        denominator_present?: DenominatorPresent;
+        dimension?: DevAnswerPressureDimension | null;
+        evidence_source_classes?: EvidenceSourceClasses;
+        freshness?: FreshnessState | null;
+        gap?: DevAnswerEnrichmentGap | null;
+        limitation?: Limitation;
+        observed_states: ObservedStates;
+        signal_id: SignalId;
+        source: DevAnswerCohortSignalSource;
+        state?: DevAnswerPressureState | null;
     }
     /**
      * CHAOS-3660 §8(d). One user-safe hop label in an evidence-lineage
@@ -17940,13 +19249,13 @@ export namespace DevStreamEventContract {
     export interface DevAnswerDriverEntry {
         contribution: Contribution;
         evidence_ref_ids: EvidenceRefIds2;
-        rank: Rank;
+        rank: Rank1;
     }
     export interface DevMetricRef {
         aggregation: Aggregation;
         comparison_value?: ComparisonValue;
         comparison_window?: DevTimeRange | null;
-        coverage: Coverage;
+        coverage: Coverage1;
         current_window: DevTimeRange;
         definition_version: DefinitionVersion;
         dimensions?: Dimensions;
@@ -19257,6 +20566,9 @@ export namespace DevToolResultContract {
         | "scope_forbidden"
         | "conversation_not_found"
         | "conversation_expired"
+        | "resume_scope_mismatch"
+        | "resume_unavailable"
+        | "resume_stream_invalid"
         | "tool_limit_reached"
         | "tool_unavailable"
         | "source_unavailable"
