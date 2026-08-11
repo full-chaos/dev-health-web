@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
     EMPTY_BROWSER_FAULTS,
+    createSessionRequestTracker,
     reconcileBrowserFaults,
     settledBrowserFaults,
     type BrowserFaultEvent,
@@ -26,6 +27,35 @@ const AUTH_SESSION_CONSOLE_ERROR = {
 } as const satisfies BrowserFaultEvent;
 
 describe("Context Fabric browser fault reconciliation", () => {
+    it("settles a prior-document session request when navigation has no lifecycle event", async () => {
+        const events: BrowserFaultEvent[] = [];
+        const tracker = createSessionRequestTracker<object>(events);
+        const abandonedRequest = {};
+        const recoveredRequest = {};
+        tracker.started(abandonedRequest);
+
+        let settled = false;
+        const pending = tracker.waitForPending().then(() => {
+            settled = true;
+        });
+        await Promise.resolve();
+        expect(settled).toBe(false);
+
+        tracker.mainFrameNavigated();
+        await pending;
+        tracker.started(recoveredRequest);
+        tracker.responded(recoveredRequest, 200);
+        tracker.finished(recoveredRequest);
+
+        expect(reconcileBrowserFaults(events)).toEqual(EMPTY_BROWSER_FAULTS);
+
+        // A lifecycle event arriving late for the abandoned document must not
+        // duplicate the abort or let that same request recover itself.
+        tracker.responded(abandonedRequest, 200);
+        tracker.failed(abandonedRequest, "net::ERR_ABORTED");
+        expect(events).toEqual([ABORTED_SESSION_REQUEST, SUCCESSFUL_SESSION_RESPONSE]);
+    });
+
     it.each([
         [
             "console-first",
