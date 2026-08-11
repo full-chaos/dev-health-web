@@ -12,6 +12,17 @@ type GraphState = GraphAssistance["state"];
 type GraphCohort = NonNullable<GraphAssistance["cohort"]>;
 type CohortEntityKind = GraphCohort["entity_kind"];
 type CohortInclusionBasis = GraphCohort["members"][number]["inclusion_basis"];
+type CohortMember = GraphCohort["members"][number];
+type CohortDisposition = NonNullable<CohortMember["disposition"]>;
+type CohortSignal = NonNullable<CohortMember["signals"]>[number];
+type CohortSignalSource = CohortSignal["source"];
+type SourceRequirementState = CohortSignal["observed_states"][number];
+type DataSemantics = CohortSignal["data_semantics"];
+type PressureDimension = NonNullable<CohortSignal["dimension"]>;
+type PressureState = NonNullable<CohortSignal["state"]>;
+type EnrichmentGap = NonNullable<CohortSignal["gap"]>;
+type EvidenceSourceClass = NonNullable<CohortSignal["evidence_source_classes"]>[number];
+type SignalFreshness = NonNullable<CohortSignal["freshness"]>;
 type GraphLimitation = NonNullable<GraphAssistance["limitations"]>[number];
 
 /**
@@ -57,6 +68,92 @@ export const COHORT_INCLUSION_LABELS: Record<CohortInclusionBasis, string> = {
     project_capacity: "Included based on the project's current capacity signal.",
 };
 
+export const COHORT_DISPOSITION_LABELS: Record<CohortDisposition, string> = {
+    included: "Current pressure signals",
+    unknown: "Insufficient current data",
+};
+
+export const SIGNAL_SOURCE_LABELS: Record<CohortSignalSource, string> = {
+    status: "Status",
+    health: "Health",
+    workload: "Workload",
+    readiness: "Readiness",
+    metrics: "Metrics",
+    canonical_enrichment: "Available context",
+};
+
+export const SOURCE_REQUIREMENT_LABELS: Record<SourceRequirementState, string> = {
+    available_current: "Current",
+    available_stale: "Out of date",
+    available_unknown: "Coverage unknown",
+    unconfigured: "Not configured",
+    unavailable: "Unavailable",
+    unauthorized_or_not_visible: "Not visible",
+    not_applicable: "Not applicable",
+    truncated: "Partial",
+};
+
+export const DATA_SEMANTICS_LABELS: Record<DataSemantics, string> = {
+    measured_zero: "Measured value available",
+    no_data: "No matching data",
+    not_measured: "Not measured",
+};
+
+export const PRESSURE_DIMENSION_LABELS: Record<PressureDimension, string> = {
+    execution_completion: "Execution completion",
+    delivery_flow: "Delivery flow",
+    reliability_release: "Release reliability",
+    review_ci_pressure: "Review and CI pressure",
+    code_ownership_risk: "Code ownership risk",
+    cognitive_workload_pressure: "Cognitive workload pressure",
+    investment_balance: "Investment balance",
+    dependencies_blockers: "Dependencies and blockers",
+    data_trust: "Data trust",
+};
+
+export const PRESSURE_STATE_LABELS: Record<PressureState, string> = {
+    healthy: "Within expected range",
+    watch: "Worth watching",
+    at_risk: "At risk",
+    critical: "Critical",
+    unknown: "Unknown",
+    not_applicable: "Not applicable",
+};
+
+export const ENRICHMENT_GAP_LABELS: Record<EnrichmentGap, string> = {
+    not_applicable: "Not applicable",
+    unauthorized: "Not visible",
+    unavailable: "Unavailable",
+    no_data: "No matching data",
+};
+
+export const SIGNAL_FRESHNESS_LABELS: Record<SignalFreshness, string> = {
+    fresh: "Current",
+    stale: "Out of date",
+    unknown: "Freshness unknown",
+    unavailable: "Unavailable",
+};
+
+export const EVIDENCE_SOURCE_LABELS: Record<EvidenceSourceClass, string> = {
+    status_change: "Status history",
+    work_item: "Work items",
+    work_graph: "Work graph",
+    pull_request: "Pull requests",
+    code_change: "Code changes",
+    review: "Reviews",
+    ci_run: "CI runs",
+    test_report: "Test reports",
+    deployment: "Deployments",
+    incident: "Incidents",
+    operational_control: "Operational controls",
+    source_health: "Source health",
+    cognitive_load: "Cognitive load",
+    investment_allocation: "Investment allocation",
+    health_profile: "Health profile",
+    deficiency_inventory: "Readiness checks",
+    temporal_context: "Historical context",
+};
+
 export const GRAPH_LIMITATION_LABELS: Record<GraphLimitation, string> = {
     missing_source: "A required source was unavailable.",
     stale_source: "Some supporting data may be out of date.",
@@ -75,6 +172,15 @@ const GRAPH_NEVER_ATTESTABLE_TERMS = [
     "canonical_enrichment",
     ...Object.keys(COHORT_ENTITY_LABELS).filter((value) => value.includes("_")),
     ...Object.keys(COHORT_INCLUSION_LABELS),
+    ...Object.keys(COHORT_DISPOSITION_LABELS),
+    ...Object.keys(SIGNAL_SOURCE_LABELS),
+    ...Object.keys(SOURCE_REQUIREMENT_LABELS),
+    ...Object.keys(DATA_SEMANTICS_LABELS),
+    ...Object.keys(PRESSURE_DIMENSION_LABELS),
+    ...Object.keys(PRESSURE_STATE_LABELS),
+    ...Object.keys(ENRICHMENT_GAP_LABELS),
+    ...Object.keys(SIGNAL_FRESHNESS_LABELS),
+    ...Object.keys(EVIDENCE_SOURCE_LABELS),
     ...Object.keys(GRAPH_LIMITATION_LABELS),
 ] as const;
 const GRAPH_NEVER_ATTESTABLE_TERM_SET = new Set(
@@ -168,14 +274,112 @@ export function GraphAssistanceSection({
                         {cohort.members.map((member) => (
                             <li
                                 key={member.entity_id + ":" + member.inclusion_basis}
-                                className="grid gap-1 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] sm:gap-4"
+                                className="space-y-2 px-3 py-3"
                             >
-                                <span className="text-sm text-(--text-secondary)">
-                                    {safeGraphProse(member.display_label)}
-                                </span>
-                                <span className="text-xs leading-5 text-(--text-muted)">
+                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                    <div className="flex min-w-0 items-center gap-2">
+                                        {member.rank ? (
+                                            <span
+                                                aria-label={"Rank " + member.rank}
+                                                className="flex h-6 min-w-6 items-center justify-center rounded-(--radius-pill) bg-(--accent-ai)/12 px-1.5 text-xs font-medium text-(--accent-ai)"
+                                            >
+                                                {member.rank}
+                                            </span>
+                                        ) : null}
+                                        <span className="text-sm text-(--text-secondary)">
+                                            {safeGraphProse(member.display_label)}
+                                        </span>
+                                    </div>
+                                    {member.disposition ? (
+                                        <span className="text-xs text-(--text-muted)">
+                                            {COHORT_DISPOSITION_LABELS[member.disposition]}
+                                        </span>
+                                    ) : null}
+                                </div>
+                                <p className="text-xs leading-5 text-(--text-muted)">
                                     {COHORT_INCLUSION_LABELS[member.inclusion_basis]}
-                                </span>
+                                </p>
+                                {member.inclusion_rationale ? (
+                                    <p className="text-xs leading-5 text-(--text-secondary)">
+                                        {safeGraphProse(member.inclusion_rationale)}
+                                    </p>
+                                ) : null}
+                                {member.pressure_dimensions?.length ? (
+                                    <p className="text-xs text-(--text-muted)">
+                                        Pressure areas:{" "}
+                                        {member.pressure_dimensions
+                                            .map(
+                                                (dimension) => PRESSURE_DIMENSION_LABELS[dimension],
+                                            )
+                                            .join(", ")}
+                                    </p>
+                                ) : null}
+                                {member.signals?.length ? (
+                                    <ul
+                                        className="space-y-2 border-l-2 border-(--border) pl-3"
+                                        aria-label="Canonical signals"
+                                    >
+                                        {member.signals.map((signal) => (
+                                            <li
+                                                key={signal.signal_id}
+                                                className="space-y-1 text-xs text-(--text-muted)"
+                                            >
+                                                <p>
+                                                    <span className="font-medium text-(--text-secondary)">
+                                                        {SIGNAL_SOURCE_LABELS[signal.source]}
+                                                    </span>
+                                                    {signal.dimension
+                                                        ? ` · ${PRESSURE_DIMENSION_LABELS[signal.dimension]}`
+                                                        : ""}
+                                                    {signal.state
+                                                        ? ` · ${PRESSURE_STATE_LABELS[signal.state]}`
+                                                        : ""}
+                                                </p>
+                                                <p>
+                                                    {signal.observed_states
+                                                        .map(
+                                                            (state) =>
+                                                                SOURCE_REQUIREMENT_LABELS[state],
+                                                        )
+                                                        .join(", ")}
+                                                    {` · ${DATA_SEMANTICS_LABELS[signal.data_semantics]}`}
+                                                    {signal.freshness
+                                                        ? ` · ${SIGNAL_FRESHNESS_LABELS[signal.freshness]}`
+                                                        : ""}
+                                                    {signal.coverage !== null &&
+                                                    signal.coverage !== undefined
+                                                        ? ` · ${formatPercent(signal.coverage * 100)} coverage`
+                                                        : ""}
+                                                </p>
+                                                {signal.denominator_present === false ? (
+                                                    <p>Staffing baseline unavailable.</p>
+                                                ) : null}
+                                                {signal.attribution_present === false ? (
+                                                    <p>Attribution coverage unavailable.</p>
+                                                ) : null}
+                                                {signal.gap ? (
+                                                    <p>{ENRICHMENT_GAP_LABELS[signal.gap]}</p>
+                                                ) : null}
+                                                {signal.evidence_source_classes?.length ? (
+                                                    <p>
+                                                        Evidence:{" "}
+                                                        {signal.evidence_source_classes
+                                                            .map(
+                                                                (source) =>
+                                                                    EVIDENCE_SOURCE_LABELS[source],
+                                                            )
+                                                            .join(", ")}
+                                                    </p>
+                                                ) : null}
+                                                {signal.limitation ? (
+                                                    <p className="text-(--caution)">
+                                                        {safeGraphProse(signal.limitation)}
+                                                    </p>
+                                                ) : null}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : null}
                             </li>
                         ))}
                     </ul>
