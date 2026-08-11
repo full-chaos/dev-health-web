@@ -44,7 +44,20 @@ export class DevApiError extends Error {
 
 export type DevRequestOptions = Readonly<{ signal?: AbortSignal }>;
 export type DevStreamOptions = DevRequestOptions &
-    Readonly<{ onEvent?: (event: DevStreamEvent) => void }>;
+    Readonly<{
+        onEvent?: (event: DevStreamEvent) => void;
+        /** Existing terminal state when a reconnect starts after that frame. */
+        initialAnswer?: DevAnswer;
+        initialError?: DevWebError;
+    }>;
+
+export type DevRunResumeInput = Readonly<{
+    schema_version: "dev_run_resume_request.v1";
+    request_id: string;
+    conversation_id: string;
+    last_sequence: number;
+    scope: DevMessageRequest["scope"];
+}>;
 
 /**
  * The newest streamed contract this web pin can parse. The server uses the
@@ -395,10 +408,25 @@ function isUnknownStreamEvent(decoded: { eventName: string; value: unknown }): b
     return !KNOWN_STREAM_EVENTS.has(name);
 }
 
+type DevSseConsumeOptions = DevStreamOptions &
+    Readonly<{
+        initialSequence?: number;
+        expectedRunId?: string;
+        allowIncompleteReplay?: boolean;
+    }>;
+
+export function consumeDevSseStream(
+    response: Response,
+    options?: DevSseConsumeOptions & Readonly<{ allowIncompleteReplay?: false }>,
+): Promise<DevAnswer>;
+export function consumeDevSseStream(
+    response: Response,
+    options: DevSseConsumeOptions & Readonly<{ allowIncompleteReplay: true }>,
+): Promise<DevAnswer | null>;
 export async function consumeDevSseStream(
     response: Response,
-    options: DevStreamOptions = {},
-): Promise<DevAnswer> {
+    options: DevSseConsumeOptions = {},
+): Promise<DevAnswer | null> {
     if (!response.ok) throw await responseError(response);
     if (!response.headers.get("content-type")?.startsWith("text/event-stream") || !response.body) {
         throw invalidResponse();
@@ -408,12 +436,17 @@ export async function consumeDevSseStream(
     const decoder = new TextDecoder("utf-8", { fatal: true });
     let buffer = "";
     let count = 0;
-    let runId: string | undefined;
-    let expectedSequence = 0;
-    let terminal: "answer" | "error" | undefined;
-    let terminalError: DevWebError | undefined;
-    let answer: DevAnswer | undefined;
+    let runId: string | undefined = options.expectedRunId;
+    let expectedSequence = options.initialSequence ?? 0;
+    let terminal: "answer" | "error" | undefined = options.initialAnswer
+        ? "answer"
+        : options.initialError
+          ? "error"
+          : undefined;
+    let terminalError: DevWebError | undefined = options.initialError;
+    let answer: DevAnswer | undefined = options.initialAnswer;
     let done = false;
+    let firstFrame = true;
 
     const consumeFrame = (frame: string): void => {
         const decoded = decodeFrame(frame);
@@ -426,7 +459,7 @@ export async function consumeDevSseStream(
         // FIRST frame is unrecognised tells us nothing about the run at all, so
         // that stays a hard failure rather than a run with no identity.
         if (isUnknownStreamEvent(decoded)) {
-            if (runId === undefined || done) {
+            if (runId === undefined || done || (firstFrame && expectedSequence === 0)) {
                 throw invalidResponse("Ask Dev stream did not start correctly.");
             }
             const unknown = decoded.value as { run_id?: unknown; sequence?: unknown };
@@ -454,6 +487,10 @@ export async function consumeDevSseStream(
         } else if (event.run_id !== runId) {
             throw invalidResponse("Ask Dev changed run identifiers mid-stream.");
         }
+        if (firstFrame && expectedSequence === 0 && event.event !== "run.started") {
+            throw invalidResponse("Ask Dev stream did not start correctly.");
+        }
+        firstFrame = false;
         if (terminal !== undefined && event.event !== "done") {
             throw invalidResponse("Ask Dev returned data after its terminal event.");
         }
@@ -504,6 +541,7 @@ export async function consumeDevSseStream(
                 },
             );
         }
+        if (terminal === undefined && options.allowIncompleteReplay) return null;
         throw invalidResponse("Ask Dev stream ended before a completed answer.");
     }
     return answer;
@@ -584,6 +622,11 @@ export interface DevApiClient {
         input: DevMessageRequest,
         options?: DevStreamOptions,
     ): Promise<DevAnswer>;
+    resumeRun(
+        runId: string,
+        input: DevRunResumeInput,
+        options?: DevStreamOptions,
+    ): Promise<DevAnswer | null>;
     expandEvidence(
         evidenceRefId: string,
         answerId: string,
@@ -690,7 +733,21 @@ export function createDevApiClient(options: ClientOptions = {}): DevApiClient {
                     streamOptions.signal,
                 ),
             );
-            return consumeDevSseStream(response, streamOptions);
+            const answer = await consumeDevSseStream(response, streamOptions);
+            if (!answer) throw invalidResponse("Ask Dev stream ended before a completed answer.");
+            return answer;
+        },
+        async resumeRun(runId, input, streamOptions = {}) {
+            const response = await request(
+                `/api/v1/dev/runs/${encodeId(runId)}/resume`,
+                jsonMutation("POST", input, streamOptions.signal),
+            );
+            return consumeDevSseStream(response, {
+                ...streamOptions,
+                allowIncompleteReplay: true,
+                initialSequence: input.last_sequence + 1,
+                expectedRunId: runId,
+            });
         },
         async expandEvidence(evidenceRefId, answerId, { signal } = {}) {
             const query = new URLSearchParams({ answer_id: answerId });

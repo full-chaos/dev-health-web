@@ -19,6 +19,7 @@ import type {
     DevWebError,
 } from "@/lib/dev/client";
 import {
+    DevApiError,
     devApiClient,
     initialDevConversationStreamState,
     PINNED_DEV_STREAM_CONTRACT_VERSION,
@@ -245,6 +246,214 @@ function toTranscriptEntry(entry: TranscriptEntry): AskDevTranscriptEntry {
 
 const MAX_TRANSCRIPT_PAGES = 10;
 const TRANSCRIPT_PAGE_SIZE = 100;
+const ACTIVE_RUN_STORAGE_PREFIX = "dev-health.ask-dev.active-run.v1";
+const RESUME_POLL_INTERVAL_MS = 250;
+const MAX_TRANSIENT_RESUME_FAILURES = 3;
+
+type ActiveRunResume = {
+    conversationId: string;
+    runId: string;
+    question: string;
+    scope: DevScope;
+    scopeLabel: string;
+    lastSequence: number;
+    answer?: DevAnswer;
+    error?: DevWebError;
+    done: boolean;
+};
+
+type StoredActiveRunResume = Omit<ActiveRunResume, "answer" | "error" | "done">;
+
+function activeRunStorageKey(orgId: string): string {
+    return `${ACTIVE_RUN_STORAGE_PREFIX}:${orgId}`;
+}
+
+function browserStorage(): Storage | null {
+    if (typeof window === "undefined") return null;
+    try {
+        return window.localStorage;
+    } catch {
+        return null;
+    }
+}
+
+function isStoredActiveRunResume(value: unknown): value is StoredActiveRunResume {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const candidate = value as Record<string, unknown>;
+    return (
+        typeof candidate.conversationId === "string" &&
+        candidate.conversationId.length > 0 &&
+        typeof candidate.runId === "string" &&
+        candidate.runId.length > 0 &&
+        typeof candidate.question === "string" &&
+        candidate.question.length > 0 &&
+        typeof candidate.scopeLabel === "string" &&
+        typeof candidate.lastSequence === "number" &&
+        Number.isInteger(candidate.lastSequence) &&
+        candidate.lastSequence >= -1 &&
+        candidate.lastSequence <= 100_000 &&
+        candidate.scope !== null &&
+        typeof candidate.scope === "object" &&
+        !Array.isArray(candidate.scope)
+    );
+}
+
+function readStoredActiveRun(orgId: string): StoredActiveRunResume | null {
+    const storage = browserStorage();
+    if (!storage) return null;
+    try {
+        const raw = storage.getItem(activeRunStorageKey(orgId));
+        if (!raw) return null;
+        const parsed: unknown = JSON.parse(raw);
+        return isStoredActiveRunResume(parsed) ? parsed : null;
+    } catch {
+        return null;
+    }
+}
+
+function writeStoredActiveRun(orgId: string, run: ActiveRunResume): void {
+    const storage = browserStorage();
+    if (!storage) return;
+    const { answer: _answer, error: _error, done: _done, ...persisted } = run;
+    try {
+        storage.setItem(activeRunStorageKey(orgId), JSON.stringify(persisted));
+    } catch {
+        // Local persistence is an optimization for reload recovery. A disabled
+        // or full storage implementation must never interrupt the live run.
+    }
+}
+
+function clearStoredActiveRun(orgId: string): void {
+    const storage = browserStorage();
+    if (!storage) return;
+    try {
+        storage.removeItem(activeRunStorageKey(orgId));
+    } catch {
+        // See writeStoredActiveRun: storage failures are not stream failures.
+    }
+}
+
+function sameScope(left: DevScope, right: DevScope): boolean {
+    const sameJson = (a: unknown, b: unknown): boolean => {
+        if (Object.is(a, b)) return true;
+        if (Array.isArray(a) || Array.isArray(b)) {
+            return (
+                Array.isArray(a) &&
+                Array.isArray(b) &&
+                a.length === b.length &&
+                a.every((value, index) => sameJson(value, b[index]))
+            );
+        }
+        if (!a || !b || typeof a !== "object" || typeof b !== "object") return false;
+        const leftRecord = a as Record<string, unknown>;
+        const rightRecord = b as Record<string, unknown>;
+        const leftKeys = Object.keys(leftRecord);
+        const rightKeys = Object.keys(rightRecord);
+        return (
+            leftKeys.length === rightKeys.length &&
+            leftKeys.every(
+                (key) =>
+                    Object.hasOwn(rightRecord, key) && sameJson(leftRecord[key], rightRecord[key]),
+            )
+        );
+    };
+    return sameJson(left, right);
+}
+
+function terminalRunError(runState: TranscriptEntry["run_state"]): DevWebError | null {
+    if (runState === "cancelled") {
+        return {
+            schema_version: "dev_web_error.v1",
+            code: "cancelled",
+            safe_message: "The investigation was cancelled.",
+            retryable: true,
+        };
+    }
+    if (runState === "failed") {
+        return {
+            schema_version: "dev_web_error.v1",
+            code: "run_failed",
+            safe_message: "Ask Dev could not complete the investigation.",
+            retryable: true,
+        };
+    }
+    if (
+        runState === "completed" ||
+        runState === "insufficient_evidence" ||
+        runState === "refused"
+    ) {
+        return {
+            schema_version: "dev_web_error.v1",
+            code: "resume_stream_invalid",
+            safe_message: "The completed investigation could not be restored safely.",
+            retryable: false,
+        };
+    }
+    return null;
+}
+
+function waitForResumePoll(signal: AbortSignal): Promise<void> {
+    return new Promise((resolve, reject) => {
+        if (signal.aborted) {
+            reject(signal.reason);
+            return;
+        }
+        const onAbort = () => {
+            clearTimeout(timer);
+            reject(signal.reason);
+        };
+        const timer = setTimeout(() => {
+            signal.removeEventListener("abort", onAbort);
+            resolve();
+        }, RESUME_POLL_INTERVAL_MS);
+        signal.addEventListener("abort", onAbort, { once: true });
+    });
+}
+
+async function resumeActiveRun(
+    client: DevApiClient,
+    record: ActiveRunResume,
+    controller: AbortController,
+    onEvent: (event: DevStreamEvent) => void,
+): Promise<DevAnswer> {
+    let transientFailures = 0;
+    while (!controller.signal.aborted) {
+        try {
+            const answer = await client.resumeRun(
+                record.runId,
+                {
+                    schema_version: "dev_run_resume_request.v1",
+                    request_id: crypto.randomUUID(),
+                    conversation_id: record.conversationId,
+                    last_sequence: record.lastSequence,
+                    scope: record.scope,
+                },
+                {
+                    signal: controller.signal,
+                    initialAnswer: record.answer,
+                    initialError: record.error,
+                    onEvent,
+                },
+            );
+            transientFailures = 0;
+            if (answer) return answer;
+        } catch (error) {
+            if (record.done) throw error;
+            const stillRunning =
+                error instanceof DevApiError && error.detail.code === "resume_unavailable";
+            const transient =
+                error instanceof TypeError ||
+                (error instanceof DevApiError &&
+                    error.detail.retryable &&
+                    error.detail.code !== "invalid_response");
+            if (!stillRunning && (!transient || transientFailures >= MAX_TRANSIENT_RESUME_FAILURES))
+                throw error;
+            if (!stillRunning) transientFailures += 1;
+        }
+        await waitForResumePoll(controller.signal);
+    }
+    throw controller.signal.reason;
+}
 
 function answerRunState(answer: DevAnswer): TranscriptEntry["run_state"] {
     if (answer.status === "insufficient_evidence" || answer.status === "refused") {
@@ -303,6 +512,7 @@ export function AskDevProvider({
     // *other*, earlier organization in the session once did (CHAOS-3215).
     const [everAvailable, setEverAvailable] = useState(false);
     const activeRequest = useRef<AbortController | null>(null);
+    const activeRun = useRef<ActiveRunResume | null>(null);
     const activeHistoryRequest = useRef<AbortController | null>(null);
     const historySelection = useRef(0);
     // Mirrors the latest `orgId` prop for use inside async callbacks (after an
@@ -381,6 +591,166 @@ export function AskDevProvider({
         };
     }, [client, orgId]);
 
+    // A full reload destroys the provider's in-memory stream state. The
+    // accepted run metadata is therefore kept in a tenant-keyed local cursor,
+    // then checked against the server-owned transcript before rejoining. The
+    // transcript check is deliberate: a client-held scope is only a replay
+    // cursor, never authority to broaden the original request.
+    useEffect(() => {
+        if (availability.state !== "ready") return;
+        if (activeRequest.current || activeRun.current) return;
+        const stored = readStoredActiveRun(orgId);
+        if (!stored) return;
+
+        const controller = new AbortController();
+        const requestOrgId = orgId;
+        const record: ActiveRunResume = { ...stored, done: false };
+        activeRun.current = record;
+        activeRequest.current = controller;
+
+        const isCurrent = () =>
+            !controller.signal.aborted &&
+            activeRequest.current === controller &&
+            orgIdRef.current === requestOrgId;
+
+        const onEvent = (event: DevStreamEvent) => {
+            if (!isCurrent() || activeRun.current?.runId !== record.runId) return;
+            record.lastSequence = Math.max(record.lastSequence, event.sequence);
+            if (event.event === "answer.completed" && event.answer) {
+                record.answer = event.answer;
+                record.error = undefined;
+            } else if (event.event === "error" && event.error) {
+                record.error = {
+                    schema_version: "dev_web_error.v1",
+                    code: event.error.code,
+                    safe_message: event.error.safe_message,
+                    retryable: event.error.retryable,
+                    request_id: event.error.request_id,
+                    ...(event.error.limit_reset_at
+                        ? { limit_reset_at: event.error.limit_reset_at }
+                        : {}),
+                };
+            } else if (event.event === "done") {
+                record.done = true;
+            }
+            writeStoredActiveRun(requestOrgId, record);
+            setStream((current) => reduceDevConversationStream(current, event));
+        };
+
+        void (async () => {
+            try {
+                const entries: AskDevTranscriptEntry[] = [];
+                let cursor: string | undefined;
+                let pageCount = 0;
+                do {
+                    const page = await client.getConversationTranscript(record.conversationId, {
+                        signal: controller.signal,
+                        cursor,
+                        limit: TRANSCRIPT_PAGE_SIZE,
+                    });
+                    if (!isCurrent()) return;
+                    entries.push(...(page.items ?? []).map(toTranscriptEntry));
+                    cursor = page.next_cursor ?? undefined;
+                    pageCount += 1;
+                } while (cursor && pageCount < MAX_TRANSCRIPT_PAGES);
+                if (cursor) throw new Error("This conversation is too long to resume safely.");
+                const userEntry = entries.find(
+                    (entry): entry is Extract<AskDevTranscriptEntry, { role: "user" }> =>
+                        entry.role === "user" && entry.runId === record.runId,
+                );
+                if (
+                    !userEntry ||
+                    !userEntry.runState ||
+                    userEntry.text !== record.question ||
+                    !sameScope(userEntry.scope, record.scope)
+                ) {
+                    clearStoredActiveRun(requestOrgId);
+                    activeRun.current = null;
+                    throw new Error("The saved Ask Dev run no longer matches its accepted scope.");
+                }
+
+                const assistantEntry = entries.find(
+                    (entry): entry is Extract<AskDevTranscriptEntry, { role: "assistant" }> =>
+                        entry.role === "assistant" && entry.runId === record.runId,
+                );
+                setConversationId(record.conversationId);
+                setCommittedScopeLabel(record.scopeLabel);
+                setTranscript(entries);
+
+                // A terminal transcript means the run completed while this
+                // document was gone. It is already durable, so do not issue a
+                // second request just to redisplay it.
+                if (assistantEntry) {
+                    setStream({
+                        ...initialDevConversationStreamState,
+                        phase: "completed",
+                        runId: record.runId,
+                        answer: assistantEntry.answer,
+                    });
+                    activeRun.current = null;
+                    clearStoredActiveRun(requestOrgId);
+                    return;
+                }
+                const persistedTerminalError = terminalRunError(userEntry.runState);
+                if (persistedTerminalError) {
+                    setStream({
+                        ...initialDevConversationStreamState,
+                        phase: "failed",
+                        runId: record.runId,
+                        error: persistedTerminalError,
+                    });
+                    activeRun.current = null;
+                    clearStoredActiveRun(requestOrgId);
+                    return;
+                }
+
+                setStream({
+                    ...initialDevConversationStreamState,
+                    phase: "running",
+                    runId: record.runId,
+                    answer: null,
+                });
+                record.answer = undefined;
+                const answer = await resumeActiveRun(client, record, controller, onEvent);
+                if (!isCurrent()) return;
+                setStream({
+                    ...initialDevConversationStreamState,
+                    phase: "completed",
+                    runId: record.runId,
+                    answer,
+                });
+                setTranscript((current) => [
+                    ...current,
+                    {
+                        id: answer.answer_id,
+                        role: "assistant",
+                        answer,
+                        retryOfRunId: null,
+                        runId: record.runId,
+                        runState: answerRunState(answer),
+                    },
+                ]);
+                activeRun.current = null;
+                clearStoredActiveRun(requestOrgId);
+            } catch (error) {
+                if (isCurrent()) {
+                    setStream((current) => ({
+                        ...current,
+                        phase: "failed",
+                        error: webError(error),
+                    }));
+                }
+            } finally {
+                if (activeRequest.current === controller) activeRequest.current = null;
+            }
+        })();
+
+        return () => {
+            controller.abort();
+            if (activeRequest.current === controller) activeRequest.current = null;
+        };
+    }, [availability.state, client, orgId]);
+
     useEffect(() => {
         if (availability.state === "ready" || availability.state === "not_ready") {
             setEverAvailable(true);
@@ -429,6 +799,7 @@ export function AskDevProvider({
         // Strict Mode's dev-only double render bumps it twice: it is only ever
         // compared for (in)equality, never read as an absolute count.
         historySelection.current += 1;
+        activeRun.current = null;
         setConversationId(null);
         setCommittedScopeLabel(null);
         setTranscript([]);
@@ -600,6 +971,8 @@ export function AskDevProvider({
         historySelection.current += 1;
         activeRequest.current?.abort();
         activeRequest.current = null;
+        activeRun.current = null;
+        clearStoredActiveRun(orgIdRef.current);
         setConversationId(null);
         setCommittedScopeLabel(null);
         setTranscript([]);
@@ -611,6 +984,8 @@ export function AskDevProvider({
         if (!controller) return;
         controller.abort();
         activeRequest.current = null;
+        activeRun.current = null;
+        clearStoredActiveRun(orgIdRef.current);
         setStream((current) => ({
             ...current,
             phase: "failed",
@@ -757,28 +1132,70 @@ export function AskDevProvider({
                     ...(retry ? { retry_of_run_id: retry.runId } : {}),
                 };
 
-                const answer = await client.streamMessage(activeConversationId, request, {
-                    signal: controller.signal,
-                    onEvent: (event: DevStreamEvent) => {
-                        if (superseded()) return;
-                        if (event.event === "run.started") {
-                            activeRunId = event.run_id;
-                            setTranscript((current) =>
-                                current.map((entry) =>
-                                    entry.id === userEntryId && entry.role === "user"
-                                        ? {
-                                              ...entry,
-                                              runId: event.run_id,
-                                              runState: "accepted",
-                                          }
-                                        : entry,
-                                ),
-                            );
+                const onEvent = (event: DevStreamEvent) => {
+                    if (superseded()) return;
+                    if (event.event === "run.started") {
+                        activeRunId = event.run_id;
+                        activeRun.current = {
+                            conversationId: activeConversationId,
+                            runId: event.run_id,
+                            question: normalizedQuestion,
+                            scope: requestScope,
+                            scopeLabel: requestScopeLabel,
+                            lastSequence: event.sequence,
+                            done: false,
+                        };
+                        writeStoredActiveRun(requestOrgId, activeRun.current);
+                        setTranscript((current) =>
+                            current.map((entry) =>
+                                entry.id === userEntryId && entry.role === "user"
+                                    ? {
+                                          ...entry,
+                                          runId: event.run_id,
+                                          runState: "accepted",
+                                      }
+                                    : entry,
+                            ),
+                        );
+                    } else if (activeRun.current?.runId === event.run_id) {
+                        const record = activeRun.current;
+                        record.lastSequence = Math.max(record.lastSequence, event.sequence);
+                        if (event.event === "answer.completed" && event.answer) {
+                            record.answer = event.answer;
+                            record.error = undefined;
+                        } else if (event.event === "error" && event.error) {
+                            record.error = {
+                                schema_version: "dev_web_error.v1",
+                                code: event.error.code,
+                                safe_message: event.error.safe_message,
+                                retryable: event.error.retryable,
+                                request_id: event.error.request_id,
+                                ...(event.error.limit_reset_at
+                                    ? { limit_reset_at: event.error.limit_reset_at }
+                                    : {}),
+                            };
+                        } else if (event.event === "done") {
+                            record.done = true;
                         }
-                        setStream((current) => reduceDevConversationStream(current, event));
-                    },
-                });
+                        writeStoredActiveRun(requestOrgId, record);
+                    }
+                    setStream((current) => reduceDevConversationStream(current, event));
+                };
+
+                let answer: DevAnswer;
+                try {
+                    answer = await client.streamMessage(activeConversationId, request, {
+                        signal: controller.signal,
+                        onEvent,
+                    });
+                } catch (error) {
+                    const record = activeRun.current;
+                    if (superseded() || !record || record.done) throw error;
+                    answer = await resumeActiveRun(client, record, controller, onEvent);
+                }
                 if (superseded()) return;
+                activeRun.current = null;
+                clearStoredActiveRun(requestOrgId);
                 setTranscript((current) => [
                     ...current,
                     {

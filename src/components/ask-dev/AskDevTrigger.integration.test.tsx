@@ -82,6 +82,7 @@ function makeClient(): DevApiClient {
         renameConversation: vi.fn(),
         deleteConversation: vi.fn(),
         streamMessage: vi.fn().mockResolvedValue(answer),
+        resumeRun: vi.fn(),
         expandEvidence: vi.fn(),
         submitFeedback: vi.fn(),
     };
