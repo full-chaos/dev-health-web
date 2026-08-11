@@ -15,6 +15,15 @@ export type BrowserFaultLog = {
     readonly settle: () => Promise<void>;
 };
 
+type SessionRequestTracker<RequestToken extends object> = {
+    readonly started: (request: RequestToken) => void;
+    readonly failed: (request: RequestToken, errorText: string) => void;
+    readonly finished: (request: RequestToken) => void;
+    readonly responded: (request: RequestToken, status: number) => void;
+    readonly mainFrameNavigated: () => void;
+    readonly waitForPending: () => Promise<void>;
+};
+
 export type BrowserFaultSummary = {
     readonly consoleErrors: readonly string[];
     readonly pageErrors: readonly string[];
@@ -41,19 +50,60 @@ function isAuthSessionFetchError(message: string): boolean {
     return message.includes(AUTH_SESSION_FETCH_ERROR) && message.includes("._getSession");
 }
 
-export function recordBrowserFaults(page: Page): BrowserFaultLog {
-    const events: BrowserFaultEvent[] = [];
-    const pendingSessionRequests = new Set<Request>();
+export function createSessionRequestTracker<RequestToken extends object>(
+    events: BrowserFaultEvent[],
+): SessionRequestTracker<RequestToken> {
+    let documentGeneration = 0;
+    const pending = new Map<RequestToken, number>();
+    const navigationSettled = new WeakSet<RequestToken>();
     const settlementWaiters = new Set<() => void>();
-    const markSessionRequestSettled = (request: Request): void => {
-        if (!pendingSessionRequests.delete(request) || pendingSessionRequests.size > 0) return;
+    const resolveIfSettled = (): void => {
+        if (pending.size > 0) return;
         for (const resolve of settlementWaiters) resolve();
         settlementWaiters.clear();
     };
-    const waitForPendingSessionRequests = (): Promise<void> => {
-        if (pendingSessionRequests.size === 0) return Promise.resolve();
-        return new Promise((resolve) => settlementWaiters.add(resolve));
+    const settle = (request: RequestToken): boolean => {
+        if (!pending.delete(request)) return false;
+        resolveIfSettled();
+        return true;
     };
+
+    return {
+        started: (request) => pending.set(request, documentGeneration),
+        failed: (request, errorText) => {
+            if (!settle(request)) return;
+            events.push({ kind: "session-request-failed", errorText });
+        },
+        finished: (request) => {
+            settle(request);
+        },
+        responded: (request, status) => {
+            if (navigationSettled.has(request)) return;
+            events.push({ kind: "session-response", status });
+        },
+        mainFrameNavigated: () => {
+            documentGeneration += 1;
+            for (const [request, generation] of pending) {
+                if (generation >= documentGeneration) continue;
+                pending.delete(request);
+                navigationSettled.add(request);
+                events.push({
+                    kind: "session-request-failed",
+                    errorText: SESSION_REQUEST_ABORTED,
+                });
+            }
+            resolveIfSettled();
+        },
+        waitForPending: () => {
+            if (pending.size === 0) return Promise.resolve();
+            return new Promise((resolve) => settlementWaiters.add(resolve));
+        },
+    };
+}
+
+export function recordBrowserFaults(page: Page): BrowserFaultLog {
+    const events: BrowserFaultEvent[] = [];
+    const sessionRequests = createSessionRequestTracker<Request>(events);
 
     page.on("console", (message) => {
         if (message.type() === "error") {
@@ -65,39 +115,40 @@ export function recordBrowserFaults(page: Page): BrowserFaultLog {
     });
     page.on("request", (request) => {
         if (isSessionRequest(request.url(), request.method())) {
-            pendingSessionRequests.add(request);
+            sessionRequests.started(request);
         }
     });
     page.on("requestfailed", (request) => {
         if (isSessionRequest(request.url(), request.method())) {
-            events.push({
-                kind: "session-request-failed",
-                errorText: request.failure()?.errorText ?? "",
-            });
-            markSessionRequestSettled(request);
+            sessionRequests.failed(request, request.failure()?.errorText ?? "");
         }
     });
     page.on("requestfinished", (request) => {
         if (isSessionRequest(request.url(), request.method())) {
-            markSessionRequestSettled(request);
+            sessionRequests.finished(request);
         }
     });
     page.on("response", (response) => {
         if (isSessionRequest(response.url(), response.request().method())) {
-            events.push({ kind: "session-response", status: response.status() });
+            sessionRequests.responded(response.request(), response.status());
+        }
+    });
+    page.on("framenavigated", (frame) => {
+        if (frame === page.mainFrame()) {
+            sessionRequests.mainFrameNavigated();
         }
     });
     return {
         events,
         settle: async () => {
-            await waitForPendingSessionRequests();
+            await sessionRequests.waitForPending();
             await page.evaluate(
                 () =>
                     new Promise<void>((resolve) => {
                         requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
                     }),
             );
-            await waitForPendingSessionRequests();
+            await sessionRequests.waitForPending();
         },
     };
 }
