@@ -22,6 +22,7 @@ import {
     type FeedbackSubmission,
 } from "./answer/FeedbackFooter";
 import { FollowUpSection } from "./answer/FollowUpSection";
+import { GraphAssistanceSection } from "./answer/GraphAssistanceSection";
 import type { CitationTargets } from "./answer/InlineCitations";
 import type { SafeProse } from "./answer/labels";
 import { LimitationsSection } from "./answer/LimitationsSection";
@@ -226,6 +227,7 @@ export function attestedText(answer: DevAnswer): string {
         ...(scope?.candidates ?? []).map((candidate) => candidate.entity_ref.display_label),
         ...(answer.evidence ?? []).map((item) => item.display_label),
         ...(answer.metrics ?? []).map((metric) => metric.label),
+        ...(answer.graph_assisted?.cohort?.members ?? []).map((member) => member.display_label),
     ].join(" ");
 }
 
@@ -362,6 +364,7 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
     // Section heading ids (used only for aria-labelledby) are static per
     // section kind, so they need the same per-answer scoping to stay unique
     // across a transcript with multiple answers.
+    const graphAssistanceHeadingId = "ask-dev-additional-context-" + answer.answer_id;
     const findingsHeadingId = `ask-dev-findings-${answer.answer_id}`;
     const metricsHeadingId = `ask-dev-metrics-${answer.answer_id}`;
     const evidenceHeadingId = `ask-dev-evidence-heading-${answer.answer_id}`;
@@ -491,6 +494,15 @@ export function AskDevAnswer({ answer }: { answer: DevAnswer }) {
             ) : null}
 
             {showCoverage ? <CoverageSection coverage={answer.coverage} /> : null}
+
+            {answer.graph_assisted ? (
+                <GraphAssistanceSection
+                    graphAssistance={answer.graph_assisted}
+                    headingId={graphAssistanceHeadingId}
+                    safeProse={safeProse}
+                    targets={citationTargets}
+                />
+            ) : null}
 
             {/*
              * CHAOS-3377 HIGH: claims are model-authored prose, exactly

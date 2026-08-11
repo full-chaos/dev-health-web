@@ -1,11 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    applyMessage,
     buildStreamEvents,
     CLARIFICATION_COPY,
+    createConversation,
+    getTranscript,
     NO_ANSWER_OUTCOMES,
+    parseScenario,
     type DevAnswerScenario,
 } from "./devScenario";
+
+import graphAssistanceFixture from "../../src/lib/dev/contracts/examples/positive/dev_answer_graph_assistance.v1.json";
 
 /**
  * Fixture-fidelity oracle for the Ask Dev mock (CHAOS-3219).
@@ -81,6 +87,68 @@ describe("Ask Dev mock fidelity — clarification projection", () => {
         expect(requested.direct_scope).toBe("organization");
         expect(requested.repositories).toEqual([]);
         expect(requested.entity_refs).toEqual([]);
+    });
+});
+
+describe("Ask Dev mock fidelity — graph assistance rendering scenario", () => {
+    it("selects the scenario marker and applies production state precedence", () => {
+        expect(parseScenario("[[ask-dev:graph_assisted]] Show the drivers")).toEqual({
+            scenario: "graph_assisted",
+            visibleQuestion: "Show the drivers",
+        });
+
+        const answer = answerFor("graph_assisted");
+        expect(answer.graph_assisted).toEqual({
+            ...graphAssistanceFixture,
+            state: "truncated",
+        });
+
+        const graphAssisted = answer.graph_assisted as JsonRecord;
+        expect(graphAssisted.schema_version).toBe("dev_answer_graph_assistance.v1");
+        expect(graphAssisted.state).toBe("truncated");
+        expect((graphAssisted.cohort as JsonRecord).members).toEqual([
+            {
+                display_label: "Platform",
+                entity_id: "team_platform",
+                inclusion_basis: "team_pressure",
+            },
+        ]);
+        expect(graphAssisted.ranked_drivers).toEqual([
+            {
+                contribution: 0.6,
+                evidence_ref_ids: ["ev_01"],
+                rank: 1,
+            },
+        ]);
+
+        const evidenceIds = new Set(
+            (answer.evidence as JsonRecord[]).map((item) => item.evidence_ref_id),
+        );
+        for (const driver of graphAssisted.ranked_drivers as JsonRecord[]) {
+            for (const evidenceRefId of driver.evidence_ref_ids as string[]) {
+                expect(evidenceIds.has(evidenceRefId)).toBe(true);
+            }
+        }
+    });
+
+    it("keeps the test-only scenario marker out of the customer-visible title", () => {
+        const conversation = createConversation(
+            {},
+            "[[ask-dev:graph_assisted]] Which teams need attention?",
+        );
+
+        expect(conversation.title).toBe("Which teams need attention?");
+
+        const conversationId = String(conversation.conversation_id);
+        applyMessage(
+            conversationId,
+            "client-message-graph",
+            "[[ask-dev:graph_assisted]] Which teams need attention?",
+            {},
+            null,
+        );
+        const transcript = getTranscript(conversationId);
+        expect((transcript?.items as JsonRecord[])[0].question).toBe("Which teams need attention?");
     });
 });
 

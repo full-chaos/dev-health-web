@@ -22,6 +22,7 @@ import { randomUUID } from "node:crypto";
 
 import answerFixture from "../../src/lib/dev/contracts/examples/positive/dev_answer.v1.json";
 import capabilitiesFixture from "../../src/lib/dev/contracts/examples/positive/dev_capabilities.v1.json";
+import graphAssistanceFixture from "../../src/lib/dev/contracts/examples/positive/dev_answer_graph_assistance.v1.json";
 import { ASK_DEV_OUTCOME_TABLE, outcomeCase } from "../fixtures/askDevOutcomes";
 
 type JsonRecord = Record<string, unknown>;
@@ -150,6 +151,7 @@ export type DevAnswerScenario =
     | "degraded_sources_only"
     | "leaky_prose"
     | "full_sections"
+    | "graph_assisted"
     | "refused_with_grounding"
     | "scope_unresolved"
     | "scope_organization_fallback"
@@ -167,6 +169,7 @@ const KNOWN_SCENARIOS: ReadonlySet<string> = new Set<DevAnswerScenario>([
     "degraded_sources_only",
     "leaky_prose",
     "full_sections",
+    "graph_assisted",
     "refused_with_grounding",
     "scope_unresolved",
     "scope_organization_fallback",
@@ -448,6 +451,20 @@ function buildAnswer(
                 },
             ];
             base.warnings = ["Deployment evidence covers only part of the window."];
+            return base;
+        }
+        case "graph_assisted": {
+            // Keep the browser scenario assembled from the same generated
+            // graph-assistance contract example used by the renderer tests.
+            // The answer fixture supplies the surrounding dev_answer.v1
+            // envelope and evidence refs. Production routing promotes a
+            // truncated-traversal limitation to the truncated state, so keep
+            // that semantic precedence even though the shape fixture carries
+            // the independently valid `enabled` enum example.
+            base.graph_assisted = {
+                ...clone(graphAssistanceFixture),
+                state: "truncated",
+            };
             return base;
         }
         case "refused_with_grounding": {
@@ -930,6 +947,7 @@ export function resetDevMockState(): void {
 export function createConversation(currentScope: unknown, title: unknown): JsonRecord {
     const conversationId = `conversation_e2e_${randomUUID()}`;
     const nowIso = new Date().toISOString();
+    const visibleTitle = typeof title === "string" ? parseScenario(title).visibleQuestion : null;
     const conversation: JsonRecord = {
         conversation_id: conversationId,
         created_at: nowIso,
@@ -941,7 +959,7 @@ export function createConversation(currentScope: unknown, title: unknown): JsonR
         retention_days: 30,
         schema_version: "dev_conversation.v1",
         state: "active",
-        title: typeof title === "string" ? title : null,
+        title: visibleTitle,
     };
     conversations.set(conversationId, {
         conversation,
@@ -1063,7 +1081,7 @@ export function applyMessage(
         answer: null,
         created_at: nowIso,
         message_id: `message_e2e_${randomUUID()}`,
-        question: rawQuestion,
+        question: visibleQuestion,
         retry_of_run_id: null,
         role: "user",
         run_id: runId,
