@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-namespace */
-// Generated from full-chaos/dev-health-ops 42063ceb8f70d03648cc4401b4f37c7e36def38e. Do not edit.
+// Generated from full-chaos/dev-health-ops 2963df821301c9d052ac83e8c8300ee5966b9eb4. Do not edit.
 export namespace DevAnswerGraphAssistanceContract {
     export type AsOf = string;
     export type CohortComplete = boolean;
@@ -614,11 +614,13 @@ export namespace DevAnswerGraphAssistanceContract {
               PacketLimitationKind,
           ];
     /**
-     * CHAOS-3660 §8(d)/(h). Reserved fresh here for the same reason as the
-     * two enums above -- the owning module
-     * (``investigation_contract/vocabulary.py``) is feature-branch-only
-     * today; must be reconciled to that module's definition when it lands on
-     * ``main``.
+     * Closed public mirror of the investigation packet limitations.
+     *
+     * Keep this vocabulary aligned with
+     * ``investigation_contract.vocabulary.PacketLimitationKind``.  The graph
+     * route converts packet limitations at the public boundary, so every
+     * internal limitation that can reach a production packet must be declared
+     * here rather than silently dropped or raising during answer assembly.
      */
     export type PacketLimitationKind =
         | "missing_source"
@@ -629,7 +631,41 @@ export namespace DevAnswerGraphAssistanceContract {
         | "absent_staffing_denominator"
         | "historical_slice_not_comparable"
         | "interpretation_uncertainty";
-    export type Contribution = number;
+    /**
+     * Closed, product-safe driver categories; no packet prose crosses over.
+     */
+    export type DevAnswerDriverCategory =
+        | "delivery_pressure"
+        | "review_pressure"
+        | "operational_pressure"
+        | "dependency_pressure"
+        | "investment_mix"
+        | "capacity_or_staffing"
+        | "scope_change"
+        | "quality_or_defect"
+        | "external_blocker"
+        | "data_coverage";
+    /**
+     * The packet's qualification, not a fabricated numeric score.
+     */
+    export type DevAnswerDriverConfidence =
+        "measured_certain" | "qualified" | "uncertain" | "unsupported";
+    /**
+     * @maxItems 10
+     */
+    export type ConflictingEvidenceRefIds =
+        | []
+        | [string]
+        | [string, string]
+        | [string, string, string]
+        | [string, string, string, string]
+        | [string, string, string, string, string]
+        | [string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string];
+    export type Contribution = number | null;
     /**
      * @minItems 1
      * @maxItems 10
@@ -645,7 +681,106 @@ export namespace DevAnswerGraphAssistanceContract {
         | [string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string, string];
+    /**
+     * Why W4 excluded a candidate from asserted driver standing.
+     */
+    export type DevAnswerDriverExclusionReason =
+        | "no_supporting_path"
+        | "evidence_conflict_unresolved"
+        | "not_currently_relevant"
+        | "symptom_of_another_candidate"
+        | "unauthorized_evidence"
+        | "insufficient_measurement";
     export type Rank1 = number;
+    export type DevAnswerDriverRelevance =
+        "current" | "recently_current" | "historical_only" | "unknown";
+    /**
+     * The bounded public distinction between causes and effects.
+     */
+    export type DevAnswerDriverRole = "driver" | "symptom" | "contextual_correlate";
+    /**
+     * @maxItems 10
+     */
+    export type DenominatorSourceClasses =
+        | []
+        | [DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ];
+    export type DevAnswerStaffingDenominatorState =
+        "allocation_evidence_available" | "partial_allocation_evidence" | "denominator_absent";
+    /**
+     * How strongly the investigation supports one driver candidate.
+     */
+    export type DevAnswerDriverStanding =
+        "principal_driver" | "contributing_driver" | "candidate_only" | "excluded";
+    /**
+     * Why some packet support did not become canonical answer evidence.
+     */
+    export type DevAnswerDriverWithheldReason =
+        "evidence_refused" | "evidence_unavailable" | "authorization_filtered";
     /**
      * @maxItems 25
      */
@@ -741,15 +876,42 @@ export namespace DevAnswerGraphAssistanceContract {
         label: Label;
     }
     /**
-     * CHAOS-3660 §8(d). ``evidence_ref_ids`` point into the SAME answer's
-     * own ``evidence[]`` array -- see ``DevAnswer.validate_answer_invariants``
-     * below, which enforces that as a real constraint, not just a naming
-     * convention.
+     * One evidence-closed, qualified public driver judgment.
+     *
+     * ``rank`` is an ordinal presentation order from the packet's deterministic
+     * candidate order.  It is not a contribution or importance score, so
+     * ``contribution`` is optional and remains ``None`` for the production
+     * projection until a canonical scoring contract exists.  ``evidence_ref_ids``
+     * point into the SAME answer's own ``evidence[]`` array -- see
+     * ``DevAnswer.validate_answer_invariants`` below, which enforces that as a
+     * real constraint, not just a naming convention.
      */
     export interface DevAnswerDriverEntry {
-        contribution: Contribution;
+        category?: DevAnswerDriverCategory | null;
+        confidence?: DevAnswerDriverConfidence | null;
+        conflicting_evidence_ref_ids?: ConflictingEvidenceRefIds;
+        contribution?: Contribution;
         evidence_ref_ids: EvidenceRefIds;
+        exclusion_reason?: DevAnswerDriverExclusionReason | null;
+        freshness?: FreshnessState | null;
         rank: Rank1;
+        relevance?: DevAnswerDriverRelevance | null;
+        role?: DevAnswerDriverRole | null;
+        staffing_qualification?: DevAnswerStaffingQualification | null;
+        standing?: DevAnswerDriverStanding | null;
+        withheld_reason?: DevAnswerDriverWithheldReason | null;
+    }
+    /**
+     * Bounded denominator disclosure for a capacity/staffing driver.
+     *
+     * The packet's qualification note is intentionally not copied to the public
+     * answer: it is arm prose, not a canonical fact.  The denominator state and
+     * closed source classes are sufficient for a client to label the judgment
+     * honestly and keep a missing denominator visible.
+     */
+    export interface DevAnswerStaffingQualification {
+        denominator_source_classes?: DenominatorSourceClasses;
+        denominator_state: DevAnswerStaffingDenominatorState;
     }
 }
 export type DevAnswerGraphAssistance = DevAnswerGraphAssistanceContract.DevAnswerGraphAssistance;
@@ -2896,11 +3058,13 @@ export namespace DevAnswerContract {
               PacketLimitationKind,
           ];
     /**
-     * CHAOS-3660 §8(d)/(h). Reserved fresh here for the same reason as the
-     * two enums above -- the owning module
-     * (``investigation_contract/vocabulary.py``) is feature-branch-only
-     * today; must be reconciled to that module's definition when it lands on
-     * ``main``.
+     * Closed public mirror of the investigation packet limitations.
+     *
+     * Keep this vocabulary aligned with
+     * ``investigation_contract.vocabulary.PacketLimitationKind``.  The graph
+     * route converts packet limitations at the public boundary, so every
+     * internal limitation that can reach a production packet must be declared
+     * here rather than silently dropped or raising during answer assembly.
      */
     export type PacketLimitationKind =
         | "missing_source"
@@ -2911,7 +3075,41 @@ export namespace DevAnswerContract {
         | "absent_staffing_denominator"
         | "historical_slice_not_comparable"
         | "interpretation_uncertainty";
-    export type Contribution = number;
+    /**
+     * Closed, product-safe driver categories; no packet prose crosses over.
+     */
+    export type DevAnswerDriverCategory =
+        | "delivery_pressure"
+        | "review_pressure"
+        | "operational_pressure"
+        | "dependency_pressure"
+        | "investment_mix"
+        | "capacity_or_staffing"
+        | "scope_change"
+        | "quality_or_defect"
+        | "external_blocker"
+        | "data_coverage";
+    /**
+     * The packet's qualification, not a fabricated numeric score.
+     */
+    export type DevAnswerDriverConfidence =
+        "measured_certain" | "qualified" | "uncertain" | "unsupported";
+    /**
+     * @maxItems 10
+     */
+    export type ConflictingEvidenceRefIds =
+        | []
+        | [string]
+        | [string, string]
+        | [string, string, string]
+        | [string, string, string, string]
+        | [string, string, string, string, string]
+        | [string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string];
+    export type Contribution = number | null;
     /**
      * @minItems 1
      * @maxItems 10
@@ -2927,7 +3125,106 @@ export namespace DevAnswerContract {
         | [string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string, string];
+    /**
+     * Why W4 excluded a candidate from asserted driver standing.
+     */
+    export type DevAnswerDriverExclusionReason =
+        | "no_supporting_path"
+        | "evidence_conflict_unresolved"
+        | "not_currently_relevant"
+        | "symptom_of_another_candidate"
+        | "unauthorized_evidence"
+        | "insufficient_measurement";
     export type Rank1 = number;
+    export type DevAnswerDriverRelevance =
+        "current" | "recently_current" | "historical_only" | "unknown";
+    /**
+     * The bounded public distinction between causes and effects.
+     */
+    export type DevAnswerDriverRole = "driver" | "symptom" | "contextual_correlate";
+    /**
+     * @maxItems 10
+     */
+    export type DenominatorSourceClasses =
+        | []
+        | [DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ];
+    export type DevAnswerStaffingDenominatorState =
+        "allocation_evidence_available" | "partial_allocation_evidence" | "denominator_absent";
+    /**
+     * How strongly the investigation supports one driver candidate.
+     */
+    export type DevAnswerDriverStanding =
+        "principal_driver" | "contributing_driver" | "candidate_only" | "excluded";
+    /**
+     * Why some packet support did not become canonical answer evidence.
+     */
+    export type DevAnswerDriverWithheldReason =
+        "evidence_refused" | "evidence_unavailable" | "authorization_filtered";
     /**
      * @maxItems 25
      */
@@ -4041,15 +4338,42 @@ export namespace DevAnswerContract {
         label: Label;
     }
     /**
-     * CHAOS-3660 §8(d). ``evidence_ref_ids`` point into the SAME answer's
-     * own ``evidence[]`` array -- see ``DevAnswer.validate_answer_invariants``
-     * below, which enforces that as a real constraint, not just a naming
-     * convention.
+     * One evidence-closed, qualified public driver judgment.
+     *
+     * ``rank`` is an ordinal presentation order from the packet's deterministic
+     * candidate order.  It is not a contribution or importance score, so
+     * ``contribution`` is optional and remains ``None`` for the production
+     * projection until a canonical scoring contract exists.  ``evidence_ref_ids``
+     * point into the SAME answer's own ``evidence[]`` array -- see
+     * ``DevAnswer.validate_answer_invariants`` below, which enforces that as a
+     * real constraint, not just a naming convention.
      */
     export interface DevAnswerDriverEntry {
-        contribution: Contribution;
+        category?: DevAnswerDriverCategory | null;
+        confidence?: DevAnswerDriverConfidence | null;
+        conflicting_evidence_ref_ids?: ConflictingEvidenceRefIds;
+        contribution?: Contribution;
         evidence_ref_ids: EvidenceRefIds2;
+        exclusion_reason?: DevAnswerDriverExclusionReason | null;
+        freshness?: FreshnessState | null;
         rank: Rank1;
+        relevance?: DevAnswerDriverRelevance | null;
+        role?: DevAnswerDriverRole | null;
+        staffing_qualification?: DevAnswerStaffingQualification | null;
+        standing?: DevAnswerDriverStanding | null;
+        withheld_reason?: DevAnswerDriverWithheldReason | null;
+    }
+    /**
+     * Bounded denominator disclosure for a capacity/staffing driver.
+     *
+     * The packet's qualification note is intentionally not copied to the public
+     * answer: it is arm prose, not a canonical fact.  The denominator state and
+     * closed source classes are sufficient for a client to label the judgment
+     * honestly and keep a missing denominator visible.
+     */
+    export interface DevAnswerStaffingQualification {
+        denominator_source_classes?: DenominatorSourceClasses;
+        denominator_state: DevAnswerStaffingDenominatorState;
     }
     export interface DevMetricRef {
         aggregation: Aggregation;
@@ -7471,11 +7795,13 @@ export namespace DevConversationTranscriptContract {
               PacketLimitationKind,
           ];
     /**
-     * CHAOS-3660 §8(d)/(h). Reserved fresh here for the same reason as the
-     * two enums above -- the owning module
-     * (``investigation_contract/vocabulary.py``) is feature-branch-only
-     * today; must be reconciled to that module's definition when it lands on
-     * ``main``.
+     * Closed public mirror of the investigation packet limitations.
+     *
+     * Keep this vocabulary aligned with
+     * ``investigation_contract.vocabulary.PacketLimitationKind``.  The graph
+     * route converts packet limitations at the public boundary, so every
+     * internal limitation that can reach a production packet must be declared
+     * here rather than silently dropped or raising during answer assembly.
      */
     export type PacketLimitationKind =
         | "missing_source"
@@ -7486,7 +7812,41 @@ export namespace DevConversationTranscriptContract {
         | "absent_staffing_denominator"
         | "historical_slice_not_comparable"
         | "interpretation_uncertainty";
-    export type Contribution = number;
+    /**
+     * Closed, product-safe driver categories; no packet prose crosses over.
+     */
+    export type DevAnswerDriverCategory =
+        | "delivery_pressure"
+        | "review_pressure"
+        | "operational_pressure"
+        | "dependency_pressure"
+        | "investment_mix"
+        | "capacity_or_staffing"
+        | "scope_change"
+        | "quality_or_defect"
+        | "external_blocker"
+        | "data_coverage";
+    /**
+     * The packet's qualification, not a fabricated numeric score.
+     */
+    export type DevAnswerDriverConfidence =
+        "measured_certain" | "qualified" | "uncertain" | "unsupported";
+    /**
+     * @maxItems 10
+     */
+    export type ConflictingEvidenceRefIds =
+        | []
+        | [string]
+        | [string, string]
+        | [string, string, string]
+        | [string, string, string, string]
+        | [string, string, string, string, string]
+        | [string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string];
+    export type Contribution = number | null;
     /**
      * @minItems 1
      * @maxItems 10
@@ -7502,7 +7862,106 @@ export namespace DevConversationTranscriptContract {
         | [string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string, string];
+    /**
+     * Why W4 excluded a candidate from asserted driver standing.
+     */
+    export type DevAnswerDriverExclusionReason =
+        | "no_supporting_path"
+        | "evidence_conflict_unresolved"
+        | "not_currently_relevant"
+        | "symptom_of_another_candidate"
+        | "unauthorized_evidence"
+        | "insufficient_measurement";
     export type Rank1 = number;
+    export type DevAnswerDriverRelevance =
+        "current" | "recently_current" | "historical_only" | "unknown";
+    /**
+     * The bounded public distinction between causes and effects.
+     */
+    export type DevAnswerDriverRole = "driver" | "symptom" | "contextual_correlate";
+    /**
+     * @maxItems 10
+     */
+    export type DenominatorSourceClasses =
+        | []
+        | [DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ];
+    export type DevAnswerStaffingDenominatorState =
+        "allocation_evidence_available" | "partial_allocation_evidence" | "denominator_absent";
+    /**
+     * How strongly the investigation supports one driver candidate.
+     */
+    export type DevAnswerDriverStanding =
+        "principal_driver" | "contributing_driver" | "candidate_only" | "excluded";
+    /**
+     * Why some packet support did not become canonical answer evidence.
+     */
+    export type DevAnswerDriverWithheldReason =
+        "evidence_refused" | "evidence_unavailable" | "authorization_filtered";
     /**
      * @maxItems 25
      */
@@ -8667,15 +9126,42 @@ export namespace DevConversationTranscriptContract {
         label: Label;
     }
     /**
-     * CHAOS-3660 §8(d). ``evidence_ref_ids`` point into the SAME answer's
-     * own ``evidence[]`` array -- see ``DevAnswer.validate_answer_invariants``
-     * below, which enforces that as a real constraint, not just a naming
-     * convention.
+     * One evidence-closed, qualified public driver judgment.
+     *
+     * ``rank`` is an ordinal presentation order from the packet's deterministic
+     * candidate order.  It is not a contribution or importance score, so
+     * ``contribution`` is optional and remains ``None`` for the production
+     * projection until a canonical scoring contract exists.  ``evidence_ref_ids``
+     * point into the SAME answer's own ``evidence[]`` array -- see
+     * ``DevAnswer.validate_answer_invariants`` below, which enforces that as a
+     * real constraint, not just a naming convention.
      */
     export interface DevAnswerDriverEntry {
-        contribution: Contribution;
+        category?: DevAnswerDriverCategory | null;
+        confidence?: DevAnswerDriverConfidence | null;
+        conflicting_evidence_ref_ids?: ConflictingEvidenceRefIds;
+        contribution?: Contribution;
         evidence_ref_ids: EvidenceRefIds2;
+        exclusion_reason?: DevAnswerDriverExclusionReason | null;
+        freshness?: FreshnessState | null;
         rank: Rank1;
+        relevance?: DevAnswerDriverRelevance | null;
+        role?: DevAnswerDriverRole | null;
+        staffing_qualification?: DevAnswerStaffingQualification | null;
+        standing?: DevAnswerDriverStanding | null;
+        withheld_reason?: DevAnswerDriverWithheldReason | null;
+    }
+    /**
+     * Bounded denominator disclosure for a capacity/staffing driver.
+     *
+     * The packet's qualification note is intentionally not copied to the public
+     * answer: it is arm prose, not a canonical fact.  The denominator state and
+     * closed source classes are sufficient for a client to label the judgment
+     * honestly and keep a missing denominator visible.
+     */
+    export interface DevAnswerStaffingQualification {
+        denominator_source_classes?: DenominatorSourceClasses;
+        denominator_state: DevAnswerStaffingDenominatorState;
     }
     export interface DevMetricRef {
         aggregation: Aggregation;
@@ -18012,11 +18498,13 @@ export namespace DevStreamEventContract {
               PacketLimitationKind,
           ];
     /**
-     * CHAOS-3660 §8(d)/(h). Reserved fresh here for the same reason as the
-     * two enums above -- the owning module
-     * (``investigation_contract/vocabulary.py``) is feature-branch-only
-     * today; must be reconciled to that module's definition when it lands on
-     * ``main``.
+     * Closed public mirror of the investigation packet limitations.
+     *
+     * Keep this vocabulary aligned with
+     * ``investigation_contract.vocabulary.PacketLimitationKind``.  The graph
+     * route converts packet limitations at the public boundary, so every
+     * internal limitation that can reach a production packet must be declared
+     * here rather than silently dropped or raising during answer assembly.
      */
     export type PacketLimitationKind =
         | "missing_source"
@@ -18027,7 +18515,41 @@ export namespace DevStreamEventContract {
         | "absent_staffing_denominator"
         | "historical_slice_not_comparable"
         | "interpretation_uncertainty";
-    export type Contribution = number;
+    /**
+     * Closed, product-safe driver categories; no packet prose crosses over.
+     */
+    export type DevAnswerDriverCategory =
+        | "delivery_pressure"
+        | "review_pressure"
+        | "operational_pressure"
+        | "dependency_pressure"
+        | "investment_mix"
+        | "capacity_or_staffing"
+        | "scope_change"
+        | "quality_or_defect"
+        | "external_blocker"
+        | "data_coverage";
+    /**
+     * The packet's qualification, not a fabricated numeric score.
+     */
+    export type DevAnswerDriverConfidence =
+        "measured_certain" | "qualified" | "uncertain" | "unsupported";
+    /**
+     * @maxItems 10
+     */
+    export type ConflictingEvidenceRefIds =
+        | []
+        | [string]
+        | [string, string]
+        | [string, string, string]
+        | [string, string, string, string]
+        | [string, string, string, string, string]
+        | [string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string]
+        | [string, string, string, string, string, string, string, string, string, string];
+    export type Contribution = number | null;
     /**
      * @minItems 1
      * @maxItems 10
@@ -18043,7 +18565,106 @@ export namespace DevStreamEventContract {
         | [string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string]
         | [string, string, string, string, string, string, string, string, string, string];
+    /**
+     * Why W4 excluded a candidate from asserted driver standing.
+     */
+    export type DevAnswerDriverExclusionReason =
+        | "no_supporting_path"
+        | "evidence_conflict_unresolved"
+        | "not_currently_relevant"
+        | "symptom_of_another_candidate"
+        | "unauthorized_evidence"
+        | "insufficient_measurement";
     export type Rank1 = number;
+    export type DevAnswerDriverRelevance =
+        "current" | "recently_current" | "historical_only" | "unknown";
+    /**
+     * The bounded public distinction between causes and effects.
+     */
+    export type DevAnswerDriverRole = "driver" | "symptom" | "contextual_correlate";
+    /**
+     * @maxItems 10
+     */
+    export type DenominatorSourceClasses =
+        | []
+        | [DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass, DevAnswerEvidenceSourceClass]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ]
+        | [
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+              DevAnswerEvidenceSourceClass,
+          ];
+    export type DevAnswerStaffingDenominatorState =
+        "allocation_evidence_available" | "partial_allocation_evidence" | "denominator_absent";
+    /**
+     * How strongly the investigation supports one driver candidate.
+     */
+    export type DevAnswerDriverStanding =
+        "principal_driver" | "contributing_driver" | "candidate_only" | "excluded";
+    /**
+     * Why some packet support did not become canonical answer evidence.
+     */
+    export type DevAnswerDriverWithheldReason =
+        "evidence_refused" | "evidence_unavailable" | "authorization_filtered";
     /**
      * @maxItems 25
      */
@@ -19241,15 +19862,42 @@ export namespace DevStreamEventContract {
         label: Label;
     }
     /**
-     * CHAOS-3660 §8(d). ``evidence_ref_ids`` point into the SAME answer's
-     * own ``evidence[]`` array -- see ``DevAnswer.validate_answer_invariants``
-     * below, which enforces that as a real constraint, not just a naming
-     * convention.
+     * One evidence-closed, qualified public driver judgment.
+     *
+     * ``rank`` is an ordinal presentation order from the packet's deterministic
+     * candidate order.  It is not a contribution or importance score, so
+     * ``contribution`` is optional and remains ``None`` for the production
+     * projection until a canonical scoring contract exists.  ``evidence_ref_ids``
+     * point into the SAME answer's own ``evidence[]`` array -- see
+     * ``DevAnswer.validate_answer_invariants`` below, which enforces that as a
+     * real constraint, not just a naming convention.
      */
     export interface DevAnswerDriverEntry {
-        contribution: Contribution;
+        category?: DevAnswerDriverCategory | null;
+        confidence?: DevAnswerDriverConfidence | null;
+        conflicting_evidence_ref_ids?: ConflictingEvidenceRefIds;
+        contribution?: Contribution;
         evidence_ref_ids: EvidenceRefIds2;
+        exclusion_reason?: DevAnswerDriverExclusionReason | null;
+        freshness?: FreshnessState | null;
         rank: Rank1;
+        relevance?: DevAnswerDriverRelevance | null;
+        role?: DevAnswerDriverRole | null;
+        staffing_qualification?: DevAnswerStaffingQualification | null;
+        standing?: DevAnswerDriverStanding | null;
+        withheld_reason?: DevAnswerDriverWithheldReason | null;
+    }
+    /**
+     * Bounded denominator disclosure for a capacity/staffing driver.
+     *
+     * The packet's qualification note is intentionally not copied to the public
+     * answer: it is arm prose, not a canonical fact.  The denominator state and
+     * closed source classes are sufficient for a client to label the judgment
+     * honestly and keep a missing denominator visible.
+     */
+    export interface DevAnswerStaffingQualification {
+        denominator_source_classes?: DenominatorSourceClasses;
+        denominator_state: DevAnswerStaffingDenominatorState;
     }
     export interface DevMetricRef {
         aggregation: Aggregation;

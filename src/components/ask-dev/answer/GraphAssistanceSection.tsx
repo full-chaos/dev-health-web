@@ -24,6 +24,18 @@ type EnrichmentGap = NonNullable<CohortSignal["gap"]>;
 type EvidenceSourceClass = NonNullable<CohortSignal["evidence_source_classes"]>[number];
 type SignalFreshness = NonNullable<CohortSignal["freshness"]>;
 type GraphLimitation = NonNullable<GraphAssistance["limitations"]>[number];
+type RankedDriver = NonNullable<GraphAssistance["ranked_drivers"]>[number];
+type DriverStanding = NonNullable<RankedDriver["standing"]>;
+type DriverRole = NonNullable<RankedDriver["role"]>;
+type DriverCategory = NonNullable<RankedDriver["category"]>;
+type DriverConfidence = NonNullable<RankedDriver["confidence"]>;
+type DriverRelevance = NonNullable<RankedDriver["relevance"]>;
+type DriverFreshness = NonNullable<RankedDriver["freshness"]>;
+type DriverStaffing = NonNullable<RankedDriver["staffing_qualification"]>;
+type DriverDenominatorState = DriverStaffing["denominator_state"];
+type DriverEvidenceSource = NonNullable<DriverStaffing["denominator_source_classes"]>[number];
+type DriverWithheldReason = NonNullable<RankedDriver["withheld_reason"]>;
+type DriverExclusionReason = NonNullable<RankedDriver["exclusion_reason"]>;
 
 /**
  * Customer-safe source-health labels for the graph contribution.
@@ -165,6 +177,95 @@ export const GRAPH_LIMITATION_LABELS: Record<GraphLimitation, string> = {
     interpretation_uncertainty: "This result needs interpretation alongside the evidence.",
 };
 
+export const DRIVER_STANDING_LABELS: Record<DriverStanding, string> = {
+    principal_driver: "Principal driver",
+    contributing_driver: "Contributing driver",
+    candidate_only: "Candidate for review",
+    excluded: "Excluded",
+};
+
+export const DRIVER_ROLE_LABELS: Record<DriverRole, string> = {
+    driver: "Driver",
+    symptom: "Symptom",
+    contextual_correlate: "Related context",
+};
+
+export const DRIVER_CATEGORY_LABELS: Record<DriverCategory, string> = {
+    delivery_pressure: "Delivery pressure",
+    review_pressure: "Review pressure",
+    operational_pressure: "Operational pressure",
+    dependency_pressure: "Dependency pressure",
+    investment_mix: "Investment mix",
+    capacity_or_staffing: "Capacity or staffing",
+    scope_change: "Scope change",
+    quality_or_defect: "Quality or defect",
+    external_blocker: "External blocker",
+    data_coverage: "Data coverage",
+};
+
+export const DRIVER_CONFIDENCE_LABELS: Record<DriverConfidence, string> = {
+    measured_certain: "Measured confidence",
+    qualified: "Qualified confidence",
+    uncertain: "Uncertain confidence",
+    unsupported: "Unsupported confidence",
+};
+
+export const DRIVER_RELEVANCE_LABELS: Record<DriverRelevance, string> = {
+    current: "Current",
+    recently_current: "Recently current",
+    historical_only: "Historical only",
+    unknown: "Relevance unknown",
+};
+
+export const DRIVER_FRESHNESS_LABELS: Record<DriverFreshness, string> = {
+    fresh: "Current evidence",
+    stale: "Out-of-date evidence",
+    unavailable: "Evidence unavailable",
+    unknown: "Freshness unknown",
+};
+
+export const DRIVER_DENOMINATOR_LABELS: Record<DriverDenominatorState, string> = {
+    allocation_evidence_available: "Allocation evidence available",
+    partial_allocation_evidence: "Partial allocation evidence",
+    denominator_absent: "Staffing denominator unavailable",
+};
+
+export const DRIVER_EVIDENCE_SOURCE_LABELS: Record<DriverEvidenceSource, string> = {
+    status_change: "Status history",
+    work_item: "Work items",
+    work_graph: "Work graph",
+    pull_request: "Pull requests",
+    code_change: "Code changes",
+    review: "Reviews",
+    ci_run: "CI runs",
+    test_report: "Test reports",
+    deployment: "Deployments",
+    incident: "Incidents",
+    operational_control: "Operational controls",
+    source_health: "Source health",
+    cognitive_load: "Cognitive load",
+    investment_allocation: "Investment allocation",
+    health_profile: "Health profile",
+    deficiency_inventory: "Readiness checks",
+    temporal_context: "Historical context",
+};
+
+export const DRIVER_WITHHELD_LABELS: Record<DriverWithheldReason, string> = {
+    evidence_refused: "Supporting evidence could not be included.",
+    evidence_unavailable: "Supporting evidence is currently unavailable.",
+    authorization_filtered: "Some supporting evidence was not included.",
+};
+
+export const DRIVER_EXCLUSION_LABELS: Record<DriverExclusionReason, string> = {
+    no_supporting_path: "Excluded because no supporting evidence path was available.",
+    evidence_conflict_unresolved: "Excluded because its supporting evidence did not agree.",
+    not_currently_relevant: "Excluded because it is not currently relevant.",
+    symptom_of_another_candidate:
+        "Excluded because it appears to be a symptom of another candidate.",
+    unauthorized_evidence: "Excluded because its supporting evidence was not visible.",
+    insufficient_measurement: "Excluded because the available measurement was insufficient.",
+};
+
 const GRAPH_ATTESTABLE_INTERNAL_TERMS = ["Graphiti", "Cypher"] as const;
 const GRAPH_NEVER_ATTESTABLE_TERMS = [
     "graph_assisted",
@@ -182,6 +283,15 @@ const GRAPH_NEVER_ATTESTABLE_TERMS = [
     ...Object.keys(SIGNAL_FRESHNESS_LABELS),
     ...Object.keys(EVIDENCE_SOURCE_LABELS),
     ...Object.keys(GRAPH_LIMITATION_LABELS),
+    ...Object.keys(DRIVER_STANDING_LABELS).filter((value) => value.includes("_")),
+    ...Object.keys(DRIVER_ROLE_LABELS).filter((value) => value.includes("_")),
+    ...Object.keys(DRIVER_CATEGORY_LABELS).filter((value) => value.includes("_")),
+    ...Object.keys(DRIVER_CONFIDENCE_LABELS).filter((value) => value.includes("_")),
+    ...Object.keys(DRIVER_RELEVANCE_LABELS).filter((value) => value.includes("_")),
+    ...Object.keys(DRIVER_FRESHNESS_LABELS).filter((value) => value.includes("_")),
+    ...Object.keys(DRIVER_DENOMINATOR_LABELS).filter((value) => value.includes("_")),
+    ...Object.keys(DRIVER_WITHHELD_LABELS).filter((value) => value.includes("_")),
+    ...Object.keys(DRIVER_EXCLUSION_LABELS).filter((value) => value.includes("_")),
 ] as const;
 const GRAPH_NEVER_ATTESTABLE_TERM_SET = new Set(
     GRAPH_NEVER_ATTESTABLE_TERMS.map((term) => term.toLowerCase()),
@@ -403,7 +513,7 @@ export function GraphAssistanceSection({
                         {rankedDrivers.map((driver) => (
                             <li
                                 key={driver.rank + ":" + driver.evidence_ref_ids.join(",")}
-                                className="grid gap-2 px-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-start sm:gap-3"
+                                className="grid gap-2 px-3 py-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start sm:gap-3"
                             >
                                 <span
                                     aria-label={"Rank " + driver.rank}
@@ -411,22 +521,103 @@ export function GraphAssistanceSection({
                                 >
                                     {driver.rank}
                                 </span>
-                                <div className="min-w-0">
-                                    <p className="text-sm text-(--text-secondary)">
-                                        Driver {driver.rank}
+                                <div className="min-w-0 space-y-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <p className="text-sm font-medium text-(--text-primary)">
+                                            {driver.standing
+                                                ? DRIVER_STANDING_LABELS[driver.standing]
+                                                : `Driver ${driver.rank}`}
+                                        </p>
+                                        {driver.role ? (
+                                            <span className="rounded-(--radius-pill) border border-(--border) px-2 py-0.5 text-xs text-(--text-secondary)">
+                                                {DRIVER_ROLE_LABELS[driver.role]}
+                                            </span>
+                                        ) : null}
+                                        {driver.category ? (
+                                            <span className="text-xs text-(--text-muted)">
+                                                {DRIVER_CATEGORY_LABELS[driver.category]}
+                                            </span>
+                                        ) : null}
                                         <InlineCitations
                                             evidenceRefIds={driver.evidence_ref_ids}
                                             ownerLabel={"driver " + driver.rank}
                                             targets={targets}
                                         />
-                                    </p>
-                                    <p className="mt-1 text-xs text-(--text-muted)">
+                                    </div>
+                                    {driver.confidence || driver.relevance || driver.freshness ? (
+                                        <p className="text-xs text-(--text-muted)">
+                                            {[
+                                                driver.confidence
+                                                    ? DRIVER_CONFIDENCE_LABELS[driver.confidence]
+                                                    : null,
+                                                driver.relevance
+                                                    ? DRIVER_RELEVANCE_LABELS[driver.relevance]
+                                                    : null,
+                                                driver.freshness
+                                                    ? DRIVER_FRESHNESS_LABELS[driver.freshness]
+                                                    : null,
+                                            ]
+                                                .filter((value): value is string => value !== null)
+                                                .join(" · ")}
+                                        </p>
+                                    ) : null}
+                                    {driver.staffing_qualification ? (
+                                        <div className="text-xs leading-5 text-(--text-muted)">
+                                            <p>
+                                                {
+                                                    DRIVER_DENOMINATOR_LABELS[
+                                                        driver.staffing_qualification
+                                                            .denominator_state
+                                                    ]
+                                                }
+                                            </p>
+                                            {driver.staffing_qualification
+                                                .denominator_source_classes?.length ? (
+                                                <p>
+                                                    Evidence sources:{" "}
+                                                    {driver.staffing_qualification.denominator_source_classes
+                                                        .map(
+                                                            (source) =>
+                                                                DRIVER_EVIDENCE_SOURCE_LABELS[
+                                                                    source
+                                                                ],
+                                                        )
+                                                        .join(", ")}
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                    ) : null}
+                                    {driver.exclusion_reason ? (
+                                        <p className="text-xs leading-5 text-(--caution)">
+                                            {DRIVER_EXCLUSION_LABELS[driver.exclusion_reason]}
+                                        </p>
+                                    ) : null}
+                                    {driver.withheld_reason ? (
+                                        <p className="text-xs leading-5 text-(--caution)">
+                                            {DRIVER_WITHHELD_LABELS[driver.withheld_reason]}
+                                        </p>
+                                    ) : null}
+                                    {driver.conflicting_evidence_ref_ids?.length ? (
+                                        <p className="text-xs text-(--caution)">
+                                            Conflicting evidence
+                                            <InlineCitations
+                                                evidenceRefIds={driver.conflicting_evidence_ref_ids}
+                                                ownerLabel={
+                                                    "conflicting evidence for driver " + driver.rank
+                                                }
+                                                targets={targets}
+                                            />
+                                        </p>
+                                    ) : null}
+                                    <p className="text-xs text-(--text-muted)">
                                         Supporting evidence for this driver is shown below.
                                     </p>
+                                    {typeof driver.contribution === "number" ? (
+                                        <p className="text-xs text-(--text-muted)">
+                                            {formatPercent(driver.contribution * 100)} contribution
+                                        </p>
+                                    ) : null}
                                 </div>
-                                <span className="text-xs text-(--text-muted) sm:text-right">
-                                    {formatPercent(driver.contribution * 100)} contribution
-                                </span>
                             </li>
                         ))}
                     </ol>

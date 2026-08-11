@@ -23,6 +23,17 @@ const INTERNAL_TERMS = [
     "available_stale",
     "no_data",
     "cognitive_load",
+    "principal_driver",
+    "contributing_driver",
+    "delivery_pressure",
+    "dependency_pressure",
+    "capacity_or_staffing",
+    "recently_current",
+    "historical_only",
+    "partial_allocation_evidence",
+    "denominator_absent",
+    "symptom_of_another_candidate",
+    "evidence_unavailable",
 ];
 
 function normalizeAnswerText(value: string): string {
@@ -46,6 +57,33 @@ async function expectRichCohortFacts(answer: Locator): Promise<void> {
     await expect(includedContext).toContainText("Measured value available");
     await expect(includedContext).toContainText("Status");
     await expect(includedContext).toContainText("Coverage unknown");
+}
+
+async function expectQualifiedDriverJudgments(answer: Locator): Promise<void> {
+    const drivers = answer.getByRole("region", { name: "Ranked drivers" });
+    await expect(drivers).toContainText("Principal driver");
+    await expect(drivers).toContainText("Contributing driver");
+    await expect(drivers).toContainText("Excluded");
+    await expect(drivers).toContainText("Driver");
+    await expect(drivers).toContainText("Symptom");
+    await expect(drivers).toContainText("Delivery pressure");
+    await expect(drivers).toContainText("Dependency pressure");
+    await expect(drivers).toContainText("Capacity or staffing");
+    await expect(drivers).toContainText("Qualified confidence");
+    await expect(drivers).toContainText("Uncertain confidence");
+    await expect(drivers).toContainText("Unsupported confidence");
+    await expect(drivers).toContainText("Current · Current evidence");
+    await expect(drivers).toContainText("Recently current · Out-of-date evidence");
+    await expect(drivers).toContainText("Historical only · Freshness unknown");
+    await expect(drivers).toContainText("Allocation evidence available");
+    await expect(drivers).toContainText("Partial allocation evidence");
+    await expect(drivers).toContainText("Staffing denominator unavailable");
+    await expect(drivers).toContainText(
+        "Excluded because it appears to be a symptom of another candidate.",
+    );
+    await expect(drivers).toContainText("Supporting evidence is currently unavailable.");
+    await expect(drivers).toContainText("Conflicting evidence");
+    await expect(drivers).not.toContainText("0% contribution");
 }
 
 test.beforeEach(async ({ request }) => {
@@ -78,6 +116,17 @@ test("graph assistance uses one shared answer and evidence path across both surf
     await expect(windowAnswer).not.toContainText("contribution");
     await expect(windowAnswer).toContainText("The evidence path is partial.");
     await expectRichCohortFacts(windowAnswer);
+    await expectQualifiedDriverJudgments(windowAnswer);
+
+    await windowAnswer
+        .getByRole("region", { name: "Ranked drivers" })
+        .getByText("Principal driver")
+        .first()
+        .scrollIntoViewIfNeeded();
+    await testInfo.attach("chaos-3741-driver-judgments-window-after.png", {
+        body: await page.screenshot({ fullPage: true }),
+        contentType: "image/png",
+    });
 
     const answerId = await windowAnswer.getAttribute("id");
     expect(answerId).toMatch(/^ask-dev-answer-/u);
@@ -99,6 +148,17 @@ test("graph assistance uses one shared answer and evidence path across both surf
     expect(normalizeAnswerText(await workspaceAnswer.innerText())).toBe(windowText);
     expect(await getAskDevRequestCounts(request)).toEqual(beforeNavigation);
     await expectRichCohortFacts(workspaceAnswer);
+    await expectQualifiedDriverJudgments(workspaceAnswer);
+
+    await workspaceAnswer
+        .getByRole("region", { name: "Ranked drivers" })
+        .getByText("Principal driver")
+        .first()
+        .scrollIntoViewIfNeeded();
+    await testInfo.attach("chaos-3741-driver-judgments-workspace-after.png", {
+        body: await page.screenshot({ fullPage: true }),
+        contentType: "image/png",
+    });
 
     const graphRegion = workspaceAnswer.getByRole("region", {
         name: "Additional evidence context",

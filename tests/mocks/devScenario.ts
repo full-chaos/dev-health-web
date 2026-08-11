@@ -473,10 +473,75 @@ function buildAnswer(
             if (!cohortMember) {
                 throw new Error("graph assistance fixture must include a cohort member");
             }
+            const evidence = base.evidence as JsonRecord[];
+            base.evidence = [
+                evidence[0]!,
+                {
+                    ...clone(evidence[0]!),
+                    display_label: "Conflicting deployment evidence",
+                    evidence_ref_id: "ev_02",
+                },
+            ];
+            base.status = "degraded";
             base.graph_assisted = {
                 ...graphAssisted,
                 evidence_lineage: [],
-                ranked_drivers: [],
+                ranked_drivers: [
+                    {
+                        category: "delivery_pressure",
+                        confidence: "qualified",
+                        conflicting_evidence_ref_ids: ["ev_02"],
+                        contribution: null,
+                        evidence_ref_ids: ["ev_01"],
+                        exclusion_reason: null,
+                        freshness: "fresh",
+                        rank: 1,
+                        relevance: "current",
+                        role: "driver",
+                        staffing_qualification: {
+                            denominator_source_classes: ["work_item"],
+                            denominator_state: "allocation_evidence_available",
+                        },
+                        standing: "principal_driver",
+                        withheld_reason: null,
+                    },
+                    {
+                        category: "dependency_pressure",
+                        confidence: "uncertain",
+                        conflicting_evidence_ref_ids: [],
+                        contribution: null,
+                        evidence_ref_ids: ["ev_01"],
+                        exclusion_reason: null,
+                        freshness: "stale",
+                        rank: 2,
+                        relevance: "recently_current",
+                        role: "driver",
+                        staffing_qualification: {
+                            denominator_source_classes: ["work_graph"],
+                            denominator_state: "partial_allocation_evidence",
+                        },
+                        standing: "contributing_driver",
+                        withheld_reason: null,
+                    },
+                    {
+                        category: "capacity_or_staffing",
+                        confidence: "unsupported",
+                        conflicting_evidence_ref_ids: [],
+                        contribution: null,
+                        evidence_ref_ids: ["ev_01"],
+                        exclusion_reason: "symptom_of_another_candidate",
+                        freshness: "unknown",
+                        rank: 3,
+                        relevance: "historical_only",
+                        role: "symptom",
+                        staffing_qualification: {
+                            denominator_source_classes: [],
+                            denominator_state: "denominator_absent",
+                        },
+                        standing: "excluded",
+                        withheld_reason: "evidence_unavailable",
+                    },
+                ],
                 state: "truncated",
                 cohort: {
                     ...graphAssisted.cohort,

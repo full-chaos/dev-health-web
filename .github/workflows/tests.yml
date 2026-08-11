@@ -98,18 +98,19 @@ jobs:
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
               with:
                   repository: full-chaos/dev-health-ops
-                  ref: 42063ceb8f70d03648cc4401b4f37c7e36def38e
+                  ref: 2963df821301c9d052ac83e8c8300ee5966b9eb4
                   path: dev-health-ops
                   persist-credentials: false
-            # CHAOS-3511 currency guard: ops main's tip as of this run, checked
-            # out to a SEPARATE path so it never disturbs the pinned checkout's
-            # exact-SHA requirement above. ask-dev:contracts:check-currency
-            # diffs the two over the consumed surface only.
-            - name: Checkout current ops main
+            # CHAOS-3511 currency guard: ordinary PRs compare to ops main. The
+            # trusted Context Fabric feature-stack base compares to the closed,
+            # corresponding Ops feature ref. Never accept the PR head/source as
+            # input. This separate path preserves the pinned checkout's exact
+            # SHA while check-currency diffs the consumed surface only.
+            - name: Checkout current ops currency authority
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
               with:
                   repository: full-chaos/dev-health-ops
-                  ref: main
+                  ref: ${{ github.base_ref == 'feature/chaos-3498-context-fabric' && 'feature/chaos-3498-context-fabric' || 'main' }}
                   path: dev-health-ops-main
                   persist-credentials: false
             - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
