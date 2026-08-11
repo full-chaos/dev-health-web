@@ -173,8 +173,8 @@ test.describe("Journey 2 — gap-driven backfill flow", () => {
             await expect(dialog).toBeVisible({ timeout: 3000 });
         }).toPass({ timeout: 30000, intervals: [300, 700, 1500] });
 
-        await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-06-24");
-        await expect(page.getByLabel("To", { exact: true })).toHaveValue("2026-06-26");
+        await expect(page.getByLabel("Since (inclusive)")).toHaveValue("2026-06-24");
+        await expect(page.getByLabel("Before (exclusive)")).toHaveValue("2026-06-26");
     });
 
     test("opens the wizard prefilled from a gap, validates the range, previews an estimate, gates an expensive submit, and completes in test mode", async ({
@@ -192,28 +192,38 @@ test.describe("Journey 2 — gap-driven backfill flow", () => {
 
         const dialog = page.getByRole("dialog");
         await expect(dialog).toBeVisible();
-        await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-06-24");
-        await expect(page.getByLabel("To", { exact: true })).toHaveValue("2026-06-26");
+        await expect(page.getByLabel("Since (inclusive)")).toHaveValue("2026-06-24");
+        await expect(page.getByLabel("Before (exclusive)")).toHaveValue("2026-06-26");
 
-        // Invalid range: "To" before "From" blocks Continue with an inline error.
-        await page.getByLabel("To", { exact: true }).fill("2026-06-20");
-        await expect(dialog.getByRole("alert")).toHaveText("Start date must be before end date.");
+        // Invalid range: exclusive boundary before since blocks Continue.
+        await page.getByLabel("Before (exclusive)").fill("2026-06-20");
+        await expect(dialog.getByRole("alert")).toContainText("exclusive boundary");
         await expect(dialog.getByRole("button", { name: "Continue" })).toBeDisabled();
 
         // Restore a valid range — the error clears and Continue is enabled.
-        await page.getByLabel("To", { exact: true }).fill("2026-06-26");
+        await page.getByLabel("Before (exclusive)").fill("2026-06-26");
         await expect(dialog.getByRole("alert")).toHaveCount(0);
+
+        // Focus both dimensions using only authoritative page inventory.
+        await dialog.getByRole("radio", { name: /Choose specific sources/ }).check();
+        await dialog.getByLabel("fullchaos/platform-api").check();
+        await dialog.getByRole("radio", { name: /Choose specific datasets/ }).check();
+        await dialog.getByLabel("Git Data (Commits, Branches)").check();
         await dialog.getByRole("button", { name: "Continue" }).click();
 
-        // Preview step shows an estimate.
+        // Review shows the exact focused scope and an estimate.
         await expect(dialog.getByText("Estimated chunks")).toBeVisible();
         await expect(dialog.getByText(/\(estimate\)/)).toBeVisible();
+        await expect(dialog.getByText("fullchaos/platform-api", { exact: true })).toBeVisible();
+        await expect(
+            dialog.getByText("Git Data (Commits, Branches)", { exact: true }),
+        ).toBeVisible();
         await expect(dialog.getByRole("alert")).toHaveCount(0);
 
         // Go back and set a >180 day range — the expensive-range warning gates submit.
         await dialog.getByRole("button", { name: /^Back$/ }).click();
-        await page.getByLabel("From", { exact: true }).fill("2026-01-01");
-        await page.getByLabel("To", { exact: true }).fill("2026-12-01");
+        await page.getByLabel("Since (inclusive)").fill("2026-01-01");
+        await page.getByLabel("Before (exclusive)").fill("2026-12-01");
         await dialog.getByRole("button", { name: "Continue" }).click();
 
         await expect(dialog.getByRole("alert")).toContainText("more than 180");

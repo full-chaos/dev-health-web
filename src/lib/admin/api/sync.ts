@@ -15,6 +15,7 @@ import type {
     SyncRun,
     SyncRunUnitSummary,
     SyncCoverageSummary,
+    BackfillRequest,
 } from "../types";
 
 export interface SyncJobsListParams {
@@ -94,12 +95,7 @@ export const syncConfigsApi = {
             orgId,
         ),
 
-    backfill: (
-        id: string,
-        data: { since: string; before: string },
-        token?: string,
-        orgId?: string,
-    ) =>
+    backfill: (id: string, data: BackfillRequest, token?: string, orgId?: string) =>
         request<BackfillResponse>(
             `/sync-configs/${id}/backfill`,
             { method: "POST", body: JSON.stringify(data) },

@@ -19,6 +19,7 @@ import type {
     SyncRun,
     SyncRunUnitSummary,
     SyncCoverageSummary,
+    BackfillSelector,
 } from "../types";
 import { requirePagerDutyCreationEntitlement } from "./canonicalIncidentIngestion";
 import { getSessionContext, withErrorHandling } from "./_shared";
@@ -114,12 +115,11 @@ export async function updateSyncConfigRepositories(
 
 export async function triggerBackfill(
     configId: string,
-    since: string,
-    before: string,
+    selector: BackfillSelector,
 ): Promise<ActionResult<BackfillResponse>> {
     return withErrorHandling(async () => {
         const { token, orgId } = await getSessionContext();
-        const res = await adminApi.syncConfigs.backfill(configId, { since, before }, token, orgId);
+        const res = await adminApi.syncConfigs.backfill(configId, { selector }, token, orgId);
         revalidatePath("/org/admin/sync");
         revalidatePath(`/org/admin/sync/${configId}`);
         return res;

@@ -307,9 +307,27 @@ describe("admin/server sync config actions", () => {
                 ),
             );
 
-            const result = await triggerBackfill("cfg-coverage", "2026-06-01", "2026-06-05");
+            const result = await triggerBackfill("cfg-coverage", {
+                since: "2026-06-01T00:00:00.000Z",
+                before: "2026-06-05T00:00:00.000Z",
+                source_ids: ["source-1"],
+                dataset_keys: ["commits"],
+            });
 
             expect(result.data?.sync_run_id).toBe("run-1");
+            const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+            expect(url).toBe(
+                "http://test-ops:8000/api/v1/admin/sync-configs/cfg-coverage/backfill",
+            );
+            expect(JSON.parse(String(options?.body))).toEqual({
+                selector: {
+                    since: "2026-06-01T00:00:00.000Z",
+                    before: "2026-06-05T00:00:00.000Z",
+                    source_ids: ["source-1"],
+                    dataset_keys: ["commits"],
+                },
+            });
+            expect(JSON.parse(String(options?.body))).not.toHaveProperty("since");
             expect(revalidatePath).toHaveBeenCalledWith("/org/admin/sync");
             expect(revalidatePath).toHaveBeenCalledWith("/org/admin/sync/cfg-coverage");
             fetchSpy.mockRestore();

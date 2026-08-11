@@ -25,10 +25,10 @@ test.describe("CHAOS-2795/2796 screenshots", () => {
         await page.getByRole("button", { name: "Backfill", exact: true }).first().click();
 
         await page.getByRole("dialog").waitFor({ timeout: NAV_TIMEOUT });
-        await page.getByLabel("From", { exact: true }).fill("2026-06-10");
-        await page.getByLabel("To", { exact: true }).fill("2026-06-01");
+        await page.getByLabel("Since (inclusive)", { exact: true }).fill("2026-06-10");
+        await page.getByLabel("Before (exclusive)", { exact: true }).fill("2026-06-01");
         await expect(page.getByRole("dialog").getByRole("alert")).toHaveText(
-            "Start date must be before end date.",
+            "Since must be before the exclusive boundary.",
         );
 
         await page.screenshot({
@@ -48,8 +48,8 @@ test.describe("CHAOS-2795/2796 screenshots", () => {
         await page.getByRole("button", { name: "Backfill", exact: true }).first().click();
         await page.getByRole("dialog").waitFor({ timeout: NAV_TIMEOUT });
 
-        await page.getByLabel("From", { exact: true }).fill("2026-01-01");
-        await page.getByLabel("To", { exact: true }).fill("2026-12-01");
+        await page.getByLabel("Since (inclusive)", { exact: true }).fill("2026-01-01");
+        await page.getByLabel("Before (exclusive)", { exact: true }).fill("2026-12-01");
         await page.getByRole("button", { name: "Continue" }).click();
 
         await expect(page.getByText("Estimated chunks")).toBeVisible();
@@ -70,7 +70,7 @@ test.describe("CHAOS-2795/2796 screenshots", () => {
         await gapButton.click();
 
         await page.getByRole("dialog").waitFor({ timeout: NAV_TIMEOUT });
-        const fromValue = await page.getByLabel("From", { exact: true }).inputValue();
+        const fromValue = await page.getByLabel("Since (inclusive)", { exact: true }).inputValue();
         expect(fromValue).not.toBe("");
 
         await page.screenshot({

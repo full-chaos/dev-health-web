@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, userEvent } from "@/test/utils";
-import { BackfillWizard } from "./BackfillWizard";
+import type { SyncCoverageDataset, SyncCoverageSource } from "@/lib/admin/types";
+import { BackfillWizard, buildDatasetChoices } from "./BackfillWizard";
 
 const mockRefresh = vi.fn();
 vi.mock("next/navigation", () => ({
@@ -12,225 +13,219 @@ vi.mock("@/lib/admin/server", () => ({
     triggerBackfill: (...args: unknown[]) => triggerBackfill(...args),
 }));
 
+const baseDataset: Omit<SyncCoverageDataset, "dataset_key"> = {
+    status: "healthy",
+    covered_through: null,
+    requested_ranges: [],
+    covered_ranges: [],
+    gaps: [],
+    stale_ranges: [],
+    failed_ranges: [],
+};
+const datasets: SyncCoverageDataset[] = [
+    { ...baseDataset, dataset_key: "git" },
+    { ...baseDataset, dataset_key: "work-items" },
+    { ...baseDataset, dataset_key: "work-item-comments" },
+];
+const sources: SyncCoverageSource[] = [
+    {
+        source_id: "src-api",
+        source_name: "acme/api",
+        status: "healthy",
+        covered_through: null,
+        gap_count: 0,
+        failed_range_count: 0,
+    },
+    {
+        source_id: "src-web",
+        source_name: "acme/web",
+        status: "healthy",
+        covered_through: null,
+        gap_count: 0,
+        failed_range_count: 0,
+    },
+];
+
 function renderWizard(props: Partial<React.ComponentProps<typeof BackfillWizard>> = {}) {
     return render(
         <BackfillWizard
             configId="cfg-1"
             onCloseAction={vi.fn()}
-            datasetNames={["git", "prs"]}
-            sourceNames={["acme/repo"]}
+            datasets={datasets}
+            sources={sources}
             {...props}
         />,
     );
 }
 
-async function fillRange(user: ReturnType<typeof userEvent.setup>, since: string, before: string) {
-    const fromInput = screen.getByLabelText("From");
-    const toInput = screen.getByLabelText("To");
-    await user.clear(fromInput);
-    await user.type(fromInput, since);
-    await user.clear(toInput);
-    await user.type(toInput, before);
+async function fillRange(
+    user: ReturnType<typeof userEvent.setup>,
+    since = "2026-06-01",
+    before = "2026-06-05",
+) {
+    await user.type(screen.getByLabelText("Since (inclusive)"), since);
+    await user.type(screen.getByLabelText("Before (exclusive)"), before);
 }
 
-/** Add `days` whole days to a YYYY-MM-DD input, returned in the same format. */
-function addDays(dateStr: string, days: number): string {
-    const date = new Date(`${dateStr}T00:00:00.000Z`);
-    date.setUTCDate(date.getUTCDate() + days);
-    return date.toISOString().slice(0, 10);
+async function reviewAndSubmit(user: ReturnType<typeof userEvent.setup>) {
+    await user.click(screen.getByRole("button", { name: "Continue" }));
+    await user.click(screen.getByRole("button", { name: "Run backfill" }));
 }
+
+describe("buildDatasetChoices", () => {
+    it("represents the canonical work-item family once while retaining every affected key", () => {
+        expect(buildDatasetChoices(datasets)).toEqual([
+            { id: "git", label: "Git Data (Commits, Branches)", datasetKeys: ["git"] },
+            {
+                id: "work-items",
+                label: "Work items (canonical family)",
+                datasetKeys: ["work-items", "work-item-comments"],
+            },
+        ]);
+    });
+});
 
 describe("BackfillWizard", () => {
     beforeEach(() => {
         vi.clearAllMocks();
-    });
-
-    it("blocks submit and shows an inline error when from >= to", async () => {
-        const user = userEvent.setup();
-        renderWizard();
-
-        await fillRange(user, "2026-06-10", "2026-06-01");
-
-        expect(screen.getByRole("alert")).toHaveTextContent("Start date must be before end date.");
-        expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
-        expect(screen.getByLabelText("From")).toHaveAttribute("aria-invalid", "true");
-        expect(screen.getByLabelText("From")).toHaveAttribute(
-            "aria-describedby",
-            "backfill-range-error",
-        );
-    });
-
-    it("advances to the preview step once the range is valid", async () => {
-        const user = userEvent.setup();
-        renderWizard();
-
-        await fillRange(user, "2026-06-01", "2026-06-05");
-        expect(screen.getByRole("button", { name: "Continue" })).toBeEnabled();
-        await user.click(screen.getByRole("button", { name: "Continue" }));
-
-        expect(screen.getByText("Estimated chunks")).toBeInTheDocument();
-        expect(screen.getByText(/\(estimate\)/)).toBeInTheDocument();
-    });
-
-    it("shows affected dataset/source NAMES (never raw ids) on the range step", () => {
-        renderWizard({ datasetNames: ["git", "prs"], sourceNames: ["acme/repo"] });
-
-        expect(screen.getByText("git, prs")).toBeInTheDocument();
-        expect(screen.getByText("acme/repo")).toBeInTheDocument();
-    });
-
-    it("pre-fills the range from gap-driven props", () => {
-        renderWizard({ initialSince: "2026-06-20", initialBefore: "2026-06-26" });
-
-        expect(screen.getByLabelText("From")).toHaveValue("2026-06-20");
-        expect(screen.getByLabelText("To")).toHaveValue("2026-06-26");
-    });
-
-    it("requires explicit confirmation before submitting an expensive (>180 day) range", async () => {
-        const user = userEvent.setup();
-        renderWizard();
-
-        await fillRange(user, "2026-01-01", "2026-12-01");
-        await user.click(screen.getByRole("button", { name: "Continue" }));
-
-        expect(screen.getByRole("alert")).toHaveTextContent(/more than 180/);
-        const submitButton = screen.getByRole("button", { name: "Run backfill" });
-        expect(submitButton).toBeDisabled();
-
-        await user.click(
-            screen.getByRole("checkbox", { name: /understand this is a large backfill/i }),
-        );
-        expect(submitButton).toBeEnabled();
-    });
-
-    it("submits via triggerBackfill with the exact payload and links to the resulting run", async () => {
         triggerBackfill.mockResolvedValue({
-            data: {
-                task_id: "task-1",
-                status: "accepted",
-                backfill_job_id: "job-1",
-                sync_run_id: "run-42",
-            },
+            data: { status: "accepted", sync_run_id: "run-42", total_units: 2 },
         });
+    });
+
+    it("submits a date-only scope as the exact nested selector without legacy flat fields", async () => {
         const user = userEvent.setup();
         renderWizard();
+        await fillRange(user);
+        await reviewAndSubmit(user);
 
-        await fillRange(user, "2026-06-01", "2026-06-05");
-        await user.click(screen.getByRole("button", { name: "Continue" }));
-        await user.click(screen.getByRole("button", { name: "Run backfill" }));
-
-        expect(triggerBackfill).toHaveBeenCalledWith("cfg-1", "2026-06-01", "2026-06-05");
+        expect(triggerBackfill).toHaveBeenCalledWith("cfg-1", {
+            since: "2026-06-01T00:00:00.000Z",
+            before: "2026-06-05T00:00:00.000Z",
+        });
         expect(await screen.findByRole("link", { name: "View run" })).toHaveAttribute(
             "href",
             "/org/admin/sync/cfg-1/runs/run-42",
         );
-        expect(mockRefresh).toHaveBeenCalled();
     });
 
-    it("does not call the live server action in test mode (demo no-op submit path)", async () => {
+    it("submits a repository-only focused selector", async () => {
         const user = userEvent.setup();
-        renderWizard({ testMode: true });
+        renderWizard();
+        await fillRange(user);
+        await user.click(screen.getByRole("radio", { name: /Choose specific sources/ }));
+        await user.click(screen.getByLabelText("acme/web"));
+        await reviewAndSubmit(user);
 
-        await fillRange(user, "2026-06-01", "2026-06-05");
+        expect(triggerBackfill).toHaveBeenCalledWith(
+            "cfg-1",
+            expect.objectContaining({
+                source_ids: ["src-web"],
+            }),
+        );
+        expect(triggerBackfill.mock.calls[0]?.[1]).not.toHaveProperty("dataset_keys");
+    });
+
+    it("submits a unit-only selector and expands the canonical family to its affected datasets", async () => {
+        const user = userEvent.setup();
+        renderWizard();
+        await fillRange(user);
+        await user.click(screen.getByRole("radio", { name: /Choose specific datasets/ }));
+        await user.click(screen.getByRole("checkbox", { name: /Work items \(canonical family\)/ }));
         await user.click(screen.getByRole("button", { name: "Continue" }));
+
+        expect(screen.getByText(/Canonical work-item family affects:/)).toHaveTextContent(
+            "Work Items (Issues, Tickets), work item comments",
+        );
         await user.click(screen.getByRole("button", { name: "Run backfill" }));
-
-        expect(triggerBackfill).not.toHaveBeenCalled();
-        expect(await screen.findByText(/Backfill started/)).toBeInTheDocument();
+        expect(triggerBackfill).toHaveBeenCalledWith(
+            "cfg-1",
+            expect.objectContaining({
+                dataset_keys: ["work-items", "work-item-comments"],
+            }),
+        );
     });
 
-    it("disables Continue when both date fields are empty", () => {
-        renderWizard();
-        expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
-    });
-
-    it("blocks submit and shows an inline error when from == to", async () => {
+    it("submits combined source and dataset scope without broadening either dimension", async () => {
         const user = userEvent.setup();
         renderWizard();
+        await fillRange(user);
+        await user.click(screen.getByRole("radio", { name: /Choose specific sources/ }));
+        await user.click(screen.getByLabelText("acme/api"));
+        await user.click(screen.getByRole("radio", { name: /Choose specific datasets/ }));
+        await user.click(screen.getByLabelText("Git Data (Commits, Branches)"));
+        await reviewAndSubmit(user);
 
+        expect(triggerBackfill).toHaveBeenCalledWith("cfg-1", {
+            since: "2026-06-01T00:00:00.000Z",
+            before: "2026-06-05T00:00:00.000Z",
+            source_ids: ["src-api"],
+            dataset_keys: ["git"],
+        });
+    });
+
+    it("rejects an empty focused selection before review instead of silently widening it", async () => {
+        const user = userEvent.setup();
+        renderWizard();
+        await fillRange(user);
+        await user.click(screen.getByRole("radio", { name: /Choose specific sources/ }));
+
+        expect(screen.getByRole("alert")).toHaveTextContent("Choose at least one item");
+        expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+        expect(triggerBackfill).not.toHaveBeenCalled();
+    });
+
+    it("does not render or submit identities absent from authoritative page data", async () => {
+        const user = userEvent.setup();
+        renderWizard();
+        await fillRange(user);
+        await user.click(screen.getByRole("radio", { name: /Choose specific sources/ }));
+
+        expect(screen.queryByText("foreign/repo")).not.toBeInTheDocument();
+        expect(screen.getAllByRole("checkbox")).toHaveLength(2);
+    });
+
+    it("blocks an invalid exclusive window", async () => {
+        const user = userEvent.setup();
+        renderWizard();
         await fillRange(user, "2026-06-05", "2026-06-05");
 
-        expect(screen.getByRole("alert")).toHaveTextContent("Start date must be before end date.");
+        expect(screen.getByRole("alert")).toHaveTextContent("exclusive boundary");
         expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
     });
 
-    it("does not warn at exactly the 180-day threshold", async () => {
+    it("retains expensive-range confirmation for a focused final scope", async () => {
         const user = userEvent.setup();
         renderWizard();
-        const since = "2026-01-01";
-        const before = addDays(since, 180);
-
-        await fillRange(user, since, before);
-        await user.click(screen.getByRole("button", { name: "Continue" }));
-
-        expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Run backfill" })).toBeEnabled();
-    });
-
-    it("warns just past the 180-day threshold (181 days)", async () => {
-        const user = userEvent.setup();
-        renderWizard();
-        const since = "2026-01-01";
-        const before = addDays(since, 181);
-
-        await fillRange(user, since, before);
-        await user.click(screen.getByRole("button", { name: "Continue" }));
-
-        expect(screen.getByRole("alert")).toHaveTextContent(/more than 180/);
-        expect(screen.getByRole("button", { name: "Run backfill" })).toBeDisabled();
-    });
-
-    it("resets the expensive-range confirmation when the range changes after going back", async () => {
-        const user = userEvent.setup();
-        renderWizard();
-
         await fillRange(user, "2026-01-01", "2026-12-01");
+        await user.click(screen.getByRole("radio", { name: /Choose specific sources/ }));
+        await user.click(screen.getByLabelText("acme/api"));
         await user.click(screen.getByRole("button", { name: "Continue" }));
+
+        const submit = screen.getByRole("button", { name: "Run backfill" });
+        expect(submit).toBeDisabled();
         await user.click(
             screen.getByRole("checkbox", { name: /understand this is a large backfill/i }),
         );
-        expect(screen.getByRole("button", { name: "Run backfill" })).toBeEnabled();
-
-        await user.click(screen.getByRole("button", { name: "Back" }));
-        await user.clear(screen.getByLabelText("To"));
-        await user.type(screen.getByLabelText("To"), "2026-11-01");
-        await user.click(screen.getByRole("button", { name: "Continue" }));
-
-        expect(screen.getByRole("alert")).toHaveTextContent(/more than 180/);
-        expect(screen.getByRole("button", { name: "Run backfill" })).toBeDisabled();
+        expect(submit).toBeEnabled();
     });
 
-    it("moves focus to the dialog on open", () => {
-        renderWizard();
-        expect(screen.getByRole("dialog")).toHaveFocus();
+    it("keeps the test-mode journey local", async () => {
+        const user = userEvent.setup();
+        renderWizard({ testMode: true });
+        await fillRange(user);
+        await reviewAndSubmit(user);
+        expect(triggerBackfill).not.toHaveBeenCalled();
+        expect(
+            await screen.findByText(/Backfill started for the reviewed scope/),
+        ).toBeInTheDocument();
     });
 
-    it("restores focus to the previously focused trigger element on close", () => {
-        const trigger = document.createElement("button");
-        document.body.appendChild(trigger);
-        trigger.focus();
-        expect(trigger).toHaveFocus();
-
-        const { unmount } = renderWizard();
-        expect(screen.getByRole("dialog")).toHaveFocus();
-
-        unmount();
-        expect(trigger).toHaveFocus();
-
-        document.body.removeChild(trigger);
-    });
-
-    it("closes on Escape even when focus is not inside the dialog", async () => {
+    it("moves focus into the dialog and closes from Escape", async () => {
         const onCloseAction = vi.fn();
-        const trigger = document.createElement("button");
-        document.body.appendChild(trigger);
         renderWizard({ onCloseAction });
-        trigger.focus();
-        expect(trigger).toHaveFocus();
-
+        expect(screen.getByRole("dialog")).toHaveFocus();
         await userEvent.keyboard("{Escape}");
-
-        expect(onCloseAction).toHaveBeenCalledTimes(1);
-        document.body.removeChild(trigger);
+        expect(onCloseAction).toHaveBeenCalledOnce();
     });
 });

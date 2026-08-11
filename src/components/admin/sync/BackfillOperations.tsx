@@ -58,9 +58,6 @@ export function BackfillOperations({
     };
     const closeWizard = () => setIsWizardOpen(false);
 
-    const datasetNames = coverage?.datasets.map((dataset) => dataset.dataset_key) ?? [];
-    const sourceNames = coverage?.sources.map((source) => source.source_name) ?? [];
-
     return (
         <>
             <SyncCoverageSummaryCard
@@ -89,8 +86,8 @@ export function BackfillOperations({
                     onCloseAction={closeWizard}
                     initialSince={wizardRange?.since}
                     initialBefore={wizardRange?.before}
-                    datasetNames={datasetNames}
-                    sourceNames={sourceNames}
+                    datasets={coverage?.datasets ?? []}
+                    sources={coverage?.sources ?? []}
                     testMode={testMode}
                 />
             )}
