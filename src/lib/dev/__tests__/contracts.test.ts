@@ -76,7 +76,7 @@ describe("Ask Dev generated contract boundary", () => {
         const source = readJson<SourceManifest>("source.json");
         const manifest = readJson<OpsManifest>("manifest.json");
 
-        expect(source.source_commit).toBe("42063ceb8f70d03648cc4401b4f37c7e36def38e");
+        expect(source.source_commit).toBe("2963df821301c9d052ac83e8c8300ee5966b9eb4");
         expect(manifest.schema_version).toBe("ask_dev_contract_manifest.v1");
         expect(manifest.compatibility).toBe("additive-within-v1");
         expect(manifest.contracts.map((contract) => contract.schema_version)).toEqual(
@@ -159,6 +159,28 @@ describe("Ask Dev generated contract boundary", () => {
             "examples/positive/dev_tool_result.v1.json",
         );
         expect(validateAskDevSemanticInvariants({ ...golden, ...plant })).toBe(false);
+    });
+
+    it("rejects a dangling conflicting-evidence reference from a public driver judgment", () => {
+        const golden = readJson<Record<string, unknown>>(
+            "examples/positive/dev_answer.v1.graph_assisted.json",
+        );
+        const graphAssisted = structuredClone(golden.graph_assisted) as Record<string, unknown>;
+        const rankedDrivers = structuredClone(graphAssisted.ranked_drivers) as Record<
+            string,
+            unknown
+        >[];
+        rankedDrivers[0] = {
+            ...rankedDrivers[0],
+            conflicting_evidence_ref_ids: ["ev_not_in_evidence_array"],
+        };
+
+        expect(
+            validateAskDevSemanticInvariants({
+                ...golden,
+                graph_assisted: { ...graphAssisted, ranked_drivers: rankedDrivers },
+            }),
+        ).toBe(false);
     });
 
     // CHAOS-3298's re-pin admitted `team` to DirectScope/EntityType (ops

@@ -148,11 +148,10 @@ describe("CHAOS-3017 executable CI boundaries", () => {
                 expect(workflowJob).toContain("repository: full-chaos/dev-health-ops");
                 expect(workflowJob).toContain(`ref: ${pinnedOpsCommit()}`);
                 expect(workflowJob).toContain("path: dev-health-ops");
-                // CHAOS-3511 currency guard: a SECOND, separate ops checkout
-                // at main's current tip -- never the same path as the pinned
-                // one, or the pinned checkout's exact-SHA requirement above
-                // would be violated by whichever checkout runs second.
-                expect(workflowJob).toContain("ref: main");
+                // CHAOS-3511 currency guard: a SECOND, separate ops checkout --
+                // never the same path as the pinned one, or the pinned
+                // checkout's exact-SHA requirement above would be violated by
+                // whichever checkout runs second.
                 expect(workflowJob).toContain("path: dev-health-ops-main");
             }
             for (const [name, implementation] of Object.entries(packageScripts)) {
@@ -169,6 +168,15 @@ describe("CHAOS-3017 executable CI boundaries", () => {
             }
         },
     );
+
+    it("maps the trusted Context Fabric base to its Ops feature and all other bases to main", () => {
+        const workflowJob = job(contents(TESTS_WORKFLOW), "quality");
+        const currencyCheckout = step(workflowJob, "Checkout current ops currency authority");
+        expect(currencyCheckout).toContain(
+            "ref: ${{ github.base_ref == 'feature/chaos-3498-context-fabric' && 'feature/chaos-3498-context-fabric' || 'main' }}",
+        );
+        expect(currencyCheckout).not.toContain("github.head_ref");
+    });
 
     it("keeps aggregate CI unit execution independent of the test:unit alias", () => {
         const scripts = JSON.parse(contents(PACKAGE_JSON)).scripts;

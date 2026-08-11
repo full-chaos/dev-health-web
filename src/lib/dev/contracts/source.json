@@ -1,6 +1,6 @@
 {
   "schema_version": "ask_dev_web_contract_source.v1",
-  "source_commit": "42063ceb8f70d03648cc4401b4f37c7e36def38e",
+  "source_commit": "2963df821301c9d052ac83e8c8300ee5966b9eb4",
   "files": [
     {
       "path": "examples/negative/dev_answer.v1.graph_assisted_unknown_evidence_id.json",
@@ -256,15 +256,15 @@
     },
     {
       "path": "manifest.json",
-      "sha256": "01e4aeaca1f79ff18dc2b87134c627f88721e2db5211fdda435f9b455120cd4b"
+      "sha256": "c72c1b12d0b844f7c29f53c3eec6d8e38a7049a8e897b1d53df97c937de925bd"
     },
     {
       "path": "schemas/dev_answer.v1.schema.json",
-      "sha256": "ba4020ba258c7b13359af1a9feb48276962c700c0aa0d12e9422150ecb13438e"
+      "sha256": "61ea8ea026ae401f86683d9c0f6a17bfc57a88607d30b65672de601f452c82f3"
     },
     {
       "path": "schemas/dev_answer_graph_assistance.v1.schema.json",
-      "sha256": "74504d5a246dec800432d9ee1136ad008f0f6292f650417151fbdeccd7837c39"
+      "sha256": "4eb3955abd33da096d8b51cab7059ea46585bc18fa952690beb634b1a8d429a8"
     },
     {
       "path": "schemas/dev_capabilities.v1.schema.json",
@@ -284,7 +284,7 @@
     },
     {
       "path": "schemas/dev_conversation_transcript.v1.schema.json",
-      "sha256": "248d1075aa99da9424c5242e9691fdd2943d9b04b11218cd9cb2e322ce566db1"
+      "sha256": "cf0fe9afc11d5d529f116ff857727738d3545cfad76a010a0144f0a53c25bc31"
     },
     {
       "path": "schemas/dev_error.v1.schema.json",
@@ -320,7 +320,7 @@
     },
     {
       "path": "schemas/dev_stream_event.v1.schema.json",
-      "sha256": "b183846008dc5859db39393f9a4d227b301191af142672ad6ea968591e97ed19"
+      "sha256": "284ec561c391caf51ea4cbeb6a5a7c360a195fa4b26f3124e3c09e326aa0540d"
     },
     {
       "path": "schemas/dev_tool_request.v1.schema.json",

@@ -216,7 +216,8 @@ function validateAnswer(answer: JsonRecord): boolean {
         return false;
     }
 
-    // `graph_assisted.ranked_drivers[].evidence_ref_ids` cites into this SAME
+    // `graph_assisted.ranked_drivers[].evidence_ref_ids` and
+    // `conflicting_evidence_ref_ids` cite into this SAME
     // answer's `evidence[]` array -- ops documents this on
     // `DevAnswerDriverEntry` and enforces it server-side
     // (`DevAnswer.validate_answer_invariants`). Schema-only surface today (no
@@ -229,7 +230,9 @@ function validateAnswer(answer: JsonRecord): boolean {
         const rankedDrivers = asRecords(graphAssisted.ranked_drivers);
         if (
             rankedDrivers.some(
-                (driver) => !referencesOnlyKnown(driver.evidence_ref_ids, knownEvidence),
+                (driver) =>
+                    !referencesOnlyKnown(driver.evidence_ref_ids, knownEvidence) ||
+                    !referencesOnlyKnown(driver.conflicting_evidence_ref_ids ?? [], knownEvidence),
             )
         ) {
             return false;

@@ -154,6 +154,144 @@ describe("AskDevAnswer graph assistance rendering", () => {
         }
     });
 
+    it("renders evidence-closed driver judgments without turning an absent contribution into 0%", async () => {
+        const user = userEvent.setup();
+        const answer = {
+            ...answerForState("enabled"),
+            evidence: [
+                evidence,
+                {
+                    ...evidence,
+                    display_label: "Conflicting deployment evidence",
+                    evidence_ref_id: "evidence-2",
+                },
+            ],
+            graph_assisted: {
+                ...graphAssistance,
+                ranked_drivers: [
+                    {
+                        category: "delivery_pressure",
+                        confidence: "qualified",
+                        conflicting_evidence_ref_ids: ["evidence-2"],
+                        contribution: null,
+                        evidence_ref_ids: ["evidence-1"],
+                        exclusion_reason: null,
+                        freshness: "fresh",
+                        rank: 1,
+                        relevance: "current",
+                        role: "driver",
+                        staffing_qualification: {
+                            denominator_source_classes: ["work_item"],
+                            denominator_state: "allocation_evidence_available",
+                        },
+                        standing: "principal_driver",
+                        withheld_reason: null,
+                    },
+                    {
+                        category: "dependency_pressure",
+                        confidence: "uncertain",
+                        conflicting_evidence_ref_ids: [],
+                        contribution: 0.35,
+                        evidence_ref_ids: ["evidence-1"],
+                        exclusion_reason: null,
+                        freshness: "stale",
+                        rank: 2,
+                        relevance: "recently_current",
+                        role: "driver",
+                        staffing_qualification: {
+                            denominator_source_classes: ["work_graph"],
+                            denominator_state: "partial_allocation_evidence",
+                        },
+                        standing: "contributing_driver",
+                        withheld_reason: null,
+                    },
+                ],
+            },
+        } as unknown as DevAnswer;
+
+        render(<AskDevAnswer answer={answer} />);
+
+        const drivers = screen.getByRole("region", { name: "Ranked drivers" });
+        expect(within(drivers).getByText("Principal driver")).toBeVisible();
+        expect(within(drivers).getByText("Contributing driver")).toBeVisible();
+        expect(within(drivers).getByText("Delivery pressure")).toBeVisible();
+        expect(within(drivers).getByText("Dependency pressure")).toBeVisible();
+        expect(
+            within(drivers).getByText("Qualified confidence · Current · Current evidence"),
+        ).toBeVisible();
+        expect(
+            within(drivers).getByText(
+                "Uncertain confidence · Recently current · Out-of-date evidence",
+            ),
+        ).toBeVisible();
+        expect(within(drivers).getByText("Allocation evidence available")).toBeVisible();
+        expect(within(drivers).getByText("Partial allocation evidence")).toBeVisible();
+        expect(within(drivers).getByText("Evidence sources: Work items")).toBeVisible();
+        expect(within(drivers).getByText("Evidence sources: Work graph")).toBeVisible();
+        expect(within(drivers).queryByText("0% contribution")).not.toBeInTheDocument();
+        expect(within(drivers).getByText("35% contribution")).toBeVisible();
+
+        await user.click(
+            within(drivers).getByRole("button", {
+                name: "Open evidence citation 2 for conflicting evidence for driver 1",
+            }),
+        );
+        expect(actions.expandEvidence).toHaveBeenCalledWith("evidence-2", "answer-graph-1");
+    });
+
+    it("renders symptom, exclusion, withheld, denominator, and historical qualifications safely", () => {
+        const answer = {
+            ...answerForState("enabled"),
+            graph_assisted: {
+                ...graphAssistance,
+                ranked_drivers: [
+                    {
+                        category: "capacity_or_staffing",
+                        confidence: "unsupported",
+                        conflicting_evidence_ref_ids: [],
+                        contribution: null,
+                        evidence_ref_ids: ["evidence-1"],
+                        exclusion_reason: "symptom_of_another_candidate",
+                        freshness: "unknown",
+                        rank: 3,
+                        relevance: "historical_only",
+                        role: "symptom",
+                        staffing_qualification: {
+                            denominator_source_classes: [],
+                            denominator_state: "denominator_absent",
+                        },
+                        standing: "excluded",
+                        withheld_reason: "evidence_unavailable",
+                    },
+                ],
+            },
+        } as unknown as DevAnswer;
+
+        const { container } = render(<AskDevAnswer answer={answer} />);
+
+        const drivers = screen.getByRole("region", { name: "Ranked drivers" });
+        expect(within(drivers).getByText("Excluded")).toBeVisible();
+        expect(within(drivers).getByText("Symptom")).toBeVisible();
+        expect(within(drivers).getByText("Capacity or staffing")).toBeVisible();
+        expect(
+            within(drivers).getByText(
+                "Unsupported confidence · Historical only · Freshness unknown",
+            ),
+        ).toBeVisible();
+        expect(within(drivers).getByText("Staffing denominator unavailable")).toBeVisible();
+        expect(
+            within(drivers).getByText(
+                "Excluded because it appears to be a symptom of another candidate.",
+            ),
+        ).toBeVisible();
+        expect(
+            within(drivers).getByText("Supporting evidence is currently unavailable."),
+        ).toBeVisible();
+        expect(container.textContent).not.toMatch(
+            /capacity_or_staffing|unsupported|historical_only|denominator_absent|symptom_of_another_candidate|evidence_unavailable/u,
+        );
+    });
+
     it.each([
         ["enabled", "Available", "Additional evidence context is ready for this answer."],
         [
@@ -358,7 +496,7 @@ describe("AskDevAnswer graph assistance rendering", () => {
         );
     });
 
-    it.each(["not_ready", "Graphiti", "Cypher"])(
+    it.each(["not_ready", "driver", "Graphiti", "Cypher"])(
         "preserves the authorized cohort label %s",
         (displayLabel) => {
             const cohort = graphAssistance.cohort;

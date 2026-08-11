@@ -11,8 +11,6 @@ import {
     type DevAnswerScenario,
 } from "./devScenario";
 
-import graphAssistanceFixture from "../../src/lib/dev/contracts/examples/positive/dev_answer_graph_assistance.v1.json";
-
 /**
  * Fixture-fidelity oracle for the Ask Dev mock (CHAOS-3219).
  *
@@ -98,53 +96,6 @@ describe("Ask Dev mock fidelity — graph assistance rendering scenario", () => 
         });
 
         const answer = answerFor("graph_assisted");
-        expect(answer.graph_assisted).toEqual({
-            ...graphAssistanceFixture,
-            evidence_lineage: [],
-            ranked_drivers: [],
-            state: "truncated",
-            cohort: {
-                ...graphAssistanceFixture.cohort,
-                members: [
-                    {
-                        ...graphAssistanceFixture.cohort.members[0],
-                        disposition: "unknown",
-                        pressure_dimensions: ["cognitive_workload_pressure"],
-                        rank: 1,
-                        signals: [
-                            {
-                                attribution_present: false,
-                                coverage: 0.4,
-                                data_semantics: "no_data",
-                                denominator_present: false,
-                                dimension: "cognitive_workload_pressure",
-                                evidence_source_classes: ["cognitive_load"],
-                                observed_states: ["available_stale"],
-                                signal_id: "health:stale_capacity",
-                                source: "health",
-                                state: "unknown",
-                            },
-                            {
-                                coverage: 0.4,
-                                data_semantics: "measured_zero",
-                                freshness: "stale",
-                                observed_states: ["available_stale"],
-                                signal_id: "metrics:metric:0123456789abcdef0123456789abcdef",
-                                source: "metrics",
-                            },
-                            {
-                                data_semantics: "no_data",
-                                gap: "no_data",
-                                observed_states: ["available_unknown"],
-                                signal_id: "status",
-                                source: "status",
-                            },
-                        ],
-                    },
-                ],
-            },
-        });
-
         const graphAssisted = answer.graph_assisted as JsonRecord;
         expect(graphAssisted.schema_version).toBe("dev_answer_graph_assistance.v1");
         expect(graphAssisted.state).toBe("truncated");
@@ -193,13 +144,39 @@ describe("Ask Dev mock fidelity — graph assistance rendering scenario", () => 
         expect(((cohort.members as JsonRecord[])[0]?.signals as JsonRecord[])[0]?.source).toBe(
             "health",
         );
-        expect(graphAssisted.ranked_drivers).toEqual([]);
+        expect(graphAssisted.ranked_drivers).toEqual([
+            expect.objectContaining({
+                category: "delivery_pressure",
+                confidence: "qualified",
+                conflicting_evidence_ref_ids: ["ev_02"],
+                contribution: null,
+                rank: 1,
+                relevance: "current",
+                role: "driver",
+                standing: "principal_driver",
+            }),
+            expect.objectContaining({
+                category: "dependency_pressure",
+                freshness: "stale",
+                rank: 2,
+                standing: "contributing_driver",
+            }),
+            expect.objectContaining({
+                exclusion_reason: "symptom_of_another_candidate",
+                rank: 3,
+                role: "symptom",
+                standing: "excluded",
+                withheld_reason: "evidence_unavailable",
+            }),
+        ]);
         expect(graphAssisted.evidence_lineage).toEqual([]);
+        expect(answer.status).toBe("degraded");
 
         const evidenceIds = new Set(
             (answer.evidence as JsonRecord[]).map((item) => item.evidence_ref_id),
         );
         expect(evidenceIds).toContain("ev_01");
+        expect(evidenceIds).toContain("ev_02");
     });
 
     it("keeps the test-only scenario marker out of the customer-visible title", () => {
