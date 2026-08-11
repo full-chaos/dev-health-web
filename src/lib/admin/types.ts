@@ -428,17 +428,24 @@ export interface SyncConfigCreate {
     initial_sync_depth?: number | null;
 }
 
-export interface BackfillRequest {
+export interface BackfillSelector {
     since: string;
     before: string;
+    source_ids?: string[];
+    dataset_keys?: string[];
+}
+
+/** CHAOS-3758 structured selector. Never combine this with legacy flat fields. */
+export interface BackfillRequest {
+    selector: BackfillSelector;
 }
 
 export interface BackfillResponse {
-    task_id: string;
     status: string;
-    backfill_job_id: string;
-    /** Present on the backend response (routers/sync.py); optional here for defensive forward-compat. */
+    task_id?: string;
+    backfill_job_id?: string;
     sync_run_id?: string;
+    total_units?: number;
 }
 
 export interface BackfillJob {

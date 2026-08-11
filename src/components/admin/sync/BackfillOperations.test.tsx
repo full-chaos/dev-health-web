@@ -38,9 +38,9 @@ describe("BackfillOperations", () => {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         await user.click(screen.getByRole("button", { name: "Backfill" }));
 
-        expect(screen.getByRole("dialog", { name: "Run historical backfill" })).toBeInTheDocument();
+        expect(screen.getByRole("dialog", { name: "Run focused backfill" })).toBeInTheDocument();
         // Opened from the generic entry point: no gap prefill.
-        expect(screen.getByLabelText("From")).toHaveValue("");
+        expect(screen.getByLabelText("Since (inclusive)")).toHaveValue("");
     });
 
     it("opens the wizard prefilled with the gap's range from a timeline 'Backfill this gap' action", async () => {
@@ -50,8 +50,8 @@ describe("BackfillOperations", () => {
         await user.click(screen.getByRole("button", { name: "Backfill this gap" }));
 
         expect(screen.getByRole("dialog")).toBeInTheDocument();
-        expect(screen.getByLabelText("From")).toHaveValue("2026-01-02");
-        expect(screen.getByLabelText("To")).toHaveValue("2026-01-03");
+        expect(screen.getByLabelText("Since (inclusive)")).toHaveValue("2026-01-02");
+        expect(screen.getByLabelText("Before (exclusive)")).toHaveValue("2026-01-03");
     });
 
     it("opens the wizard with the exact server-owned canonical backfill window", async () => {
@@ -72,8 +72,8 @@ describe("BackfillOperations", () => {
         );
 
         expect(screen.getByRole("dialog")).toBeInTheDocument();
-        expect(screen.getByLabelText("From")).toHaveValue("2025-12-20");
-        expect(screen.getByLabelText("To")).toHaveValue("2026-01-01");
+        expect(screen.getByLabelText("Since (inclusive)")).toHaveValue("2025-12-20");
+        expect(screen.getByLabelText("Before (exclusive)")).toHaveValue("2026-01-01");
     });
 
     it("opens an unscoped recovery backfill when coverage cannot load", async () => {
@@ -91,9 +91,10 @@ describe("BackfillOperations", () => {
 
         await user.click(screen.getByRole("button", { name: "Backfill" }));
 
-        expect(screen.getByRole("dialog", { name: "Run historical backfill" })).toBeInTheDocument();
-        expect(screen.getByLabelText("From")).toHaveValue("");
-        expect(screen.getAllByText("No coverage data yet")).toHaveLength(2);
+        expect(screen.getByRole("dialog", { name: "Run focused backfill" })).toBeInTheDocument();
+        expect(screen.getByLabelText("Since (inclusive)")).toHaveValue("");
+        expect(screen.getByRole("radio", { name: /Choose specific sources/ })).toBeDisabled();
+        expect(screen.getByRole("radio", { name: /Choose specific datasets/ })).toBeDisabled();
     });
 
     it("closes the wizard via its Cancel action", async () => {

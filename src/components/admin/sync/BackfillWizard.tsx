@@ -1,39 +1,42 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { triggerBackfill } from "@/lib/admin/server";
+import type { SyncCoverageDataset, SyncCoverageSource } from "@/lib/admin/types";
+import { DATASET_LABELS } from "./config-form/constants";
 import { CTA_LABELS } from "@/lib/design/cta";
 
-/** Ranges longer than this need explicit confirmation before submit (CHAOS-2796). */
 const EXPENSIVE_RANGE_THRESHOLD_DAYS = 180;
-
-/**
- * Client-side ESTIMATE only, matching the non-Linear family default chunk
- * window in ops/sync/planner.py (`chunk_days = 7`). This is a display
- * estimate for the preview step, never the source of truth — the backend
- * planner computes actual chunking at dispatch time and per-provider policy
- * can differ (e.g. Linear's max window), so this must not be presented as
- * exact.
- */
 const ESTIMATED_CHUNK_DAYS = 7;
-
 const RANGE_ERROR_ID = "backfill-range-error";
+const SCOPE_ERROR_ID = "backfill-scope-error";
+const WORK_ITEM_FAMILY = new Set([
+    "work-items",
+    "work-item-labels",
+    "work-item-projects",
+    "work-item-history",
+    "work-item-comments",
+]);
 
-type WizardStep = "range" | "preview" | "result";
+type WizardStep = "scope" | "review" | "result";
+type ScopeMode = "all" | "selected";
+
+interface DatasetChoice {
+    id: string;
+    label: string;
+    datasetKeys: string[];
+}
 
 interface BackfillWizardProps {
     configId: string;
     onCloseAction: () => void;
-    /** Gap-driven prefill (YYYY-MM-DD) from the coverage timeline's "Backfill this gap" action. */
     initialSince?: string;
     initialBefore?: string;
-    /** Resolved dataset/source NAMES from the coverage summary already on the page — never raw ids. */
-    datasetNames: string[];
-    sourceNames: string[];
-    /** When true, submit is a no-op demo path instead of calling the live server action. */
+    datasets: SyncCoverageDataset[];
+    sources: SyncCoverageSource[];
     testMode?: boolean;
 }
 
@@ -43,12 +46,46 @@ function parseDateInput(value: string): Date | null {
     return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/** Whole-day span between two YYYY-MM-DD inputs, or null if either is unparseable. */
 function rangeDays(since: string, before: string): number | null {
     const sinceDate = parseDateInput(since);
     const beforeDate = parseDateInput(before);
     if (!sinceDate || !beforeDate) return null;
-    return Math.round((beforeDate.getTime() - sinceDate.getTime()) / (24 * 60 * 60 * 1000));
+    return Math.round((beforeDate.getTime() - sinceDate.getTime()) / 86_400_000);
+}
+
+function toBoundary(value: string): string {
+    return `${value}T00:00:00.000Z`;
+}
+
+function datasetLabel(key: string): string {
+    return DATASET_LABELS[key] ?? key.replaceAll("-", " ");
+}
+
+/** Collapse the work-item aliases into the single canonical family operators execute. */
+export function buildDatasetChoices(datasets: SyncCoverageDataset[]): DatasetChoice[] {
+    const choices: DatasetChoice[] = [];
+    const familyKeys = datasets
+        .map((dataset) => dataset.dataset_key)
+        .filter((key) => WORK_ITEM_FAMILY.has(key));
+
+    for (const dataset of datasets) {
+        if (WORK_ITEM_FAMILY.has(dataset.dataset_key)) {
+            if (!choices.some((choice) => choice.id === "work-items")) {
+                choices.push({
+                    id: "work-items",
+                    label: "Work items (canonical family)",
+                    datasetKeys: familyKeys,
+                });
+            }
+            continue;
+        }
+        choices.push({
+            id: dataset.dataset_key,
+            label: datasetLabel(dataset.dataset_key),
+            datasetKeys: [dataset.dataset_key],
+        });
+    }
+    return choices;
 }
 
 export function BackfillWizard({
@@ -56,39 +93,37 @@ export function BackfillWizard({
     onCloseAction,
     initialSince = "",
     initialBefore = "",
-    datasetNames,
-    sourceNames,
+    datasets,
+    sources,
     testMode = false,
 }: BackfillWizardProps) {
     const router = useRouter();
-    const [step, setStep] = useState<WizardStep>("range");
+    const datasetChoices = useMemo(() => buildDatasetChoices(datasets), [datasets]);
+    const [step, setStep] = useState<WizardStep>("scope");
     const [since, setSince] = useState(initialSince);
     const [before, setBefore] = useState(initialBefore);
+    const [sourceMode, setSourceMode] = useState<ScopeMode>("all");
+    const [datasetMode, setDatasetMode] = useState<ScopeMode>("all");
+    const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
+    const [selectedDatasetChoiceIds, setSelectedDatasetChoiceIds] = useState<string[]>([]);
     const [expensiveConfirmed, setExpensiveConfirmed] = useState(false);
     const [isPending, startTransition] = useTransition();
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [submittedSyncRunId, setSubmittedSyncRunId] = useState<string | null>(null);
     const dialogRef = useRef<HTMLDivElement>(null);
     const onCloseActionRef = useRef(onCloseAction);
+
     useEffect(() => {
         onCloseActionRef.current = onCloseAction;
     }, [onCloseAction]);
 
-    // Modal a11y (CHAOS-2796): move focus into the dialog on open and restore
-    // it to whatever was focused before (the trigger button) on close. Escape
-    // is handled via a document-level listener — rather than an onKeyDown on
-    // the overlay — so it works no matter where focus currently sits; an
-    // overlay-only handler misses Escape while focus is still on the
-    // background trigger that opened the wizard.
     useEffect(() => {
         const previouslyFocused = document.activeElement as HTMLElement | null;
         dialogRef.current?.focus();
-
         function handleKeyDown(event: KeyboardEvent) {
             if (event.key === "Escape") onCloseActionRef.current();
         }
         document.addEventListener("keydown", handleKeyDown);
-
         return () => {
             document.removeEventListener("keydown", handleKeyDown);
             previouslyFocused?.focus();
@@ -98,28 +133,47 @@ export function BackfillWizard({
     const days = rangeDays(since, before);
     const hasBothDates = Boolean(since) && Boolean(before);
     const isRangeInvalid = hasBothDates && days !== null && days <= 0;
+    const sourceSelectionInvalid = sourceMode === "selected" && selectedSourceIds.length === 0;
+    const datasetSelectionInvalid =
+        datasetMode === "selected" && selectedDatasetChoiceIds.length === 0;
+    const isScopeInvalid = sourceSelectionInvalid || datasetSelectionInvalid;
     const isExpensiveRange = days !== null && days > EXPENSIVE_RANGE_THRESHOLD_DAYS;
     const chunkEstimate =
         days !== null && days > 0 ? Math.max(1, Math.ceil(days / ESTIMATED_CHUNK_DAYS)) : 0;
-
-    const canContinue = hasBothDates && !isRangeInvalid;
+    const canContinue = hasBothDates && !isRangeInvalid && !isScopeInvalid;
     const canSubmit = canContinue && (!isExpensiveRange || expensiveConfirmed);
+    const selectedDatasetKeys = datasetChoices
+        .filter((choice) => selectedDatasetChoiceIds.includes(choice.id))
+        .flatMap((choice) => choice.datasetKeys);
+    const selectedSourceNames = sources
+        .filter((source) => selectedSourceIds.includes(source.source_id))
+        .map((source) => source.source_name);
+    const selectedDatasetChoices = datasetChoices.filter((choice) =>
+        selectedDatasetChoiceIds.includes(choice.id),
+    );
+
+    const resetConfirmation = () => setExpensiveConfirmed(false);
+    const toggle = (values: string[], value: string): string[] =>
+        values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
 
     const handleSubmit = () => {
         if (!canSubmit) return;
         setSubmitError(null);
+        const selector = {
+            since: toBoundary(since),
+            before: toBoundary(before),
+            ...(sourceMode === "selected" ? { source_ids: selectedSourceIds } : {}),
+            ...(datasetMode === "selected" ? { dataset_keys: selectedDatasetKeys } : {}),
+        };
 
         if (testMode) {
-            // Test-mode demo path: no live API call (web AGENTS test-mode rule).
-            // Mirrors the sample sync_run id already used by the gaps coverage
-            // sample so "View run" resolves to a valid sample run page.
             setSubmittedSyncRunId("sample-run-gaps");
             setStep("result");
             return;
         }
 
         startTransition(async () => {
-            const result = await triggerBackfill(configId, since, before);
+            const result = await triggerBackfill(configId, selector);
             if (result.error || !result.data) {
                 setSubmitError(result.error ?? "Failed to start backfill");
                 toast.error(result.error ?? "Failed to start backfill");
@@ -140,7 +194,7 @@ export function BackfillWizard({
                 aria-modal="true"
                 aria-labelledby="backfill-wizard-title"
                 tabIndex={-1}
-                className="w-full max-w-xl rounded-xl border border-(--card-stroke) bg-(--card) shadow-2xl focus:outline-none"
+                className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl border border-(--card-stroke) bg-(--card) shadow-2xl focus:outline-none"
             >
                 <div className="flex items-center justify-between border-b border-(--card-stroke) p-6">
                     <div>
@@ -148,10 +202,10 @@ export function BackfillWizard({
                             id="backfill-wizard-title"
                             className="text-lg font-semibold text-foreground"
                         >
-                            Run historical backfill
+                            Run focused backfill
                         </h2>
                         <p className="mt-1 text-xs text-(--ink-muted)">
-                            Step {step === "range" ? 1 : step === "preview" ? 2 : 3} of 3
+                            Step {step === "scope" ? 1 : step === "review" ? 2 : 3} of 3
                         </p>
                     </div>
                     <button
@@ -163,96 +217,234 @@ export function BackfillWizard({
                     </button>
                 </div>
 
-                <div className="space-y-4 p-6">
-                    {step === "range" && (
+                <div className="space-y-5 p-6">
+                    {step === "scope" && (
                         <>
                             <p className="text-sm text-(--ink-muted)">
-                                Backfill fetches historical data for the selected window. It does
-                                not affect incremental sync watermarks — regular scheduled syncs
-                                continue independently.
+                                Choose the exact historical window and scope. This run does not
+                                advance scheduled-sync watermarks.
                             </p>
-
-                            <div className="flex items-end gap-3">
-                                <div className="flex-1">
-                                    <label
-                                        htmlFor="backfill-since"
-                                        className="mb-1.5 block text-sm font-medium text-(--ink-muted)"
-                                    >
-                                        From
-                                    </label>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                                <label
+                                    className="text-sm font-medium text-(--ink-muted)"
+                                    htmlFor="backfill-since"
+                                >
+                                    Since (inclusive)
                                     <input
                                         id="backfill-since"
                                         type="date"
                                         value={since}
                                         onChange={(event) => {
                                             setSince(event.target.value);
-                                            setExpensiveConfirmed(false);
+                                            resetConfirmation();
                                         }}
                                         aria-invalid={isRangeInvalid}
                                         aria-describedby={
                                             isRangeInvalid ? RANGE_ERROR_ID : undefined
                                         }
-                                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                        className="mt-1.5 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                                     />
-                                </div>
-                                <div className="flex-1">
-                                    <label
-                                        htmlFor="backfill-before"
-                                        className="mb-1.5 block text-sm font-medium text-(--ink-muted)"
-                                    >
-                                        To
-                                    </label>
+                                </label>
+                                <label
+                                    className="text-sm font-medium text-(--ink-muted)"
+                                    htmlFor="backfill-before"
+                                >
+                                    Before (exclusive)
                                     <input
                                         id="backfill-before"
                                         type="date"
                                         value={before}
                                         onChange={(event) => {
                                             setBefore(event.target.value);
-                                            setExpensiveConfirmed(false);
+                                            resetConfirmation();
                                         }}
                                         aria-invalid={isRangeInvalid}
                                         aria-describedby={
                                             isRangeInvalid ? RANGE_ERROR_ID : undefined
                                         }
-                                        className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                        className="mt-1.5 w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
                                     />
-                                </div>
+                                </label>
                             </div>
-
                             {isRangeInvalid && (
                                 <p
                                     id={RANGE_ERROR_ID}
                                     role="alert"
                                     className="text-sm text-(--negative)"
                                 >
-                                    Start date must be before end date.
+                                    Since must be before the exclusive boundary.
                                 </p>
                             )}
 
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="space-y-1">
-                                    <p className="text-xs font-medium text-(--ink-muted) uppercase tracking-wider">
-                                        Affected datasets
-                                    </p>
-                                    <p className="text-sm text-foreground">
-                                        {datasetNames.length > 0
-                                            ? datasetNames.join(", ")
-                                            : "No coverage data yet"}
-                                    </p>
-                                </div>
-                                <div className="space-y-1">
-                                    <p className="text-xs font-medium text-(--ink-muted) uppercase tracking-wider">
-                                        Affected sources
-                                    </p>
-                                    <p className="text-sm text-foreground">
-                                        {sourceNames.length > 0
-                                            ? sourceNames.join(", ")
-                                            : "No coverage data yet"}
-                                    </p>
-                                </div>
-                            </div>
+                            <fieldset className="space-y-3 rounded-lg border border-(--card-stroke) p-4">
+                                <legend className="px-1 text-sm font-semibold text-foreground">
+                                    Repository or source scope
+                                </legend>
+                                <label className="flex items-start gap-2 text-sm">
+                                    <input
+                                        type="radio"
+                                        name="source-scope"
+                                        checked={sourceMode === "all"}
+                                        onChange={() => {
+                                            setSourceMode("all");
+                                            resetConfirmation();
+                                        }}
+                                        className="mt-0.5"
+                                    />
+                                    <span>
+                                        <span className="block text-foreground">
+                                            All enabled sources
+                                        </span>
+                                        <span className="text-xs text-(--ink-muted)">
+                                            Date-only compatible scope; the server resolves enabled
+                                            sources.
+                                        </span>
+                                    </span>
+                                </label>
+                                <label className="flex items-start gap-2 text-sm">
+                                    <input
+                                        type="radio"
+                                        name="source-scope"
+                                        checked={sourceMode === "selected"}
+                                        onChange={() => {
+                                            setSourceMode("selected");
+                                            resetConfirmation();
+                                        }}
+                                        disabled={sources.length === 0}
+                                        className="mt-0.5"
+                                    />
+                                    <span>
+                                        <span className="block text-foreground">
+                                            Choose specific sources
+                                        </span>
+                                        <span className="text-xs text-(--ink-muted)">
+                                            {sources.length === 0
+                                                ? "No authoritative source inventory is available."
+                                                : "Only checked sources will run."}
+                                        </span>
+                                    </span>
+                                </label>
+                                {sourceMode === "selected" && (
+                                    <div className="ml-6 grid gap-2 sm:grid-cols-2">
+                                        {sources.map((source) => (
+                                            <label
+                                                key={source.source_id}
+                                                className="flex items-center gap-2 text-sm text-foreground"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedSourceIds.includes(
+                                                        source.source_id,
+                                                    )}
+                                                    onChange={() => {
+                                                        setSelectedSourceIds((current) =>
+                                                            toggle(current, source.source_id),
+                                                        );
+                                                        resetConfirmation();
+                                                    }}
+                                                />
+                                                {source.source_name}
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </fieldset>
 
-                            <div className="flex items-center justify-end gap-2 pt-2">
+                            <fieldset className="space-y-3 rounded-lg border border-(--card-stroke) p-4">
+                                <legend className="px-1 text-sm font-semibold text-foreground">
+                                    Provider unit or dataset scope
+                                </legend>
+                                <label className="flex items-start gap-2 text-sm">
+                                    <input
+                                        type="radio"
+                                        name="dataset-scope"
+                                        checked={datasetMode === "all"}
+                                        onChange={() => {
+                                            setDatasetMode("all");
+                                            resetConfirmation();
+                                        }}
+                                        className="mt-0.5"
+                                    />
+                                    <span>
+                                        <span className="block text-foreground">
+                                            All enabled datasets
+                                        </span>
+                                        <span className="text-xs text-(--ink-muted)">
+                                            The server resolves the complete enabled dataset scope.
+                                        </span>
+                                    </span>
+                                </label>
+                                <label className="flex items-start gap-2 text-sm">
+                                    <input
+                                        type="radio"
+                                        name="dataset-scope"
+                                        checked={datasetMode === "selected"}
+                                        onChange={() => {
+                                            setDatasetMode("selected");
+                                            resetConfirmation();
+                                        }}
+                                        disabled={datasetChoices.length === 0}
+                                        className="mt-0.5"
+                                    />
+                                    <span>
+                                        <span className="block text-foreground">
+                                            Choose specific datasets
+                                        </span>
+                                        <span className="text-xs text-(--ink-muted)">
+                                            {datasetChoices.length === 0
+                                                ? "No authoritative dataset inventory is available."
+                                                : "Canonical work-item datasets are grouped into one execution family."}
+                                        </span>
+                                    </span>
+                                </label>
+                                {datasetMode === "selected" && (
+                                    <div className="ml-6 space-y-2">
+                                        {datasetChoices.map((choice) => (
+                                            <label
+                                                key={choice.id}
+                                                className="flex items-start gap-2 text-sm text-foreground"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedDatasetChoiceIds.includes(
+                                                        choice.id,
+                                                    )}
+                                                    onChange={() => {
+                                                        setSelectedDatasetChoiceIds((current) =>
+                                                            toggle(current, choice.id),
+                                                        );
+                                                        resetConfirmation();
+                                                    }}
+                                                    className="mt-0.5"
+                                                />
+                                                <span>
+                                                    {choice.label}
+                                                    {choice.datasetKeys.length > 1 && (
+                                                        <span className="block text-xs text-(--ink-muted)">
+                                                            Affects:{" "}
+                                                            {choice.datasetKeys
+                                                                .map(datasetLabel)
+                                                                .join(", ")}
+                                                        </span>
+                                                    )}
+                                                </span>
+                                            </label>
+                                        ))}
+                                    </div>
+                                )}
+                            </fieldset>
+
+                            {isScopeInvalid && (
+                                <p
+                                    id={SCOPE_ERROR_ID}
+                                    role="alert"
+                                    className="text-sm text-(--negative)"
+                                >
+                                    Choose at least one item in every focused scope, or switch that
+                                    scope to all enabled.
+                                </p>
+                            )}
+                            <div className="flex justify-end gap-2 pt-2">
                                 <button
                                     type="button"
                                     onClick={onCloseAction}
@@ -262,8 +454,9 @@ export function BackfillWizard({
                                 </button>
                                 <button
                                     type="button"
-                                    onClick={() => setStep("preview")}
+                                    onClick={() => setStep("review")}
                                     disabled={!canContinue}
+                                    aria-describedby={isScopeInvalid ? SCOPE_ERROR_ID : undefined}
                                     className="rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 disabled:opacity-50"
                                 >
                                     {CTA_LABELS.continueStep}
@@ -272,34 +465,66 @@ export function BackfillWizard({
                         </>
                     )}
 
-                    {step === "preview" && (
+                    {step === "review" && (
                         <>
-                            <dl className="grid grid-cols-2 gap-4 text-sm">
+                            <p className="text-sm text-(--ink-muted)">
+                                Review the exact bounded selector. Nothing outside this scope will
+                                be requested.
+                            </p>
+                            <dl className="grid gap-4 rounded-lg border border-(--card-stroke) p-4 text-sm sm:grid-cols-2">
                                 <div>
-                                    <dt className="text-xs font-medium text-(--ink-muted) uppercase tracking-wider">
-                                        Range
+                                    <dt className="text-xs font-medium uppercase tracking-wider text-(--ink-muted)">
+                                        Window
                                     </dt>
                                     <dd className="mt-1 text-foreground">
-                                        {since} → {before}
+                                        {since} inclusive → {before} exclusive
                                     </dd>
                                 </div>
                                 <div>
-                                    <dt className="text-xs font-medium text-(--ink-muted) uppercase tracking-wider">
+                                    <dt className="text-xs font-medium uppercase tracking-wider text-(--ink-muted)">
                                         Estimated chunks
                                     </dt>
                                     <dd className="mt-1 text-foreground">
-                                        ~{chunkEstimate} (estimate)
+                                        ~{chunkEstimate} per selected unit (estimate)
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-xs font-medium uppercase tracking-wider text-(--ink-muted)">
+                                        Sources
+                                    </dt>
+                                    <dd className="mt-1 text-foreground">
+                                        {sourceMode === "all"
+                                            ? "All enabled sources"
+                                            : selectedSourceNames.join(", ")}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt className="text-xs font-medium uppercase tracking-wider text-(--ink-muted)">
+                                        Datasets
+                                    </dt>
+                                    <dd className="mt-1 text-foreground">
+                                        {datasetMode === "all"
+                                            ? "All enabled datasets"
+                                            : selectedDatasetChoices
+                                                  .map((choice) => choice.label)
+                                                  .join(", ")}
                                     </dd>
                                 </div>
                             </dl>
-
+                            {datasetMode === "selected" &&
+                                selectedDatasetKeys.length > selectedDatasetChoices.length && (
+                                    <p className="text-xs text-(--ink-muted)">
+                                        Canonical work-item family affects:{" "}
+                                        {selectedDatasetKeys.map(datasetLabel).join(", ")}.
+                                    </p>
+                                )}
                             {isExpensiveRange && (
                                 <div
                                     role="alert"
                                     className="space-y-3 rounded-lg border border-(--caution)/30 bg-(--caution)/15 p-4"
                                 >
                                     <p className="text-sm font-medium text-(--caution)">
-                                        ⚠ This range spans {days} days, more than{" "}
+                                        This range spans {days} days, more than{" "}
                                         {EXPENSIVE_RANGE_THRESHOLD_DAYS}. Large backfills can take a
                                         long time and consume significant sync capacity.
                                     </p>
@@ -320,17 +545,15 @@ export function BackfillWizard({
                                     </label>
                                 </div>
                             )}
-
                             {submitError && (
                                 <p role="alert" className="text-sm text-(--negative)">
                                     {submitError}
                                 </p>
                             )}
-
-                            <div className="flex items-center justify-end gap-2 pt-2">
+                            <div className="flex justify-end gap-2 pt-2">
                                 <button
                                     type="button"
-                                    onClick={() => setStep("range")}
+                                    onClick={() => setStep("scope")}
                                     className="rounded-md border border-(--card-stroke) px-4 py-2 text-sm"
                                 >
                                     {CTA_LABELS.backButton}
@@ -350,8 +573,8 @@ export function BackfillWizard({
                     {step === "result" && (
                         <>
                             <p className="text-sm text-foreground">
-                                Backfill started. Progress will appear on this page as the backend
-                                processes the range.
+                                Backfill started for the reviewed scope. Progress will appear on
+                                this page.
                             </p>
                             {submittedSyncRunId && (
                                 <Link
@@ -361,7 +584,7 @@ export function BackfillWizard({
                                     {CTA_LABELS.viewRun}
                                 </Link>
                             )}
-                            <div className="flex items-center justify-end pt-2">
+                            <div className="flex justify-end pt-2">
                                 <button
                                     type="button"
                                     onClick={onCloseAction}
