@@ -6,7 +6,7 @@ import conversationSummaryFixture from "../contracts/examples/positive/dev_conve
 import evidenceExpansionFixture from "../contracts/examples/positive/dev_evidence_expansion.v1.json";
 import feedbackFixture from "../contracts/examples/positive/dev_feedback.v1.json";
 import transcriptFixture from "../contracts/examples/positive/dev_conversation_transcript.v1.json";
-import type { DevMessageRequest, DevStreamEvent } from "../generated";
+import type { DevAnswer, DevMessageRequest, DevStreamEvent } from "../generated";
 import {
     DevApiError,
     consumeDevSseStream,
@@ -86,6 +86,25 @@ describe("Ask Dev browser client", () => {
         const requestInit = fetchMock.mock.calls[0]?.[1];
         expect(JSON.parse(String(requestInit?.body))).toEqual(input);
         expect(onEvent).toHaveBeenCalledTimes(2);
+    });
+
+    it("completes a done-only replay from its previously received answer", async () => {
+        const fetchMock = vi.fn<typeof fetch>().mockResolvedValue(sse(completedEvents().slice(2)));
+        const client = createDevApiClient({ fetch: fetchMock });
+
+        await expect(
+            client.resumeRun(
+                "run_01",
+                {
+                    schema_version: "dev_run_resume_request.v1",
+                    request_id: "request_resume_done_01",
+                    conversation_id: "conversation_01",
+                    last_sequence: 1,
+                    scope: conversationFixture.current_scope as DevMessageRequest["scope"],
+                },
+                { initialAnswer: answerFixture as unknown as DevAnswer },
+            ),
+        ).resolves.toMatchObject({ answer_id: "answer_01" });
     });
 
     it("accepts a nonterminal replay suffix as a still-running run", async () => {

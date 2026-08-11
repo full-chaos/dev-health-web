@@ -710,6 +710,48 @@ describe("AskDevProvider permanent window", () => {
         expect(client.resumeRun).toHaveBeenCalledOnce();
     });
 
+    it("aborts resume polling when the organization changes", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        vi.mocked(client.streamMessage).mockImplementationOnce(async (_id, _request, options) => {
+            options?.onEvent?.({
+                event: "run.started",
+                run_id: "run-org-switch",
+                sequence: 0,
+            } as DevStreamEvent);
+            throw new TypeError("The live stream disconnected.");
+        });
+        vi.mocked(client.resumeRun).mockRejectedValue(
+            new DevApiError(409, {
+                schema_version: "dev_web_error.v1",
+                code: "resume_unavailable",
+                safe_message: "The live run has no durable event after this cursor.",
+                retryable: true,
+            }),
+        );
+        const rendered = render(
+            <AskDevProvider client={client} orgId="org-1">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.type(screen.getByRole("textbox", { name: "Ask Dev question" }), "Check risk");
+        await user.click(screen.getByRole("button", { name: "Ask" }));
+        await waitFor(() => expect(client.resumeRun).toHaveBeenCalledOnce());
+        const resumeSignal = vi.mocked(client.resumeRun).mock.calls[0]?.[2]?.signal;
+
+        rendered.rerender(
+            <AskDevProvider client={client} orgId="org-2">
+                <main>Dashboard</main>
+            </AskDevProvider>,
+        );
+
+        await waitFor(() => expect(resumeSignal?.aborted).toBe(true));
+        expect(client.resumeRun).toHaveBeenCalledOnce();
+        expect(screen.queryByText("Check risk")).not.toBeInTheDocument();
+    });
+
     it("resumes a stored live run after reload using its original transcript scope", async () => {
         const client = makeClient();
         const resumeRun = vi.mocked(client.resumeRun);
