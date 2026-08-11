@@ -3,12 +3,11 @@ import { expect, type APIRequestContext, type Page } from "@playwright/test";
 import type { DevAnswerScenario, DevCapabilitiesState } from "../mocks/devScenario";
 
 /**
- * The mock backend's own base URL (not the Next.js app's). Existing specs
- * (acr-secret-boundary.spec.ts, acr-explorer-shell.spec.ts, …) already hit
- * `/__test/*` control endpoints on this same hardcoded port, which mirrors
- * playwright.config.ts's `PLAYWRIGHT_MOCK_PORT` default.
+ * The mock backend's own base URL (not the Next.js app's). Keep the default
+ * for the checked-in Playwright config, but honor its env override so local
+ * suites can run several environments without contending for one port.
  */
-const MOCK_SERVER_URL = "http://127.0.0.1:8001";
+const MOCK_SERVER_URL = `http://127.0.0.1:${process.env.PLAYWRIGHT_MOCK_PORT ?? "8001"}`;
 
 /** Encodes which canned dev_answer.v1 the mock should return for one question. */
 export function scenarioQuestion(scenario: DevAnswerScenario, question: string): string {
