@@ -12,7 +12,7 @@ import { format } from "prettier";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ARTIFACT_ROOT = path.join(ROOT, "src/lib/dev/contracts");
 const GENERATED_PATH = path.join(ROOT, "src/lib/dev/generated.ts");
-const SOURCE_COMMIT = "cfe94369368ca3c81f0d6a3ce9e80a8f3530320e";
+const SOURCE_COMMIT = "b45450e19e8e9d6292e3cd88a94f71ed2d5619b3";
 const SOURCE_PREFIX = "contracts/ask-dev/v1/";
 const PRETTIER_OPTIONS = Object.freeze({
     parser: "typescript",
@@ -196,7 +196,37 @@ async function generatedTypes(files) {
     );
 }
 
+/**
+ * CHAOS-3471 cross-repo rule: web's consumption of an ops-published
+ * artifact must degrade LOUDLY, never silently, when the pinned/checked-out
+ * ops source predates that artifact -- e.g. a re-pin that lands on an ops
+ * commit before the no-answer vocabulary artifact was published there, or a
+ * `--source` pointed at a stale ops checkout. Without this, `files` simply
+ * would not include the path, `generate` would happily write a smaller
+ * artifact set, and `tests/mocks/devScenario.ts`'s JSON import of the
+ * missing file would fail with a generic bundler "module not found" error
+ * that names neither the cause nor the fix.
+ */
+const REQUIRED_VOCABULARY_ARTIFACTS = Object.freeze(["vocabulary/no_answer_vocabulary.v1.json"]);
+
+function assertRequiredArtifactsPresent(files) {
+    const paths = new Set(files.map((file) => file.path));
+    const missing = REQUIRED_VOCABULARY_ARTIFACTS.filter((required) => !paths.has(required));
+    if (missing.length > 0) {
+        throw new Error(
+            `NOT_RUN: the Ask Dev contract source is missing required artifact(s): ` +
+                `${missing.join(", ")}. The pinned/checked-out ops commit predates the artifact ` +
+                "this repo requires (CHAOS-3471) -- point --source at an ops checkout that " +
+                "publishes it, or re-pin SOURCE_COMMIT (and the matching ref in " +
+                ".github/workflows/tests.yml) to one that does. Not treating this as ordinary " +
+                "drift: an absent required artifact must fail loudly here, not surface later as " +
+                "a downstream module-resolution error.",
+        );
+    }
+}
+
 async function expected(files) {
+    assertRequiredArtifactsPresent(files);
     return {
         artifacts: Object.fromEntries(files.map((file) => [file.path, file.contents])),
         generated: await generatedTypes(files),

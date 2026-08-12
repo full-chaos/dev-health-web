@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-namespace */
-// Generated from full-chaos/dev-health-ops cfe94369368ca3c81f0d6a3ce9e80a8f3530320e. Do not edit.
+// Generated from full-chaos/dev-health-ops b45450e19e8e9d6292e3cd88a94f71ed2d5619b3. Do not edit.
 export namespace DevAnswerGraphAssistanceContract {
     export type AsOf = string;
     export type CohortComplete = boolean;

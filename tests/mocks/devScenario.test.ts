@@ -121,9 +121,9 @@ describe("Ask Dev mock fidelity — organization fallback", () => {
 });
 
 describe("Ask Dev mock fidelity — no-answer outcomes", () => {
-    // These five never become a DevAnswer at all: the projector turns each
-    // into a DevError whose code/retryable come from `_ERROR_OUTCOME_CODES`
-    // and whose text comes from the server-owned canonical tables.
+    // These six never become a DevAnswer at all: the projector turns each
+    // into a DevError whose code/retryable/text come from the pinned
+    // no_answer_vocabulary.v1.json artifact (CHAOS-3471).
     for (const outcome of NO_ANSWER_OUTCOMES) {
         it(`${outcome.outcome} projects to a ${outcome.code} DevError, never an answer`, () => {
             const events = buildStreamEvents(outcome.scenario, "conversation_test", "A question");
@@ -155,11 +155,13 @@ describe("Ask Dev mock fidelity — scope.resolved on error terminals (CHAOS-352
     //   unsupported            -> null (no scope.resolved at all)
     //   denied                 -> null (no scope.resolved at all)
     //   failed                 -> exact
-    // `unsupported`/`denied` are refused before any catalog round trip (a
-    // preflight bound, or a provider-level refusal) -- the run never
-    // resolves scope at all, so publishing a resolution for either would be
-    // inventing one the run never reached (`streaming.py`'s own negative
-    // control: "a run that never resolved scope emits no scope frame").
+    //   refused                -> null (no scope.resolved at all)
+    // `unsupported`/`denied`/`refused` are refused before any catalog round
+    // trip (a preflight bound, a provider-level refusal, or CHAOS-3541's
+    // categorical action refusal) -- the run never resolves scope at all, so
+    // publishing a resolution for any of them would be inventing one the run
+    // never reached (`streaming.py`'s own negative control: "a run that
+    // never resolved scope emits no scope frame").
     const SCOPE_RESOLUTION_BY_OUTCOME: Record<
         (typeof NO_ANSWER_OUTCOMES)[number]["outcome"],
         string | null
@@ -169,6 +171,7 @@ describe("Ask Dev mock fidelity — scope.resolved on error terminals (CHAOS-352
         unsupported: null,
         denied: null,
         failed: "exact",
+        refused: null,
     };
 
     function eventsFor(scenario: DevAnswerScenario) {

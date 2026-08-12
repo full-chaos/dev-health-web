@@ -98,7 +98,7 @@ jobs:
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
               with:
                   repository: full-chaos/dev-health-ops
-                  ref: cfe94369368ca3c81f0d6a3ce9e80a8f3530320e
+                  ref: b45450e19e8e9d6292e3cd88a94f71ed2d5619b3
                   path: dev-health-ops
                   persist-credentials: false
             # CHAOS-3511 currency guard: ops main's tip as of this run, checked

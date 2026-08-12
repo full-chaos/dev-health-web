@@ -22,6 +22,7 @@ import { randomUUID } from "node:crypto";
 
 import answerFixture from "../../src/lib/dev/contracts/examples/positive/dev_answer.v1.json";
 import capabilitiesFixture from "../../src/lib/dev/contracts/examples/positive/dev_capabilities.v1.json";
+import noAnswerVocabularyArtifact from "../../src/lib/dev/contracts/vocabulary/no_answer_vocabulary.v1.json";
 import { ASK_DEV_OUTCOME_TABLE, outcomeCase } from "../fixtures/askDevOutcomes";
 
 type JsonRecord = Record<string, unknown>;
@@ -33,15 +34,114 @@ function clone<T>(value: T): T {
 const OUTCOME_TABLE_KEYS = ASK_DEV_OUTCOME_TABLE.map((entry) => entry.key);
 
 /**
- * The five `dev_answer.v2` no-answer outcomes as they reach a v1 client.
+ * The pinned no-answer vocabulary artifact (CHAOS-3471), typed. ops
+ * publishes this from the live `CANONICAL_NO_ANSWER_COPY` /
+ * `CANONICAL_NO_ANSWER_REMEDIATION` / error-code tables
+ * (`contracts_v2/no_answer_policy.py`, `contracts_v2/compat.py`'s
+ * `no_answer_error_projection`) — see
+ * `dev-health-ops/src/dev_health_ops/api/dev/export_contracts.py`. Web pins
+ * it the same way it already pins the JSON-schema artifacts
+ * (`scripts/ask-dev-contracts.mjs`'s `SOURCE_COMMIT`).
+ */
+type NoAnswerVocabularyOutcome = {
+    readonly safe_message: string;
+    readonly remediation: readonly string[];
+    readonly code: string;
+    readonly retryable: boolean;
+};
+type NoAnswerVocabularyArtifact = {
+    readonly schema_version: string;
+    readonly outcomes: Readonly<Record<string, NoAnswerVocabularyOutcome>>;
+};
+const NO_ANSWER_VOCABULARY = noAnswerVocabularyArtifact as NoAnswerVocabularyArtifact;
+
+/**
+ * Every outcome key the pinned artifact actually publishes, sorted.
+ * Exported so a consumer (`ask-dev-outcomes.spec.ts`) can assert
+ * `NO_ANSWER_OUTCOMES` below is EXACTLY this set, not a hand-maintained
+ * table that silently drifted from it — codex round-2 finding 2: the
+ * e2e loop iterates `NO_ANSWER_OUTCOMES`, not the artifact's own keys, so a
+ * 7th outcome ops adds gets no test and a row deleted from the table
+ * silently deletes its test, with nothing to fail either way.
+ */
+export const PINNED_NO_ANSWER_OUTCOME_KEYS: readonly string[] = Object.keys(
+    NO_ANSWER_VOCABULARY.outcomes,
+).sort();
+
+/**
+ * NOT_RUN guard (CHAOS-3471, cross-repo rule): fails loudly and by name at
+ * import time if the pinned artifact is missing an outcome, or a required
+ * FIELD of one, this suite expects — rather than letting a malformed/
+ * renamed field silently become `undefined` and flow into a mock-fidelity
+ * test that derives its own "expected" value from that same object
+ * (codex round-2 finding 1: the earlier version type-cast the import
+ * unchecked and verified only that the outcome KEY existed, not that each
+ * field was actually present and correctly typed). The companion guard on
+ * the sync side (`scripts/ask-dev-contracts.mjs`) fails just as loudly,
+ * earlier, if the whole artifact file is missing from the pinned ops source
+ * — this one covers the file existing but a single outcome being
+ * incomplete or a field renamed. Maps the artifact's `safe_message` to this
+ * file's (and every consumer's) pre-existing `safeMessage` field name;
+ * `code`/`retryable`/`remediation` already match.
+ */
+function pinnedNoAnswerVocabularyEntry(outcome: string): {
+    code: string;
+    retryable: boolean;
+    safeMessage: string;
+    remediation: readonly string[];
+} {
+    const entry = NO_ANSWER_VOCABULARY.outcomes[outcome];
+    if (!entry) {
+        throw new Error(
+            `NOT_RUN: pinned no_answer_vocabulary.v1.json has no entry for outcome "${outcome}". ` +
+                "Either this suite's NO_ANSWER_OUTCOMES table is ahead of the pinned ops artifact " +
+                "(re-pin against an ops commit that publishes it), or the artifact regenerated " +
+                "incomplete -- do not assume this outcome's copy/remediation/retryable behavior.",
+        );
+    }
+    const invalidFields: string[] = [];
+    if (typeof entry.code !== "string" || entry.code.length === 0) {
+        invalidFields.push("code");
+    }
+    if (typeof entry.retryable !== "boolean") {
+        invalidFields.push("retryable");
+    }
+    if (typeof entry.safe_message !== "string" || entry.safe_message.length === 0) {
+        invalidFields.push("safe_message");
+    }
+    if (
+        !Array.isArray(entry.remediation) ||
+        entry.remediation.length === 0 ||
+        !entry.remediation.every((item) => typeof item === "string")
+    ) {
+        invalidFields.push("remediation");
+    }
+    if (invalidFields.length > 0) {
+        throw new Error(
+            `NOT_RUN: pinned no_answer_vocabulary.v1.json's "${outcome}" entry is missing or has ` +
+                `a malformed field(s): ${invalidFields.join(", ")}. A renamed, removed, or wrongly ` +
+                "typed field in the ops artifact must fail loudly here, never flow through as " +
+                "undefined into a test that derives its own expectation from this same object.",
+        );
+    }
+    return {
+        code: entry.code,
+        retryable: entry.retryable,
+        safeMessage: entry.safe_message,
+        remediation: entry.remediation,
+    };
+}
+
+/**
+ * The six `dev_answer.v2` no-answer outcomes as they reach a v1 client.
  *
  * `PublicOutcome` values in `NO_ANSWER_OUTCOMES` never become a `DevAnswer`:
- * the projector turns each into a `DevError` whose code and `retryable` flag
- * come from `_ERROR_OUTCOME_CODES` and whose text comes from the server-owned
- * `CANONICAL_NO_ANSWER_COPY` / `CANONICAL_NO_ANSWER_REMEDIATION` tables
- * (ops contracts_v2/compat.py:209-214, :484-494; validators.py). Producer
- * text is replaced wholesale, never trimmed or re-emitted, so these sentences
- * are the entire user-visible artifact of four of the eight outcomes.
+ * the projector turns each into a `DevError` whose code/retryable/copy come
+ * from `compat.no_answer_error_projection`, the same function ops's
+ * artifact exporter calls (CHAOS-3471 round-1 finding 1+2 fix — see that
+ * function's docstring on the ops side). Text is replaced wholesale, never
+ * trimmed or re-emitted, so these sentences are the entire user-visible
+ * artifact of six of the eight `dev_answer.v2` outcomes.
  *
  * What the specs built on this table DO prove: the UI renders the server's
  * `safe_message` verbatim (none of these sentences exists anywhere in web
@@ -49,24 +149,19 @@ const OUTCOME_TABLE_KEYS = ASK_DEV_OUTCOME_TABLE.map((entry) => entry.key);
  * renders its own distinct copy rather than one reused apology, and the
  * retry affordance follows `retryable`.
  *
- * What they DO NOT prove: that this table still matches ops. These strings
- * are a HAND-PINNED MIRROR — the canonical tables are Python constants in
- * `validators.py` and are not exported into any artifact web pins, so
- * nothing here detects ops-side drift. Compared to the ops source by script
- * on 2026-08-06 — all five entries match on both copy and remediation, and
- * the mirrored key set equals the ops key set — but that check has no
- * automated successor. Closing the gap needs the copy published as a pinned
- * contract vocabulary artifact (as `internal_prose_denylist.v1.json` already
- * is); tracked in CHAOS-3471.
+ * `code`/`retryable`/`safeMessage`/`remediation` below are read from the
+ * PINNED ARTIFACT (`no_answer_vocabulary.v1.json`), not hand-typed — an
+ * ops-side reword now fails the pin check (`pnpm ask-dev:contracts:check`)
+ * instead of silently passing here. `scenario` (this file's own dispatch
+ * key) and `scopeResolutionOutcome` (below) are WEB-ONLY test metadata, not
+ * part of the ops artifact — they stay hand-pinned against the ops
+ * acceptance corpus, same as before.
  */
 export const NO_ANSWER_OUTCOMES = [
     {
         outcome: "not_found",
         scenario: "no_answer_not_found",
-        code: "scope_not_found",
-        retryable: false,
-        safeMessage: "No matching subject was found for this question.",
-        remediation: ["Check the name and try again."],
+        ...pinnedNoAnswerVocabularyEntry("not_found"),
         // See `SCOPE_RESOLUTION_OUTCOME_BY_NO_ANSWER` below for what this
         // field means and where it comes from.
         scopeResolutionOutcome: "unresolved",
@@ -74,40 +169,50 @@ export const NO_ANSWER_OUTCOMES = [
     {
         outcome: "temporarily_unavailable",
         scenario: "no_answer_temporarily_unavailable",
-        code: "source_unavailable",
-        retryable: true,
-        safeMessage: "This answer is temporarily unavailable. Please try again shortly.",
-        remediation: ["Try the question again in a few minutes."],
+        ...pinnedNoAnswerVocabularyEntry("temporarily_unavailable"),
         scopeResolutionOutcome: "exact",
     },
     {
         outcome: "unsupported",
         scenario: "no_answer_unsupported",
-        code: "feature_not_enabled",
-        retryable: false,
-        safeMessage: "This question is not supported yet.",
-        remediation: ["Try a status, health, or metric question instead."],
+        ...pinnedNoAnswerVocabularyEntry("unsupported"),
         scopeResolutionOutcome: null,
     },
     {
         outcome: "denied",
         scenario: "no_answer_denied",
-        code: "forbidden",
-        retryable: false,
-        safeMessage: "You do not have access to ask about this.",
-        remediation: ["Ask an administrator for access to this area."],
+        ...pinnedNoAnswerVocabularyEntry("denied"),
         scopeResolutionOutcome: null,
     },
     {
         outcome: "failed",
         scenario: "no_answer_failed",
-        code: "internal_error",
-        retryable: false,
-        safeMessage: "Something went wrong while preparing this answer.",
-        remediation: ["Try the question again."],
+        ...pinnedNoAnswerVocabularyEntry("failed"),
         scopeResolutionOutcome: "exact",
     },
-] as const;
+    {
+        outcome: "refused",
+        scenario: "no_answer_refused",
+        ...pinnedNoAnswerVocabularyEntry("refused"),
+        // CHAOS-3541 added `refused` to ops' NO_ANSWER_OUTCOMES after this
+        // table was first built with five entries; pinned against the ops
+        // acceptance corpus the same way as the other five (see below) --
+        // all 6 of its resolution-profile cases (adv.injection-request.*,
+        // scope.prohibited-write) agree `expected_scope_resolution_outcome`
+        // is null: refused is a categorical, provider-level decision that
+        // fires before any catalog round trip, the same posture as
+        // `unsupported`/`denied`.
+        scopeResolutionOutcome: null,
+    },
+] as const satisfies readonly {
+    outcome: string;
+    scenario: string;
+    code: string;
+    retryable: boolean;
+    safeMessage: string;
+    remediation: readonly string[];
+    scopeResolutionOutcome: string | null;
+}[];
 
 /**
  * What `scope.resolved` outcome (if any) each `NO_ANSWER_OUTCOMES` entry's
@@ -116,21 +221,23 @@ export const NO_ANSWER_OUTCOMES = [
  * As of CHAOS-3497, ops emits `scope.resolved` on every terminal whose run
  * completed scope resolution -- including a no-answer error terminal --
  * built from `OrchestratorResult.scope_resolution`
- * (`streaming.stream_orchestrator`). Which outcome each of these five
+ * (`streaming.stream_orchestrator`). Which outcome each of these six
  * carries is pinned against the real producer, not invented: the ops
  * acceptance corpus's own `resolution-profiles/deterministic-v1.json` maps
  * every corpus case's `expected_public_outcome` to an
  * `expected_scope_resolution_outcome`, and every case sharing one of these
- * five public outcomes agrees on a single value --
+ * six public outcomes agrees on a single value --
  *   not_found               -> unresolved
  *   temporarily_unavailable -> exact
  *   unsupported             -> null
  *   denied                  -> null
  *   failed                  -> exact
+ *   refused                 -> null
  * `null` means no `scope.resolved` event at all, not a placeholder
  * resolution: `unsupported` (an oversized/unsupported request rejected by
- * `subject_preflight`'s bound) and `denied` (a provider-level refusal) are
- * both rejected before any catalog round trip ever runs, so
+ * `subject_preflight`'s bound), `denied` (a provider-level refusal), and
+ * `refused` (a categorical action refusal, CHAOS-3541) are all rejected
+ * before any catalog round trip ever runs, so
  * `OrchestratorResult.scope_resolution` is `None` and streaming's own
  * negative control applies ("a run that never resolved scope emits no
  * scope frame") -- inventing a resolution here would assert something the
