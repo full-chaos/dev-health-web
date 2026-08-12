@@ -154,6 +154,28 @@ test.describe("Journey 1 — coverage-first config detail", () => {
             timeline.getByRole("button", { name: "Backfill Jun 24, 2026 to Jun 26, 2026" }),
         ).toBeVisible();
     });
+
+    test("keeps the last coverage window and timeline visible across refresh while a replacement projection is updating", async ({
+        page,
+    }) => {
+        await page.goto(`${DETAIL_URL}?coverage_scenario=refreshing`);
+
+        const assertRefreshingCoverage = async () => {
+            await expect(
+                page.getByRole("status", { name: "Coverage update in progress" }),
+            ).toContainText("Showing the last completed coverage");
+            await expect(page.getByTestId("coverage-window")).toContainText(
+                "Coverage shown: Jun 1, 2026 – Jun 28, 2026",
+            );
+            await expect(timelineRegion(page)).toBeVisible();
+            await expect(page.getByText("Coverage summary unavailable")).toHaveCount(0);
+            await expect(page.getByText("Coverage timeline unavailable")).toHaveCount(0);
+        };
+
+        await assertRefreshingCoverage();
+        await page.reload();
+        await assertRefreshingCoverage();
+    });
 });
 
 test.describe("Journey 2 — gap-driven backfill flow", () => {

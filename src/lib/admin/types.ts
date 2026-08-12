@@ -225,6 +225,11 @@ export interface SyncCoverageSummary {
     is_truncated?: boolean;
     /** Stable backend reason code; the UI must map it to user-safe copy. */
     truncation_reason?: string | null;
+    /**
+     * The API is serving the last completed projection while its replacement
+     * is built. Optional while Web and Ops deploy independently.
+     */
+    projection_refreshing?: boolean;
     /** Authoritative config-wide actions. Present empty means no action is available. */
     backfill_windows?: SyncCoverageBackfillWindow[];
     overall: SyncCoverageOverall;

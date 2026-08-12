@@ -1,13 +1,14 @@
-import { describe, expect, it, vi } from "vitest";
-import { render, screen, userEvent } from "@/test/utils";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { act, render, screen, userEvent } from "@/test/utils";
 import { BackfillOperations } from "./BackfillOperations";
 import {
     PARTIAL_COVERAGE_SUMMARY,
     TRUNCATED_COVERAGE_SUMMARY,
 } from "@/lib/admin/__tests__/syncCoverageFixtures";
 
+const mockRefresh = vi.fn();
 vi.mock("next/navigation", () => ({
-    useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+    useRouter: () => ({ push: vi.fn(), refresh: mockRefresh }),
 }));
 vi.mock("@/lib/admin/server", () => ({
     triggerSync: vi.fn(),
@@ -30,7 +31,81 @@ function renderOperations() {
     );
 }
 
+beforeEach(() => mockRefresh.mockClear());
+afterEach(() => vi.useRealTimers());
+
 describe("BackfillOperations", () => {
+    it("keeps the last persisted coverage visible while its replacement is updating", () => {
+        const refreshingCoverage = {
+            ...PARTIAL_COVERAGE_SUMMARY,
+            coverage_since: "2026-01-01T00:00:00Z",
+            coverage_through: "2026-01-03T00:00:00Z",
+            projection_refreshing: true,
+        };
+        const updatedCoverage = {
+            ...PARTIAL_COVERAGE_SUMMARY,
+            generated_at: "2026-01-06T01:00:00Z",
+            coverage_since: "2026-01-01T00:00:00Z",
+            coverage_through: "2026-01-05T00:00:00Z",
+            projection_refreshing: false,
+        };
+        const { rerender } = render(
+            <BackfillOperations
+                configId="cfg-1"
+                coverage={refreshingCoverage}
+                coverageError={undefined}
+                isActive
+                activeBackfillJob={null}
+                testMode
+            />,
+        );
+
+        expect(
+            screen.getByRole("status", { name: "Coverage update in progress" }),
+        ).toHaveTextContent("Showing the last completed coverage while this sync is updating it.");
+        expect(screen.getByTestId("coverage-window")).toHaveTextContent(
+            "Coverage shown: Jan 1, 2026 – Jan 3, 2026",
+        );
+        expect(screen.getByRole("heading", { name: "Coverage & gaps" })).toBeInTheDocument();
+
+        rerender(
+            <BackfillOperations
+                configId="cfg-1"
+                coverage={updatedCoverage}
+                coverageError={undefined}
+                isActive
+                activeBackfillJob={null}
+                testMode
+            />,
+        );
+
+        expect(
+            screen.queryByRole("status", { name: "Coverage update in progress" }),
+        ).not.toBeInTheDocument();
+        expect(screen.getByTestId("coverage-window")).toHaveTextContent(
+            "Coverage shown: Jan 1, 2026 – Jan 5, 2026",
+        );
+    });
+
+    it("refreshes the server view until the replacement coverage projection is ready", async () => {
+        vi.useFakeTimers();
+        render(
+            <BackfillOperations
+                configId="cfg-1"
+                coverage={{ ...PARTIAL_COVERAGE_SUMMARY, projection_refreshing: true }}
+                coverageError={undefined}
+                isActive
+                activeBackfillJob={null}
+            />,
+        );
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(5000);
+        });
+
+        expect(mockRefresh).toHaveBeenCalledOnce();
+    });
+
     it("opens the wizard IN PLACE (no navigation) from the summary card's Backfill CTA", async () => {
         const user = userEvent.setup();
         renderOperations();
