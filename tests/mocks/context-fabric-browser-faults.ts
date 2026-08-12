@@ -84,7 +84,17 @@ export function recordBrowserFaults(page: Page): BrowserFaultLog {
     });
     page.on("response", (response) => {
         if (isSessionRequest(response.url(), response.request().method())) {
+            const pendingRequests = [...pendingSessionRequests];
+            const responseIndex = pendingRequests.indexOf(response.request());
+            for (const request of pendingRequests.slice(0, Math.max(responseIndex, 0))) {
+                events.push({
+                    kind: "session-request-failed",
+                    errorText: SESSION_REQUEST_ABORTED,
+                });
+                markSessionRequestSettled(request);
+            }
             events.push({ kind: "session-response", status: response.status() });
+            markSessionRequestSettled(response.request());
         }
     });
     return {
