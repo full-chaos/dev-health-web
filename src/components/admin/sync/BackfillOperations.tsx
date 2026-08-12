@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { SyncCoverageSummaryCard } from "./SyncCoverageSummaryCard";
 import { SyncCoverageTimeline } from "./SyncCoverageTimeline";
 import { BackfillStatus } from "./BackfillStatus";
@@ -26,6 +27,8 @@ interface WizardRange {
     before: string;
 }
 
+const COVERAGE_REFRESH_INTERVAL_MS = 5000;
+
 function toDateInput(value: string): string {
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return "";
@@ -47,8 +50,15 @@ export function BackfillOperations({
     activeBackfillJob,
     testMode = false,
 }: BackfillOperationsProps) {
+    const router = useRouter();
     const [isWizardOpen, setIsWizardOpen] = useState(false);
     const [wizardRange, setWizardRange] = useState<WizardRange | null>(null);
+
+    useEffect(() => {
+        if (testMode || coverage?.projection_refreshing !== true) return undefined;
+        const interval = setInterval(() => router.refresh(), COVERAGE_REFRESH_INTERVAL_MS);
+        return () => clearInterval(interval);
+    }, [coverage?.projection_refreshing, router, testMode]);
 
     const openWizard = (range?: SyncCoverageBackfillWindow) => {
         setWizardRange(
@@ -60,6 +70,24 @@ export function BackfillOperations({
 
     return (
         <>
+            {coverage?.projection_refreshing === true && (
+                <div
+                    role="status"
+                    aria-label="Coverage update in progress"
+                    className="flex items-start gap-3 rounded-xl border border-(--info)/40 bg-(--info)/10 p-4 text-sm"
+                >
+                    <span aria-hidden="true" className="text-(--info)">
+                        ↻
+                    </span>
+                    <div>
+                        <p className="font-medium text-foreground">Updating coverage</p>
+                        <p className="mt-1 text-(--ink-muted)">
+                            Showing the last completed coverage while this sync is updating it.
+                        </p>
+                    </div>
+                </div>
+            )}
+
             <SyncCoverageSummaryCard
                 configId={configId}
                 coverage={coverage}

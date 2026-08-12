@@ -550,6 +550,12 @@ export const SAMPLE_COVERAGE_CONCURRENT_CONFIG: SyncCoverageSummary = {
     ],
 };
 
+/** Last completed projection served while a triggered sync rebuilds coverage. */
+export const SAMPLE_COVERAGE_REFRESHING: SyncCoverageSummary = {
+    ...SAMPLE_COVERAGE_GAPS,
+    projection_refreshing: true,
+};
+
 /** Named scenarios selectable via the `?coverage_scenario=` test-mode query param. */
 export const SYNC_COVERAGE_SAMPLES = {
     healthy: SAMPLE_COVERAGE_HEALTHY,
@@ -560,6 +566,7 @@ export const SYNC_COVERAGE_SAMPLES = {
     insufficient_data: SAMPLE_COVERAGE_INSUFFICIENT_DATA,
     overlapping_retry: SAMPLE_COVERAGE_OVERLAPPING_RETRY,
     concurrent_config: SAMPLE_COVERAGE_CONCURRENT_CONFIG,
+    refreshing: SAMPLE_COVERAGE_REFRESHING,
 } satisfies Record<string, SyncCoverageSummary>;
 
 export type SyncCoverageSampleScenario = keyof typeof SYNC_COVERAGE_SAMPLES;
