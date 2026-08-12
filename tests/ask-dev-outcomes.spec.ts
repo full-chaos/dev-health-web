@@ -18,6 +18,7 @@ import {
     CLARIFICATION_COPY,
     NO_ANSWER_OUTCOMES,
     NOT_READY_READINESS_VALUES,
+    PINNED_NO_ANSWER_OUTCOME_KEYS,
 } from "./mocks/devScenario";
 
 // CHAOS-3287: every public outcome the current dev_answer.v1 contract can
@@ -265,12 +266,37 @@ test.describe("Ask Dev — answer status outcomes", () => {
         });
     }
 
-    // CHAOS-3219 W1. Five of the eight dev_answer.v2 public outcomes never
-    // become an answer at all: the projector turns each into a DevError
-    // carrying server-owned canonical copy (ops
-    // contracts_v2/compat.py:484-494). Those sentences are therefore the
-    // ENTIRE user-visible artifact of those outcomes, and until now the
-    // default suite emitted 2 of 24 DevErrorCodes and asserted none of them.
+    // Codex round-2 finding 2: the loop below iterates NO_ANSWER_OUTCOMES (a
+    // hand-maintained table), never the pinned artifact's own keys directly
+    // -- so a 7th outcome ops adds gets no test until someone remembers to
+    // add a row, and a row deleted from the table silently deletes its test,
+    // with nothing here to fail either way. This asserts the two sets are
+    // exactly equal, both directions, so either drift fails loudly.
+    test("NO_ANSWER_OUTCOMES covers exactly the outcomes the pinned artifact publishes", () => {
+        const tableKeys = [...new Set(NO_ANSWER_OUTCOMES.map((entry) => entry.outcome))].sort();
+        const artifactKeys = [...PINNED_NO_ANSWER_OUTCOME_KEYS];
+        const missingFromTable = artifactKeys.filter((key) => !tableKeys.includes(key));
+        const extraInTable = tableKeys.filter((key) => !artifactKeys.includes(key));
+        expect(
+            missingFromTable,
+            "the pinned artifact publishes outcome(s) with no NO_ANSWER_OUTCOMES entry -- add a " +
+                "row so this outcome actually gets an e2e test",
+        ).toEqual([]);
+        expect(
+            extraInTable,
+            "NO_ANSWER_OUTCOMES has an entry with no matching artifact outcome -- remove the " +
+                "stale row",
+        ).toEqual([]);
+    });
+
+    // CHAOS-3219 W1 / CHAOS-3471. Six of the eight dev_answer.v2 public
+    // outcomes never become an answer at all: the projector turns each into
+    // a DevError carrying server-owned canonical copy, published as the
+    // pinned no_answer_vocabulary.v1.json artifact (ops
+    // contracts_v2/compat.py's no_answer_error_projection). Those sentences
+    // are therefore the ENTIRE user-visible artifact of those outcomes, and
+    // until CHAOS-3219 W1 the default suite emitted 2 of 24 DevErrorCodes
+    // and asserted none of them.
     for (const outcome of NO_ANSWER_OUTCOMES) {
         test(`${outcome.outcome}: renders the canonical no-answer copy and the correct retry affordance`, async ({
             page,

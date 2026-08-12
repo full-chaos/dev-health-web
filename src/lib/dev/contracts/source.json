@@ -1,6 +1,6 @@
 {
   "schema_version": "ask_dev_web_contract_source.v1",
-  "source_commit": "cfe94369368ca3c81f0d6a3ce9e80a8f3530320e",
+  "source_commit": "b45450e19e8e9d6292e3cd88a94f71ed2d5619b3",
   "files": [
     {
       "path": "examples/negative/dev_answer.v1.graph_assisted_unknown_evidence_id.json",
@@ -256,7 +256,7 @@
     },
     {
       "path": "manifest.json",
-      "sha256": "4dc01a2a9adead11e98b1f638360fc6b15a12650589f0f46ec5f4f94919d76fc"
+      "sha256": "43017f7404682fa14725032c02e83e8f49351aa8aeb1c42c69233a088794bb18"
     },
     {
       "path": "schemas/dev_answer.v1.schema.json",
@@ -333,6 +333,10 @@
     {
       "path": "vocabulary/internal_prose_denylist.v1.json",
       "sha256": "9b0c5b07612de95c2854abca5c018e98c30e3113262807e8d71872b50722ecbb"
+    },
+    {
+      "path": "vocabulary/no_answer_vocabulary.v1.json",
+      "sha256": "0fe3195b46e924bce7bf98d8d1e9372fe4a0044fa34591b19eedb00ca3e9d9c1"
     },
     {
       "path": "vocabulary/source_health_labels.v1.json",
