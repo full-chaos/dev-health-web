@@ -69,7 +69,7 @@ describe("SyncRunDetailLive", () => {
 
         expect(screen.getByText(/3 \/ 4/)).toBeInTheDocument();
         expect(screen.getByText(/75%/)).toBeInTheDocument();
-        expect(screen.getByText("running")).toBeInTheDocument();
+        expect(screen.getAllByText("Syncing...").length).toBeGreaterThan(0);
         const progressCard = screen.getByText("Overall progress").closest(".rounded-xl");
         expect(progressCard).toBeInstanceOf(HTMLElement);
         if (!(progressCard instanceof HTMLElement)) return;
@@ -105,7 +105,7 @@ describe("SyncRunDetailLive", () => {
         const headerCard = screen.getAllByText("Status")[0]?.closest(".rounded-xl");
         expect(headerCard).toBeInstanceOf(HTMLElement);
         if (!(headerCard instanceof HTMLElement)) return;
-        expect(within(headerCard).getByText("running")).toBeInTheDocument();
+        expect(within(headerCard).getAllByText("Syncing...").length).toBeGreaterThan(0);
     });
 
     it("renders resolved source NAMES and never the raw source id", () => {
@@ -124,7 +124,7 @@ describe("SyncRunDetailLive", () => {
 
         expect(screen.getByText("Needs attention")).toBeInTheDocument();
         expect(screen.getByText(/Next retry/)).toBeInTheDocument();
-        expect(screen.getByText(/Category: rate_limit/)).toBeInTheDocument();
+        expect(screen.getByText(/Category: Rate limit/)).toBeInTheDocument();
         // Error text renders in both the attention panel and the unit table.
         expect(
             screen.getAllByText("Upstream returned 500 while paginating pull requests").length,
@@ -174,6 +174,41 @@ describe("SyncRunDetailLive", () => {
         expect(
             screen.getAllByText(/Budget deferral cap exceeded for REST_CORE bucket/).length,
         ).toBeGreaterThan(0);
+    });
+
+    it("renders a mixed terminal run as completed with failures instead of a raw partial_failed state", () => {
+        render(
+            <SyncRunDetailLive
+                initialRun={{
+                    ...SAMPLE_SYNC_RUN,
+                    completed_units: 2,
+                    failed_units: 2,
+                }}
+                initialSummary={{
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                    by_status: { success: 2, failed: 2 },
+                    unit_count: 4,
+                    failed_unit_count: 2,
+                    failed_unit_ids: [
+                        SAMPLE_SYNC_RUN_UNIT_SUMMARY.units[2].id,
+                        SAMPLE_SYNC_RUN_UNIT_SUMMARY.units[3].id,
+                    ],
+                    units: SAMPLE_SYNC_RUN_UNIT_SUMMARY.units.map((unit, index) =>
+                        index < 2
+                            ? unit
+                            : {
+                                  ...unit,
+                                  status: "failed",
+                                  error_category: "provider_error",
+                              },
+                    ),
+                }}
+                testMode
+            />,
+        );
+
+        expect(screen.getAllByText("Completed with failures").length).toBeGreaterThan(0);
+        expect(screen.queryByText("partial_failed")).not.toBeInTheDocument();
     });
 
     it("renders the blocked-budget badge without the deferral count or rollup chip when the backend field is absent", () => {
@@ -243,7 +278,7 @@ describe("SyncRunDetailLive", () => {
         );
 
         expect(screen.queryByText("Blocked: budget")).not.toBeInTheDocument();
-        expect(screen.getByText(/Category: worker_lost/)).toBeInTheDocument();
+        expect(screen.getByText(/Category: Worker lost/)).toBeInTheDocument();
     });
 
     it("does NOT apply the budget-exhausted treatment to a failed unit whose category is the non-terminal budget_deferred", () => {
@@ -275,7 +310,7 @@ describe("SyncRunDetailLive", () => {
         );
 
         expect(screen.queryByText("Budget exhausted")).not.toBeInTheDocument();
-        expect(screen.getByText(/Category: budget_deferred/)).toBeInTheDocument();
+        expect(screen.getByText(/Category: Blocked by budget/)).toBeInTheDocument();
     });
 
     it("renders a distinct 'Deferrals exhausted' treatment and the actionable error text for error_category=deferral_exhausted", () => {
@@ -582,7 +617,7 @@ describe("SyncRunDetailLive — live poll error handling", () => {
 
         expect(screen.getByText(/1 \/ 4/)).toBeInTheDocument();
         expect(screen.getByText(/25%/)).toBeInTheDocument();
-        expect(screen.getByText("running")).toBeInTheDocument();
+        expect(screen.getAllByText("Syncing...").length).toBeGreaterThan(0);
         await act(async () => {
             await vi.advanceTimersByTimeAsync(3500 * 2);
         });

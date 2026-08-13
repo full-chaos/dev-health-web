@@ -6,6 +6,7 @@ import { SyncStatusBadge } from "./SyncStatusBadge";
 import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber, formatPercent, formatDateUTC } from "@/lib/formatters";
+import { formatSyncBackendText, formatSyncRunStatusLabel } from "@/lib/admin/syncDisplay";
 import { type SyncStatus, isTerminalSyncStatus, mapPlannerRunStatus } from "@/lib/sync-types";
 import type { SyncRun, SyncRunUnit, SyncRunUnitSummary } from "@/lib/admin/types";
 
@@ -128,6 +129,7 @@ function totalUnitCount(run: SyncRun, summary: SyncRunUnitSummary | null): numbe
 
 function effectiveRunStatus(run: SyncRun, summary: SyncRunUnitSummary | null): string {
     if (!summary) return run.status;
+    if (run.status === "failed" || run.status === "partial_failed") return run.status;
 
     const successCount = statusCount(summary, "success") ?? 0;
     const failedCount = statusCount(summary, "failed") ?? 0;
@@ -478,8 +480,16 @@ export function SyncRunDetailLive({
             <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                            <SyncStatusBadge status={liveStatus} className="text-sm px-3 py-1" />
+                    <div className="flex items-center gap-3">
+                            <SyncStatusBadge
+                                status={liveStatus}
+                                className="text-sm px-3 py-1"
+                                label={
+                                    currentRunStatus === "partial_failed"
+                                        ? formatSyncRunStatusLabel(currentRunStatus)
+                                        : undefined
+                                }
+                            />
                             <span
                                 className="text-sm text-(--ink-muted)"
                                 role="status"
@@ -497,7 +507,9 @@ export function SyncRunDetailLive({
                                 <dt className="text-xs text-(--ink-muted) uppercase tracking-wider">
                                     Status
                                 </dt>
-                                <dd className="text-foreground">{currentRunStatus}</dd>
+                                <dd className="text-foreground">
+                                    {formatSyncRunStatusLabel(currentRunStatus)}
+                                </dd>
                             </div>
                             <div>
                                 <dt className="text-xs text-(--ink-muted) uppercase tracking-wider">
@@ -810,7 +822,6 @@ export function SyncRunDetailLive({
                                             ) : (
                                                 <SyncStatusBadge
                                                     status={unitBadgeStatus(unit.status)}
-                                                    label={unit.status}
                                                 />
                                             )}
                                         </div>
@@ -840,7 +851,12 @@ export function SyncRunDetailLive({
                                             ) : (
                                                 <>
                                                     {unit.error_category && (
-                                                        <span>Category: {unit.error_category}</span>
+                                                        <span>
+                                                            Category:{" "}
+                                                            {formatSyncBackendText(
+                                                                unit.error_category,
+                                                            )}
+                                                        </span>
                                                     )}
                                                     {unit.error_category &&
                                                         unit.available_at &&
@@ -859,7 +875,7 @@ export function SyncRunDetailLive({
                                         </div>
                                         {unit.error && (
                                             <p className="mt-1 text-xs text-red-500">
-                                                {unit.error}
+                                                {formatSyncBackendText(unit.error)}
                                             </p>
                                         )}
                                     </li>
@@ -1032,11 +1048,13 @@ export function SyncRunDetailLive({
                                             <td className="px-4 py-3 text-sm">
                                                 {unit.error ? (
                                                     <span className="text-red-500">
-                                                        {unit.error}
+                                                        {formatSyncBackendText(unit.error)}
                                                     </span>
                                                 ) : unit.error_category ? (
                                                     <span className="text-(--ink-muted)">
-                                                        {unit.error_category}
+                                                        {formatSyncBackendText(
+                                                            unit.error_category,
+                                                        )}
                                                     </span>
                                                 ) : unit.available_at ? (
                                                     <span className="text-(--ink-muted)">

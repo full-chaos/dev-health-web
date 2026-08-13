@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { SyncRun, SyncRunUnitSummary } from "@/lib/admin/types";
 import { getSyncJobs, getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
+import { formatSyncRunStatusLabel } from "@/lib/admin/syncDisplay";
 import { isTerminalSyncStatus, mapPlannerRunStatus } from "@/lib/sync-types";
 import type { SyncJob } from "@/lib/admin/types";
 
@@ -66,6 +67,7 @@ function totalUnitCount(run: SyncRun, summary: SyncRunUnitSummary | null): numbe
 
 function effectiveRunStatus(run: SyncRun, summary: SyncRunUnitSummary | null): string {
     if (!summary) return run.status;
+    if (run.status === "failed" || run.status === "partial_failed") return run.status;
 
     const successCount = statusCount(summary, "success") ?? 0;
     const failedCount = statusCount(summary, "failed") ?? 0;
@@ -254,12 +256,7 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
             ? "Calculating..."
             : `~${Math.floor(estimatedSecondsRemaining / 60)}m ${estimatedSecondsRemaining % 60}s remaining`;
 
-    const statusLabel =
-        liveStatus === "running"
-            ? "Syncing..."
-            : liveStatus === "success"
-              ? "Sync completed"
-              : "Sync failed";
+    const statusLabel = formatSyncRunStatusLabel(effectiveRunStatus(run, visibleSummary));
 
     return (
         <div

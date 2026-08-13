@@ -224,6 +224,38 @@ describe("SyncProgressBar", () => {
         expect(screen.getByText(/50% complete/)).toBeInTheDocument();
     });
 
+    it("renders a mixed terminal run as completed with failures", async () => {
+        vi.mocked(getSyncJobs).mockResolvedValue({ data: [buildJob({ status: "running" })] });
+        vi.mocked(getSyncRunStatus).mockResolvedValue({
+            data: buildRun({
+                status: "partial_failed",
+                completed_units: 2,
+                failed_units: 1,
+                total_units: 4,
+            }),
+        });
+        vi.mocked(getSyncRunUnits).mockResolvedValue({
+            data: buildSummary({
+                by_status: { success: 2, failed: 1, running: 1 },
+                unit_count: 4,
+                failed_unit_count: 1,
+                units: [
+                    buildUnit({ id: "unit-success-1", status: "success" }),
+                    buildUnit({ id: "unit-success-2", status: "success" }),
+                    buildUnit({ id: "unit-failed", status: "failed" }),
+                    buildUnit({ id: "unit-running", status: "running" }),
+                ],
+            }),
+        });
+
+        render(<SyncProgressBar configId="cfg-1" />);
+        await flush();
+
+        expect(screen.getByText("Completed with failures")).toBeInTheDocument();
+        expect(screen.getByText(/3 \/ 4/)).toBeInTheDocument();
+        expect(screen.getByText(/75% complete/)).toBeInTheDocument();
+    });
+
     it("does not rediscover a stale running job whose unit rollup is already terminal", async () => {
         vi.mocked(getSyncJobs).mockResolvedValue({
             data: [

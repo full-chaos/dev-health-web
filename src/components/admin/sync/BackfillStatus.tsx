@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getBackfillJobStatus } from "@/lib/admin/server";
+import { formatSyncBackendText } from "@/lib/admin/syncDisplay";
 import { formatDateUTC } from "@/lib/formatters";
 import type { BackfillJob } from "@/lib/admin/types";
 
@@ -42,6 +43,7 @@ interface BackfillStatusProps {
 
 /** Human-readable in-progress/terminal label for every status in both status families. */
 function statusLabel(job: BackfillJob): string {
+    const humanErrorMessage = job.error_message ? formatSyncBackendText(job.error_message) : null;
     switch (job.status) {
         case "pending":
         case "planned":
@@ -54,11 +56,11 @@ function statusLabel(job: BackfillJob): string {
         case "success":
             return "Backfill complete";
         case "partial_failed":
-            return job.error_message || "Completed with failures";
+            return humanErrorMessage ?? "Completed with failures";
         case "failed":
-            return job.error_message || "Backfill failed";
+            return humanErrorMessage ?? "Backfill failed";
         default:
-            return job.status;
+            return formatSyncBackendText(job.status);
     }
 }
 
@@ -137,11 +139,17 @@ export function BackfillStatus({ initialJob, testMode = false }: BackfillStatusP
                     if (result.data.status === "completed" || result.data.status === "success") {
                         toast.success("Backfill completed successfully");
                     } else if (result.data.status === "partial_failed") {
+                        const humanErrorMessage = result.data.error_message
+                            ? formatSyncBackendText(result.data.error_message)
+                            : null;
                         toast.warning(
-                            result.data.error_message || "Backfill completed with some failures",
+                            humanErrorMessage || "Backfill completed with some failures",
                         );
                     } else {
-                        toast.error(result.data.error_message || "Backfill failed");
+                        const humanErrorMessage = result.data.error_message
+                            ? formatSyncBackendText(result.data.error_message)
+                            : null;
+                        toast.error(humanErrorMessage || "Backfill failed");
                     }
                     return;
                 }
