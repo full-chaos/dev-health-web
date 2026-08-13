@@ -17,11 +17,19 @@ overrides:
     postcss: ">=8.5.18"
     # nanoid: reached only transitively, via @sentry/nextjs (its webpack and its
     # next > postcss chains — 6 paths, no direct dependency to upgrade). Floor
-    # raised past GHSA-2v37-7h3g-55p8 (custom generators can loop indefinitely when
-    # size is zero, fixed in 3.3.17); the tree resolved a single nanoid@3.3.16, one
-    # patch below the fix. Held inside major 3: postcss declares ^3.3.x and nanoid 5+
-    # is ESM-only, so an unbounded floor would break the consumers that need it.
-    nanoid: ">=3.3.17 <4"
+    # for GHSA-2v37-7h3g-55p8 (custom generators can loop indefinitely when size
+    # is zero) is >=3.3.18 per the advisory's own "Patched versions" field —
+    # >=3.3.17 (CHAOS-3594's original floor) still resolves to the vulnerable
+    # 3.3.17 itself and stayed red; this was not scoping rot, the floor was one
+    # patch short from day one (CHAOS-3800). Held inside major 3: postcss
+    # declares ^3.3.x and nanoid 5+ is ESM-only, so an unbounded floor would
+    # break the consumers that need it. Blanket (not per-dependent-path scoped)
+    # on purpose — every one of the 6 paths needs the same floor, there's no
+    # legitimate caller that wants the vulnerable version.
+    # Next bump: read the floor straight off the advisory's own "Patched
+    # versions" field, not off whatever version number looks adjacent to the
+    # one currently failing — that's exactly how this floor went stale.
+    nanoid: ">=3.3.18 <4"
     # brace-expansion: reached via @sentry/nextjs > @sentry/bundler-plugin-core > glob >
     # minimatch; 10.68.0 is the newest release in the declared ^10 range (GHSA-mh99-v99m-4gvg).
     # Scoped to minimatch@10 deliberately: an unscoped floor also hits minimatch@3, whose
