@@ -181,13 +181,43 @@ describe("SyncProgressBar", () => {
         render(<SyncProgressBar configId="cfg-1" />);
         await flush();
 
-        expect(screen.getByText("Syncing...")).toBeInTheDocument();
+        expect(screen.getByText("Syncing with failures...")).toBeInTheDocument();
         expect(screen.getByText(/3 \/ 4/)).toBeInTheDocument();
         expect(screen.getByText(/75% complete/)).toBeInTheDocument();
         expect(screen.getByRole("progressbar", { name: "Sync progress" })).toHaveAttribute(
             "aria-valuenow",
             "75",
         );
+    });
+
+    it("labels a terminal mixed result as completed with failures", async () => {
+        vi.mocked(getSyncJobs).mockResolvedValue({ data: [buildJob({ status: "running" })] });
+        vi.mocked(getSyncRunStatus).mockResolvedValue({
+            data: buildRun({
+                status: "partial_failed",
+                completed_units: 3,
+                failed_units: 1,
+                total_units: 4,
+            }),
+        });
+        vi.mocked(getSyncRunUnits).mockResolvedValue({
+            data: buildSummary({
+                by_status: { success: 3, failed: 1 },
+                failed_unit_count: 1,
+                unit_count: 4,
+                units: [
+                    buildUnit({ id: "success-1", status: "success" }),
+                    buildUnit({ id: "success-2", status: "success" }),
+                    buildUnit({ id: "success-3", status: "success" }),
+                    buildUnit({ id: "failed-1", status: "failed" }),
+                ],
+            }),
+        });
+
+        render(<SyncProgressBar configId="cfg-1" />);
+        await flush();
+
+        expect(screen.getByText("Sync completed with failures")).toBeInTheDocument();
     });
 
     it("keeps the last good unit rollup when a later units poll errors", async () => {
@@ -419,6 +449,31 @@ describe("SyncProgressBar", () => {
         await flush();
 
         expect(screen.getByText("Calculating...")).toBeInTheDocument();
+    });
+
+    it("states that automatic updates paused after the tracking safety window", async () => {
+        vi.mocked(getSyncJobs).mockResolvedValue({ data: [buildJob({ status: "running" })] });
+        vi.mocked(getSyncRunStatus).mockResolvedValue({
+            data: buildRun({ completed_units: 4, total_units: 10 }),
+        });
+
+        render(<SyncProgressBar configId="cfg-1" />);
+        await flush();
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(10 * 60 * 1000 + 3500);
+        });
+
+        expect(screen.getByText("Sync updates paused")).toBeInTheDocument();
+        expect(
+            screen.getByText("Automatic updates paused after 10 minutes. Refresh to resume."),
+        ).toBeInTheDocument();
+        const callsAtPause = vi.mocked(getSyncRunStatus).mock.calls.length;
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(3500 * 2);
+        });
+        expect(getSyncRunStatus).toHaveBeenCalledTimes(callsAtPause);
     });
 
     it("clears the previous config's run once configId changes and the new config has no active run (stale-config leak regression, CHAOS-2799)", async () => {

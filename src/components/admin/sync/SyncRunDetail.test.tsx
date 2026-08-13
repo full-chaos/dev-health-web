@@ -32,6 +32,187 @@ function renderDetail() {
 }
 
 describe("SyncRunDetailLive", () => {
+    it("labels a non-terminal run with settled failures as running with failures", () => {
+        render(
+            <SyncRunDetailLive
+                initialRun={{ ...SAMPLE_SYNC_RUN, status: "running" }}
+                initialSummary={SAMPLE_SYNC_RUN_UNIT_SUMMARY}
+                testMode
+            />,
+        );
+
+        expect(screen.getAllByText("Running with failures").length).toBeGreaterThan(0);
+        expect(screen.getByText("1 unit failed; 1 unit is still processing.")).toBeInTheDocument();
+        expect(screen.queryByText(/^running$/)).not.toBeInTheDocument();
+    });
+
+    it("labels a terminal mixed result as completed with failures", () => {
+        render(
+            <SyncRunDetailLive
+                initialRun={{ ...SAMPLE_SYNC_RUN, status: "partial_failed" }}
+                initialSummary={{
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                    by_status: { success: 3, failed: 1 },
+                    units: SAMPLE_SYNC_RUN_UNIT_SUMMARY.units.map((unit) => ({
+                        ...unit,
+                        status: unit.status === "failed" ? "failed" : "success",
+                    })),
+                }}
+                testMode
+            />,
+        );
+
+        expect(screen.getAllByText("Completed with failures").length).toBeGreaterThan(0);
+        expect(screen.getByText("Run complete")).toBeInTheDocument();
+    });
+
+    it("groups repeated failures, includes provider-capacity waits, and translates machine codes", () => {
+        const baseUnit = SAMPLE_SYNC_RUN_UNIT_SUMMARY.units[0];
+        const failedUnits = Array.from({ length: 3 }, (_, index) => ({
+            ...baseUnit,
+            id: `feature-flag-failure-${index}`,
+            source_id: index === 2 ? "source-b" : "source-a",
+            source_full_name: index === 2 ? "fullchaos/chaos-ops" : "fullchaos/dev-health-ops",
+            dataset_key: "feature-flags",
+            status: "failed",
+            error: "provider_unit_exhausted",
+            error_category: "provider_unit_exhausted",
+        }));
+        const waitingUnit = {
+            ...baseUnit,
+            id: "cicd-capacity-wait",
+            source_id: "source-c",
+            source_full_name: "fullchaos/dev-health-web",
+            dataset_key: "cicd",
+            status: "dispatching",
+            error: "provider_budget_contention",
+            error_category: "provider_budget_contention",
+        };
+
+        render(
+            <SyncRunDetailLive
+                initialRun={{
+                    ...SAMPLE_SYNC_RUN,
+                    status: "running",
+                    total_units: 4,
+                    completed_units: 0,
+                    failed_units: 3,
+                }}
+                initialSummary={{
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                    by_status: { failed: 3, dispatching: 1 },
+                    failed_unit_count: 3,
+                    failed_unit_ids: failedUnits.map((unit) => unit.id),
+                    unit_count: 4,
+                    units: [...failedUnits, waitingUnit],
+                }}
+                testMode
+            />,
+        );
+
+        const attention = screen.getByRole("region", { name: "Needs attention" });
+        expect(within(attention).getAllByText("Provider retries exhausted")).toHaveLength(1);
+        expect(within(attention).getByText("3 failed units · 2 sources")).toBeInTheDocument();
+        expect(within(attention).getByText("Waiting for provider capacity")).toBeInTheDocument();
+        expect(within(attention).getByText("1 waiting unit · 1 source")).toBeInTheDocument();
+        expect(within(attention).queryByText(/deferrals?/)).not.toBeInTheDocument();
+        expect(screen.queryByText("provider_unit_exhausted")).not.toBeInTheDocument();
+        expect(screen.queryByText("provider_budget_contention")).not.toBeInTheDocument();
+    });
+
+    it("preserves every distinct retry window with its sources and does not schedule terminal failures", () => {
+        const baseUnit = SAMPLE_SYNC_RUN_UNIT_SUMMARY.units[0];
+        const retryingUnits = [
+            {
+                ...baseUnit,
+                id: "tests-retry-one",
+                source_id: "source-a",
+                source_full_name: "fullchaos/dev-health-acr",
+                dataset_key: "tests",
+                status: "retrying",
+                error: "provider_unit_retryable",
+                error_category: "provider_unit_retryable",
+                available_at: "2026-08-13T18:00:00Z",
+            },
+            {
+                ...baseUnit,
+                id: "tests-retry-two",
+                source_id: "source-b",
+                source_full_name: "fullchaos/dev-health-web",
+                dataset_key: "tests",
+                status: "retrying",
+                error: "provider_unit_retryable",
+                error_category: "provider_unit_retryable",
+                available_at: "2026-08-13T18:05:00Z",
+            },
+        ];
+        const failedUnit = {
+            ...baseUnit,
+            id: "cicd-terminal-failure",
+            source_id: "source-c",
+            source_full_name: "fullchaos/dev-health-ops",
+            dataset_key: "cicd",
+            status: "failed",
+            error: "provider_unit_exhausted",
+            error_category: "provider_unit_exhausted",
+            available_at: "2026-08-13T18:10:00Z",
+        };
+
+        render(
+            <SyncRunDetailLive
+                initialRun={{ ...SAMPLE_SYNC_RUN, status: "running", total_units: 3 }}
+                initialSummary={{
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                    by_status: { retrying: 2, failed: 1 },
+                    failed_unit_count: 1,
+                    failed_unit_ids: [failedUnit.id],
+                    unit_count: 3,
+                    units: [...retryingUnits, failedUnit],
+                }}
+                testMode
+            />,
+        );
+
+        const retrySchedule = screen.getByRole("list", {
+            name: "Provider request will retry retry schedule",
+        });
+        const retryWindows = within(retrySchedule).getAllByRole("listitem");
+        expect(retryWindows).toHaveLength(2);
+        expect(retryWindows[0]).toHaveTextContent("fullchaos/dev-health-acr");
+        expect(retryWindows[1]).toHaveTextContent("fullchaos/dev-health-web");
+        expect(
+            screen.queryByRole("list", { name: "Provider retries exhausted retry schedule" }),
+        ).not.toBeInTheDocument();
+    });
+
+    it("humanizes an unknown machine error code instead of exposing snake case", () => {
+        const failedUnit = {
+            ...SAMPLE_SYNC_RUN_UNIT_SUMMARY.units[0],
+            id: "unknown-error-unit",
+            status: "failed",
+            error: "custom_provider_fault",
+            error_category: "custom_provider_fault",
+        };
+
+        render(
+            <SyncRunDetailLive
+                initialRun={{ ...SAMPLE_SYNC_RUN, status: "failed", total_units: 1 }}
+                initialSummary={{
+                    ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
+                    by_status: { failed: 1 },
+                    failed_unit_count: 1,
+                    failed_unit_ids: [failedUnit.id],
+                    unit_count: 1,
+                    units: [failedUnit],
+                }}
+                testMode
+            />,
+        );
+
+        expect(screen.getAllByText("Custom provider fault").length).toBeGreaterThan(0);
+        expect(screen.queryByText("custom_provider_fault")).not.toBeInTheDocument();
+    });
+
     it("renders overall progress and unit status counts", () => {
         renderDetail();
 
@@ -69,7 +250,7 @@ describe("SyncRunDetailLive", () => {
 
         expect(screen.getByText(/3 \/ 4/)).toBeInTheDocument();
         expect(screen.getByText(/75%/)).toBeInTheDocument();
-        expect(screen.getByText("running")).toBeInTheDocument();
+        expect(screen.getAllByText("Running with failures").length).toBeGreaterThan(0);
         const progressCard = screen.getByText("Overall progress").closest(".rounded-xl");
         expect(progressCard).toBeInstanceOf(HTMLElement);
         if (!(progressCard instanceof HTMLElement)) return;
@@ -105,7 +286,7 @@ describe("SyncRunDetailLive", () => {
         const headerCard = screen.getAllByText("Status")[0]?.closest(".rounded-xl");
         expect(headerCard).toBeInstanceOf(HTMLElement);
         if (!(headerCard instanceof HTMLElement)) return;
-        expect(within(headerCard).getByText("running")).toBeInTheDocument();
+        expect(within(headerCard).getAllByText("Running").length).toBeGreaterThan(0);
     });
 
     it("renders resolved source NAMES and never the raw source id", () => {
@@ -119,19 +300,17 @@ describe("SyncRunDetailLive", () => {
         expect(screen.queryByText("sample-source-2")).not.toBeInTheDocument();
     });
 
-    it("surfaces failed/retrying error_category and the next retry", () => {
+    it("translates failed/retrying categories and preserves useful detail and retry time", () => {
         renderDetail();
 
         expect(screen.getByText("Needs attention")).toBeInTheDocument();
         expect(screen.getByText(/Next retry/)).toBeInTheDocument();
-        expect(screen.getByText(/Category: rate_limit/)).toBeInTheDocument();
-        // Error text renders in both the attention panel and the unit table.
+        expect(screen.getAllByText("Waiting for provider rate limit").length).toBeGreaterThan(0);
+        expect(screen.queryByText("rate_limit")).not.toBeInTheDocument();
         expect(
-            screen.getAllByText("Upstream returned 500 while paginating pull requests").length,
-        ).toBeGreaterThan(0);
-        expect(screen.getAllByText("Secondary rate limit hit; backing off").length).toBeGreaterThan(
-            0,
-        );
+            screen.getByText("Upstream returned 500 while paginating pull requests"),
+        ).toBeInTheDocument();
+        expect(screen.getByText("Secondary rate limit hit; backing off")).toBeInTheDocument();
     });
 
     it("renders a distinct 'Blocked: budget' treatment with deferral count, next attempt, and the rollup chip", () => {
@@ -146,8 +325,10 @@ describe("SyncRunDetailLive", () => {
             />,
         );
 
-        // Badge (attention panel + unit table) replaces the generic "retrying" look.
-        expect(screen.getAllByText("Blocked: budget").length).toBe(2);
+        // The table keeps its compact badge while the attention summary uses
+        // a human-readable reason.
+        expect(screen.getByText("Blocked: budget")).toBeInTheDocument();
+        expect(screen.getAllByText("Waiting for sync budget").length).toBeGreaterThan(0);
         // Deferral count + next attempt render from the persisted fields.
         expect(screen.getByText(/6 deferrals/)).toBeInTheDocument();
         expect(screen.getByText(/Next attempt/)).toBeInTheDocument();
@@ -170,7 +351,8 @@ describe("SyncRunDetailLive", () => {
             />,
         );
 
-        expect(screen.getAllByText("Budget exhausted").length).toBe(2);
+        expect(screen.getByText("Budget exhausted")).toBeInTheDocument();
+        expect(screen.getAllByText("Sync budget wait limit reached").length).toBeGreaterThan(0);
         expect(
             screen.getAllByText(/Budget deferral cap exceeded for REST_CORE bucket/).length,
         ).toBeGreaterThan(0);
@@ -191,7 +373,8 @@ describe("SyncRunDetailLive", () => {
             />,
         );
 
-        expect(screen.getAllByText("Blocked: budget").length).toBe(2);
+        expect(screen.getByText("Blocked: budget")).toBeInTheDocument();
+        expect(screen.getAllByText("Waiting for sync budget").length).toBeGreaterThan(0);
         expect(screen.queryByText(/deferral/)).not.toBeInTheDocument();
         expect(screen.getByText(/Next attempt/)).toBeInTheDocument();
         // budget_blocked_unit_count wasn't set on this summary — chip omitted.
@@ -243,7 +426,7 @@ describe("SyncRunDetailLive", () => {
         );
 
         expect(screen.queryByText("Blocked: budget")).not.toBeInTheDocument();
-        expect(screen.getByText(/Category: worker_lost/)).toBeInTheDocument();
+        expect(screen.getAllByText("Worker stopped responding").length).toBeGreaterThan(0);
     });
 
     it("does NOT apply the budget-exhausted treatment to a failed unit whose category is the non-terminal budget_deferred", () => {
@@ -275,7 +458,7 @@ describe("SyncRunDetailLive", () => {
         );
 
         expect(screen.queryByText("Budget exhausted")).not.toBeInTheDocument();
-        expect(screen.getByText(/Category: budget_deferred/)).toBeInTheDocument();
+        expect(screen.getAllByText("Waiting for sync budget").length).toBeGreaterThan(0);
     });
 
     it("renders a distinct 'Deferrals exhausted' treatment and the actionable error text for error_category=deferral_exhausted", () => {
@@ -305,9 +488,10 @@ describe("SyncRunDetailLive", () => {
             />,
         );
 
-        // Badge (attention panel + unit table) — same exhausted-style treatment
-        // as budget_deferral_exhausted, distinct label.
-        expect(screen.getAllByText("Deferrals exhausted").length).toBe(2);
+        // The unit table keeps the compact badge while the attention summary
+        // explains the persisted machine category.
+        expect(screen.getByText("Deferrals exhausted")).toBeInTheDocument();
+        expect(screen.getAllByText("Sync deferral limit reached").length).toBeGreaterThan(0);
         // The actionable error text (naming the last episode kind and both
         // counters) surfaces prominently, same path as any failed unit.
         expect(
@@ -529,6 +713,28 @@ describe("SyncRunDetailLive — live poll error handling", () => {
         expect(screen.getByText(/Units \(4\)/)).toBeInTheDocument();
     });
 
+    it("states that live updates are paused when the polling safety window expires", async () => {
+        vi.mocked(getSyncRunStatus).mockResolvedValue({ data: RUNNING_RUN });
+        vi.mocked(getSyncRunUnits).mockResolvedValue({ data: SAMPLE_SYNC_RUN_UNIT_SUMMARY });
+
+        render(
+            <SyncRunDetailLive
+                initialRun={RUNNING_RUN}
+                initialSummary={SAMPLE_SYNC_RUN_UNIT_SUMMARY}
+            />,
+        );
+
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+        });
+
+        expect(screen.getByText("Live updates paused")).toBeInTheDocument();
+        expect(
+            screen.getByText("Automatic updates paused after 10 minutes. Refresh to resume."),
+        ).toBeInTheDocument();
+        expect(screen.queryByText("Live — refreshing…")).not.toBeInTheDocument();
+    });
+
     it("does not poll when initial unit rollups make a stale running run terminal", async () => {
         render(
             <SyncRunDetailLive
@@ -582,7 +788,7 @@ describe("SyncRunDetailLive — live poll error handling", () => {
 
         expect(screen.getByText(/1 \/ 4/)).toBeInTheDocument();
         expect(screen.getByText(/25%/)).toBeInTheDocument();
-        expect(screen.getByText("running")).toBeInTheDocument();
+        expect(screen.getAllByText("Running").length).toBeGreaterThan(0);
         await act(async () => {
             await vi.advanceTimersByTimeAsync(3500 * 2);
         });

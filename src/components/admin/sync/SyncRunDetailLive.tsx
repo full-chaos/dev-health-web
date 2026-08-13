@@ -4,9 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
+import { getSyncRunPresentation } from "@/lib/admin/syncRunPresentation";
+import { getSyncUnitErrorPresentation } from "@/lib/admin/syncUnitErrorPresentation";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber, formatPercent, formatDateUTC } from "@/lib/formatters";
-import { type SyncStatus, isTerminalSyncStatus, mapPlannerRunStatus } from "@/lib/sync-types";
+import { type SyncStatus, isTerminalSyncStatus } from "@/lib/sync-types";
 import type { SyncRun, SyncRunUnit, SyncRunUnitSummary } from "@/lib/admin/types";
 
 /** How often to refresh live run + unit state while non-terminal. */
@@ -85,6 +87,38 @@ function isDeferralsExhaustedUnit(unit: SyncRunUnit): boolean {
     return unit.status === "failed" && unit.error_category === "deferral_exhausted";
 }
 
+function isProviderCapacityWaitingUnit(unit: SyncRunUnit): boolean {
+    return (
+        unit.error_category === "provider_budget_contention" ||
+        unit.error === "provider_budget_contention"
+    );
+}
+
+type AttentionDisposition = "failed" | "retrying" | "waiting";
+
+interface AttentionGroup {
+    key: string;
+    datasetKey: string;
+    disposition: AttentionDisposition;
+    title: string;
+    detail: string | null;
+    sourceNames: string[];
+    units: SyncRunUnit[];
+    retryWindows: Array<{
+        availableAt: string;
+        sourceNames: string[];
+    }>;
+    budgetDeferrals: number | null;
+}
+
+function attentionDisposition(unit: SyncRunUnit): AttentionDisposition {
+    if (isProviderCapacityWaitingUnit(unit) || unit.error_category === "budget_deferred") {
+        return "waiting";
+    }
+    if (unit.status === "failed") return "failed";
+    return "retrying";
+}
+
 /**
  * Distinct badge treatment for budget-guard states, styled with the same
  * theme-aware token idiom used elsewhere for warning/negative tones
@@ -115,39 +149,6 @@ function CatchingUpBadge() {
             Catching up
         </span>
     );
-}
-
-function statusCount(summary: SyncRunUnitSummary | null, status: string): number | null {
-    if (!summary) return null;
-    return summary.by_status[status] ?? 0;
-}
-
-function totalUnitCount(run: SyncRun, summary: SyncRunUnitSummary | null): number {
-    return summary ? Math.max(summary.unit_count, run.total_units) : run.total_units;
-}
-
-function effectiveRunStatus(run: SyncRun, summary: SyncRunUnitSummary | null): string {
-    if (!summary) return run.status;
-
-    const successCount = statusCount(summary, "success") ?? 0;
-    const failedCount = statusCount(summary, "failed") ?? 0;
-    const settledCount = successCount + failedCount;
-    const totalUnits = totalUnitCount(run, summary);
-    if (totalUnits > 0 && settledCount >= totalUnits) {
-        if (failedCount === 0) return "success";
-        if (successCount === 0) return "failed";
-        return "partial_failed";
-    }
-    if (
-        settledCount > 0 ||
-        (statusCount(summary, "running") ?? 0) > 0 ||
-        (statusCount(summary, "retrying") ?? 0) > 0
-    ) {
-        return "running";
-    }
-    if ((statusCount(summary, "dispatching") ?? 0) > 0) return "dispatching";
-    if ((statusCount(summary, "planned") ?? 0) > 0) return "planned";
-    return run.status;
 }
 
 function formatDuration(seconds: number | null): string {
@@ -262,6 +263,7 @@ export function SyncRunDetailLive({
     const [run, setRun] = useState<SyncRun>(initialRun);
     const [summary, setSummary] = useState<SyncRunUnitSummary | null>(initialSummary);
     const [unitsError, setUnitsError] = useState<string | null>(initialUnitsError);
+    const [liveUpdatesPaused, setLiveUpdatesPaused] = useState(false);
 
     const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -286,9 +288,8 @@ export function SyncRunDetailLive({
         }
     }, []);
 
-    const currentRunStatus = effectiveRunStatus(run, summary);
-    const liveStatus = mapPlannerRunStatus(currentRunStatus);
-    const isTerminal = isTerminalSyncStatus(liveStatus);
+    const runPresentation = getSyncRunPresentation(run, summary);
+    const isTerminal = isTerminalSyncStatus(runPresentation.badgeStatus);
 
     // Poll run + unit state while the run is non-terminal, mirroring the
     // cleanup/timeout discipline in useSyncTrigger.ts. State is only mutated
@@ -319,6 +320,7 @@ export function SyncRunDetailLive({
                 // stale/empty data (FIX 2).
                 if (runRes.error || unitsRes.error || !runRes.data || !unitsRes.data) {
                     stopPolling();
+                    setLiveUpdatesPaused(true);
                     setUnitsError(
                         runRes.error ?? unitsRes.error ?? "Live updates are unavailable.",
                     );
@@ -327,12 +329,11 @@ export function SyncRunDetailLive({
 
                 setSummary(unitsRes.data);
                 setUnitsError(null);
+                setLiveUpdatesPaused(false);
                 const nextRun = runRes.data;
                 setRun(nextRun);
-                const nextLiveStatus = mapPlannerRunStatus(
-                    effectiveRunStatus(nextRun, unitsRes.data),
-                );
-                if (isTerminalSyncStatus(nextLiveStatus)) {
+                const nextPresentation = getSyncRunPresentation(nextRun, unitsRes.data);
+                if (nextPresentation.terminal) {
                     stopPolling();
                 }
             } finally {
@@ -341,7 +342,10 @@ export function SyncRunDetailLive({
         };
 
         intervalRef.current = setInterval(() => void tick(), POLL_INTERVAL_MS);
-        timeoutRef.current = setTimeout(() => stopPolling(), MAX_POLL_DURATION_MS);
+        timeoutRef.current = setTimeout(() => {
+            stopPolling();
+            setLiveUpdatesPaused(true);
+        }, MAX_POLL_DURATION_MS);
 
         return () => {
             cancelled = true;
@@ -365,19 +369,81 @@ export function SyncRunDetailLive({
         [sourceNameById],
     );
 
-    const total = totalUnitCount(run, summary);
-    const completed = statusCount(summary, "success") ?? run.completed_units;
-    const failed = statusCount(summary, "failed") ?? run.failed_units;
-    const settled = Math.min(total, completed + failed);
+    const { total, completed, failed, settled } = runPresentation.counts;
     const percent = total > 0 ? Math.min(100, Math.round((settled / total) * 100)) : 0;
 
     const attentionUnits = useMemo(
         () =>
             (summary?.units ?? []).filter(
-                (unit) => unit.status === "failed" || unit.status === "retrying",
+                (unit) =>
+                    unit.status === "failed" ||
+                    unit.status === "retrying" ||
+                    isProviderCapacityWaitingUnit(unit),
             ),
         [summary],
     );
+
+    const attentionGroups = useMemo<AttentionGroup[]>(() => {
+        const groups = new Map<
+            string,
+            Omit<AttentionGroup, "sourceNames" | "retryWindows" | "budgetDeferrals"> & {
+                sourceNames: Set<string>;
+            }
+        >();
+
+        for (const unit of attentionUnits) {
+            const errorPresentation = getSyncUnitErrorPresentation(unit.error, unit.error_category);
+            const disposition = attentionDisposition(unit);
+            const key = `${unit.dataset_key}:${errorPresentation.code ?? errorPresentation.title}:${disposition}`;
+            const existing = groups.get(key);
+            if (existing) {
+                existing.units.push(unit);
+                existing.sourceNames.add(sourceLabel(unit.source_id));
+                continue;
+            }
+            groups.set(key, {
+                key,
+                datasetKey: unit.dataset_key,
+                disposition,
+                title: errorPresentation.title,
+                detail: errorPresentation.detail,
+                sourceNames: new Set([sourceLabel(unit.source_id)]),
+                units: [unit],
+            });
+        }
+
+        return Array.from(groups.values(), (group) => {
+            const sourcesByRetryWindow = new Map<string, Set<string>>();
+            if (group.disposition !== "failed") {
+                for (const unit of group.units) {
+                    if (!unit.available_at) continue;
+                    const sources =
+                        sourcesByRetryWindow.get(unit.available_at) ?? new Set<string>();
+                    sources.add(sourceLabel(unit.source_id));
+                    sourcesByRetryWindow.set(unit.available_at, sources);
+                }
+            }
+
+            return {
+                ...group,
+                sourceNames: Array.from(group.sourceNames).sort(),
+                retryWindows: Array.from(sourcesByRetryWindow, ([availableAt, sources]) => ({
+                    availableAt,
+                    sourceNames: Array.from(sources).sort(),
+                })).sort((left, right) => left.availableAt.localeCompare(right.availableAt)),
+                budgetDeferrals:
+                    group.units.some(isBudgetBlockedUnit) &&
+                    group.units.some((unit) => typeof unit.budget_deferrals === "number")
+                        ? group.units.reduce(
+                              (total, unit) => total + (unit.budget_deferrals ?? 0),
+                              0,
+                          )
+                        : null,
+            };
+        }).sort((left, right) =>
+            `${left.datasetKey}:${left.title}`.localeCompare(`${right.datasetKey}:${right.title}`),
+        );
+    }, [attentionUnits, sourceLabel]);
 
     // Unit table filters (CHAOS-2794) — client-side over the already-fetched
     // unit summary; narrows which persisted rows are displayed, never
@@ -479,7 +545,11 @@ export function SyncRunDetailLive({
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="space-y-2">
                         <div className="flex items-center gap-3">
-                            <SyncStatusBadge status={liveStatus} className="text-sm px-3 py-1" />
+                            <SyncStatusBadge
+                                status={runPresentation.badgeStatus}
+                                label={runPresentation.label}
+                                className="text-sm px-3 py-1"
+                            />
                             <span
                                 className="text-sm text-(--ink-muted)"
                                 role="status"
@@ -487,17 +557,27 @@ export function SyncRunDetailLive({
                             >
                                 {isTerminal
                                     ? "Run complete"
-                                    : unitsError
+                                    : unitsError || liveUpdatesPaused
                                       ? "Live updates paused"
                                       : "Live — refreshing…"}
                             </span>
                         </div>
+                        {runPresentation.description && (
+                            <p className="text-sm text-(--ink-muted)">
+                                {runPresentation.description}
+                            </p>
+                        )}
+                        {liveUpdatesPaused && !unitsError && !isTerminal && (
+                            <p className="text-sm text-(--ink-muted)">
+                                Automatic updates paused after 10 minutes. Refresh to resume.
+                            </p>
+                        )}
                         <dl className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm sm:grid-cols-4">
                             <div>
                                 <dt className="text-xs text-(--ink-muted) uppercase tracking-wider">
                                     Status
                                 </dt>
-                                <dd className="text-foreground">{currentRunStatus}</dd>
+                                <dd className="text-foreground">{runPresentation.label}</dd>
                             </div>
                             <div>
                                 <dt className="text-xs text-(--ink-muted) uppercase tracking-wider">
@@ -757,10 +837,16 @@ export function SyncRunDetailLive({
                     </div>
 
                     {/* Failed / retrying summary */}
-                    {attentionUnits.length > 0 && (
-                        <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                    {attentionGroups.length > 0 && (
+                        <section
+                            aria-labelledby="needs-attention-heading"
+                            className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6"
+                        >
                             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                                <h3 className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
+                                <h3
+                                    id="needs-attention-heading"
+                                    className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider"
+                                >
                                     Needs attention
                                 </h3>
                                 <div className="flex flex-wrap items-center gap-3">
@@ -783,89 +869,74 @@ export function SyncRunDetailLive({
                                 </div>
                             </div>
                             <ul className="space-y-3">
-                                {attentionUnits.map((unit) => (
+                                {attentionGroups.map((group) => (
                                     <li
-                                        key={unit.id}
+                                        key={group.key}
                                         className="rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 text-sm"
                                     >
                                         <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <span className="font-medium text-foreground">
-                                                {sourceLabel(unit.source_id)} · {unit.dataset_key}
-                                            </span>
-                                            {isBudgetBlockedUnit(unit) ? (
-                                                <BudgetGuardBadge
-                                                    tone="blocked"
-                                                    label="Blocked: budget"
-                                                />
-                                            ) : isBudgetExhaustedUnit(unit) ? (
-                                                <BudgetGuardBadge
-                                                    tone="exhausted"
-                                                    label="Budget exhausted"
-                                                />
-                                            ) : isDeferralsExhaustedUnit(unit) ? (
-                                                <BudgetGuardBadge
-                                                    tone="exhausted"
-                                                    label="Deferrals exhausted"
-                                                />
-                                            ) : (
-                                                <SyncStatusBadge
-                                                    status={unitBadgeStatus(unit.status)}
-                                                    label={unit.status}
-                                                />
-                                            )}
+                                            <div>
+                                                <p className="text-xs text-(--ink-muted)">
+                                                    {group.datasetKey}
+                                                </p>
+                                                <h4 className="font-medium text-foreground">
+                                                    {group.title}
+                                                </h4>
+                                            </div>
+                                            <SyncStatusBadge
+                                                status={
+                                                    group.disposition === "failed"
+                                                        ? "failed"
+                                                        : "running"
+                                                }
+                                                label={group.disposition}
+                                            />
                                         </div>
-                                        <div className="mt-1 text-xs text-(--ink-muted)">
-                                            {isBudgetBlockedUnit(unit) ? (
-                                                <>
-                                                    {typeof unit.budget_deferrals === "number" && (
-                                                        <span>
-                                                            {formatNumber(unit.budget_deferrals)}{" "}
-                                                            deferral
-                                                            {unit.budget_deferrals === 1 ? "" : "s"}
-                                                        </span>
-                                                    )}
-                                                    {typeof unit.budget_deferrals === "number" &&
-                                                        unit.available_at &&
-                                                        " · "}
-                                                    {unit.available_at && (
-                                                        <span>
-                                                            Next attempt{" "}
-                                                            <ClientTimestamp
-                                                                value={unit.available_at}
-                                                                fallback="—"
-                                                            />
-                                                        </span>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                <>
-                                                    {unit.error_category && (
-                                                        <span>Category: {unit.error_category}</span>
-                                                    )}
-                                                    {unit.error_category &&
-                                                        unit.available_at &&
-                                                        " · "}
-                                                    {unit.available_at && (
-                                                        <span>
-                                                            Retry at{" "}
-                                                            <ClientTimestamp
-                                                                value={unit.available_at}
-                                                                fallback="—"
-                                                            />
-                                                        </span>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
-                                        {unit.error && (
-                                            <p className="mt-1 text-xs text-red-500">
-                                                {unit.error}
+                                        <p className="mt-1 text-xs text-(--ink-muted)">
+                                            {formatNumber(group.units.length)} {group.disposition}{" "}
+                                            unit{group.units.length === 1 ? "" : "s"} ·{" "}
+                                            {formatNumber(group.sourceNames.length)} source
+                                            {group.sourceNames.length === 1 ? "" : "s"}
+                                        </p>
+                                        <p className="mt-1 text-xs text-(--ink-muted)">
+                                            {group.sourceNames.join(", ")}
+                                        </p>
+                                        {group.detail && (
+                                            <p className="mt-1 text-xs text-(--ink-muted)">
+                                                {group.detail}
                                             </p>
+                                        )}
+                                        {group.budgetDeferrals !== null && (
+                                            <p className="mt-1 text-xs text-(--ink-muted)">
+                                                {formatNumber(group.budgetDeferrals)} deferral
+                                                {group.budgetDeferrals === 1 ? "" : "s"}
+                                            </p>
+                                        )}
+                                        {group.retryWindows.length > 0 && (
+                                            <ul
+                                                aria-label={`${group.title} retry schedule`}
+                                                className="mt-1 space-y-1 text-xs text-(--ink-muted)"
+                                            >
+                                                {group.retryWindows.map((retryWindow) => (
+                                                    <li key={retryWindow.availableAt}>
+                                                        <span>
+                                                            {group.disposition === "waiting"
+                                                                ? "Next attempt"
+                                                                : "Retry at"}{" "}
+                                                            <ClientTimestamp
+                                                                value={retryWindow.availableAt}
+                                                                fallback="—"
+                                                            />{" "}
+                                                            · {retryWindow.sourceNames.join(", ")}
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                            </ul>
                                         )}
                                     </li>
                                 ))}
                             </ul>
-                        </div>
+                        </section>
                     )}
 
                     {/* Unit table */}
@@ -980,78 +1051,97 @@ export function SyncRunDetailLive({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-(--card-stroke)">
-                                    {filteredUnits.map((unit: SyncRunUnit) => (
-                                        <tr key={unit.id}>
-                                            <td className="px-4 py-3 font-mono text-xs text-(--ink-muted)">
-                                                {unit.id.slice(0, 8)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-foreground">
-                                                {sourceLabel(unit.source_id)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                {unit.dataset_key}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                {formatDateUTC(unit.since_at)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                {formatDateUTC(unit.before_at)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                {unit.cost_class}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {isBudgetBlockedUnit(unit) ? (
-                                                    <BudgetGuardBadge
-                                                        tone="blocked"
-                                                        label="Blocked: budget"
-                                                    />
-                                                ) : isBudgetExhaustedUnit(unit) ? (
-                                                    <BudgetGuardBadge
-                                                        tone="exhausted"
-                                                        label="Budget exhausted"
-                                                    />
-                                                ) : isDeferralsExhaustedUnit(unit) ? (
-                                                    <BudgetGuardBadge
-                                                        tone="exhausted"
-                                                        label="Deferrals exhausted"
-                                                    />
-                                                ) : (
-                                                    <SyncStatusBadge
-                                                        status={unitBadgeStatus(unit.status)}
-                                                        label={unit.status}
-                                                    />
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                {formatNumber(unit.attempts)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                {formatDuration(unit.duration_seconds)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm">
-                                                {unit.error ? (
-                                                    <span className="text-red-500">
-                                                        {unit.error}
-                                                    </span>
-                                                ) : unit.error_category ? (
-                                                    <span className="text-(--ink-muted)">
-                                                        {unit.error_category}
-                                                    </span>
-                                                ) : unit.available_at ? (
-                                                    <span className="text-(--ink-muted)">
-                                                        Retry{" "}
-                                                        <ClientTimestamp
-                                                            value={unit.available_at}
-                                                            fallback="—"
+                                    {filteredUnits.map((unit: SyncRunUnit) => {
+                                        const errorPresentation = getSyncUnitErrorPresentation(
+                                            unit.error,
+                                            unit.error_category,
+                                        );
+                                        return (
+                                            <tr key={unit.id}>
+                                                <td className="px-4 py-3 font-mono text-xs text-(--ink-muted)">
+                                                    {unit.id.slice(0, 8)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-foreground">
+                                                    {sourceLabel(unit.source_id)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                    {unit.dataset_key}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                    {formatDateUTC(unit.since_at)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                    {formatDateUTC(unit.before_at)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                    {unit.cost_class}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    {isBudgetBlockedUnit(unit) ? (
+                                                        <BudgetGuardBadge
+                                                            tone="blocked"
+                                                            label="Blocked: budget"
                                                         />
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-(--ink-muted)">—</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                    ) : isBudgetExhaustedUnit(unit) ? (
+                                                        <BudgetGuardBadge
+                                                            tone="exhausted"
+                                                            label="Budget exhausted"
+                                                        />
+                                                    ) : isDeferralsExhaustedUnit(unit) ? (
+                                                        <BudgetGuardBadge
+                                                            tone="exhausted"
+                                                            label="Deferrals exhausted"
+                                                        />
+                                                    ) : isProviderCapacityWaitingUnit(unit) ? (
+                                                        <BudgetGuardBadge
+                                                            tone="blocked"
+                                                            label="Waiting: provider capacity"
+                                                        />
+                                                    ) : (
+                                                        <SyncStatusBadge
+                                                            status={unitBadgeStatus(unit.status)}
+                                                            label={unit.status}
+                                                        />
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                    {formatNumber(unit.attempts)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                    {formatDuration(unit.duration_seconds)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm">
+                                                    {unit.error || unit.error_category ? (
+                                                        <span
+                                                            className={
+                                                                unit.status === "failed"
+                                                                    ? "text-red-500"
+                                                                    : "text-(--ink-muted)"
+                                                            }
+                                                            title={
+                                                                errorPresentation.detail ??
+                                                                undefined
+                                                            }
+                                                        >
+                                                            {errorPresentation.title}
+                                                        </span>
+                                                    ) : unit.available_at ? (
+                                                        <span className="text-(--ink-muted)">
+                                                            Retry{" "}
+                                                            <ClientTimestamp
+                                                                value={unit.available_at}
+                                                                fallback="—"
+                                                            />
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-(--ink-muted)">
+                                                            —
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>

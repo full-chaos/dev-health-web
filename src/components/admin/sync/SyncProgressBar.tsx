@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { SyncRun, SyncRunUnitSummary } from "@/lib/admin/types";
 import { getSyncJobs, getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
+import { getSyncRunPresentation } from "@/lib/admin/syncRunPresentation";
 import { isTerminalSyncStatus, mapPlannerRunStatus } from "@/lib/sync-types";
 import type { SyncJob } from "@/lib/admin/types";
 
@@ -55,39 +56,6 @@ function formatElapsed(seconds: number): string {
     return `${String(minutes).padStart(2, "0")}:${String(remainder).padStart(2, "0")}`;
 }
 
-function statusCount(summary: SyncRunUnitSummary | null, status: string): number | null {
-    if (!summary) return null;
-    return summary.by_status[status] ?? 0;
-}
-
-function totalUnitCount(run: SyncRun, summary: SyncRunUnitSummary | null): number {
-    return summary ? Math.max(summary.unit_count, run.total_units) : run.total_units;
-}
-
-function effectiveRunStatus(run: SyncRun, summary: SyncRunUnitSummary | null): string {
-    if (!summary) return run.status;
-
-    const successCount = statusCount(summary, "success") ?? 0;
-    const failedCount = statusCount(summary, "failed") ?? 0;
-    const settledCount = successCount + failedCount;
-    const totalUnits = totalUnitCount(run, summary);
-    if (totalUnits > 0 && settledCount >= totalUnits) {
-        if (failedCount === 0) return "success";
-        if (successCount === 0) return "failed";
-        return "partial_failed";
-    }
-    if (
-        settledCount > 0 ||
-        (statusCount(summary, "running") ?? 0) > 0 ||
-        (statusCount(summary, "retrying") ?? 0) > 0
-    ) {
-        return "running";
-    }
-    if ((statusCount(summary, "dispatching") ?? 0) > 0) return "dispatching";
-    if ((statusCount(summary, "planned") ?? 0) > 0) return "planned";
-    return run.status;
-}
-
 function hasActiveSyncRun(job: SyncJob): boolean {
     if (!job.sync_run?.sync_run_id) return false;
     if (job.status !== "running" && job.status !== "pending") return false;
@@ -104,12 +72,14 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
     } | null>(null);
     const [now, setNow] = useState(() => Date.now());
     const [terminalUntil, setTerminalUntil] = useState<number | null>(null);
+    const [pollingPaused, setPollingPaused] = useState(false);
 
     // The sync_run_id currently being tracked for THIS config instance. A ref
     // (not state) because it only drives poll branching inside the interval
     // callback, never rendering directly.
     const runIdRef = useRef<string | null>(null);
     const trackStartedAtRef = useRef<number | null>(null);
+    const trackingPausedRef = useRef(false);
     const inFlightRef = useRef(false);
     const lastSummaryByRunRef = useRef<Record<string, SyncRunUnitSummary>>({});
     // Invalidates any in-flight response once the effect tears down (configId
@@ -127,9 +97,10 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
         const effectSeq = seqRef.current;
         runIdRef.current = null;
         trackStartedAtRef.current = null;
+        trackingPausedRef.current = false;
 
         const tick = async () => {
-            if (inFlightRef.current) return;
+            if (inFlightRef.current || trackingPausedRef.current) return;
             inFlightRef.current = true;
             try {
                 if (!runIdRef.current) {
@@ -140,6 +111,7 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
                     if (!activeJob?.sync_run) return;
                     runIdRef.current = activeJob.sync_run.sync_run_id;
                     trackStartedAtRef.current = Date.now();
+                    setPollingPaused(false);
                 }
 
                 const runId = runIdRef.current;
@@ -165,7 +137,7 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
                 setTracked({ configId, run: runRes.data, summary });
                 setTerminalUntil(null);
 
-                const liveStatus = mapPlannerRunStatus(effectiveRunStatus(runRes.data, summary));
+                const liveStatus = getSyncRunPresentation(runRes.data, summary).badgeStatus;
                 const trackedTooLong =
                     trackStartedAtRef.current !== null &&
                     Date.now() - trackStartedAtRef.current > MAX_TRACK_DURATION_MS;
@@ -173,13 +145,16 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
                 if (isTerminalSyncStatus(liveStatus)) {
                     runIdRef.current = null;
                     trackStartedAtRef.current = null;
+                    setPollingPaused(false);
                     setTerminalUntil(Date.now() + TERMINAL_DISPLAY_MS);
                 } else if (trackedTooLong) {
-                    // Give up tracking a stuck run so the bar doesn't spin on
-                    // it forever; fall back to discovery.
+                    // Keep the last persisted snapshot visible and say exactly
+                    // what stopped. Rediscovering the same active row would
+                    // silently restart the 10-minute clock and look live forever.
+                    trackingPausedRef.current = true;
                     runIdRef.current = null;
                     trackStartedAtRef.current = null;
-                    setTracked(null);
+                    setPollingPaused(true);
                 }
             } finally {
                 inFlightRef.current = false;
@@ -205,17 +180,25 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
     const visibleSummary = visibleTracked?.summary ?? null;
     const runStatus = visibleRun?.status ?? null;
     const runStartedAt = visibleRun?.started_at ?? null;
+    const visiblePresentation = visibleRun
+        ? getSyncRunPresentation(visibleRun, visibleSummary)
+        : null;
 
     // 1s display timer while a run is actively tracked, purely for the
     // elapsed-time readout. Derives from persisted `started_at` rather than a
     // client-observed timestamp, per the render-persisted-state contract.
     useEffect(() => {
-        if (!runStartedAt || isTerminalSyncStatus(mapPlannerRunStatus(runStatus ?? ""))) {
+        if (
+            !runStartedAt ||
+            isTerminalSyncStatus(
+                visiblePresentation?.badgeStatus ?? mapPlannerRunStatus(runStatus ?? ""),
+            )
+        ) {
             return undefined;
         }
         const timer = setInterval(() => setNow(Date.now()), 1000);
         return () => clearInterval(timer);
-    }, [runStatus, runStartedAt]);
+    }, [runStatus, runStartedAt, visiblePresentation?.badgeStatus]);
 
     // Auto-clear a terminal result after a short grace period so the bar
     // doesn't linger indefinitely once a run finishes.
@@ -235,11 +218,9 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
 
     const run = visibleRun;
 
-    const liveStatus = mapPlannerRunStatus(effectiveRunStatus(run, visibleSummary));
-    const totalUnits = totalUnitCount(run, visibleSummary);
-    const completed = statusCount(visibleSummary, "success") ?? run.completed_units;
-    const failed = statusCount(visibleSummary, "failed") ?? run.failed_units;
-    const settled = Math.min(totalUnits, completed + failed);
+    const presentation = visiblePresentation ?? getSyncRunPresentation(run, visibleSummary);
+    const liveStatus = presentation.badgeStatus;
+    const { total: totalUnits, settled } = presentation.counts;
     const percentage = totalUnits > 0 ? Math.min(100, Math.round((settled / totalUnits) * 100)) : 0;
     const elapsedSeconds = run.started_at
         ? Math.max(0, Math.floor((now - new Date(run.started_at).getTime()) / 1000))
@@ -254,13 +235,6 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
             ? "Calculating..."
             : `~${Math.floor(estimatedSecondsRemaining / 60)}m ${estimatedSecondsRemaining % 60}s remaining`;
 
-    const statusLabel =
-        liveStatus === "running"
-            ? "Syncing..."
-            : liveStatus === "success"
-              ? "Sync completed"
-              : "Sync failed";
-
     return (
         <div
             className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6"
@@ -268,7 +242,9 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
             aria-live="polite"
         >
             <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="font-medium text-foreground">{statusLabel}</span>
+                <span className="font-medium text-foreground">
+                    {pollingPaused ? "Sync updates paused" : presentation.progressLabel}
+                </span>
                 <span className="text-(--ink-muted)">
                     {settled} / {totalUnits} ({percentage}%)
                 </span>
@@ -295,6 +271,11 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
                 </span>
                 <span>{liveStatus === "running" ? etaText : ""}</span>
             </div>
+            {pollingPaused && (
+                <p className="mt-2 text-xs text-(--ink-muted)">
+                    Automatic updates paused after 10 minutes. Refresh to resume.
+                </p>
+            )}
         </div>
     );
 }
