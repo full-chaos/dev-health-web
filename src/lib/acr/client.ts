@@ -90,7 +90,12 @@ function clientUrl(config: AcrRuntimeConfig, path: string): URL {
     return url;
 }
 
-function upstreamFailure(status: number): AcrRuntimeError {
+// CHAOS-3791 prep: reads only the closed `error.code` enum from an
+// already schema-validated body, never `message`/`details` — matches the
+// existing "without exposing the upstream body" boundary in upstreamFailure.
+const upstreamErrorCodeSchema = z.object({ error: z.object({ code: z.string() }).loose() }).loose();
+
+function upstreamFailure(status: number, wireErrorCode?: string): AcrRuntimeError {
     if (status === 401) {
         return new AcrRuntimeError(
             acrRuntimeErrorCodes.unauthenticated,
@@ -116,6 +121,23 @@ function upstreamFailure(status: number): AcrRuntimeError {
         return new AcrRuntimeError(
             acrRuntimeErrorCodes.upstream,
             "Agent Context Runtime is temporarily busy.",
+            { retryable: true, status },
+        );
+    }
+    // error.v1 (CHAOS-3784): both codes are always retryable: true. Hardcoded
+    // here rather than trusting the wire body's own `retryable` field — web
+    // decides retry policy from the closed code, not from upstream input.
+    if (status === 422 && wireErrorCode === "interpretation_rejected") {
+        return new AcrRuntimeError(
+            acrRuntimeErrorCodes.interpretationRejected,
+            "Agent Context Runtime rejected the interpretation step.",
+            { retryable: true, status },
+        );
+    }
+    if (status === 422 && wireErrorCode === "synthesis_rejected") {
+        return new AcrRuntimeError(
+            acrRuntimeErrorCodes.synthesisRejected,
+            "Agent Context Runtime rejected the synthesis step.",
             { retryable: true, status },
         );
     }
@@ -284,6 +306,10 @@ export class AcrRuntimeClient {
                 "Agent Context Runtime returned an invalid response.",
             );
         }
-        throw upstreamFailure(response.status);
+        const wireError = upstreamErrorCodeSchema.safeParse(response.value);
+        throw upstreamFailure(
+            response.status,
+            wireError.success ? wireError.data.error.code : undefined,
+        );
     }
 }
