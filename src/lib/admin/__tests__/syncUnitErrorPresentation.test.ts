@@ -5,6 +5,7 @@ describe("getSyncUnitErrorPresentation", () => {
     it.each([
         ["provider_unit_exhausted", "Provider retries exhausted"],
         ["provider_unit_retryable", "Provider request will retry"],
+        ["provider_dataset_unavailable", "Provider data unavailable"],
         ["provider_budget_contention", "Waiting for provider capacity"],
         ["budget_deferred", "Waiting for sync budget"],
         ["budget_deferral_exhausted", "Sync budget wait limit reached"],
@@ -15,6 +16,19 @@ describe("getSyncUnitErrorPresentation", () => {
 
         expect(presentation.title).toBe(title);
         expect(presentation.detail).not.toContain(code);
+    });
+
+    it("explains how to resolve an unavailable provider dataset", () => {
+        expect(
+            getSyncUnitErrorPresentation(
+                "provider_dataset_unavailable",
+                "provider_dataset_unavailable",
+            ),
+        ).toEqual({
+            code: "provider_dataset_unavailable",
+            title: "Provider data unavailable",
+            detail: "This dataset may be disabled for the project or unavailable to the integration's current access level.",
+        });
     });
 
     it("keeps a detailed human-readable backend explanation under the translated title", () => {

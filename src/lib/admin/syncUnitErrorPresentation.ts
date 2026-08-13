@@ -13,6 +13,10 @@ const KNOWN_SYNC_UNIT_ERRORS: Record<string, { title: string; detail: string }> 
         title: "Provider request will retry",
         detail: "The provider request failed temporarily and will be tried again.",
     },
+    provider_dataset_unavailable: {
+        title: "Provider data unavailable",
+        detail: "This dataset may be disabled for the project or unavailable to the integration's current access level.",
+    },
     provider_budget_contention: {
         title: "Waiting for provider capacity",
         detail: "Other provider work is using the available request capacity. This unit will resume automatically.",
