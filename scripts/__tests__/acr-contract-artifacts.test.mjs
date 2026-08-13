@@ -1,7 +1,7 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 import fs from "node:fs";
-import { hostname } from "node:os";
+import { hostname, tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +9,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
     acquireArtifactLock,
     currentArtifacts,
+    expectedArtifacts,
+    stripInterfaceDeclaration,
     writeArtifacts,
 } from "../acr-contract-artifacts.mjs";
 import { isNotLockState } from "./acr-fixture-copy.mjs";
@@ -18,6 +20,16 @@ const SCRIPT = path.join(ROOT, "scripts/sync-acr-contracts.mjs");
 const SOURCE = process.env.ACR_ROOT;
 const ARTIFACT_ROOT = path.join(ROOT, "src/lib/acr/contracts");
 const TEMPORARY_PROJECTS = new Set();
+const TSC_BIN = path.join(ROOT, "node_modules/.bin/tsc");
+const CODEGEN_PRETTIER_OPTIONS = Object.freeze({
+    parser: "typescript",
+    printWidth: 100,
+    semi: true,
+    singleQuote: false,
+    tabWidth: 4,
+    trailingComma: "all",
+    useTabs: false,
+});
 
 function run(project, args, environment = {}) {
     return spawnSync(process.execPath, [project.script, ...args], {
@@ -382,6 +394,285 @@ describe("ACR contract artifact filesystem boundaries", () => {
 
             expect(statuses).toEqual(Array(statuses.length).fill(0));
         },
-        20_000,
+        // CHAOS-3791: budget grew from 20s alongside SOURCE_PATHS (26 -> 34
+        // files after the CHAOS-3784 pin bump added the context-fabric
+        // investigation/model-config closure); 16 concurrent subprocesses now
+        // each copy/hash more files.
+        40_000,
     );
+});
+
+function fixtureSchemaFile(basename, schema) {
+    return {
+        path: `contracts/jsonschema/v1/${basename}`,
+        contents: `${JSON.stringify(schema, null, 2)}\n`,
+    };
+}
+
+async function generatedDts(sourceFiles) {
+    const artifacts = await expectedArtifacts({
+        sourceCommit: "0000000000000000000000000000000000000000",
+        sourceFiles,
+        prettierOptions: CODEGEN_PRETTIER_OPTIONS,
+    });
+    return artifacts["../generated.ts"];
+}
+
+function typecheck(source) {
+    // Run from outside ROOT (cwd, not just the file's directory) so tsc
+    // doesn't detect the repo's tsconfig.json — TS5112 refuses to combine
+    // a discovered tsconfig with an explicit file list on the CLI.
+    const directory = fs.mkdtempSync(path.join(tmpdir(), "acr-codegen-fixture-"));
+    const file = path.join(directory, "fixture.ts");
+    fs.writeFileSync(file, source);
+    try {
+        return spawnSync(TSC_BIN, ["--noEmit", "--strict", "--skipLibCheck", file], {
+            cwd: directory,
+            encoding: "utf8",
+        });
+    } finally {
+        fs.rmSync(directory, { force: true, recursive: true });
+    }
+}
+
+describe("ACR contract cross-file $defs codegen", () => {
+    // CHAOS-3791: minimal two-file fixture reproducing the CHAOS-3784 pin
+    // bump's shape — one file (owner) exposes only $defs, no root type; a
+    // second file (consumer) $refs into the owner's $defs by JSON pointer.
+    // Every prior cross-file $ref in this repo pointed at another file's
+    // ROOT schema; this is the first one that points into a sub-location.
+    const ownerSchema = {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        $id: "https://contracts.fullchaos.dev/acr/v1/fixture_owner.v1.schema.json",
+        title: "Fixture Owner",
+        $defs: {
+            Widget: {
+                type: "object",
+                additionalProperties: false,
+                required: ["name"],
+                properties: { name: { type: "string" } },
+            },
+        },
+    };
+    const consumerSchema = {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        $id: "https://contracts.fullchaos.dev/acr/v1/fixture_consumer.v1.schema.json",
+        title: "Fixture Consumer",
+        type: "object",
+        additionalProperties: false,
+        required: ["widget"],
+        properties: { widget: { $ref: "fixture_owner.v1.schema.json#/$defs/Widget" } },
+    };
+    const sourceFiles = [
+        fixtureSchemaFile("fixture_owner.v1.schema.json", ownerSchema),
+        fixtureSchemaFile("fixture_consumer.v1.schema.json", consumerSchema),
+    ];
+
+    it("emits a $ref'd $defs type from its owning file exactly once, with no dangling identifiers", async () => {
+        const dts = await generatedDts(sourceFiles);
+
+        expect([...dts.matchAll(/\binterface Widget\b/gu)]).toHaveLength(1);
+
+        const result = typecheck(dts);
+        expect(result.stdout + result.stderr).not.toMatch(/error TS/u);
+        expect(result.status).toBe(0);
+    });
+
+    it("stays byte-identical across independent generations", async () => {
+        expect(await generatedDts(sourceFiles)).toBe(await generatedDts(sourceFiles));
+    });
+});
+
+describe("ACR contract cross-file $defs codegen — cross-owner sharing (Codex round 1, F1)", () => {
+    // Two SEPARATE owning files, each with its own top-level cross-file-
+    // required def, each internally $ref'ing a bare "#/$defs/Utility" name
+    // that ALSO exists — with DIFFERENT content — in the other owner. Per-
+    // owner independent compiles (the pre-fix design) would each hoist their
+    // own "Utility", producing two incompatible `interface Utility` blocks
+    // that fail to merge — a real, plausible collision (generic $defs names
+    // like "Metadata"/"Id" easily coincide across independently-authored
+    // library files), not a contrived one.
+    function ownerWith(tag) {
+        return {
+            $schema: "https://json-schema.org/draft/2020-12/schema",
+            $id: `https://contracts.fullchaos.dev/acr/v1/fixture_owner_${tag}.v1.schema.json`,
+            title: `Fixture Owner ${tag}`,
+            $defs: {
+                [`Wrapper${tag.toUpperCase()}`]: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["util"],
+                    properties: { util: { $ref: "#/$defs/Utility" } },
+                },
+                Utility: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["tag"],
+                    properties: { tag: { const: tag } },
+                },
+            },
+        };
+    }
+    const consumerSchema = {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        $id: "https://contracts.fullchaos.dev/acr/v1/fixture_collision_consumer.v1.schema.json",
+        title: "Fixture Collision Consumer",
+        type: "object",
+        additionalProperties: false,
+        required: ["a", "b"],
+        properties: {
+            a: { $ref: "fixture_owner_a.v1.schema.json#/$defs/WrapperA" },
+            b: { $ref: "fixture_owner_b.v1.schema.json#/$defs/WrapperB" },
+        },
+    };
+    const sourceFiles = [
+        fixtureSchemaFile("fixture_owner_a.v1.schema.json", ownerWith("a")),
+        fixtureSchemaFile("fixture_owner_b.v1.schema.json", ownerWith("b")),
+        fixtureSchemaFile("fixture_collision_consumer.v1.schema.json", consumerSchema),
+    ];
+
+    it("fails closed with a clear error instead of emitting two incompatible declarations", async () => {
+        // Ambiguous by construction — two owners disagree on what "Utility"
+        // means — so there is no correct silent resolution. A clear
+        // generate-time error beats either silently picking one owner's
+        // definition (wrong for the other) or letting tsc fail downstream
+        // with a confusing duplicate-identifier trace.
+        await expect(generatedDts(sourceFiles)).rejects.toThrow(/collision/iu);
+    });
+
+    // Codex round 2, R2-1: a JSON.stringify comparison is key-order
+    // sensitive — two owners that happen to write an identical $defs entry
+    // with their object keys in a different order would falsely collide.
+    it("merges (not collides on) two owners' identical $defs entries with differently-ordered keys", async () => {
+        const ownerE = {
+            $schema: "https://json-schema.org/draft/2020-12/schema",
+            $id: "https://contracts.fullchaos.dev/acr/v1/fixture_owner_e.v1.schema.json",
+            title: "Fixture Owner E",
+            $defs: {
+                WrapperE: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["shared"],
+                    properties: { shared: { $ref: "#/$defs/SharedIdentical" } },
+                },
+                SharedIdentical: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["tag", "note"],
+                    properties: { tag: { const: "same" }, note: { type: "string" } },
+                },
+            },
+        };
+        const ownerF = {
+            $schema: "https://json-schema.org/draft/2020-12/schema",
+            $id: "https://contracts.fullchaos.dev/acr/v1/fixture_owner_f.v1.schema.json",
+            title: "Fixture Owner F",
+            $defs: {
+                WrapperF: {
+                    type: "object",
+                    additionalProperties: false,
+                    required: ["shared"],
+                    properties: { shared: { $ref: "#/$defs/SharedIdentical" } },
+                },
+                // Same content as ownerE's SharedIdentical, keys reordered.
+                SharedIdentical: {
+                    additionalProperties: false,
+                    type: "object",
+                    properties: { note: { type: "string" }, tag: { const: "same" } },
+                    required: ["tag", "note"],
+                },
+            },
+        };
+        const identicalConsumer = {
+            $schema: "https://json-schema.org/draft/2020-12/schema",
+            $id: "https://contracts.fullchaos.dev/acr/v1/fixture_identical_consumer.v1.schema.json",
+            title: "Fixture Identical Consumer",
+            type: "object",
+            additionalProperties: false,
+            required: ["e", "f"],
+            properties: {
+                e: { $ref: "fixture_owner_e.v1.schema.json#/$defs/WrapperE" },
+                f: { $ref: "fixture_owner_f.v1.schema.json#/$defs/WrapperF" },
+            },
+        };
+        const identicalSourceFiles = [
+            fixtureSchemaFile("fixture_owner_e.v1.schema.json", ownerE),
+            fixtureSchemaFile("fixture_owner_f.v1.schema.json", ownerF),
+            fixtureSchemaFile("fixture_identical_consumer.v1.schema.json", identicalConsumer),
+        ];
+
+        const dts = await generatedDts(identicalSourceFiles);
+
+        expect([...dts.matchAll(/\binterface SharedIdentical\b/gu)]).toHaveLength(1);
+        const result = typecheck(dts);
+        expect(result.stdout + result.stderr).not.toMatch(/error TS/u);
+        expect(result.status).toBe(0);
+    });
+});
+
+describe("ACR contract cross-file $defs codegen — comment-safe stripping (Codex round 1, F2)", () => {
+    // A required cross-file $defs entry that's a bare string-literal type
+    // (`const`) gets inlined directly into the synthetic bundle wrapper's
+    // OWN body as `Token: "a}b"` — nothing to hoist a separate declaration
+    // for. That is the exact region a brace-counting strip scans through,
+    // and the "}" inside the literal (a real character in the string, not a
+    // code brace) must not be mistaken for the interface's closing brace.
+    const ownerSchema = {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        $id: "https://contracts.fullchaos.dev/acr/v1/fixture_braces_owner.v1.schema.json",
+        title: "Fixture Braces Owner",
+        $defs: {
+            Token: { type: "string", const: "a}b" },
+        },
+    };
+    const consumerSchema = {
+        $schema: "https://json-schema.org/draft/2020-12/schema",
+        $id: "https://contracts.fullchaos.dev/acr/v1/fixture_braces_consumer.v1.schema.json",
+        title: "Fixture Braces Consumer",
+        type: "object",
+        additionalProperties: false,
+        required: ["token"],
+        properties: { token: { $ref: "fixture_braces_owner.v1.schema.json#/$defs/Token" } },
+    };
+    const sourceFiles = [
+        fixtureSchemaFile("fixture_braces_owner.v1.schema.json", ownerSchema),
+        fixtureSchemaFile("fixture_braces_consumer.v1.schema.json", consumerSchema),
+    ];
+
+    it("strips the synthetic wrapper cleanly even with a stray brace in a comment", async () => {
+        const dts = await generatedDts(sourceFiles);
+        const result = typecheck(dts);
+        expect(result.stdout + result.stderr).not.toMatch(/error TS/u);
+        expect(result.status).toBe(0);
+        // The brace survived intact — proof the strip didn't eat into or
+        // truncate the literal type it sits inside of.
+        expect(dts).toMatch(/token:\s*"a\}b"/u);
+    });
+
+    // Codex round 2, R2-2: getFullStart() includes leading trivia, which can
+    // be a PRECEDING declaration's trailing same-line comment (TS attaches a
+    // same-line trailing comment to the NEXT token's leading trivia) —
+    // stripping by getFullStart() would delete that comment along with the
+    // wrapper. Unit-tested directly against stripInterfaceDeclaration since
+    // reproducing this exact token shape through the full schema pipeline
+    // depends on json-schema-to-typescript's own comment placement, not on
+    // anything this repo's schemas control.
+    it("removes only the named interface, leaving a preceding trailing comment intact", () => {
+        const source = [
+            "export interface Previous {} // retained comment",
+            "export interface AcrCrossFileDefsBundle {",
+            "    Widget: Widget;",
+            "}",
+            "export interface Widget {",
+            "    name: string;",
+            "}",
+            "",
+        ].join("\n");
+
+        const stripped = stripInterfaceDeclaration(source, "AcrCrossFileDefsBundle");
+
+        expect(stripped).toContain("// retained comment");
+        expect(stripped).not.toContain("AcrCrossFileDefsBundle");
+        expect(stripped).toContain("export interface Widget {");
+    });
 });

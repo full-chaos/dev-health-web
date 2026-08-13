@@ -52,10 +52,10 @@ const webAssertionPayloadSchema = z.object({
     sub: z.string(),
 });
 
-function encodeError(status: number): object {
+function encodeError(status: number, code = "upstream_unavailable"): object {
     return {
         error: {
-            code: "upstream_unavailable",
+            code,
             http_status: status,
             message: "redacted upstream detail",
             retryable: status >= 500,
@@ -455,6 +455,28 @@ describe("ACR server-only runtime service", () => {
                 signal: new AbortController().signal,
             }),
         ).rejects.toMatchObject({ code, status });
+    });
+
+    it.each([
+        ["interpretation_rejected", acrRuntimeErrorCodes.interpretationRejected],
+        ["synthesis_rejected", acrRuntimeErrorCodes.synthesisRejected],
+    ])("maps 422 %s to a retryable %s failure", async (wireCode, code) => {
+        installOpsAuthorization();
+        server.use(
+            http.get("https://acr.example.test/api/v1/agent-context/capabilities", () =>
+                HttpResponse.json(capabilities),
+            ),
+            http.post("https://acr.example.test/api/v1/agent-context/context-packets", () =>
+                HttpResponse.json(encodeError(422, wireCode), { status: 422 }),
+            ),
+        );
+
+        await expect(
+            createContextPacket({
+                body: { goal: "verify", repository: "full-chaos/dev-health-acr" },
+                signal: new AbortController().signal,
+            }),
+        ).rejects.toMatchObject({ code, retryable: true, status: 422 });
     });
 
     it("rejects malformed and oversized ACR responses", async () => {

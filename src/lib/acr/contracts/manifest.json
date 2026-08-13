@@ -1,9 +1,9 @@
 {
-  "source_commit": "7e7c57be32c2b81bcd94994e584a554e2a05a99a",
+  "source_commit": "d1da16cd456968c555943737551deb4a510220ca",
   "files": [
     {
       "path": "openapi/acr-v1.json",
-      "sha256": "02d90038bed1ff5109d16d1e413b862bd0bb6a1694154f4343c32be9af8791bd"
+      "sha256": "a50f686ea48c2ce69927007e3a8f55699e3230c7a1e02e7833ed13eb488f6b0f"
     },
     {
       "path": "schemas/capabilities.v1.schema.json",
@@ -23,7 +23,7 @@
     },
     {
       "path": "schemas/error.v1.schema.json",
-      "sha256": "3e85dfa1fd04644cae3c7d602ee3903971692ba9b6e6904e010a938d27b259fb"
+      "sha256": "e9b2b0b0de2eb66bff9f9f893e30fdf70a3ebab30a063c07141ed4d5ea4f3384"
     },
     {
       "path": "schemas/evidence_ref.v1.schema.json",
@@ -43,7 +43,7 @@
     },
     {
       "path": "schemas/acr_client_credential.v1.schema.json",
-      "sha256": "9b71754f66263cc76456cad8178ef8677d468de9238b49320b29d12597339b16"
+      "sha256": "687990c8026a4addde1a0ddc53ed8fee3f477a3aa662b234378a5109ced1ae61"
     },
     {
       "path": "schemas/agent_episode.v1.schema.json",
@@ -52,6 +52,26 @@
     {
       "path": "schemas/agent_episode_create.v1.schema.json",
       "sha256": "461f5d9cfcbbe742df1820cbd40779b0d6d41f9a3b6ddbad34ec18c56ae84c29"
+    },
+    {
+      "path": "schemas/context_fabric_common.v1.schema.json",
+      "sha256": "b85e7da9f235ab3ad8e8ace5150d0fdd261003d58b1f1b0a2c5f156e7aa33fc3"
+    },
+    {
+      "path": "schemas/context_fabric_investigation_request.v1.schema.json",
+      "sha256": "d146b0fc47bc5ec303ffdda17024cf3225e00495d3287f0463d02d745d59e8bd"
+    },
+    {
+      "path": "schemas/context_fabric_investigation_result.v1.schema.json",
+      "sha256": "0c91a2eb6b4917c3e49d8130947e9315a496af543876af2bb2da99669de9d82b"
+    },
+    {
+      "path": "schemas/context_fabric_org_model_config.v1.schema.json",
+      "sha256": "9578a95ba2c3d5b2c3b2b2920638e635c205001f5cd456ccee0e94bdf9f655e6"
+    },
+    {
+      "path": "schemas/context_fabric_org_model_config_write_request.v1.schema.json",
+      "sha256": "1f1cdd5ab3117fba2f672c18b94b22e7e8ee89b9b882745f4838037753a492a5"
     },
     {
       "path": "schemas/credential_revoke_request.v1.schema.json",

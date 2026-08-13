@@ -12,6 +12,12 @@ export const acrRuntimeErrorCodes = {
     upstream: "upstream",
     unavailable: "unavailable",
     timeout: "timeout",
+    // CHAOS-3791 prep: error.v1 codes ACR will add once CHAOS-3784 merges (see
+    // client.ts upstreamFailure). Web hardcodes retryable: true here per the
+    // closed wire contract rather than trusting the upstream body's own
+    // `retryable` field.
+    interpretationRejected: "interpretation_rejected",
+    synthesisRejected: "synthesis_rejected",
 } as const;
 
 export type AcrRuntimeErrorCode = (typeof acrRuntimeErrorCodes)[keyof typeof acrRuntimeErrorCodes];
@@ -50,6 +56,8 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
             return "Agent Context Runtime is temporarily unavailable.";
         case acrRuntimeErrorCodes.incompatible:
             return "Agent Context Runtime needs a compatible service version.";
+        case acrRuntimeErrorCodes.interpretationRejected:
+            return "Dev could not accept an interpretation of your question. Try rephrasing it.";
         case acrRuntimeErrorCodes.invalidRequest:
             return "The context request is invalid.";
         case acrRuntimeErrorCodes.malformedResponse:
@@ -60,6 +68,8 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
             return "The requested context is not available.";
         case acrRuntimeErrorCodes.responseTooLarge:
             return "Agent Context Runtime returned an oversized response.";
+        case acrRuntimeErrorCodes.synthesisRejected:
+            return "Dev could not accept a generated answer. Try rephrasing your question.";
         case acrRuntimeErrorCodes.timeout:
             return "Agent Context Runtime did not respond in time.";
         case acrRuntimeErrorCodes.unauthenticated:

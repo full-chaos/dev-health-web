@@ -4,6 +4,11 @@ import acrClientCredentialSchema from "./contracts/schemas/acr_client_credential
 import agentEpisodeCreateSchema from "./contracts/schemas/agent_episode_create.v1.schema.json";
 import agentEpisodeSchema from "./contracts/schemas/agent_episode.v1.schema.json";
 import capabilitiesSchema from "./contracts/schemas/capabilities.v1.schema.json";
+import contextFabricCommonSchema from "./contracts/schemas/context_fabric_common.v1.schema.json";
+import contextFabricInvestigationRequestSchema from "./contracts/schemas/context_fabric_investigation_request.v1.schema.json";
+import contextFabricInvestigationResultSchema from "./contracts/schemas/context_fabric_investigation_result.v1.schema.json";
+import contextFabricOrgModelConfigWriteRequestSchema from "./contracts/schemas/context_fabric_org_model_config_write_request.v1.schema.json";
+import contextFabricOrgModelConfigSchema from "./contracts/schemas/context_fabric_org_model_config.v1.schema.json";
 import contextPacketItemSchema from "./contracts/schemas/context_packet_item.v1.schema.json";
 import contextPacketRequestSchema from "./contracts/schemas/context_packet_request.v1.schema.json";
 import contextPacketSchema from "./contracts/schemas/context_packet.v1.schema.json";
@@ -31,6 +36,11 @@ export const acrSchemas = {
     agentEpisodeCreate: agentEpisodeCreateSchema,
     agentEpisode: agentEpisodeSchema,
     capabilities: capabilitiesSchema,
+    contextFabricCommon: contextFabricCommonSchema,
+    contextFabricInvestigationRequest: contextFabricInvestigationRequestSchema,
+    contextFabricInvestigationResult: contextFabricInvestigationResultSchema,
+    contextFabricOrgModelConfigWriteRequest: contextFabricOrgModelConfigWriteRequestSchema,
+    contextFabricOrgModelConfig: contextFabricOrgModelConfigSchema,
     contextPacketItem: contextPacketItemSchema,
     contextPacketRequest: contextPacketRequestSchema,
     contextPacket: contextPacketSchema,
@@ -57,6 +67,12 @@ const acrSchemaFiles = {
     "agent_episode_create.v1.schema.json": agentEpisodeCreateSchema,
     "agent_episode.v1.schema.json": agentEpisodeSchema,
     "capabilities.v1.schema.json": capabilitiesSchema,
+    "context_fabric_common.v1.schema.json": contextFabricCommonSchema,
+    "context_fabric_investigation_request.v1.schema.json": contextFabricInvestigationRequestSchema,
+    "context_fabric_investigation_result.v1.schema.json": contextFabricInvestigationResultSchema,
+    "context_fabric_org_model_config_write_request.v1.schema.json":
+        contextFabricOrgModelConfigWriteRequestSchema,
+    "context_fabric_org_model_config.v1.schema.json": contextFabricOrgModelConfigSchema,
     "context_packet_item.v1.schema.json": contextPacketItemSchema,
     "context_packet_request.v1.schema.json": contextPacketRequestSchema,
     "context_packet.v1.schema.json": contextPacketSchema,
