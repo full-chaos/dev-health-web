@@ -75,6 +75,23 @@ describe("BackfillStatus", () => {
         expect(screen.queryByText("Live — refreshing…")).not.toBeInTheDocument();
     });
 
+    it("translates a backend failure code for a terminal backfill", () => {
+        render(
+            <BackfillStatus
+                initialJob={{
+                    ...RUNNING_JOB,
+                    status: "partial_failed",
+                    progress_pct: 100,
+                    error_message: "provider_unit_exhausted",
+                }}
+                testMode
+            />,
+        );
+
+        expect(screen.getByText("Provider retries exhausted")).toBeInTheDocument();
+        expect(screen.queryByText("provider_unit_exhausted")).not.toBeInTheDocument();
+    });
+
     it("renders a fanout 'planned' job as non-terminal and waiting", () => {
         render(<BackfillStatus initialJob={{ ...RUNNING_JOB, status: "planned" }} testMode />);
 

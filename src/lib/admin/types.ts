@@ -346,8 +346,9 @@ export interface SyncRunUnit {
      * bucket, cap, and remedies), and "deferral_exhausted" (terminal —
      * aggregate cap: the unit oscillated between budget and rate-limit
      * deferral episodes without ever running; `error` names the last
-     * episode kind and both counters). Persisted strings — render verbatim,
-     * never invent variants.
+     * episode kind and both counters). Persisted strings are stable machine
+     * codes. Keep them intact in state and translate them through the shared
+     * web presentation map before rendering operator-facing copy.
      */
     error_category: string | null;
     last_heartbeat_at: string | null;

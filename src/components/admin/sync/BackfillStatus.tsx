@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { getBackfillJobStatus } from "@/lib/admin/server";
 import { formatDateUTC } from "@/lib/formatters";
+import { getSyncUnitErrorPresentation } from "@/lib/admin/syncUnitErrorPresentation";
 import type { BackfillJob } from "@/lib/admin/types";
 
 /** How often to poll for live backfill status. */
@@ -42,6 +43,9 @@ interface BackfillStatusProps {
 
 /** Human-readable in-progress/terminal label for every status in both status families. */
 function statusLabel(job: BackfillJob): string {
+    const failureTitle = job.error_message
+        ? getSyncUnitErrorPresentation(job.error_message, null).title
+        : null;
     switch (job.status) {
         case "pending":
         case "planned":
@@ -54,9 +58,9 @@ function statusLabel(job: BackfillJob): string {
         case "success":
             return "Backfill complete";
         case "partial_failed":
-            return job.error_message || "Completed with failures";
+            return failureTitle ?? "Completed with failures";
         case "failed":
-            return job.error_message || "Backfill failed";
+            return failureTitle ?? "Backfill failed";
         default:
             return job.status;
     }
@@ -137,11 +141,15 @@ export function BackfillStatus({ initialJob, testMode = false }: BackfillStatusP
                     if (result.data.status === "completed" || result.data.status === "success") {
                         toast.success("Backfill completed successfully");
                     } else if (result.data.status === "partial_failed") {
-                        toast.warning(
-                            result.data.error_message || "Backfill completed with some failures",
-                        );
+                        const failureTitle = result.data.error_message
+                            ? getSyncUnitErrorPresentation(result.data.error_message, null).title
+                            : null;
+                        toast.warning(failureTitle ?? "Backfill completed with some failures");
                     } else {
-                        toast.error(result.data.error_message || "Backfill failed");
+                        const failureTitle = result.data.error_message
+                            ? getSyncUnitErrorPresentation(result.data.error_message, null).title
+                            : null;
+                        toast.error(failureTitle ?? "Backfill failed");
                     }
                     return;
                 }
