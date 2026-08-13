@@ -457,11 +457,7 @@ describe("ACR server-only runtime service", () => {
         ).rejects.toMatchObject({ code, status });
     });
 
-    // TODO(CHAOS-3791): un-skip once `pnpm acr:contracts:generate` lands the
-    // CHAOS-3784 error.v1 enum. Until then the embedded schema copy rejects
-    // these wire codes as malformed before upstreamFailure ever sees them —
-    // the handling below is prepped and ready, blocked only on the regen.
-    it.skip.each([
+    it.each([
         ["interpretation_rejected", acrRuntimeErrorCodes.interpretationRejected],
         ["synthesis_rejected", acrRuntimeErrorCodes.synthesisRejected],
     ])("maps 422 %s to a retryable %s failure", async (wireCode, code) => {
