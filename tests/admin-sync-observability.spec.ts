@@ -178,6 +178,55 @@ test.describe("Journey 1 — coverage-first config detail", () => {
 });
 
 test.describe("Journey 2 — gap-driven backfill flow", () => {
+    test("selects gap and failure rows together and preserves each exact scope", async ({
+        page,
+    }) => {
+        await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
+        const timeline = timelineRegion(page);
+
+        await timeline
+            .getByRole("checkbox", {
+                name: "Select gap Jun 24, 2026 to Jun 26, 2026 for backfill",
+            })
+            .check();
+        await timeline
+            .getByRole("checkbox", {
+                name: "Select failed Jun 25, 2026 to Jun 27, 2026 for backfill",
+            })
+            .check();
+        await timeline.getByRole("button", { name: "Backfill selected (2)" }).click();
+
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        await expect(dialog.getByRole("status")).toContainText("2 exact windows selected");
+        await dialog.getByRole("button", { name: "Continue" }).click();
+
+        await expect(dialog.getByText(/Window 1: 2026-06-24 to 2026-06-26/)).toBeVisible();
+        await expect(dialog.getByText(/Window 2: 2026-06-25 to 2026-06-27/)).toBeVisible();
+        await expect(dialog.getByText("Sources: fullchaos/platform-api")).toBeVisible();
+        await expect(dialog.getByText("Sources: fullchaos/billing-service")).toBeVisible();
+        await expect(dialog.getByText("Datasets: Git Data (Commits, Branches)")).toBeVisible();
+        await expect(dialog.getByText("Datasets: Pull Requests")).toBeVisible();
+
+        await dialog.getByRole("button", { name: "Run 2 backfills" }).click();
+        await expect(dialog.getByText(/^2 backfills started/)).toBeVisible();
+        await expect(dialog.getByRole("link", { name: "View run" })).toHaveCount(2);
+    });
+
+    test("opens a failed row with its source and dataset selected", async ({ page }) => {
+        await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
+        const timeline = timelineRegion(page);
+
+        await timeline.getByRole("button", { name: "Backfill this failure" }).click();
+
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        await expect(dialog.getByLabel("Since (inclusive)")).toHaveValue("2026-06-25");
+        await expect(dialog.getByLabel("Before (exclusive)")).toHaveValue("2026-06-27");
+        await expect(dialog.getByLabel("fullchaos/billing-service")).toBeChecked();
+        await expect(dialog.getByLabel("Pull Requests")).toBeChecked();
+    });
+
     test("canonical backfill entry prefills the exact server-owned window", async ({ page }) => {
         await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
         const backfillButton = page.getByRole("button", {

@@ -69,7 +69,7 @@ async function fillRange(
 
 async function reviewAndSubmit(user: ReturnType<typeof userEvent.setup>) {
     await user.click(screen.getByRole("button", { name: "Continue" }));
-    await user.click(screen.getByRole("button", { name: "Run backfill" }));
+    await user.click(screen.getByRole("button", { name: /^Run (backfill|\d+ backfills)$/ }));
 }
 
 describe("buildDatasetChoices", () => {
@@ -128,18 +128,18 @@ describe("BackfillWizard", () => {
         await reviewAndSubmit(user);
 
         expect(triggerBackfill).toHaveBeenCalledWith("cfg-1", {
-            since: "2026-06-10T00:00:00.000Z",
-            before: "2026-06-12T00:00:00.000Z",
+            since: "2026-06-10T00:00:00Z",
+            before: "2026-06-12T00:00:00Z",
             source_ids: ["src-web"],
             dataset_keys: ["work-item-comments"],
         });
     });
 
-    it("offers separate quick choices for multiple server suggestions", async () => {
+    it("selects multiple exact suggestions and submits each selector without merging scope", async () => {
         const user = userEvent.setup();
         const firstWindow = {
-            since: "2026-06-01T00:00:00Z",
-            before: "2026-06-02T00:00:00Z",
+            since: "2026-06-01T05:30:00Z",
+            before: "2026-06-02T05:30:00Z",
             source_ids: ["src-api"],
             dataset_keys: ["git"],
             reasons: ["gap"] as const,
@@ -154,15 +154,93 @@ describe("BackfillWizard", () => {
         renderWizard({ suggestedWindows: [firstWindow, secondWindow] });
 
         await user.click(
-            screen.getByRole("button", {
+            screen.getByRole("checkbox", {
+                name: "2026-06-01 to 2026-06-02 · git",
+            }),
+        );
+        await user.click(
+            screen.getByRole("checkbox", {
                 name: "2026-06-10 to 2026-06-12 · work-item-comments",
+            }),
+        );
+
+        expect(screen.getByRole("status")).toHaveTextContent("2 exact windows selected");
+
+        await reviewAndSubmit(user);
+
+        expect(triggerBackfill).toHaveBeenCalledTimes(2);
+        expect(triggerBackfill).toHaveBeenNthCalledWith(1, "cfg-1", {
+            since: "2026-06-01T05:30:00Z",
+            before: "2026-06-02T05:30:00Z",
+            source_ids: ["src-api"],
+            dataset_keys: ["git"],
+        });
+        expect(triggerBackfill).toHaveBeenNthCalledWith(2, "cfg-1", {
+            since: "2026-06-10T00:00:00Z",
+            before: "2026-06-12T00:00:00Z",
+            source_ids: ["src-web"],
+            dataset_keys: ["work-item-comments"],
+        });
+        expect(await screen.findByText(/^2 backfills started/)).toBeInTheDocument();
+    });
+
+    it("auto-selects every source and dataset carried by one exact suggestion", async () => {
+        const user = userEvent.setup();
+        const window = {
+            since: "2026-06-10T00:00:00Z",
+            before: "2026-06-12T00:00:00Z",
+            source_ids: ["src-api", "src-web"],
+            dataset_keys: ["git", "work-item-comments"],
+            reasons: ["gap"] as const,
+        };
+        renderWizard({ suggestedWindows: [window] });
+
+        await user.click(
+            screen.getByRole("checkbox", {
+                name: "2026-06-10 to 2026-06-12 · git, work-item-comments",
             }),
         );
 
         expect(screen.getByLabelText("Since (inclusive)")).toHaveValue("2026-06-10");
         expect(screen.getByLabelText("Before (exclusive)")).toHaveValue("2026-06-12");
+        expect(screen.getByLabelText("acme/api")).toBeChecked();
         expect(screen.getByLabelText("acme/web")).toBeChecked();
+        expect(screen.getByLabelText("Git Data (Commits, Branches)")).toBeChecked();
         expect(screen.getByLabelText("Suggested work-item datasets")).toBeChecked();
+    });
+
+    it("reports each exact window when only part of a batch starts", async () => {
+        const user = userEvent.setup();
+        const windows = [
+            {
+                since: "2026-06-01T00:00:00Z",
+                before: "2026-06-02T00:00:00Z",
+                source_ids: ["src-api"],
+                dataset_keys: ["git"],
+                reasons: ["gap"] as const,
+            },
+            {
+                since: "2026-06-10T00:00:00Z",
+                before: "2026-06-12T00:00:00Z",
+                source_ids: ["src-web"],
+                dataset_keys: ["work-item-comments"],
+                reasons: ["failed"] as const,
+            },
+        ];
+        triggerBackfill
+            .mockResolvedValueOnce({ data: { status: "accepted", sync_run_id: "run-1" } })
+            .mockResolvedValueOnce({ error: "Source is already running" });
+        renderWizard({ initialWindows: windows, suggestedWindows: windows });
+
+        await reviewAndSubmit(user);
+
+        expect(await screen.findByText(/^1 backfill started; 1 failed/)).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "View run" })).toHaveAttribute(
+            "href",
+            "/org/admin/sync/cfg-1/runs/run-1",
+        );
+        expect(screen.getByRole("alert")).toHaveTextContent("Source is already running");
+        expect(triggerBackfill).toHaveBeenCalledTimes(2);
     });
 
     it("submits a repository-only focused selector", async () => {

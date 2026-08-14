@@ -41,7 +41,7 @@ export function BackfillOperations({
 }: BackfillOperationsProps) {
     const router = useRouter();
     const [isWizardOpen, setIsWizardOpen] = useState(false);
-    const [wizardWindow, setWizardWindow] = useState<SyncCoverageBackfillWindow | null>(null);
+    const [wizardWindows, setWizardWindows] = useState<SyncCoverageBackfillWindow[]>([]);
 
     useEffect(() => {
         if (testMode || coverage?.projection_refreshing !== true) return undefined;
@@ -49,9 +49,17 @@ export function BackfillOperations({
         return () => clearInterval(interval);
     }, [coverage?.projection_refreshing, router, testMode]);
 
-    const openWizard = (range?: SyncCoverageBackfillWindow) => {
+    const openWizard = (range?: SyncCoverageBackfillWindow | SyncCoverageBackfillWindow[]) => {
         const suggestions = coverage?.backfill_windows;
-        setWizardWindow(range ?? (suggestions?.length === 1 ? suggestions[0] : null));
+        setWizardWindows(
+            Array.isArray(range)
+                ? range
+                : range
+                  ? [range]
+                  : suggestions?.length === 1
+                    ? [suggestions[0]]
+                    : [],
+        );
         setIsWizardOpen(true);
     };
     const closeWizard = () => setIsWizardOpen(false);
@@ -94,13 +102,14 @@ export function BackfillOperations({
                 coverage={coverage}
                 error={coverageError}
                 onBackfillWindowAction={openWizard}
+                onBackfillWindowsAction={openWizard}
             />
 
             {isWizardOpen && (
                 <BackfillWizard
                     configId={configId}
                     onCloseAction={closeWizard}
-                    initialWindow={wizardWindow ?? undefined}
+                    initialWindows={wizardWindows}
                     suggestedWindows={coverage?.backfill_windows}
                     datasets={coverage?.datasets ?? []}
                     sources={coverage?.sources ?? []}
