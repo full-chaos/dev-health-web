@@ -22,18 +22,7 @@ interface BackfillOperationsProps {
     testMode?: boolean;
 }
 
-interface WizardRange {
-    since: string;
-    before: string;
-}
-
 const COVERAGE_REFRESH_INTERVAL_MS = 5000;
-
-function toDateInput(value: string): string {
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return "";
-    return date.toISOString().slice(0, 10);
-}
 
 /**
  * Owns backfill as an OPERATIONAL action on the config detail page
@@ -52,7 +41,7 @@ export function BackfillOperations({
 }: BackfillOperationsProps) {
     const router = useRouter();
     const [isWizardOpen, setIsWizardOpen] = useState(false);
-    const [wizardRange, setWizardRange] = useState<WizardRange | null>(null);
+    const [wizardWindow, setWizardWindow] = useState<SyncCoverageBackfillWindow | null>(null);
 
     useEffect(() => {
         if (testMode || coverage?.projection_refreshing !== true) return undefined;
@@ -61,9 +50,8 @@ export function BackfillOperations({
     }, [coverage?.projection_refreshing, router, testMode]);
 
     const openWizard = (range?: SyncCoverageBackfillWindow) => {
-        setWizardRange(
-            range ? { since: toDateInput(range.since), before: toDateInput(range.before) } : null,
-        );
+        const suggestions = coverage?.backfill_windows;
+        setWizardWindow(range ?? (suggestions?.length === 1 ? suggestions[0] : null));
         setIsWizardOpen(true);
     };
     const closeWizard = () => setIsWizardOpen(false);
@@ -112,8 +100,8 @@ export function BackfillOperations({
                 <BackfillWizard
                     configId={configId}
                     onCloseAction={closeWizard}
-                    initialSince={wizardRange?.since}
-                    initialBefore={wizardRange?.before}
+                    initialWindow={wizardWindow ?? undefined}
+                    suggestedWindows={coverage?.backfill_windows}
                     datasets={coverage?.datasets ?? []}
                     sources={coverage?.sources ?? []}
                     testMode={testMode}

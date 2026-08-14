@@ -98,6 +98,27 @@ describe("SyncCoverageTimeline", () => {
         });
     });
 
+    it("opens a gap action only for its exact server-authorized source and dataset window", async () => {
+        const onBackfillWindowAction = vi.fn();
+        const user = userEvent.setup();
+        const window = {
+            since: "2026-01-02T00:00:00Z",
+            before: "2026-01-03T00:00:00Z",
+            source_ids: ["src-repo"],
+            dataset_keys: ["commits"],
+            reasons: ["gap"] as const,
+        };
+        render(
+            <SyncCoverageTimeline
+                coverage={{ ...PARTIAL_COVERAGE_SUMMARY, backfill_windows: [window] }}
+                onBackfillWindowAction={onBackfillWindowAction}
+            />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "Backfill this gap" }));
+        expect(onBackfillWindowAction).toHaveBeenCalledWith(window);
+    });
+
     it("does not infer a backfill action from gaps when canonical windows are explicitly empty", () => {
         render(
             <SyncCoverageTimeline
@@ -108,6 +129,7 @@ describe("SyncCoverageTimeline", () => {
 
         expect(screen.getAllByText("Gap").length).toBeGreaterThan(0);
         expect(screen.queryByRole("button", { name: /Backfill/ })).not.toBeInTheDocument();
+        expect(screen.getAllByText("No exact backfill suggestion").length).toBeGreaterThan(0);
     });
 
     it("uses the server coverage bounds as the decorative timeline extent", () => {

@@ -136,9 +136,7 @@ test.describe("Journey 1 — coverage-first config detail", () => {
         await expect(page.getByText(/unknown/i)).toHaveCount(0);
     });
 
-    test("truncated coverage labels the server-owned window and exposes only canonical backfills", async ({
-        page,
-    }) => {
+    test("truncated coverage exposes only exact server-authorized backfills", async ({ page }) => {
         await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
 
         await expect(page.getByTestId("coverage-window")).toContainText(
@@ -149,7 +147,8 @@ test.describe("Journey 1 — coverage-first config detail", () => {
         );
         const timeline = timelineRegion(page);
         await expect(timeline.getByTestId("coverage-backfill-windows")).toBeVisible();
-        await expect(timeline.getByRole("button", { name: "Backfill this gap" })).toHaveCount(0);
+        await expect(timeline.getByRole("button", { name: "Backfill this gap" })).toHaveCount(1);
+        await expect(timeline.getByText("No exact backfill suggestion")).toBeVisible();
         await expect(
             timeline.getByRole("button", { name: "Backfill Jun 24, 2026 to Jun 26, 2026" }),
         ).toBeVisible();

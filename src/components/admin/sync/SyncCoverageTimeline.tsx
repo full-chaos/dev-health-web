@@ -48,6 +48,51 @@ interface TimelineRow {
     datasetKey: string;
 }
 
+function sameBoundary(left: string, right: string): boolean {
+    const leftTime = new Date(left).getTime();
+    const rightTime = new Date(right).getTime();
+    return Number.isFinite(leftTime) && leftTime === rightTime;
+}
+
+function sameScope(left: string[], right: string[]): boolean {
+    if (left.length !== right.length) return false;
+    const sortedLeft = [...left].sort();
+    const sortedRight = [...right].sort();
+    return sortedLeft.every((value, index) => value === sortedRight[index]);
+}
+
+/**
+ * Return only the server-authorized window for this exact dataset/source gap.
+ * An explicit empty array is authoritative: it never falls back to a client
+ * inferred action. The undefined fallback is for an independently deployed
+ * legacy Ops server that did not emit the contract field yet.
+ */
+function backfillWindowForRow(
+    row: TimelineRow,
+    backfillWindows: SyncCoverageBackfillWindow[] | undefined,
+): SyncCoverageBackfillWindow | null {
+    if (backfillWindows === undefined) {
+        return {
+            since: row.range.since,
+            before: row.range.before,
+            source_ids: row.range.source_ids,
+            dataset_keys: [row.datasetKey],
+        };
+    }
+
+    return (
+        backfillWindows.find(
+            (window) =>
+                window.dataset_keys?.length === 1 &&
+                window.dataset_keys[0] === row.datasetKey &&
+                window.source_ids !== undefined &&
+                sameScope(window.source_ids, row.range.source_ids) &&
+                sameBoundary(window.since, row.range.since) &&
+                sameBoundary(window.before, row.range.before),
+        ) ?? null
+    );
+}
+
 /** Content-derived row/band key — stable across re-renders, unlike array index. */
 function rangeKey(kind: BandKind, range: SyncCoverageRange): string {
     return `${kind}-${range.since}-${range.before}-${range.source_ids.join(",")}`;
@@ -245,17 +290,23 @@ export function SyncCoverageTimeline({
                     <div>
                         <h4 className="font-medium text-foreground">Available backfills</h4>
                         <p className="mt-1 text-sm text-(--ink-muted)">
-                            These config-wide windows are provided by the coverage service.
+                            These exact, scoped windows are authorized by the coverage service.
                         </p>
                     </div>
                     <ul className="space-y-2">
                         {coverage.backfill_windows.map((window) => (
                             <li
-                                key={`${window.since}-${window.before}`}
+                                key={`${window.since}-${window.before}-${window.dataset_keys?.join(",") ?? "all"}-${window.source_ids?.join(",") ?? "all"}`}
                                 className="flex flex-wrap items-center justify-between gap-3"
                             >
                                 <span className="text-sm text-foreground">
                                     {formatDateUTC(window.since)} – {formatDateUTC(window.before)}
+                                    {window.dataset_keys && window.dataset_keys.length > 0 && (
+                                        <> · {window.dataset_keys.join(", ")}</>
+                                    )}
+                                    {window.source_ids && window.source_ids.length > 0 && (
+                                        <> · {window.source_ids.map(sourceLabel).join(", ")}</>
+                                    )}
                                 </span>
                                 <button
                                     type="button"
@@ -400,49 +451,63 @@ export function SyncCoverageTimeline({
                                                 </td>
                                             </tr>
                                         ) : (
-                                            rows.map((row) => (
-                                                <tr key={rangeKey(row.kind, row.range)}>
-                                                    <td className="px-2 py-2">
-                                                        <CoverageBadge
-                                                            tone={BAND_TONE[row.kind]}
-                                                            label={BAND_LABEL[row.kind]}
-                                                        />
-                                                    </td>
-                                                    <td className="px-2 py-2 text-foreground">
-                                                        {formatDateUTC(row.range.since)}
-                                                    </td>
-                                                    <td className="px-2 py-2 text-foreground">
-                                                        {formatDateUTC(row.range.before)}
-                                                    </td>
-                                                    <td className="px-2 py-2 text-(--ink-muted)">
-                                                        {row.range.source_ids.length === 0
-                                                            ? "—"
-                                                            : row.range.source_ids
-                                                                  .map((id) => sourceLabel(id))
-                                                                  .join(", ")}
-                                                    </td>
-                                                    <td className="px-2 py-2">
-                                                        {row.kind === "gap" &&
-                                                        coverage.backfill_windows === undefined ? (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() =>
-                                                                    onBackfillWindowAction(
-                                                                        row.range,
-                                                                    )
-                                                                }
-                                                                className="text-(--accent) hover:underline"
-                                                            >
-                                                                {CTA_LABELS.backfillThisGap}
-                                                            </button>
-                                                        ) : (
-                                                            <span className="text-(--ink-muted)">
-                                                                —
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))
+                                            rows.map((row) => {
+                                                const backfillWindow =
+                                                    row.kind === "gap"
+                                                        ? backfillWindowForRow(
+                                                              row,
+                                                              coverage.backfill_windows,
+                                                          )
+                                                        : null;
+                                                return (
+                                                    <tr key={rangeKey(row.kind, row.range)}>
+                                                        <td className="px-2 py-2">
+                                                            <CoverageBadge
+                                                                tone={BAND_TONE[row.kind]}
+                                                                label={BAND_LABEL[row.kind]}
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2 text-foreground">
+                                                            {formatDateUTC(row.range.since)}
+                                                        </td>
+                                                        <td className="px-2 py-2 text-foreground">
+                                                            {formatDateUTC(row.range.before)}
+                                                        </td>
+                                                        <td className="px-2 py-2 text-(--ink-muted)">
+                                                            {row.range.source_ids.length === 0
+                                                                ? "—"
+                                                                : row.range.source_ids
+                                                                      .map((id) => sourceLabel(id))
+                                                                      .join(", ")}
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            {backfillWindow ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        onBackfillWindowAction(
+                                                                            backfillWindow,
+                                                                        )
+                                                                    }
+                                                                    className="text-(--accent) hover:underline"
+                                                                >
+                                                                    {CTA_LABELS.backfillThisGap}
+                                                                </button>
+                                                            ) : row.kind === "gap" &&
+                                                              coverage.backfill_windows !==
+                                                                  undefined ? (
+                                                                <span className="text-xs text-(--ink-muted)">
+                                                                    No exact backfill suggestion
+                                                                </span>
+                                                            ) : (
+                                                                <span className="text-(--ink-muted)">
+                                                                    —
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
                                         )}
                                     </tbody>
                                 </table>

@@ -194,11 +194,11 @@ jobs:
                   retention-days: 90
 
     e2e-onboarding:
-        # Context Fabric runs sequentially in this job rather than as its own
-        # runner: GitHub's concurrency limits make every extra parallel job a
-        # queue liability, and the two suites are isolated by run_tests.sh
-        # regardless of which runner hosts them.
-        name: E2E tests (onboarding + Context Fabric)
+        # Route-stress suites and Context Fabric run sequentially in this job rather
+        # than as separate runners. GitHub's concurrency limits make every
+        # extra parallel job a queue liability, and run_tests.sh isolates all
+        # four suites regardless of which runner hosts them.
+        name: E2E tests (route stress + onboarding + Context Fabric)
         needs: [changes]
         if: needs.changes.outputs.e2e == 'true'
         runs-on: ubuntu-latest
@@ -210,6 +210,8 @@ jobs:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
+            - run: bash ci/run_tests.sh e2e-customer-push
+            - run: bash ci/run_tests.sh e2e-navigation
             - run: bash ci/run_tests.sh e2e-onboarding
             - run: bash ci/run_tests.sh e2e-context-fabric
             - name: Upload Playwright report

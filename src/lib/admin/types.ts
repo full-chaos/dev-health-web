@@ -164,10 +164,19 @@ export interface SyncCoverageRange {
     run_ids: string[];
 }
 
-/** Server-owned, config-wide date range accepted by the backfill endpoint. */
+/**
+ * Server-authorized half-open backfill selector for one coverage gap.
+ *
+ * Scope fields are optional only while Ops and Web roll out independently.
+ * A row-level action requires both fields; Web must never infer them from a
+ * displayed gap when the server sends an explicit empty list.
+ */
 export interface SyncCoverageBackfillWindow {
     since: string;
     before: string;
+    source_ids?: string[];
+    dataset_keys?: string[];
+    reasons?: ReadonlyArray<"gap" | "failed">;
 }
 
 export interface SyncRunJobEnrichment {
@@ -230,7 +239,7 @@ export interface SyncCoverageSummary {
      * is built. Optional while Web and Ops deploy independently.
      */
     projection_refreshing?: boolean;
-    /** Authoritative config-wide actions. Present empty means no action is available. */
+    /** Authoritative exact backfill suggestions. Present empty means no suggestion is available. */
     backfill_windows?: SyncCoverageBackfillWindow[];
     overall: SyncCoverageOverall;
     datasets: SyncCoverageDataset[];

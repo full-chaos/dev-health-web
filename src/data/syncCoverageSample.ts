@@ -278,12 +278,18 @@ export const SAMPLE_COVERAGE_TRUNCATED: SyncCoverageSummary = {
     truncation_reason: "lookback_limit",
     backfill_windows: [
         {
-            since: "2026-06-24",
-            before: "2026-06-26",
+            since: "2026-06-24T00:00:00.000Z",
+            before: "2026-06-26T00:00:00.000Z",
+            source_ids: [SOURCE_PLATFORM],
+            dataset_keys: ["git"],
+            reasons: ["gap"],
         },
         {
-            since: "2026-06-28",
-            before: "2026-07-01",
+            since: "2026-06-25T00:00:00.000Z",
+            before: "2026-06-27T00:00:00.000Z",
+            source_ids: [SOURCE_BILLING],
+            dataset_keys: ["prs"],
+            reasons: ["failed"],
         },
     ],
 };
