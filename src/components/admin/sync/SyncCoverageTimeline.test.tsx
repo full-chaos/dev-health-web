@@ -3,6 +3,7 @@ import { render, screen, userEvent, within } from "@/test/utils";
 import { SyncCoverageTimeline } from "./SyncCoverageTimeline";
 import {
     COMPLETE_COVERAGE_SUMMARY,
+    FAILED_COVERAGE_SUMMARY,
     LEGACY_INSUFFICIENT_DATA_SUMMARY,
     PARTIAL_COVERAGE_SUMMARY,
     TRUNCATED_COVERAGE_SUMMARY,
@@ -10,6 +11,7 @@ import {
 import {
     SAMPLE_COVERAGE_CONCURRENT_CONFIG,
     SAMPLE_COVERAGE_OVERLAPPING_RETRY,
+    SAMPLE_COVERAGE_TRUNCATED,
 } from "@/data/syncCoverageSample";
 
 describe("SyncCoverageTimeline", () => {
@@ -117,6 +119,55 @@ describe("SyncCoverageTimeline", () => {
 
         await user.click(screen.getByRole("button", { name: "Backfill this gap" }));
         expect(onBackfillWindowAction).toHaveBeenCalledWith(window);
+    });
+
+    it("opens a failed-row action only for its exact server-authorized window", async () => {
+        const onBackfillWindowAction = vi.fn();
+        const user = userEvent.setup();
+        const window = {
+            since: "2026-01-02T00:00:00Z",
+            before: "2026-01-03T00:00:00Z",
+            source_ids: ["src-repo"],
+            dataset_keys: ["commits"],
+            reasons: ["failed"] as const,
+        };
+        render(
+            <SyncCoverageTimeline
+                coverage={{ ...FAILED_COVERAGE_SUMMARY, backfill_windows: [window] }}
+                onBackfillWindowAction={onBackfillWindowAction}
+            />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "Backfill this failure" }));
+        expect(onBackfillWindowAction).toHaveBeenCalledWith(window);
+    });
+
+    it("selects actionable gaps and failures together for one focused batch", async () => {
+        const onBackfillWindowsAction = vi.fn();
+        const user = userEvent.setup();
+        render(
+            <SyncCoverageTimeline
+                coverage={SAMPLE_COVERAGE_TRUNCATED}
+                onBackfillWindowAction={vi.fn()}
+                onBackfillWindowsAction={onBackfillWindowsAction}
+            />,
+        );
+
+        await user.click(
+            screen.getByRole("checkbox", {
+                name: /Select gap Jun 24, 2026 to Jun 26, 2026 for backfill/,
+            }),
+        );
+        await user.click(
+            screen.getByRole("checkbox", {
+                name: /Select failed Jun 25, 2026 to Jun 27, 2026 for backfill/,
+            }),
+        );
+        await user.click(screen.getByRole("button", { name: "Backfill selected (2)" }));
+
+        expect(onBackfillWindowsAction).toHaveBeenCalledWith(
+            SAMPLE_COVERAGE_TRUNCATED.backfill_windows,
+        );
     });
 
     it("does not infer a backfill action from gaps when canonical windows are explicitly empty", () => {

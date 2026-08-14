@@ -146,6 +146,8 @@ export const CTA_LABELS = {
     backfill: "Backfill",
     /** Gap-scoped backfill deep-link from the coverage timeline (CHAOS-2793). */
     backfillThisGap: "Backfill this gap",
+    /** Failure-scoped backfill deep-link from the coverage timeline. */
+    backfillThisFailure: "Backfill this failure",
     /** Server-owned config-wide backfill window from the coverage timeline. */
     backfillThisWindow: "Backfill this window",
     allDatasets: "All datasets",

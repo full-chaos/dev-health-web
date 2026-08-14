@@ -17,6 +17,8 @@ interface SyncCoverageTimelineProps {
     error?: string | null;
     /** Opens the backfill wizard with a server-owned or legacy-compatible date window. */
     onBackfillWindowAction: (range: SyncCoverageBackfillWindow) => void;
+    /** Opens the wizard with several exact server-owned selectors. */
+    onBackfillWindowsAction?: (ranges: SyncCoverageBackfillWindow[]) => void;
 }
 
 type BandKind = "covered" | "gap" | "stale" | "failed";
@@ -48,6 +50,30 @@ interface TimelineRow {
     datasetKey: string;
 }
 
+function windowLabel(window: SyncCoverageBackfillWindow): string {
+    const datasetScope = window.dataset_keys?.length
+        ? window.dataset_keys.join(", ")
+        : "all datasets";
+    return `${formatDateUTC(window.since)} – ${formatDateUTC(window.before)} · ${datasetScope}`;
+}
+
+function backfillWindowKey(window: SyncCoverageBackfillWindow): string {
+    return [
+        window.since,
+        window.before,
+        [...(window.dataset_keys ?? [])].sort().join(","),
+        [...(window.source_ids ?? [])].sort().join(","),
+    ].join("|");
+}
+
+function selectionReason(window: SyncCoverageBackfillWindow): "gap" | "failed" {
+    return window.reasons?.includes("failed") && !window.reasons.includes("gap") ? "failed" : "gap";
+}
+
+function windowSelectionLabel(window: SyncCoverageBackfillWindow): string {
+    return `Select ${selectionReason(window)} ${formatDateUTC(window.since)} to ${formatDateUTC(window.before)} for backfill`;
+}
+
 function sameBoundary(left: string, right: string): boolean {
     const leftTime = new Date(left).getTime();
     const rightTime = new Date(right).getTime();
@@ -62,34 +88,35 @@ function sameScope(left: string[], right: string[]): boolean {
 }
 
 /**
- * Return only the server-authorized window for this exact dataset/source gap.
- * An explicit empty array is authoritative: it never falls back to a client
- * inferred action. The undefined fallback is for an independently deployed
- * legacy Ops server that did not emit the contract field yet.
+ * Return the server-authorized windows for this exact dataset/source gap or
+ * failure. An explicit empty array is authoritative: it never falls back to a
+ * client inferred action. The undefined fallback is for an independently
+ * deployed legacy Ops server that did not emit the contract field yet.
  */
-function backfillWindowForRow(
+function backfillWindowsForRow(
     row: TimelineRow,
     backfillWindows: SyncCoverageBackfillWindow[] | undefined,
-): SyncCoverageBackfillWindow | null {
+): SyncCoverageBackfillWindow[] {
     if (backfillWindows === undefined) {
-        return {
-            since: row.range.since,
-            before: row.range.before,
-            source_ids: row.range.source_ids,
-            dataset_keys: [row.datasetKey],
-        };
+        return [
+            {
+                since: row.range.since,
+                before: row.range.before,
+                source_ids: row.range.source_ids,
+                dataset_keys: [row.datasetKey],
+            },
+        ];
     }
 
-    return (
-        backfillWindows.find(
-            (window) =>
-                window.dataset_keys?.length === 1 &&
-                window.dataset_keys[0] === row.datasetKey &&
-                window.source_ids !== undefined &&
-                sameScope(window.source_ids, row.range.source_ids) &&
-                sameBoundary(window.since, row.range.since) &&
-                sameBoundary(window.before, row.range.before),
-        ) ?? null
+    return backfillWindows.filter(
+        (window) =>
+            window.dataset_keys !== undefined &&
+            window.dataset_keys.length > 0 &&
+            window.dataset_keys.includes(row.datasetKey) &&
+            window.source_ids !== undefined &&
+            sameScope(window.source_ids, row.range.source_ids) &&
+            sameBoundary(window.since, row.range.since) &&
+            sameBoundary(window.before, row.range.before),
     );
 }
 
@@ -168,9 +195,11 @@ export function SyncCoverageTimeline({
     coverage,
     error,
     onBackfillWindowAction,
+    onBackfillWindowsAction,
 }: SyncCoverageTimelineProps) {
     const [datasetFilter, setDatasetFilter] = useState<string>("all");
     const [sourceFilter, setSourceFilter] = useState<string>("all");
+    const [selectedBackfillWindowKeys, setSelectedBackfillWindowKeys] = useState<string[]>([]);
 
     const sourceNameById = useMemo(() => {
         const map: Record<string, string> = {};
@@ -187,6 +216,20 @@ export function SyncCoverageTimeline({
         if (datasetFilter === "all") return all;
         return all.filter((dataset) => dataset.dataset_key === datasetFilter);
     }, [coverage, datasetFilter]);
+
+    const selectedBackfillWindows = useMemo(() => {
+        const selected = new Set(selectedBackfillWindowKeys);
+        return (coverage?.backfill_windows ?? []).filter((window) =>
+            selected.has(backfillWindowKey(window)),
+        );
+    }, [coverage?.backfill_windows, selectedBackfillWindowKeys]);
+
+    const toggleBackfillWindow = (window: SyncCoverageBackfillWindow) => {
+        const key = backfillWindowKey(window);
+        setSelectedBackfillWindowKeys((current) =>
+            current.includes(key) ? current.filter((value) => value !== key) : [...current, key],
+        );
+    };
 
     if (error) {
         return (
@@ -296,18 +339,30 @@ export function SyncCoverageTimeline({
                     <ul className="space-y-2">
                         {coverage.backfill_windows.map((window) => (
                             <li
-                                key={`${window.since}-${window.before}-${window.dataset_keys?.join(",") ?? "all"}-${window.source_ids?.join(",") ?? "all"}`}
+                                key={backfillWindowKey(window)}
                                 className="flex flex-wrap items-center justify-between gap-3"
                             >
-                                <span className="text-sm text-foreground">
-                                    {formatDateUTC(window.since)} – {formatDateUTC(window.before)}
-                                    {window.dataset_keys && window.dataset_keys.length > 0 && (
-                                        <> · {window.dataset_keys.join(", ")}</>
-                                    )}
-                                    {window.source_ids && window.source_ids.length > 0 && (
-                                        <> · {window.source_ids.map(sourceLabel).join(", ")}</>
-                                    )}
-                                </span>
+                                <label className="flex min-w-0 items-start gap-2 text-sm text-foreground">
+                                    <input
+                                        type="checkbox"
+                                        aria-label={`Select suggested ${selectionReason(window)} ${formatDateUTC(window.since)} to ${formatDateUTC(window.before)} for backfill`}
+                                        checked={selectedBackfillWindowKeys.includes(
+                                            backfillWindowKey(window),
+                                        )}
+                                        onChange={() => toggleBackfillWindow(window)}
+                                        className="mt-0.5"
+                                    />
+                                    <span>
+                                        {formatDateUTC(window.since)} –{" "}
+                                        {formatDateUTC(window.before)}
+                                        {window.dataset_keys && window.dataset_keys.length > 0 && (
+                                            <> · {window.dataset_keys.join(", ")}</>
+                                        )}
+                                        {window.source_ids && window.source_ids.length > 0 && (
+                                            <> · {window.source_ids.map(sourceLabel).join(", ")}</>
+                                        )}
+                                    </span>
+                                </label>
                                 <button
                                     type="button"
                                     aria-label={`Backfill ${formatDateUTC(window.since)} to ${formatDateUTC(window.before)}`}
@@ -319,6 +374,18 @@ export function SyncCoverageTimeline({
                             </li>
                         ))}
                     </ul>
+                    {onBackfillWindowsAction && (
+                        <div className="flex justify-end border-t border-(--card-stroke) pt-3">
+                            <button
+                                type="button"
+                                disabled={selectedBackfillWindows.length === 0}
+                                onClick={() => onBackfillWindowsAction(selectedBackfillWindows)}
+                                className="rounded-md bg-(--accent) px-3 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 disabled:opacity-50"
+                            >
+                                Backfill selected ({selectedBackfillWindows.length})
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
 
@@ -452,13 +519,13 @@ export function SyncCoverageTimeline({
                                             </tr>
                                         ) : (
                                             rows.map((row) => {
-                                                const backfillWindow =
-                                                    row.kind === "gap"
-                                                        ? backfillWindowForRow(
+                                                const backfillWindows =
+                                                    row.kind === "gap" || row.kind === "failed"
+                                                        ? backfillWindowsForRow(
                                                               row,
                                                               coverage.backfill_windows,
                                                           )
-                                                        : null;
+                                                        : [];
                                                 return (
                                                     <tr key={rangeKey(row.kind, row.range)}>
                                                         <td className="px-2 py-2">
@@ -481,21 +548,94 @@ export function SyncCoverageTimeline({
                                                                       .join(", ")}
                                                         </td>
                                                         <td className="px-2 py-2">
-                                                            {backfillWindow ? (
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        onBackfillWindowAction(
-                                                                            backfillWindow,
-                                                                        )
-                                                                    }
-                                                                    className="text-(--accent) hover:underline"
-                                                                >
-                                                                    {CTA_LABELS.backfillThisGap}
-                                                                </button>
-                                                            ) : row.kind === "gap" &&
-                                                              coverage.backfill_windows !==
-                                                                  undefined ? (
+                                                            {backfillWindows.length === 1 ? (
+                                                                <div className="flex items-center gap-2">
+                                                                    {onBackfillWindowsAction &&
+                                                                        coverage.backfill_windows !==
+                                                                            undefined && (
+                                                                            <input
+                                                                                type="checkbox"
+                                                                                aria-label={`Select ${row.kind} ${formatDateUTC(row.range.since)} to ${formatDateUTC(row.range.before)} for backfill`}
+                                                                                checked={selectedBackfillWindowKeys.includes(
+                                                                                    backfillWindowKey(
+                                                                                        backfillWindows[0],
+                                                                                    ),
+                                                                                )}
+                                                                                onChange={() =>
+                                                                                    toggleBackfillWindow(
+                                                                                        backfillWindows[0],
+                                                                                    )
+                                                                                }
+                                                                            />
+                                                                        )}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            onBackfillWindowAction(
+                                                                                backfillWindows[0],
+                                                                            )
+                                                                        }
+                                                                        className="text-(--accent) hover:underline"
+                                                                    >
+                                                                        {row.kind === "failed"
+                                                                            ? CTA_LABELS.backfillThisFailure
+                                                                            : CTA_LABELS.backfillThisGap}
+                                                                    </button>
+                                                                </div>
+                                                            ) : backfillWindows.length > 1 ? (
+                                                                <div className="flex flex-col gap-1">
+                                                                    {backfillWindows.map(
+                                                                        (window) => (
+                                                                            <div
+                                                                                key={backfillWindowKey(
+                                                                                    window,
+                                                                                )}
+                                                                                className="flex items-start gap-2"
+                                                                            >
+                                                                                {onBackfillWindowsAction &&
+                                                                                    coverage.backfill_windows !==
+                                                                                        undefined && (
+                                                                                        <input
+                                                                                            type="checkbox"
+                                                                                            aria-label={windowSelectionLabel(
+                                                                                                window,
+                                                                                            )}
+                                                                                            checked={selectedBackfillWindowKeys.includes(
+                                                                                                backfillWindowKey(
+                                                                                                    window,
+                                                                                                ),
+                                                                                            )}
+                                                                                            onChange={() =>
+                                                                                                toggleBackfillWindow(
+                                                                                                    window,
+                                                                                                )
+                                                                                            }
+                                                                                        />
+                                                                                    )}
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() =>
+                                                                                        onBackfillWindowAction(
+                                                                                            window,
+                                                                                        )
+                                                                                    }
+                                                                                    className="text-left text-(--accent) hover:underline"
+                                                                                >
+                                                                                    {
+                                                                                        CTA_LABELS.backfillThisWindow
+                                                                                    }
+                                                                                    <span className="block text-xs text-(--ink-muted)">
+                                                                                        {windowLabel(
+                                                                                            window,
+                                                                                        )}
+                                                                                    </span>
+                                                                                </button>
+                                                                            </div>
+                                                                        ),
+                                                                    )}
+                                                                </div>
+                                                            ) : row.kind === "gap" ||
+                                                              row.kind === "failed" ? (
                                                                 <span className="text-xs text-(--ink-muted)">
                                                                     No exact backfill suggestion
                                                                 </span>
