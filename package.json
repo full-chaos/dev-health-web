@@ -27,6 +27,8 @@
         "ask-dev:contracts:check": "node scripts/ask-dev-contracts.mjs check",
         "ask-dev:contracts:check-currency": "node scripts/ask-dev-contracts.mjs check-currency",
         "test:e2e": "playwright test --project=authenticated --project=unauthenticated",
+        "test:e2e:customer-push": "playwright test -c playwright.customer-push.config.ts",
+        "test:e2e:navigation": "playwright test -c playwright.navigation.config.ts",
         "test:e2e:pagerduty-final-qa": "playwright test --project=pagerduty-final-qa",
         "test:e2e:pagerduty-final-qa:smoke": "playwright test --project=pagerduty-final-qa tests/pagerduty-final-qa-p0.spec.ts",
         "test:e2e:context-fabric": "node scripts/context-fabric-qa.mjs",

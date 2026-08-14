@@ -29,11 +29,13 @@ export default defineConfig({
         "auth-onboard.spec.ts",
         "onboarding.setup.ts",
         "acr-context-fabric.production.spec.ts",
+        "admin-customer-push.spec.ts",
+        "nav-reachability.spec.ts",
     ],
     outputDir: resultsDirectory,
-    // The shared Next dev server intermittently loses dynamic route registrations after
-    // concurrent requests in CI, returning 404s for otherwise valid test-mode routes.
-    // Keep CI's test-mode fixture requests serial; local runs retain parallel feedback.
+    // Keep CI's test-mode fixture requests serial. Customer-push runs in its own
+    // short-lived Webpack config because this long-lived Turbopack server has
+    // lost that dynamic route family after earlier requests in hosted CI.
     workers: isCI ? 1 : undefined,
     reporter: [
         ["list"],
@@ -73,6 +75,8 @@ export default defineConfig({
                 /account-creation-journey\.spec\.ts/,
                 /auth-onboard-legacy\.spec\.ts/,
                 /acr-context-fabric\.production\.spec\.ts/,
+                /admin-customer-push\.spec\.ts/,
+                /nav-reachability\.spec\.ts/,
                 /pagerduty-final-qa-p[0-3]\.spec\.ts/,
             ],
             dependencies: ["auth-setup"],

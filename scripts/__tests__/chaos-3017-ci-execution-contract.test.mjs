@@ -73,9 +73,13 @@ const GENERAL_TIERS = [
     },
 ];
 const E2E_STAGES = ["e2e-default", "e2e-onboarding"];
-// Context Fabric's tier runs inside the e2e-onboarding job (one runner,
-// two sequential suites — GitHub concurrency limits).
-const DEDICATED_E2E = [["e2e-onboarding", "e2e-onboarding"]];
+// Route-stress suites and Context Fabric run inside the e2e-onboarding job
+// (one runner, four sequential suites — GitHub concurrency limits).
+const DEDICATED_E2E = [
+    ["e2e-onboarding", "e2e-customer-push"],
+    ["e2e-onboarding", "e2e-navigation"],
+    ["e2e-onboarding", "e2e-onboarding"],
+];
 const E2E_HARNESS_CASES = [
     ...["1/3", "2/3", "3/3"].map((shard) => ({
         args: ["e2e-default", shard],
@@ -83,6 +87,18 @@ const E2E_HARNESS_CASES = [
         failScript: "test:e2e",
         name: `default shard ${shard}`,
     })),
+    {
+        args: ["e2e-customer-push"],
+        expectedCommand: "test:e2e:customer-push",
+        failScript: "test:e2e:customer-push",
+        name: "customer push",
+    },
+    {
+        args: ["e2e-navigation"],
+        expectedCommand: "test:e2e:navigation",
+        failScript: "test:e2e:navigation",
+        name: "navigation",
+    },
     {
         args: ["e2e-onboarding"],
         expectedCommand: "test:e2e:onboarding",
@@ -194,6 +210,12 @@ describe("CHAOS-3017 executable CI boundaries", () => {
         expect(scripts["test:e2e:onboarding"]).toBe(
             "playwright test -c playwright.onboarding.config.ts",
         );
+        expect(scripts["test:e2e:customer-push"]).toBe(
+            "playwright test -c playwright.customer-push.config.ts",
+        );
+        expect(scripts["test:e2e:navigation"]).toBe(
+            "playwright test -c playwright.navigation.config.ts",
+        );
         expect(scripts["test:e2e:context-fabric"]).toBe("node scripts/context-fabric-qa.mjs");
 
         const defaultJob = job(workflow, "e2e-default");
@@ -212,7 +234,7 @@ describe("CHAOS-3017 executable CI boundaries", () => {
             );
         }
 
-        // Context Fabric runs as a second step of the onboarding job.
+        // Context Fabric runs as the fourth step of the onboarding job.
         expect(
             runStep(job(workflow, "e2e-onboarding"), "bash ci/run_tests.sh e2e-context-fabric"),
         ).toBe("            - run: bash ci/run_tests.sh e2e-context-fabric");

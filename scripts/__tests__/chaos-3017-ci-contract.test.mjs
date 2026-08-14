@@ -84,8 +84,14 @@ describe("CHAOS-3017 CI contracts", () => {
         expect(defaultE2e).toMatch(
             /^            - run: bash ci\/run_tests\.sh e2e-default \$\{\{ matrix\.shard \}\}\/3$/mu,
         );
-        // Context Fabric shares the onboarding runner (GitHub concurrency
-        // limits); both suites must still run, in one job.
+        // Route-stress suites and Context Fabric share the onboarding runner
+        // (GitHub concurrency limits); all suites must still run, in one job.
+        expect(job(workflow, "e2e-onboarding")).toMatch(
+            /^            - run: bash ci\/run_tests\.sh e2e-customer-push$/mu,
+        );
+        expect(job(workflow, "e2e-onboarding")).toMatch(
+            /^            - run: bash ci\/run_tests\.sh e2e-navigation$/mu,
+        );
         expect(job(workflow, "e2e-onboarding")).toMatch(
             /^            - run: bash ci\/run_tests\.sh e2e-onboarding$/mu,
         );
@@ -111,6 +117,8 @@ describe("CHAOS-3017 CI contracts", () => {
         // config. Listing them concurrently makes those processes race while the
         // broader Vitest suite is also active, producing incomplete inventories.
         const full = await listDefaultPlaywrightTests();
+        expect(full.some((entry) => entry.includes("admin-customer-push.spec.ts"))).toBe(false);
+        expect(full.some((entry) => entry.includes("nav-reachability.spec.ts"))).toBe(false);
         const shards = [];
         for (const shard of shardLabels) {
             shards.push(await listDefaultPlaywrightTests(shard));
@@ -213,9 +221,13 @@ describe("CHAOS-3017 CI contracts", () => {
         const harness = contents(HARNESS);
 
         expect(harness).toContain("e2e-default");
+        expect(harness).toContain("e2e-customer-push");
+        expect(harness).toContain("e2e-navigation");
         expect(harness).toContain("e2e-onboarding");
         expect(harness).toContain("e2e-context-fabric");
         expect(harness).toMatch(/e2e-default\)\n\s+run_e2e_default "\$2"/);
+        expect(harness).toMatch(/e2e-customer-push\)\n\s+run_e2e_customer_push/);
+        expect(harness).toMatch(/e2e-navigation\)\n\s+run_e2e_navigation/);
         expect(harness).toMatch(/e2e-onboarding\)\n\s+run_e2e_onboarding/);
         expect(harness).toMatch(/e2e-context-fabric\)\n\s+run_e2e_context_fabric/);
     });

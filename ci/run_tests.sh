@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|e2e|e2e-default|e2e-onboarding|e2e-context-fabric|pagerduty-final-qa|live-e2e|design-lint|ci> [current/total]" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|pagerduty-final-qa|live-e2e|design-lint|ci> [current/total]" >&2
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -130,6 +130,14 @@ prepare_playwright_artifacts() {
   rm -rf .next/dev
 }
 
+reset_dev_output() {
+  rm -rf .next/dev
+}
+
+reset_navigation_output() {
+  rm -rf .next/navigation
+}
+
 print_playwright_artifact_summary() {
   local report_root="${1:-${PLAYWRIGHT_REPORT_ROOT}}"
   local results_root="${2:-${PLAYWRIGHT_RESULTS_ROOT}}"
@@ -181,6 +189,23 @@ run_e2e() {
   run_timed "e2e default suite" run_playwright_suite default test:e2e || {
     status=$?
     echo "E2E tests failed. Captured artifacts:" >&2
+    print_playwright_artifact_summary
+    return "${status}"
+  }
+  # The long-lived Turbopack server can lose dynamic routes or stop completing
+  # requests after route-stress specs in hosted CI. Give each proven stressor
+  # its own short-lived server so compiler state cannot cross suites.
+  run_timed "customer-push dev reset" reset_dev_output
+  run_timed "e2e customer-push suite" run_playwright_suite customer-push test:e2e:customer-push || {
+    status=$?
+    echo "Customer-push E2E tests failed. Captured artifacts:" >&2
+    print_playwright_artifact_summary
+    return "${status}"
+  }
+  run_timed "navigation dev reset" reset_navigation_output
+  run_timed "e2e navigation suite" run_playwright_suite navigation test:e2e:navigation || {
+    status=$?
+    echo "Navigation E2E tests failed. Captured artifacts:" >&2
     print_playwright_artifact_summary
     return "${status}"
   }
@@ -270,6 +295,15 @@ run_e2e_default() {
   run_isolated_e2e_suite "${artifact_suite}" test:e2e --shard "${shard}"
 }
 
+run_e2e_customer_push() {
+  run_isolated_e2e_suite customer-push test:e2e:customer-push
+}
+
+run_e2e_navigation() {
+  reset_navigation_output
+  run_isolated_e2e_suite navigation test:e2e:navigation
+}
+
 run_e2e_onboarding() {
   run_isolated_e2e_suite onboarding test:e2e:onboarding
 }
@@ -301,6 +335,12 @@ case "${tier}" in
     ;;
   e2e-default)
     run_e2e_default "$2"
+    ;;
+  e2e-customer-push)
+    run_e2e_customer_push
+    ;;
+  e2e-navigation)
+    run_e2e_navigation
     ;;
   e2e-onboarding)
     run_e2e_onboarding
