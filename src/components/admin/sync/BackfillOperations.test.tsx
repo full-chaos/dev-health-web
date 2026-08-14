@@ -118,6 +118,57 @@ describe("BackfillOperations", () => {
         expect(screen.getByLabelText("Since (inclusive)")).toHaveValue("");
     });
 
+    it("auto-selects the one server-authorized suggestion with its exact scope", async () => {
+        const user = userEvent.setup();
+        const window = {
+            since: "2026-01-02T00:00:00Z",
+            before: "2026-01-03T00:00:00Z",
+            source_ids: ["src-repo"],
+            dataset_keys: ["commits"],
+            reasons: ["gap"] as const,
+        };
+        render(
+            <BackfillOperations
+                configId="cfg-1"
+                coverage={{ ...PARTIAL_COVERAGE_SUMMARY, backfill_windows: [window] }}
+                coverageError={undefined}
+                isActive
+                activeBackfillJob={null}
+                testMode
+            />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "Backfill" }));
+
+        expect(screen.getByLabelText("Since (inclusive)")).toHaveValue("2026-01-02");
+        expect(screen.getByLabelText("Before (exclusive)")).toHaveValue("2026-01-03");
+        expect(screen.getByRole("radio", { name: /Choose specific sources/ })).toBeChecked();
+        expect(screen.getByLabelText("acme/repo")).toBeChecked();
+        expect(screen.getByRole("radio", { name: /Choose specific datasets/ })).toBeChecked();
+        expect(screen.getByLabelText("commits")).toBeChecked();
+    });
+
+    it("states when Ops supplied no exact suggestion and leaves manual scope empty", async () => {
+        const user = userEvent.setup();
+        render(
+            <BackfillOperations
+                configId="cfg-1"
+                coverage={{ ...PARTIAL_COVERAGE_SUMMARY, backfill_windows: [] }}
+                coverageError={undefined}
+                isActive
+                activeBackfillJob={null}
+                testMode
+            />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "Backfill" }));
+
+        expect(screen.getByRole("status")).toHaveTextContent(
+            "No server-suggested backfill window is available",
+        );
+        expect(screen.getByLabelText("Since (inclusive)")).toHaveValue("");
+    });
+
     it("opens the wizard prefilled with the gap's range from a timeline 'Backfill this gap' action", async () => {
         const user = userEvent.setup();
         renderOperations();

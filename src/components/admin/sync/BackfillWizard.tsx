@@ -5,7 +5,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { triggerBackfill } from "@/lib/admin/server";
-import type { SyncCoverageDataset, SyncCoverageSource } from "@/lib/admin/types";
+import type {
+    SyncCoverageBackfillWindow,
+    SyncCoverageDataset,
+    SyncCoverageSource,
+} from "@/lib/admin/types";
 import { DATASET_LABELS } from "./config-form/constants";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -33,8 +37,10 @@ interface DatasetChoice {
 interface BackfillWizardProps {
     configId: string;
     onCloseAction: () => void;
-    initialSince?: string;
-    initialBefore?: string;
+    /** Server-authorized exact scope selected from coverage, if any. */
+    initialWindow?: SyncCoverageBackfillWindow;
+    /** Present empty means Ops has no exact suggestion for this coverage state. */
+    suggestedWindows?: SyncCoverageBackfillWindow[];
     datasets: SyncCoverageDataset[];
     sources: SyncCoverageSource[];
     testMode?: boolean;
@@ -57,12 +63,28 @@ function toBoundary(value: string): string {
     return `${value}T00:00:00.000Z`;
 }
 
+function toDateInput(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    return date.toISOString().slice(0, 10);
+}
+
 function datasetLabel(key: string): string {
     return DATASET_LABELS[key] ?? key.replaceAll("-", " ");
 }
 
+function sameDatasetKeys(left: string[], right: string[]): boolean {
+    if (left.length !== right.length) return false;
+    const sortedLeft = [...left].sort();
+    const sortedRight = [...right].sort();
+    return sortedLeft.every((key, index) => key === sortedRight[index]);
+}
+
 /** Collapse the work-item aliases into the single canonical family operators execute. */
-export function buildDatasetChoices(datasets: SyncCoverageDataset[]): DatasetChoice[] {
+export function buildDatasetChoices(
+    datasets: SyncCoverageDataset[],
+    scopedDatasetKeys: string[] = [],
+): DatasetChoice[] {
     const choices: DatasetChoice[] = [];
     const familyKeys = datasets
         .map((dataset) => dataset.dataset_key)
@@ -85,27 +107,86 @@ export function buildDatasetChoices(datasets: SyncCoverageDataset[]): DatasetCho
             datasetKeys: [dataset.dataset_key],
         });
     }
+
+    const scopedFamilyKeys = scopedDatasetKeys.filter((key) => WORK_ITEM_FAMILY.has(key));
+    if (scopedFamilyKeys.length > 0 && !sameDatasetKeys(scopedFamilyKeys, familyKeys)) {
+        choices.unshift({
+            id: "server-scoped-work-items",
+            label: "Suggested work-item datasets",
+            datasetKeys: scopedFamilyKeys,
+        });
+    }
     return choices;
+}
+
+function choiceIdsForDatasetScope(
+    choices: DatasetChoice[],
+    datasetKeys: string[] | undefined,
+): string[] {
+    if (!datasetKeys || datasetKeys.length === 0) return [];
+    const exactChoice = choices.find((choice) => sameDatasetKeys(choice.datasetKeys, datasetKeys));
+    if (exactChoice) return [exactChoice.id];
+
+    const remaining = new Set(datasetKeys);
+    const selectedChoiceIds: string[] = [];
+    for (const choice of choices) {
+        if (choice.datasetKeys.every((key) => remaining.has(key))) {
+            selectedChoiceIds.push(choice.id);
+            choice.datasetKeys.forEach((key) => remaining.delete(key));
+        }
+    }
+    return remaining.size === 0 ? selectedChoiceIds : [];
+}
+
+function sourceIdsInInventory(
+    sourceIds: string[] | undefined,
+    sources: SyncCoverageSource[],
+): string[] {
+    const available = new Set(sources.map((source) => source.source_id));
+    return (sourceIds ?? []).filter((sourceId) => available.has(sourceId));
+}
+
+function windowLabel(window: SyncCoverageBackfillWindow): string {
+    const datasetScope = window.dataset_keys?.join(", ") ?? "all datasets";
+    return `${toDateInput(window.since)} to ${toDateInput(window.before)} · ${datasetScope}`;
 }
 
 export function BackfillWizard({
     configId,
     onCloseAction,
-    initialSince = "",
-    initialBefore = "",
+    initialWindow,
+    suggestedWindows,
     datasets,
     sources,
     testMode = false,
 }: BackfillWizardProps) {
     const router = useRouter();
-    const datasetChoices = useMemo(() => buildDatasetChoices(datasets), [datasets]);
+    const [scopedDatasetKeys, setScopedDatasetKeys] = useState<string[]>(
+        initialWindow?.dataset_keys ?? [],
+    );
+    const datasetChoices = useMemo(
+        () => buildDatasetChoices(datasets, scopedDatasetKeys),
+        [datasets, scopedDatasetKeys],
+    );
     const [step, setStep] = useState<WizardStep>("scope");
-    const [since, setSince] = useState(initialSince);
-    const [before, setBefore] = useState(initialBefore);
-    const [sourceMode, setSourceMode] = useState<ScopeMode>("all");
-    const [datasetMode, setDatasetMode] = useState<ScopeMode>("all");
-    const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>([]);
-    const [selectedDatasetChoiceIds, setSelectedDatasetChoiceIds] = useState<string[]>([]);
+    const [since, setSince] = useState(() =>
+        initialWindow ? toDateInput(initialWindow.since) : "",
+    );
+    const [before, setBefore] = useState(() =>
+        initialWindow ? toDateInput(initialWindow.before) : "",
+    );
+    const [sourceMode, setSourceMode] = useState<ScopeMode>(() =>
+        initialWindow?.source_ids?.length ? "selected" : "all",
+    );
+    const [datasetMode, setDatasetMode] = useState<ScopeMode>(() =>
+        initialWindow?.dataset_keys?.length ? "selected" : "all",
+    );
+    const [selectedSourceIds, setSelectedSourceIds] = useState<string[]>(() =>
+        sourceIdsInInventory(initialWindow?.source_ids, sources),
+    );
+    const [selectedDatasetChoiceIds, setSelectedDatasetChoiceIds] = useState<string[]>(() =>
+        choiceIdsForDatasetScope(datasetChoices, initialWindow?.dataset_keys),
+    );
     const [expensiveConfirmed, setExpensiveConfirmed] = useState(false);
     const [isPending, startTransition] = useTransition();
     const [submitError, setSubmitError] = useState<string | null>(null);
@@ -155,6 +236,22 @@ export function BackfillWizard({
     const resetConfirmation = () => setExpensiveConfirmed(false);
     const toggle = (values: string[], value: string): string[] =>
         values.includes(value) ? values.filter((item) => item !== value) : [...values, value];
+
+    const applySuggestedWindow = (window: SyncCoverageBackfillWindow) => {
+        setSince(toDateInput(window.since));
+        setBefore(toDateInput(window.before));
+        setSourceMode(window.source_ids?.length ? "selected" : "all");
+        setSelectedSourceIds(sourceIdsInInventory(window.source_ids, sources));
+        setDatasetMode(window.dataset_keys?.length ? "selected" : "all");
+        setScopedDatasetKeys(window.dataset_keys ?? []);
+        setSelectedDatasetChoiceIds(
+            choiceIdsForDatasetScope(
+                buildDatasetChoices(datasets, window.dataset_keys),
+                window.dataset_keys,
+            ),
+        );
+        resetConfirmation();
+    };
 
     const handleSubmit = () => {
         if (!canSubmit) return;
@@ -224,6 +321,44 @@ export function BackfillWizard({
                                 Choose the exact historical window and scope. This run does not
                                 advance scheduled-sync watermarks.
                             </p>
+                            {suggestedWindows?.length === 0 && (
+                                <p
+                                    role="status"
+                                    className="rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 text-sm text-(--ink-muted)"
+                                >
+                                    No server-suggested backfill window is available. Enter a manual
+                                    date range and scope to continue.
+                                </p>
+                            )}
+                            {suggestedWindows && suggestedWindows.length > 1 && (
+                                <fieldset className="space-y-2 rounded-lg border border-(--card-stroke) p-4">
+                                    <legend className="px-1 text-sm font-semibold text-foreground">
+                                        Suggested exact windows
+                                    </legend>
+                                    <p className="text-xs text-(--ink-muted)">
+                                        Choose one server-authorized window, or set a different
+                                        exact scope below.
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {suggestedWindows.map((window) => (
+                                            <button
+                                                key={`${window.since}-${window.before}-${window.dataset_keys?.join(",") ?? "all"}-${window.source_ids?.join(",") ?? "all"}`}
+                                                type="button"
+                                                onClick={() => applySuggestedWindow(window)}
+                                                className="rounded-md border border-(--card-stroke) px-3 py-2 text-left text-sm text-foreground hover:border-(--accent)"
+                                            >
+                                                {windowLabel(window)}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </fieldset>
+                            )}
+                            {suggestedWindows?.length === 1 && initialWindow && (
+                                <p role="status" className="text-sm text-(--ink-muted)">
+                                    The server-suggested window is selected. You can edit it before
+                                    confirmation.
+                                </p>
+                            )}
                             <div className="grid gap-3 sm:grid-cols-2">
                                 <label
                                     className="text-sm font-medium text-(--ink-muted)"

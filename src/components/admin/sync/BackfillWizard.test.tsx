@@ -109,6 +109,62 @@ describe("BackfillWizard", () => {
         );
     });
 
+    it("preserves a server-selected child dataset without broadening the work-item family", async () => {
+        const user = userEvent.setup();
+        const window = {
+            since: "2026-06-10T00:00:00Z",
+            before: "2026-06-12T00:00:00Z",
+            source_ids: ["src-web"],
+            dataset_keys: ["work-item-comments"],
+            reasons: ["gap"] as const,
+        };
+        renderWizard({ initialWindow: window, suggestedWindows: [window] });
+
+        expect(screen.getByLabelText("Since (inclusive)")).toHaveValue("2026-06-10");
+        expect(screen.getByLabelText("Before (exclusive)")).toHaveValue("2026-06-12");
+        expect(screen.getByLabelText("acme/web")).toBeChecked();
+        expect(screen.getByLabelText("Suggested work-item datasets")).toBeChecked();
+
+        await reviewAndSubmit(user);
+
+        expect(triggerBackfill).toHaveBeenCalledWith("cfg-1", {
+            since: "2026-06-10T00:00:00.000Z",
+            before: "2026-06-12T00:00:00.000Z",
+            source_ids: ["src-web"],
+            dataset_keys: ["work-item-comments"],
+        });
+    });
+
+    it("offers separate quick choices for multiple server suggestions", async () => {
+        const user = userEvent.setup();
+        const firstWindow = {
+            since: "2026-06-01T00:00:00Z",
+            before: "2026-06-02T00:00:00Z",
+            source_ids: ["src-api"],
+            dataset_keys: ["git"],
+            reasons: ["gap"] as const,
+        };
+        const secondWindow = {
+            since: "2026-06-10T00:00:00Z",
+            before: "2026-06-12T00:00:00Z",
+            source_ids: ["src-web"],
+            dataset_keys: ["work-item-comments"],
+            reasons: ["gap"] as const,
+        };
+        renderWizard({ suggestedWindows: [firstWindow, secondWindow] });
+
+        await user.click(
+            screen.getByRole("button", {
+                name: "2026-06-10 to 2026-06-12 · work-item-comments",
+            }),
+        );
+
+        expect(screen.getByLabelText("Since (inclusive)")).toHaveValue("2026-06-10");
+        expect(screen.getByLabelText("Before (exclusive)")).toHaveValue("2026-06-12");
+        expect(screen.getByLabelText("acme/web")).toBeChecked();
+        expect(screen.getByLabelText("Suggested work-item datasets")).toBeChecked();
+    });
+
     it("submits a repository-only focused selector", async () => {
         const user = userEvent.setup();
         renderWizard();
