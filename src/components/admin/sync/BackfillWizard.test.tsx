@@ -363,3 +363,78 @@ describe("BackfillWizard", () => {
         expect(onCloseAction).toHaveBeenCalledOnce();
     });
 });
+
+describe("BackfillWizard server-window timezone handling", () => {
+    beforeEach(() => {
+        triggerBackfill.mockReset();
+        triggerBackfill.mockResolvedValue({ data: { status: "accepted", sync_run_id: "run-1" } });
+    });
+
+    // The stored shapes below are verbatim from a live version-1
+    // sync_coverage_projections payload. Ops now always emits an offset, but
+    // web is deployed independently and must not hand the backfill endpoint a
+    // naive value, which it rejects as `timezone_aware` with a 422.
+    it.each([
+        {
+            label: "bare calendar dates",
+            since: "2026-08-08",
+            before: "2026-08-13",
+            sentSince: "2026-08-08T00:00:00.000Z",
+            sentBefore: "2026-08-13T00:00:00.000Z",
+        },
+        {
+            label: "offset-less instants",
+            since: "2026-08-08T00:00:00",
+            before: "2026-08-13T00:00:00",
+            sentSince: "2026-08-08T00:00:00Z",
+            sentBefore: "2026-08-13T00:00:00Z",
+        },
+    ])(
+        "sends an offset-bearing selector for $label",
+        async ({ since, before, sentSince, sentBefore }) => {
+            const user = userEvent.setup();
+            const window = { since, before, reasons: ["failed", "gap"] as const };
+            renderWizard({ initialWindows: [window], suggestedWindows: [window] });
+
+            await reviewAndSubmit(user);
+
+            expect(triggerBackfill).toHaveBeenCalledWith("cfg-1", {
+                since: sentSince,
+                before: sentBefore,
+            });
+            // Both forms must satisfy the endpoint's AwareDatetime selector.
+            expect(sentSince).toMatch(/(?:Z|[+-]\d{2}:?\d{2})$/);
+            expect(sentBefore).toMatch(/(?:Z|[+-]\d{2}:?\d{2})$/);
+        },
+    );
+
+    it("leaves an already-aware boundary byte-identical", async () => {
+        const user = userEvent.setup();
+        const window = {
+            since: "2026-08-08T00:00:00+00:00",
+            before: "2026-08-13T00:00:00Z",
+            reasons: ["gap"] as const,
+        };
+        renderWizard({ initialWindows: [window], suggestedWindows: [window] });
+
+        await reviewAndSubmit(user);
+
+        expect(triggerBackfill).toHaveBeenCalledWith("cfg-1", {
+            since: "2026-08-08T00:00:00+00:00",
+            before: "2026-08-13T00:00:00Z",
+        });
+    });
+
+    it("labels an empty dataset scope without a dangling separator", async () => {
+        const window = {
+            since: "2026-08-08T00:00:00Z",
+            before: "2026-08-13T00:00:00Z",
+            source_ids: [],
+            dataset_keys: [],
+            reasons: ["gap"] as const,
+        };
+        renderWizard({ initialWindows: [window], suggestedWindows: [window] });
+
+        expect(screen.getByText(/2026-08-08 to 2026-08-13 · all datasets/)).toBeInTheDocument();
+    });
+});
