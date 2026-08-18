@@ -167,7 +167,12 @@ function sourceIdsInInventory(
 }
 
 function windowLabel(window: SyncCoverageBackfillWindow): string {
-    const datasetScope = window.dataset_keys?.join(", ") ?? "all datasets";
+    // An empty array is not nullish, so `??` alone leaves the scope blank and
+    // the label ends in a dangling separator. The server sends `[]` for an
+    // unscoped window, which means "all datasets" just as a missing key does.
+    const datasetScope = window.dataset_keys?.length
+        ? window.dataset_keys.join(", ")
+        : "all datasets";
     return `${toDateInput(window.since)} to ${toDateInput(window.before)} · ${datasetScope}`;
 }
 
@@ -180,10 +185,31 @@ function backfillWindowKey(window: SyncCoverageBackfillWindow): string {
     ].join("|");
 }
 
+/**
+ * Coerce a coverage-window boundary into a timezone-aware ISO instant.
+ *
+ * The backfill endpoint validates its selector as an `AwareDatetime` and
+ * rejects a naive value with a `timezone_aware` 422. Server-sent windows are
+ * echoed back here verbatim, so a server that serialises a boundary without an
+ * offset (a version-1 coverage projection stored bare calendar dates) produces
+ * a suggestion the server then refuses. Every stored boundary is UTC midnight.
+ *
+ * Deliberately NOT a `new Date(value).toISOString()` round-trip: JS parses an
+ * offset-less `YYYY-MM-DDTHH:mm:ss` as local time, which would shift the
+ * boundary by the viewer's UTC offset and backfill the wrong day.
+ */
+function toAwareBoundary(value: string): string {
+    // A bare calendar date or an offset-less instant is UTC by
+    // construction on the server; make that explicit so the
+    // selector satisfies AwareDatetime.
+    if (/(?:Z|[+-]\d{2}:?\d{2})$/.test(value)) return value;
+    return value.includes("T") ? `${value}Z` : `${value}T00:00:00.000Z`;
+}
+
 function selectorForExactWindow(window: SyncCoverageBackfillWindow): BackfillSelector {
     return {
-        since: window.since,
-        before: window.before,
+        since: toAwareBoundary(window.since),
+        before: toAwareBoundary(window.before),
         ...(window.source_ids?.length ? { source_ids: window.source_ids } : {}),
         ...(window.dataset_keys?.length ? { dataset_keys: window.dataset_keys } : {}),
     };
