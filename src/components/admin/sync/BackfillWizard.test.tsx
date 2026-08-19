@@ -155,7 +155,9 @@ describe("BackfillWizard", () => {
 
         await user.click(
             screen.getByRole("checkbox", {
-                name: "2026-06-01 to 2026-06-02 · git",
+                // 05:30Z boundaries: the label discloses the time so an
+                // off-midnight window is not mistaken for a whole-day one.
+                name: "2026-06-01 05:30Z to 2026-06-02 05:30Z · git",
             }),
         );
         await user.click(
@@ -423,6 +425,34 @@ describe("BackfillWizard server-window timezone handling", () => {
             since: "2026-08-08T00:00:00+00:00",
             before: "2026-08-13T00:00:00Z",
         });
+    });
+
+    it("keeps the time on an intra-day window so it does not read as zero-width", async () => {
+        // Real gaps start whenever a sync ran, so a suggested window can sit
+        // inside one day. Date-only rendering would print the same date twice.
+        const window = {
+            since: "2026-08-08T02:46:06.501450Z",
+            before: "2026-08-08T05:00:00Z",
+            dataset_keys: ["git"],
+            reasons: ["gap"] as const,
+        };
+        renderWizard({ initialWindows: [window], suggestedWindows: [window] });
+
+        expect(
+            screen.getByText(/2026-08-08 02:46Z to 2026-08-08 05:00Z · git/),
+        ).toBeInTheDocument();
+    });
+
+    it("omits the time when both boundaries are UTC midnight", async () => {
+        const window = {
+            since: "2026-08-08T00:00:00Z",
+            before: "2026-08-13T00:00:00Z",
+            dataset_keys: ["git"],
+            reasons: ["gap"] as const,
+        };
+        renderWizard({ initialWindows: [window], suggestedWindows: [window] });
+
+        expect(screen.getByText(/2026-08-08 to 2026-08-13 · git/)).toBeInTheDocument();
     });
 
     it("labels an empty dataset scope without a dangling separator", async () => {

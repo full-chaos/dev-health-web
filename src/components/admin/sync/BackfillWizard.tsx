@@ -89,6 +89,22 @@ function toDateInput(value: string): string {
     return date.toISOString().slice(0, 10);
 }
 
+/**
+ * Render a window boundary for display, keeping the time when there is one.
+ *
+ * Coverage gaps start whenever a sync ran, so a boundary is rarely UTC
+ * midnight and a window can sit inside a single day (CHAOS-3915). Rendering
+ * date-only would print "2026-08-08 to 2026-08-08", which reads like the
+ * zero-width window bug rather than a real two-hour gap.
+ */
+function boundaryLabel(value: string): string {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    const iso = date.toISOString();
+    const day = iso.slice(0, 10);
+    return iso.endsWith("T00:00:00.000Z") ? day : `${day} ${iso.slice(11, 16)}Z`;
+}
+
 function datasetLabel(key: string): string {
     return DATASET_LABELS[key] ?? key.replaceAll("-", " ");
 }
@@ -173,7 +189,7 @@ function windowLabel(window: SyncCoverageBackfillWindow): string {
     const datasetScope = window.dataset_keys?.length
         ? window.dataset_keys.join(", ")
         : "all datasets";
-    return `${toDateInput(window.since)} to ${toDateInput(window.before)} · ${datasetScope}`;
+    return `${boundaryLabel(window.since)} to ${boundaryLabel(window.before)} · ${datasetScope}`;
 }
 
 function backfillWindowKey(window: SyncCoverageBackfillWindow): string {
