@@ -83,6 +83,97 @@ describe("buildDatasetChoices", () => {
             },
         ]);
     });
+
+    it("drops a not_enabled dataset instead of offering a guaranteed-refused scope", () => {
+        const choices = buildDatasetChoices([
+            { ...baseDataset, dataset_key: "git" },
+            { ...baseDataset, dataset_key: "prs", status: "not_enabled" },
+        ]);
+
+        expect(choices).toEqual([
+            { id: "git", label: "Git Data (Commits, Branches)", datasetKeys: ["git"] },
+        ]);
+    });
+
+    it("omits the work-item family choice entirely when every alias is not_enabled", () => {
+        const choices = buildDatasetChoices([
+            { ...baseDataset, dataset_key: "git" },
+            { ...baseDataset, dataset_key: "work-items", status: "not_enabled" },
+            { ...baseDataset, dataset_key: "work-item-labels", status: "not_enabled" },
+            { ...baseDataset, dataset_key: "work-item-projects", status: "not_enabled" },
+            { ...baseDataset, dataset_key: "work-item-history", status: "not_enabled" },
+            { ...baseDataset, dataset_key: "work-item-comments", status: "not_enabled" },
+        ]);
+
+        expect(choices).toEqual([
+            { id: "git", label: "Git Data (Commits, Branches)", datasetKeys: ["git"] },
+        ]);
+    });
+
+    it("keeps only the enabled members of a partially enabled work-item family", () => {
+        const choices = buildDatasetChoices([
+            { ...baseDataset, dataset_key: "work-items" },
+            { ...baseDataset, dataset_key: "work-item-labels", status: "not_enabled" },
+            { ...baseDataset, dataset_key: "work-item-comments" },
+        ]);
+
+        expect(choices).toEqual([
+            {
+                id: "work-items",
+                label: "Work items (canonical family)",
+                datasetKeys: ["work-items", "work-item-comments"],
+            },
+        ]);
+    });
+
+    it("drops a not_enabled member from a stale server-suggested work-item scope", () => {
+        const datasetsUnderTest: SyncCoverageDataset[] = [
+            { ...baseDataset, dataset_key: "git" },
+            { ...baseDataset, dataset_key: "work-items" },
+            { ...baseDataset, dataset_key: "work-item-labels" },
+            { ...baseDataset, dataset_key: "work-item-comments", status: "not_enabled" },
+        ];
+        // The suggestion still names the disabled alias; the current inventory wins.
+        const choices = buildDatasetChoices(datasetsUnderTest, [
+            "work-items",
+            "work-item-comments",
+        ]);
+
+        expect(choices[0]).toEqual({
+            id: "server-scoped-work-items",
+            label: "Suggested work-item datasets",
+            datasetKeys: ["work-items"],
+        });
+        expect(choices.flatMap((choice) => choice.datasetKeys)).not.toContain("work-item-comments");
+    });
+
+    it("offers no suggested scope at all once every suggested key is not_enabled", () => {
+        const choices = buildDatasetChoices(
+            [
+                { ...baseDataset, dataset_key: "git" },
+                { ...baseDataset, dataset_key: "work-items", status: "not_enabled" },
+            ],
+            ["work-items"],
+        );
+
+        expect(choices.some((choice) => choice.id === "server-scoped-work-items")).toBe(false);
+        expect(choices).toEqual([
+            { id: "git", label: "Git Data (Commits, Branches)", datasetKeys: ["git"] },
+        ]);
+    });
+
+    it("keeps a suggested key the current inventory does not mention at all", () => {
+        const choices = buildDatasetChoices(
+            [{ ...baseDataset, dataset_key: "git" }],
+            ["work-item-labels"],
+        );
+
+        expect(choices[0]).toEqual({
+            id: "server-scoped-work-items",
+            label: "Suggested work-item datasets",
+            datasetKeys: ["work-item-labels"],
+        });
+    });
 });
 
 describe("BackfillWizard", () => {
@@ -133,6 +224,33 @@ describe("BackfillWizard", () => {
             source_ids: ["src-web"],
             dataset_keys: ["work-item-comments"],
         });
+    });
+
+    it("blocks a stale exact window that mixes an enabled and a not_enabled dataset key", async () => {
+        // An exact window is echoed to the server verbatim, so it must never be
+        // submitted once the inventory disagrees with it. A window naming both
+        // an enabled and a disabled key cannot be satisfied by any remaining
+        // choice, so the wizard refuses to continue rather than silently
+        // narrowing a server-authorized selector.
+        const window = {
+            since: "2026-06-10T00:00:00Z",
+            before: "2026-06-12T00:00:00Z",
+            source_ids: ["src-web"],
+            dataset_keys: ["work-items", "work-item-comments"],
+            reasons: ["gap"] as const,
+        };
+        renderWizard({
+            initialWindows: [window],
+            suggestedWindows: [window],
+            datasets: [
+                { ...baseDataset, dataset_key: "git" },
+                { ...baseDataset, dataset_key: "work-items" },
+                { ...baseDataset, dataset_key: "work-item-comments", status: "not_enabled" },
+            ],
+        });
+
+        expect(screen.getByRole("button", { name: "Continue" })).toBeDisabled();
+        expect(triggerBackfill).not.toHaveBeenCalled();
     });
 
     it("selects multiple exact suggestions and submits each selector without merging scope", async () => {
@@ -279,6 +397,44 @@ describe("BackfillWizard", () => {
             expect.objectContaining({
                 dataset_keys: ["work-items", "work-item-comments"],
             }),
+        );
+    });
+
+    it("never offers the work-item family when the whole family is not_enabled", async () => {
+        const user = userEvent.setup();
+        renderWizard({
+            datasets: [
+                { ...baseDataset, dataset_key: "git" },
+                { ...baseDataset, dataset_key: "work-items", status: "not_enabled" },
+                { ...baseDataset, dataset_key: "work-item-comments", status: "not_enabled" },
+            ],
+        });
+        await fillRange(user);
+        await user.click(screen.getByRole("radio", { name: /Choose specific datasets/ }));
+
+        expect(
+            screen.queryByRole("checkbox", { name: /Work items \(canonical family\)/ }),
+        ).not.toBeInTheDocument();
+        expect(screen.getByLabelText("Git Data (Commits, Branches)")).toBeInTheDocument();
+    });
+
+    it("never submits a not_enabled key from a partially enabled work-item family", async () => {
+        const user = userEvent.setup();
+        renderWizard({
+            datasets: [
+                { ...baseDataset, dataset_key: "git" },
+                { ...baseDataset, dataset_key: "work-items" },
+                { ...baseDataset, dataset_key: "work-item-comments", status: "not_enabled" },
+            ],
+        });
+        await fillRange(user);
+        await user.click(screen.getByRole("radio", { name: /Choose specific datasets/ }));
+        await user.click(screen.getByRole("checkbox", { name: /Work items \(canonical family\)/ }));
+        await reviewAndSubmit(user);
+
+        expect(triggerBackfill).toHaveBeenCalledWith(
+            "cfg-1",
+            expect.objectContaining({ dataset_keys: ["work-items"] }),
         );
     });
 

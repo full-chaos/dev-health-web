@@ -381,3 +381,67 @@ test.describe("Journey 3 — job history", () => {
         await expect(historyCard.getByRole("button", { name: /^Next$/ })).toBeDisabled();
     });
 });
+
+test.describe("Journey 4 — datasets the provider supports but nobody enabled", () => {
+    const NOT_ENABLED_URL = `${DETAIL_URL}?coverage_scenario=not_enabled`;
+    const NOT_ENABLED_KEYS = [
+        "work-items",
+        "work-item-labels",
+        "work-item-projects",
+        "work-item-history",
+        "work-item-comments",
+    ];
+
+    test("never renders a not_enabled dataset as a coverage card or dropdown entry", async ({
+        page,
+    }) => {
+        await page.goto(NOT_ENABLED_URL);
+        const timeline = timelineRegion(page);
+        await expect(timeline).toBeVisible();
+
+        for (const datasetKey of NOT_ENABLED_KEYS) {
+            await expect(datasetTable(timeline, datasetKey)).toHaveCount(0);
+            await expect(
+                timeline.getByLabel("Dataset").locator(`option[value="${datasetKey}"]`),
+            ).toHaveCount(0);
+        }
+
+        // Exactly one window table per enabled dataset, and nothing else.
+        // (Counting cards by class would also match the "Available backfills"
+        // panel, which shares the card classes but renders a list, not a table.)
+        await expect(timeline.getByRole("table")).toHaveCount(3);
+        for (const datasetKey of ["git", "prs", "cicd"]) {
+            await expect(datasetTable(timeline, datasetKey)).toBeVisible();
+        }
+    });
+
+    test("keeps the not-enabled signal as one muted summary line listing every key", async ({
+        page,
+    }) => {
+        await page.goto(NOT_ENABLED_URL);
+        const summary = timelineRegion(page).getByTestId("coverage-not-enabled-summary");
+
+        await expect(summary).toHaveCount(1);
+        await expect(summary).toContainText("5 datasets are not enabled");
+        for (const datasetKey of NOT_ENABLED_KEYS) {
+            await expect(summary).toContainText(datasetKey);
+        }
+    });
+
+    test("the backfill wizard never offers the disabled work-item family", async ({ page }) => {
+        await page.goto(NOT_ENABLED_URL);
+        const timeline = timelineRegion(page);
+
+        await timeline.getByRole("button", { name: "Backfill this gap" }).first().click();
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        await dialog.getByRole("radio", { name: /Choose specific datasets/ }).check();
+
+        await expect(
+            dialog.getByRole("checkbox", { name: /Work items \(canonical family\)/ }),
+        ).toHaveCount(0);
+        await expect(
+            dialog.getByRole("checkbox", { name: "Git Data (Commits, Branches)" }),
+        ).toBeVisible();
+    });
+});

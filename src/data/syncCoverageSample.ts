@@ -562,6 +562,49 @@ export const SAMPLE_COVERAGE_REFRESHING: SyncCoverageSummary = {
     projection_refreshing: true,
 };
 
+/** Every work-item alias a provider can report, mirroring the production vocabulary. */
+const WORK_ITEM_DATASET_KEYS = [
+    "work-items",
+    "work-item-labels",
+    "work-item-projects",
+    "work-item-history",
+    "work-item-comments",
+] as const;
+
+function notEnabledDataset(datasetKey: string): SyncCoverageSummary["datasets"][number] {
+    return {
+        dataset_key: datasetKey,
+        status: "not_enabled",
+        covered_through: null,
+        requested_ranges: [],
+        covered_ranges: [],
+        gaps: [],
+        stale_ranges: [],
+        failed_ranges: [],
+    };
+}
+
+/**
+ * The shape operators hit in production: the provider supports the whole
+ * work-item family but no enabled IntegrationDataset row exists for any alias,
+ * so every one arrives as `not_enabled` with zero ranges next to the datasets
+ * that ARE enabled. Those aliases are not actionable — a backfill scoped to
+ * them is refused by the server — so the UI must never offer them.
+ */
+export const SAMPLE_COVERAGE_NOT_ENABLED: SyncCoverageSummary = {
+    ...SAMPLE_COVERAGE_GAPS,
+    datasets: [...SAMPLE_COVERAGE_GAPS.datasets, ...WORK_ITEM_DATASET_KEYS.map(notEnabledDataset)],
+    backfill_windows: [
+        {
+            since: "2026-06-24T00:00:00.000Z",
+            before: "2026-06-26T00:00:00.000Z",
+            source_ids: [SOURCE_PLATFORM],
+            dataset_keys: ["git"],
+            reasons: ["gap"],
+        },
+    ],
+};
+
 /** Named scenarios selectable via the `?coverage_scenario=` test-mode query param. */
 export const SYNC_COVERAGE_SAMPLES = {
     healthy: SAMPLE_COVERAGE_HEALTHY,
@@ -573,6 +616,7 @@ export const SYNC_COVERAGE_SAMPLES = {
     overlapping_retry: SAMPLE_COVERAGE_OVERLAPPING_RETRY,
     concurrent_config: SAMPLE_COVERAGE_CONCURRENT_CONFIG,
     refreshing: SAMPLE_COVERAGE_REFRESHING,
+    not_enabled: SAMPLE_COVERAGE_NOT_ENABLED,
 } satisfies Record<string, SyncCoverageSummary>;
 
 export type SyncCoverageSampleScenario = keyof typeof SYNC_COVERAGE_SAMPLES;

@@ -10,6 +10,7 @@ import {
 } from "@/lib/admin/__tests__/syncCoverageFixtures";
 import {
     SAMPLE_COVERAGE_CONCURRENT_CONFIG,
+    SAMPLE_COVERAGE_NOT_ENABLED,
     SAMPLE_COVERAGE_OVERLAPPING_RETRY,
     SAMPLE_COVERAGE_TRUNCATED,
 } from "@/data/syncCoverageSample";
@@ -305,5 +306,91 @@ describe("SyncCoverageTimeline", () => {
         const table = screen.getAllByRole("table")[0];
         expect(within(table).getAllByText("fullchaos/second-repo").length).toBeGreaterThan(0);
         expect(screen.queryByText(/sample-source-secondary-repo/)).not.toBeInTheDocument();
+    });
+
+    describe("not_enabled datasets", () => {
+        const NOT_ENABLED_KEYS = [
+            "work-items",
+            "work-item-labels",
+            "work-item-projects",
+            "work-item-history",
+            "work-item-comments",
+        ];
+
+        it("renders no card, table, or dropdown entry for a not_enabled dataset", () => {
+            render(
+                <SyncCoverageTimeline
+                    coverage={SAMPLE_COVERAGE_NOT_ENABLED}
+                    onBackfillWindowAction={vi.fn()}
+                />,
+            );
+
+            for (const datasetKey of NOT_ENABLED_KEYS) {
+                expect(
+                    screen.queryByRole("table", {
+                        name: `Coverage windows for dataset ${datasetKey}`,
+                    }),
+                ).not.toBeInTheDocument();
+                expect(screen.queryByRole("option", { name: datasetKey })).not.toBeInTheDocument();
+            }
+            // The status badge only ever renders inside a dataset card.
+            expect(screen.queryByText("Not enabled")).not.toBeInTheDocument();
+        });
+
+        it("keeps the not_enabled signal as one muted summary line naming every key", () => {
+            render(
+                <SyncCoverageTimeline
+                    coverage={SAMPLE_COVERAGE_NOT_ENABLED}
+                    onBackfillWindowAction={vi.fn()}
+                />,
+            );
+
+            const summary = screen.getByTestId("coverage-not-enabled-summary");
+            expect(summary).toHaveTextContent("5 datasets are not enabled");
+            for (const datasetKey of NOT_ENABLED_KEYS) {
+                expect(summary).toHaveTextContent(datasetKey);
+            }
+        });
+
+        it("leaves enabled datasets and their server-authorized windows untouched", () => {
+            render(
+                <SyncCoverageTimeline
+                    coverage={SAMPLE_COVERAGE_NOT_ENABLED}
+                    onBackfillWindowAction={vi.fn()}
+                />,
+            );
+
+            for (const datasetKey of ["git", "prs", "cicd"]) {
+                expect(
+                    screen.getByRole("table", {
+                        name: `Coverage windows for dataset ${datasetKey}`,
+                    }),
+                ).toBeInTheDocument();
+                expect(screen.getByRole("option", { name: datasetKey })).toBeInTheDocument();
+            }
+            expect(
+                screen.getByRole("button", { name: "Backfill Jun 24, 2026 to Jun 26, 2026" }),
+            ).toBeInTheDocument();
+        });
+
+        it("still reports the not_enabled keys when they are the only datasets returned", () => {
+            render(
+                <SyncCoverageTimeline
+                    coverage={{
+                        ...SAMPLE_COVERAGE_NOT_ENABLED,
+                        datasets: SAMPLE_COVERAGE_NOT_ENABLED.datasets.filter(
+                            (dataset) => dataset.status === "not_enabled",
+                        ),
+                        backfill_windows: [],
+                    }}
+                    onBackfillWindowAction={vi.fn()}
+                />,
+            );
+
+            expect(screen.getByText("No coverage data yet")).toBeInTheDocument();
+            expect(screen.getByTestId("coverage-not-enabled-summary")).toHaveTextContent(
+                "5 datasets are not enabled",
+            );
+        });
     });
 });
