@@ -116,17 +116,33 @@ function sameDatasetKeys(left: string[], right: string[]): boolean {
     return sortedLeft.every((key, index) => key === sortedRight[index]);
 }
 
-/** Collapse the work-item aliases into the single canonical family operators execute. */
+/**
+ * Collapse the work-item aliases into the single canonical family operators execute.
+ *
+ * A `not_enabled` dataset has no enabled IntegrationDataset row, so the server
+ * refuses any backfill scoped to it. Offering one here does not just mislead —
+ * it enqueues guaranteed-refused work, so those datasets are dropped BEFORE the
+ * family collapse: a family whose members are all disabled produces no choice at
+ * all, and a partially enabled family contributes only its enabled members. The
+ * same holds for a server-suggested scope, whose projection can be older than
+ * the inventory rendered here.
+ */
 export function buildDatasetChoices(
     datasets: SyncCoverageDataset[],
     scopedDatasetKeys: string[] = [],
 ): DatasetChoice[] {
     const choices: DatasetChoice[] = [];
-    const familyKeys = datasets
+    const notEnabledKeys = new Set(
+        datasets
+            .filter((dataset) => dataset.status === "not_enabled")
+            .map((dataset) => dataset.dataset_key),
+    );
+    const enabledDatasets = datasets.filter((dataset) => dataset.status !== "not_enabled");
+    const familyKeys = enabledDatasets
         .map((dataset) => dataset.dataset_key)
         .filter((key) => WORK_ITEM_FAMILY.has(key));
 
-    for (const dataset of datasets) {
+    for (const dataset of enabledDatasets) {
         if (WORK_ITEM_FAMILY.has(dataset.dataset_key)) {
             if (!choices.some((choice) => choice.id === "work-items")) {
                 choices.push({
@@ -144,7 +160,14 @@ export function buildDatasetChoices(
         });
     }
 
-    const scopedFamilyKeys = scopedDatasetKeys.filter((key) => WORK_ITEM_FAMILY.has(key));
+    // A suggestion is server-authorized, but the coverage projection it came
+    // from refreshes on its own cadence, so a key it names can already be
+    // disabled by the time this renders. Drop only the members the CURRENT
+    // inventory explicitly marks not_enabled — an unrecognised key stays, since
+    // an inventory that never mentions it is no evidence that it is disabled.
+    const scopedFamilyKeys = scopedDatasetKeys
+        .filter((key) => WORK_ITEM_FAMILY.has(key))
+        .filter((key) => !notEnabledKeys.has(key));
     if (scopedFamilyKeys.length > 0 && !sameDatasetKeys(scopedFamilyKeys, familyKeys)) {
         choices.unshift({
             id: "server-scoped-work-items",

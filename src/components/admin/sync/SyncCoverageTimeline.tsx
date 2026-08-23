@@ -186,6 +186,31 @@ function bandStyle(
 }
 
 /**
+ * One muted status line for the datasets the server reports as `not_enabled`.
+ *
+ * Those datasets carry zero ranges, so a full card renders an empty window
+ * table that reads as coverage still to come. They are a real signal — the
+ * provider supports them but nobody enabled them — so the line keeps the fact
+ * (and every key) without dressing it as coverage. Deliberately NOT a
+ * `DataState` empty state: there IS data on this surface, just not for these.
+ */
+function NotEnabledDatasetSummary({ datasetKeys }: { datasetKeys: string[] }) {
+    if (datasetKeys.length === 0) return null;
+    return (
+        <p
+            data-testid="coverage-not-enabled-summary"
+            className="text-xs text-(--ink-muted) border-t border-(--card-stroke) pt-3"
+        >
+            <span aria-hidden="true">•</span>{" "}
+            {datasetKeys.length === 1
+                ? "1 dataset is not enabled, so it has no coverage to show: "
+                : `${datasetKeys.length} datasets are not enabled, so they have no coverage to show: `}
+            {datasetKeys.join(", ")}
+        </p>
+    );
+}
+
+/**
  * Coverage & gaps timeline (CHAOS-2793). Renders ONLY persisted dataset/source
  * coverage ranges from the API — no client-side interval recomputation. CSS
  * horizontal bands are a decorative supplement (aria-hidden); the table below
@@ -211,11 +236,29 @@ export function SyncCoverageTimeline({
 
     const sourceLabel = (sourceId: string) => sourceNameById[sourceId] ?? "Unresolved source";
 
+    /**
+     * `not_enabled` datasets are never actionable and never carry ranges, so
+     * they are excluded from every actionable surface here (dropdown, cards)
+     * and surfaced once as a muted line instead. The payload keeps them — the
+     * status is an intentional signal both projectors encode (CHAOS-3399).
+     */
+    const enabledDatasets = useMemo(
+        () => (coverage?.datasets ?? []).filter((dataset) => dataset.status !== "not_enabled"),
+        [coverage],
+    );
+
+    const notEnabledDatasetKeys = useMemo(
+        () =>
+            (coverage?.datasets ?? [])
+                .filter((dataset) => dataset.status === "not_enabled")
+                .map((dataset) => dataset.dataset_key),
+        [coverage],
+    );
+
     const datasets = useMemo(() => {
-        const all = coverage?.datasets ?? [];
-        if (datasetFilter === "all") return all;
-        return all.filter((dataset) => dataset.dataset_key === datasetFilter);
-    }, [coverage, datasetFilter]);
+        if (datasetFilter === "all") return enabledDatasets;
+        return enabledDatasets.filter((dataset) => dataset.dataset_key === datasetFilter);
+    }, [enabledDatasets, datasetFilter]);
 
     const selectedBackfillWindows = useMemo(() => {
         const selected = new Set(selectedBackfillWindowKeys);
@@ -263,7 +306,7 @@ export function SyncCoverageTimeline({
 
     if (!hasAnyRangeData && !hasCanonicalBackfill) {
         return (
-            <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+            <div className="space-y-4 rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
                 <DataState
                     variant={
                         coverage.data_basis === "legacy"
@@ -281,6 +324,7 @@ export function SyncCoverageTimeline({
                             : "Coverage will populate once the first sync run completes."
                     }
                 />
+                <NotEnabledDatasetSummary datasetKeys={notEnabledDatasetKeys} />
             </div>
         );
     }
@@ -300,7 +344,7 @@ export function SyncCoverageTimeline({
                             className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-2 py-1 text-sm text-foreground"
                         >
                             <option value="all">{CTA_LABELS.allDatasets}</option>
-                            {coverage.datasets.map((dataset) => (
+                            {enabledDatasets.map((dataset) => (
                                 <option key={dataset.dataset_key} value={dataset.dataset_key}>
                                     {dataset.dataset_key}
                                 </option>
@@ -656,6 +700,8 @@ export function SyncCoverageTimeline({
                     );
                 })}
             </div>
+
+            <NotEnabledDatasetSummary datasetKeys={notEnabledDatasetKeys} />
         </div>
     );
 }
