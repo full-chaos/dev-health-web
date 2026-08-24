@@ -10,23 +10,8 @@ vi.mock("@/lib/admin/server", () => ({
     createCredential: (...args: unknown[]) => mockCreateCredential(...args),
 }));
 
+import { unresolvableCredentialKeys } from "@/lib/admin/credentialVocabulary";
 import { CreateCredentialModal } from "./CreateCredentialModal";
-
-/** Credential keys the SYNC RUNTIME can resolve, per provider — what
- * `credentials/resolver.py`'s `*_credentials_from_mapping` and the Go
- * `ValidateCredentialShape` actually read. Deliberately stricter than what
- * `/credentials/test` tolerates: a key the probe accepts but the runtime
- * cannot read buys a green connection test and a sync that never
- * authenticates. A key outside this set is silently dropped, which is how
- * the inline Jira form shipped a `server_url` nobody reads (CHAOS-4223). */
-const RESOLVABLE_CREDENTIAL_KEYS: Record<Provider, string[]> = {
-    github: ["token", "org", "app_id", "private_key", "installation_id", "base_url"],
-    gitlab: ["token", "gitlab_url", "url", "base_url"],
-    jira: ["email", "api_token", "url", "base_url"],
-    linear: ["api_key"],
-    launchdarkly: ["api_key", "project_key", "environment"],
-    pagerduty: ["api_token", "auth_mode", "region"],
-};
 
 const PROVIDER_ENTRY_FIXTURES: { provider: Provider; fields: [string, string][] }[] = [
     { provider: "github", fields: [["Token", "ghp_123"]] },
@@ -332,10 +317,7 @@ describe("CreateCredentialModal", () => {
                 string,
                 { credentials: Record<string, string> },
             ];
-            const unresolvable = Object.keys(options.credentials).filter(
-                (key) => !RESOLVABLE_CREDENTIAL_KEYS[provider].includes(key),
-            );
-            expect(unresolvable).toEqual([]);
+            expect(unresolvableCredentialKeys(provider, options.credentials)).toEqual([]);
         },
     );
 
