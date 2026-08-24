@@ -108,6 +108,31 @@ describe("AddProviderWizard", () => {
         expect(screen.queryByRole("radio", { name: "PagerDuty" })).not.toBeInTheDocument();
     });
 
+    it("shows the provider's reason on the verify step instead of a blank refusal", async () => {
+        vi.mocked(testConnection).mockResolvedValue({
+            data: {
+                success: false,
+                error: null,
+                details: { status: 401, error: "Authentication required" },
+            },
+        });
+
+        renderWithToaster(
+            <AddProviderWizard
+                lockedProvider="linear"
+                credentials={[]}
+                onCloseAction={vi.fn()}
+                onCreatedAction={vi.fn()}
+            />,
+        );
+
+        await userEvent.type(screen.getByLabelText("API Key"), "lin_api_test");
+        await userEvent.click(screen.getByRole("button", { name: "Continue" }));
+        await userEvent.click(screen.getByRole("button", { name: "Verify connection" }));
+
+        expect(await screen.findByText(/Authentication required/)).toBeInTheDocument();
+    });
+
     it("runs the full manual create flow: fill token \u2192 verify \u2192 finish \u2192 persists credential", async () => {
         vi.mocked(testConnection).mockResolvedValue({
             data: { success: true, error: null, details: null },

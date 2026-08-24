@@ -6,6 +6,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { AddProviderStepProgress } from "./AddProviderStepProgress";
 import { StepNav } from "@/components/admin/sync/config-form/StepNav";
 import { testConnection } from "@/lib/admin/server";
+import { testConnectionFailureMessage } from "@/lib/admin/testConnection";
 import { PROVIDER_LABELS, type IntegrationCredential, type Provider } from "@/lib/admin/types";
 import { hasGitHubAppCredential, getManualAuthMethodLabel } from "../authMethod";
 import { saveAddProviderCredential } from "../credentialPersistence";
@@ -138,7 +139,7 @@ export function AddProviderWizard({
                 setTestResult({
                     fingerprint: testedFingerprint,
                     success: false,
-                    message: result.error ?? result.data?.error ?? "Connection test failed",
+                    message: testConnectionFailureMessage(result),
                 });
                 return;
             }

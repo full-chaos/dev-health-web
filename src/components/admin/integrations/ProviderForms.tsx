@@ -219,7 +219,7 @@ export function JiraForm() {
                 <div className="mt-1">
                     <input
                         type="password"
-                        name="token"
+                        name="api_token"
                         id="jira-token"
                         className="block w-full rounded-md border-(--border-base) bg-(--surface-base) px-3 py-2 text-(--ink-base) shadow-sm focus:border-(--surface-inverted) focus:outline-none focus:ring-1 focus:ring-(--surface-inverted) sm:text-sm"
                     />

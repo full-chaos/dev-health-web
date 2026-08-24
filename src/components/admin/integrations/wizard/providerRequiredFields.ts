@@ -12,7 +12,7 @@ import type { AddProviderMethod } from "../addProviderWizardSteps";
 export const PROVIDER_PRIMARY_FIELD: Record<Provider, string> = {
     github: "token",
     gitlab: "token",
-    jira: "token",
+    jira: "api_token",
     linear: "apiKey",
     launchdarkly: "api_key",
     pagerduty: "api_token",

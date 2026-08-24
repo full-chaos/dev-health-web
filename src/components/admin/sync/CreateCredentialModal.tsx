@@ -1,6 +1,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createCredential, testConnection } from "@/lib/admin/server";
+import { testConnectionFailureMessage } from "@/lib/admin/testConnection";
 import type { IntegrationCredential, Provider } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -27,7 +28,7 @@ const PROVIDER_FIELDS: Record<Provider, ProviderField[]> = {
     jira: [
         { key: "email", label: "Email", type: "text", required: true },
         { key: "api_token", label: "API Token", type: "password", required: true },
-        { key: "server_url", label: "Server URL", type: "text", required: true },
+        { key: "url", label: "Jira URL", type: "text", required: true },
     ],
     linear: [{ key: "api_key", label: "API Key", type: "password", required: true }],
     launchdarkly: [
@@ -43,7 +44,7 @@ function getInitialCredentials(provider: Provider): Record<string, string> {
         return { token: "", url: "https://gitlab.com" };
     }
     if (provider === "jira") {
-        return { email: "", api_token: "", server_url: "" };
+        return { email: "", api_token: "", url: "" };
     }
     if (provider === "linear") {
         return { api_key: "" };
@@ -116,7 +117,7 @@ export function CreateCredentialModal({
             if (result.error || !result.data?.success) {
                 setTestResult({
                     success: false,
-                    message: result.error ?? result.data?.error ?? "Connection test failed",
+                    message: testConnectionFailureMessage(result),
                 });
                 return;
             }
