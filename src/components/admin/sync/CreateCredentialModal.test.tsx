@@ -21,9 +21,9 @@ import { CreateCredentialModal } from "./CreateCredentialModal";
  * the inline Jira form shipped a `server_url` nobody reads (CHAOS-4223). */
 const RESOLVABLE_CREDENTIAL_KEYS: Record<Provider, string[]> = {
     github: ["token", "org", "app_id", "private_key", "installation_id", "base_url"],
-    gitlab: ["token", "group", "gitlab_url", "url", "base_url"],
+    gitlab: ["token", "gitlab_url", "url", "base_url"],
     jira: ["email", "api_token", "url", "base_url"],
-    linear: ["api_key", "teams"],
+    linear: ["api_key"],
     launchdarkly: ["api_key", "project_key", "environment"],
     pagerduty: ["api_token", "auth_mode", "region"],
 };
