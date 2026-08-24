@@ -10,11 +10,11 @@ import type { TestConnectionResponse } from "./types";
  * the same blank "Connection test failed" (CHAOS-4223).
  */
 export function testConnectionFailureMessage(result: Result<TestConnectionResponse>): string {
-    const detailError = result.data?.details?.error;
-    return (
-        result.error ??
-        result.data?.error ??
-        (typeof detailError === "string" && detailError.trim() ? detailError : null) ??
-        "Connection test failed"
-    );
+    const candidates = [result.error, result.data?.error, result.data?.details?.error];
+    for (const candidate of candidates) {
+        if (typeof candidate === "string" && candidate.trim()) {
+            return candidate;
+        }
+    }
+    return "Connection test failed";
 }

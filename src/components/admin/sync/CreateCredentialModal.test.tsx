@@ -12,15 +12,17 @@ vi.mock("@/lib/admin/server", () => ({
 
 import { CreateCredentialModal } from "./CreateCredentialModal";
 
-/** Credential keys the ops side can actually resolve, per provider — the
- * union of `credentials/resolver.py`'s `*_credentials_from_mapping` readers
- * and the `/credentials/test` helpers. A key outside this set is silently
- * dropped by both the connection test and the sync runtime, which is how the
- * inline Jira form shipped a `server_url` nobody reads (CHAOS-4223). */
+/** Credential keys the SYNC RUNTIME can resolve, per provider — what
+ * `credentials/resolver.py`'s `*_credentials_from_mapping` and the Go
+ * `ValidateCredentialShape` actually read. Deliberately stricter than what
+ * `/credentials/test` tolerates: a key the probe accepts but the runtime
+ * cannot read buys a green connection test and a sync that never
+ * authenticates. A key outside this set is silently dropped, which is how
+ * the inline Jira form shipped a `server_url` nobody reads (CHAOS-4223). */
 const RESOLVABLE_CREDENTIAL_KEYS: Record<Provider, string[]> = {
     github: ["token", "org", "app_id", "private_key", "installation_id", "base_url"],
     gitlab: ["token", "group", "gitlab_url", "url", "base_url"],
-    jira: ["email", "token", "api_token", "url", "base_url", "projects"],
+    jira: ["email", "api_token", "url", "base_url"],
     linear: ["api_key", "teams"],
     launchdarkly: ["api_key", "project_key", "environment"],
     pagerduty: ["api_token", "auth_mode", "region"],
