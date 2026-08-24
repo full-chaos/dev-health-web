@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { render } from "@/test/utils";
 import type { Provider } from "@/lib/admin/types";
 import { unresolvableCredentialKeys } from "@/lib/admin/credentialVocabulary";
+import { PROVIDER_PRIMARY_FIELD } from "./wizard/providerRequiredFields";
 import { GitHubForm, GitLabForm, JiraForm, LinearForm, LaunchDarklyForm } from "./ProviderForms";
 
 /**
@@ -23,27 +24,54 @@ const WIZARD_FORMS: { provider: Provider; render: () => React.ReactElement }[] =
 ];
 
 /**
- * Fields a form collects as sync SCOPE rather than credential material.
- * They ride along in the same payload but no credential resolver reads them,
- * which is its own reported drift and is not what this test is guarding.
+ * Fields a form collects as sync SCOPE rather than credential material,
+ * named per provider. They ride along in the same payload but no credential
+ * resolver reads them — their own reported drift, and not what this test
+ * guards.
+ *
+ * Per provider rather than one global set: a global exclusion means renaming
+ * a provider's secret field to any excluded name makes it vanish from the
+ * assertion instead of failing it, which is the shape of hole this whole
+ * test exists to close.
  */
-const SCOPE_FIELDS = new Set(["org", "group", "projects", "teams"]);
+const SCOPE_FIELDS: Partial<Record<Provider, readonly string[]>> = {
+    github: ["org"],
+    gitlab: ["group"],
+    jira: ["projects"],
+    linear: ["teams"],
+};
 
 describe("Providers wizard credential forms", () => {
     it.each(WIZARD_FORMS)(
         "$provider submits only keys a credential resolver reads",
         ({ provider, render: renderForm }) => {
             const { container } = render(renderForm());
+            const scope = new Set(SCOPE_FIELDS[provider] ?? []);
 
             const submitted = Object.fromEntries(
                 [...container.querySelectorAll<HTMLElement>("[name]")]
                     .map((element) => element.getAttribute("name") as string)
-                    .filter((name) => !SCOPE_FIELDS.has(name))
+                    .filter((name) => !scope.has(name))
                     .map((name) => [name, ""]),
             );
 
             expect(Object.keys(submitted).length).toBeGreaterThan(0);
             expect(unresolvableCredentialKeys(provider, submitted)).toEqual([]);
+        },
+    );
+
+    it.each(WIZARD_FORMS)(
+        "$provider still offers the field its connection test gates on",
+        ({ provider, render: renderForm }) => {
+            // Without this, a form could pass the check above by dropping or
+            // renaming its secret field into an excluded scope name: the key
+            // disappears from the assertion rather than failing it.
+            const { container } = render(renderForm());
+            const names = [...container.querySelectorAll<HTMLElement>("[name]")].map((element) =>
+                element.getAttribute("name"),
+            );
+
+            expect(names).toContain(PROVIDER_PRIMARY_FIELD[provider]);
         },
     );
 });

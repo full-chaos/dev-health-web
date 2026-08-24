@@ -15,6 +15,10 @@ import type { Provider } from "./types";
  * generates this file yet, so it can drift from the resolver the same way the
  * forms did; the durable fix is an ops-published contract artifact that the
  * web checks against, tracked separately.
+ *
+ * The Jira `token`/`server_url` entries depend on the alias-on-read landing in
+ * dev-health-ops#1897 first. Until it does they are aspirational, which is the
+ * merge order these two changes already require.
  */
 export const RESOLVABLE_CREDENTIAL_KEYS: Record<Provider, readonly string[]> = {
     github: [
@@ -35,7 +39,31 @@ export const RESOLVABLE_CREDENTIAL_KEYS: Record<Provider, readonly string[]> = {
     jira: ["email", "api_token", "apiToken", "token", "url", "base_url", "baseUrl", "server_url"],
     linear: ["api_key", "apiKey"],
     launchdarkly: ["api_key", "project_key", "environment"],
-    pagerduty: ["api_token", "auth_mode", "region", "subdomain", "client_id", "client_secret"],
+    pagerduty: [
+        "auth_mode",
+        "authMode",
+        "access_token",
+        "accessToken",
+        "refresh_token",
+        "refreshToken",
+        "expires_at",
+        "granted_scopes",
+        "grantedScopes",
+        "client_id",
+        "clientId",
+        "client_secret",
+        "clientSecret",
+        "api_token",
+        "apiToken",
+        "oauth_credential_name",
+        "oauthCredentialName",
+        "oauth_binding_id",
+        "oauthBindingId",
+        "account_id",
+        "accountId",
+        "subdomain",
+        "region",
+    ],
 } as const;
 
 /** Keys a provider form submits that no reader consumes. */
