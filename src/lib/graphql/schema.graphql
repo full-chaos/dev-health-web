@@ -1991,6 +1991,12 @@ type SankeyResult {
   nodes: [SankeyNode!]!
   edges: [SankeyEdge!]!
   coverage: SankeyCoverage
+  unit: SankeyValueUnit!
+}
+
+enum SankeyValueUnit {
+  WORK_UNITS
+  LOC
 }
 
 type SavedReportConnection {

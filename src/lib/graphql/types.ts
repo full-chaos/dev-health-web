@@ -162,6 +162,8 @@ export interface SankeyResult {
     nodes: SankeyNode[];
     edges: SankeyEdge[];
     coverage?: SankeyCoverage;
+    /** CHAOS-4241: unit of node/edge `value` — "WORK_UNITS" (default) | "LOC". */
+    unit?: string;
 }
 
 export interface FlowMatrixResult {

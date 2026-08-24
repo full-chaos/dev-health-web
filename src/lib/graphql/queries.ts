@@ -44,6 +44,7 @@ query InvestmentSankey($orgId: String!, $batch: AnalyticsRequestInput!) {
         target
         value
       }
+      unit
     }
   }
 }
@@ -245,6 +246,7 @@ query InvestmentFull($orgId: String!, $batch: AnalyticsRequestInput!) {
         teamCoverage
         repoCoverage
       }
+      unit
     }
   }
 }

@@ -280,6 +280,23 @@ export const formatEffortUnit = (metric: WorkUnitInvestment["effort"]["metric"])
     metric === "active_hours" ? "hours" : "loc";
 
 /**
+ * Format the Sankey/Chord flow's allocation-weight unit label (CHAOS-4241).
+ *
+ * Distinct from `formatEffortUnit`: that function derives a label from a
+ * work unit's raw `effort.metric` (how ITS effort was measured at
+ * materialization time — always "churn_loc" in practice), which is
+ * unrelated to what unit the Sankey/Chord flow's `value`s are actually
+ * weighted by. The backend now defaults that weighting to a count of
+ * attributed work units and echoes the effective unit back on the flow
+ * response ("WORK_UNITS" | "LOC") so this never has to guess. Unknown or
+ * missing values (older/sample responses, or a response the backend hasn't
+ * labelled yet) default to "work units" — the new default weight — never
+ * silently render "loc".
+ */
+export const formatSankeyUnit = (unit: string | null | undefined): string =>
+    unit === "LOC" ? "loc" : "work units";
+
+/**
  * Format a work unit's display label.
  */
 export const formatWorkUnitLabel = (unit: WorkUnitInvestment): string => {

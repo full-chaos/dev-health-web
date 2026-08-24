@@ -2389,7 +2389,12 @@ export type SankeyResult = {
   coverage?: Maybe<SankeyCoverage>;
   edges: Array<SankeyEdge>;
   nodes: Array<SankeyNode>;
+  unit: SankeyValueUnit;
 };
+
+export type SankeyValueUnit =
+  | 'LOC'
+  | 'WORK_UNITS';
 
 export type SavedReportConnection = {
   __typename?: 'SavedReportConnection';
