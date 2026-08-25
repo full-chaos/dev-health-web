@@ -208,6 +208,60 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
         });
     });
 
+    describe("flow unit label (CHAOS-4241)", () => {
+        // Regression guard: the Sankey/Chord flow sections must label their
+        // unit from the flow RESPONSE's own `unit` field, never from
+        // workUnits[].effort.metric (an unrelated per-unit field that is
+        // "churn_loc" in production and would keep reading "loc" forever
+        // even after the backend switched its default weight to a
+        // work-unit count). Every fixture below uses effort.metric =
+        // "churn_loc" specifically to prove that.
+        const churnWorkUnit: WorkUnitInvestment = {
+            ...sampleWorkUnit,
+            effort: { metric: "churn_loc", value: 500 },
+        };
+
+        it('passes unit="work units" to the sankey chart when the flow response is unit: "WORK_UNITS"', () => {
+            render(
+                <InvestmentCharts
+                    {...baseProps({
+                        workUnits: [churnWorkUnit],
+                        teamCategoryFlow: { ...sampleSankey, unit: "WORK_UNITS" },
+                    })}
+                />,
+            );
+            expect(sankeySpy).toHaveBeenCalled();
+            const props = sankeySpy.mock.calls[0]?.[0] as Record<string, unknown>;
+            expect(props.unit).toBe("work units");
+        });
+
+        it('passes unit="loc" to the sankey chart when the flow response is explicitly unit: "LOC"', () => {
+            render(
+                <InvestmentCharts
+                    {...baseProps({
+                        workUnits: [churnWorkUnit],
+                        teamCategoryFlow: { ...sampleSankey, unit: "LOC" },
+                    })}
+                />,
+            );
+            expect(sankeySpy).toHaveBeenCalled();
+            const props = sankeySpy.mock.calls[0]?.[0] as Record<string, unknown>;
+            expect(props.unit).toBe("loc");
+        });
+
+        it('defaults to "work units" (never "loc") when the flow response has no unit field, even with churn_loc work units', () => {
+            render(
+                <InvestmentCharts
+                    {...baseProps({ workUnits: [churnWorkUnit], teamCategoryFlow: sampleSankey })}
+                />,
+            );
+            expect(sankeySpy).toHaveBeenCalled();
+            const props = sankeySpy.mock.calls[0]?.[0] as Record<string, unknown>;
+            expect(props.unit).toBe("work units");
+            expect(props.unit).not.toBe("loc");
+        });
+    });
+
     describe("interaction invariants", () => {
         it("renders the investment and mix chart toggles so users can switch views", () => {
             render(<InvestmentCharts {...baseProps()} />);

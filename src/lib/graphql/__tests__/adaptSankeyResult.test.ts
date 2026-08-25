@@ -62,4 +62,39 @@ describe("adaptSankeyResult", () => {
         expect(result.nodes[0].group).toBe("team");
         expect(result.coverage).toEqual({ team: 0.9, repo: 0.6 });
     });
+
+    // CHAOS-4241: the backend echoes the effective weighting unit back on
+    // the flow response so the UI never has to guess/derive it from an
+    // unrelated field. adaptSankeyResult must pass it through unchanged.
+    describe("unit passthrough (CHAOS-4241)", () => {
+        it("passes through unit: 'WORK_UNITS' from the backend", () => {
+            const input = minimalSankey({ unit: "WORK_UNITS" });
+
+            const result = adaptSankeyResult(input, "investment");
+
+            expect(result.unit).toBe("WORK_UNITS");
+        });
+
+        it("passes through unit: 'LOC' from the backend", () => {
+            const input = minimalSankey({ unit: "LOC" });
+
+            const result = adaptSankeyResult(input, "investment");
+
+            expect(result.unit).toBe("LOC");
+        });
+
+        it("omits result.unit when the backend returns no unit field", () => {
+            const input = minimalSankey(); // no unit field
+
+            const result = adaptSankeyResult(input, "investment");
+
+            expect(result.unit).toBeUndefined();
+        });
+
+        it("returns no unit when called with undefined", () => {
+            const result = adaptSankeyResult(undefined, "investment");
+
+            expect(result.unit).toBeUndefined();
+        });
+    });
 });
