@@ -198,6 +198,42 @@ function hasNamedSelfSchedulingFunction(source: string): boolean {
     return false;
 }
 
+const BARE_IDENTIFIER_CALLBACK_PATTERN =
+    /^set(?:Timeout|Interval)\s*\(\s*([A-Za-z_$][\w$]*)\s*[,)]/;
+
+/** The body of `function NAME(...)`/`const NAME = (...) => `/`const NAME = function` in `source`, if declared there. */
+function findNamedFunctionBody(source: string, name: string): string | null {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(
+        `\\bfunction\\s+${escaped}\\s*\\(|\\bconst\\s+${escaped}\\s*=\\s*(?:async\\s*)?(?:\\([^)]*\\)|\\w+)\\s*=>|\\bconst\\s+${escaped}\\s*=\\s*(?:async\\s*)?function\\b`,
+    );
+    const match = pattern.exec(source);
+    if (!match) return null;
+    return extractBraceBlock(source, match.index + match[0].length);
+}
+
+/**
+ * True if `call`'s own text reaches the Python API, OR — when the callback
+ * is passed as a bare identifier rather than an inline function
+ * (`setInterval(check, 3500)`) — that identifier's own declaration
+ * (resolved elsewhere in `source`) does. A helper-indirected timer like
+ * `setInterval(check, 3500)` where `check` itself calls `getSyncJobs`
+ * would otherwise pass the allowlist scan on filename alone, since the
+ * Python API call is never part of the setInterval call's own text.
+ *
+ * Text-scan limitation: resolves only a single hop through one
+ * same-file, single-identifier reference — a callback stored on an
+ * object/ref, imported from another file, or reached through more than
+ * one level of indirection still isn't traced.
+ */
+function callReachesPythonApi(call: string, source: string): boolean {
+    if (PYTHON_API_CALL_PATTERN.test(call)) return true;
+    const bareMatch = BARE_IDENTIFIER_CALLBACK_PATTERN.exec(call);
+    if (!bareMatch) return false;
+    const body = findNamedFunctionBody(source, bareMatch[1]);
+    return body !== null && PYTHON_API_CALL_PATTERN.test(body);
+}
+
 describe("no timer-driven polling against the Python API (CHAOS-4318)", () => {
     const files = listSourceFiles(srcRoot);
     expect(files.length).toBeGreaterThan(0);
@@ -243,7 +279,7 @@ describe("no timer-driven polling against the Python API (CHAOS-4318)", () => {
             // allowlist is "this timer never fetches", not "this filename
             // is exempt".
             for (const call of setIntervalCalls) {
-                if (PYTHON_API_CALL_PATTERN.test(call)) {
+                if (callReachesPythonApi(call, source)) {
                     violations.push({
                         file: relPath,
                         reason: `allowlisted setInterval callback now reaches the Python API: ${call}`,
@@ -267,7 +303,7 @@ describe("no timer-driven polling against the Python API (CHAOS-4318)", () => {
             ).toBe(true);
             for (const call of calls) {
                 expect(
-                    PYTHON_API_CALL_PATTERN.test(call),
+                    callReachesPythonApi(call, source),
                     `${relPath}'s setInterval callback unexpectedly reaches the Python API: ${call}`,
                 ).toBe(false);
             }
@@ -293,6 +329,30 @@ describe("no timer-driven polling against the Python API (CHAOS-4318)", () => {
         expect(hasNestedTimerCall(recursive)).toBe(true);
         const oneShot = `const timer = setTimeout(() => setCopied(false), 1500); return () => clearTimeout(timer);`;
         expect(hasNestedTimerCall(oneShot)).toBe(false);
+    });
+
+    it("callReachesPythonApi resolves a helper-indirected allowlisted timer (mutation check)", () => {
+        // The exact gap round-3 review found: setInterval(check, 3500) never
+        // shows getSyncJobs in its OWN text — only inside check's body,
+        // declared elsewhere in the same file.
+        const poisoned = `
+            function check() {
+                void getSyncJobs(configId);
+            }
+            setInterval(check, 3500);
+        `;
+        const call = extractSetIntervalCalls(poisoned)[0];
+        expect(call).toBeDefined();
+        expect(callReachesPythonApi(call, poisoned)).toBe(true);
+
+        const clean = `
+            function tick() {
+                setNow(Date.now());
+            }
+            setInterval(tick, 1000);
+        `;
+        const cleanCall = extractSetIntervalCalls(clean)[0];
+        expect(callReachesPythonApi(cleanCall, clean)).toBe(false);
     });
 
     it("hasNamedSelfSchedulingFunction catches a named mutual-recursion setTimeout poll (mutation check)", () => {

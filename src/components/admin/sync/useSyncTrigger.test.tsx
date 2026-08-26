@@ -109,6 +109,60 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
         expect(mockRefresh).not.toHaveBeenCalled();
     });
 
+    it("CHAOS-4318 round-3: an unrelated freshnessSignal change while the trigger POST is still pending does not unlock early", async () => {
+        let resolveTrigger!: (value: { data: { sync_run_id: string } }) => void;
+        vi.mocked(triggerSync).mockReturnValue(
+            new Promise((resolve) => {
+                resolveTrigger = resolve;
+            }),
+        );
+
+        const { result, rerender } = renderHook(
+            ({ freshnessSignal }) => useSyncTrigger("cfg-1", freshnessSignal),
+            { initialProps: { freshnessSignal: "2026-08-26T00:00:00.000Z" as string | null } },
+        );
+
+        act(() => {
+            result.current.trigger();
+        });
+        expect(result.current.isSyncing).toBe(true);
+
+        // e.g. a scheduled run for this same config lands, or a Refresh
+        // click elsewhere on the page, WHILE our own POST is still in
+        // flight — this must not unlock the button ahead of our own
+        // request settling (that would let a second click enqueue a
+        // duplicate run for the trigger that's still executing).
+        rerender({ freshnessSignal: "2026-08-26T00:05:00.000Z" });
+        expect(result.current.isSyncing).toBe(true);
+        expect(result.current.liveStatus).toBe("running");
+
+        await act(async () => {
+            resolveTrigger({ data: { sync_run_id: "run-1" } });
+        });
+        await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+
+        // Now that our own request has resolved, the SAME already-changed
+        // freshnessSignal is honored on the next render.
+        rerender({ freshnessSignal: "2026-08-26T00:05:00.000Z" });
+        expect(result.current.isSyncing).toBe(false);
+        expect(result.current.liveStatus).toBeNull();
+    });
+
+    it("CHAOS-4318 round-3: a trigger accepted but never dispatched (no run id) clears immediately — nothing to wait for", async () => {
+        vi.mocked(triggerSync).mockResolvedValue({ data: {} });
+
+        const { result } = renderHook(() => useSyncTrigger("cfg-1", "2026-08-26T00:00:00.000Z"));
+
+        act(() => {
+            result.current.trigger();
+        });
+        expect(result.current.isSyncing).toBe(true);
+
+        await waitFor(() => expect(result.current.isSyncing).toBe(false));
+        expect(result.current.liveStatus).toBeNull();
+        expect(mockRefresh).toHaveBeenCalledTimes(1);
+    });
+
     it("fires exactly one trigger request and one refresh — no repeat calls of either", async () => {
         vi.mocked(triggerSync).mockResolvedValue({ data: { sync_run_id: "run-1" } });
 

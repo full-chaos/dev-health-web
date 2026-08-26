@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { triggerSync } from "@/lib/admin/server";
 import { logger } from "@/lib/logger";
-import { type SyncStatus } from "@/lib/sync-types";
+import { resolveSyncPollTarget, type SyncStatus } from "@/lib/sync-types";
 
 const syncLogger = logger.child({ component: "useSyncTrigger" });
 
@@ -62,6 +62,13 @@ interface UseSyncTriggerResult {
  * assumption. Pass `null` if no such signal is available — the optimistic
  * state will simply never auto-clear for that caller, same as before this
  * parameter existed.
+ *
+ * The freshness comparison is deliberately suppressed while THIS hook's own
+ * trigger request is still in flight (`isRequestPending`): otherwise an
+ * unrelated change to `freshnessSignal` arriving mid-flight — a scheduled
+ * run for the same config, another tab, another operator — could clear the
+ * lock before our own POST has even resolved, letting a second click race
+ * ahead of it.
  */
 export function useSyncTrigger(
     configId: string,
@@ -70,6 +77,10 @@ export function useSyncTrigger(
     const router = useRouter();
     const [liveStatus, setLiveStatus] = useState<SyncStatus | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
+    // True only while THIS hook's own triggerSync() call is unresolved —
+    // narrower than `isSyncing`, which also stays true afterward while
+    // waiting on freshnessSignal. Gates the render-time reset below.
+    const [isRequestPending, setIsRequestPending] = useState(false);
     // The freshnessSignal at the moment trigger() was called, or undefined
     // when no trigger is outstanding. State, not a ref — a ref's `.current`
     // may not be read during render (react-hooks/refs), and this value is
@@ -82,9 +93,14 @@ export function useSyncTrigger(
     // BackfillStatus's `backfillJobSyncKey` and SyncProgressBar's
     // `syncedConfigId` to resync local state from props without a
     // react-hooks/set-state-in-effect violation. Once `freshnessSignal`
-    // moves away from the baseline captured at trigger time, the persisted
-    // state has caught up and it's safe to drop the optimistic override.
-    if (baselineLastSyncAt !== undefined && freshnessSignal !== baselineLastSyncAt) {
+    // moves away from the baseline captured at trigger time — and our own
+    // request has actually resolved — the persisted state has caught up
+    // and it's safe to drop the optimistic override.
+    if (
+        !isRequestPending &&
+        baselineLastSyncAt !== undefined &&
+        freshnessSignal !== baselineLastSyncAt
+    ) {
         setBaselineLastSyncAt(undefined);
         setLiveStatus(null);
         setIsSyncing(false);
@@ -92,11 +108,13 @@ export function useSyncTrigger(
 
     const trigger = useCallback(() => {
         setBaselineLastSyncAt(freshnessSignal);
+        setIsRequestPending(true);
         setIsSyncing(true);
         setLiveStatus("running");
         void (async () => {
             try {
                 const result = await triggerSync(configId);
+                setIsRequestPending(false);
                 if (result.error || !result.data) {
                     setBaselineLastSyncAt(undefined);
                     setLiveStatus(null);
@@ -104,11 +122,23 @@ export function useSyncTrigger(
                     toast.error(`Unable to start sync: ${result.error || "empty response"}`);
                     return;
                 }
+                // Some accepted triggers never actually dispatch a run (a
+                // disabled/no-op planning outcome) — mirrors the pollable-id
+                // check the pre-CHAOS-4318 poll-to-terminal code used to
+                // decide whether there was anything to track. With nothing
+                // dispatched, freshnessSignal will never change on its own,
+                // so clear immediately instead of leaving the button stuck.
+                if (!resolveSyncPollTarget(result.data, configId)) {
+                    setBaselineLastSyncAt(undefined);
+                    setLiveStatus(null);
+                    setIsSyncing(false);
+                }
                 toast.success("Sync triggered — use Refresh to check status");
                 router.refresh();
-                // Deliberately no `setLiveStatus`/`setIsSyncing` clear here
-                // — see doc comment above.
+                // Otherwise deliberately no further clear here — see doc
+                // comment above.
             } catch (error) {
+                setIsRequestPending(false);
                 setBaselineLastSyncAt(undefined);
                 setLiveStatus(null);
                 setIsSyncing(false);
