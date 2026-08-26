@@ -169,7 +169,7 @@ export function SyncCoverageSummaryCard({
                     >
                         {CTA_LABELS.editConfig}
                     </Link>
-                    <SyncNowButton configId={configId} />
+                    <SyncNowButton configId={configId} freshnessSignal={coverage.generated_at} />
                 </div>
             </div>
 
