@@ -592,6 +592,59 @@ describe("AskDevAnswer no-match presentation (CHAOS-3367)", () => {
         expect(screen.getByText("Closest matches")).toBeVisible();
         expect(screen.queryByText("Possible scope matches")).not.toBeInTheDocument();
     });
+
+    /**
+     * CHAOS-3478: `selectProposedEntity` must receive the exact candidate
+     * list this answer rendered alongside the picked entity, not just the
+     * entity alone — this is what lets the provider bind the selection to
+     * the answer that offered it. Proves the wiring end to end (ScopeSection
+     * → AskDevAnswer → the provider), not just the provider's own isolated
+     * unit test.
+     *
+     * codex finding (chaos3478web-codex-r1): a single-candidate fixture left
+     * a regression that passed `[pickedEntity]` instead of the FULL rendered
+     * list indistinguishable from correct — TWO candidates here, picking the
+     * SECOND one, closes that: a `[pickedEntity]`-only regression would
+     * assert `[falconTwo]`, not `[falconOne, falconTwo]`.
+     */
+    it("passes the full candidate list to selectProposedEntity, not just the picked entity", async () => {
+        const user = userEvent.setup();
+        const falconOne = {
+            display_label: "Falcon One",
+            entity_id: "project-falcon-one",
+            entity_type: "project",
+        };
+        const falconTwo = {
+            display_label: "Falcon Two",
+            entity_id: "project-falcon-two",
+            entity_type: "project",
+        };
+        render(
+            <AskDevAnswer
+                answer={
+                    {
+                        ...noMatchAnswer,
+                        resolved_scope: {
+                            ...noMatchAnswer.resolved_scope,
+                            candidates: [
+                                { entity_ref: falconOne, reason: "Closest authorized name match." },
+                                { entity_ref: falconTwo, reason: "Second closest name match." },
+                            ],
+                        },
+                    } as unknown as DevAnswer
+                }
+            />,
+        );
+
+        const useThisScopeButtons = screen.getAllByRole("button", { name: "Use this scope" });
+        expect(useThisScopeButtons).toHaveLength(2);
+        await user.click(useThisScopeButtons[1]!);
+
+        expect(actions.selectProposedEntity).toHaveBeenCalledWith(falconTwo, [
+            falconOne,
+            falconTwo,
+        ]);
+    });
 });
 
 describe("AskDevAnswer refused-with-grounding presentation (CHAOS-3377)", () => {

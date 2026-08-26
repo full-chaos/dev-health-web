@@ -31,6 +31,7 @@ import {
     askDevSurfaceContextLabel,
     fingerprintAskDevFilter,
     isApprovedAskDevSurfaceContext,
+    isEntityRefAmongCandidates,
     toDevSurfaceContext,
     type AskDevSurfaceContext,
 } from "@/lib/dev/contextualEntryPoints";
@@ -107,7 +108,13 @@ type AskDevContextValue = {
     contextualEntrypointsEnabled: boolean;
     clearProposedContext: () => void;
     setProposedContext: (context: AskDevSurfaceContext) => void;
-    selectProposedEntity: (entity: AskDevEntityRef) => void;
+    /**
+     * CHAOS-3478: `candidates` is the exact candidate list rendered by the
+     * answer `entity` was picked from — the caller must supply it, and a
+     * ref that is not a member of it is rejected. See
+     * `isEntityRefAmongCandidates`'s own doc comment for why.
+     */
+    selectProposedEntity: (entity: AskDevEntityRef, candidates: readonly AskDevEntityRef[]) => void;
     renameConversation: (conversationId: string, title: string) => Promise<void>;
     retryLastQuestion: () => Promise<void>;
     returnToPersistentWindow: () => void;
@@ -500,7 +507,13 @@ export function AskDevProvider({
     );
 
     const selectProposedEntity = useCallback(
-        (entity: AskDevEntityRef) => {
+        (entity: AskDevEntityRef, candidates: readonly AskDevEntityRef[]) => {
+            // CHAOS-3478: reject an entity that is not a member of the
+            // candidate list the caller supplied, BEFORE any route mapping
+            // or state change. See `isEntityRefAmongCandidates`'s own doc
+            // comment for the threat this closes and why it is defense in
+            // depth, not the sole guard.
+            if (!isEntityRefAmongCandidates(entity, candidates)) return;
             const routeId =
                 entity.entity_type === "repository"
                     ? "repository_detail"

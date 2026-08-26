@@ -1672,18 +1672,28 @@ describe("AskDev candidate selection vs contextual-entrypoint gating (CHAOS-3470
         );
     }
 
-    function SelectCandidate() {
+    const REPO_1_CANDIDATE = {
+        entity_type: "repository" as const,
+        entity_id: "repo-1",
+        display_label: "dev-health-web",
+    };
+
+    /**
+     * `candidates` defaults to `[REPO_1_CANDIDATE]` (the happy path: the
+     * picked entity IS a member of the list it is offered alongside).
+     * CHAOS-3478's own regression tests below override it to prove the
+     * rejection path.
+     */
+    function SelectCandidate({
+        candidates = [REPO_1_CANDIDATE],
+    }: {
+        candidates?: readonly (typeof REPO_1_CANDIDATE)[];
+    }) {
         const { selectProposedEntity } = useAskDev();
         return (
             <button
                 type="button"
-                onClick={() =>
-                    selectProposedEntity({
-                        entity_type: "repository",
-                        entity_id: "repo-1",
-                        display_label: "dev-health-web",
-                    })
-                }
+                onClick={() => selectProposedEntity(REPO_1_CANDIDATE, candidates)}
             >
                 Use this scope
             </button>
@@ -1706,6 +1716,73 @@ describe("AskDev candidate selection vs contextual-entrypoint gating (CHAOS-3470
 
         // CHAOS-3524: the persistent scope bar is gone; a real proposal now
         // surfaces as the "Scoped to ..." chip above the composer.
+        await waitFor(() =>
+            expect(screen.getByText("Scoped to")).toHaveTextContent("dev-health-web"),
+        );
+    });
+
+    /**
+     * CHAOS-3478. `selectProposedEntity` used to apply ANY structurally
+     * valid entity ref regardless of whether it came from the answer's own
+     * candidate list — this proves the fix: an entity that is not a member
+     * of the supplied `candidates` is rejected, with no scope change at all
+     * (not even a partial/degraded one).
+     */
+    it("rejects a structurally valid entity that is not a member of the supplied candidate list (CHAOS-3478)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        navigation.pathname = "/data-health";
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                {/* The rendered candidate list is EMPTY -- REPO_1_CANDIDATE,
+                    the entity actually picked, is not a member of it. */}
+                <SelectCandidate candidates={[]} />
+                <main>Data Health</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.click(screen.getByRole("button", { name: "Use this scope" }));
+
+        // No proposal was ever applied: the "Scoped to ..." chip never
+        // appears. `user.click` already awaits every state update the
+        // click handler produces (wrapped in `act`), so a synchronous
+        // `queryByText` right after it resolves is enough to prove absence,
+        // not a race with a still-pending update.
+        expect(screen.queryByText("Scoped to")).not.toBeInTheDocument();
+    });
+
+    /**
+     * The membership check compares identity (`entity_type`+`entity_id`),
+     * not `display_label`: a candidate-list entry with the SAME id/type as
+     * the picked entity but a DIFFERENT label is still a genuine match
+     * (labels are presentation text, not identity) — a stricter,
+     * label-inclusive comparison would wrongly reject a legitimately
+     * relabeled entity.
+     */
+    it("matches candidates by (entity_type, entity_id) identity, not display_label (CHAOS-3478)", async () => {
+        const user = userEvent.setup();
+        const client = makeClient();
+        navigation.pathname = "/data-health";
+        render(
+            <AskDevProvider client={client} orgId="org-1">
+                <SelectCandidate
+                    candidates={[
+                        {
+                            entity_type: "repository",
+                            entity_id: "repo-1",
+                            // Different label, same identity -- still a match.
+                            display_label: "renamed-repo",
+                        },
+                    ]}
+                />
+                <main>Data Health</main>
+            </AskDevProvider>,
+        );
+
+        await user.click(await screen.findByRole("button", { name: "Open Ask Dev" }));
+        await user.click(screen.getByRole("button", { name: "Use this scope" }));
+
         await waitFor(() =>
             expect(screen.getByText("Scoped to")).toHaveTextContent("dev-health-web"),
         );
