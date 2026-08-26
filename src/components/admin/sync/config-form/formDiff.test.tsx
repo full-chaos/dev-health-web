@@ -16,6 +16,8 @@ function snapshot(overrides: Partial<SyncFormSnapshot> = {}): SyncFormSnapshot {
         owner: "myorg",
         gitlab_url: "",
         auto_import_teams: false,
+        auto_import_projects: false,
+        auto_import_members: false,
         repos: ["myorg/repo-a"],
         syncAllRepos: false,
         ...overrides,
@@ -129,8 +131,20 @@ describe("buildChangeSummary", () => {
 
         const summary = buildChangeSummary(baseline, current);
 
-        expect(summary).toContainEqual(expect.stringContaining("Auto-import teams: enabled"));
+        expect(summary).toContainEqual(expect.stringContaining("Import teams: enabled"));
         expect(summary).toContainEqual(expect.stringContaining("Schedule: disabled"));
+    });
+
+    it("describes import-projects and import-members toggles independently", () => {
+        // CHAOS-4323: teams/projects/members are now independent -- each must
+        // surface its own change line, not just the old single flag.
+        const baseline = snapshot({ auto_import_projects: false, auto_import_members: false });
+        const current = snapshot({ auto_import_projects: true, auto_import_members: true });
+
+        const summary = buildChangeSummary(baseline, current);
+
+        expect(summary).toContainEqual(expect.stringContaining("Import projects: enabled"));
+        expect(summary).toContainEqual(expect.stringContaining("Import members: enabled"));
     });
 
     it("describes a joint schedule_cron + timezone change as a single Schedule entry", () => {

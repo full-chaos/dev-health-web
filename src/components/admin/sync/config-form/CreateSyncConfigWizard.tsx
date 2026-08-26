@@ -9,7 +9,7 @@ import { RepositoryScopeSection } from "./RepositoryScopeSection";
 import { DatasetsSection } from "./DatasetsSection";
 import { InitialDepthSection } from "./InitialDepthSection";
 import { ScheduleSection } from "./ScheduleSection";
-import { AdvancedSection } from "./AdvancedSection";
+import { TeamImportSection } from "./TeamImportSection";
 import { StepProgress } from "./StepProgress";
 import { StepNav } from "./StepNav";
 import { ReviewStep } from "./ReviewStep";
@@ -17,14 +17,14 @@ import {
     PagerDutyServiceMappings,
     type PagerDutyMappingValidity,
 } from "./PagerDutyServiceMappings";
-import {
-    formatDepthLabel,
-    formatScheduleLabel,
-    DATASET_LABELS,
-    AUTO_IMPORT_PROVIDERS,
-} from "./constants";
+import { formatDepthLabel, formatScheduleLabel, DATASET_LABELS } from "./constants";
 import { getVisibleSteps, getStepBlockReason, isRepoScopedProvider } from "./wizardSteps";
-import { PROVIDER_LABELS, type Provider } from "@/lib/admin/types";
+import {
+    PROVIDER_LABELS,
+    type Provider,
+    type AutoImportCapabilities,
+    type AutoImportCategory,
+} from "@/lib/admin/types";
 import type { IntegrationCredential } from "@/lib/admin/types";
 import type { ServiceRepositoryMappings } from "@/lib/admin/pagerduty";
 
@@ -41,11 +41,14 @@ type CreateSyncConfigWizardFormData = {
     repos: string[];
     gitlab_url: string;
     auto_import_teams: boolean;
+    auto_import_projects: boolean;
+    auto_import_members: boolean;
 };
 
 type CreateSyncConfigWizardProps = {
     canCreatePagerDuty: boolean;
     formData: CreateSyncConfigWizardFormData;
+    autoImportCapabilities: AutoImportCapabilities | null;
     credentialName: string | null;
     filteredCredentials: IntegrationCredential[];
     availableTargets: { id: string; label: string; description: string }[];
@@ -65,7 +68,7 @@ type CreateSyncConfigWizardProps = {
     onDepthChangeAction: (value: number) => void;
     onScheduleChangeAction: (cron: string | null, timezone: string | null) => void;
     onActiveChangeAction: (checked: boolean) => void;
-    onAutoImportChangeAction: (checked: boolean) => void;
+    onAutoImportChangeAction: (category: AutoImportCategory, checked: boolean) => void;
     onOpenCreateCredentialModalAction: () => void;
     onSubmitAction: (event: SyntheticEvent<HTMLFormElement>) => void;
     isPending: boolean;
@@ -80,6 +83,7 @@ type CreateSyncConfigWizardProps = {
 export function CreateSyncConfigWizard({
     canCreatePagerDuty,
     formData,
+    autoImportCapabilities,
     credentialName,
     filteredCredentials,
     availableTargets,
@@ -150,7 +154,6 @@ export function CreateSyncConfigWizard({
     }
 
     const isRepoScoped = isRepoScopedProvider(formData.provider);
-    const showAutoImport = AUTO_IMPORT_PROVIDERS.includes(formData.provider);
 
     return (
         <form onSubmit={handleFormSubmit} className="max-w-2xl space-y-6">
@@ -216,9 +219,14 @@ export function CreateSyncConfigWizard({
                             onTargetChange={onTargetChangeAction}
                             destructiveWarnings={[]}
                         />
-                        <AdvancedSection
+                        <TeamImportSection
                             provider={formData.provider}
-                            autoImportTeams={formData.auto_import_teams}
+                            capabilities={autoImportCapabilities}
+                            values={{
+                                teams: formData.auto_import_teams,
+                                projects: formData.auto_import_projects,
+                                members: formData.auto_import_members,
+                            }}
                             onChange={onAutoImportChangeAction}
                         />
                         {formData.provider === "pagerduty" &&
@@ -266,8 +274,12 @@ export function CreateSyncConfigWizard({
                         owner={formData.owner}
                         repoCount={formData.repos.length}
                         datasetLabels={formData.sync_targets.map((id) => DATASET_LABELS[id] ?? id)}
-                        showAutoImport={showAutoImport}
-                        autoImportTeams={formData.auto_import_teams}
+                        autoImportCapability={autoImportCapabilities?.[formData.provider]}
+                        autoImportValues={{
+                            teams: formData.auto_import_teams,
+                            projects: formData.auto_import_projects,
+                            members: formData.auto_import_members,
+                        }}
                         depthLabel={formatDepthLabel(formData.initial_sync_depth)}
                         scheduleLabel={formatScheduleLabel(formData.schedule_cron)}
                         timezone={formData.timezone}

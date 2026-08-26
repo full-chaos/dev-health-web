@@ -4,10 +4,12 @@ import type { IntegrationCredential } from "@/lib/admin/types";
 
 const listCredentials = vi.hoisted(() => vi.fn());
 const getCanonicalIncidentIngestionEntitlement = vi.hoisted(() => vi.fn());
+const getAutoImportCapabilities = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/admin/server", () => ({
     getCanonicalIncidentIngestionEntitlement,
     listCredentials,
+    getAutoImportCapabilities,
 }));
 
 vi.mock("@/components/admin/sync/SyncConfigForm", () => ({
@@ -15,11 +17,13 @@ vi.mock("@/components/admin/sync/SyncConfigForm", () => ({
         canCreatePagerDuty: boolean;
         credentials: readonly IntegrationCredential[];
         initialSelection?: unknown;
+        autoImportCapabilities?: unknown;
     }) => (
         <div
             data-can-create-pagerduty={String(props.canCreatePagerDuty)}
             data-credential-count={props.credentials.length}
             data-has-initial-selection={String("initialSelection" in props)}
+            data-auto-import-capabilities={JSON.stringify(props.autoImportCapabilities)}
             data-testid="sync-config-form"
         />
     ),
@@ -46,6 +50,7 @@ describe("NewSyncConfigPage", () => {
             ],
         });
         getCanonicalIncidentIngestionEntitlement.mockResolvedValue({ data: { enabled: true } });
+        getAutoImportCapabilities.mockResolvedValue({ data: {} });
 
         render(await NewSyncConfigPage());
 
@@ -60,6 +65,22 @@ describe("NewSyncConfigPage", () => {
         expect(screen.getByTestId("sync-config-form")).toHaveAttribute(
             "data-has-initial-selection",
             "false",
+        );
+    });
+
+    it("passes null (not {}) to SyncConfigForm when the capability fetch fails", async () => {
+        // CHAOS-4323 codex round: a fetch error must reach SyncConfigForm as
+        // a distinct null sentinel, not collapse to {} -- see
+        // SyncConfigForm.buildSyncOptions for why the distinction matters.
+        listCredentials.mockResolvedValue({ data: [] });
+        getCanonicalIncidentIngestionEntitlement.mockResolvedValue({ data: { enabled: false } });
+        getAutoImportCapabilities.mockResolvedValue({ error: "backend unavailable" });
+
+        render(await NewSyncConfigPage());
+
+        expect(screen.getByTestId("sync-config-form")).toHaveAttribute(
+            "data-auto-import-capabilities",
+            "null",
         );
     });
 });

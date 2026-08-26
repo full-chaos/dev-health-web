@@ -1,6 +1,8 @@
 import { CTA_LABELS } from "@/lib/design/cta";
 import { ReviewSummary, type ReviewSummaryRow } from "@/components/shared/ReviewSummary";
+import { AUTO_IMPORT_CATEGORIES } from "./constants";
 import type { ServiceRepositoryMappings } from "@/lib/admin/pagerduty";
+import type { AutoImportCapability, AutoImportCategory } from "@/lib/admin/types";
 
 type ReviewStepProps = {
     name: string;
@@ -11,8 +13,8 @@ type ReviewStepProps = {
     owner: string;
     repoCount: number;
     datasetLabels: string[];
-    showAutoImport: boolean;
-    autoImportTeams: boolean;
+    autoImportCapability: AutoImportCapability | undefined;
+    autoImportValues: Record<AutoImportCategory, boolean>;
     depthLabel: string;
     scheduleLabel: string;
     timezone: string | null;
@@ -66,8 +68,8 @@ export function ReviewStep({
     owner,
     repoCount,
     datasetLabels,
-    showAutoImport,
-    autoImportTeams,
+    autoImportCapability,
+    autoImportValues,
     depthLabel,
     scheduleLabel,
     timezone,
@@ -95,11 +97,23 @@ export function ReviewStep({
         value: datasetLabels.length > 0 ? datasetLabels.join(", ") : "None selected",
     });
 
-    if (showAutoImport) {
-        rows.push({
-            label: "Auto-import teams",
-            value: autoImportTeams ? "Enabled" : "Disabled",
-        });
+    const capabilitySupportsAny =
+        !!autoImportCapability &&
+        (autoImportCapability.teams ||
+            autoImportCapability.projects ||
+            autoImportCapability.members);
+    if (capabilitySupportsAny && autoImportCapability) {
+        for (const category of AUTO_IMPORT_CATEGORIES) {
+            const supported = autoImportCapability[category.id];
+            rows.push({
+                label: category.label,
+                value: supported
+                    ? autoImportValues[category.id]
+                        ? "Enabled"
+                        : "Disabled"
+                    : "Not supported",
+            });
+        }
     }
 
     rows.push({ label: "Initial depth", value: depthLabel });

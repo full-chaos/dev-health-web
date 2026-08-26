@@ -20,6 +20,7 @@ import type {
     SyncRunUnitSummary,
     SyncCoverageSummary,
     BackfillSelector,
+    AutoImportCapabilities,
 } from "../types";
 import { requirePagerDutyCreationEntitlement } from "./canonicalIncidentIngestion";
 import { getSessionContext, withErrorHandling } from "./_shared";
@@ -256,4 +257,11 @@ export async function toggleSyncActive(
     isActive: boolean,
 ): Promise<ActionResult<SyncConfig>> {
     return updateSyncConfig(id, { is_active: isActive });
+}
+
+export async function getAutoImportCapabilities(): Promise<ActionResult<AutoImportCapabilities>> {
+    return withErrorHandling(async () => {
+        const { token, orgId } = await getSessionContext();
+        return adminApi.syncConfigs.getAutoImportCapabilities(token, orgId);
+    });
 }
