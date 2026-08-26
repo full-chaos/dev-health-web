@@ -11,12 +11,13 @@ import { RepositoryScopeSection } from "./RepositoryScopeSection";
 import { DatasetsSection } from "./DatasetsSection";
 import { InitialDepthSection } from "./InitialDepthSection";
 import { ScheduleSection } from "./ScheduleSection";
-import { AdvancedSection } from "./AdvancedSection";
+import { TeamImportSection } from "./TeamImportSection";
 import {
     PagerDutyServiceMappings,
     type PagerDutyMappingValidity,
 } from "./PagerDutyServiceMappings";
 import type { ServiceRepositoryMappings } from "@/lib/admin/pagerduty";
+import type { AutoImportCapabilities, AutoImportCategory } from "@/lib/admin/types";
 
 type EditSyncConfigFormData = {
     name: string;
@@ -31,10 +32,13 @@ type EditSyncConfigFormData = {
     repos: string[];
     gitlab_url: string;
     auto_import_teams: boolean;
+    auto_import_projects: boolean;
+    auto_import_members: boolean;
 };
 
 type EditSyncConfigFormProps = {
     formData: EditSyncConfigFormData;
+    autoImportCapabilities: AutoImportCapabilities | null;
     credentialName: string | null;
     filteredCredentials: IntegrationCredential[];
     availableTargets: { id: string; label: string; description: string }[];
@@ -56,7 +60,7 @@ type EditSyncConfigFormProps = {
     onDepthChangeAction: (value: number) => void;
     onScheduleChangeAction: (cron: string | null, timezone: string | null) => void;
     onActiveChangeAction: (checked: boolean) => void;
-    onAutoImportChangeAction: (checked: boolean) => void;
+    onAutoImportChangeAction: (category: AutoImportCategory, checked: boolean) => void;
     onOpenCreateCredentialModalAction: () => void;
     onSubmitAction: (event: SyntheticEvent<HTMLFormElement>) => void;
     isPending: boolean;
@@ -72,6 +76,7 @@ type EditSyncConfigFormProps = {
  */
 export function EditSyncConfigForm({
     formData,
+    autoImportCapabilities,
     credentialName,
     filteredCredentials,
     availableTargets,
@@ -182,9 +187,14 @@ export function EditSyncConfigForm({
                 minIntervalHours={minSyncIntervalHours}
             />
 
-            <AdvancedSection
+            <TeamImportSection
                 provider={formData.provider}
-                autoImportTeams={formData.auto_import_teams}
+                capabilities={autoImportCapabilities}
+                values={{
+                    teams: formData.auto_import_teams,
+                    projects: formData.auto_import_projects,
+                    members: formData.auto_import_members,
+                }}
                 onChange={onAutoImportChangeAction}
             />
         </BaseForm>

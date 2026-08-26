@@ -16,6 +16,7 @@ import type {
     SyncRunUnitSummary,
     SyncCoverageSummary,
     BackfillRequest,
+    AutoImportCapabilities,
 } from "../types";
 
 export interface SyncJobsListParams {
@@ -130,6 +131,19 @@ export const syncConfigsApi = {
         request<SyncConfigBatchResponse>(
             "/sync-configs/batch",
             { method: "POST", body: JSON.stringify(data) },
+            token,
+            orgId,
+        ),
+
+    /**
+     * Per-provider, per-category auto-import capability (CHAOS-4323) --
+     * single source of truth for the wizard's teams/projects/members
+     * checkboxes. See ops `GET /sync-configs/auto-import-capabilities`.
+     */
+    getAutoImportCapabilities: (token?: string, orgId?: string) =>
+        request<AutoImportCapabilities>(
+            "/sync-configs/auto-import-capabilities",
+            { method: "GET" },
             token,
             orgId,
         ),

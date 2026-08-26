@@ -1152,6 +1152,33 @@ export const PROVIDER_SYNC_TARGETS: Record<Provider, string[]> = {
     pagerduty: ["operational"],
 };
 
+// ---- Auto-import capability (CHAOS-4323) ----
+
+export type AutoImportCategory = "teams" | "projects" | "members";
+
+/**
+ * Per-provider support for the three auto-import categories, plus the
+ * reason a category is unsupported (present only for a `false` category).
+ * Mirrors ops's `AutoImportCapability` dataclass
+ * (`providers/team_capabilities.py`) verbatim -- this is the single source
+ * of truth the wizard renders a disabled checkbox + reason from, not a
+ * duplicated frontend constant.
+ */
+export interface AutoImportCapability {
+    teams: boolean;
+    projects: boolean;
+    members: boolean;
+    reasons: Record<string, string>;
+}
+
+/**
+ * `GET /sync-configs/auto-import-capabilities` response: provider -> its
+ * capability. A provider absent from this map (e.g. `launchdarkly`,
+ * `pagerduty` -- no team/project/member concept at all) supports none of
+ * the three categories.
+ */
+export type AutoImportCapabilities = Record<string, AutoImportCapability>;
+
 // ---- Platform Stats ----
 
 export interface PlatformStats {

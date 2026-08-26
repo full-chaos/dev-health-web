@@ -17,6 +17,8 @@ import {
     Provider,
     PROVIDER_SYNC_TARGETS,
     SyncConfigRepositorySelection,
+    AutoImportCapabilities,
+    AutoImportCategory,
 } from "@/lib/admin/types";
 import {
     batchCreateSyncConfigs,
@@ -28,11 +30,7 @@ import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { useBaseFormState } from "@/components/shared/BaseForm";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { CreateCredentialModal } from "./CreateCredentialModal";
-import {
-    AUTO_IMPORT_PROVIDERS,
-    getSyncTargetsForProvider,
-    sameRepoSelection,
-} from "./config-form/constants";
+import { getSyncTargetsForProvider, sameRepoSelection } from "./config-form/constants";
 import {
     buildChangeSummary,
     getDatasetWarnings,
@@ -53,7 +51,35 @@ type SyncConfigFormProps = {
     initialData?: SyncConfig;
     initialRepositorySelection?: SyncConfigRepositorySelection;
     credentials: IntegrationCredential[];
+    /**
+     * `GET /sync-configs/auto-import-capabilities` response. Optional,
+     * defaulting to `{}` (no provider has any known capability, so the
+     * "Import from provider during sync" section renders nothing) --
+     * every real page fetches and passes this; the default only covers
+     * callers (tests) that don't exercise the auto-import UI.
+     *
+     * `null` is a DISTINCT, deliberate sentinel from `{}` (codex
+     * adversarial-review, MEDIUM): the caller passes `null` specifically
+     * when the fetch itself FAILED, vs `{}` when it succeeded and simply
+     * found no capability for this provider. Collapsing both to `{}` would
+     * make buildSyncOptions treat "we don't know" the same as "confirmed
+     * unsupported" and delete an existing config's already-true
+     * auto_import_* flags on the very next unrelated edit save, purely
+     * because the capability endpoint had a transient failure -- the same
+     * fail-closed sentinel shape as ops's own roster-preservation fix
+     * (None vs {}) for exactly the same reason.
+     */
+    autoImportCapabilities?: AutoImportCapabilities | null;
     onSuccessAction?: () => void;
+};
+
+const AUTO_IMPORT_FIELD_BY_CATEGORY: Record<
+    AutoImportCategory,
+    "auto_import_teams" | "auto_import_projects" | "auto_import_members"
+> = {
+    teams: "auto_import_teams",
+    projects: "auto_import_projects",
+    members: "auto_import_members",
 };
 
 function buildInitialFormValues(
@@ -82,6 +108,8 @@ function buildInitialFormValues(
         repos: initialRepositorySelection?.repos || ([] as string[]),
         gitlab_url: (initialData?.sync_options?.gitlab_url as string) || "",
         auto_import_teams: (initialData?.sync_options?.auto_import_teams as boolean) ?? false,
+        auto_import_projects: (initialData?.sync_options?.auto_import_projects as boolean) ?? false,
+        auto_import_members: (initialData?.sync_options?.auto_import_members as boolean) ?? false,
         serviceRepositoryMappings: readPagerDutyAdminMappings(initialData?.sync_options),
     };
 }
@@ -99,6 +127,8 @@ function toSnapshot(
         owner: formData.owner,
         gitlab_url: formData.gitlab_url,
         auto_import_teams: formData.auto_import_teams,
+        auto_import_projects: formData.auto_import_projects,
+        auto_import_members: formData.auto_import_members,
         repos: formData.repos,
         syncAllRepos,
     };
@@ -109,6 +139,7 @@ export function SyncConfigForm({
     initialData,
     initialRepositorySelection,
     credentials,
+    autoImportCapabilities = {},
     onSuccessAction,
 }: SyncConfigFormProps) {
     const router = useRouter();
@@ -246,7 +277,11 @@ export function SyncConfigForm({
     );
 
     const handleAutoImportChange = useCallback(
-        (checked: boolean) => setFormData((prev) => ({ ...prev, auto_import_teams: checked })),
+        (category: AutoImportCategory, checked: boolean) =>
+            setFormData((prev) => ({
+                ...prev,
+                [AUTO_IMPORT_FIELD_BY_CATEGORY[category]]: checked,
+            })),
         [setFormData],
     );
 
@@ -293,14 +328,37 @@ export function SyncConfigForm({
         if (formData.provider === "gitlab" && formData.gitlab_url) {
             opts.gitlab_url = formData.gitlab_url;
         }
-        // Auto-import teams/projects/members is only meaningful for providers
-        // with work-item/team attribution. Persist the explicit boolean for
-        // those, and strip any stale flag when switched to an unsupported
-        // provider so it never rides along inappropriately.
-        if (AUTO_IMPORT_PROVIDERS.includes(formData.provider)) {
-            opts.auto_import_teams = formData.auto_import_teams;
-        } else {
-            delete opts.auto_import_teams;
+        // Import teams/projects/members (CHAOS-4323) is only meaningful for a
+        // category the provider actually supports (GET
+        // /sync-configs/auto-import-capabilities). A disabled checkbox can
+        // never be checked, so a category the UI hid never carries `true` --
+        // this AND-clamp is defense-in-depth mirroring the same clamp ops
+        // applies server-side, not the primary enforcement. Persist explicit
+        // booleans (never a stale/absent key) for a provider the capability
+        // map knows about at all; strip all three when switched to a
+        // provider with no auto-import support so they never ride along
+        // inappropriately.
+        //
+        // codex adversarial-review (MEDIUM): `autoImportCapabilities ===
+        // null` means the capability fetch FAILED -- distinct from `{}`,
+        // which means it succeeded and found nothing for this provider.
+        // Collapsing both would let a transient fetch failure delete an
+        // existing config's already-true auto_import_* flags on the very
+        // next unrelated edit save. On `null`, leave these three keys
+        // exactly as `initialData.sync_options` already carried them
+        // (untouched, not stripped, not overwritten from checkbox state
+        // the UI couldn't safely render anyway).
+        if (autoImportCapabilities !== null) {
+            const capability = autoImportCapabilities[formData.provider];
+            if (capability) {
+                opts.auto_import_teams = formData.auto_import_teams && capability.teams;
+                opts.auto_import_projects = formData.auto_import_projects && capability.projects;
+                opts.auto_import_members = formData.auto_import_members && capability.members;
+            } else {
+                delete opts.auto_import_teams;
+                delete opts.auto_import_projects;
+                delete opts.auto_import_members;
+            }
         }
         return mergePagerDutyAdminMappings(
             opts,
@@ -315,7 +373,10 @@ export function SyncConfigForm({
         formData.sync_targets,
         formData.gitlab_url,
         formData.auto_import_teams,
+        formData.auto_import_projects,
+        formData.auto_import_members,
         formData.serviceRepositoryMappings,
+        autoImportCapabilities,
     ]);
 
     const performUpdate = useCallback(async () => {
@@ -480,6 +541,7 @@ export function SyncConfigForm({
             {isEdit ? (
                 <EditSyncConfigForm
                     formData={formData}
+                    autoImportCapabilities={autoImportCapabilities}
                     credentialName={credentialName}
                     filteredCredentials={filteredCredentials}
                     availableTargets={availableTargets}
@@ -511,6 +573,7 @@ export function SyncConfigForm({
                 <CreateSyncConfigWizard
                     canCreatePagerDuty={canCreatePagerDuty}
                     formData={formData}
+                    autoImportCapabilities={autoImportCapabilities}
                     credentialName={credentialName}
                     filteredCredentials={filteredCredentials}
                     availableTargets={availableTargets}

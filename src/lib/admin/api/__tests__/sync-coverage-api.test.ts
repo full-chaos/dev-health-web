@@ -100,4 +100,27 @@ describe("sync coverage admin API", () => {
         const [url] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
         expect(url).toBe("http://test-ops:8000/api/v1/admin/backfill-jobs?limit=10&offset=20");
     });
+
+    it("fetches the per-provider auto-import capability map (CHAOS-4323)", async () => {
+        const payload = {
+            github: {
+                teams: true,
+                projects: false,
+                members: true,
+                reasons: { projects: "GitHub attributes ownership via repos, not projects." },
+            },
+            gitlab: { teams: true, projects: true, members: true, reasons: {} },
+        };
+        const fetchSpy = mockJsonResponse(payload);
+
+        const result = await syncConfigsApi.getAutoImportCapabilities("token-1", "org-1");
+
+        expect(result).toEqual(payload);
+        const [url, options] = fetchSpy.mock.calls[0] as [string, RequestInit | undefined];
+        expect(url).toBe("http://test-ops:8000/api/v1/admin/sync-configs/auto-import-capabilities");
+        expect(options?.headers).toMatchObject({
+            Authorization: "Bearer token-1",
+            "X-Org-Id": "org-1",
+        });
+    });
 });

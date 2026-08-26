@@ -55,10 +55,32 @@ export const DATASET_LABELS: Record<string, string> = Object.fromEntries(
     ALL_SYNC_TARGETS.map((t) => [t.id, t.label]),
 );
 
-// Providers where work-item / team attribution applies, so auto-importing
-// teams, projects & members is meaningful. Pure feature-flag providers
-// (e.g. launchdarkly) and pure-git/local sources are excluded.
-export const AUTO_IMPORT_PROVIDERS = ["github", "gitlab", "jira", "linear"];
+// Category metadata for the "Import from provider during sync" checkboxes
+// (CHAOS-4323). Whether a given provider supports a category (and, if not,
+// why) comes from the live `GET /sync-configs/auto-import-capabilities`
+// endpoint (AutoImportCapabilities), not a static frontend list -- this is
+// just the fixed id/label/description per checkbox.
+export const AUTO_IMPORT_CATEGORIES: {
+    id: "teams" | "projects" | "members";
+    label: string;
+    description: string;
+}[] = [
+    {
+        id: "teams",
+        label: "Import teams",
+        description: "Discover and import teams from this provider during sync.",
+    },
+    {
+        id: "projects",
+        label: "Import projects",
+        description: "Import projects and set team ownership for attribution.",
+    },
+    {
+        id: "members",
+        label: "Import members",
+        description: "Import members and team memberships to populate identities.",
+    },
+];
 
 export function getSyncTargetsForProvider(provider: string) {
     const allowed =
