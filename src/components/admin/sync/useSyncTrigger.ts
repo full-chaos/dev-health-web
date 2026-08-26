@@ -23,8 +23,9 @@ interface UseSyncTriggerResult {
     liveStatus: SyncStatus | null;
     /**
      * True while a trigger is outstanding — from the click until the
-     * caller's `freshnessSignal` proves the run landed (NOT just until the
-     * POST resolves). Button should disable/spin.
+     * caller's `freshnessSignal` proves the run landed, or an explicit
+     * `refreshToken` bump unlocks it (NOT just until the POST resolves).
+     * Button should disable/spin.
      */
     isSyncing: boolean;
     /** Trigger a sync for `configId`. */
@@ -43,71 +44,76 @@ interface UseSyncTriggerResult {
  * `liveStatus`/`isSyncing` are deliberately NOT cleared once the trigger
  * POST resolves. Without a poll-to-terminal loop there's no signal at that
  * moment that the run actually finished — re-enabling the button the
- * instant the trigger request returns would let a rapid second click (or an
- * unrelated Refresh elsewhere on the page swapping in still-stale props)
- * enqueue a duplicate run while the first is still executing server-side.
+ * instant the trigger request returns would let a rapid second click enqueue
+ * a duplicate run while the first is still executing server-side.
  *
- * Instead, `freshnessSignal` — some persisted value the caller passes in
- * that is guaranteed to change once this config's next sync attempt lands
- * (`SyncConfig.last_sync_at` for the table row; a coverage summary's
- * `generated_at` for the standalone button, since its coverage projection
- * regenerates after every sync) — is the authoritative clear signal: this
- * hook captures its value at the moment `trigger()` fires, and clears the
- * optimistic state once a LATER render's `freshnessSignal` no longer
- * matches that baseline. That only happens once the backend has actually
- * persisted a completed attempt (success or failure) for this config,
- * however the fresh value arrives (an explicit page-level Refresh, an
- * unrelated re-render, navigation). Comparing by inequality rather than a
- * fixed timestamp deliberately avoids any client/server clock-skew
- * assumption. Pass `null` if no such signal is available — the optimistic
- * state will simply never auto-clear for that caller, same as before this
- * parameter existed.
+ * Two independent signals clear the lock, either is sufficient:
  *
- * The freshness comparison is deliberately suppressed while THIS hook's own
- * trigger request is still in flight (`isRequestPending`): otherwise an
- * unrelated change to `freshnessSignal` arriving mid-flight — a scheduled
- * run for the same config, another tab, another operator — could clear the
- * lock before our own POST has even resolved, letting a second click race
- * ahead of it.
+ *   1. `freshnessSignal` — some persisted value the caller passes in that
+ *      is guaranteed to change once this config's next sync attempt lands
+ *      (`SyncConfig.last_sync_at` for the table row; a coverage summary's
+ *      `generated_at` for the standalone button). Captured at trigger time;
+ *      clears once a later render's value differs from that baseline.
+ *      Comparing by inequality rather than a fixed timestamp deliberately
+ *      avoids any client/server clock-skew assumption.
+ *   2. `refreshToken` — a counter the caller bumps on every EXPLICIT user
+ *      Refresh click (page- or table-level). An operator asking for a
+ *      refresh is itself authoritative: once they've done that, trust
+ *      whatever the server now says over our own optimism, even if
+ *      `freshnessSignal` happens not to have moved. This is what stops a
+ *      batch child config — whose `last_sync_at` the backend may only
+ *      advance on the parent, never the child row itself — from staying
+ *      locked forever with nothing but a full page reload able to clear it.
+ *
+ * Both comparisons are suppressed while THIS hook's own trigger request is
+ * still unresolved (`isRequestPending`): otherwise an unrelated
+ * freshnessSignal/refreshToken change arriving mid-flight — a scheduled run
+ * for the same config, another tab, another operator's Refresh click —
+ * could clear the lock before our own POST has even resolved, letting a
+ * second click race ahead of it.
  */
 export function useSyncTrigger(
     configId: string,
     freshnessSignal: string | null,
+    refreshToken: number = 0,
 ): UseSyncTriggerResult {
     const router = useRouter();
     const [liveStatus, setLiveStatus] = useState<SyncStatus | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
     // True only while THIS hook's own triggerSync() call is unresolved —
     // narrower than `isSyncing`, which also stays true afterward while
-    // waiting on freshnessSignal. Gates the render-time reset below.
+    // waiting on freshnessSignal/refreshToken. Gates the render-time reset
+    // below.
     const [isRequestPending, setIsRequestPending] = useState(false);
-    // The freshnessSignal at the moment trigger() was called, or undefined
-    // when no trigger is outstanding. State, not a ref — a ref's `.current`
-    // may not be read during render (react-hooks/refs), and this value is
-    // read during the render-time reset below.
+    // The freshnessSignal/refreshToken at the moment trigger() was called,
+    // or undefined when no trigger is outstanding. State, not a ref — a
+    // ref's `.current` may not be read during render (react-hooks/refs),
+    // and these values are read during the render-time reset below.
     const [baselineLastSyncAt, setBaselineLastSyncAt] = useState<string | null | undefined>(
         undefined,
     );
+    const [baselineRefreshToken, setBaselineRefreshToken] = useState<number | undefined>(undefined);
 
     // Render-time reset — the same documented React pattern used by
     // BackfillStatus's `backfillJobSyncKey` and SyncProgressBar's
     // `syncedConfigId` to resync local state from props without a
-    // react-hooks/set-state-in-effect violation. Once `freshnessSignal`
-    // moves away from the baseline captured at trigger time — and our own
-    // request has actually resolved — the persisted state has caught up
-    // and it's safe to drop the optimistic override.
-    if (
-        !isRequestPending &&
-        baselineLastSyncAt !== undefined &&
-        freshnessSignal !== baselineLastSyncAt
-    ) {
-        setBaselineLastSyncAt(undefined);
-        setLiveStatus(null);
-        setIsSyncing(false);
+    // react-hooks/set-state-in-effect violation. Once EITHER signal moves
+    // away from the baseline captured at trigger time — and our own request
+    // has actually resolved — it's safe to drop the optimistic override.
+    if (!isRequestPending && baselineLastSyncAt !== undefined) {
+        const freshnessChanged = freshnessSignal !== baselineLastSyncAt;
+        const refreshedByOperator = refreshToken !== baselineRefreshToken;
+        if (freshnessChanged || refreshedByOperator) {
+            setBaselineLastSyncAt(undefined);
+            setBaselineRefreshToken(undefined);
+            setLiveStatus(null);
+            setIsSyncing(false);
+        }
     }
 
     const trigger = useCallback(() => {
         setBaselineLastSyncAt(freshnessSignal);
+        setBaselineRefreshToken(refreshToken);
         setIsRequestPending(true);
         setIsSyncing(true);
         setLiveStatus("running");
@@ -117,6 +123,7 @@ export function useSyncTrigger(
                 setIsRequestPending(false);
                 if (result.error || !result.data) {
                     setBaselineLastSyncAt(undefined);
+                    setBaselineRefreshToken(undefined);
                     setLiveStatus(null);
                     setIsSyncing(false);
                     toast.error(`Unable to start sync: ${result.error || "empty response"}`);
@@ -130,6 +137,7 @@ export function useSyncTrigger(
                 // so clear immediately instead of leaving the button stuck.
                 if (!resolveSyncPollTarget(result.data, configId)) {
                     setBaselineLastSyncAt(undefined);
+                    setBaselineRefreshToken(undefined);
                     setLiveStatus(null);
                     setIsSyncing(false);
                 }
@@ -140,13 +148,14 @@ export function useSyncTrigger(
             } catch (error) {
                 setIsRequestPending(false);
                 setBaselineLastSyncAt(undefined);
+                setBaselineRefreshToken(undefined);
                 setLiveStatus(null);
                 setIsSyncing(false);
                 syncLogger.error({ err: error, configId }, "Sync trigger failed");
                 toast.error(`Unable to start sync: ${errorMessage(error)}`);
             }
         })();
-    }, [configId, router, freshnessSignal]);
+    }, [configId, router, freshnessSignal, refreshToken]);
 
     return { liveStatus, isSyncing, trigger };
 }

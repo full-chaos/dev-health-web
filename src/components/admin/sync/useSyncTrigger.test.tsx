@@ -163,6 +163,77 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
         expect(mockRefresh).toHaveBeenCalledTimes(1);
     });
 
+    it("independent-review fix: a batch child config whose last_sync_at never moves still unlocks on an explicit Refresh (refreshToken bump)", async () => {
+        vi.mocked(triggerSync).mockResolvedValue({ data: { sync_run_id: "run-1" } });
+
+        // The reproduction: last_sync_at is fixed for the life of this test
+        // — the backend only ever advances the PARENT batch config's field,
+        // never this child row's own. Before the fix, nothing but a page
+        // reload could clear the lock.
+        const FIXED_LAST_SYNC_AT = "2026-08-26T00:00:00.000Z";
+
+        const { result, rerender } = renderHook(
+            ({ refreshToken }) => useSyncTrigger("child-cfg-1", FIXED_LAST_SYNC_AT, refreshToken),
+            { initialProps: { refreshToken: 0 } },
+        );
+
+        act(() => {
+            result.current.trigger();
+        });
+        await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+
+        // RED (pre-fix behavior): still stuck — last_sync_at hasn't moved.
+        expect(result.current.isSyncing).toBe(true);
+        expect(result.current.liveStatus).toBe("running");
+
+        // The operator clicks the table's Refresh control — refreshToken
+        // bumps even though last_sync_at (still) hasn't.
+        rerender({ refreshToken: 1 });
+
+        // GREEN: an explicit Refresh is itself authoritative and unlocks
+        // the row regardless of last_sync_at.
+        expect(result.current.isSyncing).toBe(false);
+        expect(result.current.liveStatus).toBeNull();
+    });
+
+    it("a refreshToken bump before any trigger, or while a trigger POST is still pending, does not unlock prematurely", async () => {
+        const { result, rerender } = renderHook(
+            ({ refreshToken }) => useSyncTrigger("cfg-1", null, refreshToken),
+            { initialProps: { refreshToken: 0 } },
+        );
+
+        // No trigger outstanding — a Refresh click elsewhere must be a no-op.
+        rerender({ refreshToken: 1 });
+        expect(result.current.isSyncing).toBe(false);
+        expect(result.current.liveStatus).toBeNull();
+
+        let resolveTrigger!: (value: { data: { sync_run_id: string } }) => void;
+        vi.mocked(triggerSync).mockReturnValue(
+            new Promise((resolve) => {
+                resolveTrigger = resolve;
+            }),
+        );
+        act(() => {
+            result.current.trigger();
+        });
+        expect(result.current.isSyncing).toBe(true);
+
+        // A Refresh click while OUR OWN POST is still in flight must not
+        // unlock ahead of it settling (same race as freshnessSignal).
+        rerender({ refreshToken: 2 });
+        expect(result.current.isSyncing).toBe(true);
+
+        await act(async () => {
+            resolveTrigger({ data: { sync_run_id: "run-1" } });
+        });
+        await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+
+        // Now that the request has resolved, the already-bumped
+        // refreshToken is honored on the next render.
+        rerender({ refreshToken: 2 });
+        expect(result.current.isSyncing).toBe(false);
+    });
+
     it("fires exactly one trigger request and one refresh — no repeat calls of either", async () => {
         vi.mocked(triggerSync).mockResolvedValue({ data: { sync_run_id: "run-1" } });
 

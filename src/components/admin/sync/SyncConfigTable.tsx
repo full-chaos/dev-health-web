@@ -33,6 +33,13 @@ export function SyncConfigTable({ configs }: SyncConfigTableProps) {
     const router = useRouter();
     const [expandedGroupIds, setExpandedGroupIds] = useState<ReadonlySet<string>>(new Set());
     const [isRefreshing, startRefresh] = useTransition();
+    // Bumped on every explicit Refresh click. Passed down to each row's
+    // useSyncTrigger as a second, always-correct unlock signal: an operator
+    // asking for a refresh is itself authoritative, even for a batch child
+    // config whose own `last_sync_at` the backend may never advance (only
+    // the parent's does) — without this, that row's optimistic "Syncing..."
+    // lock could only ever be cleared by a full page reload.
+    const [refreshToken, setRefreshToken] = useState(0);
     const rows = useMemo(
         () => buildSyncConfigTableRows(configs, expandedGroupIds),
         [configs, expandedGroupIds],
@@ -62,6 +69,7 @@ export function SyncConfigTable({ configs }: SyncConfigTableProps) {
     }
 
     function handleRefresh() {
+        setRefreshToken((n) => n + 1);
         startRefresh(() => {
             router.refresh();
         });
@@ -86,6 +94,7 @@ export function SyncConfigTable({ configs }: SyncConfigTableProps) {
                         row={row}
                         expanded={expandedGroupIds.has(row.config.id)}
                         onToggleGroupAction={toggleGroup}
+                        refreshToken={refreshToken}
                     />
                 )}
                 emptyMessage="No sync configurations found. Create a new configuration to get started."
