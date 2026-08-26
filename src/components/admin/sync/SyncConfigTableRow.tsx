@@ -101,7 +101,10 @@ function ConfigTableRow({ row }: { readonly row: SyncConfigTableRowData }) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [isDeleteBusy, setIsDeleteBusy] = useState(false);
-    const { liveStatus, isSyncing, trigger } = useSyncTrigger(row.config.id);
+    const { liveStatus, isSyncing, trigger } = useSyncTrigger(
+        row.config.id,
+        row.config.last_sync_at,
+    );
     const status = liveStatus ?? persistedStatus(row.config);
     const isRowBusy = isPending || isSyncing || isDeleteBusy;
 

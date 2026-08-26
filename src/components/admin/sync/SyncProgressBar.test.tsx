@@ -131,7 +131,7 @@ describe("SyncProgressBar", () => {
         vi.useRealTimers();
     });
 
-    it("renders nothing when no active run is discovered for the config", async () => {
+    it("renders no progress bar (no status role) when no active run is discovered, but still a Refresh control", async () => {
         vi.mocked(getSyncJobs).mockResolvedValue({
             data: [buildJob({ status: "success", sync_run: null })],
         });
@@ -141,6 +141,33 @@ describe("SyncProgressBar", () => {
 
         expect(getSyncRunStatus).not.toHaveBeenCalled();
         expect(screen.queryByRole("status")).not.toBeInTheDocument();
+        // CHAOS-4318 round-2 fix: a Refresh control must survive an empty
+        // discovery result — otherwise a LATER scheduled/triggered run can
+        // only ever be found by navigating away and back.
+        expect(screen.getByTestId("sync-progress-bar-empty")).toBeInTheDocument();
+        expect(screen.getByTestId("refresh-control-button")).toBeInTheDocument();
+    });
+
+    it("CHAOS-4318: the empty-state Refresh control re-checks and discovers a run that starts later", async () => {
+        vi.mocked(getSyncJobs).mockResolvedValueOnce({
+            data: [buildJob({ status: "success", sync_run: null })],
+        });
+
+        render(<SyncProgressBar configId="cfg-1" />);
+        await flush();
+        expect(screen.getByTestId("sync-progress-bar-empty")).toBeInTheDocument();
+
+        vi.mocked(getSyncJobs).mockResolvedValue({ data: [buildJob({ status: "running" })] });
+        vi.mocked(getSyncRunStatus).mockResolvedValue({
+            data: buildRun({ completed_units: 4, total_units: 10 }),
+        });
+
+        screen.getByTestId("refresh-control-button").click();
+        await flush();
+
+        expect(screen.queryByTestId("sync-progress-bar-empty")).not.toBeInTheDocument();
+        expect(screen.getByText("Syncing...")).toBeInTheDocument();
+        expect(screen.getByText(/4 \/ 10/)).toBeInTheDocument();
     });
 
     it("discovers a manually-triggered run from the config's recent jobs and polls it", async () => {

@@ -32,10 +32,6 @@ const COLUMNS = [
 export function SyncConfigTable({ configs }: SyncConfigTableProps) {
     const router = useRouter();
     const [expandedGroupIds, setExpandedGroupIds] = useState<ReadonlySet<string>>(new Set());
-    // CHAOS-4318: bumped on every explicit Refresh so each row remounts —
-    // that resets any stale optimistic "Syncing..." badge (useSyncTrigger)
-    // left over from a trigger whose completion nothing polls for anymore.
-    const [refreshToken, setRefreshToken] = useState(0);
     const [isRefreshing, startRefresh] = useTransition();
     const rows = useMemo(
         () => buildSyncConfigTableRows(configs, expandedGroupIds),
@@ -66,7 +62,6 @@ export function SyncConfigTable({ configs }: SyncConfigTableProps) {
     }
 
     function handleRefresh() {
-        setRefreshToken((n) => n + 1);
         startRefresh(() => {
             router.refresh();
         });
@@ -85,7 +80,7 @@ export function SyncConfigTable({ configs }: SyncConfigTableProps) {
                 accessibleLabel="Sync configurations"
                 columns={COLUMNS}
                 data={rows}
-                rowKeyAction={(row) => `${row.config.id}:${refreshToken}`}
+                rowKeyAction={(row) => row.config.id}
                 renderRowAction={(row) => (
                     <SyncConfigTableRow
                         row={row}

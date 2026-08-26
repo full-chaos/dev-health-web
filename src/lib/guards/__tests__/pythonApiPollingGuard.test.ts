@@ -19,6 +19,8 @@ import { describe, expect, it } from "vitest";
  *   - urql `pollInterval:` / SWR or react-query `refetchInterval:`
  *   - `setInterval(...)` outside the small, named, non-fetching allowlist
  *   - `new EventSource(...)` / `new WebSocket(...)` reconnect-loop patterns
+ *   - a hand-rolled recursive-`setTimeout` poll loop, inline or via a named
+ *     function that reschedules itself
  *
  * Reinstate only against the Go API (tracked under Wave 3), never the Python
  * one — and add the file to SETINTERVAL_ALLOWLIST only for a genuinely
@@ -133,16 +135,10 @@ const TIMER_CALL_TEST_PATTERN = /\bset(?:Timeout|Interval)\s*\(/;
  * True if `source` contains a `setTimeout(...)`/`setInterval(...)` call
  * whose own argument list — extracted via paren-depth scanning, so a
  * callback's own parens (a call expression, an arrow body) don't fool this —
- * contains ANOTHER `setTimeout(`/`setInterval(` call. That's the inline
- * self-scheduling poll shape that would replace a removed `setInterval`
+ * contains ANOTHER `setTimeout(`/`setInterval(` call. That's the INLINE
+ * self-scheduling poll shape (`setTimeout(function poll(){ ...;
+ * setTimeout(poll, ms) }, ms)`) that would replace a removed `setInterval`
  * without matching the `setInterval` scan at all.
- *
- * Text-scan limitation: this only catches the INLINE form
- * (`setTimeout(function poll(){ ...; setTimeout(poll, ms) }, ms)`); it does
- * not catch mutual recursion via a named function reference declared
- * elsewhere (`function tick(){ setTimeout(tick, ms) } setTimeout(tick, ms)`)
- * — that needs a symbol-aware check. No file in this codebase currently has
- * either shape, so this adds zero false positives today.
  */
 function hasNestedTimerCall(source: string): boolean {
     for (const call of extractTimerCalls(source, TIMER_CALL_PATTERN)) {
@@ -151,6 +147,53 @@ function hasNestedTimerCall(source: string): boolean {
         // nested occurrence, never itself.
         const afterOwnKeyword = call.slice(call.indexOf("(") + 1);
         if (TIMER_CALL_TEST_PATTERN.test(afterOwnKeyword)) return true;
+    }
+    return false;
+}
+
+const NAMED_FUNCTION_PATTERN =
+    /\bfunction\s+(\w+)\s*\(|\bconst\s+(\w+)\s*=\s*(?:async\s*)?(?:\([^)]*\)|\w+)\s*=>|\bconst\s+(\w+)\s*=\s*(?:async\s*)?function\b/g;
+
+/** The `{...}` block starting at/after `fromIndex`, via brace-depth scanning. */
+function extractBraceBlock(source: string, fromIndex: number): string | null {
+    const openBraceIndex = source.indexOf("{", fromIndex);
+    if (openBraceIndex === -1) return null;
+    let depth = 0;
+    for (let i = openBraceIndex; i < source.length; i++) {
+        if (source[i] === "{") depth++;
+        else if (source[i] === "}") {
+            depth--;
+            if (depth === 0) return source.slice(openBraceIndex, i + 1);
+        }
+    }
+    return source.slice(openBraceIndex);
+}
+
+/**
+ * True if `source` declares a named function/const that schedules ITSELF
+ * via `setTimeout(name, ...)` or `setInterval(name, ...)` inside its own
+ * body — the mutual-recursion poll shape
+ * (`function poll(){ fetch(...); setTimeout(poll, ms); } setTimeout(poll,
+ * ms);`) that `hasNestedTimerCall` above cannot see, since no single timer
+ * call is textually nested inside another.
+ *
+ * Text-scan limitation: only matches a single-identifier self-reference
+ * (the function's own declared name reappearing as the first arg to a
+ * timer call in its own body) — a renamed alias or an indirect reference
+ * through an object/ref would still slip past. Combined with the
+ * setInterval allowlist and the inline-nesting check above, this closes
+ * the most likely reintroduction shapes without a full AST pass.
+ */
+function hasNamedSelfSchedulingFunction(source: string): boolean {
+    let match: RegExpExecArray | null;
+    NAMED_FUNCTION_PATTERN.lastIndex = 0;
+    while ((match = NAMED_FUNCTION_PATTERN.exec(source))) {
+        const name = match[1] ?? match[2] ?? match[3];
+        if (!name) continue;
+        const body = extractBraceBlock(source, NAMED_FUNCTION_PATTERN.lastIndex);
+        if (!body) continue;
+        const selfSchedulePattern = new RegExp(`\\bset(?:Timeout|Interval)\\s*\\(\\s*${name}\\b`);
+        if (selfSchedulePattern.test(body)) return true;
     }
     return false;
 }
@@ -176,6 +219,12 @@ describe("no timer-driven polling against the Python API (CHAOS-4318)", () => {
                 violations.push({
                     file: relPath,
                     reason: "recursive setTimeout/setInterval — a hand-rolled poll loop",
+                });
+            }
+            if (hasNamedSelfSchedulingFunction(source)) {
+                violations.push({
+                    file: relPath,
+                    reason: "a named function reschedules itself via setTimeout/setInterval — a hand-rolled poll loop",
                 });
             }
 
@@ -244,5 +293,28 @@ describe("no timer-driven polling against the Python API (CHAOS-4318)", () => {
         expect(hasNestedTimerCall(recursive)).toBe(true);
         const oneShot = `const timer = setTimeout(() => setCopied(false), 1500); return () => clearTimeout(timer);`;
         expect(hasNestedTimerCall(oneShot)).toBe(false);
+    });
+
+    it("hasNamedSelfSchedulingFunction catches a named mutual-recursion setTimeout poll (mutation check)", () => {
+        // The exact shape a nested-call scan alone cannot see: no single
+        // timer call is textually nested inside another — `poll` schedules
+        // itself by NAME, declared elsewhere in the same function body.
+        const recursive = `function poll() { fetch("/x"); setTimeout(poll, 3500); } setTimeout(poll, 3500);`;
+        expect(hasNamedSelfSchedulingFunction(recursive)).toBe(true);
+
+        const recursiveArrow = `const poll = () => { fetch("/x"); setTimeout(poll, 3500); }; setTimeout(poll, 3500);`;
+        expect(hasNamedSelfSchedulingFunction(recursiveArrow)).toBe(true);
+
+        // A debounced one-shot fetch (PeopleSearch.tsx's real shape) must
+        // NOT trip this — the callback is anonymous, it never reschedules
+        // itself, and the effect re-running on a new keystroke is not a
+        // hand-rolled poll loop.
+        const debounce = `useEffect(() => {
+            const timer = setTimeout(() => {
+                apiClient.getJson(PEOPLE_SEARCH_ENDPOINT, params);
+            }, DEBOUNCE_MS);
+            return () => clearTimeout(timer);
+        }, [query]);`;
+        expect(hasNamedSelfSchedulingFunction(debounce)).toBe(false);
     });
 });

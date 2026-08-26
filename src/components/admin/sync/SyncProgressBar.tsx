@@ -86,7 +86,11 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
     // Single discovery + tracking read, run on mount/configId-change and
     // again only when the caller explicitly asks (Refresh click).
     const check = useCallback(async () => {
-        if (inFlightRef.current) return;
+        // Defensive — the mount effect already skips entirely in testMode,
+        // and testMode never renders the RefreshControl that could call
+        // this directly, but this keeps `check` itself safe to call from
+        // anywhere without relying on the caller remembering the guard.
+        if (testMode || inFlightRef.current) return;
         inFlightRef.current = true;
         seqRef.current += 1;
         const mySeq = seqRef.current;
@@ -140,7 +144,7 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
                 setIsRefreshing(false);
             }
         }
-    }, [configId]);
+    }, [configId, testMode]);
 
     // Reset tracking state synchronously during render when `configId`
     // changes (the documented React pattern for resetting state from
@@ -221,7 +225,31 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
         return () => clearTimeout(timer);
     }, [terminalUntil, configId]);
 
-    if (!visibleRun) return null;
+    if (!visibleRun) {
+        // testMode never fetches (the mount effect skips entirely and
+        // `check` itself now double-guards), so there is nothing a
+        // RefreshControl here could usefully do — keep the prior
+        // render-nothing behavior for sample/Playwright test-mode screens.
+        if (testMode) return null;
+        // A Refresh control must stay available even with nothing tracked
+        // (no active run discovered, or the terminal grace period just
+        // cleared one) — otherwise a later scheduled/triggered run can only
+        // ever be discovered by navigating away and back, defeating the
+        // manual-refresh replacement for the old discovery poll.
+        return (
+            <div
+                className="flex items-center justify-between gap-3 rounded-xl border border-(--card-stroke) bg-(--card-80) p-4 text-sm"
+                data-testid="sync-progress-bar-empty"
+            >
+                <span className="text-(--ink-muted)">No active sync detected.</span>
+                <RefreshControl
+                    onRefresh={check}
+                    lastUpdatedAt={lastUpdatedAt}
+                    isRefreshing={isRefreshing}
+                />
+            </div>
+        );
+    }
 
     const run = visibleRun;
 

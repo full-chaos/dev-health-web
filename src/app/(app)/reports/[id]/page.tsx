@@ -250,6 +250,13 @@ export default function SingleReportPage() {
     // data that already landed.
     const runsFetchSeqRef = useRef(0);
 
+    // Deliberately never touches `isRunning` — that lock belongs solely to
+    // handleRunNow's own trigger-mutation lifecycle (see below). Letting a
+    // Refresh click clear it here — as an earlier version of this code did,
+    // based on the fetched latest run already being terminal — could
+    // re-enable "Run Now" while `triggerReport` was still in flight (the
+    // fetch races the mutation and can read stale data), letting a second
+    // click fire a duplicate report generation.
     const refreshRuns = useCallback(async () => {
         runsFetchSeqRef.current += 1;
         const mySeq = runsFetchSeqRef.current;
@@ -261,15 +268,6 @@ export default function SingleReportPage() {
 
             setRuns(runsData.items);
             setRunsLastUpdatedAt(new Date().toISOString());
-
-            const latest = runsData.items[0];
-            if (
-                latest &&
-                latest.status !== ReportStatus.RUNNING &&
-                latest.status !== ReportStatus.PENDING
-            ) {
-                setIsRunning(false);
-            }
         } catch (refreshErr) {
             logger.error({ err: refreshErr }, "Report run refresh failed");
         } finally {

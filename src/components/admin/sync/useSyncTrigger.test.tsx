@@ -25,10 +25,13 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
         vi.restoreAllMocks();
     });
 
-    it("on a successful trigger, leaves isSyncing/liveStatus set (does NOT clear once the POST resolves)", async () => {
+    it("on a successful trigger, leaves isSyncing/liveStatus set until freshnessSignal actually changes", async () => {
         vi.mocked(triggerSync).mockResolvedValue({ data: { sync_run_id: "run-1" } });
 
-        const { result } = renderHook(() => useSyncTrigger("cfg-1"));
+        const { result, rerender } = renderHook(
+            ({ freshnessSignal }) => useSyncTrigger("cfg-1", freshnessSignal),
+            { initialProps: { freshnessSignal: "2026-08-26T00:00:00.000Z" as string | null } },
+        );
 
         act(() => {
             result.current.trigger();
@@ -42,19 +45,44 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
         await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
 
         // The trigger POST has resolved and the single router.refresh() has
-        // fired, but nothing here confirms the run actually finished — the
-        // row must stay disabled/optimistic (both fields still set) until an
-        // explicit Refresh remounts it with the real persisted status.
-        // Otherwise the button would re-enable while the badge still reads
-        // "Syncing...", or a rapid second click could fire a duplicate run.
+        // fired, but the caller hasn't yet passed a freshnessSignal that
+        // differs from what it was at trigger time — nothing proves the run
+        // actually finished, so the row must stay disabled/optimistic.
+        // Re-rendering with the SAME freshnessSignal (e.g. a Refresh click
+        // whose fetch simply hasn't caught up to the sync yet) must not
+        // clear it either.
+        rerender({ freshnessSignal: "2026-08-26T00:00:00.000Z" });
         expect(result.current.isSyncing).toBe(true);
         expect(result.current.liveStatus).toBe("running");
+
+        // Only once freshnessSignal actually changes (the backend persisted
+        // a completed attempt) does it clear.
+        rerender({ freshnessSignal: "2026-08-26T00:05:00.000Z" });
+        expect(result.current.isSyncing).toBe(false);
+        expect(result.current.liveStatus).toBeNull();
+    });
+
+    it("never clears from a freshnessSignal change while no trigger is outstanding", () => {
+        const { result, rerender } = renderHook(
+            ({ freshnessSignal }) => useSyncTrigger("cfg-1", freshnessSignal),
+            { initialProps: { freshnessSignal: "2026-08-26T00:00:00.000Z" as string | null } },
+        );
+
+        expect(result.current.isSyncing).toBe(false);
+        expect(result.current.liveStatus).toBeNull();
+
+        // An unrelated prop change (e.g. some OTHER config's sync finishing
+        // and refreshing the whole table) must not touch a row that never
+        // triggered anything.
+        rerender({ freshnessSignal: "2026-08-26T00:05:00.000Z" });
+        expect(result.current.isSyncing).toBe(false);
+        expect(result.current.liveStatus).toBeNull();
     });
 
     it("on a trigger error response, clears isSyncing/liveStatus immediately so the operator can retry", async () => {
         vi.mocked(triggerSync).mockResolvedValue({ error: "Denied" });
 
-        const { result } = renderHook(() => useSyncTrigger("cfg-1"));
+        const { result } = renderHook(() => useSyncTrigger("cfg-1", null));
 
         act(() => {
             result.current.trigger();
@@ -69,7 +97,7 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
     it("on a thrown trigger error, clears isSyncing/liveStatus immediately so the operator can retry", async () => {
         vi.mocked(triggerSync).mockRejectedValue(new Error("network down"));
 
-        const { result } = renderHook(() => useSyncTrigger("cfg-1"));
+        const { result } = renderHook(() => useSyncTrigger("cfg-1", null));
 
         act(() => {
             result.current.trigger();
@@ -84,7 +112,7 @@ describe("useSyncTrigger — CHAOS-4318 (no client-side status polling)", () => 
     it("fires exactly one trigger request and one refresh — no repeat calls of either", async () => {
         vi.mocked(triggerSync).mockResolvedValue({ data: { sync_run_id: "run-1" } });
 
-        const { result } = renderHook(() => useSyncTrigger("cfg-1"));
+        const { result } = renderHook(() => useSyncTrigger("cfg-1", null));
         act(() => {
             result.current.trigger();
         });
