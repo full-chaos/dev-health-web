@@ -11,6 +11,7 @@ import {
     askDevSuggestedQuestions,
     fingerprintAskDevFilter,
     isApprovedAskDevSurfaceContext,
+    isEntityRefAmongCandidates,
     toDevSurfaceContext,
     type ApprovedAskDevRouteId,
     type AskDevSurfaceContext,
@@ -284,4 +285,45 @@ describe("entry-point labels stay in sync with the nav single source of truth (C
             expect(expectedEntryPointLabel).not.toBe(expectedNavLabel);
         },
     );
+});
+
+describe("isEntityRefAmongCandidates (CHAOS-3478)", () => {
+    const repoOne = {
+        entity_type: "repository" as const,
+        entity_id: "repo-1",
+        display_label: "Repo One",
+    };
+    const repoTwo = {
+        entity_type: "repository" as const,
+        entity_id: "repo-2",
+        display_label: "Repo Two",
+    };
+    const projectOne = {
+        entity_type: "project" as const,
+        entity_id: "repo-1",
+        display_label: "Project One",
+    };
+
+    it("accepts an entity present in the candidate list", () => {
+        expect(isEntityRefAmongCandidates(repoOne, [repoOne, repoTwo])).toBe(true);
+    });
+
+    it("rejects an entity absent from the candidate list", () => {
+        expect(isEntityRefAmongCandidates(repoOne, [repoTwo])).toBe(false);
+    });
+
+    it("rejects against an empty candidate list", () => {
+        expect(isEntityRefAmongCandidates(repoOne, [])).toBe(false);
+    });
+
+    it("matches by (entity_type, entity_id), ignoring display_label", () => {
+        const relabeled = { ...repoOne, display_label: "Renamed" };
+        expect(isEntityRefAmongCandidates(repoOne, [relabeled])).toBe(true);
+    });
+
+    it("does not treat the same entity_id under a different entity_type as a match", () => {
+        // Same id, different kind -- a project and a repository sharing "repo-1"
+        // are two different entities, not the same one relabeled.
+        expect(isEntityRefAmongCandidates(projectOne, [repoOne])).toBe(false);
+    });
 });

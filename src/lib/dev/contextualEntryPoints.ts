@@ -172,6 +172,35 @@ function hasUniqueRefs(refs: readonly DevEntityRef[]): boolean {
 }
 
 /**
+ * CHAOS-3478: identity check for binding a clarification-candidate selection
+ * to the exact candidate list the answer that rendered it carried.
+ *
+ * `AskDevProvider.selectProposedEntity` used to apply any structurally valid
+ * entity ref to `proposedScope` without proving it came from the current
+ * answer's candidate list — a structurally valid but foreign entity,
+ * reaching the caller through a malformed or manipulated answer payload,
+ * would have been committed. Server-side reauthorization on the NEXT
+ * question remains the actual enforcement boundary (`ScopeResolutionService.resolve`
+ * re-derives `org_id` itself and re-checks the catalog), so this is defense
+ * in depth, not the sole guard — but the client should not rely entirely on
+ * that downstream check when a local check is this cheap.
+ *
+ * Compares by `(entity_type, entity_id)` — the same identity key
+ * `hasUniqueRefs` above uses — never by `display_label`, which is
+ * presentation text, not part of the entity's identity.
+ */
+export function isEntityRefAmongCandidates(
+    entity: Pick<DevEntityRef, "entity_type" | "entity_id">,
+    candidates: readonly Pick<DevEntityRef, "entity_type" | "entity_id">[],
+): boolean {
+    return candidates.some(
+        (candidate) =>
+            candidate.entity_type === entity.entity_type &&
+            candidate.entity_id === entity.entity_id,
+    );
+}
+
+/**
  * Runtime validation protects the client handoff even when a context crosses
  * a server/client serialization boundary. It accepts IDs and display labels,
  * never arbitrary page text, URLs, prompts, screenshots, HTML, or DOM content.

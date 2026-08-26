@@ -34,10 +34,17 @@ export function ScopeSection({
     scopeResolution,
 }: {
     noMatch: boolean;
-    onSelectCandidate: (entityRef: ScopeEntityRef) => void;
+    /**
+     * CHAOS-3478: `candidates` is threaded alongside the picked entity so
+     * the provider can bind the selection to the exact list this section
+     * rendered it from, rather than trusting an isolated ref.
+     */
+    onSelectCandidate: (entityRef: ScopeEntityRef, candidates: readonly ScopeEntityRef[]) => void;
     outcomeLabel: string;
     scopeResolution: NonNullable<DevAnswer["resolved_scope"]>;
 }) {
+    const candidateEntityRefs =
+        scopeResolution.candidates?.map((candidate) => candidate.entity_ref) ?? [];
     return (
         <section className="border-y border-(--border) py-3" aria-label="Resolved answer scope">
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
@@ -73,7 +80,9 @@ export function ScopeSection({
                                 </span>
                                 <button
                                     type="button"
-                                    onClick={() => onSelectCandidate(candidate.entity_ref)}
+                                    onClick={() =>
+                                        onSelectCandidate(candidate.entity_ref, candidateEntityRefs)
+                                    }
                                     className="rounded-(--radius-sm) border border-(--border) px-2 py-1 text-xs font-medium hover:border-(--accent)/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/45"
                                 >
                                     {CTA_LABELS.useAskDevScope}
