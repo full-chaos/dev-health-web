@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen, userEvent } from "@/test/utils";
+import { within } from "@testing-library/react";
+import { act, fireEvent, render, screen, userEvent } from "@/test/utils";
 import { BackfillOperations } from "./BackfillOperations";
 import {
     PARTIAL_COVERAGE_SUMMARY,
@@ -87,7 +88,7 @@ describe("BackfillOperations", () => {
         );
     });
 
-    it("refreshes the server view until the replacement coverage projection is ready", async () => {
+    it("CHAOS-4318: never auto-refreshes a refreshing coverage projection — only an explicit Refresh click does", async () => {
         vi.useFakeTimers();
         render(
             <BackfillOperations
@@ -100,7 +101,18 @@ describe("BackfillOperations", () => {
         );
 
         await act(async () => {
-            await vi.advanceTimersByTimeAsync(5000);
+            await vi.advanceTimersByTimeAsync(60_000);
+        });
+        expect(mockRefresh).not.toHaveBeenCalled();
+
+        const button = within(
+            screen.getByRole("status", { name: "Coverage update in progress" }),
+        ).getByTestId("refresh-control-button");
+        // fireEvent (not userEvent) — userEvent's internal pointer-event
+        // simulation needs real timers and hangs under vi.useFakeTimers().
+        await act(async () => {
+            fireEvent.click(button);
+            await vi.advanceTimersByTimeAsync(0);
         });
 
         expect(mockRefresh).toHaveBeenCalledOnce();

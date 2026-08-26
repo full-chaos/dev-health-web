@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { RefreshControl } from "@/components/admin/RefreshControl";
 import { MarkdownRenderer } from "@/components/reports/MarkdownRenderer";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { logger } from "@/lib/logger";
@@ -64,7 +65,19 @@ function StatusBadge({ status }: { status?: string }) {
     }
 }
 
-function RenderedReportAndConfig({ report, runs }: { report: SavedReport; runs: ReportRun[] }) {
+function RenderedReportAndConfig({
+    report,
+    runs,
+    runsLastUpdatedAt,
+    isRefreshingRuns,
+    onRefreshRuns,
+}: {
+    report: SavedReport;
+    runs: ReportRun[];
+    runsLastUpdatedAt: string | null;
+    isRefreshingRuns: boolean;
+    onRefreshRuns: () => void | Promise<void>;
+}) {
     const params = (report.parameters ?? {}) as ReportParameters;
     const latestRun = runs.find((r) => r.renderedMarkdown) ?? runs[0];
 
@@ -132,7 +145,14 @@ function RenderedReportAndConfig({ report, runs }: { report: SavedReport; runs: 
                 </div>
 
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                    <h2 className="font-(--font-display) text-xl mb-4">Run History</h2>
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <h2 className="font-(--font-display) text-xl">Run History</h2>
+                        <RefreshControl
+                            onRefresh={onRefreshRuns}
+                            lastUpdatedAt={runsLastUpdatedAt}
+                            isRefreshing={isRefreshingRuns}
+                        />
+                    </div>
                     {runs.length > 0 ? (
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
@@ -202,18 +222,11 @@ export default function SingleReportPage() {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-    const stopPolling = useCallback(() => {
-        if (pollRef.current) {
-            clearInterval(pollRef.current);
-            pollRef.current = null;
-        }
-    }, []);
-
-    useEffect(() => {
-        return () => stopPolling();
-    }, [stopPolling]);
+    // CHAOS-4318: no more timer-driven polling against the Python API — runs
+    // are fetched on mount/navigation and otherwise only on an explicit
+    // Refresh click (with a last-updated timestamp).
+    const [runsLastUpdatedAt, setRunsLastUpdatedAt] = useState<string | null>(null);
+    const [isRefreshingRuns, setIsRefreshingRuns] = useState(false);
 
     useEffect(() => {
         async function loadData() {
@@ -224,9 +237,33 @@ export default function SingleReportPage() {
             ]);
             setReport(reportData);
             setRuns(runsData.items);
+            setRunsLastUpdatedAt(new Date().toISOString());
             setIsLoading(false);
         }
         loadData();
+    }, [id]);
+
+    const refreshRuns = useCallback(async () => {
+        setIsRefreshingRuns(true);
+        try {
+            const isTestMode = publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+            const runsData = await fetchReportRuns("default-org", id, undefined, isTestMode);
+            setRuns(runsData.items);
+            setRunsLastUpdatedAt(new Date().toISOString());
+
+            const latest = runsData.items[0];
+            if (
+                latest &&
+                latest.status !== ReportStatus.RUNNING &&
+                latest.status !== ReportStatus.PENDING
+            ) {
+                setIsRunning(false);
+            }
+        } catch (refreshErr) {
+            logger.error({ err: refreshErr }, "Report run refresh failed");
+        } finally {
+            setIsRefreshingRuns(false);
+        }
     }, [id]);
 
     if (isLoading) {
@@ -265,46 +302,21 @@ export default function SingleReportPage() {
         );
     }
 
+    // CHAOS-4318: trigger, then a single fetch to pick up whatever the
+    // backend has persisted by the time the request returns — no more
+    // setInterval poll loop. Seeing the run through to completion is what
+    // the Run History card's Refresh control (with a last-updated
+    // timestamp) is for.
     const handleRunNow = async () => {
         setIsRunning(true);
         setError(null);
-        stopPolling();
 
         try {
             await triggerReport("default-org", id);
-
-            const isTestMode = publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
-
-            const pollRuns = async () => {
-                try {
-                    const runsData = await fetchReportRuns(
-                        "default-org",
-                        id,
-                        undefined,
-                        isTestMode,
-                    );
-                    setRuns(runsData.items);
-
-                    const latest = runsData.items[0];
-                    if (
-                        latest &&
-                        latest.status !== ReportStatus.RUNNING &&
-                        latest.status !== ReportStatus.PENDING
-                    ) {
-                        stopPolling();
-                        setIsRunning(false);
-                    }
-                } catch (pollErr) {
-                    logger.error({ err: pollErr }, "Report run polling failed");
-                    stopPolling();
-                    setIsRunning(false);
-                }
-            };
-
-            await pollRuns();
-            pollRef.current = setInterval(pollRuns, 4000);
+            await refreshRuns();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to trigger report");
+        } finally {
             setIsRunning(false);
         }
     };
@@ -552,7 +564,13 @@ export default function SingleReportPage() {
                         </div>
                     )}
 
-                    <RenderedReportAndConfig report={report} runs={runs} />
+                    <RenderedReportAndConfig
+                        report={report}
+                        runs={runs}
+                        runsLastUpdatedAt={runsLastUpdatedAt}
+                        isRefreshingRuns={isRefreshingRuns}
+                        onRefreshRuns={refreshRuns}
+                    />
                 </main>
             </div>
         </div>

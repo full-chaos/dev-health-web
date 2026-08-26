@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
+import { RefreshControl } from "@/components/admin/RefreshControl";
 import type { SyncConfig } from "@/lib/admin/types";
 import { SyncConfigTableRow } from "./SyncConfigTableRow";
 import {
@@ -28,11 +30,31 @@ const COLUMNS = [
 ] satisfies readonly DataTableColumn<SyncConfigTableRowData>[];
 
 export function SyncConfigTable({ configs }: SyncConfigTableProps) {
+    const router = useRouter();
     const [expandedGroupIds, setExpandedGroupIds] = useState<ReadonlySet<string>>(new Set());
+    // CHAOS-4318: bumped on every explicit Refresh so each row remounts —
+    // that resets any stale optimistic "Syncing..." badge (useSyncTrigger)
+    // left over from a trigger whose completion nothing polls for anymore.
+    const [refreshToken, setRefreshToken] = useState(0);
+    const [isRefreshing, startRefresh] = useTransition();
     const rows = useMemo(
         () => buildSyncConfigTableRows(configs, expandedGroupIds),
         [configs, expandedGroupIds],
     );
+
+    // `configs` is a fresh array from the server on every render this
+    // component receives new props for (including after router.refresh()).
+    // Re-synced synchronously during render when the reference changes — the
+    // documented React pattern for resetting state from props (mirrors
+    // BackfillStatus's `backfillJobSyncKey`) — so this needs neither a
+    // useEffect (react-hooks/set-state-in-effect) nor a memo with an
+    // "unused" dependency.
+    const [lastUpdatedAt, setLastUpdatedAt] = useState(() => new Date().toISOString());
+    const [syncedConfigs, setSyncedConfigs] = useState(configs);
+    if (configs !== syncedConfigs) {
+        setSyncedConfigs(configs);
+        setLastUpdatedAt(new Date().toISOString());
+    }
 
     function toggleGroup(configId: string) {
         setExpandedGroupIds((current) => {
@@ -43,20 +65,36 @@ export function SyncConfigTable({ configs }: SyncConfigTableProps) {
         });
     }
 
+    function handleRefresh() {
+        setRefreshToken((n) => n + 1);
+        startRefresh(() => {
+            router.refresh();
+        });
+    }
+
     return (
-        <DataTable
-            accessibleLabel="Sync configurations"
-            columns={COLUMNS}
-            data={rows}
-            rowKeyAction={(row) => row.config.id}
-            renderRowAction={(row) => (
-                <SyncConfigTableRow
-                    row={row}
-                    expanded={expandedGroupIds.has(row.config.id)}
-                    onToggleGroupAction={toggleGroup}
+        <div className="space-y-3">
+            <div className="flex justify-end">
+                <RefreshControl
+                    onRefresh={handleRefresh}
+                    lastUpdatedAt={lastUpdatedAt}
+                    isRefreshing={isRefreshing}
                 />
-            )}
-            emptyMessage="No sync configurations found. Create a new configuration to get started."
-        />
+            </div>
+            <DataTable
+                accessibleLabel="Sync configurations"
+                columns={COLUMNS}
+                data={rows}
+                rowKeyAction={(row) => `${row.config.id}:${refreshToken}`}
+                renderRowAction={(row) => (
+                    <SyncConfigTableRow
+                        row={row}
+                        expanded={expandedGroupIds.has(row.config.id)}
+                        onToggleGroupAction={toggleGroup}
+                    />
+                )}
+                emptyMessage="No sync configurations found. Create a new configuration to get started."
+            />
+        </div>
     );
 }

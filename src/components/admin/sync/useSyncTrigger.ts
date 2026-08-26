@@ -1,23 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { triggerSync, getSyncRunStatus, getSyncJobs } from "@/lib/admin/server";
+import { triggerSync } from "@/lib/admin/server";
 import { logger } from "@/lib/logger";
-import {
-    type SyncStatus,
-    type SyncPollTarget,
-    resolveSyncPollTarget,
-    mapPlannerRunStatus,
-    resolveLegacyJobStatus,
-    isTerminalSyncStatus,
-} from "@/lib/sync-types";
-
-/** How often to poll for live run status. */
-const POLL_INTERVAL_MS = 3500;
-/** Safety cap so a stuck/abandoned run never spins forever (~5 min). */
-const MAX_POLL_DURATION_MS = 5 * 60 * 1000;
+import { type SyncStatus } from "@/lib/sync-types";
 
 const syncLogger = logger.child({ component: "useSyncTrigger" });
 
@@ -27,125 +15,34 @@ function errorMessage(error: unknown): string {
 
 interface UseSyncTriggerResult {
     /**
-     * Live UI status while a manual sync is in flight, or null when idle.
-     * Consumers should prefer this over the persisted status when non-null so
-     * the card transitions (current) -> Running -> Success/Failed live.
+     * Optimistic "running" status right after a trigger, or null once the
+     * request settles. Consumers should prefer this over the persisted
+     * status when non-null. CHAOS-4318: this is a one-shot signal, not a
+     * live tracker — use the table's Refresh control (or navigate) to see
+     * the persisted last_sync_* fields once the backend finishes.
      */
     liveStatus: SyncStatus | null;
-    /** True while triggering or polling a run (button should disable/spin). */
+    /** True while the trigger request is in flight (button should disable/spin). */
     isSyncing: boolean;
-    /** Trigger a sync for `configId`, then poll the correct endpoint. */
+    /** Trigger a sync for `configId`. */
     trigger: () => void;
 }
 
 /**
- * Encapsulates the "Sync Now" trigger + client-side status polling (CHAOS-2557a).
+ * Encapsulates the "Sync Now" trigger (CHAOS-2557a).
  *
- * Mirrors the established poll-until-terminal pattern in BackfillStatus.tsx and the
- * reports detail page: fire the trigger, read the response union to learn which
- * endpoint can see the run, then poll every few seconds until a terminal state
- * (or a timeout) before calling router.refresh() so the persisted last_sync_*
- * fields render.
+ * CHAOS-4318: no more client-side status polling — the Python API replicas
+ * are a scarce resource, so a tab must not keep hitting them on a timer
+ * after a manual trigger. This fires the trigger, shows an optimistic
+ * "running" badge, and does exactly one `router.refresh()` to pick up
+ * whatever the backend has persisted by the time the request returns.
+ * Seeing the run through to completion is what the table's explicit
+ * Refresh control (with a last-updated timestamp) is for.
  */
 export function useSyncTrigger(configId: string): UseSyncTriggerResult {
     const router = useRouter();
     const [liveStatus, setLiveStatus] = useState<SyncStatus | null>(null);
     const [isSyncing, setIsSyncing] = useState(false);
-    const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-    const stopPolling = useCallback(() => {
-        if (pollingRef.current) {
-            clearInterval(pollingRef.current);
-            pollingRef.current = null;
-        }
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-            timeoutRef.current = null;
-        }
-    }, []);
-
-    // Cleanup timers on unmount.
-    useEffect(() => {
-        return () => stopPolling();
-    }, [stopPolling]);
-
-    /** Fetch the current normalized status for a poll target. */
-    const fetchStatus = useCallback(async (target: SyncPollTarget): Promise<SyncStatus> => {
-        if (target.kind === "planner") {
-            const res = await getSyncRunStatus(target.runId);
-            if (res.error || !res.data) {
-                throw new Error(
-                    `Unable to read planner sync run status: ${res.error || "empty response"}`,
-                );
-            }
-            return mapPlannerRunStatus(res.data.status);
-        }
-        const res = await getSyncJobs(target.configId);
-        if (res.error || !res.data) {
-            throw new Error(
-                `Unable to read legacy sync job status: ${res.error || "empty response"}`,
-            );
-        }
-        // Track the specific run we triggered rather than blindly trusting the
-        // head of the list — scheduled retries, concurrent admin clicks, or
-        // backend ordering lag can surface an UNRELATED job first, which would
-        // otherwise make us report completion for the wrong run. When the
-        // triggered row isn't visible yet this returns "running" so we keep
-        // polling (the max-timeout below still ends things gracefully).
-        return resolveLegacyJobStatus(res.data, target.runId);
-    }, []);
-
-    const startPolling = useCallback(
-        (target: SyncPollTarget) => {
-            stopPolling();
-
-            const finishTerminal = (status: SyncStatus) => {
-                stopPolling();
-                setLiveStatus(status);
-                setIsSyncing(false);
-                if (status === "success") {
-                    toast.success("Sync completed");
-                } else {
-                    toast.error("Sync failed");
-                }
-                router.refresh();
-            };
-
-            pollingRef.current = setInterval(async () => {
-                try {
-                    const status = await fetchStatus(target);
-                    if (isTerminalSyncStatus(status)) {
-                        finishTerminal(status);
-                    } else {
-                        setLiveStatus(status);
-                    }
-                } catch (error) {
-                    // Stop on poll error, drop back to the persisted status, and
-                    // let the user retry rather than leave an infinite spinner.
-                    stopPolling();
-                    setLiveStatus(null);
-                    setIsSyncing(false);
-                    syncLogger.error(
-                        { err: error, configId, pollTargetKind: target.kind },
-                        "Sync status polling failed",
-                    );
-                    toast.error(`Lost track of sync status: ${errorMessage(error)}`);
-                }
-            }, POLL_INTERVAL_MS);
-
-            // Hard timeout fallback: stop spinning and refresh to show whatever
-            // the backend persisted.
-            timeoutRef.current = setTimeout(() => {
-                stopPolling();
-                setLiveStatus(null);
-                setIsSyncing(false);
-                toast("Sync is still running; refreshing persisted status");
-                router.refresh();
-            }, MAX_POLL_DURATION_MS);
-        },
-        [configId, fetchStatus, router, stopPolling],
-    );
 
     const trigger = useCallback(() => {
         setIsSyncing(true);
@@ -155,28 +52,20 @@ export function useSyncTrigger(configId: string): UseSyncTriggerResult {
                 const result = await triggerSync(configId);
                 if (result.error || !result.data) {
                     setLiveStatus(null);
-                    setIsSyncing(false);
                     toast.error(`Unable to start sync: ${result.error || "empty response"}`);
                     return;
                 }
-                toast.success("Sync triggered");
-                const target = resolveSyncPollTarget(result.data, configId);
-                if (!target) {
-                    // No pollable id came back — fall back to a single refresh.
-                    setLiveStatus(null);
-                    setIsSyncing(false);
-                    router.refresh();
-                    return;
-                }
-                startPolling(target);
+                toast.success("Sync triggered — use Refresh to check status");
+                router.refresh();
             } catch (error) {
                 setLiveStatus(null);
-                setIsSyncing(false);
                 syncLogger.error({ err: error, configId }, "Sync trigger failed");
                 toast.error(`Unable to start sync: ${errorMessage(error)}`);
+            } finally {
+                setIsSyncing(false);
             }
         })();
-    }, [configId, router, startPolling]);
+    }, [configId, router]);
 
     return { liveStatus, isSyncing, trigger };
 }

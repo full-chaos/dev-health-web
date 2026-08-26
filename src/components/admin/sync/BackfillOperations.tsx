@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { RefreshControl } from "@/components/admin/RefreshControl";
 import { SyncCoverageSummaryCard } from "./SyncCoverageSummaryCard";
 import { SyncCoverageTimeline } from "./SyncCoverageTimeline";
 import { BackfillStatus } from "./BackfillStatus";
@@ -22,14 +23,17 @@ interface BackfillOperationsProps {
     testMode?: boolean;
 }
 
-const COVERAGE_REFRESH_INTERVAL_MS = 5000;
-
 /**
  * Owns backfill as an OPERATIONAL action on the config detail page
  * (CHAOS-2795): the coverage summary's "Backfill" CTA and every timeline gap
  * row's "Backfill this gap" action open the wizard in place here instead of
  * deep-linking to the edit page. Also hosts the persisted in-progress status
  * (CHAOS-2795) so it survives navigation.
+ *
+ * CHAOS-4318: while a coverage projection is refreshing, this used to poll
+ * `router.refresh()` on a timer. The Python API replicas are a scarce
+ * resource, so it now fetches once on mount/navigation and otherwise only on
+ * an explicit Refresh click (with a last-updated timestamp).
  */
 export function BackfillOperations({
     configId,
@@ -42,12 +46,28 @@ export function BackfillOperations({
     const router = useRouter();
     const [isWizardOpen, setIsWizardOpen] = useState(false);
     const [wizardWindows, setWizardWindows] = useState<SyncCoverageBackfillWindow[]>([]);
+    const [isRefreshing, startRefresh] = useTransition();
 
-    useEffect(() => {
-        if (testMode || coverage?.projection_refreshing !== true) return undefined;
-        const interval = setInterval(() => router.refresh(), COVERAGE_REFRESH_INTERVAL_MS);
-        return () => clearInterval(interval);
-    }, [coverage?.projection_refreshing, router, testMode]);
+    // `coverage` is a fresh prop from the server on every render this
+    // component receives new data for (including after router.refresh()).
+    // Re-synced synchronously during render when the reference changes — the
+    // documented React pattern for resetting state from props (mirrors
+    // BackfillStatus's `backfillJobSyncKey`) — so this needs no useEffect
+    // (react-hooks/set-state-in-effect).
+    const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(() =>
+        testMode ? null : new Date().toISOString(),
+    );
+    const [syncedCoverage, setSyncedCoverage] = useState(coverage);
+    if (coverage !== syncedCoverage) {
+        setSyncedCoverage(coverage);
+        if (!testMode) setLastUpdatedAt(new Date().toISOString());
+    }
+
+    function handleRefresh() {
+        startRefresh(() => {
+            router.refresh();
+        });
+    }
 
     const openWizard = (range?: SyncCoverageBackfillWindow | SyncCoverageBackfillWindow[]) => {
         const suggestions = coverage?.backfill_windows;
@@ -70,17 +90,26 @@ export function BackfillOperations({
                 <div
                     role="status"
                     aria-label="Coverage update in progress"
-                    className="flex items-start gap-3 rounded-xl border border-(--info)/40 bg-(--info)/10 p-4 text-sm"
+                    className="flex items-start justify-between gap-3 rounded-xl border border-(--info)/40 bg-(--info)/10 p-4 text-sm"
                 >
-                    <span aria-hidden="true" className="text-(--info)">
-                        ↻
-                    </span>
-                    <div>
-                        <p className="font-medium text-foreground">Updating coverage</p>
-                        <p className="mt-1 text-(--ink-muted)">
-                            Showing the last completed coverage while this sync is updating it.
-                        </p>
+                    <div className="flex items-start gap-3">
+                        <span aria-hidden="true" className="text-(--info)">
+                            ↻
+                        </span>
+                        <div>
+                            <p className="font-medium text-foreground">Updating coverage</p>
+                            <p className="mt-1 text-(--ink-muted)">
+                                Showing the last completed coverage while this sync is updating it.
+                            </p>
+                        </div>
                     </div>
+                    {!testMode && (
+                        <RefreshControl
+                            onRefresh={handleRefresh}
+                            lastUpdatedAt={lastUpdatedAt}
+                            isRefreshing={isRefreshing}
+                        />
+                    )}
                 </div>
             )}
 

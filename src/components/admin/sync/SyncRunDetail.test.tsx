@@ -13,8 +13,9 @@ import {
 import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
 import type { SyncRunUnitSummary } from "@/lib/admin/types";
 
-// The detail component imports the admin server actions for live polling. The
-// real module pulls in next-auth (which fails to resolve next/server under
+// The detail component imports the admin server actions for its manual
+// Refresh control (CHAOS-4318: no more timer-driven polling). The real
+// module pulls in next-auth (which fails to resolve next/server under
 // vitest), and test-mode never invokes them, so stub them out at module load.
 vi.mock("@/lib/admin/server", () => ({
     getSyncRunStatus: vi.fn(),
@@ -663,9 +664,9 @@ describe("SyncRunDetailLive", () => {
     });
 });
 
-describe("SyncRunDetailLive — live poll error handling", () => {
-    // A non-terminal run so the poll loop actually starts (the sample run is
-    // partial_failed → terminal, which never polls).
+describe("SyncRunDetailLive — CHAOS-4318 manual refresh (no timer-driven polling)", () => {
+    // A non-terminal run so the Refresh control actually renders (the sample
+    // run is partial_failed → terminal, which never shows one).
     const RUNNING_RUN = { ...SAMPLE_SYNC_RUN, status: "running" };
 
     beforeEach(() => {
@@ -677,43 +678,16 @@ describe("SyncRunDetailLive — live poll error handling", () => {
         vi.useRealTimers();
     });
 
-    it("stops polling and surfaces an error indicator when a poll returns { error }", async () => {
-        // withErrorHandling RETURNS { error } (never throws); the loop must not
-        // apply it as data nor spin forever.
-        vi.mocked(getSyncRunStatus).mockResolvedValue({ error: "Unauthorized (401)" });
-        vi.mocked(getSyncRunUnits).mockResolvedValue({ error: "Unauthorized (401)" });
-
-        render(
-            <SyncRunDetailLive
-                initialRun={RUNNING_RUN}
-                initialSummary={SAMPLE_SYNC_RUN_UNIT_SUMMARY}
-                initialUnitsError={null}
-            />,
-        );
-
-        // First poll tick fires after the interval and resolves to { error }.
+    async function clickRefresh() {
+        // fireEvent (not userEvent) — userEvent's internal pointer-event
+        // simulation needs real timers and hangs under vi.useFakeTimers().
         await act(async () => {
-            await vi.advanceTimersByTimeAsync(3500);
+            fireEvent.click(screen.getByTestId("refresh-control-button"));
+            await vi.advanceTimersByTimeAsync(0);
         });
+    }
 
-        expect(getSyncRunStatus).toHaveBeenCalledTimes(1);
-        // Non-fatal error indicator renders with the surfaced message.
-        expect(
-            screen.getByText(/Failed to load unit details: Unauthorized \(401\)/),
-        ).toBeInTheDocument();
-
-        // Polling STOPPED: advancing well past several intervals triggers no
-        // further polls (no infinite spinner).
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(3500 * 4);
-        });
-        expect(getSyncRunStatus).toHaveBeenCalledTimes(1);
-
-        // Last good snapshot is retained — units were NOT fabricated/emptied.
-        expect(screen.getByText(/Units \(4\)/)).toBeInTheDocument();
-    });
-
-    it("states that live updates are paused when the polling safety window expires", async () => {
+    it("never fetches on its own, however long the page stays open", async () => {
         vi.mocked(getSyncRunStatus).mockResolvedValue({ data: RUNNING_RUN });
         vi.mocked(getSyncRunUnits).mockResolvedValue({ data: SAMPLE_SYNC_RUN_UNIT_SUMMARY });
 
@@ -728,14 +702,42 @@ describe("SyncRunDetailLive — live poll error handling", () => {
             await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
         });
 
-        expect(screen.getByText("Live updates paused")).toBeInTheDocument();
-        expect(
-            screen.getByText("Automatic updates paused after 10 minutes. Refresh to resume."),
-        ).toBeInTheDocument();
-        expect(screen.queryByText("Live — refreshing…")).not.toBeInTheDocument();
+        expect(getSyncRunStatus).not.toHaveBeenCalled();
+        expect(getSyncRunUnits).not.toHaveBeenCalled();
+        expect(screen.getByTestId("refresh-control-button")).toBeInTheDocument();
+        expect(screen.getByText(/Last updated:/)).toBeInTheDocument();
     });
 
-    it("does not poll when initial unit rollups make a stale running run terminal", async () => {
+    it("surfaces an error indicator when an explicit Refresh returns { error }, and stays refreshable", async () => {
+        // withErrorHandling RETURNS { error } (never throws); a failed refresh
+        // must not apply it as data nor get stuck.
+        vi.mocked(getSyncRunStatus).mockResolvedValue({ error: "Unauthorized (401)" });
+        vi.mocked(getSyncRunUnits).mockResolvedValue({ error: "Unauthorized (401)" });
+
+        render(
+            <SyncRunDetailLive
+                initialRun={RUNNING_RUN}
+                initialSummary={SAMPLE_SYNC_RUN_UNIT_SUMMARY}
+                initialUnitsError={null}
+            />,
+        );
+
+        await clickRefresh();
+
+        expect(getSyncRunStatus).toHaveBeenCalledTimes(1);
+        // Non-fatal error indicator renders with the surfaced message.
+        expect(
+            screen.getByText(/Failed to load unit details: Unauthorized \(401\)/),
+        ).toBeInTheDocument();
+        // Last good snapshot is retained — units were NOT fabricated/emptied.
+        expect(screen.getByText(/Units \(4\)/)).toBeInTheDocument();
+
+        // A second click can retry — nothing got stuck from the failed one.
+        await clickRefresh();
+        expect(getSyncRunStatus).toHaveBeenCalledTimes(2);
+    });
+
+    it("does not render a Refresh control when initial unit rollups make a stale running run terminal", async () => {
         render(
             <SyncRunDetailLive
                 initialRun={{
@@ -757,13 +759,14 @@ describe("SyncRunDetailLive — live poll error handling", () => {
         );
 
         expect(screen.getByText(/Run complete/)).toBeInTheDocument();
+        expect(screen.queryByTestId("refresh-control-button")).not.toBeInTheDocument();
         await act(async () => {
             await vi.advanceTimersByTimeAsync(3500 * 2);
         });
         expect(getSyncRunStatus).not.toHaveBeenCalled();
     });
 
-    it("keeps polling when unit rows are incomplete relative to run total", async () => {
+    it("re-fetches run + units on each explicit Refresh click while unit rows are incomplete relative to run total", async () => {
         const partialSummary = {
             ...SAMPLE_SYNC_RUN_UNIT_SUMMARY,
             by_status: { success: 1 },
@@ -789,9 +792,10 @@ describe("SyncRunDetailLive — live poll error handling", () => {
         expect(screen.getByText(/1 \/ 4/)).toBeInTheDocument();
         expect(screen.getByText(/25%/)).toBeInTheDocument();
         expect(screen.getAllByText("Running").length).toBeGreaterThan(0);
-        await act(async () => {
-            await vi.advanceTimersByTimeAsync(3500 * 2);
-        });
+
+        await clickRefresh();
+        await clickRefresh();
+
         expect(getSyncRunStatus).toHaveBeenCalledTimes(2);
         expect(getSyncRunUnits).toHaveBeenCalledTimes(2);
     });

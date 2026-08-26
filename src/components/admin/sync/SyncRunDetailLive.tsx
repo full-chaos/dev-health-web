@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
+import { RefreshControl } from "@/components/admin/RefreshControl";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
 import { getSyncRunPresentation } from "@/lib/admin/syncRunPresentation";
@@ -10,11 +11,6 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber, formatPercent, formatDateUTC } from "@/lib/formatters";
 import { type SyncStatus, isTerminalSyncStatus } from "@/lib/sync-types";
 import type { SyncRun, SyncRunUnit, SyncRunUnitSummary } from "@/lib/admin/types";
-
-/** How often to refresh live run + unit state while non-terminal. */
-const POLL_INTERVAL_MS = 3500;
-/** Safety cap so a stuck/abandoned run never polls forever (~10 min). */
-const MAX_POLL_DURATION_MS = 10 * 60 * 1000;
 
 /** Distinct unit statuses, in a stable display order, for the status filter. */
 const STATUS_FILTER_ORDER = [
@@ -263,95 +259,48 @@ export function SyncRunDetailLive({
     const [run, setRun] = useState<SyncRun>(initialRun);
     const [summary, setSummary] = useState<SyncRunUnitSummary | null>(initialSummary);
     const [unitsError, setUnitsError] = useState<string | null>(initialUnitsError);
-    const [liveUpdatesPaused, setLiveUpdatesPaused] = useState(false);
-
-    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    // Monotonic sequence: every tick and every stopPolling bumps it, so any
-    // in-flight response whose seq is no longer current (slow poll resolving
-    // after a later terminal tick, the safety timeout, or unmount) is ignored
-    // and can never overwrite terminal/cleared state (FIX 3).
-    const seqRef = useRef(0);
-    // Guard against overlapping ticks if a poll outlives the interval period.
+    // CHAOS-4318: no more timer-driven polling against the Python API — the
+    // initial (server) fetch populates this on mount, and every subsequent
+    // read comes from an explicit Refresh click.
+    const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(
+        testMode ? null : new Date().toISOString(),
+    );
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    // Guard against overlapping refreshes if a click lands while one is in flight.
     const inFlightRef = useRef(false);
-
-    const stopPolling = useCallback(() => {
-        // Invalidate any in-flight response so it cannot mutate state post-stop.
-        seqRef.current += 1;
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-        }
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-            timeoutRef.current = null;
-        }
-    }, []);
 
     const runPresentation = getSyncRunPresentation(run, summary);
     const isTerminal = isTerminalSyncStatus(runPresentation.badgeStatus);
 
-    // Poll run + unit state while the run is non-terminal, mirroring the
-    // cleanup/timeout discipline in useSyncTrigger.ts. State is only mutated
-    // inside the async interval callback (never synchronously in the effect
-    // body), so react-hooks/set-state-in-effect stays satisfied.
-    useEffect(() => {
-        if (testMode) return undefined;
-        if (isTerminal) return undefined;
+    // CHAOS-4318: manual refresh only — fetch run + unit state on demand via
+    // the Refresh control instead of a setInterval poll loop.
+    const refresh = useCallback(async () => {
+        if (inFlightRef.current || testMode) return;
+        inFlightRef.current = true;
+        setIsRefreshing(true);
+        try {
+            const [runRes, unitsRes] = await Promise.all([
+                getSyncRunStatus(runId),
+                getSyncRunUnits(runId),
+            ]);
 
-        let cancelled = false;
-
-        const tick = async () => {
-            // Skip overlapping ticks: only one request set in flight at a time.
-            if (inFlightRef.current) return;
-            inFlightRef.current = true;
-            const seq = (seqRef.current += 1);
-            try {
-                const [runRes, unitsRes] = await Promise.all([
-                    getSyncRunStatus(runId),
-                    getSyncRunUnits(runId),
-                ]);
-                // Ignore stale/unmounted/post-stop responses (FIX 3).
-                if (cancelled || seq !== seqRef.current) return;
-
-                // withErrorHandling RETURNS { error } (never throws), so a failed
-                // poll arrives as data:undefined. Do NOT apply blindly: stop and
-                // surface a non-fatal indicator instead of spinning or rendering
-                // stale/empty data (FIX 2).
-                if (runRes.error || unitsRes.error || !runRes.data || !unitsRes.data) {
-                    stopPolling();
-                    setLiveUpdatesPaused(true);
-                    setUnitsError(
-                        runRes.error ?? unitsRes.error ?? "Live updates are unavailable.",
-                    );
-                    return;
-                }
-
-                setSummary(unitsRes.data);
-                setUnitsError(null);
-                setLiveUpdatesPaused(false);
-                const nextRun = runRes.data;
-                setRun(nextRun);
-                const nextPresentation = getSyncRunPresentation(nextRun, unitsRes.data);
-                if (nextPresentation.terminal) {
-                    stopPolling();
-                }
-            } finally {
-                inFlightRef.current = false;
+            // withErrorHandling RETURNS { error } (never throws), so a failed
+            // fetch arrives as data:undefined. Do NOT apply blindly: surface a
+            // non-fatal indicator instead of rendering stale/empty data.
+            if (runRes.error || unitsRes.error || !runRes.data || !unitsRes.data) {
+                setUnitsError(runRes.error ?? unitsRes.error ?? "Refresh failed.");
+                return;
             }
-        };
 
-        intervalRef.current = setInterval(() => void tick(), POLL_INTERVAL_MS);
-        timeoutRef.current = setTimeout(() => {
-            stopPolling();
-            setLiveUpdatesPaused(true);
-        }, MAX_POLL_DURATION_MS);
-
-        return () => {
-            cancelled = true;
-            stopPolling();
-        };
-    }, [testMode, runId, isTerminal, stopPolling]);
+            setSummary(unitsRes.data);
+            setUnitsError(null);
+            setRun(runRes.data);
+            setLastUpdatedAt(new Date().toISOString());
+        } finally {
+            inFlightRef.current = false;
+            setIsRefreshing(false);
+        }
+    }, [testMode, runId]);
 
     // Resolve source ids → display names from the units themselves. We NEVER
     // surface a raw source id when a resolved name exists (web DoD / A7).
@@ -557,9 +506,9 @@ export function SyncRunDetailLive({
                             >
                                 {isTerminal
                                     ? "Run complete"
-                                    : unitsError || liveUpdatesPaused
-                                      ? "Live updates paused"
-                                      : "Live — refreshing…"}
+                                    : unitsError
+                                      ? "Live updates unavailable"
+                                      : "Not auto-refreshing — use Refresh for the latest state"}
                             </span>
                         </div>
                         {runPresentation.description && (
@@ -567,10 +516,12 @@ export function SyncRunDetailLive({
                                 {runPresentation.description}
                             </p>
                         )}
-                        {liveUpdatesPaused && !unitsError && !isTerminal && (
-                            <p className="text-sm text-(--ink-muted)">
-                                Automatic updates paused after 10 minutes. Refresh to resume.
-                            </p>
+                        {!isTerminal && !testMode && (
+                            <RefreshControl
+                                onRefresh={refresh}
+                                lastUpdatedAt={lastUpdatedAt}
+                                isRefreshing={isRefreshing}
+                            />
                         )}
                         <dl className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm sm:grid-cols-4">
                             <div>

@@ -106,6 +106,18 @@ describe("SyncConfigTable", () => {
         expect(screen.getByText("Linear")).toBeInTheDocument();
     });
 
+    it("CHAOS-4318: fetches on mount only and refreshes solely via the explicit Refresh control", async () => {
+        renderTable();
+
+        expect(screen.getByTestId("refresh-control-button")).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByText(/Last updated:/)).toBeInTheDocument());
+        expect(mockRefresh).not.toHaveBeenCalled();
+
+        await userEvent.click(screen.getByTestId("refresh-control-button"));
+
+        await waitFor(() => expect(mockRefresh).toHaveBeenCalledTimes(1));
+    });
+
     it("keeps repository groups collapsed until their table row is expanded", async () => {
         renderTable();
 
