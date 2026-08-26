@@ -2591,6 +2591,7 @@ export type TeamAttributionConfidence =
 
 export type TeamAttributionSource =
   | 'ASSIGNEE_MEMBERSHIP'
+  | 'AUTHOR_MEMBERSHIP'
   | 'ISSUE_PROJECT'
   | 'LINKED_ISSUE'
   | 'MANUAL_FALLBACK'

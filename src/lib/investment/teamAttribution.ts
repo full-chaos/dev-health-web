@@ -44,6 +44,13 @@ export const ATTRIBUTION_SOURCE_PRECEDENCE: readonly TeamAttributionSource[] = [
     "REPO_OWNERSHIP",
     "ASSIGNEE_MEMBERSHIP",
     "LINKED_ISSUE",
+    // CHAOS-4244: the PR/MR author as a membership candidate, ranked BELOW
+    // linked_issue and ABOVE manual_fallback — a person signal ("at best a
+    // low-precedence fallback", chris's ruling superseding the first cut
+    // that folded it into assignee_membership) that must never beat a real
+    // structural or relationship fact, but is still a resolved identity
+    // lookup, not a bare guess.
+    "AUTHOR_MEMBERSHIP",
     "MANUAL_FALLBACK",
     "UNASSIGNED",
 ] as const;
@@ -55,6 +62,7 @@ const SOURCE_LABELS: Record<TeamAttributionSource, string> = {
     REPO_OWNERSHIP: "Repo ownership",
     ASSIGNEE_MEMBERSHIP: "Assignee membership",
     LINKED_ISSUE: "Linked issue",
+    AUTHOR_MEMBERSHIP: "Author membership",
     MANUAL_FALLBACK: "Manual fallback",
     UNASSIGNED: "Unassigned",
 };
@@ -66,6 +74,11 @@ const SOURCE_TONES: Record<TeamAttributionSource, AttributionTone> = {
     REPO_OWNERSHIP: "derived",
     ASSIGNEE_MEMBERSHIP: "weak",
     LINKED_ISSUE: "weak",
+    // "fallback", not "weak": ranked directly above MANUAL_FALLBACK, and
+    // chris's own CHAOS-4244 ruling frames it in the same low-precedence
+    // terms — a person happening to author an item is not a structural
+    // signal the way an assignee field or a linked issue is.
+    AUTHOR_MEMBERSHIP: "fallback",
     MANUAL_FALLBACK: "fallback",
     UNASSIGNED: "none",
 };
@@ -77,6 +90,8 @@ const SOURCE_DESCRIPTIONS: Record<TeamAttributionSource, string> = {
     REPO_OWNERSHIP: "Team resolved from repository ownership.",
     ASSIGNEE_MEMBERSHIP: "Team inferred from the assignee's team membership.",
     LINKED_ISSUE: "Team resolved from a linked issue.",
+    AUTHOR_MEMBERSHIP:
+        "Team inferred from the PR/MR author's team membership — a low-precedence fallback, not authoritative team truth.",
     MANUAL_FALLBACK: "No reliable signal — a manual backstop guess, not authoritative team truth.",
     UNASSIGNED: "No team could be attributed for this work item.",
 };

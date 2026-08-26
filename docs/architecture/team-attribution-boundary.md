@@ -48,15 +48,31 @@ Highest trust ──────────────────────
             └▶ repo_ownership      (3) team_repo_ownership     confidence: medium
                 └▶ assignee_membership (4) assignee's team      confidence: medium
                     └▶ linked_issue        (5) real linked-issue donor   confidence: medium
-                        └▶ manual_fallback     (6) repo/project/member/issue-key backstop
-                           │                                    confidence: manual | low
-                           │   ⚠ DISTINCT, lower-confidence — never team truth
-                           └▶ unassigned          (7) nothing matched   confidence: none
+                        └▶ author_membership   (6) PR/MR author's team    confidence: low | medium
+                           │   CHAOS-4244: a PERSON signal, ranked below linked_issue
+                           │   on purpose (chris's ruling superseding an earlier cut
+                           │   that folded it into assignee_membership, which let it
+                           │   outrank a real linked_issue donor too often)
+                            └▶ manual_fallback     (7) repo/project/member/issue-key backstop
+                               │                                    confidence: manual | low
+                               │   ⚠ DISTINCT, lower-confidence — never team truth
+                               └▶ unassigned          (8) nothing matched   confidence: none
 ```
 
 Reading the badge:
 
 - The badge shows the **primary** (`is_primary`) source — the winner.
+- `author_membership` (CHAOS-4244) is toned **`fallback`** in
+  `teamAttribution.ts`, the SAME visual bucket as `manual_fallback`, not
+  `weak` alongside `assignee_membership`/`linked_issue` — a deliberate
+  presentation judgment, not a precedence change: it still ranks strictly
+  above `manual_fallback` in `ATTRIBUTION_SOURCE_PRECEDENCE` (badge tone is
+  a coarser visual grouping than precedence order). Grounding: the ops
+  architecture doc's own CHAOS-4244 section frames it as a person signal
+  "at best a low-precedence fallback" that must never be presented as
+  structurally reliable as a real assignee field or linked issue — the
+  weaker case (tone `weak`, since it is a real resolved identity lookup,
+  not a bare guess) was considered and set aside for that reason.
 - `manual_fallback` renders as a muted **"Manual · low confidence"** badge, set
   apart from sources 0–5; it can only beat `unassigned`.
 - `unassigned` means no team could be attributed (often an empty ClickHouse

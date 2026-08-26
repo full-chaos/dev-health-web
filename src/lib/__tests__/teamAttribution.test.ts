@@ -28,6 +28,24 @@ describe("describeAttributionProvenance", () => {
         expect(p.confidenceLabel).toBe("high confidence");
     });
 
+    /** CHAOS-4244: the PR/MR author as a membership candidate. */
+    it("renders author_membership as a low-precedence, fallback-toned source, ranked below linked_issue", () => {
+        const p = describeAttributionProvenance({
+            source: "AUTHOR_MEMBERSHIP",
+            confidence: "LOW",
+        });
+        expect(p.sourceLabel).toBe("Author membership");
+        expect(p.tone).toBe("fallback");
+        expect(p.isManualFallback).toBe(false);
+        expect(p.description.toLowerCase()).toContain("not authoritative");
+
+        const linkedIssueRank = ATTRIBUTION_SOURCE_PRECEDENCE.indexOf("LINKED_ISSUE");
+        const authorMembershipRank = ATTRIBUTION_SOURCE_PRECEDENCE.indexOf("AUTHOR_MEMBERSHIP");
+        const manualFallbackRank = ATTRIBUTION_SOURCE_PRECEDENCE.indexOf("MANUAL_FALLBACK");
+        expect(authorMembershipRank).toBeGreaterThan(linkedIssueRank);
+        expect(authorMembershipRank).toBeLessThan(manualFallbackRank);
+    });
+
     it("renders manual_fallback as a DISTINCT, lower-confidence label", () => {
         const p = describeAttributionProvenance({
             source: "MANUAL_FALLBACK",
