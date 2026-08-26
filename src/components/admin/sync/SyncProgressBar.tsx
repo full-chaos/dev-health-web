@@ -74,11 +74,13 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
     const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
+    // Overlap guard for a SINGLE config's checks only (see the effect below,
+    // which force-clears this on every configId change) — never the
+    // correctness mechanism. That's `seqRef`: it invalidates any in-flight
+    // response once a newer check starts (configId change, a fresh Refresh
+    // click, or unmount) so a slow discovery/tracking call can never mutate
+    // state for a config/check this instance has moved away from.
     const inFlightRef = useRef(false);
-    // Invalidates any in-flight response once a newer check starts (configId
-    // change, a fresh Refresh click, or unmount) so a slow discovery/tracking
-    // call can never mutate state for a config/check this instance has moved
-    // away from.
     const seqRef = useRef(0);
 
     // Single discovery + tracking read, run on mount/configId-change and
@@ -129,8 +131,14 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
                 isTerminalSyncStatus(liveStatus) ? Date.now() + TERMINAL_DISPLAY_MS : null,
             );
         } finally {
-            inFlightRef.current = false;
-            setIsRefreshing(false);
+            // Only the still-current check clears the busy indicators — a
+            // stale/superseded check finishing later must not report "done"
+            // (or unblock `inFlightRef` out from under a NEWER check that's
+            // still running) while a newer check is outstanding.
+            if (mySeq === seqRef.current) {
+                inFlightRef.current = false;
+                setIsRefreshing(false);
+            }
         }
     }, [configId]);
 
@@ -149,9 +157,20 @@ export function SyncProgressBar({ configId, testMode = false }: SyncProgressBarP
     // Fetch once on mount / whenever configId changes. Re-runs whenever
     // `configId` changes — so switching configs (or two sibling instances
     // with different configIds) never share state.
+    //
+    // `inFlightRef` is force-cleared here (not just left to the stale
+    // check's own `finally`) so a configId change while the PREVIOUS
+    // config's check is still outstanding always gets its own fresh check
+    // instead of silently no-op'ing on `inFlightRef.current` and never
+    // being retried — that used to permanently lose the new config's one
+    // required fetch. Safe: the stale request's late response is still
+    // dropped by the `seqRef` comparison in `check`'s `finally`/early
+    // returns, so it can never re-set `inFlightRef` back to blocking after
+    // this fresh check has already claimed it.
     useEffect(() => {
         if (testMode) return undefined;
         seqRef.current += 1;
+        inFlightRef.current = false;
         void check();
         return () => {
             seqRef.current += 1;

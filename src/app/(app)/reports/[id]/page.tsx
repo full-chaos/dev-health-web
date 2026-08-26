@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { RefreshControl } from "@/components/admin/RefreshControl";
@@ -243,11 +243,22 @@ export default function SingleReportPage() {
         loadData();
     }, [id]);
 
+    // Shared by the Run History Refresh control AND the post-trigger
+    // follow-up fetch in handleRunNow — a sequence guard so a slower,
+    // superseded response (e.g. a manual Refresh click that started before
+    // Run Now's own follow-up fetch) can never overwrite fresher run-history
+    // data that already landed.
+    const runsFetchSeqRef = useRef(0);
+
     const refreshRuns = useCallback(async () => {
+        runsFetchSeqRef.current += 1;
+        const mySeq = runsFetchSeqRef.current;
         setIsRefreshingRuns(true);
         try {
             const isTestMode = publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
             const runsData = await fetchReportRuns("default-org", id, undefined, isTestMode);
+            if (mySeq !== runsFetchSeqRef.current) return;
+
             setRuns(runsData.items);
             setRunsLastUpdatedAt(new Date().toISOString());
 
@@ -262,7 +273,9 @@ export default function SingleReportPage() {
         } catch (refreshErr) {
             logger.error({ err: refreshErr }, "Report run refresh failed");
         } finally {
-            setIsRefreshingRuns(false);
+            if (mySeq === runsFetchSeqRef.current) {
+                setIsRefreshingRuns(false);
+            }
         }
     }, [id]);
 

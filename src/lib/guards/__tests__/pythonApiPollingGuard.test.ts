@@ -81,13 +81,85 @@ const RECONNECT_LOOP_PATTERNS: ReadonlyArray<{ pattern: RegExp; reason: string }
     { pattern: /\bnew\s+WebSocket\s*\(/, reason: "WebSocket — reconnect loop" },
 ];
 
-const SET_INTERVAL_PATTERN = /\bsetInterval\s*\(/;
+/**
+ * Identifiers that reach the Python API (directly or via a server action
+ * that wraps a REST/GraphQL call to it). If any of these appear inside an
+ * ALLOWLISTED file's `setInterval(...)` callback, the allowlist entry no
+ * longer means "no fetch" and must fail — this is what stops someone from
+ * quietly adding a Python API read to the SyncProgressBar clock tick or the
+ * telemetry flush interval and sliding it past the allowlist on filename
+ * alone.
+ */
+const PYTHON_API_CALL_PATTERN =
+    /\b(?:getSyncJobs|getSyncRunStatus|getSyncRunUnits|getBackfillJobStatus|getCustomerPushBatch|getActiveBackfillJob|adminApi|graphqlFetch|graphqlFetchForHydration|router\.refresh|fetch)\s*\(/;
+
+/**
+ * Returns the full text of every call matching `callPattern` (e.g.
+ * `setInterval(` or `set(?:Timeout|Interval)\(`) in `source`, including its
+ * callback and delay arguments — found via paren-depth scanning from each
+ * match so a callback containing its own parens (a call expression, an
+ * arrow function body) doesn't truncate early.
+ */
+function extractTimerCalls(source: string, callPattern: RegExp): string[] {
+    const calls: string[] = [];
+    let match: RegExpExecArray | null;
+    callPattern.lastIndex = 0;
+    while ((match = callPattern.exec(source))) {
+        const openParenIndex = match.index + match[0].length - 1;
+        let depth = 0;
+        let endIndex = -1;
+        for (let i = openParenIndex; i < source.length; i++) {
+            if (source[i] === "(") depth++;
+            else if (source[i] === ")") {
+                depth--;
+                if (depth === 0) {
+                    endIndex = i;
+                    break;
+                }
+            }
+        }
+        calls.push(source.slice(match.index, endIndex === -1 ? source.length : endIndex + 1));
+    }
+    return calls;
+}
+
+const extractSetIntervalCalls = (source: string): string[] =>
+    extractTimerCalls(source, /\bsetInterval\s*\(/g);
+
+const TIMER_CALL_PATTERN = /\bset(?:Timeout|Interval)\s*\(/g;
+const TIMER_CALL_TEST_PATTERN = /\bset(?:Timeout|Interval)\s*\(/;
+
+/**
+ * True if `source` contains a `setTimeout(...)`/`setInterval(...)` call
+ * whose own argument list — extracted via paren-depth scanning, so a
+ * callback's own parens (a call expression, an arrow body) don't fool this —
+ * contains ANOTHER `setTimeout(`/`setInterval(` call. That's the inline
+ * self-scheduling poll shape that would replace a removed `setInterval`
+ * without matching the `setInterval` scan at all.
+ *
+ * Text-scan limitation: this only catches the INLINE form
+ * (`setTimeout(function poll(){ ...; setTimeout(poll, ms) }, ms)`); it does
+ * not catch mutual recursion via a named function reference declared
+ * elsewhere (`function tick(){ setTimeout(tick, ms) } setTimeout(tick, ms)`)
+ * — that needs a symbol-aware check. No file in this codebase currently has
+ * either shape, so this adds zero false positives today.
+ */
+function hasNestedTimerCall(source: string): boolean {
+    for (const call of extractTimerCalls(source, TIMER_CALL_PATTERN)) {
+        // Skip past this call's own leading `setTimeout(`/`setInterval(` so
+        // matching against the remainder can only find a DIFFERENT,
+        // nested occurrence, never itself.
+        const afterOwnKeyword = call.slice(call.indexOf("(") + 1);
+        if (TIMER_CALL_TEST_PATTERN.test(afterOwnKeyword)) return true;
+    }
+    return false;
+}
 
 describe("no timer-driven polling against the Python API (CHAOS-4318)", () => {
     const files = listSourceFiles(srcRoot);
     expect(files.length).toBeGreaterThan(0);
 
-    it("finds zero pollInterval/refetchInterval/setInterval-with-fetch/reconnect-loop violations", () => {
+    it("finds zero pollInterval/refetchInterval/setInterval-with-fetch/reconnect-loop/recursive-setTimeout violations", () => {
         const violations: Violation[] = [];
 
         for (const abs of files) {
@@ -100,11 +172,34 @@ describe("no timer-driven polling against the Python API (CHAOS-4318)", () => {
             for (const { pattern, reason } of RECONNECT_LOOP_PATTERNS) {
                 if (pattern.test(source)) violations.push({ file: relPath, reason });
             }
-            if (SET_INTERVAL_PATTERN.test(source) && !SETINTERVAL_ALLOWLIST.has(relPath)) {
+            if (hasNestedTimerCall(source)) {
+                violations.push({
+                    file: relPath,
+                    reason: "recursive setTimeout/setInterval — a hand-rolled poll loop",
+                });
+            }
+
+            const setIntervalCalls = extractSetIntervalCalls(source);
+            if (setIntervalCalls.length === 0) continue;
+
+            if (!SETINTERVAL_ALLOWLIST.has(relPath)) {
                 violations.push({
                     file: relPath,
                     reason: "setInterval outside SETINTERVAL_ALLOWLIST — must not poll the Python API",
                 });
+                continue;
+            }
+            // Allowlisted file: still fails if ANY setInterval call's own
+            // text (callback + delay) reaches the Python API — the
+            // allowlist is "this timer never fetches", not "this filename
+            // is exempt".
+            for (const call of setIntervalCalls) {
+                if (PYTHON_API_CALL_PATTERN.test(call)) {
+                    violations.push({
+                        file: relPath,
+                        reason: `allowlisted setInterval callback now reaches the Python API: ${call}`,
+                    });
+                }
             }
         }
 
@@ -112,14 +207,42 @@ describe("no timer-driven polling against the Python API (CHAOS-4318)", () => {
         expect(violations, message).toEqual([]);
     });
 
-    it("keeps the setInterval allowlist pointed at files that still exist and still call setInterval", () => {
+    it("keeps the setInterval allowlist pointed at files that still exist, still call setInterval, and whose callbacks still never reach the Python API", () => {
         for (const relPath of SETINTERVAL_ALLOWLIST) {
             const abs = resolve(webRoot, relPath);
             const source = readFileSync(abs, "utf8");
+            const calls = extractSetIntervalCalls(source);
             expect(
-                SET_INTERVAL_PATTERN.test(source),
+                calls.length > 0,
                 `${relPath} is allowlisted for setInterval but no longer calls it — remove the stale entry`,
             ).toBe(true);
+            for (const call of calls) {
+                expect(
+                    PYTHON_API_CALL_PATTERN.test(call),
+                    `${relPath}'s setInterval callback unexpectedly reaches the Python API: ${call}`,
+                ).toBe(false);
+            }
         }
+    });
+
+    it("PYTHON_API_CALL_PATTERN actually catches a Python-API fetch added to an allowlisted timer (mutation check)", () => {
+        const poisoned = `setInterval(() => { void getSyncRunStatus(runId); }, 1000);`;
+        expect(PYTHON_API_CALL_PATTERN.test(poisoned)).toBe(true);
+        const clean = `setInterval(() => setNow(Date.now()), 1000);`;
+        expect(PYTHON_API_CALL_PATTERN.test(clean)).toBe(false);
+    });
+
+    it("hasNestedTimerCall catches an inline self-scheduling setTimeout poll (mutation check)", () => {
+        // Catches the inline-nested shape (the outer call's own argument list
+        // contains another timer call). It does NOT catch mutual recursion
+        // via a named function reference (`function tick(){ setTimeout(tick,
+        // 1000) } setTimeout(tick, 1000)`) — that needs a symbol-aware
+        // check, out of scope for a text scan; the setInterval/pollInterval/
+        // refetchInterval/EventSource/WebSocket checks above remain the
+        // primary guard.
+        const recursive = `setTimeout(function poll() { fetch("/x"); setTimeout(poll, 1000); }, 1000);`;
+        expect(hasNestedTimerCall(recursive)).toBe(true);
+        const oneShot = `const timer = setTimeout(() => setCopied(false), 1500); return () => clearTimeout(timer);`;
+        expect(hasNestedTimerCall(oneShot)).toBe(false);
     });
 });
