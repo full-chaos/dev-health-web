@@ -28,28 +28,6 @@ query InvestmentBreakdown($orgId: String!, $batch: AnalyticsRequestInput!) {
 }
 `;
 
-// Query for fetching Sankey flow data
-export const INVESTMENT_SANKEY_QUERY = `
-query InvestmentSankey($orgId: String!, $batch: AnalyticsRequestInput!) {
-  analytics(orgId: $orgId, batch: $batch) {
-    sankey {
-      nodes {
-        id
-        label
-        dimension
-        value
-      }
-      edges {
-        source
-        target
-        value
-      }
-      unit
-    }
-  }
-}
-`;
-
 // Query for fetching same-dimension flow matrix (team↔team, repo↔repo, work_type↔work_type).
 // Backed by analytics.flowMatrix resolver (CHAOS-1289) — returns directional N×N data
 // where source and target share a single dimension.
