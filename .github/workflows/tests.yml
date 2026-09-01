@@ -128,6 +128,77 @@ jobs:
                   go-version-file: dev-health-ops-main/go.mod
                   cache-dependency-path: dev-health-ops-main/go.sum
             - run: pnpm install --frozen-lockfile
+            # CHAOS-3273 Wave 0: the endpoint-profile gate (guardrail G-1)
+            # validates endpoint-profiles.web.json against a closed
+            # vocabulary OWNED BY OPS (endpoint-profile.schema.json,
+            # credential-classes.json) that this repo does not vendor. A
+            # full checkout of dev-health-ops would work too, but would
+            # silently track ops's moving default branch -- any push to
+            # ops's main would change what this job validates against with
+            # no web commit recording that it happened. Pin instead: the
+            # exact ops commit this repo trusts lives in ONE place
+            # (ci/ops-contract.pin), a sparse checkout fetches ONLY the two
+            # contract paths at that pin (not the whole ops repo), and
+            # bumping the pin is the web-side commit that makes a contract
+            # change visible and re-runs this gate against it. Both repos
+            # are public (verified via `gh repo view`), so this checkout
+            # needs no token. Same mechanism as dev-health-acr's
+            # ci/ops-contract.pin -- see that repo's .github/workflows/ci.yml
+            # for the reference implementation this was copied from.
+            - name: Read the pinned ops-owned contract commit
+              id: ops-contract-pin
+              run: echo "sha=$(tr -d '[:space:]' < ci/ops-contract.pin)" >> "$GITHUB_OUTPUT"
+            # A raw actions/checkout failure on an unresolvable ref reads as
+            # a cryptic git error with no context. Probe first with a
+            # message that distinguishes the ONE expected failure mode (the
+            # ops-side lane that produced this pin has not merged to ops's
+            # origin/main yet -- see ci/ops-contract.pin's own commit
+            # message for which lane/branch) from every other one (a stale
+            # or simply wrong pin), so a red run here is never mistaken for
+            # a broken mechanism.
+            - name: Verify the pinned ops commit is resolvable
+              run: |
+                  set -euo pipefail
+                  sha="${{ steps.ops-contract-pin.outputs.sha }}"
+                  if git fetch --depth 1 https://github.com/full-chaos/dev-health-ops.git "$sha" >/dev/null 2>&1; then
+                    exit 0
+                  fi
+                  cat >&2 <<EOF
+                  ci/ops-contract.pin names $sha, which does not exist on
+                  full-chaos/dev-health-ops's remote (git fetch found nothing).
+
+                  EXPECTED failure mode: the ops-side lane that produced this pin
+                  has not merged to ops's origin/main yet. ci/ops-contract.pin's
+                  own commit message names the exact ops branch/lane this SHA came
+                  from -- once that lane merges, re-pin this file to the merged
+                  SHA and this step passes.
+
+                  If that ops lane HAS already merged and this still fails, the
+                  pin itself is stale or wrong: check it against ops's actual
+                  history. Do not "fix" this by pointing the pin at ops main or by
+                  removing/weakening the pin -- see ci/ops-contract.pin's commit
+                  message for why a floating ref was rejected.
+                  EOF
+                  exit 1
+            # actions/checkout, same pin as every other checkout step in this
+            # repo -- public repo, no token needed. Sparse, non-cone mode:
+            # fetches exactly the two listed file paths, not a directory tree.
+            - name: Checkout pinned ops-owned auth contract
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+              with:
+                  repository: full-chaos/dev-health-ops
+                  ref: ${{ steps.ops-contract-pin.outputs.sha }}
+                  path: .ops-contract
+                  persist-credentials: false
+                  sparse-checkout: |
+                      contracts/auth/v1/endpoint-profile.schema.json
+                      contracts/auth/v1/credential-classes.json
+                  sparse-checkout-cone-mode: false
+            - name: Run the web auth-profile CI gate (CHAOS-3273 guardrail G-1)
+              env:
+                  WEB_ENDPOINT_PROFILE_SCHEMA: ${{ github.workspace }}/.ops-contract/contracts/auth/v1/endpoint-profile.schema.json
+                  WEB_CREDENTIAL_CLASSES: ${{ github.workspace }}/.ops-contract/contracts/auth/v1/credential-classes.json
+              run: bash ci/run_tests.sh auth-profiles-gate
             - run: bash ci/run_tests.sh quality
 
     build:

@@ -24,6 +24,7 @@ export default defineConfig({
                         "src/components/**/*.test.ts",
                         "src/app/**/*.test.ts",
                         "scripts/**/__tests__/**/*.test.mjs",
+                        "ci/**/__tests__/**/*.test.ts",
                         "tests/mocks/**/*.test.ts",
                         // CHAOS-3219 Phase 4 Lane 4d. The Wave 4 access matrix
                         // runs only under an armed Compose launcher, so its
