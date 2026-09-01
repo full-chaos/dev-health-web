@@ -302,7 +302,7 @@ describe("CHAOS-3017 CI contracts", () => {
 
             expect(workflow).not.toMatch(/dorny\/paths-filter@v/);
             expect(workflow).toContain(
-                "dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706",
+                "dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d",
             );
         }
     });
