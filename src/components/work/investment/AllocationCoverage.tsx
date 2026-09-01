@@ -18,26 +18,68 @@ type CoverageReading = {
     unassignedShare: number | null;
 };
 
-function readCoverage(flow: SankeyResponse | null | undefined): CoverageReading {
+/**
+ * Share of total flow value that passes through an "unassigned" node.
+ *
+ * CHAOS-4756: an unassigned node's throughput is `max(inbound, outbound)` on
+ * whichever hop it actually appears on. A TEAM node in a
+ * `TEAM -> THEME -> REPO` flow is only ever a link SOURCE (first hop), so
+ * summing only inbound links (the prior bug) always read 0 there. The
+ * denominator sums only that SAME hop -- every link whose relevant endpoint
+ * shares the node's group -- not every link across every hop in the flow;
+ * summing all hops would roughly halve the ratio for a multi-hop flow.
+ *
+ * Returns `null` (never a spurious `0`) when no unassigned node's group
+ * participates in any link -- the flow shape cannot express a share, so the
+ * caller should fall back to another flow. Returns a real `0` only when an
+ * unassigned node exists and genuinely carries zero flow.
+ */
+function computeUnassignedShare(flow: SankeyResponse): number | null {
+    const unassignedNodes = flow.nodes.filter((node) =>
+        isUnassignedLabel(stripSankeyPrefix(node.name)),
+    );
+    if (unassignedNodes.length === 0) {
+        return null;
+    }
+
+    const groupByName = new Map(flow.nodes.map((node) => [node.name, node.group]));
+    let unassignedThroughput = 0;
+    let comparableTotal = 0;
+    const measuredHops = new Set<string>();
+
+    for (const node of unassignedNodes) {
+        const inbound = flow.links
+            .filter((link) => link.target === node.name)
+            .reduce((sum, link) => sum + link.value, 0);
+        const outbound = flow.links
+            .filter((link) => link.source === node.name)
+            .reduce((sum, link) => sum + link.value, 0);
+        unassignedThroughput += Math.max(inbound, outbound);
+
+        const onSourceHop = outbound >= inbound;
+        const hopKey = `${node.group ?? ""}:${onSourceHop ? "source" : "target"}`;
+        if (measuredHops.has(hopKey)) {
+            continue;
+        }
+        measuredHops.add(hopKey);
+        comparableTotal += flow.links
+            .filter(
+                (link) => groupByName.get(onSourceHop ? link.source : link.target) === node.group,
+            )
+            .reduce((sum, link) => sum + link.value, 0);
+    }
+
+    return comparableTotal > 0 ? unassignedThroughput / comparableTotal : null;
+}
+
+export function readCoverage(flow: SankeyResponse | null | undefined): CoverageReading {
     if (!flow) {
         return { teamCoverage: null, repoCoverage: null, unassignedShare: null };
     }
     const teamCoverage = flow.coverage?.team ?? flow.team_coverage ?? null;
     const repoCoverage = flow.coverage?.repo ?? flow.repo_coverage ?? null;
 
-    const totalValue = flow.links.reduce((sum, link) => sum + link.value, 0);
-    const unassignedNodeNames = new Set(
-        flow.nodes
-            .filter((node) => isUnassignedLabel(stripSankeyPrefix(node.name)))
-            .map((node) => node.name),
-    );
-    const unassignedValue = flow.links
-        .filter((link) => unassignedNodeNames.has(link.target))
-        .reduce((sum, link) => sum + link.value, 0);
-    const unassignedShare =
-        totalValue > 0 ? unassignedValue / totalValue : unassignedNodeNames.size > 0 ? 0 : null;
-
-    return { teamCoverage, repoCoverage, unassignedShare };
+    return { teamCoverage, repoCoverage, unassignedShare: computeUnassignedShare(flow) };
 }
 
 const asPct = (value: number) =>
