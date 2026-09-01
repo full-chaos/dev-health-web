@@ -19,55 +19,69 @@ type CoverageReading = {
 };
 
 /**
- * Share of total flow value that passes through an "unassigned" node.
+ * Share of TEAM throughput that passes through an unassigned TEAM node.
  *
- * CHAOS-4756: an unassigned node's throughput is `max(inbound, outbound)` on
- * whichever hop it actually appears on. A TEAM node in a
- * `TEAM -> THEME -> REPO` flow is only ever a link SOURCE (first hop), so
- * summing only inbound links (the prior bug) always read 0 there. The
- * denominator sums only that SAME hop -- every link whose relevant endpoint
- * shares the node's group -- not every link across every hop in the flow;
- * summing all hops would roughly halve the ratio for a multi-hop flow.
+ * "Unassigned ownership" is a team-ownership metric -- the sibling cards are
+ * team/repo coverage, and the measured defect (CHAOS-4756/CHAOS-4716) is
+ * entirely about `TEAM:unassigned`. Scoping to the `team` group is
+ * deliberate, not incidental: an earlier version of this reducer considered
+ * ANY node labeled "unassigned" (team, theme, subcategory, repo) and summed
+ * every such group's hop total into one denominator. A primary
+ * `TEAM -> THEME -> REPO` flow can legitimately carry a mid-path unassigned
+ * THEME alongside an unassigned TEAM; blending the two hop totals produced a
+ * number that was neither share (codex review, CHAOS-4756 round 1: 60/100
+ * team-unassigned blended with a 40-unit unassigned-category hop read as
+ * 0.5, not the true 0.6).
  *
- * Returns `null` (never a spurious `0`) when no unassigned node's group
- * participates in any link -- the flow shape cannot express a share, so the
- * caller should fall back to another flow. Returns a real `0` only when an
- * unassigned node exists and genuinely carries zero flow.
+ * TEAM nodes sit on exactly one side of a single hop in both flows this
+ * component reads: SOURCE in `TEAM -> THEME -> REPO`, TARGET in
+ * `REPO -> TEAM`. Measure whichever side actually carries team flow, for
+ * both the unassigned throughput and the comparable team total, so the
+ * ratio is always share-of-team-throughput -- never a cross-dimension
+ * average.
+ *
+ * Returns `null` (never a spurious `0`) when no TEAM node participates in
+ * any link -- the flow shape cannot express a share, so the caller should
+ * fall back to another flow. Returns a real `0` only when unassigned TEAM
+ * nodes exist and genuinely carry zero flow.
  */
 function computeUnassignedShare(flow: SankeyResponse): number | null {
-    const unassignedNodes = flow.nodes.filter((node) =>
-        isUnassignedLabel(stripSankeyPrefix(node.name)),
+    const teamNodeNames = new Set(
+        flow.nodes.filter((node) => node.group === "team").map((node) => node.name),
     );
-    if (unassignedNodes.length === 0) {
+    const unassignedTeamNames = new Set(
+        flow.nodes
+            .filter(
+                (node) => node.group === "team" && isUnassignedLabel(stripSankeyPrefix(node.name)),
+            )
+            .map((node) => node.name),
+    );
+    if (unassignedTeamNames.size === 0) {
         return null;
     }
 
-    const groupByName = new Map(flow.nodes.map((node) => [node.name, node.group]));
-    let unassignedThroughput = 0;
-    let comparableTotal = 0;
-    const measuredHops = new Set<string>();
-
-    for (const node of unassignedNodes) {
-        const inbound = flow.links
-            .filter((link) => link.target === node.name)
-            .reduce((sum, link) => sum + link.value, 0);
-        const outbound = flow.links
-            .filter((link) => link.source === node.name)
-            .reduce((sum, link) => sum + link.value, 0);
-        unassignedThroughput += Math.max(inbound, outbound);
-
-        const onSourceHop = outbound >= inbound;
-        const hopKey = `${node.group ?? ""}:${onSourceHop ? "source" : "target"}`;
-        if (measuredHops.has(hopKey)) {
-            continue;
+    let teamOutbound = 0;
+    let teamInbound = 0;
+    let unassignedOutbound = 0;
+    let unassignedInbound = 0;
+    for (const link of flow.links) {
+        if (teamNodeNames.has(link.source)) {
+            teamOutbound += link.value;
+            if (unassignedTeamNames.has(link.source)) {
+                unassignedOutbound += link.value;
+            }
         }
-        measuredHops.add(hopKey);
-        comparableTotal += flow.links
-            .filter(
-                (link) => groupByName.get(onSourceHop ? link.source : link.target) === node.group,
-            )
-            .reduce((sum, link) => sum + link.value, 0);
+        if (teamNodeNames.has(link.target)) {
+            teamInbound += link.value;
+            if (unassignedTeamNames.has(link.target)) {
+                unassignedInbound += link.value;
+            }
+        }
     }
+
+    const onSourceHop = teamOutbound >= teamInbound;
+    const comparableTotal = onSourceHop ? teamOutbound : teamInbound;
+    const unassignedThroughput = onSourceHop ? unassignedOutbound : unassignedInbound;
 
     return comparableTotal > 0 ? unassignedThroughput / comparableTotal : null;
 }

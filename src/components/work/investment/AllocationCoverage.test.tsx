@@ -97,6 +97,45 @@ describe("readCoverage — unassignedShare", () => {
         expect(primary.unassignedShare).toBeCloseTo(secondary.unassignedShare as number, 4);
     });
 
+    // CHAOS-4756 codex round 1 (P1, EXECUTED): a mid-path unassigned THEME
+    // node alongside an unassigned TEAM node in the SAME primary flow used
+    // to blend the two groups' hop totals into one denominator, producing
+    // 0.5 instead of the true 60/100 = 0.6 team-unassigned share.
+    it("scopes the share to TEAM throughput — a mid-path unassigned THEME does not blend in", () => {
+        const flow: SankeyResponse = {
+            mode: "investment",
+            nodes: [
+                { name: "Unassigned", group: "team" },
+                { name: "Assigned Team", group: "team" },
+                { name: "Assigned Theme", group: "category" },
+                { name: "Unassigned Theme", group: "category" },
+                { name: "repo-a", group: "repo" },
+            ],
+            links: [
+                { source: "Unassigned", target: "Assigned Theme", value: 60 },
+                { source: "Assigned Team", target: "Unassigned Theme", value: 40 },
+                // Unassigned Theme is a genuine mid-path node: target of the
+                // TEAM->THEME hop above, source of THEME->REPO here.
+                { source: "Unassigned Theme", target: "repo-a", value: 40 },
+            ],
+        };
+
+        expect(readCoverage(flow).unassignedShare).toBeCloseTo(0.6, 10);
+    });
+
+    it("returns null when only a non-TEAM node (e.g. an unassigned THEME) is unassigned", () => {
+        const flow: SankeyResponse = {
+            mode: "investment",
+            nodes: [
+                { name: "Fullchaos", group: "team" },
+                { name: "Unassigned Theme", group: "category" },
+            ],
+            links: [{ source: "Fullchaos", target: "Unassigned Theme", value: 10 }],
+        };
+
+        expect(readCoverage(flow).unassignedShare).toBeNull();
+    });
+
     it("returns null (not 0) when no unassigned node exists — cannot express a share", () => {
         const flow: SankeyResponse = {
             mode: "investment",
