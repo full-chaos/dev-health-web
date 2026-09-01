@@ -603,3 +603,34 @@ describe("fetchFeatureFlagsData — error fallback", () => {
         await expect(fetchFeatureFlagsData(DATE_RANGE)).rejects.toThrow("session expired");
     });
 });
+
+// ── resolveOrgId — no default-org fallback (CHAOS-4728) ─────────────────────
+//
+// resolveOrgId previously substituted the literal "default-org" when there
+// was no session (as opposed to auth() itself throwing, covered above). That
+// let an unauthenticated caller reach graphqlFetch with a synthesized tenant
+// id. It must now reject, and no GraphQL request may go out on this path.
+
+describe("resolveOrgId — no default-org fallback (CHAOS-4728)", () => {
+    beforeEach(() => {
+        mockGraphql.mockReset();
+    });
+
+    it("rejects fetchFeatureFlagList when auth() resolves with no session, never issuing a GraphQL request", async () => {
+        mockAuth.mockResolvedValueOnce(null as never);
+
+        await expect(fetchFeatureFlagList(0, 20)).rejects.toThrow(
+            "org_id is required: not provided and not found in session",
+        );
+        expect(mockGraphql).not.toHaveBeenCalled();
+    });
+
+    it("rejects fetchFeatureFlagList when the session has no org_id, never issuing a GraphQL request", async () => {
+        mockAuth.mockResolvedValueOnce({ user: {} } as never);
+
+        await expect(fetchFeatureFlagList(0, 20)).rejects.toThrow(
+            "org_id is required: not provided and not found in session",
+        );
+        expect(mockGraphql).not.toHaveBeenCalled();
+    });
+});
