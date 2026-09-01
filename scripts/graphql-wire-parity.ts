@@ -196,6 +196,19 @@ export function compareRegistry(
     for (const [operation, sourceText] of Object.entries(manifest)) {
         const goEntry = goByOperation.get(operation);
         if (!goEntry) continue; // reported via manifestOnly above
+        // A missing/empty `digest` field means the ops checkout's
+        // registrydump predates CHAOS-4696's digest field (an older ops
+        // main, or a checkout mid-rebase) -- report it as a loud,
+        // named error rather than crash later on `.slice()` of
+        // `undefined`, or silently comparing against the string
+        // "undefined" (which would coincidentally read as a real
+        // mismatch for the wrong reason).
+        if (typeof goEntry.digest !== "string" || goEntry.digest.length === 0) {
+            errors.push(
+                `registrydump's entry for operation "${operation}" has no digest field (got ${JSON.stringify(goEntry.digest)}) -- the ops checkout at --ops-root predates CHAOS-4696's registrydump digest field, or its JSON is malformed. Point --ops-root at a checkout that includes cmd/query-api/internal/digest.`,
+            );
+            continue;
+        }
         const goDigest = goEntry.digest;
         const wireDigest = sha256Trim(wireForm(sourceText));
         rows.push({ operation, goDigest, wireDigest, match: goDigest === wireDigest });

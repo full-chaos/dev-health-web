@@ -83,6 +83,35 @@ describe("compareRegistry", () => {
         const { errors } = compareRegistry(entries, OPERATION_MANIFEST);
         expect(errors.some((e) => e.includes("featureFlags"))).toBe(true);
     });
+
+    /**
+     * Regression: caught live in dev-health-web#905's first CI run against
+     * dev-health-ops main BEFORE the companion ops PR merged (an expected,
+     * one-time bootstrap state — see both PRs' bodies) — an older
+     * registrydump that predates CHAOS-4696's `digest` field returns rows
+     * with `digest: undefined`. `check` mode's table-printing code called
+     * `r.goDigest.slice(...)` on that `undefined` and crashed with a raw
+     * TypeError instead of a readable gate failure. `compareRegistry` must
+     * never hand back a row whose `goDigest` isn't a real string.
+     */
+    it("reports a loud, named error instead of crashing when a Go entry has no digest field", () => {
+        const entries = correctGoEntries().map((e) =>
+            e.operation === "featureFlags" ? { ...e, digest: undefined } : e,
+        );
+        const { rows, errors } = compareRegistry(entries, OPERATION_MANIFEST);
+
+        expect(
+            errors.some((e) => e.includes("featureFlags") && e.includes("no digest field")),
+        ).toBe(true);
+        // The broken operation must not produce a row at all (nothing for
+        // the table-printing code to call .slice() on) -- every OTHER
+        // operation still gets a normal row.
+        expect(rows.find((r) => r.operation === "featureFlags")).toBeUndefined();
+        expect(rows).toHaveLength(Object.keys(OPERATION_MANIFEST).length - 1);
+        for (const row of rows) {
+            expect(typeof row.goDigest).toBe("string");
+        }
+    });
 });
 
 describe("wireForm", () => {
