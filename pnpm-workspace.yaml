@@ -36,3 +36,9 @@ overrides:
     # v1 brace-expansion API differs, breaking ESLint with "expand is not a function".
     # Floor raised to 5.0.9 for GHSA-rgw5-rvv9-x895 (unbounded intermediate arrays).
     minimatch@10>brace-expansion: ">=5.0.9"
+    # browserslist: reached only transitively, via @sentry/nextjs's @babel/core and
+    # webpack chains (8 paths, no direct dependency to upgrade — same shape as the
+    # nanoid entry above). Floor for GHSA-c83g-rgw3-j3cx (unbounded cache growth) and
+    # GHSA-73wf-gq98-2v4g (prototype write via untrusted browserslist-stats.json) is
+    # >=4.28.7 per both advisories' "Patched versions" field.
+    browserslist: ">=4.28.7"
