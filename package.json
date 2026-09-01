@@ -26,6 +26,8 @@
         "ask-dev:contracts:generate": "node scripts/ask-dev-contracts.mjs generate --allow-write",
         "ask-dev:contracts:check": "node scripts/ask-dev-contracts.mjs check",
         "ask-dev:contracts:check-currency": "node scripts/ask-dev-contracts.mjs check-currency",
+        "graphql:wire-parity:check": "tsx scripts/graphql-wire-parity.ts check",
+        "graphql:wire-parity:generate": "tsx scripts/graphql-wire-parity.ts generate",
         "test:e2e": "playwright test --project=authenticated --project=unauthenticated",
         "test:e2e:customer-push": "playwright test -c playwright.customer-push.config.ts",
         "test:e2e:navigation": "playwright test -c playwright.navigation.config.ts",

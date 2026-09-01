@@ -117,6 +117,16 @@ jobs:
               with:
                   node-version: 22
                   cache: pnpm
+            # CHAOS-4696 graphql:wire-parity:check runs `go run
+            # ./cmd/query-api/tools/registrydump` against the ops-main
+            # checkout above -- go-version-file reads ops main's own
+            # go.mod so this stays in lockstep with ops's own toolchain
+            # pin rather than a second, independently-drifting pin here.
+            - name: Set up Go (for graphql:wire-parity:check's registrydump)
+              uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+              with:
+                  go-version-file: dev-health-ops-main/go.mod
+                  cache-dependency-path: dev-health-ops-main/go.sum
             - run: pnpm install --frozen-lockfile
             - run: bash ci/run_tests.sh quality
 
