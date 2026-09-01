@@ -31,20 +31,20 @@ import http from "node:http";
 import path from "node:path";
 import { URL } from "node:url";
 
+// --out-dir is REQUIRED (codex review, CHAOS-4696 round 1, P3 EXECUTED):
+// a guessed default silently wrote a captured fixture into a newly
+// created, unrelated directory when a sibling `../../ops` checkout
+// didn't happen to exist at that exact relative path -- the script still
+// reported success, just not into the intended ops checkout. Fail loudly
+// instead of guessing.
 const outDirArg = process.argv.indexOf("--out-dir");
-const outDir =
-    outDirArg !== -1 && process.argv[outDirArg + 1]
-        ? path.resolve(process.argv[outDirArg + 1])
-        : path.resolve(
-              __dirname,
-              "..",
-              "..",
-              "ops",
-              "cmd",
-              "query-api",
-              "testdata",
-              "wire_capture",
-          );
+if (outDirArg === -1 || !process.argv[outDirArg + 1]) {
+    process.stderr.write(
+        "capture-graphql-wire-fixture: --out-dir is required (e.g. --out-dir <ops-checkout>/cmd/query-api/testdata/wire_capture)\n",
+    );
+    process.exit(2);
+}
+const outDir = path.resolve(process.argv[outDirArg + 1]);
 
 interface Captured {
     method: string;

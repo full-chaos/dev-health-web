@@ -251,6 +251,22 @@ function main() {
     const { rows, errors } = compareRegistry(goEntries, OPERATION_MANIFEST);
 
     if (mode === "generate") {
+        // codex review, CHAOS-4696 round 1, P3 EXECUTED: this branch used
+        // to ignore `errors` entirely and always exit 0 -- a Go-only
+        // operation with no manifest entry (or vice versa) silently
+        // produced a PARTIAL JSON object (that operation just missing,
+        // no error, no indication anything was skipped). `generate` must
+        // fail on exactly the same conditions `check` does; a caller
+        // piping this output somewhere has no other signal that it is
+        // incomplete.
+        if (errors.length > 0) {
+            for (const err of errors) process.stderr.write(`ERROR: ${err}\n`);
+            process.stderr.write(
+                `\ngraphql-wire-parity generate: FAILED — ${errors.length} manifest error(s), refusing to emit a partial result.\n`,
+            );
+            process.exitCode = 1;
+            return;
+        }
         const out = Object.fromEntries(
             rows.map((r) => [r.operation, wireForm(OPERATION_MANIFEST[r.operation])]),
         );
