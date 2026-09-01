@@ -123,6 +123,60 @@ describe("readCoverage — unassignedShare", () => {
         expect(readCoverage(flow).unassignedShare).toBeCloseTo(0.6, 10);
     });
 
+    // CHAOS-4756 codex round 2 (P1, EXECUTED): SankeyLink references nodes by
+    // `name` alone (no id on the wire). When a mid-path unassigned THEME
+    // node happens to share the EXACT SAME name string as the unassigned
+    // TEAM node ("Unassigned"), name-only Set lookups can't tell them apart
+    // -- a link sourced from the THEME node was wrongly counted as team
+    // flow, inflating the share from the true 0.6 to 0.714.
+    it("degrades to null (not a wrong number) when a TEAM name collides with a THEME name", () => {
+        const collidingPrimary: SankeyResponse = {
+            mode: "investment",
+            nodes: [
+                { name: "Unassigned", group: "team" }, // TEAM:unassigned
+                { name: "Fullchaos", group: "team" },
+                { name: "Assigned Theme", group: "category" },
+                { name: "Unassigned", group: "category" }, // THEME:unassigned — SAME name string
+                { name: "repo-a", group: "repo" },
+            ],
+            links: [
+                { source: "Unassigned", target: "Assigned Theme", value: 60 }, // TEAM:unassigned's link
+                { source: "Fullchaos", target: "Unassigned", value: 40 }, // -> THEME:unassigned (mid-path)
+                { source: "Unassigned", target: "repo-a", value: 40 }, // THEME:unassigned's outbound
+            ],
+        };
+        const correctSecondary: SankeyResponse = {
+            mode: "investment",
+            nodes: [
+                { name: "repo-a", group: "repo" },
+                { name: "repo-b", group: "repo" },
+                { name: "Unassigned", group: "team" },
+                { name: "Fullchaos", group: "team" },
+            ],
+            links: [
+                { source: "repo-a", target: "Unassigned", value: 60 },
+                { source: "repo-b", target: "Fullchaos", value: 40 },
+            ],
+        };
+
+        // The colliding name makes the primary flow's own data structurally
+        // ambiguous -- readCoverage must not guess a number from it.
+        expect(readCoverage(collidingPrimary).unassignedShare).toBeNull();
+
+        // The tile as a whole must still land on the true share (0.6) via
+        // the ?? fallback to the unambiguous secondary flow, not the wrong
+        // 0.714 the ambiguous primary would otherwise produce.
+        render(
+            <AllocationCoverage
+                teamCategoryFlow={collidingPrimary}
+                repoTeamFlow={correctSecondary}
+                isLoading={false}
+            />,
+        );
+        expect(screen.getByText("60%")).toBeInTheDocument();
+        expect(screen.queryByText("71%")).not.toBeInTheDocument();
+    });
+
     it("returns null when only a non-TEAM node (e.g. an unassigned THEME) is unassigned", () => {
         const flow: SankeyResponse = {
             mode: "investment",

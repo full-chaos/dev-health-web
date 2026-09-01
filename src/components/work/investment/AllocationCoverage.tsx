@@ -44,17 +44,40 @@ type CoverageReading = {
  * any link -- the flow shape cannot express a share, so the caller should
  * fall back to another flow. Returns a real `0` only when unassigned TEAM
  * nodes exist and genuinely carry zero flow.
+ *
+ * `SankeyLink.source`/`target` reference nodes by `name` alone -- there is
+ * no id on the wire. If a backend labels a missing TEAM node and a mid-path
+ * unassigned THEME node with the exact same string (e.g. both literally
+ * "Unassigned"), that name is structurally ambiguous: a link touching it
+ * could belong to either node, and nothing in the payload says which
+ * (codex round 2, P1 EXECUTED: a colliding name inflated the share from the
+ * true 0.6 to 0.714 by attributing a THEME node's flow to the team). Any
+ * name shared by more than one `group` is therefore excluded from team
+ * membership entirely -- never guessed -- which degrades that flow to
+ * `null` (cannot tell) rather than a silently wrong number.
  */
 function computeUnassignedShare(flow: SankeyResponse): number | null {
+    const groupsByName = new Map<string, Set<string>>();
+    for (const node of flow.nodes) {
+        if (node.group === undefined) {
+            continue;
+        }
+        const groups = groupsByName.get(node.name) ?? new Set<string>();
+        groups.add(node.group);
+        groupsByName.set(node.name, groups);
+    }
+    const isUnambiguousTeamName = (name: string) => {
+        const groups = groupsByName.get(name);
+        return groups !== undefined && groups.size === 1 && groups.has("team");
+    };
+
     const teamNodeNames = new Set(
-        flow.nodes.filter((node) => node.group === "team").map((node) => node.name),
+        flow.nodes
+            .filter((node) => node.group === "team" && isUnambiguousTeamName(node.name))
+            .map((node) => node.name),
     );
     const unassignedTeamNames = new Set(
-        flow.nodes
-            .filter(
-                (node) => node.group === "team" && isUnassignedLabel(stripSankeyPrefix(node.name)),
-            )
-            .map((node) => node.name),
+        [...teamNodeNames].filter((name) => isUnassignedLabel(stripSankeyPrefix(name))),
     );
     if (unassignedTeamNames.size === 0) {
         return null;
