@@ -172,6 +172,16 @@ run_quality() {
   fi
   echo "==> pnpm ask-dev:contracts:check-currency --pinned ${ASK_DEV_OPS_ROOT} --current ${ASK_DEV_OPS_MAIN_ROOT}"
   pnpm ask-dev:contracts:check-currency --pinned "${ASK_DEV_OPS_ROOT}" --current "${ASK_DEV_OPS_MAIN_ROOT}"
+  # CHAOS-4696: query-api resolves a request by digesting the raw query
+  # text it receives. This asserts, for every registered document, that
+  # query-api's const (read via ops main's own registrydump -- always
+  # the LIVE tip, not a pin: this is a live invariant, not a contract
+  # sync) digests to what THIS repo's own pinned @urql/core actually
+  # puts on the wire (createRequest + formatDocument + stringifyDocument
+  # -- the real exchange-chain functions). Reuses ASK_DEV_OPS_MAIN_ROOT's
+  # checkout rather than a second ops clone.
+  echo "==> pnpm graphql:wire-parity:check --ops-root ${ASK_DEV_OPS_MAIN_ROOT}"
+  pnpm graphql:wire-parity:check --ops-root "${ASK_DEV_OPS_MAIN_ROOT}"
   run_pnpm_script lint
   run_pnpm_script typecheck
 }
