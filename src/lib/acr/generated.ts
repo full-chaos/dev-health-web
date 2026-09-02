@@ -407,8 +407,6 @@ export interface ACRContextFabricInvestigationRequestV1 {
 }
 
 export type ACRContextFabricInvestigationResultV1 = {
-    [k: string]: unknown | undefined;
-} & {
     schema_version: "context_fabric_investigation_result.v1";
     result_id: string;
     request_id: string;
@@ -491,8 +489,6 @@ export interface ContextFabricOrganizationModelConfigurationV1 {
 }
 
 export type ACRContextPacketItemV1 = {
-    [k: string]: unknown | undefined;
-} & {
     schema_version: "context_packet_item.v1";
     packet_item_id: string;
     category: "state" | "pressure" | "cause" | "evidence" | "action";
@@ -828,8 +824,6 @@ export type ScalarValue1 = {
     [k: string]: unknown | undefined;
 };
 export type DriverJudgment = {
-    [k: string]: unknown | undefined;
-} & {
     driver_id: string;
     standing: "principal" | "contributing" | "symptom" | "context" | "withheld";
     category:
@@ -881,8 +875,6 @@ export type DriverJudgment = {
     current: boolean;
 };
 export type InterpretedQuestion = {
-    [k: string]: unknown | undefined;
-} & {
     shape: "single_subject" | "explicit_cohort" | "discovered_cohort" | "open";
     requested_judgment: string;
     /**
