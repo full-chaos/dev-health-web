@@ -105,17 +105,34 @@ function* walk(dir: string): Generator<string> {
 }
 
 /**
- * Convert a filesystem path under src/app/api to a Next.js App Router URL
- * path: `[id]` segments become `[id]` verbatim (kept bracketed, matching
- * this repo's convention of documenting the dynamic-segment placeholder
- * rather than resolving a synthetic example value -- there is no route
- * table to resolve it against, unlike FastAPI's runtime include graph).
- * `route.ts` itself is dropped from the tail.
+ * Convert a filesystem path under src/app to a Next.js App Router URL path.
+ *
+ * `[id]` segments are kept bracketed verbatim, matching this repo's
+ * convention of documenting the dynamic-segment placeholder rather than
+ * resolving a synthetic example value -- there is no route table to resolve
+ * it against, unlike FastAPI's runtime include graph. `route.ts` itself is
+ * dropped from the tail.
+ *
+ * ROUTE GROUPS are stripped: a directory whose name is wrapped in
+ * parentheses, `(app)`, organises files without contributing a URL segment.
+ * Getting this wrong would not lose a route, but it would give it a path
+ * that does not exist, which is a stale claim of a different kind.
+ *
+ * This walks all of src/app, not src/app/api. Merge-gate round 1
+ * (CHAOS-3273, EXECUTED): discovery walked only the api subtree, while Next
+ * Route Handlers may live anywhere under app/. Three real handlers sat
+ * outside it and none was in the inventory -- two of them authenticated
+ * admin surfaces enforcing an inline admin/owner role check. The inventory
+ * claimed 18 routes; the repository had 21.
  */
-function fileToRoutePath(apiRoot: string, file: string): string {
-    const rel = relative(apiRoot, file).replace(/\\/g, "/");
+function fileToRoutePath(appRoot: string, file: string): string {
+    const rel = relative(appRoot, file).replace(/\\/g, "/");
     const withoutFile = rel.replace(/\/route\.tsx?$/, "").replace(/^route\.tsx?$/, "");
-    return "/api" + (withoutFile ? "/" + withoutFile : "");
+    if (!withoutFile) return "/";
+    const segments = withoutFile
+        .split("/")
+        .filter((seg) => seg.length > 0 && !(seg.startsWith("(") && seg.endsWith(")")));
+    return "/" + segments.join("/");
 }
 
 const EXPORT_METHOD_RE = new RegExp(
@@ -126,14 +143,40 @@ const EXPORT_METHOD_RE = new RegExp(
 // method "api_route" (mirrors ops's convention for a runtime method list),
 // matching endpoint-profile.schema.json's `method` field description.
 const EXPORT_DESTRUCTURE_RE = /^export\s+const\s*\{([^}]+)\}\s*=\s*handlers\s*;?\s*$/;
+// `export { handler as POST };` and `export { GET };` -- a re-export of a
+// binding defined elsewhere in the file (commonly an arrow function). Merge-gate
+// round 1 (CHAOS-3273, EXECUTED): a route file whose only export took this
+// shape was invisible, so a hidden POST handler sat beside a profiled GET and
+// the gate reported `PASS: 1 routes + 0 server actions, 0 violations`. It is
+// legal TypeScript and a normal way to write a handler, not an exotic form.
+const EXPORT_NAMED_RE = /^export\s*\{([^}]+)\}\s*;?\s*$/;
 
-function discoverRouteFile(apiRoot: string, file: string): RouteRecord[] {
+function discoverRouteFile(appRoot: string, file: string): RouteRecord[] {
     const text = readFileSync(file, "utf8");
     const lines = text.split("\n");
-    const routePath = fileToRoutePath(apiRoot, file);
+    const routePath = fileToRoutePath(appRoot, file);
     const records: RouteRecord[] = [];
     let sawDestructure = false;
     lines.forEach((lineText, idx) => {
+        // `export { handler as POST, other as GET };` -- take the EXPORTED
+        // name (after `as`), which is what Next dispatches on, not the local
+        // binding's name.
+        const namedMatch = EXPORT_NAMED_RE.exec(lineText.trim());
+        if (namedMatch && !/=\s*handlers/.test(lineText)) {
+            for (const clause of namedMatch[1].split(",")) {
+                const exported = clause.includes(" as ")
+                    ? clause.split(" as ")[1].trim()
+                    : clause.trim();
+                if ((HTTP_METHODS as readonly string[]).includes(exported)) {
+                    records.push({
+                        method: exported as HttpMethod,
+                        route: routePath,
+                        file: relative(process.cwd(), file),
+                        line: idx + 1,
+                    });
+                }
+            }
+        }
         const methodMatch = EXPORT_METHOD_RE.exec(lineText.trim());
         if (methodMatch) {
             records.push({
@@ -171,11 +214,11 @@ function discoverRouteFile(apiRoot: string, file: string): RouteRecord[] {
 }
 
 export function discoverRoutes(root: string): RouteRecord[] {
-    const apiRoot = join(root, "src/app/api");
+    const appRoot = join(root, "src/app");
     const out: RouteRecord[] = [];
-    for (const file of walk(apiRoot)) {
+    for (const file of walk(appRoot)) {
         if (!/route\.tsx?$/.test(file)) continue;
-        out.push(...discoverRouteFile(apiRoot, file));
+        out.push(...discoverRouteFile(appRoot, file));
     }
     out.sort((a, b) => (a.route + a.method).localeCompare(b.route + b.method));
     return out;
@@ -203,9 +246,36 @@ export function discoverServerActionFiles(root: string): {
         if (/\.(test|spec)\.tsx?$/.test(file)) continue;
         const text = readFileSync(file, "utf8");
         const lines = text.split("\n");
-        const firstMeaningfulLine = lines.find(
-            (l) => l.trim().length > 0 && !l.trim().startsWith("//"),
-        );
+        // Find the first meaningful line, skipping blank lines, // comments
+        // AND /* block comments */. Merge-gate round 1 (CHAOS-3273, EXECUTED):
+        // only `//` was skipped, so a "use server" file preceded by a block
+        // comment -- a licence header, a docstring, anything -- was not
+        // recognised as a Server Action module at all, and every action in it
+        // was invisible to the gate.
+        const firstMeaningfulLine = (() => {
+            let inBlockComment = false;
+            for (const raw of lines) {
+                let l = raw.trim();
+                if (inBlockComment) {
+                    const end = l.indexOf("*/");
+                    if (end === -1) continue;
+                    l = l.slice(end + 2).trim();
+                    inBlockComment = false;
+                }
+                while (l.startsWith("/*")) {
+                    const end = l.indexOf("*/", 2);
+                    if (end === -1) {
+                        inBlockComment = true;
+                        l = "";
+                        break;
+                    }
+                    l = l.slice(end + 2).trim();
+                }
+                if (l.length === 0 || l.startsWith("//")) continue;
+                return l;
+            }
+            return undefined;
+        })();
         if (
             firstMeaningfulLine?.trim() !== '"use server";' &&
             firstMeaningfulLine?.trim() !== "'use server';"

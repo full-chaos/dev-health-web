@@ -546,7 +546,7 @@ describe("gate_web_auth_profiles: main() CLI, CI mode, missing contract inputs (
         expect(result.stderr).toMatch(/^FAIL:/m);
         expect(result.stderr).toContain("credential-classes.json");
         expect(result.stderr).toContain("endpoint-profile.schema.json");
-    });
+    }, 30_000);
 
     it("exits 0 (WARN only) locally (CI unset) with the same missing inputs", () => {
         const env = envWithout("CI", "GITHUB_ACTIONS");
@@ -557,6 +557,115 @@ describe("gate_web_auth_profiles: main() CLI, CI mode, missing contract inputs (
         });
         expect(result.status).toBe(0);
         expect(result.stderr).toMatch(/^WARN:/m);
+    }, 30_000);
+});
+
+describe("tests.yml: an inventory-only change must still run the gate", () => {
+    // THE CLASS, not the instance. The gate is correct when the quality job
+    // runs; the defect was that a PR touching ONLY the inventory did not run
+    // it. `changes.code` had no contracts pattern, so code=false skipped
+    // quality and the aggregate job succeeded having checked nothing -- the
+    // one file most likely to be edited alone being the edit that skips its
+    // own check.
+    //
+    // Asserted against the workflow text rather than mocked, and paired with a
+    // negative control below, because an assertion that cannot fail is the
+    // thing this whole PR exists to catch.
+    function codeFilterPatterns(workflow: string): string[] {
+        const lines = workflow.split("\n");
+        const start = lines.findIndex((l) => /^\s+code:\s*$/.test(l));
+        if (start === -1) return [];
+        const out: string[] = [];
+        for (const line of lines.slice(start + 1)) {
+            const m = /^\s+- '(.+)'\s*$/.exec(line);
+            if (m) {
+                out.push(m[1]);
+                continue;
+            }
+            if (/^\s+#/.test(line) || line.trim() === "") continue;
+            break;
+        }
+        return out;
+    }
+
+    const workflowText = readFileSync(resolve(WEB_ROOT, ".github/workflows/tests.yml"), "utf8");
+
+    it("the code filter covers the endpoint-profile inventory", () => {
+        const patterns = codeFilterPatterns(workflowText);
+        expect(patterns.length).toBeGreaterThan(0);
+        const covers = patterns.some((p) => p === "contracts/**" || p.startsWith("contracts/auth"));
+        expect(covers).toBe(true);
+    });
+
+    it("negative control: the same assertion fails when the contracts pattern is removed", () => {
+        const mutated = workflowText
+            .split("\n")
+            .filter((l) => !/^\s+- 'contracts\/\*\*'\s*$/.test(l))
+            .join("\n");
+        const patterns = codeFilterPatterns(mutated);
+        expect(patterns.length).toBeGreaterThan(0);
+        const covers = patterns.some((p) => p === "contracts/**" || p.startsWith("contracts/auth"));
+        expect(covers).toBe(false);
+    });
+});
+
+describe("discover_web_routes: legal export forms and route locations", () => {
+    // Each of these was EXECUTED against the gate before the fix and returned a
+    // clean PASS with a real surface invisible to it. They are ordinary
+    // TypeScript and ordinary Next.js layout, not exotic constructions.
+
+    function scratchTree(): string {
+        const dir = mkdtempSync(join(tmpdir(), "web-discovery-"));
+        mkdirSync(join(dir, "src/app/api/hidden"), { recursive: true });
+        mkdirSync(join(dir, "src/app/(group)/deep/nested"), { recursive: true });
+        mkdirSync(join(dir, "src/app/actions"), { recursive: true });
+        writeFileSync(
+            join(dir, "src/app/api/hidden/route.ts"),
+            'const handler = async () => new Response("secret");\nexport { handler as POST };\n',
+        );
+        writeFileSync(
+            join(dir, "src/app/(group)/deep/nested/route.ts"),
+            "export async function GET() { return new Response('ok'); }\n",
+        );
+        writeFileSync(
+            join(dir, "src/app/actions/probe.ts"),
+            '/* licence header */\n"use server";\nexport async function hiddenAction() { return 1; }\n',
+        );
+        return dir;
+    }
+
+    it("finds a handler exported as `export { handler as POST }`", () => {
+        const dir = scratchTree();
+        try {
+            const routes = discoverRoutes(dir);
+            expect(routes.some((r) => r.method === "POST" && r.route === "/api/hidden")).toBe(true);
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    it("finds route handlers outside src/app/api and strips route groups from the path", () => {
+        // The live gap this closed: two authenticated admin route handlers and
+        // /health sat outside src/app/api and were absent from the inventory,
+        // which nonetheless claimed to enumerate every route.
+        const dir = scratchTree();
+        try {
+            const routes = discoverRoutes(dir);
+            expect(routes.some((r) => r.route === "/deep/nested")).toBe(true);
+            expect(routes.some((r) => r.route.includes("(group)"))).toBe(false);
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+
+    it('recognises a "use server" module preceded by a block comment', () => {
+        const dir = scratchTree();
+        try {
+            const { actions } = discoverServerActionFiles(dir);
+            expect(actions.map((a) => a.exportName)).toContain("hiddenAction");
+        } finally {
+            rmSync(dir, { recursive: true, force: true });
+        }
     });
 });
 

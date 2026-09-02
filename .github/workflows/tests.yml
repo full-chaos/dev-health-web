@@ -29,6 +29,15 @@ jobs:
                         - 'src/**'
                         - 'tests/**'
                         - 'ci/**'
+                        # The auth endpoint-profile inventory. Without this
+                        # pattern a PR touching ONLY
+                        # contracts/auth/v1/endpoint-profiles.web.json sets
+                        # code=false, skips the quality job, and the aggregate
+                        # job succeeds having never run the gate -- so the one
+                        # file most likely to be edited on its own is the edit
+                        # that skips its own check. Found by the CHAOS-3273
+                        # merge-gate round.
+                        - 'contracts/**'
                         - 'public/**'
                         - 'docs/**'
                         - '.github/workflows/**'
