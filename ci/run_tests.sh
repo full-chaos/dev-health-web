@@ -207,6 +207,9 @@ run_auth_profiles_gate() {
   if [[ -n "${WEB_CREDENTIAL_CLASSES:-}" ]]; then
     args+=(--credential-classes "${WEB_CREDENTIAL_CLASSES}")
   fi
+  if [[ -n "${WEB_CREDENTIAL_CLASSES_SCHEMA:-}" ]]; then
+    args+=(--credential-classes-schema "${WEB_CREDENTIAL_CLASSES_SCHEMA}")
+  fi
   echo "==> pnpm auth-profiles:gate ${args[*]}"
   pnpm auth-profiles:gate "${args[@]}"
 }

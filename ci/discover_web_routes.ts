@@ -71,10 +71,15 @@ export type ServerActionRecord = {
 // this line -- `(` need not close on the same line (multi-line params still
 // match, since only the opening paren after the name is required).
 const EXPORTED_ASYNC_FUNCTION_RE = /^export\s+async\s+function\s+(\w+)\s*\(/;
+// Global variants of the two above, used to count EVERY exported action on a
+// line rather than only the one anchored at its start. See the count/parse
+// reconciliation in discoverServerActionFiles.
+const EXPORTED_ASYNC_FUNCTION_GLOBAL_RE = /export\s+async\s+function\s+(\w+)\s*\(/g;
 // `export const foo = async (...) => { ... }` -- not observed in this repo
 // as of this pass, but a valid Server Action form; matched defensively so
 // discovery does not silently miss one if it appears later.
 const EXPORTED_ASYNC_ARROW_RE = /^export\s+const\s+(\w+)\s*(?::[^=]+)?=\s*async\s*[( ]/;
+const EXPORTED_ASYNC_ARROW_GLOBAL_RE = /export\s+const\s+(\w+)\s*(?::[^=]+)?=\s*async\s*[( ]/g;
 
 function parseArgs(argv: string[]): { root: string; out: string | null } {
     let root = process.cwd();
@@ -211,17 +216,36 @@ export function discoverServerActionFiles(root: string): {
         const exportedFunctionNames: string[] = [];
         lines.forEach((lineText, idx) => {
             const trimmed = lineText.trim();
-            const match =
-                EXPORTED_ASYNC_FUNCTION_RE.exec(trimmed) ?? EXPORTED_ASYNC_ARROW_RE.exec(trimmed);
-            if (!match) return;
-            const exportName = match[1];
-            exportedFunctionNames.push(exportName);
-            actions.push({
-                id: `server_action:${relFile}#${exportName}`,
-                file: relFile,
-                exportName,
-                line: idx + 1,
-            });
+            // Match EVERY exported action on the line, not just one anchored
+            // at its start.
+            //
+            // CHAOS-3273 merge-gate, EXECUTED: this used a single `.exec()`
+            // per line, so two exported actions written on ONE line yielded
+            // only the first. With the first profiled and the second not, the
+            // gate reported
+            //   PASS: 18 routes + 151 server actions, 0 violations.
+            // while `betaProbeUnprofiled` was a wholly unprofiled Server
+            // Action -- guardrail G-1 defeated by a semicolon. The sibling
+            // acr gate had the identical defect in Go (FindStringSubmatch).
+            //
+            // Worth knowing if you are re-testing this: with BOTH same-line
+            // actions unprofiled the gate DOES fail, on the first one. That
+            // reads as a catch and is not one; the hole only shows once the
+            // first is profiled.
+            const names = [
+                ...trimmed.matchAll(EXPORTED_ASYNC_FUNCTION_GLOBAL_RE),
+                ...trimmed.matchAll(EXPORTED_ASYNC_ARROW_GLOBAL_RE),
+            ].map((m) => m[1]);
+            if (names.length === 0) return;
+            for (const exportName of names) {
+                exportedFunctionNames.push(exportName);
+                actions.push({
+                    id: `server_action:${relFile}#${exportName}`,
+                    file: relFile,
+                    exportName,
+                    line: idx + 1,
+                });
+            }
         });
         files.push({ file: relFile, exportedFunctionNames });
     }

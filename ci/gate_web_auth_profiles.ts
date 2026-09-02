@@ -72,6 +72,15 @@
 
 import { readFileSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
+// The 2020 entry point, NOT ajv's default export: the ops-owned schemas
+// declare Draft 2020-12 and the default export implements draft-07.
+import Ajv2020 from "ajv/dist/2020";
+// ajv-formats 3.0.1 is already a dependency. Without it ajv logs
+// 'unknown format "date-time" ignored' and does not enforce the keyword --
+// in Draft 2020-12 `format` is annotation-only unless the validator opts in,
+// so an unenforced format is spec-legal but still a check the schema asks
+// for and we would not be doing.
+import addFormats from "ajv-formats";
 import {
     discoverRoutes,
     discoverServerActionFiles,
@@ -190,8 +199,111 @@ export interface GateInputs {
      * same contract as credentialClasses above).
      */
     serviceVocabulary: string[] | null;
+    /**
+     * The whole ops-owned endpoint-profile.schema.json document. null = not
+     * available, in which case full schema validation is SKIPPED (and said
+     * to be skipped, never reported as passed).
+     *
+     * Merge-gate finding (CHAOS-3273): this gate hand-rolled its top-level
+     * shape checks and validated no ROW against the schema at all, so
+     * `primary_validator: 17` and a misspelled `primary_validtor` on a row
+     * both passed across all 168 rows -- every declared type, every required
+     * row field, `additionalProperties: false` on the row object and every
+     * nested $defs enum went unenforced. This is the same defect ops's own
+     * first review round found and fixed, and acr fixed after it; web
+     * inherited the design and not the fix.
+     */
+    schemaDocument: unknown | null;
+    /** The whole ops-owned credential-classes.json document (not just its ids). */
+    credentialClassesDocument: unknown | null;
+    /** The whole ops-owned credential-classes.schema.json document. */
+    credentialClassesSchemaDocument: unknown | null;
     /** Reads `line`..`lineEnd` (1-indexed, inclusive) of `path`, relative to `webRoot`. Returns null if unreadable. */
     readSource: (path: string, line: number, lineEnd: number) => string | null;
+}
+
+/**
+ * Full Draft 2020-12 validation of one document against one schema.
+ *
+ * ajv 8.20.0 is already a direct dependency of this repo, so this closes the
+ * row-level hole with no new package. The 2020 entry point is required: the
+ * ops-owned schemas declare
+ * "$schema": "https://json-schema.org/draft/2020-12/schema", and ajv's
+ * DEFAULT export implements draft-07 -- pointing it at a 2020-12 schema is
+ * the same silent-under-validation trap acr's checker documents for
+ * xeipuuv/gojsonschema, where constructs the validator cannot interpret are
+ * quietly accepted and the gate reports green while checking less than it
+ * claims.
+ *
+ * strict:false because these schemas carry annotation keywords ajv's strict
+ * mode rejects outright; rejecting the ops-owned schema would turn a
+ * validating gate into a crashing one. allErrors:true so one run reports
+ * every violation rather than only the first.
+ */
+function validateAgainstSchema(
+    schemaDocument: unknown,
+    document: unknown,
+    rule: Violation["rule"],
+    label: string,
+): Violation[] {
+    const ajv = new Ajv2020({ strict: false, allErrors: true });
+    addFormats(ajv);
+    let validate;
+    try {
+        validate = ajv.compile(schemaDocument as object);
+    } catch (e) {
+        // A schema this gate cannot compile is a hard stop, never a skip: a
+        // validator that cannot run must say so rather than return "no
+        // violations found".
+        return [
+            {
+                rule,
+                detail: `${label}: schema could not be compiled, so NOTHING was validated against it -- ${
+                    e instanceof Error ? e.message : String(e)
+                }`,
+            },
+        ];
+    }
+    if (validate(document)) return [];
+    return (validate.errors ?? []).map((err) => ({
+        rule,
+        detail: `${label}: ${err.instancePath || "/"} ${err.message ?? "failed validation"}${
+            err.params && Object.keys(err.params).length ? " " + JSON.stringify(err.params) : ""
+        }`,
+    }));
+}
+
+/**
+ * A closed vocabulary that can hold one class_id twice, with two different
+ * definitions, is not closed. JSON Schema cannot express uniqueness of a
+ * field ACROSS objects in an array (uniqueItems compares whole items, and two
+ * entries differing in any other field are already "unique"), so this is a
+ * gate rule by necessity rather than preference.
+ */
+function duplicateCredentialClassViolations(credentialClassesDocument: unknown): Violation[] {
+    if (!isPlainObject(credentialClassesDocument)) return [];
+    const classes = credentialClassesDocument.classes;
+    if (!Array.isArray(classes)) return [];
+    const counts = new Map<string, number>();
+    const order: string[] = [];
+    for (const cls of classes) {
+        if (!isPlainObject(cls)) continue;
+        const id = cls.class_id;
+        if (typeof id !== "string") continue;
+        if (!counts.has(id)) order.push(id);
+        counts.set(id, (counts.get(id) ?? 0) + 1);
+    }
+    const violations: Violation[] = [];
+    for (const id of order) {
+        const n = counts.get(id) ?? 0;
+        if (n > 1) {
+            violations.push({
+                rule: "closed_vocabulary",
+                detail: `credential-classes.json declares class_id "${id}" ${n} times -- a closed vocabulary cannot hold one id with two definitions (JSON Schema cannot express cross-object id uniqueness)`,
+            });
+        }
+    }
+    return violations;
 }
 
 function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -224,6 +336,9 @@ export function runGate(input: GateInputs): Violation[] {
         discoveredActions,
         credentialClasses,
         serviceVocabulary,
+        schemaDocument,
+        credentialClassesDocument,
+        credentialClassesSchemaDocument,
         readSource,
     } = input;
 
@@ -231,6 +346,32 @@ export function runGate(input: GateInputs): Violation[] {
         violations.push({ rule: "schema_violation", detail: "document is not a JSON object" });
         return violations;
     }
+
+    // Full schema validation FIRST, then the hand-rolled checks below. The
+    // hand-rolled ones are kept because they produce better-targeted messages
+    // for the cases they cover; they are no longer the only thing standing
+    // between a malformed row and a green gate.
+    if (schemaDocument !== null) {
+        violations.push(
+            ...validateAgainstSchema(
+                schemaDocument,
+                doc,
+                "schema_violation",
+                "endpoint-profiles.web.json",
+            ),
+        );
+    }
+    if (credentialClassesDocument !== null && credentialClassesSchemaDocument !== null) {
+        violations.push(
+            ...validateAgainstSchema(
+                credentialClassesSchemaDocument,
+                credentialClassesDocument,
+                "closed_vocabulary",
+                "credential-classes.json",
+            ),
+        );
+    }
+    violations.push(...duplicateCredentialClassViolations(credentialClassesDocument));
 
     for (const key of TOP_LEVEL_REQUIRED) {
         if (!(key in doc)) {
@@ -425,64 +566,62 @@ function readSourceFromDisk(
     }
 }
 
-// Local dev-health monorepo layout: ops and web checked out as siblings.
-// Both ops-owned contract files live at the same contracts/auth/v1/
-// directory; the shared contract is owned by the ops-gate lane
-// (auth-cp/L1-adjacent), this gate only ever READS it. In CI there is no
-// sibling ops checkout -- the pinned sparse checkout (ci/ops-contract.pin)
-// supplies --schema/--credential-classes explicitly instead.
-function siblingOpsContractCandidates(relativePath: string): string[] {
-    return [
-        resolve(process.cwd(), "../ops", relativePath),
-        resolve(process.cwd(), "../../ops", relativePath),
-    ];
+// There used to be a siblingOpsContractCandidates() here that resolved
+// ../ops and ../../ops when --schema / --credential-classes were not passed,
+// so a local run "just worked" in a monorepo checkout.
+//
+// It is deleted deliberately. From a web worktree, ../../ops is the
+// developer's own ops CHECKOUT -- whatever branch and working state it
+// happens to be in -- not the commit named in ci/ops-contract.pin. The gate
+// would then report PASS without saying which contract it validated against,
+// and a local green would mean nothing about the pinned one. Today the path
+// does not even exist yet (that checkout is a commit behind the contract
+// merge), which is worse rather than better: the crutch is LATENT and would
+// switch itself on, silently, the next time someone pulls.
+//
+// The sibling lane hit the same shape from the other direction: acr's
+// equivalent fallback is exactly why a CI failure never reproduced locally.
+// Inputs are now passed explicitly or the check says it was skipped.
+
+/** Reads and parses one explicitly-supplied JSON file. null if absent or unparseable. */
+function loadJSONDocument(pathArg: string | null): unknown | null {
+    if (!pathArg || !existsSync(pathArg)) return null;
+    try {
+        return JSON.parse(readFileSync(pathArg, "utf8"));
+    } catch {
+        return null;
+    }
 }
 
-function loadCredentialClasses(pathArg: string | null): string[] | null {
-    const candidates = pathArg
-        ? [pathArg]
-        : siblingOpsContractCandidates("contracts/auth/v1/credential-classes.json");
-    for (const c of candidates) {
-        if (existsSync(c)) {
-            try {
-                const doc = JSON.parse(readFileSync(c, "utf8"));
-                if (Array.isArray(doc.classes)) {
-                    return doc.classes.map((cls: { class_id: string }) => cls.class_id);
-                }
-            } catch {
-                // fall through to next candidate
-            }
-        }
-    }
-    return null;
+function credentialClassIds(credentialClassesDocument: unknown): string[] | null {
+    if (!isPlainObject(credentialClassesDocument)) return null;
+    const classes = credentialClassesDocument.classes;
+    if (!Array.isArray(classes)) return null;
+    return classes
+        .filter(isPlainObject)
+        .map((cls) => cls.class_id)
+        .filter((id): id is string => typeof id === "string");
 }
 
 /**
  * Reads $defs.endpointProfile.properties.service.enum LIVE from the
- * ops-owned schema, rather than hardcoding a vocabulary here, so a
+ * ops-owned schema document, rather than hardcoding a vocabulary here, so a
  * schema-level "service" addition (a newly deployed app) is accepted with
- * zero checker code change -- same convention as acr's checkendpointprofiles
- * schemaEnum(). Returns null if the schema is unreadable/unparseable or the
- * field has no enum constraint.
+ * zero gate change. Returns null if the schema has no enum there.
  */
-function loadServiceVocabulary(pathArg: string | null): string[] | null {
-    const candidates = pathArg
-        ? [pathArg]
-        : siblingOpsContractCandidates("contracts/auth/v1/endpoint-profile.schema.json");
-    for (const c of candidates) {
-        if (existsSync(c)) {
-            try {
-                const schema = JSON.parse(readFileSync(c, "utf8"));
-                const serviceEnum = schema?.$defs?.endpointProfile?.properties?.service?.enum;
-                if (Array.isArray(serviceEnum)) {
-                    return serviceEnum as string[];
-                }
-            } catch {
-                // fall through to next candidate
-            }
-        }
-    }
-    return null;
+function serviceVocabularyFrom(schemaDocument: unknown): string[] | null {
+    if (!isPlainObject(schemaDocument)) return null;
+    const defs = schemaDocument.$defs;
+    if (!isPlainObject(defs)) return null;
+    const profile = defs.endpointProfile;
+    if (!isPlainObject(profile)) return null;
+    const props = profile.properties;
+    if (!isPlainObject(props)) return null;
+    const service = props.service;
+    if (!isPlainObject(service)) return null;
+    const serviceEnum = service.enum;
+    if (!Array.isArray(serviceEnum)) return null;
+    return serviceEnum.filter((v): v is string => typeof v === "string");
 }
 
 /**
@@ -509,8 +648,8 @@ export function checkContractInputsPresent(
             message:
                 `FAIL: missing ops-owned contract input(s) in CI: ${detail}. ` +
                 "CI must supply these via the pinned sparse checkout (see ci/ops-contract.pin and " +
-                ".github/workflows/tests.yml) -- a skip is only acceptable in a local run without a " +
-                "sibling ops checkout.",
+                ".github/workflows/tests.yml) -- a skip is only acceptable in a local run where " +
+                "they were not passed. There is no implicit fallback path.",
         };
     }
     return {
@@ -518,7 +657,7 @@ export function checkContractInputsPresent(
         message:
             `WARN: missing ops-owned contract input(s), closed-vocabulary check(s) for them are ` +
             `SKIPPED, not passed: ${detail}. Every other check still ran. Checked --schema/` +
-            "--credential-classes and the sibling-ops-checkout default paths (../ops, ../../ops). " +
+            "--schema / --credential-classes / --credential-classes-schema; there is no implicit fallback path, deliberately. " +
             "This is fatal in CI; CI/GITHUB_ACTIONS is unset here, so this is a local run.",
     };
 }
@@ -527,34 +666,45 @@ function parseArgs(argv: string[]): {
     root: string;
     profile: string;
     credentialClasses: string | null;
+    credentialClassesSchema: string | null;
     schema: string | null;
 } {
     let root = process.cwd();
     let profile = join(root, "contracts/auth/v1/endpoint-profiles.web.json");
     let credentialClasses: string | null = null;
+    let credentialClassesSchema: string | null = null;
     let schema: string | null = null;
     for (let i = 0; i < argv.length; i++) {
         if (argv[i] === "--root") root = argv[++i];
         else if (argv[i] === "--profile") profile = argv[++i];
         else if (argv[i] === "--credential-classes") credentialClasses = argv[++i];
+        else if (argv[i] === "--credential-classes-schema") credentialClassesSchema = argv[++i];
         else if (argv[i] === "--schema") schema = argv[++i];
     }
-    return { root, profile, credentialClasses, schema };
+    return { root, profile, credentialClasses, credentialClassesSchema, schema };
 }
 
 function main() {
-    const { root, profile, credentialClasses, schema } = parseArgs(process.argv.slice(2));
+    const { root, profile, credentialClasses, credentialClassesSchema, schema } = parseArgs(
+        process.argv.slice(2),
+    );
     const inCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
 
     const discoveredRoutes = discoverRoutes(root);
     const { actions: discoveredActions } = discoverServerActionFiles(root);
     const doc = JSON.parse(readFileSync(profile, "utf8"));
-    const classes = loadCredentialClasses(credentialClasses);
-    const serviceVocabulary = loadServiceVocabulary(schema);
+    const schemaDocument = loadJSONDocument(schema);
+    const credentialClassesDocument = loadJSONDocument(credentialClasses);
+    const credentialClassesSchemaDocument = loadJSONDocument(credentialClassesSchema);
+    const classes = credentialClassIds(credentialClassesDocument);
+    const serviceVocabulary = serviceVocabularyFrom(schemaDocument);
 
     const missingInputs: string[] = [];
     if (!classes) missingInputs.push("credential-classes.json (--credential-classes)");
     if (!serviceVocabulary) missingInputs.push("endpoint-profile.schema.json (--schema)");
+    if (!credentialClassesSchemaDocument) {
+        missingInputs.push("credential-classes.schema.json (--credential-classes-schema)");
+    }
 
     const { fatal, message } = checkContractInputsPresent(inCI, missingInputs);
     if (message) {
@@ -570,6 +720,9 @@ function main() {
         doc,
         credentialClasses: classes,
         serviceVocabulary,
+        schemaDocument,
+        credentialClassesDocument,
+        credentialClassesSchemaDocument,
         readSource: (p, l, le) => readSourceFromDisk(root, p, l, le),
     });
 

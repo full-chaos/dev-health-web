@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { readFileSync, mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { resolve, join } from "node:path";
+import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import {
     runGate,
@@ -17,6 +18,65 @@ import {
 } from "../discover_web_routes";
 
 const WEB_ROOT = resolve(__dirname, "../..");
+
+// SELF-CONTAINED schema fixtures, deliberately not the real ops-owned files.
+//
+// These unit tests run in the `unit` job, which has no sparse checkout of the
+// ops contracts -- reading the real files here would either fail there or, if
+// resolved through some sibling-checkout path, pass on a contract nobody
+// named. That fallback is precisely what this gate just deleted, and on the
+// acr side it is exactly why a CI failure never reproduced locally. The real
+// contract is exercised by the gate step in CI, which supplies it explicitly.
+//
+// They mirror the SHAPE that matters for these cases: a closed row object so
+// a misspelled field is caught, and a declared type on primary_validator so a
+// wrong type is caught.
+const FIXTURE_PROFILE_SCHEMA = {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    type: "object",
+    properties: {
+        rows: {
+            type: "array",
+            items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                    id: { type: "string" },
+                    surface_kind: { type: "string" },
+                    method: { type: ["string", "null"] },
+                    route: { type: ["string", "null"] },
+                    service: { type: "string" },
+                    source: { type: "object" },
+                    classification: { type: "string" },
+                    public_rationale: { type: ["string", "null"] },
+                    accepted_credential_classes: { type: "array" },
+                    primary_validator: { type: ["object", "null"] },
+                    gaps: { type: "array" },
+                },
+            },
+        },
+    },
+} as const;
+
+const FIXTURE_CREDENTIAL_CLASS_SCHEMA = {
+    $schema: "https://json-schema.org/draft/2020-12/schema",
+    type: "object",
+    required: ["classes"],
+    properties: {
+        classes: {
+            type: "array",
+            items: {
+                type: "object",
+                required: ["class_id", "issuer", "validator"],
+                properties: {
+                    class_id: { type: "string" },
+                    issuer: { type: "string" },
+                    validator: { type: "string" },
+                },
+            },
+        },
+    },
+} as const;
 
 /**
  * A minimal, individually valid two-row baseline (one rest row, one
@@ -98,6 +158,14 @@ function makeInputs(
         discoveredActions: b.actions,
         doc: b.doc,
         credentialClasses: ["auth_js_browser_session", "ops_access_token_hs256"],
+        // Fixture inputs default to null: these unit tests exercise the
+        // hand-rolled rules, and full schema validation is covered against
+        // the REAL ops schema in the "real repo state" block below plus the
+        // dedicated schema-validation tests. null means "skipped", which the
+        // gate reports rather than silently treating as passed.
+        schemaDocument: null,
+        credentialClassesDocument: null,
+        credentialClassesSchemaDocument: null,
         // Mirrors endpoint-profile.schema.json's live $defs.endpointProfile
         // .properties.service.enum as of this pass; a real run reads it from
         // the schema (loadServiceVocabulary), never hardcodes it.
@@ -127,6 +195,99 @@ describe("gate_web_auth_profiles: baseline", () => {
 });
 
 describe("gate_web_auth_profiles: each failure class fires on a seeded violation", () => {
+    // --- merge-gate fixes: three classes this gate accepted before -------
+    //
+    // Each was EXECUTED against the real inventory and the real ops contract
+    // before it was fixed, and each returned
+    // "PASS: 18 routes + 150 server actions, 0 violations."
+
+    it("schema_violation: a row field with the wrong type fails full schema validation", () => {
+        // Before: this gate hand-rolled its top-level checks and validated no
+        // ROW against the schema at all, so primary_validator: 17 passed on
+        // all 168 rows. That is the same defect ops's own first review round
+        // found and fixed, and acr fixed after it; web inherited the design
+        // and not the fix.
+        const b = baseline();
+        const doc = structuredClone(b.doc) as EndpointProfileDoc;
+        (doc.rows[0] as Record<string, unknown>).primary_validator = 17;
+        const violations = runGate(makeInputs(b, { doc, schemaDocument: FIXTURE_PROFILE_SCHEMA }));
+        expect(
+            violations.some(
+                (v) => v.rule === "schema_violation" && v.detail.includes("primary_validator"),
+            ),
+        ).toBe(true);
+    });
+
+    it("schema_violation: a misspelled row field fails additionalProperties:false", () => {
+        const b = baseline();
+        const doc = structuredClone(b.doc) as EndpointProfileDoc;
+        (doc.rows[0] as Record<string, unknown>).primary_validtor = "misspelled";
+        const violations = runGate(makeInputs(b, { doc, schemaDocument: FIXTURE_PROFILE_SCHEMA }));
+        expect(
+            violations.some(
+                (v) =>
+                    v.rule === "schema_violation" &&
+                    v.detail.includes("must NOT have additional properties"),
+            ),
+        ).toBe(true);
+    });
+
+    it("closed_vocabulary: credential classes stripped to ids only fail their own schema", () => {
+        // Before: the credential-class document was reduced to a list of ids
+        // and never validated, so a vocabulary whose entries had lost their
+        // issuer, validator, lifecycle authority and allowed route set still
+        // passed. "Closed vocabulary" then means a closed set of ids, not the
+        // guarantee the inventory cites.
+        const b = baseline();
+        const violations = runGate(
+            makeInputs(b, {
+                credentialClassesDocument: {
+                    classes: [{ class_id: "auth_js_browser_session" }],
+                },
+                credentialClassesSchemaDocument: FIXTURE_CREDENTIAL_CLASS_SCHEMA,
+            }),
+        );
+        expect(violations.some((v) => v.rule === "closed_vocabulary")).toBe(true);
+    });
+
+    it("closed_vocabulary: a duplicate class_id is rejected", () => {
+        // JSON Schema cannot express uniqueness of a field ACROSS objects in
+        // an array -- uniqueItems compares whole items, and two entries
+        // differing in any other field are already "unique" -- so this has to
+        // be a gate rule.
+        const b = baseline();
+        const violations = runGate(
+            makeInputs(b, {
+                credentialClassesDocument: {
+                    classes: [
+                        { class_id: "auth_js_browser_session", issuer: "a" },
+                        { class_id: "auth_js_browser_session", issuer: "b" },
+                    ],
+                },
+            }),
+        );
+        expect(
+            violations.some(
+                (v) =>
+                    v.rule === "closed_vocabulary" &&
+                    v.detail.includes("auth_js_browser_session") &&
+                    v.detail.includes("2 times"),
+            ),
+        ).toBe(true);
+    });
+
+    it("a schema that cannot be compiled is reported, never treated as no violations", () => {
+        // A validator that cannot run must say so. Returning [] here would be
+        // the exact shape of defect this gate exists to catch.
+        const b = baseline();
+        const violations = runGate(
+            makeInputs(b, { schemaDocument: { type: "not-a-real-json-schema-type" } }),
+        );
+        expect(violations.some((v) => v.detail.includes("NOTHING was validated against it"))).toBe(
+            true,
+        );
+    });
+
     it("unowned_surface: a discovered action with no row fails", () => {
         const b = baseline();
         b.actions.push({
@@ -399,6 +560,36 @@ describe("gate_web_auth_profiles: main() CLI, CI mode, missing contract inputs (
     });
 });
 
+describe("discover_web_routes: every exported action on a line is discovered", () => {
+    it("finds BOTH actions when two are written on one line", () => {
+        // CHAOS-3273 merge-gate, EXECUTED against the real tree: discovery
+        // used one .exec() per line, so the second export was invisible. With
+        // the first profiled and the second not, the gate reported
+        //   PASS: 18 routes + 151 server actions, 0 violations.
+        // while an entirely unprofiled Server Action sat in the source.
+        // Guardrail G-1 defeated by a semicolon. The sibling acr gate had the
+        // identical defect in Go.
+        const dir = mkdtempSync(join(tmpdir(), "web-sameline-"));
+        const actionsDir = join(dir, "src/app/(app)/probe");
+        mkdirSync(actionsDir, { recursive: true });
+        writeFileSync(
+            join(actionsDir, "actions.ts"),
+            '"use server";\n' +
+                "export async function alphaProbe() { return 1; } export async function betaProbe() { return 2; }\n",
+        );
+        const cwd = process.cwd();
+        try {
+            process.chdir(dir);
+            const { actions } = discoverServerActionFiles(dir);
+            const names = actions.map((a) => a.exportName).sort();
+            expect(names).toEqual(["alphaProbe", "betaProbe"]);
+        } finally {
+            process.chdir(cwd);
+            rmSync(dir, { recursive: true, force: true });
+        }
+    });
+});
+
 describe("gate_web_auth_profiles: real repo state", () => {
     it("the committed endpoint-profiles.web.json currently has zero violations against live discovery", () => {
         const doc = JSON.parse(
@@ -419,6 +610,9 @@ describe("gate_web_auth_profiles: real repo state", () => {
             // the real rows.
             credentialClasses: null,
             serviceVocabulary: null,
+            schemaDocument: null,
+            credentialClassesDocument: null,
+            credentialClassesSchemaDocument: null,
             readSource: (path, line, lineEnd) => {
                 try {
                     const lines = readFileSync(resolve(WEB_ROOT, path), "utf8").split("\n");
