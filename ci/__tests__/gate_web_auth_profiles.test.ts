@@ -560,6 +560,59 @@ describe("gate_web_auth_profiles: main() CLI, CI mode, missing contract inputs (
     }, 30_000);
 });
 
+describe("surface_kind vocabulary is read live from the schema", () => {
+    // The pin bump to ops 45b28103a added graphql_subscription to the schema's
+    // surface_kind enum. This gate rejected a row using it, while the commit
+    // message for that bump claimed the vocabularies were read live -- true of
+    // `service`, false of `surface_kind`. The claim had been carried over from
+    // the sibling acr gate, where it holds. Same design, different
+    // implementation; the assertion did not transfer.
+    const schemaWithSubscription = {
+        $defs: {
+            endpointProfile: {
+                properties: {
+                    surface_kind: {
+                        enum: [
+                            "rest",
+                            "graphql_field",
+                            "graphql_mutation",
+                            "graphql_subscription",
+                            "server_action",
+                        ],
+                    },
+                },
+            },
+        },
+    };
+
+    it("accepts a surface_kind the schema allows but the fallback set does not", () => {
+        const b = baseline();
+        const doc = structuredClone(b.doc) as EndpointProfileDoc;
+        (doc.rows[0] as Record<string, unknown>).surface_kind = "graphql_subscription";
+        const violations = runGate(makeInputs(b, { doc, schemaDocument: schemaWithSubscription }));
+        expect(
+            violations.some(
+                (v) => v.rule === "closed_vocabulary" && v.detail.includes("graphql_subscription"),
+            ),
+        ).toBe(false);
+    });
+
+    it("still rejects a surface_kind the schema does not allow", () => {
+        // The vocabulary must stay CLOSED -- reading it live must not mean
+        // accepting anything.
+        const b = baseline();
+        const doc = structuredClone(b.doc) as EndpointProfileDoc;
+        (doc.rows[0] as Record<string, unknown>).surface_kind = "not_a_real_surface_kind";
+        const violations = runGate(makeInputs(b, { doc, schemaDocument: schemaWithSubscription }));
+        expect(
+            violations.some(
+                (v) =>
+                    v.rule === "closed_vocabulary" && v.detail.includes("not_a_real_surface_kind"),
+            ),
+        ).toBe(true);
+    });
+});
+
 describe("tests.yml: an inventory-only change must still run the gate", () => {
     // THE CLASS, not the instance. The gate is correct when the quality job
     // runs; the defect was that a PR touching ONLY the inventory did not run

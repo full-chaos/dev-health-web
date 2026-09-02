@@ -143,7 +143,22 @@ const ROW_REQUIRED = [
     "gaps",
 ];
 
-const SURFACE_KINDS = new Set(["rest", "graphql_field", "graphql_mutation", "server_action"]);
+// Fallback ONLY, used when no schema document is supplied (a local run without
+// --schema). The live values are read from the schema; see surfaceKindVocabulary.
+//
+// This set used to be the sole source of truth, and the pin bump to ops
+// 45b28103a is what exposed that: the new contract added graphql_subscription
+// to the schema's enum, and this gate rejected a row using it -- while the
+// commit message for that very bump claimed the vocabularies were read live.
+// They were, for `service`, and not for `surface_kind`. The claim was carried
+// over from the sibling acr gate, where it is true. Same design, different
+// implementation: the assertion did not transfer and nobody had checked it.
+const SURFACE_KINDS_FALLBACK = new Set([
+    "rest",
+    "graphql_field",
+    "graphql_mutation",
+    "server_action",
+]);
 // "service" is NOT hardcoded here: it is read live from
 // endpoint-profile.schema.json ($defs.endpointProfile.properties.service.enum)
 // via loadServiceVocabulary/GateInputs.serviceVocabulary below, the same way
@@ -433,7 +448,10 @@ export function runGate(input: GateInputs): Violation[] {
             webRowsById.set(row.id, row);
         }
 
-        if (row.surface_kind && !SURFACE_KINDS.has(row.surface_kind)) {
+        const surfaceKinds = schemaDocument
+            ? new Set(schemaEnumFrom(schemaDocument, "surface_kind") ?? [...SURFACE_KINDS_FALLBACK])
+            : SURFACE_KINDS_FALLBACK;
+        if (row.surface_kind && !surfaceKinds.has(row.surface_kind)) {
             violations.push({
                 rule: "closed_vocabulary",
                 id: row.id,
@@ -610,6 +628,14 @@ function credentialClassIds(credentialClassesDocument: unknown): string[] | null
  * zero gate change. Returns null if the schema has no enum there.
  */
 function serviceVocabularyFrom(schemaDocument: unknown): string[] | null {
+    return schemaEnumFrom(schemaDocument, "service");
+}
+
+/**
+ * Reads $defs.endpointProfile.properties.<field>.enum LIVE from the ops-owned
+ * schema document. Returns null when the schema has no enum for that field.
+ */
+function schemaEnumFrom(schemaDocument: unknown, field: string): string[] | null {
     if (!isPlainObject(schemaDocument)) return null;
     const defs = schemaDocument.$defs;
     if (!isPlainObject(defs)) return null;
@@ -617,11 +643,11 @@ function serviceVocabularyFrom(schemaDocument: unknown): string[] | null {
     if (!isPlainObject(profile)) return null;
     const props = profile.properties;
     if (!isPlainObject(props)) return null;
-    const service = props.service;
-    if (!isPlainObject(service)) return null;
-    const serviceEnum = service.enum;
-    if (!Array.isArray(serviceEnum)) return null;
-    return serviceEnum.filter((v): v is string => typeof v === "string");
+    const node = props[field];
+    if (!isPlainObject(node)) return null;
+    const values = node.enum;
+    if (!Array.isArray(values)) return null;
+    return values.filter((v): v is string => typeof v === "string");
 }
 
 /**
