@@ -204,6 +204,33 @@ describe("readCoverage — unassignedShare", () => {
         expect(readCoverage(duplicateTeamName).unassignedShare).toBeNull();
     });
 
+    // CHAOS-4756 codex round 5 (P1, EXECUTED): excluding only the ambiguous
+    // name from consideration, while still measuring its unambiguous
+    // siblings, lets the REMAINING names' total quietly stand in for the
+    // true team total -- an unassigned team (60) plus two DIFFERENT team
+    // nodes sharing the name "Fullchaos" (40, 20) excluded "Fullchaos" and
+    // read 60/60 = 1.0 instead of failing the whole flow closed. A single
+    // ambiguous team name must invalidate the entire flow's denominator, not
+    // just its own node.
+    it("degrades to null when ANY team name is duplicated, even an assigned one unrelated to the unassigned node", () => {
+        const flow: SankeyResponse = {
+            mode: "investment",
+            nodes: [
+                { name: "Unassigned", group: "team" },
+                { name: "Fullchaos", group: "team" }, // first distinct node named "Fullchaos"
+                { name: "Fullchaos", group: "team" }, // second distinct node, same name
+                { name: "Some Theme", group: "category" },
+            ],
+            links: [
+                { source: "Unassigned", target: "Some Theme", value: 60 },
+                { source: "Fullchaos", target: "Some Theme", value: 40 },
+                { source: "Fullchaos", target: "Some Theme", value: 20 },
+            ],
+        };
+
+        expect(readCoverage(flow).unassignedShare).toBeNull();
+    });
+
     // CHAOS-4756 codex round 3 (P1, EXECUTED): deciding source-vs-target ONCE
     // from the TEAM group's aggregate inbound/outbound totals, then applying
     // that choice to every node, breaks when a team node is itself mid-path

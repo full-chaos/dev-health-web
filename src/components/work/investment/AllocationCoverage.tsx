@@ -54,10 +54,18 @@ type CoverageReading = {
  * attributing the THEME's flow to the team) or share the exact same group
  * (two distinct TEAM entries both named "Unassigned", codex round 4:
  * returned 1 instead of null, since the round-2 guard only checked for
- * cross-group collisions). Any duplicated name is excluded from team
- * membership entirely -- never guessed -- which degrades that flow to
- * `null` (cannot tell, caller falls back to another flow) rather than a
- * silently wrong number.
+ * cross-group collisions).
+ *
+ * Crucially, an ambiguous name FAILS THE WHOLE FLOW CLOSED (returns `null`)
+ * rather than being dropped from consideration while its unambiguous
+ * siblings are still measured: silently excluding just the ambiguous node
+ * still lets a denominator built from the REMAINING names stand in as if it
+ * were the true team total (codex round 5, P1 EXECUTED: an unassigned team
+ * carrying 60, plus two DIFFERENT team nodes both named "Fullchaos" carrying
+ * 40 and 20, excluded only "Fullchaos" and left a denominator of 60 instead
+ * of the true 120 -- reading 1.0 instead of bailing to `null`). A single
+ * ambiguous team name makes the ENTIRE flow's team denominator
+ * untrustworthy, not just that one node's own contribution.
  *
  * A prior version decided which side (inbound vs outbound) to measure ONCE,
  * from the TEAM group's aggregate totals, then applied that choice to every
@@ -76,13 +84,16 @@ function computeUnassignedShare(flow: SankeyResponse): number | null {
     for (const node of flow.nodes) {
         nodeOccurrencesByName.set(node.name, (nodeOccurrencesByName.get(node.name) ?? 0) + 1);
     }
-    const isUnambiguousTeamName = (name: string) => nodeOccurrencesByName.get(name) === 1;
 
     const teamNodeNames = new Set(
-        flow.nodes
-            .filter((node) => node.group === "team" && isUnambiguousTeamName(node.name))
-            .map((node) => node.name),
+        flow.nodes.filter((node) => node.group === "team").map((node) => node.name),
     );
+    for (const name of teamNodeNames) {
+        if ((nodeOccurrencesByName.get(name) ?? 0) > 1) {
+            return null;
+        }
+    }
+
     const unassignedTeamNames = new Set(
         [...teamNodeNames].filter((name) => isUnassignedLabel(stripSankeyPrefix(name))),
     );
