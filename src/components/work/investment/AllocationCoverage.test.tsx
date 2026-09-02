@@ -177,6 +177,32 @@ describe("readCoverage — unassignedShare", () => {
         expect(screen.queryByText("71%")).not.toBeInTheDocument();
     });
 
+    // CHAOS-4756 codex round 3 (P1, EXECUTED): deciding source-vs-target ONCE
+    // from the TEAM group's aggregate inbound/outbound totals, then applying
+    // that choice to every node, breaks when a team node is itself mid-path
+    // (both inbound AND outbound) -- an aggregate tie silently picked the
+    // wrong side, reading 0.4 instead of the true 0.6.
+    it("returns null when a TEAM node is itself mid-path (both inbound and outbound)", () => {
+        const flow: SankeyResponse = {
+            mode: "investment",
+            nodes: [
+                { name: "Unassigned", group: "team" },
+                { name: "Inbound Only", group: "team" },
+                { name: "Outbound Only", group: "team" },
+                { name: "Some Theme", group: "category" },
+            ],
+            links: [
+                // Unassigned is mid-path: both a target and a source.
+                { source: "Some Theme", target: "Unassigned", value: 60 },
+                { source: "Unassigned", target: "Some Theme", value: 40 },
+                { source: "Some Theme", target: "Inbound Only", value: 40 },
+                { source: "Outbound Only", target: "Some Theme", value: 60 },
+            ],
+        };
+
+        expect(readCoverage(flow).unassignedShare).toBeNull();
+    });
+
     it("returns null when only a non-TEAM node (e.g. an unassigned THEME) is unassigned", () => {
         const flow: SankeyResponse = {
             mode: "investment",

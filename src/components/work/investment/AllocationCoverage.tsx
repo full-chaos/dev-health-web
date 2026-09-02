@@ -55,6 +55,18 @@ type CoverageReading = {
  * name shared by more than one `group` is therefore excluded from team
  * membership entirely -- never guessed -- which degrades that flow to
  * `null` (cannot tell) rather than a silently wrong number.
+ *
+ * A prior version decided which side (inbound vs outbound) to measure ONCE,
+ * from the TEAM group's aggregate totals, then applied that choice to every
+ * team node. That breaks for a shape neither real flow_mode this component
+ * reads actually produces, but that a valid `SankeyResponse` can still
+ * describe: a TEAM node that is itself mid-path (both inbound AND outbound),
+ * or team nodes split across both directions in the same flow. Either shape
+ * has no single hop to measure a share on (codex round 3, P1 EXECUTED: a
+ * mid-path unassigned TEAM with inbound 60/outbound 40 alongside an
+ * inbound-only and an outbound-only assigned team tied the group totals at
+ * 100/100, and the `>=` tiebreak silently picked the wrong side, 0.4 instead
+ * of 0.6). Bail to `null` per node and per flow instead of guessing.
  */
 function computeUnassignedShare(flow: SankeyResponse): number | null {
     const groupsByName = new Map<string, Set<string>>();
@@ -87,22 +99,33 @@ function computeUnassignedShare(flow: SankeyResponse): number | null {
     let teamInbound = 0;
     let unassignedOutbound = 0;
     let unassignedInbound = 0;
-    for (const link of flow.links) {
-        if (teamNodeNames.has(link.source)) {
-            teamOutbound += link.value;
-            if (unassignedTeamNames.has(link.source)) {
-                unassignedOutbound += link.value;
-            }
+    for (const name of teamNodeNames) {
+        const inbound = flow.links
+            .filter((link) => link.target === name)
+            .reduce((sum, link) => sum + link.value, 0);
+        const outbound = flow.links
+            .filter((link) => link.source === name)
+            .reduce((sum, link) => sum + link.value, 0);
+        // A team node that is itself both a link source and target has no
+        // single hop this measurement can attribute cleanly.
+        if (inbound > 0 && outbound > 0) {
+            return null;
         }
-        if (teamNodeNames.has(link.target)) {
-            teamInbound += link.value;
-            if (unassignedTeamNames.has(link.target)) {
-                unassignedInbound += link.value;
-            }
+        teamInbound += inbound;
+        teamOutbound += outbound;
+        if (unassignedTeamNames.has(name)) {
+            unassignedInbound += inbound;
+            unassignedOutbound += outbound;
         }
     }
+    // Team nodes split across both directions in the same flow (some
+    // outbound-only, others inbound-only) describe two different hops, not
+    // one comparable share.
+    if (teamInbound > 0 && teamOutbound > 0) {
+        return null;
+    }
 
-    const onSourceHop = teamOutbound >= teamInbound;
+    const onSourceHop = teamOutbound > 0;
     const comparableTotal = onSourceHop ? teamOutbound : teamInbound;
     const unassignedThroughput = onSourceHop ? unassignedOutbound : unassignedInbound;
 
