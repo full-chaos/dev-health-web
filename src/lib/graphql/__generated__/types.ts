@@ -431,7 +431,7 @@ export type BreakdownItem = {
   __typename?: 'BreakdownItem';
   key: Scalars['String']['output'];
   label?: Maybe<Scalars['String']['output']>;
-  value: Scalars['Float']['output'];
+  value?: Maybe<Scalars['Float']['output']>;
 };
 
 export type BreakdownRequestInput = {
@@ -2364,7 +2364,7 @@ export type SankeyEdge = {
   __typename?: 'SankeyEdge';
   source: Scalars['String']['output'];
   target: Scalars['String']['output'];
-  value: Scalars['Float']['output'];
+  value?: Maybe<Scalars['Float']['output']>;
 };
 
 export type SankeyNode = {
@@ -2372,7 +2372,7 @@ export type SankeyNode = {
   dimension: Scalars['String']['output'];
   id: Scalars['String']['output'];
   label: Scalars['String']['output'];
-  value: Scalars['Float']['output'];
+  value?: Maybe<Scalars['Float']['output']>;
 };
 
 export type SankeyRequestInput = {
@@ -2714,7 +2714,7 @@ export type TimeGranularity =
 export type TimeseriesBucket = {
   __typename?: 'TimeseriesBucket';
   date: Scalars['Date']['output'];
-  value: Scalars['Float']['output'];
+  value?: Maybe<Scalars['Float']['output']>;
 };
 
 export type TimeseriesRequestInput = {
