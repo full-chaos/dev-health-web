@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|pagerduty-final-qa|live-e2e|design-lint|ci> [current/total]" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|pagerduty-final-qa|live-e2e|design-lint|ci> [current/total]" >&2
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -191,6 +191,29 @@ run_unit() {
   pnpm exec vitest run --coverage --coverage.reporter=text --coverage.reporter=lcov
 }
 
+# CHAOS-3273 Wave 0: guardrail G-1's web-side CI gate
+# (ci/gate_web_auth_profiles.ts). WEB_ENDPOINT_PROFILE_SCHEMA/
+# WEB_CREDENTIAL_CLASSES, when set, must name the pinned ops-owned contract
+# files (see ci/ops-contract.pin and .github/workflows/tests.yml's sparse
+# checkout). Unset locally is an honest, non-fatal skip of the
+# closed-vocabulary checks (the gate script itself decides fatal-in-CI vs
+# skip-locally, keyed off CI/GITHUB_ACTIONS -- this wrapper never guesses
+# that).
+run_auth_profiles_gate() {
+  local args=()
+  if [[ -n "${WEB_ENDPOINT_PROFILE_SCHEMA:-}" ]]; then
+    args+=(--schema "${WEB_ENDPOINT_PROFILE_SCHEMA}")
+  fi
+  if [[ -n "${WEB_CREDENTIAL_CLASSES:-}" ]]; then
+    args+=(--credential-classes "${WEB_CREDENTIAL_CLASSES}")
+  fi
+  if [[ -n "${WEB_CREDENTIAL_CLASSES_SCHEMA:-}" ]]; then
+    args+=(--credential-classes-schema "${WEB_CREDENTIAL_CLASSES_SCHEMA}")
+  fi
+  echo "==> pnpm auth-profiles:gate ${args[*]}"
+  pnpm auth-profiles:gate "${args[@]}"
+}
+
 run_e2e() {
   run_timed "e2e artifact preparation" prepare_playwright_artifacts
   run_timed "e2e browser installation" install_playwright_browser
@@ -340,6 +363,9 @@ case "${tier}" in
   unit)
     run_unit
     ;;
+  auth-profiles-gate)
+    run_auth_profiles_gate
+    ;;
   e2e)
     run_e2e
     ;;
@@ -373,6 +399,7 @@ case "${tier}" in
     run_quality
     run_pnpm_script build
     run_unit
+    run_auth_profiles_gate
     run_e2e
     run_pagerduty_final_qa "${PLAYWRIGHT_REPORT_ROOT}/pagerduty-final-qa" "${PLAYWRIGHT_RESULTS_ROOT}/pagerduty-final-qa"
     ;;
