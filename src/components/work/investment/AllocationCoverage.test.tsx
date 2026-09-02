@@ -177,6 +177,33 @@ describe("readCoverage — unassignedShare", () => {
         expect(screen.queryByText("71%")).not.toBeInTheDocument();
     });
 
+    // CHAOS-4756 codex round 4 (P1, EXECUTED): the round-2 guard only
+    // excluded a name shared across DIFFERENT groups. It missed the same
+    // class of ambiguity within a SINGLE group: two distinct TEAM node
+    // entries sharing the identical name "Unassigned" (e.g. two independent
+    // "no team resolved" placeholder rows, or a real team literally named
+    // that) collapsed into one Set entry and returned share=1 instead of
+    // null -- neither of the colliding links can be attributed to either
+    // node. The fix generalizes to "any node name occurring more than once
+    // in flow.nodes is ambiguous," which subsumes round 2's cross-group case
+    // too.
+    it("degrades to null when two DISTINCT team node entries share one name (same group)", () => {
+        const duplicateTeamName: SankeyResponse = {
+            mode: "investment",
+            nodes: [
+                { name: "Unassigned", group: "team" }, // e.g. TEAM:missing
+                { name: "Unassigned", group: "team" }, // e.g. TEAM:literal — same name, different node
+                { name: "Delivery", group: "category" },
+            ],
+            links: [
+                { source: "Unassigned", target: "Delivery", value: 60 },
+                { source: "Unassigned", target: "Delivery", value: 40 },
+            ],
+        };
+
+        expect(readCoverage(duplicateTeamName).unassignedShare).toBeNull();
+    });
+
     // CHAOS-4756 codex round 3 (P1, EXECUTED): deciding source-vs-target ONCE
     // from the TEAM group's aggregate inbound/outbound totals, then applying
     // that choice to every node, breaks when a team node is itself mid-path

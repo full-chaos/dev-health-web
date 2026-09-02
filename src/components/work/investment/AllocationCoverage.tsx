@@ -46,15 +46,18 @@ type CoverageReading = {
  * nodes exist and genuinely carry zero flow.
  *
  * `SankeyLink.source`/`target` reference nodes by `name` alone -- there is
- * no id on the wire. If a backend labels a missing TEAM node and a mid-path
- * unassigned THEME node with the exact same string (e.g. both literally
- * "Unassigned"), that name is structurally ambiguous: a link touching it
- * could belong to either node, and nothing in the payload says which
- * (codex round 2, P1 EXECUTED: a colliding name inflated the share from the
- * true 0.6 to 0.714 by attributing a THEME node's flow to the team). Any
- * name shared by more than one `group` is therefore excluded from team
+ * no id on the wire (CHAOS-4772 tracks adding one). ANY node name that
+ * occurs more than once in `flow.nodes` is therefore structurally
+ * ambiguous: a link touching that name cannot be attributed to a single
+ * node, whether the two node entries differ by group (a TEAM and a mid-path
+ * THEME both literally "Unassigned", codex round 2: inflated 0.6 to 0.714 by
+ * attributing the THEME's flow to the team) or share the exact same group
+ * (two distinct TEAM entries both named "Unassigned", codex round 4:
+ * returned 1 instead of null, since the round-2 guard only checked for
+ * cross-group collisions). Any duplicated name is excluded from team
  * membership entirely -- never guessed -- which degrades that flow to
- * `null` (cannot tell) rather than a silently wrong number.
+ * `null` (cannot tell, caller falls back to another flow) rather than a
+ * silently wrong number.
  *
  * A prior version decided which side (inbound vs outbound) to measure ONCE,
  * from the TEAM group's aggregate totals, then applied that choice to every
@@ -69,19 +72,11 @@ type CoverageReading = {
  * of 0.6). Bail to `null` per node and per flow instead of guessing.
  */
 function computeUnassignedShare(flow: SankeyResponse): number | null {
-    const groupsByName = new Map<string, Set<string>>();
+    const nodeOccurrencesByName = new Map<string, number>();
     for (const node of flow.nodes) {
-        if (node.group === undefined) {
-            continue;
-        }
-        const groups = groupsByName.get(node.name) ?? new Set<string>();
-        groups.add(node.group);
-        groupsByName.set(node.name, groups);
+        nodeOccurrencesByName.set(node.name, (nodeOccurrencesByName.get(node.name) ?? 0) + 1);
     }
-    const isUnambiguousTeamName = (name: string) => {
-        const groups = groupsByName.get(name);
-        return groups !== undefined && groups.size === 1 && groups.has("team");
-    };
+    const isUnambiguousTeamName = (name: string) => nodeOccurrencesByName.get(name) === 1;
 
     const teamNodeNames = new Set(
         flow.nodes
