@@ -8,8 +8,12 @@ allowBuilds:
 
 overrides:
     # fast-uri: held inside major 3 (ajv 8 declares ^3.0.1; 4.x is a breaking major).
-    # Floor raised past the host-confusion advisory GHSA-7p8r-x3mc-p8w7 (fixed in 3.1.5).
-    fast-uri: ">=3.1.5 <4"
+    # Floor raised again to clear GHSA-5jgf-p345-68v8 / GHSA-f65p-4m7j-42xc /
+    # GHSA-fph4-wmhf-6fwf / GHSA-jqff-g426-hqxp (host confusion + SSRF via
+    # percent-encoded scheme normalization and skipped IDN checks), all fixed
+    # in 3.1.6 per their own "Patched versions" field. The prior 3.1.5 floor
+    # (for GHSA-7p8r-x3mc-p8w7) was one patch short of these.
+    fast-uri: ">=3.1.6 <4"
     sharp: 0.35.3
     # Security floors for advisories reachable only transitively (CHAOS-3096 audit gate).
     # postcss: next pins 8.4.31 exactly, so GHSA-6g55-p6wh-862q / GHSA-r28c-9q8g-f849
