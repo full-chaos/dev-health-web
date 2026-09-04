@@ -12,6 +12,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { metricFilterToAIFilter } from "@/lib/filters/ai";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
+import { withFilterParam } from "@/lib/filters/url";
 import { navTrailForPathname } from "@/lib/navigation/areas";
 
 type AIRiskPageProps = {
@@ -52,18 +53,24 @@ export default async function AIRiskPage({ searchParams }: AIRiskPageProps) {
             <AIPageHeader
                 eyebrow="AI"
                 title="Governance Risk"
-                breadcrumbs={[
-                    ...navTrailForPathname("/ai/risk").map((c) => ({
-                        ...c,
-                        href: c.href ?? "/ai",
-                    })),
-                    ...(view === "overview"
-                        ? [{ label: "Governance Risk" }]
+                breadcrumbs={
+                    view === "overview"
+                        ? navTrailForPathname("/ai/risk")
                         : [
-                              { label: "Governance Risk", href: "/ai/risk" },
+                              // On a sub-tab the area→child trail's "Governance Risk"
+                              // crumb becomes a link back to the overview, with the
+                              // active view as the final (current) crumb. Preserve the
+                              // active filter scope on that link the same way the
+                              // in-page tabs do (AIGovernanceRiskTabs), so the
+                              // breadcrumb doesn't silently reset it.
+                              ...navTrailForPathname("/ai/risk").slice(0, -1),
+                              {
+                                  label: "Governance Risk",
+                                  href: withFilterParam("/ai/risk", filters, activeRole),
+                              },
                               { label: VIEW_CRUMBS[view] },
-                          ]),
-                ]}
+                          ]
+                }
             >
                 {VIEW_LEDES[view]}
             </AIPageHeader>

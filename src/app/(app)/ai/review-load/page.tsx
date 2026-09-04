@@ -28,13 +28,7 @@ export default async function AIReviewLoadPage({ searchParams }: AIReviewLoadPag
             <AIPageHeader
                 eyebrow="AI"
                 title="Review Load"
-                breadcrumbs={[
-                    ...navTrailForPathname("/ai/review-load").map((c) => ({
-                        ...c,
-                        href: c.href ?? "/ai",
-                    })),
-                    { label: "Review Load" },
-                ]}
+                breadcrumbs={navTrailForPathname("/ai/review-load")}
             >
                 Diagnostic view for AI-generated review pressure, comparing AI-attributed work
                 against the human baseline without person-level rankings.

@@ -30,13 +30,7 @@ export default async function AIImpactPage({ searchParams }: AIImpactPageProps) 
             <AIPageHeader
                 eyebrow="AI"
                 title="Impact"
-                breadcrumbs={[
-                    ...navTrailForPathname("/ai/impact").map((c) => ({
-                        ...c,
-                        href: c.href ?? "/ai",
-                    })),
-                    { label: "Impact" },
-                ]}
+                breadcrumbs={navTrailForPathname("/ai/impact")}
             >
                 Org-wide view of how AI-assisted workflows appear to influence delivery, review
                 load, quality gaps, and operational drag.

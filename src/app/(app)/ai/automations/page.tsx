@@ -28,13 +28,7 @@ export default async function AIAutomationsPage({ searchParams }: AIAutomationsP
             <AIPageHeader
                 eyebrow="AI"
                 title="Automations"
-                breadcrumbs={[
-                    ...navTrailForPathname("/ai/automations").map((c) => ({
-                        ...c,
-                        href: c.href ?? "/ai",
-                    })),
-                    { label: "Automations" },
-                ]}
+                breadcrumbs={navTrailForPathname("/ai/automations")}
             >
                 Candidate patterns for responsible automation, separated from Impact diagnostics so
                 teams can triage opportunities directly.
