@@ -9,6 +9,7 @@ const environment = {
     ...process.env,
     AUTH_SECRET: "context-fabric-production-playwright",
     BACKEND_URL: "http://127.0.0.1:8012",
+    NEXT_PUBLIC_SENTRY_REPLAY_ROUTES: "",
     NODE_ENV: "production",
 };
 
@@ -26,18 +27,6 @@ export function run(
         child.once("error", reject);
         child.once("exit", (code) => resolvePromise(code ?? 1));
     });
-}
-
-export async function preflightOpenSSL({ runCommand = run } = {}) {
-    try {
-        const exitCode = await runCommand("openssl", ["version"]);
-        if (exitCode !== 0) throw new Error(`exited with code ${exitCode}`);
-    } catch (error) {
-        const detail = error instanceof Error ? ` (${error.message})` : "";
-        throw new Error(
-            `Context Fabric QA requires OpenSSL on PATH to create its local HTTPS certificate${detail}. Install OpenSSL and reopen your terminal before retrying.`,
-        );
-    }
 }
 
 const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -65,7 +54,6 @@ export async function main({
     isReadable,
     cleanGuidedBuildOutput = removeGuidedBuildOutput,
 } = {}) {
-    await preflightOpenSSL({ runCommand });
     const packageManager = resolvePackageManagerCommand({
         platform,
         npmExecPath,

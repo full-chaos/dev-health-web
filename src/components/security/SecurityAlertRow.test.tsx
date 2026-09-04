@@ -56,6 +56,7 @@ describe("SecurityAlertRow", () => {
         render(<SecurityAlertRow alert={makeAlert()} />);
 
         const row = screen.getByRole("link", { name: /Prototype pollution/i });
+        expect(row).toHaveAttribute("title", "Prototype pollution in lodash");
         await userEvent.click(row);
 
         expect(openSpy).toHaveBeenCalledWith(

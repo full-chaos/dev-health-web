@@ -7,6 +7,7 @@ import { LineChart } from "echarts/charts";
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
+import { formatNumber } from "@/lib/formatters";
 
 echarts.use([LineChart]);
 
@@ -60,6 +61,11 @@ export function formatSparklineTooltipDate(axisValue: string | number): string {
     return str;
 }
 
+export function formatSparklineTooltipValue(value: number | string | undefined): string {
+    if (typeof value === "number") return formatNumber(value);
+    return value ?? "";
+}
+
 export function SparklineChart({
     data,
     categories,
@@ -94,7 +100,7 @@ export function SparklineChart({
                         const first = list[0] as SparklineTooltipParam | undefined;
                         const axisValue = first?.axisValue ?? "";
                         const label = formatSparklineTooltipDate(axisValue);
-                        const value = first?.value !== undefined ? first.value : "";
+                        const value = formatSparklineTooltipValue(first?.value);
                         return `${first?.marker ?? ""}${label}: ${value}`;
                     },
                 },

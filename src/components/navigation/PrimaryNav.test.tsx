@@ -122,7 +122,7 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
         expect(screen.getByTestId("nav-children-diagnose")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /^Flow$/i })).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /^Bottlenecks$/i })).toBeInTheDocument();
-        expect(screen.queryByRole("link", { name: /^Context Fabric$/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: /^Ask Dev$/i })).not.toBeInTheDocument();
 
         // Govern is NOT active → none of its children appear.
         expect(screen.queryByTestId("nav-children-govern")).toBeNull();
@@ -140,30 +140,18 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
         expect(screen.getByRole("link", { name: /^Experiments$/i })).toBeInTheDocument();
     });
 
-    it("renders exactly one Context Fabric link when agent_context_runtime is provisioned", () => {
-        navigationMock.pathname = "/work";
-        render(
-            <AdminTierProvider
-                tier="enterprise"
-                features={{ agent_context_runtime: true }}
-                limits={{}}
-            >
-                <PrimaryNav filters={makeFilter()} active="work" />
-            </AdminTierProvider>,
-        );
-
-        const contextFabric = screen.getByRole("link", { name: /^Context Fabric$/i });
-        expect(contextFabric).toHaveAttribute(
-            "href",
-            expect.stringContaining("/agent-context/context-packet"),
-        );
-        expect(screen.getAllByRole("link", { name: /^Context Fabric$/i })).toHaveLength(1);
-    });
-
+    // CHAOS-3524 (chris's ruling): Ask Dev is deliberately NOT a left-nav
+    // destination anymore — one ingress only, the in-context
+    // trigger/window → workspace path. Previously this suite asserted the
+    // opposite (a link rendered when `ask_dev` was provisioned, gated by
+    // `requiredFeature`); that entry is gone from the nav config entirely
+    // now, so the correct regression guard is that no such link ever
+    // appears, regardless of feature state.
     it.each([
+        ["provisioned", { ask_dev: true }],
         ["missing", {}],
-        ["false", { agent_context_runtime: false }],
-    ] as const)("hides Context Fabric when the required feature is %s", (_state, features) => {
+        ["explicitly false", { ask_dev: false }],
+    ] as const)("never renders an Ask Dev nav link, feature %s", (_state, features) => {
         navigationMock.pathname = "/work";
         render(
             <AdminTierProvider tier="enterprise" features={features} limits={{}}>
@@ -171,7 +159,7 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
             </AdminTierProvider>,
         );
 
-        expect(screen.queryByRole("link", { name: /^Context Fabric$/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: /^Ask Dev$/i })).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: /^Flow$/i })).toBeInTheDocument();
     });
 
@@ -284,7 +272,7 @@ describe("PrimaryNav — active child highlight (A10: one selected, distinct hov
         navigationMock.pathname = "/agent-context/context-packet";
         render(<PrimaryNav filters={makeFilter()} active="context-packet" />);
 
-        expect(screen.queryByRole("link", { name: /^Context Fabric$/i })).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: /^Ask Dev$/i })).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: /^Diagnose$/i })).toHaveAttribute(
             "aria-current",
             "page",

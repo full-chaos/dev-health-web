@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ValidationErrors } from "@/lib/constants/errors";
+import { CTA_LABELS } from "@/lib/design/cta";
 import {
     createBillingPlan,
     deleteBillingPlan,
@@ -197,7 +198,7 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                             onClick={resetForm}
                             className="rounded-lg border border-(--card-stroke) px-3 py-1.5 text-xs uppercase tracking-widest text-(--ink-muted)"
                         >
-                            Cancel edit
+                            {CTA_LABELS.cancelEdit}
                         </button>
                     )}
                 </div>
@@ -309,7 +310,7 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                         disabled={isPending}
                         className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
                     >
-                        Pull from Stripe
+                        {CTA_LABELS.pullFromStripe}
                     </button>
                 </div>
                 <div className="space-y-4">
@@ -337,14 +338,14 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                                         }}
                                         className="rounded-lg border border-(--card-stroke) px-3 py-1.5 text-xs uppercase tracking-widest text-(--ink-muted)"
                                     >
-                                        Edit
+                                        {CTA_LABELS.edit}
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => onSync(plan.id)}
                                         className="rounded-lg border border-(--card-stroke) px-3 py-1.5 text-xs uppercase tracking-widest text-(--ink-muted)"
                                     >
-                                        Sync Stripe
+                                        {CTA_LABELS.syncStripe}
                                     </button>
                                     {plan.is_active && (
                                         <button
@@ -352,7 +353,7 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                                             onClick={() => onDelete(plan.id)}
                                             className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs uppercase tracking-widest text-red-500"
                                         >
-                                            Archive
+                                            {CTA_LABELS.archive}
                                         </button>
                                     )}
                                 </div>

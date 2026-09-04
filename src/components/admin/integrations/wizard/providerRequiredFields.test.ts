@@ -16,9 +16,17 @@ describe("hasPrimaryCredentialField", () => {
     });
 
     it("maps each provider to its own primary field name", () => {
-        expect(hasPrimaryCredentialField("jira", { token: "x" })).toBe(true);
+        expect(hasPrimaryCredentialField("jira", { api_token: "x" })).toBe(true);
         expect(hasPrimaryCredentialField("linear", { apiKey: "x" })).toBe(true);
         expect(hasPrimaryCredentialField("launchdarkly", { api_key: "x" })).toBe(true);
+    });
+
+    it("does not accept the Jira key the form used to submit", () => {
+        // The wizard wrote `token` while every resolver read `api_token`,
+        // so the gate opened on a field that authenticated nothing
+        // (CHAOS-4224). The gate has to name the same key the form now
+        // submits, or it stops gating anything at all.
+        expect(hasPrimaryCredentialField("jira", { token: "x" })).toBe(false);
     });
 
     describe("github: token OR a complete GitHub App triple satisfies the gate", () => {

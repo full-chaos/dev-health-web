@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { RefreshControl } from "@/components/admin/RefreshControl";
 import { MarkdownRenderer } from "@/components/reports/MarkdownRenderer";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { logger } from "@/lib/logger";
@@ -18,6 +19,7 @@ import {
     deleteSavedReport,
 } from "@/lib/reports/fetchers";
 import { publicEnv } from "@/lib/config";
+import { backToArea, CTA_LABELS } from "@/lib/design/cta";
 
 type ReportParameters = {
     scope?: string;
@@ -28,7 +30,7 @@ type ReportParameters = {
 function StatusBadge({ status }: { status?: string }) {
     if (!status)
         return (
-            <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-[10px] uppercase tracking-wider text-(--ink-muted)">
+            <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-label-caps uppercase tracking-wider text-(--ink-muted)">
                 Never run
             </span>
         );
@@ -36,25 +38,25 @@ function StatusBadge({ status }: { status?: string }) {
     switch (status) {
         case ReportStatus.SUCCESS:
             return (
-                <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-green-500">
+                <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-label-caps uppercase tracking-wider text-green-500">
                     Success
                 </span>
             );
         case ReportStatus.FAILED:
             return (
-                <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-red-500">
+                <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-label-caps uppercase tracking-wider text-red-500">
                     Failed
                 </span>
             );
         case ReportStatus.RUNNING:
             return (
-                <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-blue-500">
+                <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-label-caps uppercase tracking-wider text-blue-500">
                     Running
                 </span>
             );
         case ReportStatus.PENDING:
             return (
-                <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] uppercase tracking-wider text-yellow-500">
+                <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-label-caps uppercase tracking-wider text-yellow-500">
                     Pending
                 </span>
             );
@@ -63,7 +65,19 @@ function StatusBadge({ status }: { status?: string }) {
     }
 }
 
-function RenderedReportAndConfig({ report, runs }: { report: SavedReport; runs: ReportRun[] }) {
+function RenderedReportAndConfig({
+    report,
+    runs,
+    runsLastUpdatedAt,
+    isRefreshingRuns,
+    onRefreshRuns,
+}: {
+    report: SavedReport;
+    runs: ReportRun[];
+    runsLastUpdatedAt: string | null;
+    isRefreshingRuns: boolean;
+    onRefreshRuns: () => void | Promise<void>;
+}) {
     const params = (report.parameters ?? {}) as ReportParameters;
     const latestRun = runs.find((r) => r.renderedMarkdown) ?? runs[0];
 
@@ -131,7 +145,14 @@ function RenderedReportAndConfig({ report, runs }: { report: SavedReport; runs: 
                 </div>
 
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                    <h2 className="font-(--font-display) text-xl mb-4">Run History</h2>
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                        <h2 className="font-(--font-display) text-xl">Run History</h2>
+                        <RefreshControl
+                            onRefresh={onRefreshRuns}
+                            lastUpdatedAt={runsLastUpdatedAt}
+                            isRefreshing={isRefreshingRuns}
+                        />
+                    </div>
                     {runs.length > 0 ? (
                         <div className="overflow-x-auto">
                             <table className="w-full text-left text-sm">
@@ -201,18 +222,11 @@ export default function SingleReportPage() {
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-    const stopPolling = useCallback(() => {
-        if (pollRef.current) {
-            clearInterval(pollRef.current);
-            pollRef.current = null;
-        }
-    }, []);
-
-    useEffect(() => {
-        return () => stopPolling();
-    }, [stopPolling]);
+    // CHAOS-4318: no more timer-driven polling against the Python API — runs
+    // are fetched on mount/navigation and otherwise only on an explicit
+    // Refresh click (with a last-updated timestamp).
+    const [runsLastUpdatedAt, setRunsLastUpdatedAt] = useState<string | null>(null);
+    const [isRefreshingRuns, setIsRefreshingRuns] = useState(false);
 
     useEffect(() => {
         async function loadData() {
@@ -223,9 +237,44 @@ export default function SingleReportPage() {
             ]);
             setReport(reportData);
             setRuns(runsData.items);
+            setRunsLastUpdatedAt(new Date().toISOString());
             setIsLoading(false);
         }
         loadData();
+    }, [id]);
+
+    // Shared by the Run History Refresh control AND the post-trigger
+    // follow-up fetch in handleRunNow — a sequence guard so a slower,
+    // superseded response (e.g. a manual Refresh click that started before
+    // Run Now's own follow-up fetch) can never overwrite fresher run-history
+    // data that already landed.
+    const runsFetchSeqRef = useRef(0);
+
+    // Deliberately never touches `isRunning` — that lock belongs solely to
+    // handleRunNow's own trigger-mutation lifecycle (see below). Letting a
+    // Refresh click clear it here — as an earlier version of this code did,
+    // based on the fetched latest run already being terminal — could
+    // re-enable "Run Now" while `triggerReport` was still in flight (the
+    // fetch races the mutation and can read stale data), letting a second
+    // click fire a duplicate report generation.
+    const refreshRuns = useCallback(async () => {
+        runsFetchSeqRef.current += 1;
+        const mySeq = runsFetchSeqRef.current;
+        setIsRefreshingRuns(true);
+        try {
+            const isTestMode = publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+            const runsData = await fetchReportRuns("default-org", id, undefined, isTestMode);
+            if (mySeq !== runsFetchSeqRef.current) return;
+
+            setRuns(runsData.items);
+            setRunsLastUpdatedAt(new Date().toISOString());
+        } catch (refreshErr) {
+            logger.error({ err: refreshErr }, "Report run refresh failed");
+        } finally {
+            if (mySeq === runsFetchSeqRef.current) {
+                setIsRefreshingRuns(false);
+            }
+        }
     }, [id]);
 
     if (isLoading) {
@@ -255,7 +304,7 @@ export default function SingleReportPage() {
                                 href="/reports"
                                 className="mt-4 inline-block rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                             >
-                                Back to Reports
+                                {backToArea("Reports")}
                             </Link>
                         </div>
                     </main>
@@ -264,46 +313,21 @@ export default function SingleReportPage() {
         );
     }
 
+    // CHAOS-4318: trigger, then a single fetch to pick up whatever the
+    // backend has persisted by the time the request returns — no more
+    // setInterval poll loop. Seeing the run through to completion is what
+    // the Run History card's Refresh control (with a last-updated
+    // timestamp) is for.
     const handleRunNow = async () => {
         setIsRunning(true);
         setError(null);
-        stopPolling();
 
         try {
             await triggerReport("default-org", id);
-
-            const isTestMode = publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
-
-            const pollRuns = async () => {
-                try {
-                    const runsData = await fetchReportRuns(
-                        "default-org",
-                        id,
-                        undefined,
-                        isTestMode,
-                    );
-                    setRuns(runsData.items);
-
-                    const latest = runsData.items[0];
-                    if (
-                        latest &&
-                        latest.status !== ReportStatus.RUNNING &&
-                        latest.status !== ReportStatus.PENDING
-                    ) {
-                        stopPolling();
-                        setIsRunning(false);
-                    }
-                } catch (pollErr) {
-                    logger.error({ err: pollErr }, "Report run polling failed");
-                    stopPolling();
-                    setIsRunning(false);
-                }
-            };
-
-            await pollRuns();
-            pollRef.current = setInterval(pollRuns, 4000);
+            await refreshRuns();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to trigger report");
+        } finally {
             setIsRunning(false);
         }
     };
@@ -400,6 +424,7 @@ export default function SingleReportPage() {
                                         strokeLinecap="round"
                                         strokeLinejoin="round"
                                     >
+                                        <title>Back to reports</title>
                                         <path d="m15 18-6-6 6-6" />
                                     </svg>
                                 </Link>
@@ -424,18 +449,20 @@ export default function SingleReportPage() {
                                     />
                                     <div className="flex gap-2">
                                         <button
+                                            type="button"
                                             onClick={handleEditSave}
                                             disabled={isSaving || !editName.trim()}
                                             className="rounded-full bg-(--accent) px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
                                         >
-                                            {isSaving ? "Saving..." : "Save"}
+                                            {isSaving ? CTA_LABELS.saving : CTA_LABELS.save}
                                         </button>
                                         <button
+                                            type="button"
                                             onClick={handleEditCancel}
                                             disabled={isSaving}
                                             className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                         >
-                                            Cancel
+                                            {CTA_LABELS.cancel}
                                         </button>
                                     </div>
                                 </div>
@@ -453,29 +480,33 @@ export default function SingleReportPage() {
                         {!isEditing && (
                             <div className="flex items-center gap-3">
                                 <button
+                                    type="button"
                                     onClick={handleEditStart}
                                     className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                 >
-                                    Edit
+                                    {CTA_LABELS.edit}
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={handleCloneStart}
                                     className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                 >
-                                    Clone
+                                    {CTA_LABELS.clone}
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => setShowDeleteConfirm(true)}
                                     className="rounded-full border border-red-500/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-red-500 hover:bg-red-500/10 transition-colors"
                                 >
-                                    Delete
+                                    {CTA_LABELS.delete}
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={handleRunNow}
                                     disabled={isRunning}
                                     className="rounded-full bg-(--accent) px-4 py-2 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
                                 >
-                                    {isRunning ? "Running..." : "Run Now"}
+                                    {isRunning ? "Running..." : CTA_LABELS.runNow}
                                 </button>
                             </div>
                         )}
@@ -494,18 +525,20 @@ export default function SingleReportPage() {
                                 />
                                 <div className="flex gap-2">
                                     <button
+                                        type="button"
                                         onClick={handleCloneConfirm}
                                         disabled={isCloning}
                                         className="rounded-full bg-(--accent) px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
                                     >
-                                        {isCloning ? "Cloning..." : "Clone"}
+                                        {isCloning ? "Cloning..." : CTA_LABELS.clone}
                                     </button>
                                     <button
+                                        type="button"
                                         onClick={() => setShowCloneDialog(false)}
                                         disabled={isCloning}
                                         className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                     >
-                                        Cancel
+                                        {CTA_LABELS.cancel}
                                     </button>
                                 </div>
                             </div>
@@ -523,24 +556,32 @@ export default function SingleReportPage() {
                             </p>
                             <div className="flex gap-2">
                                 <button
+                                    type="button"
                                     onClick={handleDeleteConfirm}
                                     disabled={isDeleting}
                                     className="rounded-full bg-red-500 px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-red-600 transition-colors disabled:opacity-50"
                                 >
-                                    {isDeleting ? "Deleting..." : "Delete"}
+                                    {isDeleting ? "Deleting..." : CTA_LABELS.delete}
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => setShowDeleteConfirm(false)}
                                     disabled={isDeleting}
                                     className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
                                 >
-                                    Cancel
+                                    {CTA_LABELS.cancel}
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    <RenderedReportAndConfig report={report} runs={runs} />
+                    <RenderedReportAndConfig
+                        report={report}
+                        runs={runs}
+                        runsLastUpdatedAt={runsLastUpdatedAt}
+                        isRefreshingRuns={isRefreshingRuns}
+                        onRefreshRuns={refreshRuns}
+                    />
                 </main>
             </div>
         </div>

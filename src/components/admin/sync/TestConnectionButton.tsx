@@ -3,6 +3,7 @@
 import { useTransition } from "react";
 import { toast } from "sonner";
 import { testConnection } from "@/lib/admin/server";
+import { testConnectionFailureMessage } from "@/lib/admin/testConnection";
 
 interface TestConnectionButtonProps {
     provider: string;
@@ -21,7 +22,7 @@ export function TestConnectionButton({ provider, credentialId }: TestConnectionB
             const result = await testConnection(provider, { credentialId: credentialId });
 
             if (result.error || !result.data?.success) {
-                toast.error(result.error || result.data?.error || "Connection test failed");
+                toast.error(testConnectionFailureMessage(result));
                 return;
             }
 

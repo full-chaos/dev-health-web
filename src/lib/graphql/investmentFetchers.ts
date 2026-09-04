@@ -224,6 +224,11 @@ export function adaptSankeyResult(
         nodes,
         links,
         ...(coverage !== undefined && { coverage }),
+        // CHAOS-4241: pass the backend's effective unit through raw
+        // ("WORK_UNITS" | "LOC") — formatSankeyUnit (lib/investment) maps it
+        // to a display label. Older/sample responses without this field
+        // format to the safe WORK_UNITS default there, never "loc".
+        ...(graphqlSankey.unit !== undefined && { unit: graphqlSankey.unit }),
     };
 }
 

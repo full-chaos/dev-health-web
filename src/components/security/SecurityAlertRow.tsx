@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { KeyboardEvent, MouseEvent } from "react";
+import { useState, type MouseEvent } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { SeverityBadge } from "./SeverityBadge";
@@ -28,9 +28,10 @@ function relativeAge(iso: string): string {
 }
 
 const ROW_BASE =
-    "grid grid-cols-[auto_auto_1fr_auto_auto_auto_auto_auto] items-center gap-x-3 border-b border-[var(--card-stroke)] px-3 py-2 text-sm hover:bg-[var(--card-70)] transition-colors";
+    "grid grid-cols-[auto_auto_1fr_auto_auto_auto_auto_auto] items-center gap-x-3 border-b border-[var(--card-stroke)] px-3 py-2 text-sm transition-colors hover:bg-[var(--card-70)]";
 
 export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
+    const [isHovered, setIsHovered] = useState(false);
     const {
         alertId,
         repoId,
@@ -51,11 +52,11 @@ export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
     const stopPropagation = (e: MouseEvent) => e.stopPropagation();
 
     const chip = packageName ? (
-        <span className="rounded bg-[var(--card-70)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--ink-muted)] max-w-[120px] truncate">
+        <span className="max-w-30 truncate rounded bg-[var(--card-70)] px-1.5 py-0.5 font-mono text-xs text-[var(--ink-muted)]">
             {packageName}
         </span>
     ) : cveId ? (
-        <span className="rounded bg-[var(--card-70)] px-1.5 py-0.5 font-mono text-[10px] text-[var(--ink-muted)]">
+        <span className="rounded bg-[var(--card-70)] px-1.5 py-0.5 font-mono text-xs text-[var(--ink-muted)]">
             {cveId}
         </span>
     ) : null;
@@ -64,7 +65,9 @@ export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
         <Link
             href={buildRepoHref(repoId, f)}
             onClick={stopPropagation}
-            className="truncate text-xs text-[var(--ink-muted)] hover:underline max-w-[140px]"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+            className="max-w-36 truncate text-xs text-[var(--ink-muted)] hover:underline"
         >
             {repoName}
         </Link>
@@ -91,14 +94,14 @@ export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
     );
 
     const inner = (
-        <div className={ROW_BASE}>
+        <div className={`${ROW_BASE} ${isHovered ? "bg-[var(--card-70)]" : ""}`}>
             <SeverityBadge severity={severity} />
             <SourceBadge source={source} />
             <span className="min-w-0 truncate" title={title ?? alertId}>
                 {title ?? alertId}
             </span>
             <span className="flex shrink-0">{chip}</span>
-            <span className="shrink-0">{repoLink}</span>
+            <span className="relative z-20 shrink-0">{repoLink}</span>
             <StateBadge state={state} />
             <span className="shrink-0 text-xs text-[var(--ink-muted)]">
                 {relativeAge(createdAt)}
@@ -108,24 +111,25 @@ export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
     );
 
     if (url) {
-        const handleRowClick = () => {
+        const handleRowClick = (event: MouseEvent<HTMLAnchorElement>) => {
+            event.preventDefault();
             window.open(url, "_blank", "noopener,noreferrer");
         };
-        const handleRowKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-            if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                window.open(url, "_blank", "noopener,noreferrer");
-            }
-        };
         return (
-            <div
-                role="link"
-                tabIndex={0}
-                onClick={handleRowClick}
-                onKeyDown={handleRowKeyDown}
-                className="block cursor-pointer"
-                aria-label={`${title ?? alertId} — opens in new tab`}
-            >
+            <div className="relative">
+                <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="absolute inset-0 z-10"
+                    aria-label={`${title ?? alertId} — opens in new tab`}
+                    title={title ?? alertId}
+                    onClick={handleRowClick}
+                    onMouseEnter={() => setIsHovered(true)}
+                    onMouseLeave={() => setIsHovered(false)}
+                >
+                    <span className="sr-only">Open alert details</span>
+                </a>
                 {inner}
             </div>
         );

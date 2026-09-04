@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+const CONTEXT_FABRIC_VALIDATION_PATH = "/superadmin/context-fabric/validation";
+
 const secretPattern =
     /BEGIN (?:EC |RSA )?PRIVATE KEY|fcacr_[A-Za-z0-9]|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}/u;
 const clientChunkForbiddenPattern =
@@ -29,14 +31,28 @@ test("keeps ACR assertion material out of browser routes, network traffic, and c
     });
     page.on("response", (response) => {
         networkRecordTasks.push(
-            Promise.all([response.allHeaders(), response.text()]).then(([headers, body]) => {
-                networkRecords.push(JSON.stringify(headers), body);
-            }),
+            (async () => {
+                const headers = await response.allHeaders();
+                networkRecords.push(response.url(), JSON.stringify(headers));
+
+                // Chromium does not expose redirect response bodies through CDP. Their
+                // browser-visible URL, Location, and other headers remain covered,
+                // while every non-redirect response body is still inspected below.
+                if (response.status() >= 300 && response.status() < 400) return;
+                networkRecords.push(await response.text());
+            })(),
         );
     });
 
-    await page.goto("/agent-context/context-packet");
-    await expect(page.getByRole("heading", { name: "Context Fabric", level: 1 })).toBeVisible();
+    await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+    await expect(page).toHaveURL(new RegExp(`${CONTEXT_FABRIC_VALIDATION_PATH}$`));
+    await expect(
+        page.getByRole("heading", {
+            name: "Context Fabric Validation",
+            exact: true,
+            level: 1,
+        }),
+    ).toBeVisible();
 
     const routeResult = await page.evaluate(async () => {
         const response = await fetch("/api/agent-context/context-packets", {
@@ -53,8 +69,6 @@ test("keeps ACR assertion material out of browser routes, network traffic, and c
     expect(routeResult.status).toBeGreaterThanOrEqual(400);
     expect(routeResult.body).not.toMatch(secretPattern);
     expect(directAcrRequests).toEqual([]);
-    await Promise.all(networkRecordTasks);
-    expect(networkRecords.join("\n")).not.toMatch(secretPattern);
 
     const clientChunks = await page.evaluate(async () => {
         const urls = performance
@@ -63,5 +77,7 @@ test("keeps ACR assertion material out of browser routes, network traffic, and c
             .filter((url) => url.includes("/_next/static/") && url.endsWith(".js"));
         return Promise.all(urls.map(async (url) => (await fetch(url)).text()));
     });
+    await Promise.all(networkRecordTasks);
+    expect(networkRecords.join("\n")).not.toMatch(secretPattern);
     expect(clientChunks.join("\n")).not.toMatch(clientChunkForbiddenPattern);
 });

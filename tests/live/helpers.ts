@@ -11,7 +11,7 @@
  *     platform admin used only to verify those new users. It is never conflated
  *     with the orgless test users.
  */
-import type { APIRequestContext } from "@playwright/test";
+import { expect, type APIRequestContext, type Page } from "@playwright/test";
 
 // Backend URL resolution — mirrors impersonation.spec.ts convention
 export const liveBackendUrl =
@@ -73,6 +73,42 @@ export function authHeaders(token: string): Record<string, string> {
 // Superuser credentials — set in CI secrets or use defaults for local dev
 const superuserEmail = process.env.TEST_SUPERUSER_EMAIL || "admin@devhealth.example";
 const superuserPassword = process.env.TEST_SUPERUSER_PASSWORD || "devhealth123";
+
+function sessionEmail(session: unknown): string | undefined {
+    if (typeof session !== "object" || session === null) return undefined;
+    const user = Reflect.get(session, "user");
+    if (typeof user !== "object" || user === null) return undefined;
+    const email = Reflect.get(user, "email");
+    return typeof email === "string" ? email : undefined;
+}
+
+/** Sign the seeded canonical user in through the real Auth.js browser flow. */
+export async function signInCanonicalUser(page: Page): Promise<void> {
+    await page.goto("/auth/signin");
+    const initialSessionResponse = await page.request.get("/api/auth/session");
+    expect(initialSessionResponse.ok()).toBe(true);
+
+    await page.getByLabel("Email").fill(superuserEmail);
+    await page.getByLabel("Password").fill(superuserPassword);
+    const callbackResponse = page.waitForResponse(
+        (response) =>
+            new URL(response.url()).pathname === "/api/auth/callback/credentials" &&
+            response.request().method() === "POST",
+    );
+    await page.getByRole("button", { name: "Sign In" }).click();
+    expect((await callbackResponse).ok(), "The canonical acceptance user could not sign in.").toBe(
+        true,
+    );
+
+    await expect
+        .poll(async () => {
+            const response = await page.request.get("/api/auth/session");
+            if (!response.ok()) return undefined;
+            return sessionEmail(await response.json());
+        })
+        .toBe(superuserEmail);
+    await expect(page).toHaveURL(/\/dashboard(?:\?|$)/u);
+}
 
 /** Authenticate as superuser and return the access token, or null on failure. */
 export async function getSuperuserToken(request: APIRequestContext): Promise<string | null> {

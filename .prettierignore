@@ -20,6 +20,8 @@ output
 src/lib/graphql/generated/
 # Exact copied ACR wire artifacts are source-controlled JSON, not web-formatted JSON.
 src/lib/acr/contracts/
+# Exact copied Ask Dev wire artifacts remain byte-identical to the pinned ops source.
+src/lib/dev/contracts/
 
 # pnpm lock (not worth formatting)
 pnpm-lock.yaml

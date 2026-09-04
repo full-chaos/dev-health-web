@@ -847,3 +847,56 @@ describe("full access matrix — RBAC × tier gates", () => {
         }
     });
 });
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// 8. PLATFORM ASK DEV READINESS ROUTE (CHAOS-3265) — /superadmin/ai/ask-dev
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//
+// The route's page component re-checks `requireSuperuser("/superadmin/ai/ask-dev")`
+// directly (same defense-in-depth pattern as other superadmin leaf pages,
+// e.g. billing/plans), in addition to the shared `superadmin/layout.tsx`
+// gate. This proves the guard explicitly for this route rather than assuming
+// coverage from the generic requireSuperuser tests above.
+
+describe("requireSuperuser — /superadmin/ai/ask-dev platform readiness page", () => {
+    const CALLBACK_URL = "/superadmin/ai/ask-dev";
+
+    it("denies an ordinary org member", async () => {
+        mockNextAuthAuth.mockResolvedValueOnce(
+            makeSession({ org_id: "org-1", role: "member", is_superuser: false }),
+        );
+        await expectRedirectTo(() => requireSuperuser(CALLBACK_URL), "/dashboard");
+    });
+
+    it("denies an org admin without platform superuser rights", async () => {
+        mockNextAuthAuth.mockResolvedValueOnce(
+            makeSession({ org_id: "org-1", role: "admin", is_superuser: false }),
+        );
+        await expectRedirectTo(() => requireSuperuser(CALLBACK_URL), "/dashboard");
+    });
+
+    it("allows a platform superuser", async () => {
+        mockNextAuthAuth.mockResolvedValueOnce(
+            makeSession({ org_id: "org-1", role: "owner", is_superuser: true }),
+        );
+        const result = await requireSuperuser(CALLBACK_URL);
+        expect(result.user.is_superuser).toBe(true);
+    });
+
+    it("still allows a superuser impersonating an org admin (is_superuser is preserved through impersonation, per the JWT callback contract)", async () => {
+        mockNextAuthAuth.mockResolvedValueOnce(
+            makeSession({
+                id: "impersonated-admin-1",
+                org_id: "org-1",
+                role: "admin",
+                is_superuser: true,
+                is_impersonating: true,
+                impersonated_user_id: "impersonated-admin-1",
+                needs_onboarding: false,
+            }),
+        );
+        const result = await requireSuperuser(CALLBACK_URL);
+        expect(result.user.is_superuser).toBe(true);
+        expect(result.user.is_impersonating).toBe(true);
+    });
+});

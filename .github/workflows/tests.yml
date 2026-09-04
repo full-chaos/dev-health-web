@@ -21,7 +21,7 @@ jobs:
             e2e: ${{ steps.filter.outputs.e2e }}
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-            - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+            - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
               id: filter
               with:
                   filters: |
@@ -29,6 +29,15 @@ jobs:
                         - 'src/**'
                         - 'tests/**'
                         - 'ci/**'
+                        # The auth endpoint-profile inventory. Without this
+                        # pattern a PR touching ONLY
+                        # contracts/auth/v1/endpoint-profiles.web.json sets
+                        # code=false, skips the quality job, and the aggregate
+                        # job succeeds having never run the gate -- so the one
+                        # file most likely to be edited on its own is the edit
+                        # that skips its own check. Found by the CHAOS-3273
+                        # merge-gate round.
+                        - 'contracts/**'
                         - 'public/**'
                         - 'docs/**'
                         - '.github/workflows/**'
@@ -73,7 +82,7 @@ jobs:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
               with:
                   fetch-depth: 0
-            - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
+            - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
             - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
               with:
                   node-version: 22
@@ -86,14 +95,156 @@ jobs:
         needs: [changes]
         if: needs.changes.outputs.code == 'true'
         runs-on: ubuntu-latest
+        env:
+            ASK_DEV_OPS_ROOT: dev-health-ops
+            ASK_DEV_OPS_MAIN_ROOT: dev-health-ops-main
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-            - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
+            # Must stay equal to SOURCE_COMMIT in scripts/ask-dev-contracts.mjs
+            # (scripts/__tests__/chaos-3017-ci-execution-contract.test.mjs reads
+            # that script and asserts the two match). This SHA is ops main.
+            - name: Checkout canonical Ask Dev ops contracts
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+              with:
+                  repository: full-chaos/dev-health-ops
+                  ref: b45450e19e8e9d6292e3cd88a94f71ed2d5619b3
+                  path: dev-health-ops
+                  persist-credentials: false
+            # CHAOS-3511 currency guard: ops main's tip as of this run, checked
+            # out to a SEPARATE path so it never disturbs the pinned checkout's
+            # exact-SHA requirement above. ask-dev:contracts:check-currency
+            # diffs the two over the consumed surface only.
+            - name: Checkout current ops main
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+              with:
+                  repository: full-chaos/dev-health-ops
+                  ref: main
+                  path: dev-health-ops-main
+                  persist-credentials: false
+            - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
             - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
               with:
                   node-version: 22
                   cache: pnpm
+            # CHAOS-4696 graphql:wire-parity:check runs `go run
+            # ./cmd/query-api/tools/registrydump` against the ops-main
+            # checkout above -- go-version-file reads ops main's own
+            # go.mod so this stays in lockstep with ops's own toolchain
+            # pin rather than a second, independently-drifting pin here.
+            - name: Set up Go (for graphql:wire-parity:check's registrydump)
+              uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+              with:
+                  go-version-file: dev-health-ops-main/go.mod
+                  cache-dependency-path: dev-health-ops-main/go.sum
             - run: pnpm install --frozen-lockfile
+            # CHAOS-3273 Wave 0: the endpoint-profile gate (guardrail G-1)
+            # validates endpoint-profiles.web.json against a closed
+            # vocabulary OWNED BY OPS (endpoint-profile.schema.json,
+            # credential-classes.json) that this repo does not vendor. A
+            # full checkout of dev-health-ops would work too, but would
+            # silently track ops's moving default branch -- any push to
+            # ops's main would change what this job validates against with
+            # no web commit recording that it happened. Pin instead: the
+            # exact ops commit this repo trusts lives in ONE place
+            # (ci/ops-contract.pin), a sparse checkout fetches ONLY the two
+            # contract paths at that pin (not the whole ops repo), and
+            # bumping the pin is the web-side commit that makes a contract
+            # change visible and re-runs this gate against it. Both repos
+            # are public (verified via `gh repo view`), so this checkout
+            # needs no token. Same mechanism as dev-health-acr's
+            # ci/ops-contract.pin -- see that repo's .github/workflows/ci.yml
+            # for the reference implementation this was copied from.
+            - name: Read the pinned ops-owned contract commit
+              id: ops-contract-pin
+              run: echo "sha=$(tr -d '[:space:]' < ci/ops-contract.pin)" >> "$GITHUB_OUTPUT"
+            # A raw actions/checkout failure on an unresolvable ref reads as
+            # a cryptic git error with no context. Probe first with a
+            # message that distinguishes the ONE expected failure mode (the
+            # ops-side lane that produced this pin has not merged to ops's
+            # origin/main yet -- see ci/ops-contract.pin's own commit
+            # message for which lane/branch) from every other one (a stale
+            # or simply wrong pin), so a red run here is never mistaken for
+            # a broken mechanism.
+            # A pin that accepts any resolvable ref is not a pin. Executed on
+            # the sibling acr gate during CHAOS-3273's merge-gate round: with
+            # only the resolvability probe below, the literal `main` in
+            # ci/ops-contract.pin passed and the sparse checkout then followed
+            # ops's default branch -- silently restoring the floating ref this
+            # whole mechanism, and the comment block above, claim was
+            # rejected. Check the SHAPE before resolving the ref, so a branch
+            # name is rejected on its face rather than by whether it happens
+            # to resolve.
+            - name: Verify the pin names an immutable commit, not a floating ref
+              run: |
+                  set -euo pipefail
+                  sha="${{ steps.ops-contract-pin.outputs.sha }}"
+                  if ! printf '%s' "$sha" | grep -Eq '^[0-9a-f]{40}$'; then
+                    cat >&2 <<EOF
+                  ci/ops-contract.pin must name a full 40-character lowercase
+                  commit SHA. It currently holds: $sha
+
+                  REJECTED CASE: a branch name or tag (e.g. "main", "v1.2.0") --
+                  any floating ref. Those resolve perfectly well, which is the
+                  problem: the checkout would track whatever that ref points at,
+                  so a push to dev-health-ops would change what this job
+                  validates against with no commit in this repo recording it.
+                  An abbreviated SHA is rejected for the same reason go.mod
+                  rejects one: it is not stable against future collisions.
+                  EOF
+                    exit 1
+                  fi
+            - name: Verify the pinned ops commit is resolvable
+              run: |
+                  set -euo pipefail
+                  sha="${{ steps.ops-contract-pin.outputs.sha }}"
+                  if git fetch --depth 1 https://github.com/full-chaos/dev-health-ops.git "$sha" >/dev/null 2>&1; then
+                    exit 0
+                  fi
+                  cat >&2 <<EOF
+                  ci/ops-contract.pin names $sha, which does not exist on
+                  full-chaos/dev-health-ops's remote (git fetch found nothing).
+
+                  EXPECTED failure mode: the ops-side lane that produced this pin
+                  has not merged to ops's origin/main yet. ci/ops-contract.pin's
+                  own commit message names the exact ops branch/lane this SHA came
+                  from -- once that lane merges, re-pin this file to the merged
+                  SHA and this step passes.
+
+                  If that ops lane HAS already merged and this still fails, the
+                  pin itself is stale or wrong: check it against ops's actual
+                  history. Do not "fix" this by pointing the pin at ops main or by
+                  removing/weakening the pin -- see ci/ops-contract.pin's commit
+                  message for why a floating ref was rejected.
+                  EOF
+                  exit 1
+            # actions/checkout, same pin as every other checkout step in this
+            # repo -- public repo, no token needed. Sparse, non-cone mode:
+            # fetches exactly the two listed file paths, not a directory tree.
+            - name: Checkout pinned ops-owned auth contract
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+              with:
+                  repository: full-chaos/dev-health-ops
+                  ref: ${{ steps.ops-contract-pin.outputs.sha }}
+                  path: .ops-contract
+                  persist-credentials: false
+                  sparse-checkout: |
+                      contracts/auth/v1/endpoint-profile.schema.json
+                      contracts/auth/v1/credential-classes.json
+                      contracts/auth/v1/credential-classes.schema.json
+                  sparse-checkout-cone-mode: false
+            # credential-classes.schema.json joined this list at the
+            # merge-gate round: the gate harvested class ids from the
+            # credential-class document and never validated it, so a
+            # vocabulary whose entries had lost their issuer, validator,
+            # lifecycle authority and allowed route set still passed.
+            # Validating it needs its schema present, so a missing entry here
+            # turns a real check back into an absent one.
+            - name: Run the web auth-profile CI gate (CHAOS-3273 guardrail G-1)
+              env:
+                  WEB_ENDPOINT_PROFILE_SCHEMA: ${{ github.workspace }}/.ops-contract/contracts/auth/v1/endpoint-profile.schema.json
+                  WEB_CREDENTIAL_CLASSES: ${{ github.workspace }}/.ops-contract/contracts/auth/v1/credential-classes.json
+                  WEB_CREDENTIAL_CLASSES_SCHEMA: ${{ github.workspace }}/.ops-contract/contracts/auth/v1/credential-classes.schema.json
+              run: bash ci/run_tests.sh auth-profiles-gate
             - run: bash ci/run_tests.sh quality
 
     build:
@@ -103,7 +254,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-            - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
+            - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
             - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
               with:
                   node-version: 22
@@ -118,28 +269,21 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-            - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
+            - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
             - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
               with:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
             - run: bash ci/run_tests.sh unit
-
-    integration:
-        name: Integration tests
-        needs: [changes]
-        if: needs.changes.outputs.code == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-            - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+            - name: Upload coverage lcov
+              if: always()
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
               with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install --frozen-lockfile
-            - run: bash ci/run_tests.sh integration
+                  name: coverage-lcov-${{ github.run_id }}-${{ github.run_attempt }}
+                  path: coverage/lcov.info
+                  if-no-files-found: error
+                  retention-days: 90
 
     e2e-default:
         name: E2E tests (default, shard ${{ matrix.shard }}/3)
@@ -152,7 +296,7 @@ jobs:
                 shard: [1, 2, 3]
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-            - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
+            - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
             - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
               with:
                   node-version: 22
@@ -166,7 +310,7 @@ jobs:
                   name: playwright-report-default-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
                   path: test-results/playwright-html/
                   if-no-files-found: warn
-                  retention-days: 14
+                  retention-days: 90
             - name: Upload Playwright raw results and JUnit
               if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -174,100 +318,46 @@ jobs:
                   name: playwright-results-default-${{ matrix.shard }}-${{ github.run_id }}-${{ github.run_attempt }}
                   path: test-results/playwright/
                   if-no-files-found: warn
-                  retention-days: 14
+                  retention-days: 90
 
     e2e-onboarding:
-        name: E2E tests (onboarding)
+        # Route-stress suites and Context Fabric run sequentially in this job rather
+        # than as separate runners. GitHub's concurrency limits make every
+        # extra parallel job a queue liability, and run_tests.sh isolates all
+        # four suites regardless of which runner hosts them.
+        name: E2E tests (route stress + onboarding + Context Fabric)
         needs: [changes]
         if: needs.changes.outputs.e2e == 'true'
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-            - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
+            - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
             - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
               with:
                   node-version: 22
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
+            - run: bash ci/run_tests.sh e2e-customer-push
+            - run: bash ci/run_tests.sh e2e-navigation
             - run: bash ci/run_tests.sh e2e-onboarding
-            - name: Upload Playwright report
-              if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-              with:
-                  name: playwright-report-onboarding-${{ github.run_id }}-${{ github.run_attempt }}
-                  path: test-results/playwright-html/
-                  if-no-files-found: warn
-                  retention-days: 14
-            - name: Upload Playwright raw results and JUnit
-              if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-              with:
-                  name: playwright-results-onboarding-${{ github.run_id }}-${{ github.run_attempt }}
-                  path: test-results/playwright/
-                  if-no-files-found: warn
-                  retention-days: 14
-
-    e2e-context-fabric:
-        name: E2E tests (Context Fabric)
-        needs: [changes]
-        if: needs.changes.outputs.e2e == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-            - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install --frozen-lockfile
             - run: bash ci/run_tests.sh e2e-context-fabric
             - name: Upload Playwright report
               if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
               with:
-                  name: playwright-report-context-fabric-${{ github.run_id }}-${{ github.run_attempt }}
+                  name: playwright-report-onboarding-context-fabric-${{ github.run_id }}-${{ github.run_attempt }}
                   path: test-results/playwright-html/
                   if-no-files-found: warn
-                  retention-days: 14
+                  retention-days: 90
             - name: Upload Playwright raw results and JUnit
               if: always()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
               with:
-                  name: playwright-results-context-fabric-${{ github.run_id }}-${{ github.run_attempt }}
+                  name: playwright-results-onboarding-context-fabric-${{ github.run_id }}-${{ github.run_attempt }}
                   path: test-results/playwright/
                   if-no-files-found: warn
-                  retention-days: 14
+                  retention-days: 90
 
-    pagerduty-final-qa:
-        name: PagerDuty final QA matrix
-        needs: [changes]
-        if: needs.changes.outputs.code == 'true'
-        runs-on: ubuntu-latest
-        steps:
-            - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-            - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
-            - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
-              with:
-                  node-version: 22
-                  cache: pnpm
-            - run: pnpm install --frozen-lockfile
-            - run: bash ci/run_tests.sh pagerduty-final-qa
-            - name: Upload Playwright report
-              if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-              with:
-                  name: playwright-report-pagerduty-final-qa-${{ github.run_id }}-${{ github.run_attempt }}
-                  path: test-results/playwright-html/
-                  if-no-files-found: warn
-                  retention-days: 14
-            - name: Upload Playwright raw results and JUnit
-              if: always()
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
-              with:
-                  name: playwright-results-pagerduty-final-qa-${{ github.run_id }}-${{ github.run_attempt }}
-                  path: test-results/playwright/
-                  if-no-files-found: warn
-                  retention-days: 14
     design-lint:
         name: Design lint advisory
         needs: [changes]
@@ -275,7 +365,7 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-            - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
+            - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
             - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
               with:
                   node-version: 22
@@ -287,7 +377,7 @@ jobs:
 
     test:
         name: test
-        needs: [changes, format, quality, build, unit, integration, e2e-default, e2e-onboarding, e2e-context-fabric, pagerduty-final-qa]
+        needs: [changes, format, quality, build, unit, e2e-default, e2e-onboarding]
         if: always()
         runs-on: ubuntu-latest
         steps:
@@ -302,24 +392,18 @@ jobs:
             - name: Check general test stages
               if: needs.changes.result == 'success' && needs.changes.outputs.code == 'true'
               run: |
-                  if [[ "${{ needs.format.result }}" != 'success' || "${{ needs.quality.result }}" != 'success' || "${{ needs.build.result }}" != 'success' || "${{ needs.unit.result }}" != 'success' || "${{ needs.integration.result }}" != 'success' ]]; then
+                  if [[ "${{ needs.format.result }}" != 'success' || "${{ needs.quality.result }}" != 'success' || "${{ needs.build.result }}" != 'success' || "${{ needs.unit.result }}" != 'success' ]]; then
                     exit 1
                   fi
             - name: Check E2E test stages
               if: needs.changes.result == 'success' && needs.changes.outputs.e2e == 'true'
               run: |
-                  if [[ "${{ needs.e2e-default.result }}" != 'success' || "${{ needs.e2e-onboarding.result }}" != 'success' || "${{ needs.e2e-context-fabric.result }}" != 'success' ]]; then
+                  if [[ "${{ needs.e2e-default.result }}" != 'success' || "${{ needs.e2e-onboarding.result }}" != 'success' ]]; then
                     exit 1
                   fi
             - name: Check E2E test stages were skipped
               if: needs.changes.result == 'success' && needs.changes.outputs.code == 'true' && needs.changes.outputs.e2e != 'true'
               run: |
-                  if [[ "${{ needs.e2e-default.result }}" != 'skipped' || "${{ needs.e2e-onboarding.result }}" != 'skipped' || "${{ needs.e2e-context-fabric.result }}" != 'skipped' ]]; then
-                    exit 1
-                  fi
-            - name: Check PagerDuty final QA matrix
-              if: needs.changes.result == 'success' && needs.changes.outputs.code == 'true'
-              run: |
-                  if [[ "${{ needs.pagerduty-final-qa.result }}" != 'success' ]]; then
+                  if [[ "${{ needs.e2e-default.result }}" != 'skipped' || "${{ needs.e2e-onboarding.result }}" != 'skipped' ]]; then
                     exit 1
                   fi

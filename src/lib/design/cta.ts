@@ -13,8 +13,41 @@
  * literal strings, so the labels live here and nowhere else.
  */
 export const CTA_LABELS = {
+    /** Submit the current investigation question to Ask Dev. */
+    askDev: "Ask",
+    /** Open the persistent Ask Dev window from the authenticated shell. */
+    openAskDev: "Open Ask Dev",
+    /** Start a separate Ask Dev conversation without reusing committed scope. */
+    newAskDevConversation: "New conversation",
+    /** Expand the persistent Ask Dev window without starting another run. */
+    expandAskDev: "Expand Ask Dev panel",
+    /** Return the expanded Ask Dev window to its compact size. */
+    reduceAskDev: "Reduce Ask Dev panel",
+    /** Reveal the Ask Dev conversation history panel below the `lg` breakpoint. */
+    showAskDevHistory: "Show conversations",
+    /** Collapse the Ask Dev conversation history panel below the `lg` breakpoint. */
+    hideAskDevHistory: "Hide conversations",
+    /** Record positive feedback on an Ask Dev answer. */
+    askDevHelpful: "Helpful",
+    /** Record negative feedback on an Ask Dev answer. */
+    askDevNotHelpful: "Not helpful",
+    /** Open Ask Dev with an approved page or entity context proposed. */
+    /** Use a visible disambiguation candidate for the next explicit question. */
+    useAskDevScope: "Use this scope",
+    /** Open the full Ask Dev investigation workspace. */
+    askDevWorkspace: "Ask Dev workspace",
+    /** Return the full Ask Dev workspace to the app-wide permanent window. */
+    returnToAskDevWindow: "Return to Ask Dev window",
+    /** Return to the Dev Health cockpit from global brand navigation. */
+    devHealthCockpit: "Full Chaos Dev Health cockpit",
     /** Open the evidence trail behind a signal / metric / work unit. */
     openEvidence: "Open evidence",
+    /** Expand the Ask Dev answer's evidence lane accordion (CHAOS-3524, icon-only control — aria-label). */
+    expandEvidenceLane: "Expand evidence",
+    /** Collapse the Ask Dev answer's evidence lane accordion (CHAOS-3524, icon-only control — aria-label). */
+    collapseEvidenceLane: "Collapse evidence",
+    /** Expand every row in the Ask Dev answer's evidence accordion in one action (CHAOS-3524, icon-only control — aria-label). */
+    unfoldAllEvidence: "Unfold all evidence",
     generateContext: "Generate context",
     markContextIncorrect: "Mark context as incorrect",
     markContextStale: "Mark context as stale",
@@ -35,6 +68,10 @@ export const CTA_LABELS = {
     deselectAll: "Deselect All",
     clear: "Clear",
     cancel: "Cancel",
+    continue: "Continue",
+    back: "Back",
+    saving: "Saving...",
+    runNow: "Run Now",
     addOneFirst: "Add one first",
     createOneNow: "Create One Now",
     importSelected: "Import Selected",
@@ -48,7 +85,7 @@ export const CTA_LABELS = {
     viewGuide: "View guide",
     reset: "Reset",
     retry: "Retry",
-    reportIssue: "Report an issue",
+    reportIssue: "Report issue",
     closeIssueReportPanel: "Close issue report panel",
     close: "Close",
     clearContext: "Clear context",
@@ -57,7 +94,6 @@ export const CTA_LABELS = {
     openWorkGraph: "Open Work Graph",
     openMetrics: "Open metrics",
     openWorkView: "Open Work view",
-    openInExplore: "Open in Explore",
     evidence: "Evidence",
     aiImpact: "Impact",
     aiReviewLoad: "Review Load",
@@ -88,6 +124,10 @@ export const CTA_LABELS = {
     checkConnectionStatus: "Check connection status",
     disconnect: "Disconnect",
     runPreflight: "Run preflight",
+    /** Trigger the platform-admin-only Ask Dev provider preflight (CHAOS-3265). */
+    runPlatformPreflight: "Run platform preflight",
+    /** Trigger the org-scoped BYO-LLM preflight, independent of Ask Dev's active provider (CHAOS-3265). */
+    runByoPreflight: "Run BYO preflight",
     /** Advance to the next step of the guided onboarding flow (CHAOS-2675). */
     continueStep: "Continue",
     /** Continue the guided first-run setup from the dashboard (CHAOS-2678). */
@@ -106,6 +146,10 @@ export const CTA_LABELS = {
     backfill: "Backfill",
     /** Gap-scoped backfill deep-link from the coverage timeline (CHAOS-2793). */
     backfillThisGap: "Backfill this gap",
+    /** Failure-scoped backfill deep-link from the coverage timeline. */
+    backfillThisFailure: "Backfill this failure",
+    /** Server-owned config-wide backfill window from the coverage timeline. */
+    backfillThisWindow: "Backfill this window",
     allDatasets: "All datasets",
     allSources: "All sources",
     /** Reset the run-detail unit table status filter (CHAOS-2794). */
@@ -122,6 +166,7 @@ export const CTA_LABELS = {
     accountOptions: "Account options",
     preferences: "Preferences",
     signIn: "Sign In",
+    signingIn: "Signing in...",
     signOut: "Sign out",
     platformAdmin: "Platform Admin",
     adminPanel: "Admin Panel",
@@ -223,6 +268,71 @@ export const CTA_LABELS = {
     goToValidate: "Validate",
     /** Inline link to the runner setup examples from the empty batch-list state (CHAOS-2714). */
     goToCiJob: "CI job",
+    /** Link from the Ask Dev empty state to the customer doc explaining the Ask Dev / Context Fabric relationship (CHAOS-3215). */
+    viewAskDevDocs: "Learn more",
+    confirmMapping: "Confirm Mapping",
+    deleteUser: "Delete User",
+    editUser: "Edit User",
+    editProfile: "Edit Profile",
+    pullRequests: "PRs",
+    issues: "Issues",
+    clone: "Clone",
+    tryAgain: "Try again",
+    dashboard: "Dashboard",
+    createOrganization: "Create Organization",
+    orgAdminSettings: "Org Admin Settings",
+    search: "Search",
+    createUser: "Create User",
+    devHealthHome: "Full Chaos Dev Health home",
+    solutions: "Solutions",
+    pricing: "Pricing",
+    getStarted: "Get started",
+    startForFree: "Start for free",
+    viewOnGitHub: "View on GitHub",
+    getStartedFree: "Get started free",
+    starOnGitHub: "Star on GitHub",
+    seePricing: "See pricing",
+    talkToSales: "Talk to sales",
+    stopImpersonating: "Stop Impersonating",
+    resolve: "Resolve",
+    view: "View",
+    voidInvoice: "Void",
+    cancelEdit: "Cancel edit",
+    pullFromStripe: "Pull from Stripe",
+    syncStripe: "Sync Stripe",
+    archive: "Archive",
+    issueRefund: "Issue Refund",
+    approveAll: "Approve All",
+    dismissAll: "Dismiss All",
+    approve: "Approve",
+    dismiss: "Dismiss",
+    closeEvidenceDrilldown: "Close evidence drilldown",
+    createAccount: "Create account",
+    termsOfService: "Terms of Service",
+    privacyPolicy: "Privacy Policy",
+    continueWithGitHub: "Continue with GitHub",
+    continueWithGoogle: "Continue with Google",
+    continueWithGitLab: "Continue with GitLab",
+    decreaseEntities: "Decrease entities",
+    increaseEntities: "Increase entities",
+    expandLegend: "Expand legend",
+    collapseLegend: "Collapse legend",
+    filters: "Filters",
+    openAiWorkflows: "Open AI Workflows",
+    startWithAiImpact: "Start with AI Impact",
+    weeklyReview: "Weekly review",
+    viewAll: "View all",
+    provenance: "Provenance",
+    apply: "Apply",
+    saveOverride: "Save Override",
+    manageEntitlements: "Manage Entitlements",
+    clearThemeScope: "Clear theme scope",
+    exploreContextFabricUseCases: "Explore use cases",
+    openContextFabricOverview: "Context Fabric overview",
+    seeContextFabricInAction: "See Context Fabric in action",
+    readAskDevGuide: "Read the Ask Dev guide",
+    configureAcrMcpSidecar: "Configure the ACR MCP sidecar",
+    configureAcrAndMcp: "Configure ACR and MCP",
 } as const;
 
 export type CtaKey = keyof typeof CTA_LABELS;
@@ -239,6 +349,16 @@ export function backToArea(area: string): string {
 
 export function upgradeToPlan(plan: string): string {
     return `Upgrade to ${plan}`;
+}
+
+/**
+ * Per-item accessible name for an Ask Dev evidence accordion row's icon-only
+ * fold toggle (CHAOS-3524). `label` names the specific evidence item so
+ * assistive tech can distinguish rows that would otherwise all announce as
+ * "Expand evidence" / "Collapse evidence".
+ */
+export function toggleEvidenceItem(label: string, open: boolean): string {
+    return `${open ? "Collapse" : "Expand"} evidence: ${label}`;
 }
 
 /**

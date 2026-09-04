@@ -16,6 +16,7 @@ vi.mock("../_request", () => ({
 import { request } from "../_request";
 import { retentionApi } from "../retention";
 import { auditApi, platformAuditApi } from "../audit";
+import { llmSettingsApi } from "../llm-settings";
 
 const mockRequest = vi.mocked(request);
 
@@ -115,5 +116,31 @@ describe("platformAuditApi path contract (must not be changed)", () => {
         expect(mockRequest).toHaveBeenCalledOnce();
         const path = mockRequest.mock.calls[0][0] as string;
         expect(path).toMatch(/^\/platform\/audit-logs\?/);
+    });
+});
+
+describe("llmSettingsApi budget contract", () => {
+    it("reads the enforceable organization budget from the v1 admin path", async () => {
+        await llmSettingsApi.budget("token", "org-1");
+
+        expect(mockRequest).toHaveBeenCalledWith("/llm-settings/budget", {}, "token", "org-1");
+    });
+
+    it("preserves an explicit zero hard stop in the settings payload", async () => {
+        await llmSettingsApi.upsert(
+            { provider: "openai", budget_limit_micro_usd: 0 },
+            "token",
+            "org-1",
+        );
+
+        expect(mockRequest).toHaveBeenCalledWith(
+            "/llm-settings",
+            {
+                method: "PUT",
+                body: JSON.stringify({ provider: "openai", budget_limit_micro_usd: 0 }),
+            },
+            "token",
+            "org-1",
+        );
     });
 });

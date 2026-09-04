@@ -41,7 +41,17 @@ export type OpsAuthorization = {
 type ResolveOpsAuthorizationInput = {
     readonly accessToken: string;
     readonly orgId: string;
+    /** Platform validation is independently authorized by the superuser route guard. */
+    readonly platformValidation?: boolean;
     readonly selectedRepository?: string;
+    readonly signal: AbortSignal;
+    readonly subject: string;
+};
+
+type ResolveOpsCredentialIssuanceAuthorizationInput = {
+    readonly accessToken: string;
+    readonly orgId: string;
+    readonly repositoryScopes: readonly string[];
     readonly signal: AbortSignal;
     readonly subject: string;
 };
@@ -83,9 +93,11 @@ function opsHeaders(accessToken: string): Readonly<Record<string, string>> {
     };
 }
 
-export async function resolveOpsAuthorization(
-    input: ResolveOpsAuthorizationInput,
-): Promise<OpsAuthorization> {
+async function requireAcrEntitlement(input: {
+    readonly accessToken: string;
+    readonly orgId: string;
+    readonly signal: AbortSignal;
+}): Promise<void> {
     const entitlement = await fetchBoundedJson({
         headers: opsHeaders(input.accessToken),
         method: "GET",
@@ -111,6 +123,30 @@ export async function resolveOpsAuthorization(
             "Agent Context Runtime is not available for this organization.",
             { status: 403 },
         );
+    }
+}
+
+/**
+ * Authorizes credential issuance from authenticated organization identity and
+ * entitlement only. Repository analytics are inventory, never an authorization
+ * source. ACR binds the supplied grant to this organization in the assertion.
+ */
+export async function resolveOpsCredentialIssuanceAuthorization(
+    input: ResolveOpsCredentialIssuanceAuthorizationInput,
+): Promise<OpsAuthorization> {
+    await requireAcrEntitlement(input);
+    return {
+        orgId: input.orgId,
+        repositoryScopes: input.repositoryScopes,
+        subject: input.subject,
+    };
+}
+
+export async function resolveOpsAuthorization(
+    input: ResolveOpsAuthorizationInput,
+): Promise<OpsAuthorization> {
+    if (input.platformValidation !== true) {
+        await requireAcrEntitlement(input);
     }
     const scopes = await fetchBoundedJson({
         body: JSON.stringify({

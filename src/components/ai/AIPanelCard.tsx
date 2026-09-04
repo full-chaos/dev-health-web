@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type AIPanelCardProps = {
     title: string;
@@ -24,7 +25,7 @@ export function AIPanelCard({ title, description, evidenceHref, children }: AIPa
                         className="shrink-0 text-xs font-medium text-foreground underline-offset-4 hover:underline"
                         href={evidenceHref}
                     >
-                        View evidence
+                        {CTA_LABELS.openEvidence}
                     </Link>
                 )}
             </div>

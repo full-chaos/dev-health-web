@@ -10,6 +10,7 @@ import { EditCredentialModal } from "./EditCredentialModal";
 import { deriveCredentialStatus } from "./credentialStatus";
 import { getAuthMethodLabel, isGitHubAppCredential } from "./authMethod";
 import { testConnection, deleteCredential } from "@/lib/admin/server";
+import { testConnectionFailureMessage } from "@/lib/admin/testConnection";
 import { formatDateTimeUTC } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { IntegrationCredential, Provider } from "@/lib/admin/types";
@@ -53,7 +54,7 @@ export function CredentialsTable({
         startTesting(async () => {
             const result = await testConnection(credential.provider, { name: credential.name });
             if (result.error || !result.data?.success) {
-                toast.error(result.error ?? result.data?.error ?? "Connection test failed");
+                toast.error(testConnectionFailureMessage(result));
             } else {
                 toast.success("Connection successful");
             }

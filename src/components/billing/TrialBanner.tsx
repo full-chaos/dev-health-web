@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { getSubscription, getBillingPortalUrl } from "@/lib/billing/actions";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { toast } from "sonner";
 
 export function TrialBanner() {
@@ -128,7 +129,7 @@ export function TrialBanner() {
                 type="button"
                 onClick={handleDismiss}
                 className="absolute right-4 rounded-md p-1 opacity-70 transition-opacity hover:opacity-100"
-                aria-label="Dismiss"
+                aria-label={CTA_LABELS.dismiss}
             >
                 <svg
                     xmlns="http://www.w3.org/2000/svg"

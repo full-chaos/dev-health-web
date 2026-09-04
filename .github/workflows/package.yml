@@ -27,7 +27,7 @@ jobs:
             - name: Checkout
               uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
             - name: Setup pnpm
-              uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+              uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
             - name: Setup Node
               uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
@@ -82,7 +82,7 @@ jobs:
                   name: npm-package
                   path: ${{ steps.pack.outputs.tarball }}
             - name: Create GitHub release
-              uses: softprops/action-gh-release@3d0d9888cb7fd7b750713d6e236d1fcb99157228 # v2
+              uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v2
               with:
                   tag_name: ${{ steps.tag.outputs.tag }}
                   name: ${{ inputs.release_name || steps.tag.outputs.tag }}

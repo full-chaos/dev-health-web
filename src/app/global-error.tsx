@@ -1,6 +1,7 @@
 "use client";
 import * as Sentry from "@sentry/nextjs";
 import { logger } from "@/lib/logger";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 /**
  * Global error boundary — catches errors that bubble past all route-level
@@ -31,8 +32,8 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    background: "#0a0a0f",
-                    color: "#e2e8f0",
+                    background: "Canvas",
+                    color: "CanvasText",
                     fontFamily: "system-ui, sans-serif",
                     margin: 0,
                     padding: "2rem",
@@ -44,7 +45,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                             fontSize: "0.7rem",
                             letterSpacing: "0.15em",
                             textTransform: "uppercase",
-                            color: "#94a3b8",
+                            color: "GrayText",
                             marginBottom: "0.75rem",
                         }}
                     >
@@ -62,7 +63,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                     <p
                         style={{
                             fontSize: "0.875rem",
-                            color: "#94a3b8",
+                            color: "GrayText",
                             marginBottom: "2rem",
                             lineHeight: 1.6,
                         }}
@@ -70,7 +71,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                         An unexpected error occurred. If the problem persists, please contact{" "}
                         <a
                             href="mailto:support@fullchaos.studio"
-                            style={{ color: "#cbd5e1", textDecoration: "underline" }}
+                            style={{ color: "CanvasText", textDecoration: "underline" }}
                         >
                             support@fullchaos.studio
                         </a>
@@ -82,7 +83,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                                     marginTop: "0.5rem",
                                     fontSize: "0.75rem",
                                     fontFamily: "monospace",
-                                    color: "#64748b",
+                                    color: "GrayText",
                                 }}
                             >
                                 Error ID: {error.digest}
@@ -95,16 +96,16 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                         style={{
                             padding: "0.625rem 1.5rem",
                             borderRadius: 9999,
-                            border: "1px solid #334155",
+                            border: "thin solid ButtonBorder",
                             background: "transparent",
-                            color: "#e2e8f0",
+                            color: "CanvasText",
                             fontSize: "0.75rem",
                             letterSpacing: "0.2em",
                             textTransform: "uppercase",
                             cursor: "pointer",
                         }}
                     >
-                        Try again
+                        {CTA_LABELS.tryAgain}
                     </button>
                 </div>
             </body>

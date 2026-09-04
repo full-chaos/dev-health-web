@@ -112,6 +112,7 @@ sequenceDiagram
     participant NA as NextAuth authorize
     participant L as Backend /login
     participant S as NextAuth session
+    participant C as callbackUrl
     participant D as /dashboard
     participant O as /auth/onboard
 
@@ -121,10 +122,12 @@ sequenceDiagram
     L->>L: check_lockout, bcrypt verify
     L-->>NA: LoginResponse {access_token, refresh_token, needs_onboarding, user}
     NA->>S: Create session/JWT with backend token
-    alt needs_onboarding is false
-        LF->>D: router.push("/dashboard")
-    else needs_onboarding is true
-        LF->>O: router.push("/auth/onboard")
+    alt needs_onboarding is true
+        LF->>O: hard-navigate to /auth/onboard
+    else safe callbackUrl is present
+        LF->>C: hard-navigate to callbackUrl
+    else
+        LF->>D: hard-navigate to /dashboard
     end
 ```
 
@@ -133,8 +136,10 @@ sequenceDiagram
 | Backend unit        | `tests/api/auth/test_email_normalization.py`            | Case-insensitive lookup                    |
 | Backend unit        | `tests/api/auth/test_email_verification_enforcement.py` | Verified user can login                    |
 | Backend integration | `tests/api/test_new_user_journey.py`                    | Register then login returns tokens         |
-| Frontend unit       | `src/components/auth/LoginForm.test.tsx`                | Dashboard redirect on success              |
-| Frontend E2E        | `tests/auth-signin.spec.ts`                             | Form renders, error toast                  |
+| Frontend unit       | `src/components/auth/LoginForm.test.tsx`                | Dashboard/callbackUrl redirect on success  |
+| Frontend unit       | `src/components/auth/SocialLoginButtons.test.tsx`       | Provider sign-in preserves callbackUrl     |
+| Frontend unit       | `src/app/(auth)/auth/signin/page.test.tsx`              | Sign-in page threads callbackUrl into form |
+| Frontend E2E        | `tests/auth-signin.spec.ts`                             | Form, errors, protected-route return       |
 | Frontend E2E        | `tests/account-creation-journey.spec.ts` (step 2-3)     | Login then onboard then dashboard          |
 | Live E2E            | `tests/live/onboarding-ui.spec.ts`                      | Login with verified user reaches dashboard |
 

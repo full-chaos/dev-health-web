@@ -2,10 +2,10 @@ import { SkeletonLine, SkeletonCard } from "@/components/ui/Skeleton";
 
 function NavSkeleton() {
     return (
-        <aside className="w-full md:max-w-[220px] md:shrink-0 animate-pulse">
+        <aside className="w-full md:max-w-56 md:shrink-0 animate-pulse">
             <div className="sticky top-10 space-y-2">
-                {Array.from({ length: 8 }).map((_, i) => (
-                    <div key={i} className="h-10 bg-(--card-70) rounded-2xl" />
+                {Array.from({ length: 8 }, (_, index) => `nav-skeleton-${index}`).map((key) => (
+                    <div key={key} className="h-10 bg-(--card-70) rounded-2xl" />
                 ))}
             </div>
         </aside>
@@ -19,7 +19,7 @@ export default function Loading() {
                 <NavSkeleton />
                 <main className="flex min-w-0 flex-1 flex-col gap-10">
                     {/* Header card */}
-                    <div className="rounded-[32px] border border-(--card-stroke) bg-(--card-80) p-6 animate-pulse">
+                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 animate-pulse">
                         <div className="flex flex-col gap-6">
                             <div className="flex flex-wrap items-start justify-between gap-4">
                                 <div className="space-y-4">
@@ -56,9 +56,12 @@ export default function Loading() {
                             <div className="h-3 bg-(--card-70) rounded w-24" />
                         </div>
                         <div className="mt-4 grid gap-3 md:grid-cols-2">
-                            {Array.from({ length: 4 }).map((_, i) => (
+                            {Array.from(
+                                { length: 4 },
+                                (_, index) => `monitoring-skeleton-${index}`,
+                            ).map((key) => (
                                 <div
-                                    key={i}
+                                    key={key}
                                     className="rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 space-y-2"
                                 >
                                     <div className="flex items-center justify-between">
@@ -76,9 +79,12 @@ export default function Loading() {
                     <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 animate-pulse space-y-4">
                         <div className="h-5 bg-(--card-70) rounded w-40" />
                         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                            {Array.from({ length: 4 }).map((_, i) => (
+                            {Array.from(
+                                { length: 4 },
+                                (_, index) => `signal-skeleton-${index}`,
+                            ).map((key) => (
                                 <div
-                                    key={i}
+                                    key={key}
                                     className="rounded-2xl border border-(--card-stroke) bg-(--card) p-4 space-y-3"
                                 >
                                     <div className="h-3 bg-(--card-70) rounded w-20" />

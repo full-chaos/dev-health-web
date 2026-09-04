@@ -148,6 +148,26 @@ describe("SignupForm", () => {
         });
     });
 
+    it("preserves the post-login callback when redirecting to signin", async () => {
+        vi.spyOn(global, "fetch").mockResolvedValue(
+            new Response(JSON.stringify({}), {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+            }),
+        );
+
+        renderWithToaster(<SignupForm callbackUrl="/acr/device?from=signup" />);
+        const user = userEvent.setup();
+
+        await fillAndSubmit(user);
+
+        await waitFor(() => {
+            expect(mockPush).toHaveBeenCalledWith(
+                "/auth/signin?registered=true&callbackUrl=%2Facr%2Fdevice%3Ffrom%3Dsignup",
+            );
+        });
+    });
+
     it("shows server error on failed registration", async () => {
         const fetchSpy = vi.spyOn(global, "fetch");
         fetchSpy.mockResolvedValue(

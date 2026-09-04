@@ -88,6 +88,7 @@ export function statusTone(status: SyncCoverageStatus): CoverageTone {
             return "info";
         case "paused":
         case "not_scheduled":
+        case "not_enabled":
             return "muted";
         default:
             return "muted";
@@ -103,6 +104,7 @@ const STATUS_LABEL: Record<SyncCoverageStatus, string> = {
     paused: "Paused",
     not_scheduled: "Not scheduled",
     running: "Running",
+    not_enabled: "Not enabled",
 };
 
 export function statusLabel(status: SyncCoverageStatus): string {

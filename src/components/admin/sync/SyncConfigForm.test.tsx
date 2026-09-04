@@ -104,6 +104,21 @@ const mockCredentials: IntegrationCredential[] = [
     },
 ];
 
+// Real github/gitlab capability (CHAOS-4323: GitHub has no "Projects"
+// import; GitLab supports all three) so the create/update flow tests below
+// exercise the same AND-clamp/round-trip behavior the old single-flag tests
+// always did with the default "github" provider, rather than every one
+// silently going through the "no known capability" (`{}`) default.
+const testAutoImportCapabilities = {
+    github: {
+        teams: true,
+        projects: false,
+        members: true,
+        reasons: { projects: "GitHub attributes ownership via repos, not projects." },
+    },
+    gitlab: { teams: true, projects: true, members: true, reasons: {} },
+};
+
 const sampleRepo = {
     name: "repo-a",
     full_name: "myorg/repo-a",
@@ -286,6 +301,25 @@ describe("SyncConfigForm", () => {
             expect(gitDataCheckbox).not.toBeChecked();
         });
 
+        it("datasets step: surfaces the tests dataset as an opt-in toggle for GitHub (CHAOS-3399)", async () => {
+            render(<SyncConfigForm credentials={mockCredentials} />);
+
+            await userEvent.type(screen.getByLabelText("Configuration Name"), "Tests Dataset");
+            await clickContinue();
+            await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
+            await clickContinue();
+            await clickContinue(); // scope, skip owner
+
+            const testsCheckbox = screen.getByLabelText("Test Results (JUnit reports)");
+            expect(testsCheckbox).toBeInTheDocument();
+            // Opt-in: unlike git/prs, never pre-checked.
+            expect(testsCheckbox).not.toBeChecked();
+            expect(screen.getByText(/artifact retention is typically 14 days/)).toBeInTheDocument();
+
+            await userEvent.click(testsCheckbox);
+            expect(testsCheckbox).toBeChecked();
+        });
+
         it("datasets step shows user-facing consequence copy for each dataset", async () => {
             render(<SyncConfigForm credentials={mockCredentials} />);
 
@@ -315,10 +349,10 @@ describe("SyncConfigForm", () => {
             expect(screen.getByLabelText("Feature Flags")).toBeInTheDocument();
             expect(screen.queryByLabelText("Git Data (Commits, Branches)")).not.toBeInTheDocument();
             expect(screen.queryByText("Repository & source scope")).not.toBeInTheDocument();
-            expect(screen.queryByText("Advanced options")).not.toBeInTheDocument();
-            expect(
-                screen.queryByLabelText("Auto-import teams, projects & members"),
-            ).not.toBeInTheDocument();
+            // launchdarkly is absent from the (default, empty) capabilities map,
+            // so the whole "Import from provider during sync" section hides.
+            expect(screen.queryByText("Import from provider during sync")).not.toBeInTheDocument();
+            expect(screen.queryByLabelText("Import teams")).not.toBeInTheDocument();
         });
 
         it("depth/schedule step shows tier-gated options with upgrade copy below team tier", async () => {
@@ -453,7 +487,12 @@ describe("SyncConfigForm", () => {
 
         it("walks the full guided flow from provider through review to a successful create", async () => {
             mockCreateSyncConfig.mockResolvedValue(undefined);
-            renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
+            renderWithToaster(
+                <SyncConfigForm
+                    credentials={mockCredentials}
+                    autoImportCapabilities={testAutoImportCapabilities}
+                />,
+            );
 
             await userEvent.type(screen.getByLabelText("Configuration Name"), "Nightly Sync");
             await clickContinue();
@@ -484,7 +523,11 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { auto_import_teams: false },
+                    sync_options: {
+                        auto_import_teams: false,
+                        auto_import_projects: false,
+                        auto_import_members: false,
+                    },
                 });
                 expect(screen.getByText("Config created")).toBeInTheDocument();
                 expect(mockPush).toHaveBeenCalledWith("/org/admin/sync");
@@ -571,7 +614,12 @@ describe("SyncConfigForm", () => {
 
         it("sends owner in sync_options on create (no repos selected)", async () => {
             mockCreateSyncConfig.mockResolvedValue(undefined);
-            renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
+            renderWithToaster(
+                <SyncConfigForm
+                    credentials={mockCredentials}
+                    autoImportCapabilities={testAutoImportCapabilities}
+                />,
+            );
 
             await userEvent.type(screen.getByLabelText("Configuration Name"), "My Sync");
             await clickContinue();
@@ -592,14 +640,24 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { owner: "myorg", auto_import_teams: false },
+                    sync_options: {
+                        owner: "myorg",
+                        auto_import_teams: false,
+                        auto_import_projects: false,
+                        auto_import_members: false,
+                    },
                 });
             });
         });
 
         it("sends gitlab_url in sync_options for GitLab create", async () => {
             mockCreateSyncConfig.mockResolvedValue(undefined);
-            renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
+            renderWithToaster(
+                <SyncConfigForm
+                    credentials={mockCredentials}
+                    autoImportCapabilities={testAutoImportCapabilities}
+                />,
+            );
 
             await userEvent.selectOptions(screen.getByLabelText("Provider"), "gitlab");
             await userEvent.type(screen.getByLabelText("Configuration Name"), "GL Sync");
@@ -626,6 +684,8 @@ describe("SyncConfigForm", () => {
                         owner: "glorg",
                         gitlab_url: "https://gitlab.example.com",
                         auto_import_teams: false,
+                        auto_import_projects: false,
+                        auto_import_members: false,
                     },
                 });
             });
@@ -633,7 +693,12 @@ describe("SyncConfigForm", () => {
 
         it("sync-all toggle with owner sends all_repos + owner and not batch", async () => {
             mockCreateSyncConfig.mockResolvedValue(undefined);
-            renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
+            renderWithToaster(
+                <SyncConfigForm
+                    credentials={mockCredentials}
+                    autoImportCapabilities={testAutoImportCapabilities}
+                />,
+            );
 
             await userEvent.type(screen.getByLabelText("Configuration Name"), "Org Sync");
             await clickContinue();
@@ -657,7 +722,13 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { all_repos: true, owner: "myorg", auto_import_teams: false },
+                    sync_options: {
+                        all_repos: true,
+                        owner: "myorg",
+                        auto_import_teams: false,
+                        auto_import_projects: false,
+                        auto_import_members: false,
+                    },
                 });
             });
             expect(mockBatchCreateSyncConfigs).not.toHaveBeenCalled();
@@ -665,7 +736,12 @@ describe("SyncConfigForm", () => {
 
         it("sync-all toggle with blank owner sends all_repos only (no search)", async () => {
             mockCreateSyncConfig.mockResolvedValue(undefined);
-            renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
+            renderWithToaster(
+                <SyncConfigForm
+                    credentials={mockCredentials}
+                    autoImportCapabilities={testAutoImportCapabilities}
+                />,
+            );
 
             await userEvent.type(screen.getByLabelText("Configuration Name"), "Token Sync");
             await clickContinue();
@@ -688,7 +764,12 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { all_repos: true, auto_import_teams: false },
+                    sync_options: {
+                        all_repos: true,
+                        auto_import_teams: false,
+                        auto_import_projects: false,
+                        auto_import_members: false,
+                    },
                 });
             });
             expect(mockBatchCreateSyncConfigs).not.toHaveBeenCalled();
@@ -715,7 +796,12 @@ describe("SyncConfigForm", () => {
             mockListReposForCredential.mockResolvedValue({
                 data: { provider: "github", owner: "myorg", repos: [sampleRepo], total: 1 },
             });
-            renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
+            renderWithToaster(
+                <SyncConfigForm
+                    credentials={mockCredentials}
+                    autoImportCapabilities={testAutoImportCapabilities}
+                />,
+            );
 
             await userEvent.type(screen.getByLabelText("Configuration Name"), "Repo Sync");
             await clickContinue();
@@ -738,7 +824,12 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { owner: "myorg", auto_import_teams: false },
+                    sync_options: {
+                        owner: "myorg",
+                        auto_import_teams: false,
+                        auto_import_projects: false,
+                        auto_import_members: false,
+                    },
                     repos: ["myorg/repo-a"],
                 });
             });
@@ -750,7 +841,12 @@ describe("SyncConfigForm", () => {
             mockListReposForCredential.mockResolvedValue({
                 data: { provider: "github", owner: "myorg", repos: [sampleRepo], total: 1 },
             });
-            renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
+            renderWithToaster(
+                <SyncConfigForm
+                    credentials={mockCredentials}
+                    autoImportCapabilities={testAutoImportCapabilities}
+                />,
+            );
 
             await userEvent.type(screen.getByLabelText("Configuration Name"), "Repo Sync");
             await clickContinue();
@@ -777,22 +873,35 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { owner: "otherorg", auto_import_teams: false },
+                    sync_options: {
+                        owner: "otherorg",
+                        auto_import_teams: false,
+                        auto_import_projects: false,
+                        auto_import_members: false,
+                    },
                 });
             });
             expect(mockBatchCreateSyncConfigs).not.toHaveBeenCalled();
         });
 
-        it("includes auto_import_teams=true in sync_options when toggled on", async () => {
+        it("includes auto_import_teams=true in sync_options when toggled on, leaving unsupported/unselected categories false", async () => {
             mockCreateSyncConfig.mockResolvedValue(undefined);
-            renderWithToaster(<SyncConfigForm credentials={mockCredentials} />);
+            renderWithToaster(
+                <SyncConfigForm
+                    credentials={mockCredentials}
+                    autoImportCapabilities={testAutoImportCapabilities}
+                />,
+            );
 
             await userEvent.type(screen.getByLabelText("Configuration Name"), "Team Sync");
             await clickContinue();
             await userEvent.selectOptions(screen.getByLabelText("Credential"), "cred-1");
             await clickContinue();
             await clickContinue(); // scope, skip owner
-            await userEvent.click(screen.getByLabelText("Auto-import teams, projects & members"));
+            // GitHub: "Import projects" is disabled (no Projects import) --
+            // only "Import teams" and "Import members" are selectable.
+            expect(screen.getByLabelText("Import projects")).toBeDisabled();
+            await userEvent.click(screen.getByLabelText("Import teams"));
             await clickContinue(); // depth
             await clickContinue(); // review
             await userEvent.click(screen.getByRole("button", { name: "Create Configuration" }));
@@ -806,7 +915,11 @@ describe("SyncConfigForm", () => {
                     schedule_cron: null,
                     timezone: null,
                     initial_sync_depth: 30,
-                    sync_options: { auto_import_teams: true },
+                    sync_options: {
+                        auto_import_teams: true,
+                        auto_import_projects: false,
+                        auto_import_members: false,
+                    },
                 });
             });
         });
@@ -818,7 +931,12 @@ describe("SyncConfigForm", () => {
                 limits: {},
                 minSyncIntervalHours: 0.25,
             });
-            render(<SyncConfigForm credentials={mockCredentials} />);
+            render(
+                <SyncConfigForm
+                    credentials={mockCredentials}
+                    autoImportCapabilities={testAutoImportCapabilities}
+                />,
+            );
 
             await userEvent.type(screen.getByLabelText("Configuration Name"), "Full Review Sync");
             await clickContinue();
@@ -830,7 +948,7 @@ describe("SyncConfigForm", () => {
             );
             await clickContinue();
             await userEvent.click(screen.getByLabelText("Pull Requests"));
-            await userEvent.click(screen.getByLabelText("Auto-import teams, projects & members"));
+            await userEvent.click(screen.getByLabelText("Import teams"));
             await clickContinue();
             await userEvent.click(screen.getByRole("button", { name: "90 days" }));
             await clickContinue();
@@ -1028,7 +1146,6 @@ describe("SyncConfigForm", () => {
                     sync_options: {
                         owner: "neworg",
                         repo: "oldrepo",
-                        auto_import_teams: false,
                     },
                 });
             });
@@ -1283,7 +1400,6 @@ describe("SyncConfigForm", () => {
                     sync_options: {
                         owner: "full-chaos",
                         search: "full-chaos/*",
-                        auto_import_teams: false,
                     },
                 });
             });
@@ -1328,7 +1444,7 @@ describe("SyncConfigForm", () => {
             expect(screen.getByLabelText("Custom cron")).toHaveValue("15 3 * * *");
         });
 
-        it("round-trips auto_import_teams and preserves other sync_options on update", async () => {
+        it("round-trips auto_import_teams/_projects/_members independently and preserves other sync_options on update", async () => {
             mockUpdateSyncConfig.mockResolvedValue(undefined);
             const initialData: SyncConfig = {
                 id: "cfg-ai",
@@ -1340,6 +1456,8 @@ describe("SyncConfigForm", () => {
                     owner: "myorg",
                     search: "myorg/*",
                     auto_import_teams: true,
+                    auto_import_projects: false,
+                    auto_import_members: true,
                 },
                 is_active: true,
                 schedule_cron: null,
@@ -1354,12 +1472,23 @@ describe("SyncConfigForm", () => {
             };
 
             renderWithToaster(
-                <SyncConfigForm initialData={initialData} credentials={mockCredentials} />,
+                <SyncConfigForm
+                    initialData={initialData}
+                    credentials={mockCredentials}
+                    autoImportCapabilities={testAutoImportCapabilities}
+                />,
             );
 
-            const toggle = screen.getByLabelText("Auto-import teams, projects & members");
-            expect(toggle).toBeChecked();
-            await userEvent.click(toggle); // turn off
+            const teamsToggle = screen.getByLabelText("Import teams");
+            const membersToggle = screen.getByLabelText("Import members");
+            const projectsToggle = screen.getByLabelText("Import projects");
+            expect(teamsToggle).toBeChecked();
+            expect(membersToggle).toBeChecked();
+            // GitHub: unsupported, disabled, and never rendered checked
+            // regardless of the stored (stale/clamped-away) value.
+            expect(projectsToggle).toBeDisabled();
+            expect(projectsToggle).not.toBeChecked();
+            await userEvent.click(teamsToggle); // turn teams off, leave members on
             await userEvent.click(screen.getByRole("button", { name: "Update Configuration" }));
 
             await waitFor(() => {
@@ -1373,6 +1502,80 @@ describe("SyncConfigForm", () => {
                         owner: "myorg",
                         search: "myorg/*",
                         auto_import_teams: false,
+                        auto_import_projects: false,
+                        auto_import_members: true,
+                    },
+                });
+            });
+        });
+
+        it("preserves existing auto_import_* flags on an unrelated edit save when the capabilities fetch failed (autoImportCapabilities=null)", async () => {
+            // CHAOS-4323 codex adversarial-review (MEDIUM): a capability
+            // fetch FAILURE must not be treated the same as a successful
+            // fetch that found nothing for this provider -- doing so would
+            // silently delete this config's already-true auto_import_teams
+            // on the very next unrelated save. autoImportCapabilities=null
+            // (vs {}) is the caller's signal that the fetch failed; the
+            // section itself must also hide (nothing safe to offer), but
+            // the persisted flags must round-trip untouched.
+            mockUpdateSyncConfig.mockResolvedValue(undefined);
+            const initialData: SyncConfig = {
+                id: "cfg-caps-unknown",
+                name: "Existing Config",
+                provider: "github",
+                credential_id: "cred-1",
+                sync_targets: ["git"],
+                sync_options: {
+                    owner: "myorg",
+                    auto_import_teams: true,
+                    auto_import_projects: false,
+                    auto_import_members: true,
+                },
+                is_active: true,
+                schedule_cron: null,
+                timezone: null,
+                initial_sync_depth: null,
+                last_sync_at: null,
+                last_sync_success: null,
+                last_sync_error: null,
+                created_at: "2024-01-01",
+                updated_at: "2024-01-01",
+                parent_id: null,
+            };
+
+            renderWithToaster(
+                <SyncConfigForm
+                    initialData={initialData}
+                    credentials={mockCredentials}
+                    autoImportCapabilities={null}
+                />,
+            );
+
+            // The section itself hides -- nothing safe to offer without
+            // knowing what's actually supported.
+            expect(screen.queryByText("Import from provider during sync")).not.toBeInTheDocument();
+
+            // An unrelated field changes; save.
+            const ownerInput = screen.getByLabelText("Owner / Organization");
+            await userEvent.clear(ownerInput);
+            await userEvent.type(ownerInput, "neworg");
+            await userEvent.click(screen.getByRole("button", { name: "Update Configuration" }));
+
+            await waitFor(() => {
+                expect(mockUpdateSyncConfig).toHaveBeenCalledWith("cfg-caps-unknown", {
+                    sync_targets: ["git"],
+                    is_active: true,
+                    schedule_cron: null,
+                    timezone: null,
+                    initial_sync_depth: 30,
+                    sync_options: {
+                        owner: "neworg",
+                        // Untouched -- exactly what initialData carried,
+                        // not stripped and not overwritten from checkbox
+                        // state.
+                        auto_import_teams: true,
+                        auto_import_projects: false,
+                        auto_import_members: true,
                     },
                 });
             });
@@ -1397,7 +1600,13 @@ describe("SyncConfigForm", () => {
                 parent_id: null,
             };
 
-            render(<SyncConfigForm initialData={initialData} credentials={mockCredentials} />);
+            render(
+                <SyncConfigForm
+                    initialData={initialData}
+                    credentials={mockCredentials}
+                    autoImportCapabilities={testAutoImportCapabilities}
+                />,
+            );
 
             expect(screen.getByText("Identity")).toBeInTheDocument();
             expect(screen.getByRole("heading", { name: "Credential" })).toBeInTheDocument();
@@ -1405,7 +1614,7 @@ describe("SyncConfigForm", () => {
             expect(screen.getByText("Datasets & sync targets")).toBeInTheDocument();
             expect(screen.getByText("Initial depth")).toBeInTheDocument();
             expect(screen.getAllByText("Schedule").length).toBeGreaterThan(0);
-            expect(screen.getByText("Advanced options")).toBeInTheDocument();
+            expect(screen.getByText("Import from provider during sync")).toBeInTheDocument();
         });
 
         describe("immutable fields in edit mode", () => {
@@ -1748,9 +1957,8 @@ describe("SyncConfigForm", () => {
 
             render(<SyncConfigForm initialData={initialData} credentials={mockCredentials} />);
 
-            expect(
-                screen.queryByLabelText("Auto-import teams, projects & members"),
-            ).not.toBeInTheDocument();
+            expect(screen.queryByText("Import from provider during sync")).not.toBeInTheDocument();
+            expect(screen.queryByLabelText("Import teams")).not.toBeInTheDocument();
         });
 
         it("blocks a PagerDuty save for duplicate service IDs and focuses the mapping editor", async () => {
@@ -1877,7 +2085,6 @@ describe("SyncConfigForm", () => {
                     timezone: null,
                     initial_sync_depth: 30,
                     sync_options: {
-                        auto_import_teams: false,
                         service_repository_mappings: {
                             compass: {
                                 "service-catalog": [

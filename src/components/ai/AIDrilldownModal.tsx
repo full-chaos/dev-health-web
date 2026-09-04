@@ -1,6 +1,7 @@
 "use client";
 
 import type { AIFilter } from "@/lib/filters/ai";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { AIEvidenceExplorer } from "./AIEvidenceExplorer";
 
 type AIDrilldownModalProps = {
@@ -42,9 +43,9 @@ export function AIDrilldownModal({ metric, filter, onClose }: AIDrilldownModalPr
                         type="button"
                         onClick={onClose}
                         className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs font-semibold text-(--ink-muted) hover:text-foreground"
-                        aria-label="Close evidence drilldown"
+                        aria-label={CTA_LABELS.closeEvidenceDrilldown}
                     >
-                        Close
+                        {CTA_LABELS.close}
                     </button>
                 </div>
 

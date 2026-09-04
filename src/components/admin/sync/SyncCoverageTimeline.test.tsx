@@ -3,17 +3,21 @@ import { render, screen, userEvent, within } from "@/test/utils";
 import { SyncCoverageTimeline } from "./SyncCoverageTimeline";
 import {
     COMPLETE_COVERAGE_SUMMARY,
+    FAILED_COVERAGE_SUMMARY,
     LEGACY_INSUFFICIENT_DATA_SUMMARY,
     PARTIAL_COVERAGE_SUMMARY,
+    TRUNCATED_COVERAGE_SUMMARY,
 } from "@/lib/admin/__tests__/syncCoverageFixtures";
 import {
     SAMPLE_COVERAGE_CONCURRENT_CONFIG,
+    SAMPLE_COVERAGE_NOT_ENABLED,
     SAMPLE_COVERAGE_OVERLAPPING_RETRY,
+    SAMPLE_COVERAGE_TRUNCATED,
 } from "@/data/syncCoverageSample";
 
 describe("SyncCoverageTimeline", () => {
     it("renders a loading state when coverage has not resolved yet", () => {
-        render(<SyncCoverageTimeline coverage={null} onBackfillGapAction={vi.fn()} />);
+        render(<SyncCoverageTimeline coverage={null} onBackfillWindowAction={vi.fn()} />);
 
         expect(screen.getByTestId("coverage-timeline-loading")).toBeInTheDocument();
     });
@@ -23,7 +27,7 @@ describe("SyncCoverageTimeline", () => {
             <SyncCoverageTimeline
                 coverage={null}
                 error="Coverage endpoint returned 500"
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
@@ -35,7 +39,7 @@ describe("SyncCoverageTimeline", () => {
         render(
             <SyncCoverageTimeline
                 coverage={LEGACY_INSUFFICIENT_DATA_SUMMARY}
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
@@ -47,7 +51,7 @@ describe("SyncCoverageTimeline", () => {
         render(
             <SyncCoverageTimeline
                 coverage={PARTIAL_COVERAGE_SUMMARY}
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
@@ -56,19 +60,19 @@ describe("SyncCoverageTimeline", () => {
         expect(screen.queryByText(/src-repo/)).not.toBeInTheDocument();
     });
 
-    it("invokes onBackfillGapAction with the gap's range when 'Backfill this gap' is clicked", async () => {
-        const onBackfillGapAction = vi.fn();
+    it("preserves the legacy gap action when canonical windows are absent", async () => {
+        const onBackfillWindowAction = vi.fn();
         const user = userEvent.setup();
         render(
             <SyncCoverageTimeline
                 coverage={PARTIAL_COVERAGE_SUMMARY}
-                onBackfillGapAction={onBackfillGapAction}
+                onBackfillWindowAction={onBackfillWindowAction}
             />,
         );
 
         const button = screen.getByRole("button", { name: "Backfill this gap" });
         await user.click(button);
-        expect(onBackfillGapAction).toHaveBeenCalledWith(
+        expect(onBackfillWindowAction).toHaveBeenCalledWith(
             expect.objectContaining({
                 since: "2026-01-02T00:00:00Z",
                 before: "2026-01-03T00:00:00Z",
@@ -76,11 +80,165 @@ describe("SyncCoverageTimeline", () => {
         );
     });
 
+    it("uses only canonical backfill windows when the field is present", async () => {
+        const onBackfillWindowAction = vi.fn();
+        const user = userEvent.setup();
+        render(
+            <SyncCoverageTimeline
+                coverage={TRUNCATED_COVERAGE_SUMMARY}
+                onBackfillWindowAction={onBackfillWindowAction}
+            />,
+        );
+
+        expect(screen.queryByRole("button", { name: "Backfill this gap" })).not.toBeInTheDocument();
+        const action = screen.getByRole("button", {
+            name: "Backfill Dec 20, 2025 to Jan 1, 2026",
+        });
+        await user.click(action);
+        expect(onBackfillWindowAction).toHaveBeenCalledWith({
+            since: "2025-12-20",
+            before: "2026-01-01",
+        });
+    });
+
+    it("opens a gap action only for its exact server-authorized source and dataset window", async () => {
+        const onBackfillWindowAction = vi.fn();
+        const user = userEvent.setup();
+        const window = {
+            since: "2026-01-02T00:00:00Z",
+            before: "2026-01-03T00:00:00Z",
+            source_ids: ["src-repo"],
+            dataset_keys: ["commits"],
+            reasons: ["gap"] as const,
+        };
+        render(
+            <SyncCoverageTimeline
+                coverage={{ ...PARTIAL_COVERAGE_SUMMARY, backfill_windows: [window] }}
+                onBackfillWindowAction={onBackfillWindowAction}
+            />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "Backfill this gap" }));
+        expect(onBackfillWindowAction).toHaveBeenCalledWith(window);
+    });
+
+    it("opens a failed-row action only for its exact server-authorized window", async () => {
+        const onBackfillWindowAction = vi.fn();
+        const user = userEvent.setup();
+        const window = {
+            since: "2026-01-02T00:00:00Z",
+            before: "2026-01-03T00:00:00Z",
+            source_ids: ["src-repo"],
+            dataset_keys: ["commits"],
+            reasons: ["failed"] as const,
+        };
+        render(
+            <SyncCoverageTimeline
+                coverage={{ ...FAILED_COVERAGE_SUMMARY, backfill_windows: [window] }}
+                onBackfillWindowAction={onBackfillWindowAction}
+            />,
+        );
+
+        await user.click(screen.getByRole("button", { name: "Backfill this failure" }));
+        expect(onBackfillWindowAction).toHaveBeenCalledWith(window);
+    });
+
+    it("selects actionable gaps and failures together for one focused batch", async () => {
+        const onBackfillWindowsAction = vi.fn();
+        const user = userEvent.setup();
+        render(
+            <SyncCoverageTimeline
+                coverage={SAMPLE_COVERAGE_TRUNCATED}
+                onBackfillWindowAction={vi.fn()}
+                onBackfillWindowsAction={onBackfillWindowsAction}
+            />,
+        );
+
+        await user.click(
+            screen.getByRole("checkbox", {
+                name: /Select gap Jun 24, 2026 to Jun 26, 2026 for backfill/,
+            }),
+        );
+        await user.click(
+            screen.getByRole("checkbox", {
+                name: /Select failed Jun 25, 2026 to Jun 27, 2026 for backfill/,
+            }),
+        );
+        await user.click(screen.getByRole("button", { name: "Backfill selected (2)" }));
+
+        expect(onBackfillWindowsAction).toHaveBeenCalledWith(
+            SAMPLE_COVERAGE_TRUNCATED.backfill_windows,
+        );
+    });
+
+    it("does not infer a backfill action from gaps when canonical windows are explicitly empty", () => {
+        render(
+            <SyncCoverageTimeline
+                coverage={{ ...PARTIAL_COVERAGE_SUMMARY, backfill_windows: [] }}
+                onBackfillWindowAction={vi.fn()}
+            />,
+        );
+
+        expect(screen.getAllByText("Gap").length).toBeGreaterThan(0);
+        expect(screen.queryByRole("button", { name: /Backfill/ })).not.toBeInTheDocument();
+        expect(screen.getAllByText("No exact backfill suggestion").length).toBeGreaterThan(0);
+    });
+
+    it("uses the server coverage bounds as the decorative timeline extent", () => {
+        render(
+            <SyncCoverageTimeline
+                coverage={TRUNCATED_COVERAGE_SUMMARY}
+                onBackfillWindowAction={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByTestId("coverage-covered-band-commits")).toHaveStyle({
+            left: "74.8051948051948%",
+            width: "6.233766233766234%",
+        });
+    });
+
+    it("falls back to the dataset extent when explicit coverage bounds are invalid", () => {
+        render(
+            <SyncCoverageTimeline
+                coverage={{
+                    ...TRUNCATED_COVERAGE_SUMMARY,
+                    coverage_since: "not-a-date",
+                    coverage_through: "also-not-a-date",
+                }}
+                onBackfillWindowAction={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByTestId("coverage-covered-band-commits")).toHaveStyle({
+            left: "0%",
+            width: "50%",
+        });
+    });
+
+    it("expands server coverage bounds to keep actual gap ranges visible", () => {
+        render(
+            <SyncCoverageTimeline
+                coverage={{
+                    ...TRUNCATED_COVERAGE_SUMMARY,
+                    coverage_since: "2026-01-01T00:00:00Z",
+                    coverage_through: "2026-01-02T00:00:00Z",
+                }}
+                onBackfillWindowAction={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByTestId("coverage-covered-band-commits")).toHaveStyle({
+            left: "0%",
+            width: "50%",
+        });
+    });
+
     it("filters rendered datasets by the dataset filter", async () => {
         render(
             <SyncCoverageTimeline
                 coverage={COMPLETE_COVERAGE_SUMMARY}
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
@@ -96,7 +254,7 @@ describe("SyncCoverageTimeline", () => {
         render(
             <SyncCoverageTimeline
                 coverage={PARTIAL_COVERAGE_SUMMARY}
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
@@ -114,7 +272,7 @@ describe("SyncCoverageTimeline", () => {
         render(
             <SyncCoverageTimeline
                 coverage={PARTIAL_COVERAGE_SUMMARY}
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
@@ -127,7 +285,7 @@ describe("SyncCoverageTimeline", () => {
         render(
             <SyncCoverageTimeline
                 coverage={SAMPLE_COVERAGE_OVERLAPPING_RETRY}
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
@@ -141,12 +299,98 @@ describe("SyncCoverageTimeline", () => {
         render(
             <SyncCoverageTimeline
                 coverage={SAMPLE_COVERAGE_CONCURRENT_CONFIG}
-                onBackfillGapAction={vi.fn()}
+                onBackfillWindowAction={vi.fn()}
             />,
         );
 
         const table = screen.getAllByRole("table")[0];
         expect(within(table).getAllByText("fullchaos/second-repo").length).toBeGreaterThan(0);
         expect(screen.queryByText(/sample-source-secondary-repo/)).not.toBeInTheDocument();
+    });
+
+    describe("not_enabled datasets", () => {
+        const NOT_ENABLED_KEYS = [
+            "work-items",
+            "work-item-labels",
+            "work-item-projects",
+            "work-item-history",
+            "work-item-comments",
+        ];
+
+        it("renders no card, table, or dropdown entry for a not_enabled dataset", () => {
+            render(
+                <SyncCoverageTimeline
+                    coverage={SAMPLE_COVERAGE_NOT_ENABLED}
+                    onBackfillWindowAction={vi.fn()}
+                />,
+            );
+
+            for (const datasetKey of NOT_ENABLED_KEYS) {
+                expect(
+                    screen.queryByRole("table", {
+                        name: `Coverage windows for dataset ${datasetKey}`,
+                    }),
+                ).not.toBeInTheDocument();
+                expect(screen.queryByRole("option", { name: datasetKey })).not.toBeInTheDocument();
+            }
+            // The status badge only ever renders inside a dataset card.
+            expect(screen.queryByText("Not enabled")).not.toBeInTheDocument();
+        });
+
+        it("keeps the not_enabled signal as one muted summary line naming every key", () => {
+            render(
+                <SyncCoverageTimeline
+                    coverage={SAMPLE_COVERAGE_NOT_ENABLED}
+                    onBackfillWindowAction={vi.fn()}
+                />,
+            );
+
+            const summary = screen.getByTestId("coverage-not-enabled-summary");
+            expect(summary).toHaveTextContent("5 datasets are not enabled");
+            for (const datasetKey of NOT_ENABLED_KEYS) {
+                expect(summary).toHaveTextContent(datasetKey);
+            }
+        });
+
+        it("leaves enabled datasets and their server-authorized windows untouched", () => {
+            render(
+                <SyncCoverageTimeline
+                    coverage={SAMPLE_COVERAGE_NOT_ENABLED}
+                    onBackfillWindowAction={vi.fn()}
+                />,
+            );
+
+            for (const datasetKey of ["git", "prs", "cicd"]) {
+                expect(
+                    screen.getByRole("table", {
+                        name: `Coverage windows for dataset ${datasetKey}`,
+                    }),
+                ).toBeInTheDocument();
+                expect(screen.getByRole("option", { name: datasetKey })).toBeInTheDocument();
+            }
+            expect(
+                screen.getByRole("button", { name: "Backfill Jun 24, 2026 to Jun 26, 2026" }),
+            ).toBeInTheDocument();
+        });
+
+        it("still reports the not_enabled keys when they are the only datasets returned", () => {
+            render(
+                <SyncCoverageTimeline
+                    coverage={{
+                        ...SAMPLE_COVERAGE_NOT_ENABLED,
+                        datasets: SAMPLE_COVERAGE_NOT_ENABLED.datasets.filter(
+                            (dataset) => dataset.status === "not_enabled",
+                        ),
+                        backfill_windows: [],
+                    }}
+                    onBackfillWindowAction={vi.fn()}
+                />,
+            );
+
+            expect(screen.getByText("No coverage data yet")).toBeInTheDocument();
+            expect(screen.getByTestId("coverage-not-enabled-summary")).toHaveTextContent(
+                "5 datasets are not enabled",
+            );
+        });
     });
 });

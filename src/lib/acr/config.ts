@@ -39,7 +39,7 @@ function parseApiOrigin(rawOrigin: string): URL {
         );
     }
     if (
-        origin.protocol !== "https:" ||
+        (origin.protocol !== "http:" && origin.protocol !== "https:") ||
         origin.username !== "" ||
         origin.password !== "" ||
         origin.pathname !== "/" ||

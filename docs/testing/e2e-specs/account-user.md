@@ -22,7 +22,7 @@ Core interaction chain
 - Open dashboard.
 - Click delta tile.
 - Evidence panel opens.
-- Click `Open in Explore View ↗`.
+- Click `Open evidence ↗`.
 - Navigate to explore route with `metric` and preserved `f`.
 
 ```mermaid
@@ -38,7 +38,7 @@ sequenceDiagram
     U->>D: Click delta tile
     D->>EP: Open evidence panel
     EP-->>U: Show evidence details
-    U->>EP: Click Open in Explore View ↗
+    U->>EP: Click Open evidence ↗
     EP-->>EX: Navigate /explore?metric=...&f=...
     EX-->>U: Render explore view with preserved filter f
     U->>OP: Open /opportunities

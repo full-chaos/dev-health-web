@@ -1,6 +1,10 @@
+import { EventEmitter } from "node:events";
+
+import type { Page, Request, Response } from "@playwright/test";
 import { describe, expect, it } from "vitest";
 import {
     EMPTY_BROWSER_FAULTS,
+    recordBrowserFaults,
     reconcileBrowserFaults,
     settledBrowserFaults,
     type BrowserFaultEvent,
@@ -26,6 +30,38 @@ const AUTH_SESSION_CONSOLE_ERROR = {
 } as const satisfies BrowserFaultEvent;
 
 describe("Context Fabric browser fault reconciliation", () => {
+    it("settles an abandoned session request when a newer session response succeeds", async () => {
+        const pageEvents = new EventEmitter();
+        const page = Object.assign(pageEvents, {
+            evaluate: () => Promise.resolve(),
+        }) as unknown as Page;
+        const stalledRequest = {
+            method: () => "GET",
+            url: () => "http://127.0.0.1:3012/api/auth/session",
+        } as Request;
+        const recoveredRequest = {
+            method: () => "GET",
+            url: () => "http://127.0.0.1:3012/api/auth/session",
+        } as Request;
+        const response = {
+            request: () => recoveredRequest,
+            status: () => 200,
+            url: () => recoveredRequest.url(),
+        } as Response;
+        const log = recordBrowserFaults(page);
+
+        pageEvents.emit("request", stalledRequest);
+        pageEvents.emit("request", recoveredRequest);
+        pageEvents.emit("response", response);
+
+        const outcome = await Promise.race([
+            settledBrowserFaults(log).then(() => "settled"),
+            new Promise<string>((resolve) => setTimeout(() => resolve("timed-out"), 25)),
+        ]);
+
+        expect(outcome).toBe("settled");
+    });
+
     it.each([
         [
             "console-first",

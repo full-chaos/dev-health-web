@@ -69,10 +69,18 @@ export const SankeyCoverageSchema = z.object({
     repoCoverage: z.number(),
 });
 
+// CHAOS-4241: unit of SankeyNode/SankeyEdge `value` — WORK_UNITS (default) |
+// LOC. Optional here (not `.default(...)`) so a response that omits it
+// (older backend, sample data) parses to `undefined`, matching
+// formatSankeyUnit's own safe fallback to "work units" rather than this
+// schema silently asserting a unit the response never claimed.
+export const SankeyValueUnitSchema = z.enum(["WORK_UNITS", "LOC"]);
+
 export const SankeyResultSchema = z.object({
     nodes: z.array(SankeyNodeSchema),
     edges: z.array(SankeyEdgeSchema),
     coverage: SankeyCoverageSchema.nullable().optional(),
+    unit: SankeyValueUnitSchema.optional(),
 });
 
 // =============================================================================
@@ -200,6 +208,7 @@ export type BreakdownResult = z.infer<typeof BreakdownResultSchema>;
 export type SankeyNode = z.infer<typeof SankeyNodeSchema>;
 export type SankeyEdge = z.infer<typeof SankeyEdgeSchema>;
 export type SankeyCoverage = z.infer<typeof SankeyCoverageSchema>;
+export type SankeyValueUnit = z.infer<typeof SankeyValueUnitSchema>;
 export type SankeyResult = z.infer<typeof SankeyResultSchema>;
 export type AnalyticsResult = z.infer<typeof AnalyticsResultSchema>;
 export type DimensionInput = z.infer<typeof DimensionInputSchema>;

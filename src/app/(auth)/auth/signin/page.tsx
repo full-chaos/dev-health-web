@@ -3,6 +3,7 @@ import { auth, getAvailableSocialProviders } from "@/lib/auth";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { SocialLoginError } from "@/components/auth/SocialLoginError";
+import { appendCallbackUrl, safePostLoginRedirect } from "@/lib/post-login-redirect";
 
 type SearchParams = Promise<{
     registered?: string;
@@ -10,20 +11,25 @@ type SearchParams = Promise<{
     trial?: string;
     error?: string;
     from?: string;
+    callbackUrl?: string;
 }>;
 
 export default async function SignInPage({ searchParams }: { searchParams: SearchParams }) {
     const params = await searchParams;
     const plan = params.plan?.toLowerCase();
     const trialIntent = plan === "team" && params.trial === "true";
-    const signupHref = trialIntent ? "/auth/signup?plan=team&trial=true" : "/auth/signup";
+    const callbackUrl = safePostLoginRedirect(params.callbackUrl);
+    const signupHref = appendCallbackUrl(
+        trialIntent ? "/auth/signup?plan=team&trial=true" : "/auth/signup",
+        callbackUrl,
+    );
 
     const session = await auth();
     if (session?.user && params.from !== "reset") {
         if (session.user.needs_onboarding) {
             redirect(trialIntent ? "/auth/onboard?plan=team&trial=true" : "/auth/onboard");
         }
-        redirect("/dashboard");
+        redirect(callbackUrl ?? "/dashboard");
     }
 
     const justRegistered = params.registered === "true";
@@ -42,8 +48,8 @@ export default async function SignInPage({ searchParams }: { searchParams: Searc
                     <SocialLoginError error={socialError} />
                 </div>
             )}
-            <AuthCard signUpHref={signupHref} providers={providers}>
-                <LoginForm plan={plan} trialIntent={trialIntent} />
+            <AuthCard callbackUrl={callbackUrl} signUpHref={signupHref} providers={providers}>
+                <LoginForm callbackUrl={callbackUrl} plan={plan} trialIntent={trialIntent} />
             </AuthCard>
         </div>
     );

@@ -10,6 +10,7 @@ import {
     isImpersonationWindow,
     onImpersonationEvent,
 } from "@/lib/impersonation-events";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export function ImpersonationBanner() {
     const { data: session, update } = useSession();
@@ -83,7 +84,7 @@ export function ImpersonationBanner() {
                 onClick={handleStopImpersonation}
                 className="bg-black/10 hover:bg-black/20 text-black px-3 py-1 rounded text-sm font-semibold transition-colors"
             >
-                Stop Impersonating
+                {CTA_LABELS.stopImpersonating}
             </button>
         </div>
     );

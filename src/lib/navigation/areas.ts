@@ -152,6 +152,7 @@ export const navAreas: readonly NavArea[] = [
             "/cognitive-load",
             "/bottleneck",
             "/explore",
+            "/dev",
             "/agent-context",
         ],
         legacyActiveIds: [
@@ -165,6 +166,7 @@ export const navAreas: readonly NavArea[] = [
             "cognitive-load",
             "bottleneck",
             "diagnose",
+            "ask-dev",
         ],
         // CHAOS-2074: Diagnose is FLAT (no clusters). Descriptors placed here; Phase
         // 2 wires the resolver fetching (see `@/lib/areaSignals/getAreaSignals`).
@@ -271,13 +273,13 @@ export const navAreas: readonly NavArea[] = [
                 path: "/bottleneck",
                 navVisible: true,
             },
-            {
-                id: "context-packet",
-                label: "Context Fabric",
-                path: "/agent-context/context-packet",
-                navVisible: true,
-                requiredFeature: "agent_context_runtime",
-            },
+            // CHAOS-3524 (chris's ruling): Ask Dev is deliberately NOT a
+            // left-nav destination — one ingress only, the in-context
+            // trigger/window → workspace path (AskDevWindow's "Ask Dev
+            // workspace" link). The route itself (`/dev`) and its
+            // ownedPathPrefixes membership above are untouched, so landing
+            // on it via that trigger still highlights Diagnose correctly;
+            // only the always-visible sidebar row is gone.
             { id: "people", label: "People", path: "/people", navVisible: true },
             { id: "code", label: "Code", path: "/code", navVisible: true },
         ],

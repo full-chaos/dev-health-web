@@ -1,18 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
+import { RefreshControl } from "@/components/admin/RefreshControl";
 import { SyncStatusBadge } from "./SyncStatusBadge";
 import { getSyncRunStatus, getSyncRunUnits } from "@/lib/admin/server";
+import { getSyncRunPresentation } from "@/lib/admin/syncRunPresentation";
+import { getSyncUnitErrorPresentation } from "@/lib/admin/syncUnitErrorPresentation";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber, formatPercent, formatDateUTC } from "@/lib/formatters";
-import { type SyncStatus, isTerminalSyncStatus, mapPlannerRunStatus } from "@/lib/sync-types";
+import { type SyncStatus, isTerminalSyncStatus } from "@/lib/sync-types";
 import type { SyncRun, SyncRunUnit, SyncRunUnitSummary } from "@/lib/admin/types";
-
-/** How often to refresh live run + unit state while non-terminal. */
-const POLL_INTERVAL_MS = 3500;
-/** Safety cap so a stuck/abandoned run never polls forever (~10 min). */
-const MAX_POLL_DURATION_MS = 10 * 60 * 1000;
 
 /** Distinct unit statuses, in a stable display order, for the status filter. */
 const STATUS_FILTER_ORDER = [
@@ -58,37 +56,95 @@ function unitBadgeStatus(status: string): SyncStatus {
     }
 }
 
-function statusCount(summary: SyncRunUnitSummary | null, status: string): number | null {
-    if (!summary) return null;
-    return summary.by_status[status] ?? 0;
+/**
+ * A `retrying` unit currently blocked on the sync budget guard (CHAOS-3412):
+ * still within its deferral caps, waiting for the next scheduled attempt.
+ * Distinct from a generic retry so operators don't read it as silent nothing.
+ */
+function isBudgetBlockedUnit(unit: SyncRunUnit): boolean {
+    return unit.status === "retrying" && unit.error_category === "budget_deferred";
 }
 
-function totalUnitCount(run: SyncRun, summary: SyncRunUnitSummary | null): number {
-    return summary ? Math.max(summary.unit_count, run.total_units) : run.total_units;
+/**
+ * A `failed` unit that exhausted its budget-deferral caps (CHAOS-3412) —
+ * terminal, with an actionable `error` naming the bucket, cap, and remedies.
+ */
+function isBudgetExhaustedUnit(unit: SyncRunUnit): boolean {
+    return unit.status === "failed" && unit.error_category === "budget_deferral_exhausted";
 }
 
-function effectiveRunStatus(run: SyncRun, summary: SyncRunUnitSummary | null): string {
-    if (!summary) return run.status;
+/**
+ * A `failed` unit that hit the aggregate deferral cap (CHAOS-3412) — it
+ * oscillated between budget and rate-limit deferral episodes without ever
+ * running. Terminal, with an actionable `error` naming the last episode kind
+ * and both counters.
+ */
+function isDeferralsExhaustedUnit(unit: SyncRunUnit): boolean {
+    return unit.status === "failed" && unit.error_category === "deferral_exhausted";
+}
 
-    const successCount = statusCount(summary, "success") ?? 0;
-    const failedCount = statusCount(summary, "failed") ?? 0;
-    const settledCount = successCount + failedCount;
-    const totalUnits = totalUnitCount(run, summary);
-    if (totalUnits > 0 && settledCount >= totalUnits) {
-        if (failedCount === 0) return "success";
-        if (successCount === 0) return "failed";
-        return "partial_failed";
+function isProviderCapacityWaitingUnit(unit: SyncRunUnit): boolean {
+    return (
+        unit.error_category === "provider_budget_contention" ||
+        unit.error === "provider_budget_contention"
+    );
+}
+
+type AttentionDisposition = "failed" | "retrying" | "waiting";
+
+interface AttentionGroup {
+    key: string;
+    datasetKey: string;
+    disposition: AttentionDisposition;
+    title: string;
+    detail: string | null;
+    sourceNames: string[];
+    units: SyncRunUnit[];
+    retryWindows: Array<{
+        availableAt: string;
+        sourceNames: string[];
+    }>;
+    budgetDeferrals: number | null;
+}
+
+function attentionDisposition(unit: SyncRunUnit): AttentionDisposition {
+    if (isProviderCapacityWaitingUnit(unit) || unit.error_category === "budget_deferred") {
+        return "waiting";
     }
-    if (
-        settledCount > 0 ||
-        (statusCount(summary, "running") ?? 0) > 0 ||
-        (statusCount(summary, "retrying") ?? 0) > 0
-    ) {
-        return "running";
-    }
-    if ((statusCount(summary, "dispatching") ?? 0) > 0) return "dispatching";
-    if ((statusCount(summary, "planned") ?? 0) > 0) return "planned";
-    return run.status;
+    if (unit.status === "failed") return "failed";
+    return "retrying";
+}
+
+/**
+ * Distinct badge treatment for budget-guard states, styled with the same
+ * theme-aware token idiom used elsewhere for warning/negative tones
+ * (ByoLlmErrorStates.tsx) — soft opacity border, never a bright literal one.
+ */
+function BudgetGuardBadge({ tone, label }: { tone: "blocked" | "exhausted"; label: string }) {
+    const toneClasses =
+        tone === "blocked"
+            ? "border-(--accent-3)/40 bg-(--accent-3)/10 text-(--accent-3)"
+            : "border-(--accent-negative)/40 bg-(--accent-negative)/10 text-(--accent-negative)";
+    return (
+        <span
+            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold ${toneClasses}`}
+        >
+            {label}
+        </span>
+    );
+}
+
+/**
+ * Chip for a dataset still ratcheting toward the current time (CHAOS-3430).
+ * Uses the theme-aware token idiom already used for warning tones — soft
+ * opacity border, never a bright literal one, so it reads correctly in dark.
+ */
+function CatchingUpBadge() {
+    return (
+        <span className="inline-flex items-center rounded-full border border-(--accent-3)/40 bg-(--accent-3)/10 px-2.5 py-0.5 text-xs font-semibold text-(--accent-3)">
+            Catching up
+        </span>
+    );
 }
 
 function formatDuration(seconds: number | null): string {
@@ -203,92 +259,48 @@ export function SyncRunDetailLive({
     const [run, setRun] = useState<SyncRun>(initialRun);
     const [summary, setSummary] = useState<SyncRunUnitSummary | null>(initialSummary);
     const [unitsError, setUnitsError] = useState<string | null>(initialUnitsError);
-
-    const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-    const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    // Monotonic sequence: every tick and every stopPolling bumps it, so any
-    // in-flight response whose seq is no longer current (slow poll resolving
-    // after a later terminal tick, the safety timeout, or unmount) is ignored
-    // and can never overwrite terminal/cleared state (FIX 3).
-    const seqRef = useRef(0);
-    // Guard against overlapping ticks if a poll outlives the interval period.
+    // CHAOS-4318: no more timer-driven polling against the Python API — the
+    // initial (server) fetch populates this on mount, and every subsequent
+    // read comes from an explicit Refresh click.
+    const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(
+        testMode ? null : new Date().toISOString(),
+    );
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    // Guard against overlapping refreshes if a click lands while one is in flight.
     const inFlightRef = useRef(false);
 
-    const stopPolling = useCallback(() => {
-        // Invalidate any in-flight response so it cannot mutate state post-stop.
-        seqRef.current += 1;
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-        }
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-            timeoutRef.current = null;
-        }
-    }, []);
+    const runPresentation = getSyncRunPresentation(run, summary);
+    const isTerminal = isTerminalSyncStatus(runPresentation.badgeStatus);
 
-    const currentRunStatus = effectiveRunStatus(run, summary);
-    const liveStatus = mapPlannerRunStatus(currentRunStatus);
-    const isTerminal = isTerminalSyncStatus(liveStatus);
+    // CHAOS-4318: manual refresh only — fetch run + unit state on demand via
+    // the Refresh control instead of a setInterval poll loop.
+    const refresh = useCallback(async () => {
+        if (inFlightRef.current || testMode) return;
+        inFlightRef.current = true;
+        setIsRefreshing(true);
+        try {
+            const [runRes, unitsRes] = await Promise.all([
+                getSyncRunStatus(runId),
+                getSyncRunUnits(runId),
+            ]);
 
-    // Poll run + unit state while the run is non-terminal, mirroring the
-    // cleanup/timeout discipline in useSyncTrigger.ts. State is only mutated
-    // inside the async interval callback (never synchronously in the effect
-    // body), so react-hooks/set-state-in-effect stays satisfied.
-    useEffect(() => {
-        if (testMode) return undefined;
-        if (isTerminal) return undefined;
-
-        let cancelled = false;
-
-        const tick = async () => {
-            // Skip overlapping ticks: only one request set in flight at a time.
-            if (inFlightRef.current) return;
-            inFlightRef.current = true;
-            const seq = (seqRef.current += 1);
-            try {
-                const [runRes, unitsRes] = await Promise.all([
-                    getSyncRunStatus(runId),
-                    getSyncRunUnits(runId),
-                ]);
-                // Ignore stale/unmounted/post-stop responses (FIX 3).
-                if (cancelled || seq !== seqRef.current) return;
-
-                // withErrorHandling RETURNS { error } (never throws), so a failed
-                // poll arrives as data:undefined. Do NOT apply blindly: stop and
-                // surface a non-fatal indicator instead of spinning or rendering
-                // stale/empty data (FIX 2).
-                if (runRes.error || unitsRes.error || !runRes.data || !unitsRes.data) {
-                    stopPolling();
-                    setUnitsError(
-                        runRes.error ?? unitsRes.error ?? "Live updates are unavailable.",
-                    );
-                    return;
-                }
-
-                setSummary(unitsRes.data);
-                setUnitsError(null);
-                const nextRun = runRes.data;
-                setRun(nextRun);
-                const nextLiveStatus = mapPlannerRunStatus(
-                    effectiveRunStatus(nextRun, unitsRes.data),
-                );
-                if (isTerminalSyncStatus(nextLiveStatus)) {
-                    stopPolling();
-                }
-            } finally {
-                inFlightRef.current = false;
+            // withErrorHandling RETURNS { error } (never throws), so a failed
+            // fetch arrives as data:undefined. Do NOT apply blindly: surface a
+            // non-fatal indicator instead of rendering stale/empty data.
+            if (runRes.error || unitsRes.error || !runRes.data || !unitsRes.data) {
+                setUnitsError(runRes.error ?? unitsRes.error ?? "Refresh failed.");
+                return;
             }
-        };
 
-        intervalRef.current = setInterval(() => void tick(), POLL_INTERVAL_MS);
-        timeoutRef.current = setTimeout(() => stopPolling(), MAX_POLL_DURATION_MS);
-
-        return () => {
-            cancelled = true;
-            stopPolling();
-        };
-    }, [testMode, runId, isTerminal, stopPolling]);
+            setSummary(unitsRes.data);
+            setUnitsError(null);
+            setRun(runRes.data);
+            setLastUpdatedAt(new Date().toISOString());
+        } finally {
+            inFlightRef.current = false;
+            setIsRefreshing(false);
+        }
+    }, [testMode, runId]);
 
     // Resolve source ids → display names from the units themselves. We NEVER
     // surface a raw source id when a resolved name exists (web DoD / A7).
@@ -306,19 +318,81 @@ export function SyncRunDetailLive({
         [sourceNameById],
     );
 
-    const total = totalUnitCount(run, summary);
-    const completed = statusCount(summary, "success") ?? run.completed_units;
-    const failed = statusCount(summary, "failed") ?? run.failed_units;
-    const settled = Math.min(total, completed + failed);
+    const { total, completed, failed, settled } = runPresentation.counts;
     const percent = total > 0 ? Math.min(100, Math.round((settled / total) * 100)) : 0;
 
     const attentionUnits = useMemo(
         () =>
             (summary?.units ?? []).filter(
-                (unit) => unit.status === "failed" || unit.status === "retrying",
+                (unit) =>
+                    unit.status === "failed" ||
+                    unit.status === "retrying" ||
+                    isProviderCapacityWaitingUnit(unit),
             ),
         [summary],
     );
+
+    const attentionGroups = useMemo<AttentionGroup[]>(() => {
+        const groups = new Map<
+            string,
+            Omit<AttentionGroup, "sourceNames" | "retryWindows" | "budgetDeferrals"> & {
+                sourceNames: Set<string>;
+            }
+        >();
+
+        for (const unit of attentionUnits) {
+            const errorPresentation = getSyncUnitErrorPresentation(unit.error, unit.error_category);
+            const disposition = attentionDisposition(unit);
+            const key = `${unit.dataset_key}:${errorPresentation.code ?? errorPresentation.title}:${disposition}`;
+            const existing = groups.get(key);
+            if (existing) {
+                existing.units.push(unit);
+                existing.sourceNames.add(sourceLabel(unit.source_id));
+                continue;
+            }
+            groups.set(key, {
+                key,
+                datasetKey: unit.dataset_key,
+                disposition,
+                title: errorPresentation.title,
+                detail: errorPresentation.detail,
+                sourceNames: new Set([sourceLabel(unit.source_id)]),
+                units: [unit],
+            });
+        }
+
+        return Array.from(groups.values(), (group) => {
+            const sourcesByRetryWindow = new Map<string, Set<string>>();
+            if (group.disposition !== "failed") {
+                for (const unit of group.units) {
+                    if (!unit.available_at) continue;
+                    const sources =
+                        sourcesByRetryWindow.get(unit.available_at) ?? new Set<string>();
+                    sources.add(sourceLabel(unit.source_id));
+                    sourcesByRetryWindow.set(unit.available_at, sources);
+                }
+            }
+
+            return {
+                ...group,
+                sourceNames: Array.from(group.sourceNames).sort(),
+                retryWindows: Array.from(sourcesByRetryWindow, ([availableAt, sources]) => ({
+                    availableAt,
+                    sourceNames: Array.from(sources).sort(),
+                })).sort((left, right) => left.availableAt.localeCompare(right.availableAt)),
+                budgetDeferrals:
+                    group.units.some(isBudgetBlockedUnit) &&
+                    group.units.some((unit) => typeof unit.budget_deferrals === "number")
+                        ? group.units.reduce(
+                              (total, unit) => total + (unit.budget_deferrals ?? 0),
+                              0,
+                          )
+                        : null,
+            };
+        }).sort((left, right) =>
+            `${left.datasetKey}:${left.title}`.localeCompare(`${right.datasetKey}:${right.title}`),
+        );
+    }, [attentionUnits, sourceLabel]);
 
     // Unit table filters (CHAOS-2794) — client-side over the already-fetched
     // unit summary; narrows which persisted rows are displayed, never
@@ -397,6 +471,16 @@ export function SyncRunDetailLive({
     // Both are simple min/max display aggregates over persisted fields —
     // counts below come from the persisted `by_status` rollup, never
     // recomputed client-side.
+    // Datasets still ratcheting (CHAOS-3430). Filters the persisted freshness
+    // rollup to entries the BACKEND flagged — the verdict, the tick estimate,
+    // and the lag are all backend state; nothing here is recomputed from a
+    // timestamp. An absent field means "no lag information", which renders as
+    // no panel rather than as "nothing is behind".
+    const catchingUpDatasets = useMemo(
+        () => (summary?.dataset_freshness ?? []).filter((entry) => entry.catching_up),
+        [summary],
+    );
+
     const requestedWindow = useMemo(() => computeWindow(summary?.units ?? []), [summary]);
     const coveredWindow = useMemo(
         () => computeWindow((summary?.units ?? []).filter((unit) => unit.status === "success")),
@@ -410,7 +494,11 @@ export function SyncRunDetailLive({
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div className="space-y-2">
                         <div className="flex items-center gap-3">
-                            <SyncStatusBadge status={liveStatus} className="text-sm px-3 py-1" />
+                            <SyncStatusBadge
+                                status={runPresentation.badgeStatus}
+                                label={runPresentation.label}
+                                className="text-sm px-3 py-1"
+                            />
                             <span
                                 className="text-sm text-(--ink-muted)"
                                 role="status"
@@ -419,16 +507,28 @@ export function SyncRunDetailLive({
                                 {isTerminal
                                     ? "Run complete"
                                     : unitsError
-                                      ? "Live updates paused"
-                                      : "Live — refreshing…"}
+                                      ? "Live updates unavailable"
+                                      : "Not auto-refreshing — use Refresh for the latest state"}
                             </span>
                         </div>
+                        {runPresentation.description && (
+                            <p className="text-sm text-(--ink-muted)">
+                                {runPresentation.description}
+                            </p>
+                        )}
+                        {!isTerminal && !testMode && (
+                            <RefreshControl
+                                onRefresh={refresh}
+                                lastUpdatedAt={lastUpdatedAt}
+                                isRefreshing={isRefreshing}
+                            />
+                        )}
                         <dl className="grid grid-cols-2 gap-x-8 gap-y-1 text-sm sm:grid-cols-4">
                             <div>
                                 <dt className="text-xs text-(--ink-muted) uppercase tracking-wider">
                                     Status
                                 </dt>
-                                <dd className="text-foreground">{currentRunStatus}</dd>
+                                <dd className="text-foreground">{runPresentation.label}</dd>
                             </div>
                             <div>
                                 <dt className="text-xs text-(--ink-muted) uppercase tracking-wider">
@@ -511,6 +611,83 @@ export function SyncRunDetailLive({
                         </div>
                     </dl>
                 </div>
+            )}
+
+            {/* Catching up (CHAOS-3430): a high-cost dataset syncs through
+                capped incremental windows, one per scheduled tick, and each
+                capped tick finalizes as an ordinary SUCCESS. Run status alone
+                therefore reads "complete" while coverage is still weeks back.
+                Every value below is persisted backend state from the units
+                summary — the catch-up verdict, the tick estimate, and the
+                watermark. Nothing is re-derived at render time. */}
+            {catchingUpDatasets.length > 0 && (
+                <section
+                    aria-labelledby="catching-up-heading"
+                    className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6"
+                >
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <h3
+                            id="catching-up-heading"
+                            className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider"
+                        >
+                            Catching up
+                        </h3>
+                        <span className="text-xs text-(--ink-muted)">
+                            {formatNumber(catchingUpDatasets.length)} dataset
+                            {catchingUpDatasets.length === 1 ? "" : "s"} still catching up
+                        </span>
+                    </div>
+                    <p className="mb-3 text-xs text-(--ink-muted)">
+                        These datasets synchronize one capped window per scheduled run, so a
+                        successful run does not yet mean full coverage. Scoped to this run — it
+                        covers only the sources and datasets this run planned, not the whole
+                        workspace.
+                    </p>
+                    <ul className="space-y-3">
+                        {catchingUpDatasets.map((entry) => (
+                            <li
+                                key={`${entry.source_id}:${entry.dataset_key}`}
+                                className="rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 text-sm"
+                            >
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className="font-medium text-foreground">
+                                        {entry.source_name ?? sourceLabel(entry.source_id)} ·{" "}
+                                        {entry.dataset_key}
+                                    </span>
+                                    <CatchingUpBadge />
+                                </div>
+                                {/* The persisted `catching_up` verdict is the
+                                    backend's and is rendered above regardless.
+                                    The DISTANCE, though, is only claimable when
+                                    a watermark was actually recorded: with none,
+                                    say so plainly rather than asserting a
+                                    measured lag (or printing a bare dash that
+                                    reads as one). */}
+                                <div className="mt-1 text-xs text-(--ink-muted)">
+                                    {entry.watermark_at ? (
+                                        <>
+                                            <span>
+                                                Watermark at{" "}
+                                                <ClientTimestamp
+                                                    value={entry.watermark_at}
+                                                    fallback="—"
+                                                />
+                                            </span>
+                                            {entry.ticks_behind != null && (
+                                                <span>
+                                                    {" · "}~{formatNumber(entry.ticks_behind)} tick
+                                                    {entry.ticks_behind === 1 ? "" : "s"} behind
+                                                </span>
+                                            )}
+                                        </>
+                                    ) : (
+                                        <span>Watermark unavailable — progress not measurable</span>
+                                    )}
+                                </div>
+                            </li>
+                        ))}
+                    </ul>
+                </section>
             )}
 
             {/* Overall progress */}
@@ -611,61 +788,106 @@ export function SyncRunDetailLive({
                     </div>
 
                     {/* Failed / retrying summary */}
-                    {attentionUnits.length > 0 && (
-                        <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+                    {attentionGroups.length > 0 && (
+                        <section
+                            aria-labelledby="needs-attention-heading"
+                            className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6"
+                        >
                             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                                <h3 className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
+                                <h3
+                                    id="needs-attention-heading"
+                                    className="text-sm font-medium text-(--ink-muted) uppercase tracking-wider"
+                                >
                                     Needs attention
                                 </h3>
-                                {summary.next_retry_at && (
-                                    <span className="text-xs text-(--ink-muted)">
-                                        Next retry{" "}
-                                        <ClientTimestamp
-                                            value={summary.next_retry_at}
-                                            fallback="—"
-                                        />
-                                    </span>
-                                )}
+                                <div className="flex flex-wrap items-center gap-3">
+                                    {typeof summary.budget_blocked_unit_count === "number" &&
+                                        summary.budget_blocked_unit_count > 0 && (
+                                            <span className="text-xs text-(--ink-muted)">
+                                                Budget blocked:{" "}
+                                                {formatNumber(summary.budget_blocked_unit_count)}
+                                            </span>
+                                        )}
+                                    {summary.next_retry_at && (
+                                        <span className="text-xs text-(--ink-muted)">
+                                            Next retry{" "}
+                                            <ClientTimestamp
+                                                value={summary.next_retry_at}
+                                                fallback="—"
+                                            />
+                                        </span>
+                                    )}
+                                </div>
                             </div>
                             <ul className="space-y-3">
-                                {attentionUnits.map((unit) => (
+                                {attentionGroups.map((group) => (
                                     <li
-                                        key={unit.id}
+                                        key={group.key}
                                         className="rounded-lg border border-(--card-stroke) bg-(--card-70) p-3 text-sm"
                                     >
                                         <div className="flex flex-wrap items-center justify-between gap-2">
-                                            <span className="font-medium text-foreground">
-                                                {sourceLabel(unit.source_id)} · {unit.dataset_key}
-                                            </span>
+                                            <div>
+                                                <p className="text-xs text-(--ink-muted)">
+                                                    {group.datasetKey}
+                                                </p>
+                                                <h4 className="font-medium text-foreground">
+                                                    {group.title}
+                                                </h4>
+                                            </div>
                                             <SyncStatusBadge
-                                                status={unitBadgeStatus(unit.status)}
-                                                label={unit.status}
+                                                status={
+                                                    group.disposition === "failed"
+                                                        ? "failed"
+                                                        : "running"
+                                                }
+                                                label={group.disposition}
                                             />
                                         </div>
-                                        <div className="mt-1 text-xs text-(--ink-muted)">
-                                            {unit.error_category && (
-                                                <span>Category: {unit.error_category}</span>
-                                            )}
-                                            {unit.error_category && unit.available_at && " · "}
-                                            {unit.available_at && (
-                                                <span>
-                                                    Retry at{" "}
-                                                    <ClientTimestamp
-                                                        value={unit.available_at}
-                                                        fallback="—"
-                                                    />
-                                                </span>
-                                            )}
-                                        </div>
-                                        {unit.error && (
-                                            <p className="mt-1 text-xs text-red-500">
-                                                {unit.error}
+                                        <p className="mt-1 text-xs text-(--ink-muted)">
+                                            {formatNumber(group.units.length)} {group.disposition}{" "}
+                                            unit{group.units.length === 1 ? "" : "s"} ·{" "}
+                                            {formatNumber(group.sourceNames.length)} source
+                                            {group.sourceNames.length === 1 ? "" : "s"}
+                                        </p>
+                                        <p className="mt-1 text-xs text-(--ink-muted)">
+                                            {group.sourceNames.join(", ")}
+                                        </p>
+                                        {group.detail && (
+                                            <p className="mt-1 text-xs text-(--ink-muted)">
+                                                {group.detail}
                                             </p>
+                                        )}
+                                        {group.budgetDeferrals !== null && (
+                                            <p className="mt-1 text-xs text-(--ink-muted)">
+                                                {formatNumber(group.budgetDeferrals)} deferral
+                                                {group.budgetDeferrals === 1 ? "" : "s"}
+                                            </p>
+                                        )}
+                                        {group.retryWindows.length > 0 && (
+                                            <ul
+                                                aria-label={`${group.title} retry schedule`}
+                                                className="mt-1 space-y-1 text-xs text-(--ink-muted)"
+                                            >
+                                                {group.retryWindows.map((retryWindow) => (
+                                                    <li key={retryWindow.availableAt}>
+                                                        <span>
+                                                            {group.disposition === "waiting"
+                                                                ? "Next attempt"
+                                                                : "Retry at"}{" "}
+                                                            <ClientTimestamp
+                                                                value={retryWindow.availableAt}
+                                                                fallback="—"
+                                                            />{" "}
+                                                            · {retryWindow.sourceNames.join(", ")}
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                            </ul>
                                         )}
                                     </li>
                                 ))}
                             </ul>
-                        </div>
+                        </section>
                     )}
 
                     {/* Unit table */}
@@ -780,61 +1002,97 @@ export function SyncRunDetailLive({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-(--card-stroke)">
-                                    {filteredUnits.map((unit: SyncRunUnit) => (
-                                        <tr key={unit.id}>
-                                            <td className="px-4 py-3 font-mono text-xs text-(--ink-muted)">
-                                                {unit.id.slice(0, 8)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-foreground">
-                                                {sourceLabel(unit.source_id)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                {unit.dataset_key}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                {formatDateUTC(unit.since_at)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                {formatDateUTC(unit.before_at)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                {unit.cost_class}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <SyncStatusBadge
-                                                    status={unitBadgeStatus(unit.status)}
-                                                    label={unit.status}
-                                                />
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                {formatNumber(unit.attempts)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-(--ink-muted)">
-                                                {formatDuration(unit.duration_seconds)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm">
-                                                {unit.error ? (
-                                                    <span className="text-red-500">
-                                                        {unit.error}
-                                                    </span>
-                                                ) : unit.error_category ? (
-                                                    <span className="text-(--ink-muted)">
-                                                        {unit.error_category}
-                                                    </span>
-                                                ) : unit.available_at ? (
-                                                    <span className="text-(--ink-muted)">
-                                                        Retry{" "}
-                                                        <ClientTimestamp
-                                                            value={unit.available_at}
-                                                            fallback="—"
+                                    {filteredUnits.map((unit: SyncRunUnit) => {
+                                        const errorPresentation = getSyncUnitErrorPresentation(
+                                            unit.error,
+                                            unit.error_category,
+                                        );
+                                        return (
+                                            <tr key={unit.id}>
+                                                <td className="px-4 py-3 font-mono text-xs text-(--ink-muted)">
+                                                    {unit.id.slice(0, 8)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-foreground">
+                                                    {sourceLabel(unit.source_id)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                    {unit.dataset_key}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                    {formatDateUTC(unit.since_at)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                    {formatDateUTC(unit.before_at)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                    {unit.cost_class}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    {isBudgetBlockedUnit(unit) ? (
+                                                        <BudgetGuardBadge
+                                                            tone="blocked"
+                                                            label="Blocked: budget"
                                                         />
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-(--ink-muted)">—</span>
-                                                )}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                    ) : isBudgetExhaustedUnit(unit) ? (
+                                                        <BudgetGuardBadge
+                                                            tone="exhausted"
+                                                            label="Budget exhausted"
+                                                        />
+                                                    ) : isDeferralsExhaustedUnit(unit) ? (
+                                                        <BudgetGuardBadge
+                                                            tone="exhausted"
+                                                            label="Deferrals exhausted"
+                                                        />
+                                                    ) : isProviderCapacityWaitingUnit(unit) ? (
+                                                        <BudgetGuardBadge
+                                                            tone="blocked"
+                                                            label="Waiting: provider capacity"
+                                                        />
+                                                    ) : (
+                                                        <SyncStatusBadge
+                                                            status={unitBadgeStatus(unit.status)}
+                                                            label={unit.status}
+                                                        />
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                    {formatNumber(unit.attempts)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-(--ink-muted)">
+                                                    {formatDuration(unit.duration_seconds)}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm">
+                                                    {unit.error || unit.error_category ? (
+                                                        <span
+                                                            className={
+                                                                unit.status === "failed"
+                                                                    ? "text-red-500"
+                                                                    : "text-(--ink-muted)"
+                                                            }
+                                                            title={
+                                                                errorPresentation.detail ??
+                                                                undefined
+                                                            }
+                                                        >
+                                                            {errorPresentation.title}
+                                                        </span>
+                                                    ) : unit.available_at ? (
+                                                        <span className="text-(--ink-muted)">
+                                                            Retry{" "}
+                                                            <ClientTimestamp
+                                                                value={unit.available_at}
+                                                                fallback="—"
+                                                            />
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-(--ink-muted)">
+                                                            —
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>

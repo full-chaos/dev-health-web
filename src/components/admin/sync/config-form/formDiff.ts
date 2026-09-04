@@ -17,6 +17,8 @@ export type SyncFormSnapshot = {
     owner: string;
     gitlab_url: string;
     auto_import_teams: boolean;
+    auto_import_projects: boolean;
+    auto_import_members: boolean;
     repos: string[];
     syncAllRepos: boolean;
 };
@@ -148,7 +150,13 @@ export function buildChangeSummary(
     }
 
     if (baseline.auto_import_teams !== current.auto_import_teams) {
-        changes.push(`Auto-import teams: ${current.auto_import_teams ? "enabled" : "disabled"}`);
+        changes.push(`Import teams: ${current.auto_import_teams ? "enabled" : "disabled"}`);
+    }
+    if (baseline.auto_import_projects !== current.auto_import_projects) {
+        changes.push(`Import projects: ${current.auto_import_projects ? "enabled" : "disabled"}`);
+    }
+    if (baseline.auto_import_members !== current.auto_import_members) {
+        changes.push(`Import members: ${current.auto_import_members ? "enabled" : "disabled"}`);
     }
 
     if (baseline.syncAllRepos !== current.syncAllRepos) {

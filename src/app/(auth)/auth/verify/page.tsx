@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getBackendUrl } from "@/lib/origin";
 import { extractErrorMessage } from "@/lib/errorMessages";
+import { backToArea, CTA_LABELS } from "@/lib/design/cta";
 
 type SearchParams = Promise<{ token?: string }>;
 
@@ -56,7 +57,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
                                 href="/auth/signin"
                                 className="block w-full text-center rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
                             >
-                                Sign in
+                                {CTA_LABELS.signIn}
                             </Link>
                         </div>
                     ) : (
@@ -68,7 +69,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
                                 href="/auth/signin"
                                 className="block w-full text-center rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
                             >
-                                Back to Sign in
+                                {backToArea("Sign In")}
                             </Link>
                         </div>
                     )}

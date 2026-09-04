@@ -7,6 +7,14 @@ const requireSessionMock = vi.fn();
 const getPrDetailViaGraphQLMock = vi.fn();
 const getAIWorkflowDrilldownViaGraphQLMock = vi.fn();
 const getWorkUnitInvestmentDistributionMock = vi.fn();
+const askDevContextRegistrationMock = vi.fn();
+
+vi.mock("@/components/ask-dev/AskDevContextRegistration", () => ({
+    AskDevContextRegistration: ({ context }: { context: unknown }) => {
+        askDevContextRegistrationMock(context);
+        return null;
+    },
+}));
 
 vi.mock("@/components/navigation/PrimaryNav", () => ({
     PrimaryNav: () => <nav data-testid="primary-nav" />,
@@ -124,6 +132,7 @@ describe("PrDetailPage", () => {
         getPrDetailViaGraphQLMock.mockReset();
         getAIWorkflowDrilldownViaGraphQLMock.mockReset();
         getWorkUnitInvestmentDistributionMock.mockReset();
+        askDevContextRegistrationMock.mockReset();
         checkApiHealthMock.mockResolvedValue({ ok: true });
         requireSessionMock.mockResolvedValue({ user: { org_id: "org-1" } });
         getFlameMock.mockResolvedValue(null);
@@ -152,6 +161,27 @@ describe("PrDetailPage", () => {
             useDemoFallback: false,
         });
         expect(getWorkUnitInvestmentDistributionMock).not.toHaveBeenCalled();
+        expect(askDevContextRegistrationMock).toHaveBeenCalledWith({
+            routeId: "pull_request_detail",
+            entityRefs: [
+                {
+                    entity_type: "pull_request",
+                    entity_id: prId,
+                    display_label: "full-chaos/dev-health-web #42",
+                    repository_id: samplePr.repoId,
+                },
+            ],
+            suggestedQuestionIds: ["delivery_status", "remaining_work", "data_trust"],
+        });
+        expect(
+            screen.queryByRole("button", { name: "Ask Dev about this" }),
+        ).not.toBeInTheDocument();
+        expect(JSON.stringify(askDevContextRegistrationMock.mock.calls)).not.toContain(
+            samplePr.title,
+        );
+        expect(JSON.stringify(askDevContextRegistrationMock.mock.calls)).not.toContain(
+            samplePr.body,
+        );
     });
 
     it("keeps a long commit readable while exposing its complete hash accessibly", async () => {
@@ -178,6 +208,7 @@ describe("PrDetailPage", () => {
         expect(screen.getByText(/No PR detail found for this id/i)).toBeInTheDocument();
         expect(screen.getByText("No data for related entities.")).toBeInTheDocument();
         expect(getAIWorkflowDrilldownViaGraphQLMock).not.toHaveBeenCalled();
+        expect(askDevContextRegistrationMock).not.toHaveBeenCalled();
     });
 
     it("renders backend error state when the PR detail GraphQL query fails", async () => {

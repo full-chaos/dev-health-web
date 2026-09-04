@@ -22,6 +22,8 @@ type SyncConfigTableRowProps = {
     readonly row: SyncConfigTableRowData;
     readonly expanded: boolean;
     readonly onToggleGroupAction: (configId: string) => void;
+    /** Bumped by the table's explicit Refresh — see useSyncTrigger's doc comment. */
+    readonly refreshToken: number;
 };
 
 function GroupTableRow({ row, expanded, onToggleGroupAction }: SyncConfigTableRowProps) {
@@ -97,11 +99,21 @@ function GroupTableRow({ row, expanded, onToggleGroupAction }: SyncConfigTableRo
     );
 }
 
-function ConfigTableRow({ row }: { readonly row: SyncConfigTableRowData }) {
+function ConfigTableRow({
+    row,
+    refreshToken,
+}: {
+    readonly row: SyncConfigTableRowData;
+    readonly refreshToken: number;
+}) {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [isDeleteBusy, setIsDeleteBusy] = useState(false);
-    const { liveStatus, isSyncing, trigger } = useSyncTrigger(row.config.id);
+    const { liveStatus, isSyncing, trigger } = useSyncTrigger(
+        row.config.id,
+        row.config.last_sync_at,
+        refreshToken,
+    );
     const status = liveStatus ?? persistedStatus(row.config);
     const isRowBusy = isPending || isSyncing || isDeleteBusy;
 
@@ -211,6 +223,7 @@ export function SyncConfigTableRow({
     row,
     expanded,
     onToggleGroupAction,
+    refreshToken,
 }: SyncConfigTableRowProps) {
     if (row.kind === "group") {
         return (
@@ -218,8 +231,9 @@ export function SyncConfigTableRow({
                 row={row}
                 expanded={expanded}
                 onToggleGroupAction={onToggleGroupAction}
+                refreshToken={refreshToken}
             />
         );
     }
-    return <ConfigTableRow row={row} />;
+    return <ConfigTableRow row={row} refreshToken={refreshToken} />;
 }

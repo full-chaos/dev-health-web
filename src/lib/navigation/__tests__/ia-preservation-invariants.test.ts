@@ -571,10 +571,15 @@ describe("IA preservation invariant #7 — reachable redirect aliases stay guard
     // registered. Closes the /team-flow blind spot the adversarial review found — a new
     // reachable alias cannot go unguarded, and a deleted alias/target is caught.
     const knownNonAliasRedirectPages = new Set<string>([
-        // Pages that call redirect() as a guard rather than as a reachable alias.
+        // Pages that call redirect() as a guard or canonical dispatcher rather than
+        // as a fixed legacy alias.
         // /work redirects retired tabs (flow/investment/landscape/capacity) to their
         // standalone homes while still rendering the Work branch for live tabs (CHAOS-2102).
         "/work",
+        // AI Setup resolves its canonical default child from live Ask Dev/BYO LLM
+        // entitlements. page.test.tsx pins every destination branch, so this cannot
+        // be represented by legacyAliasRoutes' single fixed redirectsTo contract.
+        "/org/admin/ai",
     ]);
 
     const routeForPageFile = (filePath: string): string => {
@@ -669,11 +674,6 @@ describe("IA preservation invariant #9 — no dead hubItems links (signal cards)
     });
 
     it("renders every preview-route hubItem as a non-clickable card (cannot 404)", () => {
-        const previewHubItems = hubItemEntries.filter(
-            ({ area, item }) =>
-                !routePageExists(item.href) && previewChildFor(area, item.href) !== undefined,
-        );
-
         // Both Improve sub-areas (Experiments CHAOS-2219, Automations CHAOS-2220) have
         // been promoted to real routes, so there are currently 0 preview hub items.
         // The structural assertions below still validate the preview code paths exist

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { resolveOrigin } from "@/lib/origin";
 import { extractErrorMessage } from "@/lib/errorMessages";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 interface ResetPasswordFormProps {
     token: string;
@@ -80,7 +81,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                         href="/auth/signin"
                         className="text-sm font-medium text-[var(--accent)] hover:opacity-90"
                     >
-                        Sign in
+                        {CTA_LABELS.signIn}
                     </Link>
                 </div>
             </div>

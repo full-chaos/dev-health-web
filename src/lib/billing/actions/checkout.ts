@@ -65,13 +65,15 @@ export async function listBillingPlans(
 ): Promise<ActionResult<BillingPlanRecord[]>> {
     try {
         const session = await auth();
-        const headers: HeadersInit = {};
-        if (session?.access_token) {
-            headers.Authorization = `Bearer ${session.access_token}`;
+        if (!session?.access_token) {
+            return { error: "Unauthorized" };
         }
 
         const url = `${getBackendUrl()}/api/v1/billing/plans${includeInactive ? "?include_inactive=true" : ""}`;
-        const res = await fetch(url, { headers, cache: "no-store" });
+        const res = await fetch(url, {
+            headers: { Authorization: `Bearer ${session.access_token}` },
+            cache: "no-store",
+        });
         if (!res.ok) {
             const error = await res.json().catch(() => ({ detail: res.statusText }));
             return { error: error.detail || `Failed to load plans (${res.status})` };

@@ -69,7 +69,7 @@ export const SAMPLE_COVERAGE_HEALTHY: SyncCoverageSummary = {
     provider: PROVIDER,
     generated_at: GENERATED_AT,
     data_basis: "planner",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
     overall: {
         health: "healthy",
@@ -147,7 +147,7 @@ export const SAMPLE_COVERAGE_GAPS: SyncCoverageSummary = {
     provider: PROVIDER,
     generated_at: GENERATED_AT,
     data_basis: "planner",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
     overall: {
         health: "gaps",
@@ -270,12 +270,36 @@ export const SAMPLE_COVERAGE_GAPS: SyncCoverageSummary = {
     ],
 };
 
+export const SAMPLE_COVERAGE_TRUNCATED: SyncCoverageSummary = {
+    ...SAMPLE_COVERAGE_GAPS,
+    coverage_since: "2026-06-20T00:00:00.000Z",
+    coverage_through: GENERATED_AT,
+    is_truncated: true,
+    truncation_reason: "lookback_limit",
+    backfill_windows: [
+        {
+            since: "2026-06-24T00:00:00.000Z",
+            before: "2026-06-26T00:00:00.000Z",
+            source_ids: [SOURCE_PLATFORM],
+            dataset_keys: ["git"],
+            reasons: ["gap"],
+        },
+        {
+            since: "2026-06-25T00:00:00.000Z",
+            before: "2026-06-27T00:00:00.000Z",
+            source_ids: [SOURCE_BILLING],
+            dataset_keys: ["prs"],
+            reasons: ["failed"],
+        },
+    ],
+};
+
 export const SAMPLE_COVERAGE_FAILED: SyncCoverageSummary = {
     config_id: CONFIG_ID,
     provider: PROVIDER,
     generated_at: GENERATED_AT,
     data_basis: "planner",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
     overall: {
         health: "failed",
@@ -336,7 +360,7 @@ export const SAMPLE_COVERAGE_STALE: SyncCoverageSummary = {
     provider: PROVIDER,
     generated_at: GENERATED_AT,
     data_basis: "planner",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
     overall: {
         health: "stale",
@@ -392,7 +416,7 @@ export const SAMPLE_COVERAGE_INSUFFICIENT_DATA: SyncCoverageSummary = {
     provider: PROVIDER,
     generated_at: GENERATED_AT,
     data_basis: "legacy",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
     overall: {
         health: "insufficient_data",
@@ -412,7 +436,7 @@ export const SAMPLE_COVERAGE_OVERLAPPING_RETRY: SyncCoverageSummary = {
     provider: PROVIDER,
     generated_at: GENERATED_AT,
     data_basis: "planner",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
     overall: {
         health: "healthy",
@@ -483,7 +507,7 @@ export const SAMPLE_COVERAGE_CONCURRENT_CONFIG: SyncCoverageSummary = {
     provider: PROVIDER,
     generated_at: GENERATED_AT,
     data_basis: "planner",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
     overall: {
         health: "healthy",
@@ -532,15 +556,67 @@ export const SAMPLE_COVERAGE_CONCURRENT_CONFIG: SyncCoverageSummary = {
     ],
 };
 
+/** Last completed projection served while a triggered sync rebuilds coverage. */
+export const SAMPLE_COVERAGE_REFRESHING: SyncCoverageSummary = {
+    ...SAMPLE_COVERAGE_GAPS,
+    projection_refreshing: true,
+};
+
+/** Every work-item alias a provider can report, mirroring the production vocabulary. */
+const WORK_ITEM_DATASET_KEYS = [
+    "work-items",
+    "work-item-labels",
+    "work-item-projects",
+    "work-item-history",
+    "work-item-comments",
+] as const;
+
+function notEnabledDataset(datasetKey: string): SyncCoverageSummary["datasets"][number] {
+    return {
+        dataset_key: datasetKey,
+        status: "not_enabled",
+        covered_through: null,
+        requested_ranges: [],
+        covered_ranges: [],
+        gaps: [],
+        stale_ranges: [],
+        failed_ranges: [],
+    };
+}
+
+/**
+ * The shape operators hit in production: the provider supports the whole
+ * work-item family but no enabled IntegrationDataset row exists for any alias,
+ * so every one arrives as `not_enabled` with zero ranges next to the datasets
+ * that ARE enabled. Those aliases are not actionable — a backfill scoped to
+ * them is refused by the server — so the UI must never offer them.
+ */
+export const SAMPLE_COVERAGE_NOT_ENABLED: SyncCoverageSummary = {
+    ...SAMPLE_COVERAGE_GAPS,
+    datasets: [...SAMPLE_COVERAGE_GAPS.datasets, ...WORK_ITEM_DATASET_KEYS.map(notEnabledDataset)],
+    backfill_windows: [
+        {
+            since: "2026-06-24T00:00:00.000Z",
+            before: "2026-06-26T00:00:00.000Z",
+            source_ids: [SOURCE_PLATFORM],
+            dataset_keys: ["git"],
+            reasons: ["gap"],
+        },
+    ],
+};
+
 /** Named scenarios selectable via the `?coverage_scenario=` test-mode query param. */
 export const SYNC_COVERAGE_SAMPLES = {
     healthy: SAMPLE_COVERAGE_HEALTHY,
     gaps: SAMPLE_COVERAGE_GAPS,
+    truncated: SAMPLE_COVERAGE_TRUNCATED,
     failed: SAMPLE_COVERAGE_FAILED,
     stale: SAMPLE_COVERAGE_STALE,
     insufficient_data: SAMPLE_COVERAGE_INSUFFICIENT_DATA,
     overlapping_retry: SAMPLE_COVERAGE_OVERLAPPING_RETRY,
     concurrent_config: SAMPLE_COVERAGE_CONCURRENT_CONFIG,
+    refreshing: SAMPLE_COVERAGE_REFRESHING,
+    not_enabled: SAMPLE_COVERAGE_NOT_ENABLED,
 } satisfies Record<string, SyncCoverageSummary>;
 
 export type SyncCoverageSampleScenario = keyof typeof SYNC_COVERAGE_SAMPLES;

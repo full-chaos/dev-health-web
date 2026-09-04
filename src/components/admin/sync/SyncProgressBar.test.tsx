@@ -131,7 +131,7 @@ describe("SyncProgressBar", () => {
         vi.useRealTimers();
     });
 
-    it("renders nothing when no active run is discovered for the config", async () => {
+    it("renders no progress bar (no status role) when no active run is discovered, but still a Refresh control", async () => {
         vi.mocked(getSyncJobs).mockResolvedValue({
             data: [buildJob({ status: "success", sync_run: null })],
         });
@@ -141,6 +141,33 @@ describe("SyncProgressBar", () => {
 
         expect(getSyncRunStatus).not.toHaveBeenCalled();
         expect(screen.queryByRole("status")).not.toBeInTheDocument();
+        // CHAOS-4318 round-2 fix: a Refresh control must survive an empty
+        // discovery result — otherwise a LATER scheduled/triggered run can
+        // only ever be found by navigating away and back.
+        expect(screen.getByTestId("sync-progress-bar-empty")).toBeInTheDocument();
+        expect(screen.getByTestId("refresh-control-button")).toBeInTheDocument();
+    });
+
+    it("CHAOS-4318: the empty-state Refresh control re-checks and discovers a run that starts later", async () => {
+        vi.mocked(getSyncJobs).mockResolvedValueOnce({
+            data: [buildJob({ status: "success", sync_run: null })],
+        });
+
+        render(<SyncProgressBar configId="cfg-1" />);
+        await flush();
+        expect(screen.getByTestId("sync-progress-bar-empty")).toBeInTheDocument();
+
+        vi.mocked(getSyncJobs).mockResolvedValue({ data: [buildJob({ status: "running" })] });
+        vi.mocked(getSyncRunStatus).mockResolvedValue({
+            data: buildRun({ completed_units: 4, total_units: 10 }),
+        });
+
+        screen.getByTestId("refresh-control-button").click();
+        await flush();
+
+        expect(screen.queryByTestId("sync-progress-bar-empty")).not.toBeInTheDocument();
+        expect(screen.getByText("Syncing...")).toBeInTheDocument();
+        expect(screen.getByText(/4 \/ 10/)).toBeInTheDocument();
     });
 
     it("discovers a manually-triggered run from the config's recent jobs and polls it", async () => {
@@ -181,7 +208,7 @@ describe("SyncProgressBar", () => {
         render(<SyncProgressBar configId="cfg-1" />);
         await flush();
 
-        expect(screen.getByText("Syncing...")).toBeInTheDocument();
+        expect(screen.getByText("Syncing with failures...")).toBeInTheDocument();
         expect(screen.getByText(/3 \/ 4/)).toBeInTheDocument();
         expect(screen.getByText(/75% complete/)).toBeInTheDocument();
         expect(screen.getByRole("progressbar", { name: "Sync progress" })).toHaveAttribute(
@@ -190,38 +217,69 @@ describe("SyncProgressBar", () => {
         );
     });
 
-    it("keeps the last good unit rollup when a later units poll errors", async () => {
+    it("labels a terminal mixed result as completed with failures", async () => {
+        vi.mocked(getSyncJobs).mockResolvedValue({ data: [buildJob({ status: "running" })] });
+        vi.mocked(getSyncRunStatus).mockResolvedValue({
+            data: buildRun({
+                status: "partial_failed",
+                completed_units: 3,
+                failed_units: 1,
+                total_units: 4,
+            }),
+        });
+        vi.mocked(getSyncRunUnits).mockResolvedValue({
+            data: buildSummary({
+                by_status: { success: 3, failed: 1 },
+                failed_unit_count: 1,
+                unit_count: 4,
+                units: [
+                    buildUnit({ id: "success-1", status: "success" }),
+                    buildUnit({ id: "success-2", status: "success" }),
+                    buildUnit({ id: "success-3", status: "success" }),
+                    buildUnit({ id: "failed-1", status: "failed" }),
+                ],
+            }),
+        });
+
+        render(<SyncProgressBar configId="cfg-1" />);
+        await flush();
+
+        expect(screen.getByText("Sync completed with failures")).toBeInTheDocument();
+    });
+
+    it("CHAOS-4318: renders the unit rollup from the single mount check and never re-fetches it on its own", async () => {
         vi.mocked(getSyncJobs).mockResolvedValue({ data: [buildJob({ status: "running" })] });
         vi.mocked(getSyncRunStatus).mockResolvedValue({
             data: buildRun({ completed_units: 0, failed_units: 0, total_units: 4 }),
         });
-        vi.mocked(getSyncRunUnits)
-            .mockResolvedValueOnce({
-                data: buildSummary({
-                    by_status: { success: 2, running: 2 },
-                    unit_count: 4,
-                    units: [
-                        buildUnit({ id: "unit-success-1", status: "success" }),
-                        buildUnit({ id: "unit-success-2", status: "success" }),
-                        buildUnit({ id: "unit-running-1", status: "running" }),
-                        buildUnit({ id: "unit-running-2", status: "running" }),
-                    ],
-                }),
-            })
-            .mockResolvedValueOnce({ error: "Unit rollups unavailable" });
+        vi.mocked(getSyncRunUnits).mockResolvedValue({
+            data: buildSummary({
+                by_status: { success: 2, running: 2 },
+                unit_count: 4,
+                units: [
+                    buildUnit({ id: "unit-success-1", status: "success" }),
+                    buildUnit({ id: "unit-success-2", status: "success" }),
+                    buildUnit({ id: "unit-running-1", status: "running" }),
+                    buildUnit({ id: "unit-running-2", status: "running" }),
+                ],
+            }),
+        });
 
         render(<SyncProgressBar configId="cfg-1" />);
         await flush();
 
         expect(screen.getByText(/2 \/ 4/)).toBeInTheDocument();
         expect(screen.getByText(/50% complete/)).toBeInTheDocument();
+        expect(getSyncRunUnits).toHaveBeenCalledTimes(1);
 
+        // No setInterval survives — time passing alone triggers no re-fetch.
         await act(async () => {
             await vi.advanceTimersByTimeAsync(3500);
         });
 
         expect(screen.getByText(/2 \/ 4/)).toBeInTheDocument();
         expect(screen.getByText(/50% complete/)).toBeInTheDocument();
+        expect(getSyncRunUnits).toHaveBeenCalledTimes(1);
     });
 
     it("does not rediscover a stale running job whose unit rollup is already terminal", async () => {
@@ -320,7 +378,7 @@ describe("SyncProgressBar", () => {
         expect(screen.getByText("Syncing...")).toBeInTheDocument();
     });
 
-    it("stops polling the tracked run once it reaches a terminal status", async () => {
+    it("CHAOS-4318: never re-checks a terminal run automatically — only a manual Refresh does", async () => {
         vi.mocked(getSyncJobs).mockResolvedValue({ data: [buildJob({ status: "running" })] });
         vi.mocked(getSyncRunStatus).mockResolvedValue({
             data: buildRun({ status: "success", completed_units: 10, total_units: 10 }),
@@ -332,15 +390,24 @@ describe("SyncProgressBar", () => {
         expect(getSyncRunStatus).toHaveBeenCalledTimes(1);
         expect(screen.getByText("Sync completed")).toBeInTheDocument();
 
-        // Further ticks resume discovery for the NEXT run rather than
-        // repeatedly re-polling the run that already finished.
+        // No setInterval left to fire — time passing alone must never
+        // trigger another Python API request (CHAOS-4318). Stay under the
+        // 5s terminal-display grace period so the bar (and its Refresh
+        // control) is still on screen to click.
         vi.mocked(getSyncJobs).mockClear();
-        vi.mocked(getSyncJobs).mockResolvedValue({ data: [] }); // no more active jobs
+        vi.mocked(getSyncJobs).mockResolvedValue({ data: [] });
         await act(async () => {
-            await vi.advanceTimersByTimeAsync(3500);
+            await vi.advanceTimersByTimeAsync(3000);
         });
         expect(getSyncRunStatus).toHaveBeenCalledTimes(1);
-        expect(getSyncJobs).toHaveBeenCalled();
+        expect(getSyncJobs).not.toHaveBeenCalled();
+
+        // An explicit Refresh click re-runs discovery for the NEXT run.
+        await act(async () => {
+            screen.getByTestId("refresh-control-button").click();
+            await vi.advanceTimersByTimeAsync(0);
+        });
+        expect(getSyncJobs).toHaveBeenCalledTimes(1);
     });
 
     it("keeps two concurrent same-provider configs isolated (no cross-contamination)", async () => {
@@ -419,6 +486,28 @@ describe("SyncProgressBar", () => {
         await flush();
 
         expect(screen.getByText("Calculating...")).toBeInTheDocument();
+    });
+
+    it("CHAOS-4318: renders a last-updated Refresh control and never re-fetches on its own, however long the bar stays open", async () => {
+        vi.mocked(getSyncJobs).mockResolvedValue({ data: [buildJob({ status: "running" })] });
+        vi.mocked(getSyncRunStatus).mockResolvedValue({
+            data: buildRun({ completed_units: 4, total_units: 10 }),
+        });
+
+        render(<SyncProgressBar configId="cfg-1" />);
+        await flush();
+
+        expect(screen.getByTestId("refresh-control-button")).toBeInTheDocument();
+        expect(screen.getByText(/Last updated:/)).toBeInTheDocument();
+        const callsAfterMount = vi.mocked(getSyncRunStatus).mock.calls.length;
+
+        // A run stays non-terminal indefinitely (10 minutes and beyond) with
+        // zero additional Python API requests — no setInterval survives.
+        await act(async () => {
+            await vi.advanceTimersByTimeAsync(10 * 60 * 1000 + 3500);
+        });
+        expect(getSyncRunStatus).toHaveBeenCalledTimes(callsAfterMount);
+        expect(getSyncJobs).toHaveBeenCalledTimes(1);
     });
 
     it("clears the previous config's run once configId changes and the new config has no active run (stale-config leak regression, CHAOS-2799)", async () => {

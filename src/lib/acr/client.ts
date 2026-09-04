@@ -42,7 +42,7 @@ type AcrRequest = {
     readonly body?: string;
     readonly method: "GET" | "POST";
     readonly path: string;
-    readonly permissions: readonly ("context:read" | "evidence:read")[];
+    readonly permissions: readonly ("context:read" | "credential:issue" | "evidence:read")[];
     readonly signal: AbortSignal;
 };
 
@@ -58,6 +58,27 @@ type EvidenceRequest = {
     readonly signal: AbortSignal;
 };
 
+type DeviceApprovalRequest = {
+    readonly authorization: OpsAuthorization;
+    readonly body: string;
+    readonly signal: AbortSignal;
+};
+
+const deviceApprovalResponseSchema = z
+    .object({
+        schema_version: z.literal("device_approval_response.v1"),
+        status: z.literal("approved"),
+    })
+    .strict();
+
+const deviceApprovalPreviewResponseSchema = z
+    .object({
+        organization_id_hint: z.string().min(1).max(128).optional(),
+        schema_version: z.literal("device_approval_preview_response.v1"),
+        repository_hints: z.array(z.string()).default([]),
+    })
+    .strict();
+
 function clientUrl(config: AcrRuntimeConfig, path: string): URL {
     const url = new URL(path, config.apiOrigin);
     if (url.origin !== config.apiOrigin.origin || url.search !== "" || url.hash !== "") {
@@ -69,7 +90,12 @@ function clientUrl(config: AcrRuntimeConfig, path: string): URL {
     return url;
 }
 
-function upstreamFailure(status: number): AcrRuntimeError {
+// CHAOS-3791 prep: reads only the closed `error.code` enum from an
+// already schema-validated body, never `message`/`details` — matches the
+// existing "without exposing the upstream body" boundary in upstreamFailure.
+const upstreamErrorCodeSchema = z.object({ error: z.object({ code: z.string() }).loose() }).loose();
+
+function upstreamFailure(status: number, wireErrorCode?: string): AcrRuntimeError {
     if (status === 401) {
         return new AcrRuntimeError(
             acrRuntimeErrorCodes.unauthenticated,
@@ -95,6 +121,23 @@ function upstreamFailure(status: number): AcrRuntimeError {
         return new AcrRuntimeError(
             acrRuntimeErrorCodes.upstream,
             "Agent Context Runtime is temporarily busy.",
+            { retryable: true, status },
+        );
+    }
+    // error.v1 (CHAOS-3784): both codes are always retryable: true. Hardcoded
+    // here rather than trusting the wire body's own `retryable` field — web
+    // decides retry policy from the closed code, not from upstream input.
+    if (status === 422 && wireErrorCode === "interpretation_rejected") {
+        return new AcrRuntimeError(
+            acrRuntimeErrorCodes.interpretationRejected,
+            "Agent Context Runtime rejected the interpretation step.",
+            { retryable: true, status },
+        );
+    }
+    if (status === 422 && wireErrorCode === "synthesis_rejected") {
+        return new AcrRuntimeError(
+            acrRuntimeErrorCodes.synthesisRejected,
+            "Agent Context Runtime rejected the synthesis step.",
             { retryable: true, status },
         );
     }
@@ -188,6 +231,48 @@ export class AcrRuntimeClient {
         return value;
     }
 
+    async deviceApproval(input: DeviceApprovalRequest): Promise<{ readonly status: "approved" }> {
+        const value = await this.request({
+            ...input,
+            method: "POST",
+            path: "/api/v1/oauth/device_approval",
+            permissions: ["credential:issue"],
+        });
+        const parsed = deviceApprovalResponseSchema.safeParse(value);
+        if (!parsed.success) {
+            throw new AcrRuntimeError(
+                acrRuntimeErrorCodes.malformedResponse,
+                "Agent Context Runtime returned an invalid response.",
+            );
+        }
+        return { status: parsed.data.status };
+    }
+
+    async deviceApprovalPreview(input: DeviceApprovalRequest): Promise<{
+        readonly organizationIdHint?: string;
+        readonly repositoryHints: readonly string[];
+    }> {
+        const value = await this.request({
+            ...input,
+            method: "POST",
+            path: "/api/v1/oauth/device_approval",
+            permissions: ["credential:issue"],
+        });
+        const parsed = deviceApprovalPreviewResponseSchema.safeParse(value);
+        if (!parsed.success) {
+            throw new AcrRuntimeError(
+                acrRuntimeErrorCodes.malformedResponse,
+                "Agent Context Runtime returned an invalid response.",
+            );
+        }
+        return {
+            ...(parsed.data.organization_id_hint === undefined
+                ? {}
+                : { organizationIdHint: parsed.data.organization_id_hint }),
+            repositoryHints: parsed.data.repository_hints,
+        };
+    }
+
     private async request(input: AcrRequest): Promise<unknown> {
         const body = input.body ?? "";
         const response = await fetchBoundedJson({
@@ -221,6 +306,10 @@ export class AcrRuntimeClient {
                 "Agent Context Runtime returned an invalid response.",
             );
         }
-        throw upstreamFailure(response.status);
+        const wireError = upstreamErrorCodeSchema.safeParse(response.value);
+        throw upstreamFailure(
+            response.status,
+            wireError.success ? wireError.data.error.code : undefined,
+        );
     }
 }

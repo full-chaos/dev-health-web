@@ -16,7 +16,9 @@ describe("Work lens retirement", () => {
             "Complexity",
             "Cognitive Load",
             "Bottlenecks",
-            "Context Fabric",
+            // CHAOS-3524 (chris's ruling): Ask Dev removed as a left-nav
+            // destination — one ingress only, the in-context
+            // trigger/window path.
             "People",
             "Code",
         ]);

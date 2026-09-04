@@ -164,7 +164,9 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                                 Open a metric to investigate.
                             </p>
                         </div>
-                        <BackLink href={withFilterParam("/", filters, activeRole)} />
+                        <div className="flex flex-wrap items-center gap-3">
+                            <BackLink href={withFilterParam("/", filters, activeRole)} />
+                        </div>
                     </header>
 
                     <GlobalContextBar filters={filters} />
@@ -419,7 +421,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                                                 </td>
                                                 <td className="py-3 text-xs uppercase tracking-[0.2em] text-(--accent-2)">
                                                     <Link href={href} className="block">
-                                                        {CTA_LABELS.openInExplore}
+                                                        {CTA_LABELS.openEvidence}
                                                     </Link>
                                                 </td>
                                             </tr>

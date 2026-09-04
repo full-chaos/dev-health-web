@@ -32,7 +32,7 @@ describe("UserMenu", () => {
         });
     });
 
-    it("reveals Preferences and Sign out through the keyboard-accessible account control", async () => {
+    it("places Report issue immediately before Sign out in the account menu", async () => {
         const user = userEvent.setup();
         render(<UserMenu />);
 
@@ -45,11 +45,52 @@ describe("UserMenu", () => {
         expect(accountControl).toHaveAttribute("aria-expanded", "true");
         const preferences = screen.getByRole("link", { name: CTA_LABELS.preferences });
         expect(preferences).toHaveAttribute("href", "/settings");
-        expect(screen.getByRole("button", { name: CTA_LABELS.signOut })).toBeVisible();
+        const adminPanel = screen.getByRole("link", { name: CTA_LABELS.adminPanel });
+        const separator = screen.getByRole("separator");
+        const signOut = screen.getByRole("button", { name: CTA_LABELS.signOut });
+        const reportIssue = screen.getByRole("button", { name: CTA_LABELS.reportIssue });
+        expect(signOut).toBeVisible();
+        expect(reportIssue).toBeVisible();
+        expect(reportIssue.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+        const menuActionButtons = Array.from(document.querySelectorAll("#account-options button"));
+        expect(menuActionButtons).toEqual([reportIssue, signOut]);
+        expect(adminPanel.nextElementSibling).toBe(separator);
+        expect(separator.nextElementSibling).toBe(reportIssue);
+        expect(reportIssue.nextElementSibling).toBe(signOut);
 
         await user.tab();
         expect(preferences).toHaveFocus();
-        await user.click(screen.getByRole("button", { name: CTA_LABELS.signOut }));
+        await user.click(reportIssue);
+        const dialog = screen.getByRole("dialog", { name: CTA_LABELS.reportIssue });
+        const title = screen.getByLabelText("Title");
+        await user.click(title);
+        expect(dialog).toBeVisible();
+        expect(accountControl).toHaveAttribute("aria-expanded", "true");
+        await user.keyboard("{Escape}");
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(reportIssue).toHaveFocus();
+        await user.click(signOut);
         expect(signOutMock).toHaveBeenCalledOnce();
+    });
+
+    it("uses decorative icons for every account menu destination and action", async () => {
+        const user = userEvent.setup();
+        useSessionMock.mockReturnValue({
+            data: { user: { email: "operator@example.com", is_superuser: true } },
+            status: "authenticated",
+        });
+        render(<UserMenu />);
+
+        await user.click(screen.getByRole("button", { name: CTA_LABELS.accountOptions }));
+
+        for (const item of [
+            screen.getByRole("link", { name: CTA_LABELS.platformAdmin }),
+            screen.getByRole("link", { name: CTA_LABELS.preferences }),
+            screen.getByRole("link", { name: CTA_LABELS.adminPanel }),
+            screen.getByRole("button", { name: CTA_LABELS.reportIssue }),
+            screen.getByRole("button", { name: CTA_LABELS.signOut }),
+        ]) {
+            expect(item.querySelector('svg[aria-hidden="true"]')).toBeInTheDocument();
+        }
     });
 });

@@ -30,6 +30,7 @@
         "code": {
           "enum": [
             "invalid_request",
+            "device_authorization_conflict",
             "invalid_token",
             "insufficient_scope",
             "feature_not_enabled",
@@ -38,6 +39,9 @@
             "rate_limited",
             "version_mismatch",
             "upstream_unavailable",
+            "upstream_invalid_output",
+            "interpretation_rejected",
+            "synthesis_rejected",
             "internal_error"
           ]
         },

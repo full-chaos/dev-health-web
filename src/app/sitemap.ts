@@ -20,6 +20,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
             changeFrequency: "monthly",
             priority: 0.9,
         },
+        // Product capability
+        {
+            url: `${BASE_URL}/marketing/context-fabric`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.9,
+        },
+        {
+            url: `${BASE_URL}/marketing/context-fabric/use-cases`,
+            lastModified: now,
+            changeFrequency: "monthly",
+            priority: 0.8,
+        },
         // Buyer landings — one per role
         {
             url: `${BASE_URL}/marketing/vp-engineering`,

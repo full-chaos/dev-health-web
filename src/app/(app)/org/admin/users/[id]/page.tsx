@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { getUser } from "@/lib/admin/server";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { DeleteUserButton } from "./DeleteUserButton";
 
 export default async function UserDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -30,7 +31,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                     href={`/org/admin/users/${user.id}/edit`}
                     className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-stroke)"
                 >
-                    Edit User
+                    {CTA_LABELS.editUser}
                 </Link>
             </AdminHeader>
 
@@ -106,7 +107,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                                 href={`/org/admin/users/${user.id}/edit`}
                                 className="block w-full rounded-lg border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-70) hover:text-foreground text-left"
                             >
-                                Edit Profile
+                                {CTA_LABELS.editProfile}
                             </Link>
                             <DeleteUserButton userId={user.id} userEmail={user.email} />
                         </div>

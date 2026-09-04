@@ -12,3 +12,5 @@ export * from "./server/setup";
 export * from "./server/customer-push";
 export * from "./server/canonicalIncidentIngestion";
 export * from "./server/pagerduty";
+export * from "./server/ask-dev";
+export * from "./server/platform";

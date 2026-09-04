@@ -4,7 +4,7 @@ import {
     INVESTMENT_SANKEY_CHORD_OPTIONS,
     type InvestmentFlowChartType,
 } from "@/components/charts/ChartTypeToggle";
-import { formatEffortUnit } from "@/lib/investment";
+import { formatEffortUnit, formatSankeyUnit } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyResponse, WorkUnitInvestment } from "@/lib/types";
 import { InvestmentMixSection } from "./charts/InvestmentMixSection";
@@ -92,6 +92,17 @@ export function InvestmentCharts({
         return "effort";
     }, [workUnits]);
 
+    // CHAOS-4241: the Sankey/Chord flow sections must label their unit from
+    // the flow response's own `unit` field (what the backend actually
+    // weighted the numbers by), NOT from `effortUnit` above (which describes
+    // an unrelated per-work-unit metric and would keep reading "loc" even
+    // after the backend switched its default weight to a work-unit count).
+    // `effortUnit` still feeds the treemap/mix section below, unchanged.
+    const flowUnit = useMemo(
+        () => formatSankeyUnit(teamCategoryFlow?.unit ?? repoTeamFlow?.unit),
+        [teamCategoryFlow?.unit, repoTeamFlow?.unit],
+    );
+
     const dateRange = useMemo(() => {
         const { start_date, end_date, range_days } = filters.time;
         if (start_date && end_date) {
@@ -137,7 +148,7 @@ export function InvestmentCharts({
                 <TeamExchangeChordSection
                     filters={filters}
                     dateRange={dateRange}
-                    effortUnit={effortUnit}
+                    effortUnit={flowUnit}
                 />
             ) : (
                 <>
@@ -149,7 +160,7 @@ export function InvestmentCharts({
                         setSelectedCategory={setSelectedCategory}
                         setFocusSubcategory={setFocusSubcategory}
                         showSubcategories={showSubcategories}
-                        effortUnit={effortUnit}
+                        effortUnit={flowUnit}
                         teamCategoryFlow={teamCategoryFlow}
                         baselineSankeyFlow={baselineSankeyFlow}
                         isCategoryFlowLoading={isCategoryFlowLoading}
@@ -161,7 +172,7 @@ export function InvestmentCharts({
                     <RepoTeamSankeySection
                         filters={filters}
                         setFocusSubcategory={setFocusSubcategory}
-                        effortUnit={effortUnit}
+                        effortUnit={flowUnit}
                         repoTeamFlow={repoTeamFlow}
                         isRepoTeamLoading={isRepoTeamLoading}
                         repoTeamFlowFailed={repoTeamFlowFailed}

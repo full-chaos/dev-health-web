@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CTA_LABELS } from "@/lib/design/cta";
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
 
@@ -59,7 +60,7 @@ export function AiWorkflowCallout({ filters, activeRole, prominent }: AiWorkflow
                     href={withFilterParam("/ai", filters, activeRole)}
                     className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                 >
-                    Open AI Workflows
+                    {CTA_LABELS.openAiWorkflows}
                 </Link>
             </div>
         );
@@ -68,7 +69,7 @@ export function AiWorkflowCallout({ filters, activeRole, prominent }: AiWorkflow
     return (
         <section
             data-testid="ai-workflow-callout"
-            className="overflow-hidden rounded-[32px] border border-(--card-stroke) bg-(--card-80) p-5 shadow-[0_24px_80px_-48px_rgba(0,0,0,0.55)]"
+            className="overflow-hidden rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 shadow-[0_24px_80px_-48px_rgba(0,0,0,0.55)]"
         >
             <div className="flex flex-col gap-6">
                 <div>
@@ -85,7 +86,7 @@ export function AiWorkflowCallout({ filters, activeRole, prominent }: AiWorkflow
                             href={withFilterParam("/ai", filters, activeRole)}
                             className="rounded-full border border-(--card-stroke) bg-(--card) px-4 py-2 text-(--accent-2) transition hover:-translate-y-0.5"
                         >
-                            Start with AI Impact
+                            {CTA_LABELS.startWithAiImpact}
                         </Link>
                         <Link
                             href={withFilterParam(
@@ -95,7 +96,7 @@ export function AiWorkflowCallout({ filters, activeRole, prominent }: AiWorkflow
                             )}
                             className="rounded-full border border-(--card-stroke) bg-(--card) px-4 py-2 text-(--accent-2) transition hover:-translate-y-0.5"
                         >
-                            Weekly review
+                            {CTA_LABELS.weeklyReview}
                         </Link>
                     </div>
                 </div>

@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import type { WorkGraphEdgesResult } from "@/lib/graphql/types";
 import { logger } from "@/lib/logger";
+import { AuthErrors } from "@/lib/constants/errors";
 import {
     FEATURE_FLAG_REGISTRY_QUERY,
     FEATURE_FLAG_EVENTS_QUERY,
@@ -29,10 +30,16 @@ const EMPTY_RESULT: WorkGraphEdgesResult = {
     pageInfo: { hasNextPage: false, hasPreviousPage: false },
 };
 
+// CHAOS-4728: no session/no org_id must REJECT, never synthesize a tenant
+// identity. Same idiom as src/lib/api/capacity.ts's resolveOrgId.
 async function resolveOrgId(orgId?: string): Promise<string> {
     if (orgId) return orgId;
     const session = await auth();
-    return (session?.user?.org_id as string | undefined) ?? "default-org";
+    const sessionOrgId = session?.user?.org_id as string | undefined;
+    if (!sessionOrgId) {
+        throw new Error(AuthErrors.OrgIdRequiredFromSession);
+    }
+    return sessionOrgId;
 }
 
 export async function fetchFeatureFlagRegistry(

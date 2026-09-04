@@ -257,6 +257,85 @@ Sentry.startSpan({ name: "my-operation" }, () => {
 Sentry.setUser({ id: userId, email });
 ```
 
+## Ask Dev contract artifacts
+
+Ask Dev wire types under `src/lib/dev/` are consumers of the canonical
+Pydantic contracts in `dev-health-ops`; the web repository does not redeclare
+their shape. `scripts/ask-dev-contracts.mjs` copies the exact schemas and
+positive/negative fixtures from a clean, pinned ops commit, records SHA-256
+digests in `src/lib/dev/contracts/source.json`, and generates
+`src/lib/dev/generated.ts` with `json-schema-to-typescript`.
+
+The repositories land in order: first publish the ops foundation branch and
+open/merge its contract PR, then update the full ops commit pinned in both the
+web sync script and `.github/workflows/tests.yml`, and only then open the
+dependent web PR. Those two must name the same commit — the quality job checks
+ops out at the workflow's ref and then runs a check that refuses any source
+whose HEAD is not exactly the script's `SOURCE_COMMIT` — so
+`scripts/__tests__/chaos-3017-ci-execution-contract.test.mjs` reads the ref out
+of the sync script and asserts the workflow matches, turning a half-finished
+re-pin into a unit-test failure instead of a CI-only one. The pinned commit
+must be reachable from an ops branch so the web quality job can check it out;
+web CI compares against that checkout rather than trusting its vendored
+`source.json`.
+
+After an approved ops contract change, regenerate from a clean sibling checkout:
+
+```bash
+pnpm ask-dev:contracts:generate --source ../dev-health-ops
+pnpm ask-dev:contracts:check --source ../dev-health-ops
+pnpm exec vitest run src/lib/dev/__tests__/contracts.test.ts
+```
+
+The vendored-only `pnpm ask-dev:contracts:check` remains available as a local
+integrity check, but it is not release evidence. The quality gate requires
+`ASK_DEV_OPS_ROOT` and runs the cross-repository check. Incompatible field, enum, bound, or
+stream changes require a new contract version and the PRD/TRD change-control
+process; do not patch generated TypeScript or vendored JSON by hand.
+
+`check` is a CONSISTENCY guard only — it proves the vendored artifacts match
+`SOURCE_COMMIT`, never that `SOURCE_COMMIT` is still current (CHAOS-3511: the
+pin went 54 commits stale with nothing detecting it). `pnpm ask-dev:contracts:check-currency
+--pinned <ops checkout at SOURCE_COMMIT> --current <ops checkout at main>`
+is the CURRENCY guard: it diffs the consumed surface
+(`contracts/ask-dev/v1/`) between the two by content, ignoring v2-only churn
+web does not consume, and fails loudly — naming every added/removed/changed
+file — when they disagree. The quality gate requires `ASK_DEV_OPS_MAIN_ROOT`
+(a second, independent ops checkout at main's current tip) and runs this
+unconditionally, immediately after `check`; a stale pin is a red quality job,
+not a silent gap. Regenerate the same way as any other re-pin (`generate` +
+`check` above, from a checkout at the new commit), then update
+`SOURCE_COMMIT` in `scripts/ask-dev-contracts.mjs` and the pinned `ref` in
+`.github/workflows/tests.yml` together — the same half-finished-re-pin guard
+`chaos-3017-ci-execution-contract.test.mjs` already runs for `check` covers
+this pair too.
+
+### Ask Dev browser and surface ownership
+
+The authenticated app layout owns one `AskDevProvider` for both interaction
+surfaces. The persistent app-shell window and `/dev` consume that provider's
+conversation ID, committed scope, transcript, stream state, answer, and
+retention choice. Expanding or minimizing changes presentation only; it must not
+create a second conversation or submit a second run. A page change may update
+the visible proposed context, but the provider commits a scope only when the
+user submits a question.
+
+Browser requests use the same-origin `/api/v1/dev/**` handlers. Those handlers read
+the authenticated session token on the server and forward it to Ops; access and
+provider credentials are never serialized into client state. Mutations require
+a same-origin request, responses are `private, no-store`, and the client validates
+every SSE event and terminal `dev_answer.v1` before rendering. The structured
+answer renderer is shared by the window and full-page workspace so evidence,
+metrics, warnings, status, freshness, conflicts, and feedback cannot drift by
+surface.
+
+Contextual launchers pass only IDs from the approved route, entity, filter, and
+suggested-question registries. Opening a launcher focuses the window and shows
+proposed context; it does not submit a question, scrape the DOM, or send page
+copy. Context Fabric Validation is a separate superuser route at
+`/superadmin/context-fabric/validation` and is intentionally excluded from the
+customer window.
+
 ## Key Files Quick Reference
 
 | Path                                       | Description                                |

@@ -15,6 +15,7 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { BackLink } from "@/components/shared/BackLink";
 import { ComplexityDashboard } from "@/components/complexity/ComplexityDashboard";
+import { AskDevContextRegistration } from "@/components/ask-dev/AskDevContextRegistration";
 import type {
     ComplexityPoint,
     ComplexityTab,
@@ -31,6 +32,7 @@ import {
     complexityWindowFromFilter,
     type ComplexityScopeInput,
 } from "@/lib/complexity/filters";
+import { askDevContextForMetricSurface } from "@/lib/dev/contextualFilters";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -169,6 +171,10 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
 
     const { sinceUtc, untilUtc } = complexityWindowFromFilter(filters.time);
     const scopeInput = complexityScopeInputFromFilter(filters);
+    const askDevContext = askDevContextForMetricSurface({
+        filters,
+        routeId: "complexity",
+    });
 
     // Parallel pre-fetch — both queries are independent
     const [points, hotspotRows] = await Promise.all([
@@ -181,6 +187,7 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
             <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
                 <PrimaryNav filters={filters} active="complexity" role={activeRole} />
                 <main className="flex min-w-0 flex-1 flex-col gap-8" data-testid="complexity-page">
+                    {askDevContext ? <AskDevContextRegistration context={askDevContext} /> : null}
                     <header className="flex flex-wrap items-center justify-between gap-4">
                         <div>
                             <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
@@ -196,7 +203,9 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
                                 Every score traces to cyclomatic complexity and churn evidence.
                             </p>
                         </div>
-                        <BackLink href={withFilterParam("/", filters, activeRole)} />
+                        <div className="flex flex-wrap items-center gap-3">
+                            <BackLink href={withFilterParam("/", filters, activeRole)} />
+                        </div>
                     </header>
 
                     <FilterBar view="complexity" />

@@ -29,6 +29,16 @@ describe("resolvePackageManagerCommand", () => {
         });
     });
 
+    it("accepts a readable extensionless pnpm shim", () => {
+        const entrypoint = temporaryPath("pnpm");
+        writeFileSync(entrypoint, "#!/usr/bin/env node\n");
+
+        expect(resolvePackageManagerCommand({ npmExecPath: entrypoint })).toEqual({
+            command: process.execPath,
+            args: [entrypoint],
+        });
+    });
+
     it("accepts a readable symlink entrypoint", (context) => {
         const target = temporaryPath("pnpm-target.mjs");
         const entrypoint = temporaryPath("pnpm.mjs");
@@ -96,7 +106,7 @@ describe("resolvePackageManagerCommand", () => {
         );
     });
 
-    it.each(["pnpm.txt", "pnpm", "pnpm.mjs/"])(
+    it.each(["pnpm.txt", "pnpm-shim", "pnpm.mjs/"])(
         "rejects a non-JavaScript or directory entrypoint: %s",
         (fileName) => {
             const entrypoint = temporaryPath(fileName);

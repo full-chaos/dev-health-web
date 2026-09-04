@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import type { BillingAuditEntry } from "@/app/(app)/superadmin/billing/audit/actions";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type AuditDetailPanelProps = {
     entry: BillingAuditEntry | null;
@@ -121,7 +122,7 @@ export function AuditDetailPanel({ entry, onResolveAction }: AuditDetailPanelPro
                     disabled={isSaving}
                     className="rounded-xl bg-(--accent) px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
                 >
-                    Resolve
+                    {CTA_LABELS.resolve}
                 </button>
             </form>
         </div>

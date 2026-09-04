@@ -10,6 +10,7 @@ import { MetricDelta } from "@/components/shared/MetricDelta";
 import { DataState } from "@/components/ui/DataState";
 import { sortDeltasByRole, getMetricPolarity } from "@/lib/metrics/catalog";
 import { formatMetricValue } from "@/lib/formatters";
+import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import type { HomeResponse } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
 
@@ -119,7 +120,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                         href={buildExploreUrl({ filters, role: activeRole })}
                         className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                     >
-                        {CTA_LABELS.openInExplore}
+                        {CTA_LABELS.openEvidence}
                     </Link>
                 </div>
 
@@ -178,7 +179,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                                 }
                                 className="block w-full text-left rounded-2xl border border-transparent bg-(--card-60) px-4 py-3 transition hover:border-(--card-stroke)"
                             >
-                                {sentence.text}
+                                {scrubIdentifiers(sentence.text).text}
                             </button>
                         ))}
                         {!home?.summary?.length && (
@@ -196,7 +197,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                             href={withFilterParam("/opportunities", filters, activeRole)}
                             className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                         >
-                            View all
+                            {CTA_LABELS.viewAll}
                         </Link>
                     </div>
                     <div className="mt-4 grid gap-3">
@@ -256,7 +257,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                             }
                             className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                         >
-                            Open evidence
+                            {CTA_LABELS.openEvidence}
                         </button>
                     </div>
                     <p className="mt-3 text-sm text-(--ink-muted)">
@@ -271,7 +272,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                     ) : null}
                     {home?.limiting_factor?.recommended_action ? (
                         <div className="mt-3 rounded-2xl border border-(--accent)/20 bg-(--accent)/8 p-3">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-(--accent)">
+                            <p className="text-label-caps font-semibold uppercase tracking-[0.2em] text-(--accent)">
                                 Recommended action
                             </p>
                             <p className="mt-1 text-sm leading-5 text-foreground">
@@ -280,10 +281,10 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                         </div>
                     ) : null}
                     <div className="mt-4 space-y-3 text-sm">
-                        {(home?.constraint.evidence ?? []).map((item, idx) => (
+                        {(home?.constraint.evidence ?? []).map((item) => (
                             <button
                                 type="button"
-                                key={`${item.label}-${idx}`}
+                                key={`${item.label}-${item.link}`}
                                 onClick={() => openPanel(item.label, { apiUrl: item.link })}
                                 className="block w-full text-left rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3 hover:bg-(--card-60) transition-colors"
                             >
@@ -310,14 +311,14 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                             href={buildExploreUrl({ filters, role: activeRole })}
                             className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
                         >
-                            Open in Explore
+                            {CTA_LABELS.openEvidence}
                         </Link>
                     </div>
                     <div className="mt-4 space-y-4 text-sm">
-                        {(home?.events ?? []).map((event, idx) => (
+                        {(home?.events ?? []).map((event) => (
                             <button
                                 type="button"
-                                key={`${event.type}-${idx}`}
+                                key={`${event.type}-${event.ts}-${event.text}`}
                                 onClick={() => openPanel(event.type, { apiUrl: event.link })}
                                 className="block w-full text-left rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 hover:border-(--card-stroke)/80 transition-colors"
                             >

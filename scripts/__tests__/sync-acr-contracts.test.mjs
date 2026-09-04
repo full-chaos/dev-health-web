@@ -5,6 +5,8 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { isNotLockState } from "./acr-fixture-copy.mjs";
+
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const SCRIPT = path.join(ROOT, "scripts/sync-acr-contracts.mjs");
 const SOURCE = process.env.ACR_ROOT;
@@ -47,8 +49,7 @@ function createTemporaryProject() {
     const artifactRoot = path.join(root, "src/lib/acr/contracts");
     const script = path.join(root, "scripts/sync-acr-contracts.mjs");
 
-    fs.cpSync(ARTIFACT_ROOT, artifactRoot, { recursive: true });
-    fs.rmSync(path.join(artifactRoot, ".acr-contract-sync.lock"), { force: true });
+    fs.cpSync(ARTIFACT_ROOT, artifactRoot, { recursive: true, filter: isNotLockState });
     fs.mkdirSync(path.dirname(script), { recursive: true });
     fs.copyFileSync(SCRIPT, script);
     fs.copyFileSync(
@@ -108,6 +109,27 @@ describe("sync-acr-contracts", () => {
         expect(artifactSnapshot(project.artifactRoot)).toEqual(before);
     });
 
+    sourceTest("generates referenced schemas without relying on pre-existing artifacts", () => {
+        const project = createTemporaryProject();
+        const expectedCommit = JSON.parse(
+            fs.readFileSync(path.join(ARTIFACT_ROOT, "manifest.json"), "utf8"),
+        ).source_commit;
+        const referencedSchema = path.join(
+            project.artifactRoot,
+            "schemas/acr_client_credential.v1.schema.json",
+        );
+        fs.rmSync(referencedSchema);
+
+        const result = run(["generate", "--allow-write", "--expected-commit", expectedCommit], {
+            cwd: project.root,
+            script: project.script,
+            environment: { ACR_ROOT: SOURCE },
+        });
+
+        expect(result.status).toBe(0);
+        expect(fs.existsSync(referencedSchema)).toBe(true);
+    });
+
     it("checks committed artifacts without requiring the sibling ACR checkout", () => {
         const result = run(["check"], { environment: { ACR_ROOT: undefined } });
 
@@ -131,8 +153,27 @@ describe("sync-acr-contracts", () => {
             "schemas/expanded_evidence.v1.schema.json",
             "examples/context_packet.v1.json",
             "examples/expanded_evidence.v1.json",
+            "schemas/acr_client_credential.v1.schema.json",
             "schemas/agent_episode.v1.schema.json",
             "schemas/agent_episode_create.v1.schema.json",
+            "schemas/context_fabric_common.v1.schema.json",
+            "schemas/context_fabric_investigation_request.v1.schema.json",
+            "schemas/context_fabric_investigation_result.v1.schema.json",
+            "schemas/context_fabric_org_model_config.v1.schema.json",
+            "schemas/context_fabric_org_model_config_write_request.v1.schema.json",
+            "schemas/credential_revoke_request.v1.schema.json",
+            "schemas/credential_revoke_response.v1.schema.json",
+            "schemas/credential_rotate_request.v1.schema.json",
+            "schemas/credential_rotate_response.v1.schema.json",
+            "schemas/device_approval_preview_request.v1.schema.json",
+            "schemas/device_approval_preview_response.v1.schema.json",
+            "schemas/device_approval_request.v1.schema.json",
+            "schemas/device_approval_response.v1.schema.json",
+            "schemas/device_authorization_request.v1.schema.json",
+            "schemas/device_authorization_response.v1.schema.json",
+            "schemas/device_token_request.v1.schema.json",
+            "schemas/device_token_response.v1.schema.json",
+            "schemas/oauth_device_error.v1.schema.json",
         ]);
     });
 

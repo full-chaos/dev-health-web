@@ -7,15 +7,36 @@ vi.mock("@/lib/auth", () => ({
     }),
 }));
 
-// Mock Redis to null (forces in-memory fallback in rate-limit module)
+// Redis is the only rate-limit backend (CHAOS-3589 removed the in-memory
+// fallback), so tests choose per case whether it is reachable.
+const redisState = vi.hoisted(() => ({ client: null as unknown }));
+
 vi.mock("@/lib/redis", () => ({
-    getRedis: vi.fn().mockReturnValue(null),
+    getRedis: () => redisState.client,
     _resetRedisClient: vi.fn(),
 }));
+
+/**
+ * Minimal fixed-window counter with the same contract `rate-limit.ts` drives:
+ * one EVAL that increments and anchors a TTL, and a TTL read for Retry-After.
+ */
+function fakeRedis() {
+    const counts = new Map<string, number>();
+    return {
+        eval: async (_script: string, _numKeys: number, key: string) => {
+            const next = (counts.get(key) ?? 0) + 1;
+            counts.set(key, next);
+            return next;
+        },
+        ttl: async () => 3600,
+    };
+}
 describe("POST /api/feedback", () => {
     beforeEach(() => {
         vi.clearAllMocks();
         vi.resetModules();
+        // Default: Redis reachable, so the limiter actually enforces.
+        redisState.client = fakeRedis();
         // Clear environment variables
         delete process.env.LINEAR_API_KEY;
         delete process.env.LINEAR_TEAM_ID;
@@ -689,6 +710,63 @@ describe("POST /api/feedback", () => {
         expect(response.status).toBe(429);
         expect(data.success).toBe(false);
         expect(data.error).toBe("Rate limit exceeded. Please try again later.");
+    });
+
+    it("returns 429 when Redis is unavailable (fail-closed, CHAOS-3589)", async () => {
+        // Ruling: a feedback form briefly unavailable during a Redis outage is
+        // acceptable; unlimited un-rate-limited ingestion is not. This route
+        // therefore passes `failClosed: true`, so an unreachable Redis refuses
+        // rather than waving every request through.
+        redisState.client = null;
+        process.env.LINEAR_API_KEY = "key-123";
+        process.env.LINEAR_TEAM_ID = "team-123";
+
+        // A fresh Response per call: one instance would have its body consumed by
+        // the first read and fail every subsequent request.
+        global.fetch = vi.fn().mockImplementation(() =>
+            Promise.resolve(
+                new Response(
+                    JSON.stringify({
+                        data: {
+                            issueCreate: {
+                                success: true,
+                                issue: {
+                                    id: "i",
+                                    identifier: "ENG-1",
+                                    url: "https://linear.app/i",
+                                },
+                            },
+                        },
+                    }),
+                    { status: 200 },
+                ),
+            ),
+        );
+
+        const { POST } = await import("@/app/api/feedback/route");
+        const body = JSON.stringify({
+            title: "Test Bug",
+            description: "Test description",
+            type: "bug",
+            url: "http://example.com",
+            userAgent: "Mozilla/5.0",
+            timestamp: "2024-01-01T00:00:00Z",
+        });
+
+        // Every request, from the very first — there is no local budget to spend.
+        for (let i = 0; i < 3; i++) {
+            const response = await POST(
+                new Request("http://localhost/api/feedback", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json", "x-forwarded-for": "10.0.0.9" },
+                    body,
+                }),
+            );
+            expect(response.status).toBe(429);
+        }
+
+        // And the Linear API is never reached while the limiter is degraded.
+        expect(global.fetch).not.toHaveBeenCalled();
     });
 
     it("allows requests from different users independently", async () => {

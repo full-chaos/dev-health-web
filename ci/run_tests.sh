@@ -2,7 +2,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: ci/run_tests.sh <format|quality|build|unit|integration|e2e|e2e-default|e2e-onboarding|e2e-context-fabric|pagerduty-final-qa|live-e2e|design-lint|ci> [current/total]" >&2
+  echo "Usage: ci/run_tests.sh <format|quality|build|unit|auth-profiles-gate|e2e|e2e-default|e2e-customer-push|e2e-navigation|e2e-onboarding|e2e-context-fabric|pagerduty-final-qa|live-e2e|design-lint|ci> [current/total]" >&2
 }
 
 if [[ $# -lt 1 || $# -gt 2 ]]; then
@@ -109,6 +109,33 @@ prepare_playwright_artifacts() {
 
   rm -rf "${PLAYWRIGHT_REPORT_ROOT}" "${PLAYWRIGHT_RESULTS_ROOT}"
   mkdir -p "${PLAYWRIGHT_REPORT_ROOT}" "${PLAYWRIGHT_RESULTS_ROOT}"
+
+  # Drop the dev server's compiled chunks, never the production build.
+  #
+  # The `ci` tier runs `pnpm build` (which writes .next/) and then Playwright
+  # starts `next dev` (which uses .next/dev). On a fresh CI checkout .next
+  # starts empty, so those two never disagree. On a local checkout that already
+  # has a .next from earlier work, the dev server serves stale chunks against
+  # the current tree and fails with "module factory is not available" -- and the
+  # symptom is not a build error. It surfaces as unrelated PRODUCT tests
+  # failing: a broken app/global-error.tsx chunk stops an error toast
+  # rendering and stops a post-signin redirect completing, so auth specs go
+  # red and look like a real regression. Two of them cost a full gate run
+  # before the durations gave it away (10.7s and ~31s timeout-shaped failures,
+  # the same specs finishing in 575ms and 4.9s once .next was cleared).
+  #
+  # Scoped to .next/dev on purpose: wiping .next entirely would discard the
+  # production build this tier just made, so the e2e stage would silently stop
+  # exercising it.
+  rm -rf .next/dev
+}
+
+reset_dev_output() {
+  rm -rf .next/dev
+}
+
+reset_navigation_output() {
+  rm -rf .next/navigation
 }
 
 print_playwright_artifact_summary() {
@@ -130,13 +157,61 @@ run_quality() {
   echo "==> pnpm audit --audit-level=high --prod"
   pnpm audit --audit-level=high --prod
   run_pnpm_script codegen:check
+  if [[ -z "${ASK_DEV_OPS_ROOT:-}" ]]; then
+    echo "ASK_DEV_OPS_ROOT must name the clean, pinned dev-health-ops checkout." >&2
+    return 1
+  fi
+  echo "==> pnpm ask-dev:contracts:check --source ${ASK_DEV_OPS_ROOT}"
+  pnpm ask-dev:contracts:check --source "${ASK_DEV_OPS_ROOT}"
+  # CHAOS-3511: the pin's CURRENCY, not only its internal consistency -- a
+  # separate ops checkout at main's current tip, diffed against the pinned
+  # commit over the consumed surface only (contracts/ask-dev/v1/).
+  if [[ -z "${ASK_DEV_OPS_MAIN_ROOT:-}" ]]; then
+    echo "ASK_DEV_OPS_MAIN_ROOT must name a clean dev-health-ops checkout at ops main (CHAOS-3511 currency guard)." >&2
+    return 1
+  fi
+  echo "==> pnpm ask-dev:contracts:check-currency --pinned ${ASK_DEV_OPS_ROOT} --current ${ASK_DEV_OPS_MAIN_ROOT}"
+  pnpm ask-dev:contracts:check-currency --pinned "${ASK_DEV_OPS_ROOT}" --current "${ASK_DEV_OPS_MAIN_ROOT}"
+  # CHAOS-4696: query-api resolves a request by digesting the raw query
+  # text it receives. This asserts, for every registered document, that
+  # query-api's const (read via ops main's own registrydump -- always
+  # the LIVE tip, not a pin: this is a live invariant, not a contract
+  # sync) digests to what THIS repo's own pinned @urql/core actually
+  # puts on the wire (createRequest + formatDocument + stringifyDocument
+  # -- the real exchange-chain functions). Reuses ASK_DEV_OPS_MAIN_ROOT's
+  # checkout rather than a second ops clone.
+  echo "==> pnpm graphql:wire-parity:check --ops-root ${ASK_DEV_OPS_MAIN_ROOT}"
+  pnpm graphql:wire-parity:check --ops-root "${ASK_DEV_OPS_MAIN_ROOT}"
   run_pnpm_script lint
   run_pnpm_script typecheck
 }
 
 run_unit() {
-  echo "==> pnpm exec vitest run"
-  pnpm exec vitest run
+  echo "==> pnpm exec vitest run --coverage"
+  pnpm exec vitest run --coverage --coverage.reporter=text --coverage.reporter=lcov
+}
+
+# CHAOS-3273 Wave 0: guardrail G-1's web-side CI gate
+# (ci/gate_web_auth_profiles.ts). WEB_ENDPOINT_PROFILE_SCHEMA/
+# WEB_CREDENTIAL_CLASSES, when set, must name the pinned ops-owned contract
+# files (see ci/ops-contract.pin and .github/workflows/tests.yml's sparse
+# checkout). Unset locally is an honest, non-fatal skip of the
+# closed-vocabulary checks (the gate script itself decides fatal-in-CI vs
+# skip-locally, keyed off CI/GITHUB_ACTIONS -- this wrapper never guesses
+# that).
+run_auth_profiles_gate() {
+  local args=()
+  if [[ -n "${WEB_ENDPOINT_PROFILE_SCHEMA:-}" ]]; then
+    args+=(--schema "${WEB_ENDPOINT_PROFILE_SCHEMA}")
+  fi
+  if [[ -n "${WEB_CREDENTIAL_CLASSES:-}" ]]; then
+    args+=(--credential-classes "${WEB_CREDENTIAL_CLASSES}")
+  fi
+  if [[ -n "${WEB_CREDENTIAL_CLASSES_SCHEMA:-}" ]]; then
+    args+=(--credential-classes-schema "${WEB_CREDENTIAL_CLASSES_SCHEMA}")
+  fi
+  echo "==> pnpm auth-profiles:gate ${args[*]}"
+  pnpm auth-profiles:gate "${args[@]}"
 }
 
 run_e2e() {
@@ -147,6 +222,23 @@ run_e2e() {
   run_timed "e2e default suite" run_playwright_suite default test:e2e || {
     status=$?
     echo "E2E tests failed. Captured artifacts:" >&2
+    print_playwright_artifact_summary
+    return "${status}"
+  }
+  # The long-lived Turbopack server can lose dynamic routes or stop completing
+  # requests after route-stress specs in hosted CI. Give each proven stressor
+  # its own short-lived server so compiler state cannot cross suites.
+  run_timed "customer-push dev reset" reset_dev_output
+  run_timed "e2e customer-push suite" run_playwright_suite customer-push test:e2e:customer-push || {
+    status=$?
+    echo "Customer-push E2E tests failed. Captured artifacts:" >&2
+    print_playwright_artifact_summary
+    return "${status}"
+  }
+  run_timed "navigation dev reset" reset_navigation_output
+  run_timed "e2e navigation suite" run_playwright_suite navigation test:e2e:navigation || {
+    status=$?
+    echo "Navigation E2E tests failed. Captured artifacts:" >&2
     print_playwright_artifact_summary
     return "${status}"
   }
@@ -236,6 +328,15 @@ run_e2e_default() {
   run_isolated_e2e_suite "${artifact_suite}" test:e2e --shard "${shard}"
 }
 
+run_e2e_customer_push() {
+  run_isolated_e2e_suite customer-push test:e2e:customer-push
+}
+
+run_e2e_navigation() {
+  reset_navigation_output
+  run_isolated_e2e_suite navigation test:e2e:navigation
+}
+
 run_e2e_onboarding() {
   run_isolated_e2e_suite onboarding test:e2e:onboarding
 }
@@ -262,14 +363,20 @@ case "${tier}" in
   unit)
     run_unit
     ;;
-  integration)
-    run_pnpm_script test:integration
+  auth-profiles-gate)
+    run_auth_profiles_gate
     ;;
   e2e)
     run_e2e
     ;;
   e2e-default)
     run_e2e_default "$2"
+    ;;
+  e2e-customer-push)
+    run_e2e_customer_push
+    ;;
+  e2e-navigation)
+    run_e2e_navigation
     ;;
   e2e-onboarding)
     run_e2e_onboarding
@@ -292,7 +399,7 @@ case "${tier}" in
     run_quality
     run_pnpm_script build
     run_unit
-    run_pnpm_script test:integration
+    run_auth_profiles_gate
     run_e2e
     run_pagerduty_final_qa "${PLAYWRIGHT_REPORT_ROOT}/pagerduty-final-qa" "${PLAYWRIGHT_RESULTS_ROOT}/pagerduty-final-qa"
     ;;

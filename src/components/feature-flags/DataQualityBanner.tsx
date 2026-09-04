@@ -16,6 +16,7 @@ function InfoIcon() {
             stroke="currentColor"
             strokeWidth={2}
         >
+            <title>Information</title>
             <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -43,7 +44,7 @@ export function DataQualityBanner({
                 <div className="flex items-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/5 px-4 py-2.5 text-xs text-blue-400">
                     <InfoIcon />
                     <span>{GATE_COPY.dataArriving}</span>
-                    <span className="ml-auto rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em]">
+                    <span className="ml-auto rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-label-caps font-semibold uppercase tracking-[0.15em]">
                         {Math.round(dataCompleteness * 100)}% complete
                     </span>
                 </div>

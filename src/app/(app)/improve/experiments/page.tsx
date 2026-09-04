@@ -38,7 +38,7 @@ function ExperimentCard({ experiment }: { experiment: Experiment }) {
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                     {experiment.metric || "Experiment"}
                 </p>
-                <span className="shrink-0 rounded-full bg-(--card-80) px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-(--ink-muted)">
+                <span className="shrink-0 rounded-full bg-(--card-80) px-2 py-0.5 text-label-caps uppercase tracking-[0.15em] text-(--ink-muted)">
                     {experiment.status}
                 </span>
             </header>

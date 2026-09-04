@@ -345,7 +345,7 @@ export function ConfidencePanel({
                                             }}
                                         />
                                     </div>
-                                    <div className="mt-1 flex gap-3 text-[11px] text-(--ink-muted)">
+                                    <div className="mt-1 flex gap-3 text-xs text-(--ink-muted)">
                                         <span>
                                             {row.prs_merged.toLocaleString()} PR
                                             {row.prs_merged !== 1 ? "s" : ""}

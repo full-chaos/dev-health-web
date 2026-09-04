@@ -7,6 +7,7 @@ import { GraphChart } from "echarts/charts";
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
+import { CTA_LABELS } from "@/lib/design/cta";
 import type { WorkGraphEdge, WorkGraphNodeType, WorkGraphEdgeType } from "@/lib/graphql/types";
 
 echarts.use([GraphChart]);
@@ -369,7 +370,7 @@ export function WorkGraphExplorer({
     return (
         <div className={className} style={{ width, ...style }}>
             {FILTERABLE_NODE_TYPES.length > 0 && (
-                <div className="mb-2 flex flex-wrap items-center gap-2 px-1 text-[11px]">
+                <div className="mb-2 flex flex-wrap items-center gap-2 px-1 text-xs">
                     <span className="mr-1 uppercase tracking-[0.16em] text-(--ink-muted)">
                         Show
                     </span>
@@ -456,12 +457,12 @@ export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraph
                     type="button"
                     onClick={onToggleAction}
                     className="flex h-9 w-9 items-center justify-center rounded-xl border border-(--card-stroke) text-sm transition-colors hover:border-(--accent)/40 hover:text-foreground"
-                    aria-label="Expand legend"
-                    title="Expand legend"
+                    aria-label={CTA_LABELS.expandLegend}
+                    title={CTA_LABELS.expandLegend}
                 >
                     ◀
                 </button>
-                <div className="flex flex-col items-center gap-1.5" aria-label="Node color key">
+                <div className="flex flex-col items-center gap-1.5">
                     {ALL_NODE_TYPES.slice(0, 7).map((type) => (
                         <span
                             key={type}
@@ -471,7 +472,7 @@ export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraph
                         />
                     ))}
                 </div>
-                <span className="[writing-mode:vertical-rl] rotate-180 text-[10px] uppercase tracking-[0.2em]">
+                <span className="[writing-mode:vertical-rl] rotate-180 text-label-caps uppercase tracking-[0.2em]">
                     Legend
                 </span>
             </div>
@@ -482,22 +483,24 @@ export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraph
         <div className="text-xs text-(--ink-muted)">
             <div className="flex items-center justify-between gap-3 px-1 py-1">
                 <div>
-                    <p className="text-[10px] font-medium uppercase tracking-[0.18em]">Legend</p>
-                    <p className="mt-0.5 text-[11px]">Node colors + edge styles</p>
+                    <p className="text-label-caps font-medium uppercase tracking-[0.18em]">
+                        Legend
+                    </p>
+                    <p className="mt-0.5 text-xs">Node colors + edge styles</p>
                 </div>
                 <button
                     type="button"
                     onClick={onToggleAction}
                     className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-(--card-stroke) text-sm transition-colors hover:border-(--accent)/40 hover:text-foreground"
-                    aria-label="Collapse legend"
-                    title="Collapse legend"
+                    aria-label={CTA_LABELS.collapseLegend}
+                    title={CTA_LABELS.collapseLegend}
                 >
                     ▶
                 </button>
             </div>
             <div className="mt-3 space-y-4 border-t border-(--card-stroke) pt-3">
                 <section className="space-y-2">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.18em]">
+                    <p className="text-label-caps font-medium uppercase tracking-[0.18em]">
                         Node Types
                     </p>
                     <div className="grid grid-cols-2 gap-x-3 gap-y-2">
@@ -519,7 +522,7 @@ export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraph
                     </div>
                 </section>
                 <section className="space-y-2">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.18em]">
+                    <p className="text-label-caps font-medium uppercase tracking-[0.18em]">
                         Edge Types
                     </p>
                     <div className="grid gap-y-2">

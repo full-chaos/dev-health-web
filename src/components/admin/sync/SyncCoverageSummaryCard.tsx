@@ -1,8 +1,11 @@
+"use client";
+
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { DataState } from "@/components/ui/DataState";
-import { formatNumber } from "@/lib/formatters";
+import { formatDateUTC, formatNumber } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { SyncCoverageSummary } from "@/lib/admin/types";
 import { CoverageBadge, healthLabel, healthTone } from "./CoverageBadge";
@@ -30,6 +33,13 @@ function StatBlock({ label, value }: { label: string; value: ReactNode }) {
     );
 }
 
+function truncationMessage(reason: string | null | undefined): string {
+    if (reason === "lookback_limit") {
+        return "History is limited to this coverage window so coverage can be computed safely. Older activity may not appear in the health summary or timeline.";
+    }
+    return "History is limited to this coverage window. Older activity may not appear in the health summary or timeline.";
+}
+
 export function SyncCoverageSummaryCard({
     configId,
     coverage,
@@ -37,6 +47,7 @@ export function SyncCoverageSummaryCard({
     isActive,
     onBackfillAction,
 }: SyncCoverageSummaryCardProps) {
+    const router = useRouter();
     const editHref = `/org/admin/sync/${configId}/edit`;
 
     if (error) {
@@ -46,6 +57,24 @@ export function SyncCoverageSummaryCard({
                     variant="error"
                     title="Coverage summary unavailable"
                     message={error}
+                    action={
+                        <div className="flex flex-wrap items-center justify-center gap-3">
+                            <button
+                                type="button"
+                                onClick={onBackfillAction}
+                                className="rounded-md border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:border-(--accent) hover:text-(--accent)"
+                            >
+                                {CTA_LABELS.backfill}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => router.refresh()}
+                                className="rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+                            >
+                                {CTA_LABELS.retry}
+                            </button>
+                        </div>
+                    }
                     data-testid="coverage-summary-error"
                 />
             </div>
@@ -64,6 +93,22 @@ export function SyncCoverageSummaryCard({
     }
 
     const { overall, data_basis: dataBasis } = coverage;
+    const coveredRanges = coverage.datasets.flatMap((dataset) => dataset.covered_ranges);
+    const derivedSince = coveredRanges
+        .map((range) => new Date(range.since).getTime())
+        .filter(Number.isFinite)
+        .reduce<number | null>((earliest, value) => Math.min(earliest ?? value, value), null);
+    const derivedThrough = coveredRanges
+        .map((range) => new Date(range.before).getTime())
+        .filter(Number.isFinite)
+        .reduce<number | null>((latest, value) => Math.max(latest ?? value, value), null);
+    const coverageSince =
+        coverage.coverage_since ??
+        (derivedSince === null ? null : new Date(derivedSince).toISOString());
+    const coverageThrough =
+        coverage.coverage_through ??
+        (derivedThrough === null ? null : new Date(derivedThrough).toISOString());
+    const hasCoverageWindow = coverageSince !== null && coverageThrough !== null;
     const isLegacyInsufficientData =
         overall.health === "insufficient_data" && dataBasis === "legacy";
 
@@ -91,6 +136,24 @@ export function SyncCoverageSummaryCard({
                             planner-backed sync completes.
                         </p>
                     )}
+                    <p className="text-sm text-(--ink-muted)" data-testid="coverage-window">
+                        {hasCoverageWindow ? (
+                            <>
+                                Coverage shown: {formatDateUTC(coverageSince)} –{" "}
+                                {formatDateUTC(coverageThrough)}
+                            </>
+                        ) : (
+                            "No successful synced data yet."
+                        )}
+                    </p>
+                    {coverage.is_truncated === true && (
+                        <p
+                            className="max-w-2xl rounded-lg border border-(--caution)/40 bg-(--caution)/10 px-3 py-2 text-sm text-foreground"
+                            data-testid="coverage-truncation-notice"
+                        >
+                            {truncationMessage(coverage.truncation_reason)}
+                        </p>
+                    )}
                 </div>
                 <div className="flex items-center gap-3">
                     <button
@@ -106,7 +169,7 @@ export function SyncCoverageSummaryCard({
                     >
                         {CTA_LABELS.editConfig}
                     </Link>
-                    <SyncNowButton configId={configId} />
+                    <SyncNowButton configId={configId} freshnessSignal={coverage.generated_at} />
                 </div>
             </div>
 

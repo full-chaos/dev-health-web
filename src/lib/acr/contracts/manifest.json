@@ -1,9 +1,9 @@
 {
-  "source_commit": "b5a76c3c51c9ccd4f6f90031843de874aef1f1f4",
+  "source_commit": "d1da16cd456968c555943737551deb4a510220ca",
   "files": [
     {
       "path": "openapi/acr-v1.json",
-      "sha256": "4d319b65d17d0bceab28d4f8abe38a97bdc5cc8cdf5b541fa6f5723494abf6dd"
+      "sha256": "a50f686ea48c2ce69927007e3a8f55699e3230c7a1e02e7833ed13eb488f6b0f"
     },
     {
       "path": "schemas/capabilities.v1.schema.json",
@@ -23,7 +23,7 @@
     },
     {
       "path": "schemas/error.v1.schema.json",
-      "sha256": "83eb433d1681249e1a836d6a1c034e8ee68772d2ad36c4fdd29ee59b00614cbb"
+      "sha256": "e9b2b0b0de2eb66bff9f9f893e30fdf70a3ebab30a063c07141ed4d5ea4f3384"
     },
     {
       "path": "schemas/evidence_ref.v1.schema.json",
@@ -42,12 +42,88 @@
       "sha256": "b42ad9b46682f2112964a2f0a4de7e453caf795b746ac4b7ad0377ca2369a26f"
     },
     {
+      "path": "schemas/acr_client_credential.v1.schema.json",
+      "sha256": "687990c8026a4addde1a0ddc53ed8fee3f477a3aa662b234378a5109ced1ae61"
+    },
+    {
       "path": "schemas/agent_episode.v1.schema.json",
       "sha256": "6e41f2131f655c50fc0ae1dbe7701e93757a8b16bb9fc1d6006778761da7ccd8"
     },
     {
       "path": "schemas/agent_episode_create.v1.schema.json",
       "sha256": "461f5d9cfcbbe742df1820cbd40779b0d6d41f9a3b6ddbad34ec18c56ae84c29"
+    },
+    {
+      "path": "schemas/context_fabric_common.v1.schema.json",
+      "sha256": "b85e7da9f235ab3ad8e8ace5150d0fdd261003d58b1f1b0a2c5f156e7aa33fc3"
+    },
+    {
+      "path": "schemas/context_fabric_investigation_request.v1.schema.json",
+      "sha256": "d146b0fc47bc5ec303ffdda17024cf3225e00495d3287f0463d02d745d59e8bd"
+    },
+    {
+      "path": "schemas/context_fabric_investigation_result.v1.schema.json",
+      "sha256": "0c91a2eb6b4917c3e49d8130947e9315a496af543876af2bb2da99669de9d82b"
+    },
+    {
+      "path": "schemas/context_fabric_org_model_config.v1.schema.json",
+      "sha256": "9578a95ba2c3d5b2c3b2b2920638e635c205001f5cd456ccee0e94bdf9f655e6"
+    },
+    {
+      "path": "schemas/context_fabric_org_model_config_write_request.v1.schema.json",
+      "sha256": "1f1cdd5ab3117fba2f672c18b94b22e7e8ee89b9b882745f4838037753a492a5"
+    },
+    {
+      "path": "schemas/credential_revoke_request.v1.schema.json",
+      "sha256": "1d1402ac3c271b543e807e3f958d03fd927c361db5fdb5afe75687f689e02614"
+    },
+    {
+      "path": "schemas/credential_revoke_response.v1.schema.json",
+      "sha256": "dc457f6fb12b60fb4196d990d3f5927068ffe3162dd315c4328081ff09714bf4"
+    },
+    {
+      "path": "schemas/credential_rotate_request.v1.schema.json",
+      "sha256": "d6e47c9a12a96259b47fe402f5603a3f218e5062fb9b82ee50b2269cd3f7da4d"
+    },
+    {
+      "path": "schemas/credential_rotate_response.v1.schema.json",
+      "sha256": "a4ad79ff46b32868814433fd0421360bcfeb4dc0d5e165c8ffb4f8b4104726d2"
+    },
+    {
+      "path": "schemas/device_approval_preview_request.v1.schema.json",
+      "sha256": "0bd37884ab5225d0371a877e2b6d0018fd25961ede592d9ebb4942c63141649d"
+    },
+    {
+      "path": "schemas/device_approval_preview_response.v1.schema.json",
+      "sha256": "4035f47ea3abcd6b67755496db07b1d24409a11ee1d85a49983f6e3f005a761b"
+    },
+    {
+      "path": "schemas/device_approval_request.v1.schema.json",
+      "sha256": "5fa6e8bc6e109970c3729fb819544eaac360cfee44442ac2a3b7342a169a0a10"
+    },
+    {
+      "path": "schemas/device_approval_response.v1.schema.json",
+      "sha256": "ef39b2928b91e32e37f7cd2eda65cb0debc0a2063618e7936ecada1c13027b3e"
+    },
+    {
+      "path": "schemas/device_authorization_request.v1.schema.json",
+      "sha256": "a10d783d281fdf9edc88d68335272743000e364c725aefef3c1ac537b2676b42"
+    },
+    {
+      "path": "schemas/device_authorization_response.v1.schema.json",
+      "sha256": "e9a2b4f7c4a0fc8c11e2f65db9c0074476fb7e2527c0664c86d19522061e04ff"
+    },
+    {
+      "path": "schemas/device_token_request.v1.schema.json",
+      "sha256": "a4c377a1333c7e766dd8798e8621f3e7743d5df083c13561969b5d52d94d5f78"
+    },
+    {
+      "path": "schemas/device_token_response.v1.schema.json",
+      "sha256": "ec6599f33029a3a58d80409700a17a73dc77172f9621cedda02d8f769dc93dc6"
+    },
+    {
+      "path": "schemas/oauth_device_error.v1.schema.json",
+      "sha256": "0c2a80787e66035f544c316faa1a4ed98b0ee04bdaa5d0382ca82bf7349b4e86"
     }
   ]
 }

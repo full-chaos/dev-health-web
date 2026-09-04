@@ -131,12 +131,14 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
                                 Where work is piling up and review is slowing delivery.
                             </p>
                         </div>
-                        <Link
-                            href={withFilterParam("/", filters, activeRole)}
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-                        >
-                            {CTA_LABELS.backToCockpit}
-                        </Link>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <Link
+                                href={withFilterParam("/", filters, activeRole)}
+                                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                            >
+                                {CTA_LABELS.backToCockpit}
+                            </Link>
+                        </div>
                     </header>
 
                     <FilterBar view="work" />

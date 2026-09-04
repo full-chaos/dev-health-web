@@ -1,5 +1,7 @@
 "use client";
 
+import { CTA_LABELS } from "@/lib/design/cta";
+
 type VoidConfirmDialogProps = {
     isOpen: boolean;
     invoiceLabel: string;
@@ -40,7 +42,7 @@ export function VoidConfirmDialog({
                         disabled={isPending}
                         className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-sm hover:bg-(--card-70) disabled:opacity-50"
                     >
-                        Cancel
+                        {CTA_LABELS.cancel}
                     </button>
                     <button
                         type="button"

@@ -36,7 +36,7 @@ describe("CHAOS-3017 CI contracts", () => {
         const aggregator = job(contents(TESTS_WORKFLOW), "test");
 
         expect(aggregator).toMatch(
-            /needs: \[changes, format, quality, build, unit, integration, e2e-default, e2e-onboarding, e2e-context-fabric, pagerduty-final-qa\]/,
+            /needs: \[changes, format, quality, build, unit, e2e-default, e2e-onboarding\]/,
         );
         expect(aggregator).toMatch(/^        if: always\(\)$/mu);
         expect(aggregator).not.toContain("toJson(needs)");
@@ -84,10 +84,18 @@ describe("CHAOS-3017 CI contracts", () => {
         expect(defaultE2e).toMatch(
             /^            - run: bash ci\/run_tests\.sh e2e-default \$\{\{ matrix\.shard \}\}\/3$/mu,
         );
+        // Route-stress suites and Context Fabric share the onboarding runner
+        // (GitHub concurrency limits); all suites must still run, in one job.
+        expect(job(workflow, "e2e-onboarding")).toMatch(
+            /^            - run: bash ci\/run_tests\.sh e2e-customer-push$/mu,
+        );
+        expect(job(workflow, "e2e-onboarding")).toMatch(
+            /^            - run: bash ci\/run_tests\.sh e2e-navigation$/mu,
+        );
         expect(job(workflow, "e2e-onboarding")).toMatch(
             /^            - run: bash ci\/run_tests\.sh e2e-onboarding$/mu,
         );
-        expect(job(workflow, "e2e-context-fabric")).toMatch(
+        expect(job(workflow, "e2e-onboarding")).toMatch(
             /^            - run: bash ci\/run_tests\.sh e2e-context-fabric$/mu,
         );
     });
@@ -109,6 +117,8 @@ describe("CHAOS-3017 CI contracts", () => {
         // config. Listing them concurrently makes those processes race while the
         // broader Vitest suite is also active, producing incomplete inventories.
         const full = await listDefaultPlaywrightTests();
+        expect(full.some((entry) => entry.includes("admin-customer-push.spec.ts"))).toBe(false);
+        expect(full.some((entry) => entry.includes("nav-reachability.spec.ts"))).toBe(false);
         const shards = [];
         for (const shard of shardLabels) {
             shards.push(await listDefaultPlaywrightTests(shard));
@@ -141,12 +151,10 @@ describe("CHAOS-3017 CI contracts", () => {
             ...workflow.matchAll(/^\s+name: (playwright-(?:report|results)-[^\n]+)$/gm),
         ].map(([, name]) => name);
 
-        expect(names).toHaveLength(8);
+        expect(names).toHaveLength(4);
         expect(new Set(names).size).toBe(names.length);
         expect(names.join("\n")).toContain("default-${{ matrix.shard }}");
-        expect(names.join("\n")).toContain("onboarding");
-        expect(names.join("\n")).toContain("context-fabric");
-        expect(names.join("\n")).toContain("pagerduty-final-qa");
+        expect(names.join("\n")).toContain("onboarding-context-fabric");
     });
 
     it("runs static E2E only for tags and manual dispatch", () => {
@@ -213,9 +221,13 @@ describe("CHAOS-3017 CI contracts", () => {
         const harness = contents(HARNESS);
 
         expect(harness).toContain("e2e-default");
+        expect(harness).toContain("e2e-customer-push");
+        expect(harness).toContain("e2e-navigation");
         expect(harness).toContain("e2e-onboarding");
         expect(harness).toContain("e2e-context-fabric");
         expect(harness).toMatch(/e2e-default\)\n\s+run_e2e_default "\$2"/);
+        expect(harness).toMatch(/e2e-customer-push\)\n\s+run_e2e_customer_push/);
+        expect(harness).toMatch(/e2e-navigation\)\n\s+run_e2e_navigation/);
         expect(harness).toMatch(/e2e-onboarding\)\n\s+run_e2e_onboarding/);
         expect(harness).toMatch(/e2e-context-fabric\)\n\s+run_e2e_context_fabric/);
     });
@@ -265,6 +277,19 @@ describe("CHAOS-3017 CI contracts", () => {
         }
     });
 
+    it("uses the application migrator without authorizing the River cutover", () => {
+        const migrationStep = step(
+            job(contents(LIVE_E2E_WORKFLOW), "live-e2e"),
+            "Run dev-health-ops migrations",
+        );
+
+        expect(migrationStep).toContain("python -m dev_health_ops.cli");
+        expect(migrationStep).toContain('--db "$DATABASE_URI"');
+        expect(migrationStep).toContain("migrate postgres");
+        expect(migrationStep).not.toContain("alembic");
+        expect(migrationStep).not.toContain("DEV_HEALTH_ALLOW_CELERY_RIVER_CUTOVER");
+    });
+
     it("pins paths-filter to the reviewed commit in every touched workflow", () => {
         for (const workflowPath of [
             TESTS_WORKFLOW,
@@ -277,7 +302,7 @@ describe("CHAOS-3017 CI contracts", () => {
 
             expect(workflow).not.toMatch(/dorny\/paths-filter@v/);
             expect(workflow).toContain(
-                "dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706",
+                "dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d",
             );
         }
     });

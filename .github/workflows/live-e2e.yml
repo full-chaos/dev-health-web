@@ -18,7 +18,7 @@ jobs:
             code: ${{ steps.filter.outputs.code }}
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-            - uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706 # v4.0.2
+            - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
               id: filter
               # Always run on workflow_dispatch
               if: github.event_name == 'pull_request'
@@ -60,6 +60,12 @@ jobs:
                     - 5432:5432
                 options: >-
                     --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+            redis:
+                image: redis:7
+                ports:
+                    - 6379:6379
+                options: >-
+                    --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
             clickhouse:
                 image: clickhouse/clickhouse-server:25.1
                 env:
@@ -94,7 +100,7 @@ jobs:
                   ref: ${{ steps.ops-ref.outputs.ref }}
 
             - name: Setup pnpm
-              uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271 # v6.0.9
+              uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
 
             - name: Setup Node
               uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6
@@ -108,7 +114,7 @@ jobs:
             - name: Setup Python
               uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
               with:
-                  python-version: "3.12"
+                  python-version: "3.14"
                   cache: pip
 
             - name: Install dev-health-ops dependencies
@@ -132,7 +138,7 @@ jobs:
             - name: Run dev-health-ops migrations
               env:
                   DATABASE_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
-              run: alembic -c alembic.ini upgrade head
+              run: python -m dev_health_ops.cli --db "$DATABASE_URI" migrate postgres
               working-directory: dev-health-ops
 
             - name: Seed dev-health-ops fixtures
@@ -155,10 +161,13 @@ jobs:
                   DATABASE_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
                   CLICKHOUSE_URI: clickhouse://ch:ch@localhost:8123/default
                   POSTGRES_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+                  REDIS_URL: redis://localhost:6379/0
+                  CELERY_BROKER_URL: redis://localhost:6379/0
+                  CELERY_RESULT_BACKEND: redis://localhost:6379/0
                   CORS_ALLOWED_ORIGINS: "http://127.0.0.1:3002,http://localhost:3002,http://127.0.0.1:8000"
                   # Ops CHAOS-1553/1554 fail-closed rate-limit posture refuses to start
-                  # without REDIS_URL unless ENVIRONMENT=development. Live-e2e runs a
-                  # single ops replica and does not need shared Redis state.
+                  # without REDIS_URL unless ENVIRONMENT=development. Live-e2e provides
+                  # a local Redis service for rate limiting and Celery endpoints.
                   ENVIRONMENT: development
                   # Backend auth service requires a JWT signing secret; derivation
                   # from SETTINGS_ENCRYPTION_KEY was removed. Without this every
@@ -167,6 +176,18 @@ jobs:
                   # onboarding-ui regression for weeks.
                   JWT_SECRET_KEY: live-e2e-test-secret-do-not-use-in-production
                   SETTINGS_ENCRYPTION_KEY: live-e2e-test-settings-key-do-not-use
+                  # Ops default is 3/hour per IP (rate_limit.py: AUTH_REGISTER_LIMIT
+                  # falls back to "3/hour" when unset). This suite is
+                  # self-bootstrapping: nearly every describe group registers its own
+                  # user, and in CI every request arrives from one IP -- so past the
+                  # third registration the rest of the run is talking to a throttle
+                  # instead of the API, and the tests that depend on that identity
+                  # skip or fail for reasons unrelated to what they assert.
+                  #
+                  # Raised HERE only. The production default is untouched: it lives in
+                  # the ops fallback, not in this file, so nothing about this line
+                  # changes deployed behaviour.
+                  AUTH_REGISTER_LIMIT: 1000/hour
               run: |
                   nohup python -m dev_health_ops.cli \
                     --db "$DATABASE_URI" \

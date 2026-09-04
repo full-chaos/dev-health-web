@@ -25,7 +25,8 @@ export function resolvePackageManagerCommand(options = {}) {
     }
 
     const extension = pathApi.extname(npmExecPath).toLowerCase();
-    if (extension !== ".js" && extension !== ".cjs" && extension !== ".mjs") {
+    const isPnpmShim = pathApi.basename(npmExecPath) === "pnpm";
+    if (!isPnpmShim && extension !== ".js" && extension !== ".cjs" && extension !== ".mjs") {
         throw new Error(
             "Package-manager QA requires npm_execpath to reference a JavaScript (.js, .cjs, or .mjs) file.",
         );

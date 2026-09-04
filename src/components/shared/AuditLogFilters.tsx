@@ -246,7 +246,7 @@ function BillingAuditLogFilters({ onApply }: { onApply: (f: BillingAuditFilter) 
                     type="submit"
                     className="rounded-xl bg-(--accent) px-4 py-2 text-sm font-medium text-white"
                 >
-                    Apply
+                    {CTA_LABELS.apply}
                 </button>
             </div>
         </form>

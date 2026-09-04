@@ -1,6 +1,7 @@
 "use client";
 
 import type { InvoiceRecord } from "@/lib/billing/actions";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 type InvoiceDetailModalProps = {
     invoice: InvoiceRecord | null;
@@ -39,7 +40,7 @@ export function InvoiceDetailModal({ invoice, isOpen, onClose }: InvoiceDetailMo
                         onClick={onClose}
                         className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-sm hover:bg-(--card-70)"
                     >
-                        Close
+                        {CTA_LABELS.close}
                     </button>
                 </div>
 

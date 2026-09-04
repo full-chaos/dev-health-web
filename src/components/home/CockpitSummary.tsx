@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { EvidencePanel } from "@/components/evidence";
 import { EntityLabel } from "@/components/labels/EntityLabel";
+import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { CockpitHealthStatus, HomeResponse } from "@/lib/types";
 
@@ -78,7 +79,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
         <section
             data-testid="cockpit-summary"
             data-status={status}
-            className={`relative overflow-hidden rounded-[32px] border border-(--card-stroke) bg-gradient-to-br ${meta.glow} to-(--card-80) p-6 shadow-[0_28px_90px_-52px_rgba(0,0,0,0.6)] sm:p-8`}
+            className={`relative overflow-hidden rounded-3xl border border-(--card-stroke) bg-gradient-to-br ${meta.glow} to-(--card-80) p-6 shadow-[0_28px_90px_-52px_rgba(0,0,0,0.6)] sm:p-8`}
         >
             <EvidencePanel
                 isOpen={panel.isOpen}
@@ -127,7 +128,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                     data-testid="cockpit-top-change"
                     className="mt-6 rounded-3xl border border-(--accent)/25 bg-(--card)/70 p-5"
                 >
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-(--accent)">
+                    <p className="text-label-caps font-semibold uppercase tracking-[0.28em] text-(--accent)">
                         Top change
                     </p>
                     <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
@@ -159,7 +160,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                     </p>
 
                     <div className="mt-4 rounded-2xl border border-(--accent)/20 bg-(--accent)/8 p-3">
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-(--accent)">
+                        <p className="text-label-caps font-semibold uppercase tracking-[0.2em] text-(--accent)">
                             Recommended action
                         </p>
                         <p className="mt-1 text-sm leading-5 text-foreground">
@@ -178,7 +179,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                         }
                         className="mt-4 flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.18em] text-(--ink-muted) transition-colors hover:border-(--accent)/40 hover:bg-(--accent)/10 hover:text-(--accent)"
                     >
-                        Open evidence
+                        {CTA_LABELS.openEvidence}
                         <span aria-hidden>↗</span>
                     </button>
                 </div>

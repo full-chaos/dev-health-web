@@ -27,7 +27,8 @@ interface PageProps {
     params: Promise<{ configId: string }>;
     /**
      * `coverage_scenario` / `backfill_scenario` select sample scenarios in
-     * DEV_HEALTH_TEST_MODE only.
+     * DEV_HEALTH_TEST_MODE only. `coverage_scenario=unavailable` exercises
+     * the transport-failure recovery controls without calling the admin API.
      */
     searchParams: Promise<{
         coverage_scenario?: string | string[];
@@ -61,7 +62,13 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
         // page is exercisable in Playwright/test mode (web AGENTS test-mode rule).
         config = SAMPLE_SYNC_CONFIG;
         jobs = SAMPLE_SYNC_JOBS;
-        coverage = SYNC_COVERAGE_SAMPLES[resolveSyncCoverageSampleScenario(coverageScenarioParam)];
+        if (coverageScenarioParam === "unavailable") {
+            coverage = null;
+            coverageError = "Coverage request failed. Retry or run a backfill.";
+        } else {
+            coverage =
+                SYNC_COVERAGE_SAMPLES[resolveSyncCoverageSampleScenario(coverageScenarioParam)];
+        }
         activeBackfillJob =
             SAMPLE_BACKFILL_JOBS[resolveSampleBackfillScenario(backfillScenarioParam)];
     } else {

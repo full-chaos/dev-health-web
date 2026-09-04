@@ -8,6 +8,7 @@ import { startImpersonation } from "@/lib/admin/server";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { DataTable } from "@/components/shared/DataTable";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { broadcastImpersonationEvent, openImpersonationWindow } from "@/lib/impersonation-events";
 
 type UserTableProps = {
@@ -158,7 +159,7 @@ export function UserTable({ users }: UserTableProps) {
                                 href={`/superadmin/users/${user.id}`}
                                 className="text-(--accent) hover:underline"
                             >
-                                Edit
+                                {CTA_LABELS.edit}
                             </Link>
                         </>
                     ),

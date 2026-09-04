@@ -135,9 +135,118 @@ test.describe("Journey 1 — coverage-first config detail", () => {
 
         await expect(page.getByText(/unknown/i)).toHaveCount(0);
     });
+
+    test("truncated coverage exposes only exact server-authorized backfills", async ({ page }) => {
+        await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
+
+        await expect(page.getByTestId("coverage-window")).toContainText(
+            "Coverage shown: Jun 20, 2026 – Jul 2, 2026",
+        );
+        await expect(page.getByTestId("coverage-truncation-notice")).toContainText(
+            "limited to this coverage window",
+        );
+        const timeline = timelineRegion(page);
+        await expect(timeline.getByTestId("coverage-backfill-windows")).toBeVisible();
+        await expect(timeline.getByRole("button", { name: "Backfill this gap" })).toHaveCount(1);
+        await expect(timeline.getByText("No exact backfill suggestion")).toBeVisible();
+        await expect(
+            timeline.getByRole("button", { name: "Backfill Jun 24, 2026 to Jun 26, 2026" }),
+        ).toBeVisible();
+    });
+
+    test("keeps the last coverage window and timeline visible across refresh while a replacement projection is updating", async ({
+        page,
+    }) => {
+        await page.goto(`${DETAIL_URL}?coverage_scenario=refreshing`);
+
+        const assertRefreshingCoverage = async () => {
+            await expect(
+                page.getByRole("status", { name: "Coverage update in progress" }),
+            ).toContainText("Showing the last completed coverage");
+            await expect(page.getByTestId("coverage-window")).toContainText(
+                "Coverage shown: Jun 1, 2026 – Jun 28, 2026",
+            );
+            await expect(timelineRegion(page)).toBeVisible();
+            await expect(page.getByText("Coverage summary unavailable")).toHaveCount(0);
+            await expect(page.getByText("Coverage timeline unavailable")).toHaveCount(0);
+        };
+
+        await assertRefreshingCoverage();
+        await page.reload();
+        await assertRefreshingCoverage();
+    });
 });
 
 test.describe("Journey 2 — gap-driven backfill flow", () => {
+    test("selects gap and failure rows together and preserves each exact scope", async ({
+        page,
+    }) => {
+        await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
+        const timeline = timelineRegion(page);
+
+        await timeline
+            .getByRole("checkbox", {
+                name: "Select gap Jun 24, 2026 to Jun 26, 2026 for backfill",
+            })
+            .check();
+        await timeline
+            .getByRole("checkbox", {
+                name: "Select failed Jun 25, 2026 to Jun 27, 2026 for backfill",
+            })
+            .check();
+        await timeline.getByRole("button", { name: "Backfill selected (2)" }).click();
+
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        await expect(dialog.getByRole("status")).toContainText("2 exact windows selected");
+        await dialog.getByRole("button", { name: "Continue" }).click();
+
+        await expect(dialog.getByText(/Window 1: 2026-06-24 to 2026-06-26/)).toBeVisible();
+        await expect(dialog.getByText(/Window 2: 2026-06-25 to 2026-06-27/)).toBeVisible();
+        await expect(dialog.getByText("Sources: fullchaos/platform-api")).toBeVisible();
+        await expect(dialog.getByText("Sources: fullchaos/billing-service")).toBeVisible();
+        await expect(dialog.getByText("Datasets: Git Data (Commits, Branches)")).toBeVisible();
+        await expect(dialog.getByText("Datasets: Pull Requests")).toBeVisible();
+
+        await dialog.getByRole("button", { name: "Run 2 backfills" }).click();
+        await expect(dialog.getByText(/^2 backfills started/)).toBeVisible();
+        await expect(dialog.getByRole("link", { name: "View run" })).toHaveCount(2);
+    });
+
+    test("opens a failed row with its source and dataset selected", async ({ page }) => {
+        await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
+        const timeline = timelineRegion(page);
+
+        await timeline.getByRole("button", { name: "Backfill this failure" }).click();
+
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        await expect(dialog.getByLabel("Since (inclusive)")).toHaveValue("2026-06-25");
+        await expect(dialog.getByLabel("Before (exclusive)")).toHaveValue("2026-06-27");
+        await expect(dialog.getByLabel("fullchaos/billing-service")).toBeChecked();
+        await expect(dialog.getByLabel("Pull Requests")).toBeChecked();
+    });
+
+    test("canonical backfill entry prefills the exact server-owned window", async ({ page }) => {
+        await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
+        const backfillButton = page.getByRole("button", {
+            name: "Backfill Jun 24, 2026 to Jun 26, 2026",
+        });
+        const dialog = page.getByRole("dialog");
+
+        // On constrained CI runners the server-rendered button can become
+        // actionable just before its client handler hydrates. Retry the complete
+        // click-and-result assertion so a swallowed pre-hydration click is loud
+        // and bounded, matching the repository's navigation journey pattern.
+        await expect(async () => {
+            await backfillButton.click();
+            await expect(dialog).toBeVisible({ timeout: 3000 });
+        }).toPass({ timeout: 30000, intervals: [300, 700, 1500] });
+
+        await expect(page.getByLabel("Since (inclusive)")).toHaveValue("2026-06-24");
+        await expect(page.getByLabel("Before (exclusive)")).toHaveValue("2026-06-26");
+    });
+
     test("opens the wizard prefilled from a gap, validates the range, previews an estimate, gates an expensive submit, and completes in test mode", async ({
         page,
     }) => {
@@ -153,28 +262,38 @@ test.describe("Journey 2 — gap-driven backfill flow", () => {
 
         const dialog = page.getByRole("dialog");
         await expect(dialog).toBeVisible();
-        await expect(page.getByLabel("From", { exact: true })).toHaveValue("2026-06-24");
-        await expect(page.getByLabel("To", { exact: true })).toHaveValue("2026-06-26");
+        await expect(page.getByLabel("Since (inclusive)")).toHaveValue("2026-06-24");
+        await expect(page.getByLabel("Before (exclusive)")).toHaveValue("2026-06-26");
 
-        // Invalid range: "To" before "From" blocks Continue with an inline error.
-        await page.getByLabel("To", { exact: true }).fill("2026-06-20");
-        await expect(dialog.getByRole("alert")).toHaveText("Start date must be before end date.");
+        // Invalid range: exclusive boundary before since blocks Continue.
+        await page.getByLabel("Before (exclusive)").fill("2026-06-20");
+        await expect(dialog.getByRole("alert")).toContainText("exclusive boundary");
         await expect(dialog.getByRole("button", { name: "Continue" })).toBeDisabled();
 
         // Restore a valid range — the error clears and Continue is enabled.
-        await page.getByLabel("To", { exact: true }).fill("2026-06-26");
+        await page.getByLabel("Before (exclusive)").fill("2026-06-26");
         await expect(dialog.getByRole("alert")).toHaveCount(0);
+
+        // Focus both dimensions using only authoritative page inventory.
+        await dialog.getByRole("radio", { name: /Choose specific sources/ }).check();
+        await dialog.getByLabel("fullchaos/platform-api").check();
+        await dialog.getByRole("radio", { name: /Choose specific datasets/ }).check();
+        await dialog.getByLabel("Git Data (Commits, Branches)").check();
         await dialog.getByRole("button", { name: "Continue" }).click();
 
-        // Preview step shows an estimate.
+        // Review shows the exact focused scope and an estimate.
         await expect(dialog.getByText("Estimated chunks")).toBeVisible();
         await expect(dialog.getByText(/\(estimate\)/)).toBeVisible();
+        await expect(dialog.getByText("fullchaos/platform-api", { exact: true })).toBeVisible();
+        await expect(
+            dialog.getByText("Git Data (Commits, Branches)", { exact: true }),
+        ).toBeVisible();
         await expect(dialog.getByRole("alert")).toHaveCount(0);
 
         // Go back and set a >180 day range — the expensive-range warning gates submit.
         await dialog.getByRole("button", { name: /^Back$/ }).click();
-        await page.getByLabel("From", { exact: true }).fill("2026-01-01");
-        await page.getByLabel("To", { exact: true }).fill("2026-12-01");
+        await page.getByLabel("Since (inclusive)").fill("2026-01-01");
+        await page.getByLabel("Before (exclusive)").fill("2026-12-01");
         await dialog.getByRole("button", { name: "Continue" }).click();
 
         await expect(dialog.getByRole("alert")).toContainText("more than 180");
@@ -260,5 +379,69 @@ test.describe("Journey 3 — job history", () => {
         const historyCard = table.locator("xpath=ancestor::div[contains(@class,'rounded-xl')]");
         await expect(historyCard.getByRole("button", { name: /^Previous$/ })).toBeDisabled();
         await expect(historyCard.getByRole("button", { name: /^Next$/ })).toBeDisabled();
+    });
+});
+
+test.describe("Journey 4 — datasets the provider supports but nobody enabled", () => {
+    const NOT_ENABLED_URL = `${DETAIL_URL}?coverage_scenario=not_enabled`;
+    const NOT_ENABLED_KEYS = [
+        "work-items",
+        "work-item-labels",
+        "work-item-projects",
+        "work-item-history",
+        "work-item-comments",
+    ];
+
+    test("never renders a not_enabled dataset as a coverage card or dropdown entry", async ({
+        page,
+    }) => {
+        await page.goto(NOT_ENABLED_URL);
+        const timeline = timelineRegion(page);
+        await expect(timeline).toBeVisible();
+
+        for (const datasetKey of NOT_ENABLED_KEYS) {
+            await expect(datasetTable(timeline, datasetKey)).toHaveCount(0);
+            await expect(
+                timeline.getByLabel("Dataset").locator(`option[value="${datasetKey}"]`),
+            ).toHaveCount(0);
+        }
+
+        // Exactly one window table per enabled dataset, and nothing else.
+        // (Counting cards by class would also match the "Available backfills"
+        // panel, which shares the card classes but renders a list, not a table.)
+        await expect(timeline.getByRole("table")).toHaveCount(3);
+        for (const datasetKey of ["git", "prs", "cicd"]) {
+            await expect(datasetTable(timeline, datasetKey)).toBeVisible();
+        }
+    });
+
+    test("keeps the not-enabled signal as one muted summary line listing every key", async ({
+        page,
+    }) => {
+        await page.goto(NOT_ENABLED_URL);
+        const summary = timelineRegion(page).getByTestId("coverage-not-enabled-summary");
+
+        await expect(summary).toHaveCount(1);
+        await expect(summary).toContainText("5 datasets are not enabled");
+        for (const datasetKey of NOT_ENABLED_KEYS) {
+            await expect(summary).toContainText(datasetKey);
+        }
+    });
+
+    test("the backfill wizard never offers the disabled work-item family", async ({ page }) => {
+        await page.goto(NOT_ENABLED_URL);
+        const timeline = timelineRegion(page);
+
+        await timeline.getByRole("button", { name: "Backfill this gap" }).first().click();
+        const dialog = page.getByRole("dialog");
+        await expect(dialog).toBeVisible();
+        await dialog.getByRole("radio", { name: /Choose specific datasets/ }).check();
+
+        await expect(
+            dialog.getByRole("checkbox", { name: /Work items \(canonical family\)/ }),
+        ).toHaveCount(0);
+        await expect(
+            dialog.getByRole("checkbox", { name: "Git Data (Commits, Branches)" }),
+        ).toBeVisible();
     });
 });

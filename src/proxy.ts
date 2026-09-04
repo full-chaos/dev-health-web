@@ -251,7 +251,10 @@ async function handleRequest(request: NextRequest) {
         const session = await auth();
         if (!session || !session.access_token) {
             const signInUrl = new URL("/auth/signin", request.url);
-            signInUrl.searchParams.set("callbackUrl", sanitizeCallbackUrl(pathname));
+            signInUrl.searchParams.set(
+                "callbackUrl",
+                sanitizeCallbackUrl(`${pathname}${request.nextUrl.search}`),
+            );
             const redirect = NextResponse.redirect(signInUrl, 303);
             redirect.headers.set("Content-Security-Policy", csp);
             return redirect;
@@ -285,7 +288,10 @@ async function handleRequest(request: NextRequest) {
         pathname === "/graphql" ||
         (pathname.startsWith("/api/") &&
             !pathname.startsWith("/api/auth") &&
+            !pathname.startsWith("/api/acr") &&
             !pathname.startsWith("/api/agent-context") &&
+            pathname !== "/api/v1/dev" &&
+            !pathname.startsWith("/api/v1/dev/") &&
             !pathname.startsWith("/api/v1/llm-proxy"));
 
     if (!shouldProxy) {

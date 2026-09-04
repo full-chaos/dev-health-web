@@ -33,7 +33,7 @@ const baseSummary = {
     provider: "github",
     generated_at: GENERATED_AT,
     data_basis: "planner",
-    history_lookback_days: 180,
+    history_lookback_days: 3650,
     truncated_before: TRUNCATED_BEFORE,
 } satisfies Pick<
     SyncCoverageSummary,
@@ -130,6 +130,20 @@ export const PARTIAL_COVERAGE_SUMMARY = {
     ],
 } satisfies SyncCoverageSummary;
 
+export const TRUNCATED_COVERAGE_SUMMARY = {
+    ...PARTIAL_COVERAGE_SUMMARY,
+    coverage_since: "2025-12-20T00:00:00Z",
+    coverage_through: GENERATED_AT,
+    is_truncated: true,
+    truncation_reason: "lookback_limit",
+    backfill_windows: [
+        {
+            since: "2025-12-20",
+            before: "2026-01-01",
+        },
+    ],
+} satisfies SyncCoverageSummary;
+
 export const FAILED_COVERAGE_SUMMARY = {
     ...baseSummary,
     overall: {
@@ -205,6 +219,7 @@ export const COVERAGE_SUMMARIES = {
     empty: EMPTY_COVERAGE_SUMMARY,
     complete: COMPLETE_COVERAGE_SUMMARY,
     partial: PARTIAL_COVERAGE_SUMMARY,
+    truncated: TRUNCATED_COVERAGE_SUMMARY,
     failed: FAILED_COVERAGE_SUMMARY,
     legacy: LEGACY_INSUFFICIENT_DATA_SUMMARY,
 } satisfies Record<string, SyncCoverageSummary>;

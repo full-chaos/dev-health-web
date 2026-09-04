@@ -149,7 +149,11 @@ export type SyncCoverageStatus =
     | "insufficient_data"
     | "paused"
     | "not_scheduled"
-    | "running";
+    | "running"
+    // Provider supports this dataset but no enabled IntegrationDataset row
+    // exists for it -- never selected by an operator, distinct from
+    // "insufficient_data" (enabled, zero rows so far). CHAOS-3399.
+    | "not_enabled";
 
 export type SyncCoverageDataBasis = "planner" | "legacy";
 
@@ -158,6 +162,21 @@ export interface SyncCoverageRange {
     before: string;
     source_ids: string[];
     run_ids: string[];
+}
+
+/**
+ * Server-authorized half-open backfill selector for one coverage gap.
+ *
+ * Scope fields are optional only while Ops and Web roll out independently.
+ * A row-level action requires both fields; Web must never infer them from a
+ * displayed gap when the server sends an explicit empty list.
+ */
+export interface SyncCoverageBackfillWindow {
+    since: string;
+    before: string;
+    source_ids?: string[];
+    dataset_keys?: string[];
+    reasons?: ReadonlyArray<"gap" | "failed">;
 }
 
 export interface SyncRunJobEnrichment {
@@ -208,6 +227,20 @@ export interface SyncCoverageSummary {
     data_basis: SyncCoverageDataBasis;
     history_lookback_days: number;
     truncated_before: string;
+    /** Explicit response window. Optional while Web and Ops deploy independently. */
+    coverage_since?: string;
+    coverage_through?: string;
+    /** True when retained facts exist before the exact response window. */
+    is_truncated?: boolean;
+    /** Stable backend reason code; the UI must map it to user-safe copy. */
+    truncation_reason?: string | null;
+    /**
+     * The API is serving the last completed projection while its replacement
+     * is built. Optional while Web and Ops deploy independently.
+     */
+    projection_refreshing?: boolean;
+    /** Authoritative exact backfill suggestions. Present empty means no suggestion is available. */
+    backfill_windows?: SyncCoverageBackfillWindow[];
     overall: SyncCoverageOverall;
     datasets: SyncCoverageDataset[];
     sources: SyncCoverageSource[];
@@ -302,14 +335,60 @@ export interface SyncRunUnit {
     /** Earliest retry timestamp for a retrying unit, else null. */
     available_at: string | null;
     rate_limit_deferrals: number;
+    /**
+     * Count of times this unit was deferred by the sync budget guard
+     * (`error_category: "budget_deferred"`). Optional: backend field is
+     * in-flight (CHAOS-3412) and may be absent until that PR merges.
+     */
+    budget_deferrals?: number;
+    /**
+     * Timestamp of the first budget deferral for this unit, else null.
+     * Optional: backend field is in-flight (CHAOS-3412).
+     */
+    budget_first_deferred_at?: string | null;
     duration_seconds: number | null;
     error: string | null;
-    /** Extracted failure category (e.g. rate_limit), or null. */
+    /**
+     * Extracted failure category (e.g. rate_limit), or null. Budget-guard
+     * values: "budget_deferred" (retrying, still within caps),
+     * "budget_deferral_exhausted" (terminal — the `error` text names the
+     * bucket, cap, and remedies), and "deferral_exhausted" (terminal —
+     * aggregate cap: the unit oscillated between budget and rate-limit
+     * deferral episodes without ever running; `error` names the last
+     * episode kind and both counters). Persisted strings are stable machine
+     * codes. Keep them intact in state and translate them through the shared
+     * web presentation map before rendering operator-facing copy.
+     */
     error_category: string | null;
     last_heartbeat_at: string | null;
     result: Record<string, unknown> | null;
     created_at: string;
     updated_at: string;
+}
+
+/**
+ * Watermark-vs-now lag for one (source, dataset) pair (CHAOS-3430). Mirrors
+ * dev-health-ops api/admin/schemas/integrations.py:SyncRunDatasetFreshness.
+ *
+ * Every field is computed backend-side from the persisted `sync_watermarks`
+ * rows. The UI renders them verbatim — it never recomputes lag from a
+ * timestamp, re-derives the catch-up verdict, or counts ticks itself.
+ */
+export interface SyncRunDatasetFreshness {
+    /** IntegrationSource id, matching SyncRunUnit.source_id for label reuse. */
+    source_id: string;
+    source_name: string | null;
+    dataset_key: string;
+    cost_class: string;
+    /** Stored watermark (ISO, UTC); null when the dataset never stamped one. */
+    watermark_at: string | null;
+    /** `now - watermark_at` in whole seconds; null without a watermark. */
+    lag_seconds: number | null;
+    /** True only for a heavy dataset trailing by more than window_cap_days. */
+    catching_up: boolean;
+    /** Scheduled ticks still needed to reach now; null unless catching_up. */
+    ticks_behind: number | null;
+    window_cap_days: number;
 }
 
 /**
@@ -328,10 +407,28 @@ export interface SyncRunUnitSummary {
     slowest_unit_ids: string[];
     failed_unit_ids: string[];
     failed_unit_count: number;
+    /**
+     * Count of units currently blocked on the sync budget guard (`retrying`
+     * with `error_category: "budget_deferred"`). Optional: backend field is
+     * in-flight (CHAOS-3412) and may be absent until that PR merges.
+     */
+    budget_blocked_unit_count?: number;
     unit_count: number;
     partial_failure_summary: Record<string, unknown> | null;
     /** Earliest available_at among retrying units, else null. */
     next_retry_at: string | null;
+    /**
+     * Watermark lag per (source, dataset) pair planned by this run, for
+     * datasets that carry a watermark (CHAOS-3430). Optional: absent when the
+     * backend predates the field, which must render as "no lag information",
+     * never as "nothing is behind".
+     */
+    dataset_freshness?: SyncRunDatasetFreshness[];
+    /**
+     * How many of those pairs are a heavy dataset still ratcheting toward the
+     * current time. Optional for the same forward-compat reason.
+     */
+    catching_up_dataset_count?: number;
     units: SyncRunUnit[];
 }
 
@@ -346,17 +443,24 @@ export interface SyncConfigCreate {
     initial_sync_depth?: number | null;
 }
 
-export interface BackfillRequest {
+export interface BackfillSelector {
     since: string;
     before: string;
+    source_ids?: string[];
+    dataset_keys?: string[];
+}
+
+/** CHAOS-3758 structured selector. Never combine this with legacy flat fields. */
+export interface BackfillRequest {
+    selector: BackfillSelector;
 }
 
 export interface BackfillResponse {
-    task_id: string;
     status: string;
-    backfill_job_id: string;
-    /** Present on the backend response (routers/sync.py); optional here for defensive forward-compat. */
+    task_id?: string;
+    backfill_job_id?: string;
     sync_run_id?: string;
+    total_units?: number;
 }
 
 export interface BackfillJob {
@@ -759,6 +863,11 @@ export interface LLMSettingsUpsert {
     api_key?: string | null;
     base_url?: string | null;
     concurrency?: number | null;
+    /**
+     * Calendar-month organization hard cap in integer micro-USD. Omit to
+     * preserve the existing budget; zero is an explicit hard stop.
+     */
+    budget_limit_micro_usd?: number | null;
 }
 
 /**
@@ -770,6 +879,31 @@ export interface LLMSettingsActionResult<T> {
     data?: T;
     error?: string;
     status?: number;
+}
+
+// ---- BYO LLM Organization Budget (CHAOS-3238) ----
+
+export type LLMBudgetReason =
+    | "available"
+    | "budget_not_configured"
+    | "pricing_unavailable"
+    | "usage_unavailable"
+    | "budget_exhausted";
+
+/**
+ * GET /admin/llm-settings/budget response. Monetary values use integer
+ * micro-USD so the browser never treats provider spend as binary floats.
+ */
+export interface LLMBudgetResponse {
+    used_micro_usd: number | null;
+    limit_micro_usd: number | null;
+    remaining_micro_usd: number | null;
+    window: "calendar_month_utc";
+    reset_at: string;
+    enforcement_available: boolean;
+    reason: LLMBudgetReason;
+    maximum_limit_micro_usd: number;
+    pricing_version: string | null;
 }
 
 // ---- BYO LLM Spend Summary (CHAOS-2564) ----
@@ -839,13 +973,33 @@ export type LLMSettingsStatusReasonCode =
     "not_configured" | "unknown_provider" | "missing_credentials" | "invalid_base_url" | "active";
 
 /**
- * GET /admin/llm-settings/status response (CHAOS-2560). Drives the BYO-LLM
- * status badge on the AI Setup summary (CHAOS-2565): `active` renders
- * "Active", `configured && degraded` renders "Invalid — using platform
- * default", and `!configured` renders "Not configured". This endpoint is a
- * pure evaluator over stored settings + recent fallback audit rows — never a
- * live provider call — so a fetch failure degrades gracefully to the
- * settings-derived Saved/Not configured wording rather than blocking the UI.
+ * BYO preflight outcome (CHAOS-3265, amended for the CHAOS-3254
+ * READINESS_VERSION bump). Independent of `active`/`degraded` — a saved BYO
+ * configuration can be explicitly preflight-checked regardless of whether it
+ * currently wins Ask Dev's provider-selection arbitration.
+ *
+ * `"stale"` means a preflight was run before, but the stored result no
+ * longer corresponds to the current BYO configuration or the backend's
+ * current readiness-version requirement (the org edited BYO settings since
+ * the last check, or the backend's certification requirements changed). This
+ * is NOT an error/failure state — it is "not currently certified, re-run" —
+ * and must render with neutral/informational styling, never the negative
+ * "failed" tone. `readiness_safe_failure_reason` is only meaningful for
+ * `"failed"`; it must not be treated as an error explanation when stale.
+ */
+export type LLMSettingsReadinessState = "ready" | "failed" | "stale" | "never_checked";
+
+/**
+ * GET /admin/llm-settings/status response (CHAOS-2560, extended CHAOS-3265).
+ * Drives the BYO-LLM status badge on the AI Setup summary (CHAOS-2565):
+ * `active` renders "Active", `configured && degraded` renders "Invalid —
+ * using platform default", and `!configured` renders "Not configured". This
+ * endpoint is a pure evaluator over stored settings + recent fallback audit
+ * rows — never a live provider call — so a fetch failure degrades gracefully
+ * to the settings-derived Saved/Not configured wording rather than blocking
+ * the UI. `readiness`/`readiness_checked_at`/`readiness_safe_failure_reason`
+ * (CHAOS-3265) reflect the last explicit BYO preflight run via
+ * `POST /admin/llm-settings/readiness`, independent of this GET.
  */
 export interface LLMSettingsStatusResponse {
     configured: boolean;
@@ -853,6 +1007,110 @@ export interface LLMSettingsStatusResponse {
     degraded: boolean;
     reason_code: LLMSettingsStatusReasonCode;
     last_fallback_at: string | null;
+    readiness: LLMSettingsReadinessState;
+    readiness_checked_at: string | null;
+    readiness_safe_failure_reason: string | null;
+}
+
+// ---- Ask Dev administration (CHAOS-3217) ----
+
+export type AskDevEntitlementState =
+    "enabled" | "not_entitled" | "globally_disabled" | "org_disabled" | "unavailable";
+
+export type AskDevAdminReadiness =
+    | "ready"
+    | "unsupported_model"
+    | "missing_credentials"
+    | "disabled"
+    | "degraded"
+    | "stale_readiness";
+
+export type AskDevFallbackPolicy = "fail_closed" | "platform";
+export type AskDevRetentionDays = 0 | 30;
+
+export interface AskDevAdminSettings {
+    retention_days: AskDevRetentionDays;
+    fallback_policy: AskDevFallbackPolicy;
+    emergency_disabled: boolean;
+    platform_monthly_request_limit: number;
+    platform_monthly_cost_limit_microusd: number;
+}
+
+export interface AskDevAdminSettingsPatch {
+    retention_days?: AskDevRetentionDays;
+    fallback_policy?: AskDevFallbackPolicy;
+    emergency_disabled?: boolean;
+    platform_monthly_request_limit?: number;
+    platform_monthly_cost_limit_microusd?: number;
+}
+
+export interface AskDevRequestLimits {
+    active_runs_per_user: number;
+    active_runs_per_organization: number;
+    requests_per_user_per_15_minutes: number;
+    requests_per_organization_per_hour: number;
+}
+
+export interface AskDevPlatformAllowanceBounds {
+    request_minimum: number;
+    request_maximum: number;
+    cost_minimum_microusd: number;
+    cost_maximum_microusd: number;
+}
+
+export type AskDevPlatformAllowanceWarning =
+    "none" | "eighty_percent" | "ninety_percent" | "exhausted";
+
+export interface AskDevPlatformAllowanceUsage {
+    window_start: string;
+    reset_at: string;
+    request_limit: number;
+    request_used: number;
+    request_remaining: number;
+    cost_limit_microusd: number;
+    cost_used_microusd: number;
+    cost_remaining_microusd: number;
+    warning: AskDevPlatformAllowanceWarning;
+}
+
+export interface AskDevAdminResponse {
+    schema_version: string;
+    entitlement_state: AskDevEntitlementState;
+    ask_dev_enabled: boolean;
+    chat_window_available: boolean;
+    full_page_available: boolean;
+    effective_provider_label: string | null;
+    effective_model_label: string | null;
+    provider_source: "platform" | "byo" | null;
+    readiness: AskDevAdminReadiness;
+    readiness_checked_at: string | null;
+    readiness_version: string | null;
+    administrator_safe_failure_reason: string | null;
+    settings: AskDevAdminSettings;
+    retention_options: AskDevRetentionDays[];
+    fallback_options: AskDevFallbackPolicy[];
+    request_limits: AskDevRequestLimits;
+    platform_allowance_bounds: AskDevPlatformAllowanceBounds;
+    no_training_by_default: boolean;
+}
+
+export interface AskDevAdminUsageResponse {
+    schema_version: string;
+    use_case: "ask_dev";
+    since: string;
+    through: string;
+    request_count: number;
+    run_count: number;
+    completed_runs: number;
+    failed_runs: number;
+    degraded_runs: number;
+    input_tokens: number;
+    output_tokens: number;
+    estimated_cost_microusd: number | null;
+    failure_rate: number;
+    degraded_rate: number;
+    readiness: AskDevAdminReadiness;
+    platform_allowance: AskDevPlatformAllowanceUsage;
 }
 // ---- Provider types ----
 
@@ -877,13 +1135,49 @@ export const PROVIDER_LABELS: Record<Provider, string> = {
 };
 
 export const PROVIDER_SYNC_TARGETS: Record<Provider, string[]> = {
-    github: ["git", "prs", "cicd", "deployments", "incidents", "work-items"],
-    gitlab: ["git", "prs", "cicd", "deployments", "incidents", "work-items", "feature-flags"],
+    github: ["git", "prs", "cicd", "tests", "deployments", "incidents", "work-items"],
+    gitlab: [
+        "git",
+        "prs",
+        "cicd",
+        "tests",
+        "deployments",
+        "incidents",
+        "work-items",
+        "feature-flags",
+    ],
     jira: ["work-items"],
     linear: ["work-items"],
     launchdarkly: ["feature-flags"],
     pagerduty: ["operational"],
 };
+
+// ---- Auto-import capability (CHAOS-4323) ----
+
+export type AutoImportCategory = "teams" | "projects" | "members";
+
+/**
+ * Per-provider support for the three auto-import categories, plus the
+ * reason a category is unsupported (present only for a `false` category).
+ * Mirrors ops's `AutoImportCapability` dataclass
+ * (`providers/team_capabilities.py`) verbatim -- this is the single source
+ * of truth the wizard renders a disabled checkbox + reason from, not a
+ * duplicated frontend constant.
+ */
+export interface AutoImportCapability {
+    teams: boolean;
+    projects: boolean;
+    members: boolean;
+    reasons: Record<string, string>;
+}
+
+/**
+ * `GET /sync-configs/auto-import-capabilities` response: provider -> its
+ * capability. A provider absent from this map (e.g. `launchdarkly`,
+ * `pagerduty` -- no team/project/member concept at all) supports none of
+ * the three categories.
+ */
+export type AutoImportCapabilities = Record<string, AutoImportCapability>;
 
 // ---- Platform Stats ----
 
@@ -899,6 +1193,27 @@ export interface PlatformStats {
     active_sync_configs: number;
     recent_syncs_success: number;
     recent_syncs_failed: number;
+}
+
+// ---- Platform Ask Dev Readiness (CHAOS-3265) ----
+
+/**
+ * GET/POST /admin/platform/ask-dev/readiness response. Superuser-only —
+ * describes the operator/platform-owned Ask Dev provider (env-configured),
+ * never an organization's BYO configuration. `readiness` reuses
+ * `AskDevAdminReadiness` because the enum values are identical; do not
+ * duplicate the union.
+ */
+export interface PlatformAskDevReadinessResponse {
+    schema_version: "platform_ask_dev_readiness.v1";
+    configured: boolean;
+    /** Safe label only, e.g. "OpenAI compatible" — never a raw endpoint or credential. */
+    provider_label: string | null;
+    model_label: string | null;
+    readiness: AskDevAdminReadiness;
+    readiness_checked_at: string | null;
+    readiness_version: string | null;
+    safe_remediation: string | null;
 }
 
 // ---- Licensing & Feature Flags ----

@@ -76,7 +76,7 @@ This will serve the app at [http://localhost:3000](http://localhost:3000) using 
 | `BASE_PATH`                         | No                 | Subpath hosting prefix (example: `/app`)                                                                                                                                                                                  | Empty (root)                                                      |
 | `NEXT_PUBLIC_SENTRY_DSN`            | No                 | Sentry DSN for client + server + edge error reporting                                                                                                                                                                     | Empty (Sentry still initializes but events go nowhere)            |
 | `NEXT_PUBLIC_SENTRY_REPLAY_ROUTES`  | No                 | Comma-separated path prefixes that activate Sentry Session Replay. Replay is lazy-loaded on-demand so it stays out of the initial client bundle on non-matching routes. Set to an empty string to disable Replay entirely | `/admin,/superadmin`                                              |
-| `ACR_API_ORIGIN`                    | ACR runtime        | Fixed HTTPS origin for server-to-server ACR reads                                                                                                                                                                         | Must be an HTTPS origin without a path or query                   |
+| `ACR_API_ORIGIN`                    | ACR runtime        | Fixed HTTP(S) origin for server-to-server ACR reads; private service traffic normally uses HTTP and externally exposed traffic terminates TLS at the edge                                                                 | Must be an HTTP(S) origin without a path or query                 |
 | `ACR_WEB_ASSERTION_KEY_FILE`        | ACR runtime        | Path to the server-only Ed25519 assertion private key                                                                                                                                                                     | Regular mode-`0600` file; never a `NEXT_PUBLIC_*` variable        |
 | `ACR_WEB_ASSERTION_KID`             | ACR runtime        | JWKS key ID for signed web assertions                                                                                                                                                                                     | Must match the ACR JWKS configuration                             |
 | `ACR_WEB_ASSERTION_ISSUER`          | ACR runtime        | Fixed web assertion issuer                                                                                                                                                                                                | Must match ACR configuration                                      |
@@ -91,25 +91,24 @@ Copy `.env.example` to `.env.local` and configure as needed.
 
 ## Scripts
 
-| Script                     | Description                                                   |
-| -------------------------- | ------------------------------------------------------------- |
-| `npm run dev`              | Start development server                                      |
-| `npm run build`            | Build for production                                          |
-| `npm run start`            | Start production server                                       |
-| `npm run lint`             | Run ESLint                                                    |
-| `npm run typecheck`        | Run TypeScript checks                                         |
-| `npm run test:unit`        | Run unit tests (Vitest)                                       |
-| `npm run test:integration` | Run integration tier placeholder (currently no suite)         |
-| `npm run test:e2e`         | Run e2e tests (Playwright)                                    |
-| `npm run test:e2e:live`    | Run live-backend e2e smoke tests (Playwright)                 |
-| `npm run test:ci`          | Run CI gates (lint, typecheck, build, unit, integration, e2e) |
+| Script                  | Description                                      |
+| ----------------------- | ------------------------------------------------ |
+| `npm run dev`           | Start development server                         |
+| `npm run build`         | Build for production                             |
+| `npm run start`         | Start production server                          |
+| `npm run lint`          | Run ESLint                                       |
+| `npm run typecheck`     | Run TypeScript checks                            |
+| `npm run test:unit`     | Run unit tests (Vitest)                          |
+| `npm run test:e2e`      | Run e2e tests (Playwright)                       |
+| `npm run test:e2e:live` | Run live-backend e2e smoke tests (Playwright)    |
+| `npm run test:ci`       | Run CI gates (lint, typecheck, build, unit, e2e) |
 
 ## Test Tiers (Phase 0 Contract)
 
 Use the runner-agnostic entrypoint:
 
 ```bash
-bash ci/run_tests.sh <unit|integration|e2e|live-e2e|ci>
+bash ci/run_tests.sh <unit|e2e|live-e2e|ci>
 ```
 
 Examples:

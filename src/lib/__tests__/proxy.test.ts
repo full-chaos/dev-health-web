@@ -129,6 +129,17 @@ describe("org-scoped route guard", () => {
         expect(res.status).not.toBe(303);
     });
 
+    it("preserves the requested path and query when redirecting to sign in", async () => {
+        mockAuth.mockResolvedValue(null);
+
+        const res = await proxy(makeRequest("/settings?tab=integrations"));
+        const location = new URL(res.headers.get("Location")!);
+
+        expect(res.status).toBe(303);
+        expect(location.pathname).toBe("/auth/signin");
+        expect(location.searchParams.get("callbackUrl")).toBe("/settings?tab=integrations");
+    });
+
     it("redirects superuser without org from non-exempt path to /superadmin", async () => {
         mockAuth.mockResolvedValue(superuserNoOrg);
         const res = await proxy(makeRequest("/dashboard"));
@@ -252,6 +263,26 @@ describe("proxy rate limiting", () => {
         mockAuth.mockResolvedValue(session);
 
         const res = await proxy(makeRequest("/api/agent-context/context-packets"));
+
+        expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+    });
+
+    it("keeps Ask Dev BFF routes local while legacy API routes still proxy", async () => {
+        mockAuth.mockResolvedValue(session);
+
+        const askDevResponse = await proxy(makeRequest("/api/v1/dev/capabilities", "GET"));
+        const legacyResponse = await proxy(makeRequest("/api/v1/admin/ask-dev", "GET"));
+
+        expect(askDevResponse.headers.get("x-middleware-rewrite")).toBeNull();
+        expect(legacyResponse.headers.get("x-middleware-rewrite")).toBe(
+            "http://localhost:8000/api/v1/admin/ask-dev",
+        );
+    });
+
+    it("keeps device-approval BFF routes local instead of rewriting them to the backend", async () => {
+        mockAuth.mockResolvedValue(session);
+
+        const res = await proxy(makeRequest("/api/acr/device"));
 
         expect(res.headers.get("x-middleware-rewrite")).toBeNull();
     });

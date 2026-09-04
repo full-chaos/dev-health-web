@@ -14,7 +14,7 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ARTIFACT_ROOT = path.join(ROOT, "src/lib/acr/contracts");
-const SOURCE_COMMIT = "b5a76c3c51c9ccd4f6f90031843de874aef1f1f4";
+const SOURCE_COMMIT = "d1da16cd456968c555943737551deb4a510220ca";
 const PRETTIER_OPTIONS = Object.freeze({
     parser: "typescript",
     printWidth: 100,
@@ -39,8 +39,27 @@ const PRIMARY_SOURCE_PATHS = [
 ];
 // The copied OpenAPI document references these response schemas. Keep this closure explicit and ordered.
 const DEPENDENCY_CLOSURE_PATHS = [
+    "contracts/jsonschema/v1/acr_client_credential.v1.schema.json",
     "contracts/jsonschema/v1/agent_episode.v1.schema.json",
     "contracts/jsonschema/v1/agent_episode_create.v1.schema.json",
+    "contracts/jsonschema/v1/context_fabric_common.v1.schema.json",
+    "contracts/jsonschema/v1/context_fabric_investigation_request.v1.schema.json",
+    "contracts/jsonschema/v1/context_fabric_investigation_result.v1.schema.json",
+    "contracts/jsonschema/v1/context_fabric_org_model_config.v1.schema.json",
+    "contracts/jsonschema/v1/context_fabric_org_model_config_write_request.v1.schema.json",
+    "contracts/jsonschema/v1/credential_revoke_request.v1.schema.json",
+    "contracts/jsonschema/v1/credential_revoke_response.v1.schema.json",
+    "contracts/jsonschema/v1/credential_rotate_request.v1.schema.json",
+    "contracts/jsonschema/v1/credential_rotate_response.v1.schema.json",
+    "contracts/jsonschema/v1/device_approval_preview_request.v1.schema.json",
+    "contracts/jsonschema/v1/device_approval_preview_response.v1.schema.json",
+    "contracts/jsonschema/v1/device_approval_request.v1.schema.json",
+    "contracts/jsonschema/v1/device_approval_response.v1.schema.json",
+    "contracts/jsonschema/v1/device_authorization_request.v1.schema.json",
+    "contracts/jsonschema/v1/device_authorization_response.v1.schema.json",
+    "contracts/jsonschema/v1/device_token_request.v1.schema.json",
+    "contracts/jsonschema/v1/device_token_response.v1.schema.json",
+    "contracts/jsonschema/v1/oauth_device_error.v1.schema.json",
 ];
 const SOURCE_PATHS = [...PRIMARY_SOURCE_PATHS, ...DEPENDENCY_CLOSURE_PATHS];
 

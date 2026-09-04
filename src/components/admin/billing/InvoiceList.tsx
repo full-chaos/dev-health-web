@@ -9,6 +9,7 @@ import {
     type InvoiceListResponse,
     type InvoiceRecord,
 } from "@/lib/billing/actions";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { InvoiceDetailModal } from "./InvoiceDetailModal";
 import { VoidConfirmDialog } from "./VoidConfirmDialog";
@@ -186,7 +187,7 @@ export function InvoiceList({
                                 onClick={() => handleOpenDetail(invoice.id)}
                                 className="rounded-md border border-(--card-stroke) px-2.5 py-1 text-xs font-medium text-foreground hover:bg-(--card-70)"
                             >
-                                View
+                                {CTA_LABELS.view}
                             </button>
                             {canVoid && (
                                 <button
@@ -194,7 +195,7 @@ export function InvoiceList({
                                     onClick={() => setVoidingInvoice(invoice)}
                                     className="rounded-md border border-red-500/40 px-2.5 py-1 text-xs font-medium text-red-400 hover:bg-red-500/10"
                                 >
-                                    Void
+                                    {CTA_LABELS.voidInvoice}
                                 </button>
                             )}
                         </div>

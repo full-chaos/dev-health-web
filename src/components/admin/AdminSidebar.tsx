@@ -9,8 +9,7 @@ type NavItem = {
     id: string;
     label: string;
     href: string;
-    description: string;
-    featureKey?: string;
+    featureKeys?: readonly string[];
 };
 
 const navItems: NavItem[] = [
@@ -18,71 +17,60 @@ const navItems: NavItem[] = [
         id: "dashboard",
         label: "Dashboard",
         href: "/org/admin",
-        description: "Overview",
     },
     {
         id: "users",
         label: "Users",
         href: "/org/admin/users",
-        description: "Org members",
     },
     {
         id: "organization",
         label: "Organization",
         href: "/org/admin/settings",
-        description: "Workspace settings",
     },
     {
         id: "integrations",
         label: "Providers",
         href: "/org/admin/integrations",
-        description: "Connected sources",
     },
     {
         id: "sync",
         label: "Sync Status",
         href: "/org/admin/sync",
-        description: "Sync activity",
     },
     {
         id: "teams",
         label: "Teams",
         href: "/org/admin/teams",
-        description: "Team ownership",
     },
     {
         id: "identities",
         label: "Identities",
         href: "/org/admin/identities",
-        description: "Identity mapping",
     },
     {
         id: "audit",
         label: "Audit Logs",
         href: "/org/admin/audit-logs",
-        description: "Access history",
-        featureKey: "audit_log",
+        featureKeys: ["audit_log"],
     },
     {
         id: "ip-allowlist",
         label: "IP Allowlist",
         href: "/org/admin/ip-allowlist",
-        description: "Network access",
-        featureKey: "ip_allowlist",
+        featureKeys: ["ip_allowlist"],
     },
     {
         id: "retention",
         label: "Data Retention",
         href: "/org/admin/retention",
-        description: "Retention policy",
-        featureKey: "custom_retention",
+        featureKeys: ["custom_retention"],
     },
     {
-        id: "byo-llm",
+        id: "ai-setup",
         label: "AI Setup",
         href: "/org/admin/ai",
-        description: "Model provider",
-        featureKey: "byo_llm",
+        featureKeys: ["ask_dev", "byo_llm"],
     },
 ];
 
@@ -107,7 +95,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
         if (isSuperuser && item.id === "organization") {
             return false;
         }
-        if (item.featureKey && features?.[item.featureKey] !== true) {
+        if (item.featureKeys && !item.featureKeys.some((key) => features?.[key] === true)) {
             return false;
         }
         return true;
@@ -164,37 +152,35 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                                 <Link
                                     key={item.id}
                                     href={item.href}
+                                    prefetch={false}
                                     aria-current={isActive ? "page" : undefined}
-                                    className={`group flex items-center justify-between rounded-2xl border px-3 py-2 transition ${
+                                    className={`group flex items-center rounded-2xl border px-3 py-2 transition ${
                                         isActive
                                             ? "border-(--accent) bg-(--accent)/15 text-foreground"
                                             : "border-transparent bg-(--card-70) text-(--ink-muted) hover:border-(--card-stroke) hover:text-foreground"
                                     }`}
                                 >
                                     <span className="font-medium">{item.label}</span>
-                                    <span
-                                        className={`text-label-caps uppercase ${
-                                            isActive ? "text-(--accent)" : "text-(--ink-muted)"
-                                        }`}
-                                    >
-                                        {item.description}
-                                    </span>
                                 </Link>
                             );
                         })}
                         {isSuperuser && (
                             <Link
                                 href="/superadmin"
-                                className="group flex items-center justify-between rounded-2xl border border-purple-500/20 bg-purple-500/10 px-3 py-2 text-purple-400 hover:bg-purple-500/20 transition"
+                                prefetch={false}
+                                className="group flex items-center rounded-2xl border border-purple-500/20 bg-purple-500/10 px-3 py-2 text-purple-400 hover:bg-purple-500/20 transition"
                             >
                                 <span className="font-medium">Platform Admin</span>
-                                <span className="text-label-caps uppercase">Global</span>
                             </Link>
                         )}
                     </nav>
                     <div className="mt-5 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-3 py-3 text-xs text-(--ink-muted)">
                         Return to{" "}
-                        <Link href="/dashboard" className="underline hover:text-foreground">
+                        <Link
+                            href="/dashboard"
+                            prefetch={false}
+                            className="underline hover:text-foreground"
+                        >
                             main app
                         </Link>
                         .

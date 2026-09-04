@@ -26,6 +26,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData, getHomeData } from "@/lib/api/home";
 import { requireSession } from "@/lib/auth";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { withFilterParam } from "@/lib/filters/url";
@@ -139,7 +140,7 @@ export default async function IncidentCorrelationPage({ searchParams }: PageProp
                             href={withFilterParam("/", filters, activeRole)}
                             className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
                         >
-                            Back to cockpit
+                            {CTA_LABELS.backToCockpit}
                         </Link>
                     </header>
 

@@ -1,6 +1,8 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import { safePostLoginRedirect } from "@/lib/post-login-redirect";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 function GitHubIcon() {
     return (
@@ -43,10 +45,12 @@ function GitLabIcon() {
 
 type SocialLoginButtonsProps = {
     providers?: string[];
+    callbackUrl?: string;
 };
 
-export function SocialLoginButtons({ providers = [] }: SocialLoginButtonsProps) {
+export function SocialLoginButtons({ providers = [], callbackUrl }: SocialLoginButtonsProps) {
     if (providers.length === 0) return null;
+    const postLoginTarget = safePostLoginRedirect(callbackUrl);
 
     const buttonClass =
         "w-full rounded-lg border border-[var(--card-stroke)] bg-transparent py-3 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--card-stroke)]/20 transition-colors flex items-center justify-center gap-2";
@@ -54,18 +58,42 @@ export function SocialLoginButtons({ providers = [] }: SocialLoginButtonsProps) 
     return (
         <div className="space-y-3">
             {providers.includes("github") && (
-                <button onClick={() => signIn("github")} className={buttonClass}>
-                    <GitHubIcon /> Continue with GitHub
+                <button
+                    onClick={() =>
+                        signIn(
+                            "github",
+                            postLoginTarget ? { redirectTo: postLoginTarget } : undefined,
+                        )
+                    }
+                    className={buttonClass}
+                >
+                    <GitHubIcon /> {CTA_LABELS.continueWithGitHub}
                 </button>
             )}
             {providers.includes("google") && (
-                <button onClick={() => signIn("google")} className={buttonClass}>
-                    <GoogleIcon /> Continue with Google
+                <button
+                    onClick={() =>
+                        signIn(
+                            "google",
+                            postLoginTarget ? { redirectTo: postLoginTarget } : undefined,
+                        )
+                    }
+                    className={buttonClass}
+                >
+                    <GoogleIcon /> {CTA_LABELS.continueWithGoogle}
                 </button>
             )}
             {providers.includes("gitlab") && (
-                <button onClick={() => signIn("gitlab")} className={buttonClass}>
-                    <GitLabIcon /> Continue with GitLab
+                <button
+                    onClick={() =>
+                        signIn(
+                            "gitlab",
+                            postLoginTarget ? { redirectTo: postLoginTarget } : undefined,
+                        )
+                    }
+                    className={buttonClass}
+                >
+                    <GitLabIcon /> {CTA_LABELS.continueWithGitLab}
                 </button>
             )}
         </div>

@@ -16,7 +16,30 @@ export default defineConfig({
         },
         {
             name: "live-api",
-            testIgnore: /onboarding-ui\.spec\.ts/,
+            // CHAOS-3510 adds two things under tests/live/ that this suite must
+            // NOT collect, for different reasons:
+            //
+            //   __tests__/  — vitest specs for the wave4 Playwright reporter.
+            //     Playwright's default testMatch includes `*.test.ts`, so it
+            //     picked these up and died on `Vitest cannot be imported in a
+            //     CommonJS module`. They are colocated with the reporter they
+            //     guard on purpose; this exclusion is what keeps that safe.
+            //
+            //   ask-dev-wave4-access-matrix.spec.ts — armed-or-throw, same as
+            //     ask-dev-acceptance.spec.ts above. It needs the Compose
+            //     launcher's org provisioning and arming contract; running it
+            //     against this suite's generic backend proves nothing and fails.
+            //
+            //   ask-dev-graph-acceptance.spec.ts — separately armed graph
+            //     acceptance; importing it requires graph oracle variables.
+            //     It is collected only by playwright.ask-dev-graph-acceptance.config.ts.
+            testIgnore: [
+                /onboarding-ui\.spec\.ts/,
+                /ask-dev-acceptance\.spec\.ts/,
+                /ask-dev-wave4-access-matrix\.spec\.ts/,
+                /ask-dev-graph-acceptance\.spec\.ts/,
+                /__tests__\//,
+            ],
             dependencies: ["onboarding-ui"],
             use: { baseURL: "http://127.0.0.1:3002", headless: true },
         },

@@ -1,5 +1,4 @@
-import { readFileSync } from "node:fs";
-import { createServer } from "node:https";
+import { createServer } from "node:http";
 import express from "express";
 import {
     contextPacketForGoal,
@@ -16,11 +15,7 @@ import {
 
 const app = express();
 const port = Number(process.env.ACR_MOCK_PORT ?? 8013);
-const certificateFile = process.env.ACR_MOCK_CERT_FILE;
-const keyFile = process.env.ACR_MOCK_KEY_FILE;
 const MAX_RESPONSE_TIMER_DELAY_MS = 60_000;
-
-if (!certificateFile || !keyFile) throw new Error("ACR mock TLS files are required");
 
 const capabilities = {
     enabled_tools: ["context_for_task", "source_evidence"],
@@ -113,10 +108,6 @@ app.get("/api/v1/agent-context/evidence/:evidenceRefId", (request, response) => 
     sendEvidence();
 });
 
-createServer({ cert: readFileSync(certificateFile), key: readFileSync(keyFile) }, app).listen(
-    port,
-    "127.0.0.1",
-    () => {
-        console.log(`Mock ACR server listening on https://127.0.0.1:${port}`);
-    },
-);
+createServer(app).listen(port, "127.0.0.1", () => {
+    console.log(`Mock ACR server listening on http://127.0.0.1:${port}`);
+});

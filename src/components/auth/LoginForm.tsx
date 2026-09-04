@@ -4,10 +4,13 @@ import { useState } from "react";
 import { signIn, getSession } from "next-auth/react";
 import Link from "next/link";
 import { toast } from "sonner";
+import { CTA_LABELS } from "@/lib/design/cta";
+import { safePostLoginRedirect } from "@/lib/post-login-redirect";
 
 type LoginFormProps = {
     plan?: string;
     trialIntent?: boolean;
+    callbackUrl?: string;
 };
 
 async function getSessionWithRetry(attempts = 2, delayMs = 150) {
@@ -19,12 +22,13 @@ async function getSessionWithRetry(attempts = 2, delayMs = 150) {
     return null;
 }
 
-export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
+export function LoginForm({ plan, trialIntent = false, callbackUrl }: LoginFormProps) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
     const [verifyEmail, setVerifyEmail] = useState(false);
     const isTeamTrialIntent = trialIntent && plan?.toLowerCase() === "team";
+    const postLoginTarget = safePostLoginRedirect(callbackUrl);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -58,7 +62,7 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
                     ? isTeamTrialIntent
                         ? "/auth/onboard?plan=team&trial=true"
                         : "/auth/onboard"
-                    : "/dashboard";
+                    : (postLoginTarget ?? "/dashboard");
                 // Hard navigation (not router.push) guarantees the new auth cookie
                 // is attached to the request for `destination`. Soft App Router
                 // navigation is racy immediately after signIn in e2e environments.
@@ -146,7 +150,7 @@ export function LoginForm({ plan, trialIntent = false }: LoginFormProps) {
                     disabled={loading}
                     className="w-full rounded-lg border border-[var(--card-stroke)] bg-transparent py-3 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--card-stroke)]/20 transition-colors disabled:opacity-50"
                 >
-                    {loading ? "Signing in..." : "Sign in"}
+                    {loading ? CTA_LABELS.signingIn : CTA_LABELS.signIn}
                 </button>
             </form>
         </>

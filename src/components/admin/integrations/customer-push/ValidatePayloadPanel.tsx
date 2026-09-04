@@ -154,8 +154,8 @@ export function ValidatePayloadPanel({
                     className="rounded-lg border border-(--card-stroke) bg-(--surface-base) p-4 text-sm text-(--ink-muted)"
                 >
                     Server-side validation isn&apos;t available yet — it arrives with the validation
-                    endpoint (CHAOS-2695). You can prepare and inspect payloads here, or validate
-                    from CI with <code>dev-hops push validate</code>.
+                    endpoint. You can prepare and inspect payloads here, or validate from CI with{" "}
+                    <code>dev-hops push validate</code>.
                 </div>
             )}
 
