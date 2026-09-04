@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { navTrailForPathname, navTitleForPathname, getAreaById } from "../areas";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { withFilterParam } from "@/lib/filters/url";
+import type { MetricFilter } from "@/lib/filters/types";
 
 /**
  * A crumb list has a duplicate child crumb when its last two entries share a
@@ -108,16 +109,41 @@ describe("breadcrumbs — no duplicate child crumb (regression, dup child crumb 
         "/ai/risk sub-tab (%s): parent crumb re-added as a link, no duplicate",
         (viewCrumb) => {
             // Mirrors ai/risk/page.tsx's non-overview breadcrumbs branch.
+            const parentHref = withFilterParam("/ai/risk", defaultMetricFilter, undefined);
             const trail = [
                 ...navTrailForPathname("/ai/risk").slice(0, -1),
-                { label: "Governance Risk", href: "/ai/risk" },
+                { label: "Governance Risk", href: parentHref },
                 { label: viewCrumb },
             ];
             expect(hasDuplicateFinalCrumb(trail)).toBe(false);
-            expect(trail.at(-2)).toEqual({ label: "Governance Risk", href: "/ai/risk" });
+            expect(trail.at(-2)).toEqual({ label: "Governance Risk", href: parentHref });
             expect(trail.at(-1)).toEqual({ label: viewCrumb });
         },
     );
+
+    it("/ai/risk sub-tab: parent crumb link preserves an active team/role scope (not just the unscoped URL)", () => {
+        // Regression for a codex-round finding (round 1, tip 492aa524): the
+        // sub-tab breadcrumb previously hard-coded href: "/ai/risk", silently
+        // dropping the active filter/role scope on click even though the
+        // in-page tabs (AIGovernanceRiskTabs) preserve it via the same
+        // withFilterParam helper for their own "Overview" link.
+        const scopedFilter: MetricFilter = {
+            ...defaultMetricFilter,
+            scope: { level: "team", ids: ["team-42"] },
+        };
+        const role = "reviewer";
+        const parentHref = withFilterParam("/ai/risk", scopedFilter, role);
+
+        expect(parentHref).not.toBe("/ai/risk");
+        expect(parentHref).toContain("role=reviewer");
+
+        const trail = [
+            ...navTrailForPathname("/ai/risk").slice(0, -1),
+            { label: "Governance Risk", href: parentHref },
+            { label: "Test Gaps" },
+        ];
+        expect(trail.at(-2)?.href).toBe(parentHref);
+    });
 
     it("/ai/impact/evidence: Impact crumb re-added as a filter-preserving link, no duplicate", () => {
         // Mirrors ai/impact/evidence/page.tsx's breadcrumbs.
