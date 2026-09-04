@@ -1,8 +1,13 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect } from "vitest";
 import { navTrailForPathname, navTitleForPathname, getAreaById } from "../areas";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
+
+const appRoot = join(process.cwd(), "src/app/(app)");
+const readPageSource = (relativePath: string) => readFileSync(join(appRoot, relativePath), "utf8");
 
 /**
  * A crumb list has a duplicate child crumb when its last two entries share a
@@ -156,5 +161,70 @@ describe("breadcrumbs — no duplicate child crumb (regression, dup child crumb 
         expect(hasDuplicateFinalCrumb(trail)).toBe(false);
         expect(trail.at(-2)).toEqual({ label: "Impact", href: impactHref });
         expect(trail.at(-1)).toEqual({ label: "PR Evidence" });
+    });
+});
+
+describe("breadcrumbs — production page source guards (codex round 2: prior tests never imported the pages)", () => {
+    // The tests above prove the CORRECT shape in isolation, but a page could
+    // still regress to the old buggy double-append without failing them,
+    // since none of them read or render the actual page files. These guards
+    // close that gap by asserting on the six pages' own source text — the
+    // same technique this codebase already uses for server-page invariants
+    // it cannot cheaply render (see ia-preservation-invariants.test.ts).
+    //
+    // The old bug's exact signature was `c.href ?? "/<area>"` inside a
+    // `.map()` over navTrailForPathname(), immediately followed by a second,
+    // separately-pushed `{ label: "<title>" }` crumb. That literal
+    // `c.href ?? "/` fragment cannot appear in any of these six files'
+    // sources any more; `ai/attribution/page.tsx` still uses it
+    // legitimately (its child is navVisible: false, area-only trail) and is
+    // deliberately excluded from this list.
+    const fixedPages = [
+        "ai/automations/page.tsx",
+        "ai/impact/page.tsx",
+        "ai/review-load/page.tsx",
+        "improve/automations/page.tsx",
+        "ai/risk/page.tsx",
+        "ai/impact/evidence/page.tsx",
+    ];
+
+    it.each(fixedPages)(
+        "%s: no longer contains the old double-append href fallback",
+        (relativePath) => {
+            const source = readPageSource(relativePath);
+            expect(source).not.toContain('c.href ?? "/');
+        },
+    );
+
+    const directPassthroughPages = [
+        { path: "ai/automations/page.tsx", route: "/ai/automations" },
+        { path: "ai/impact/page.tsx", route: "/ai/impact" },
+        { path: "ai/review-load/page.tsx", route: "/ai/review-load" },
+        { path: "improve/automations/page.tsx", route: "/improve/automations" },
+    ];
+
+    it.each(directPassthroughPages)(
+        "$path: passes navTrailForPathname($route) straight through as breadcrumbs",
+        ({ path, route }) => {
+            const source = readPageSource(path);
+            expect(source).toContain(`breadcrumbs={navTrailForPathname("${route}")}`);
+        },
+    );
+
+    it("ai/risk/page.tsx: sub-tab breadcrumb uses slice(0, -1) + withFilterParam for the parent link", () => {
+        const source = readPageSource("ai/risk/page.tsx");
+        expect(source).toContain('navTrailForPathname("/ai/risk").slice(0, -1)');
+        expect(source).toContain('withFilterParam("/ai/risk", filters, activeRole)');
+    });
+
+    it("ai/impact/evidence/page.tsx: parent breadcrumb uses slice(0, -1) + withFilterParam", () => {
+        const source = readPageSource("ai/impact/evidence/page.tsx");
+        expect(source).toContain('navTrailForPathname("/ai/impact").slice(0, -1)');
+        expect(source).toContain('withFilterParam("/ai/impact", filters, role)');
+    });
+
+    it("ai/attribution/page.tsx is deliberately NOT in the fixed-pages list (navVisible: false child, area-only trail)", () => {
+        const source = readPageSource("ai/attribution/page.tsx");
+        expect(source).toContain('c.href ?? "/');
     });
 });
