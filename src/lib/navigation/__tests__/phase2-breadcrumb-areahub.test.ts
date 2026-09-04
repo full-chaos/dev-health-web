@@ -1,5 +1,18 @@
 import { describe, it, expect } from "vitest";
 import { navTrailForPathname, navTitleForPathname, getAreaById } from "../areas";
+import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { withFilterParam } from "@/lib/filters/url";
+
+/**
+ * A crumb list has a duplicate child crumb when its last two entries share a
+ * label — the exact shape of the "Improve / Automations / Automations" bug
+ * (six pages appended a second hard-coded child crumb on top of the already-
+ * complete Area → Child trail `navTrailForPathname` returns).
+ */
+function hasDuplicateFinalCrumb(trail: { label: string }[]): boolean {
+    if (trail.length < 2) return false;
+    return trail[trail.length - 1]?.label === trail[trail.length - 2]?.label;
+}
 
 describe("navTrailForPathname — operating-review (hidden Plan child, CHAOS-2181 follow-up)", () => {
     it("returns the Plan area crumb only while Operating Review is hidden", () => {
@@ -43,5 +56,79 @@ describe("navTrailForPathname — AI child pages", () => {
     it.each(tabPaths)("%s trail does NOT start with 'Home'", (pathname) => {
         const trail = navTrailForPathname(pathname);
         expect(trail[0]?.label).not.toBe("Home");
+    });
+});
+
+describe("breadcrumbs — no duplicate child crumb (regression, dup child crumb fix)", () => {
+    // Simple child pages now pass navTrailForPathname() straight through as
+    // their `breadcrumbs` prop (no more `[...trail, { label: title }]`
+    // append) — improve/automations, ai/automations, ai/impact,
+    // ai/review-load.
+    const simpleChildPages = [
+        "/improve/automations",
+        "/ai/automations",
+        "/ai/impact",
+        "/ai/review-load",
+    ];
+
+    it.each(simpleChildPages)(
+        "%s: navTrailForPathname() alone has no duplicate final crumb",
+        (pathname) => {
+            const trail = navTrailForPathname(pathname);
+            expect(trail).toHaveLength(2);
+            expect(hasDuplicateFinalCrumb(trail)).toBe(false);
+            // The link-less current crumb already carries the page title —
+            // this is what the removed second append duplicated.
+            expect(trail[trail.length - 1]?.label).toBe(navTitleForPathname(pathname));
+            expect(trail[trail.length - 1]?.href).toBeUndefined();
+        },
+    );
+
+    it("sanity check: the helper DOES flag the old buggy construction", () => {
+        // What the six pages did before the fix: re-derive an href for the
+        // trail's link-less current crumb, then push a second, identical
+        // child crumb on top.
+        const buggyTrail = [
+            ...navTrailForPathname("/improve/automations").map((c) => ({
+                ...c,
+                href: c.href ?? "/improve",
+            })),
+            { label: "Automations" },
+        ];
+        expect(hasDuplicateFinalCrumb(buggyTrail)).toBe(true);
+    });
+
+    it("/ai/risk overview: no duplicate final crumb", () => {
+        const trail = navTrailForPathname("/ai/risk");
+        expect(hasDuplicateFinalCrumb(trail)).toBe(false);
+        expect(trail[trail.length - 1]?.label).toBe("Governance Risk");
+    });
+
+    it.each(["Test Gaps", "Evidence"])(
+        "/ai/risk sub-tab (%s): parent crumb re-added as a link, no duplicate",
+        (viewCrumb) => {
+            // Mirrors ai/risk/page.tsx's non-overview breadcrumbs branch.
+            const trail = [
+                ...navTrailForPathname("/ai/risk").slice(0, -1),
+                { label: "Governance Risk", href: "/ai/risk" },
+                { label: viewCrumb },
+            ];
+            expect(hasDuplicateFinalCrumb(trail)).toBe(false);
+            expect(trail.at(-2)).toEqual({ label: "Governance Risk", href: "/ai/risk" });
+            expect(trail.at(-1)).toEqual({ label: viewCrumb });
+        },
+    );
+
+    it("/ai/impact/evidence: Impact crumb re-added as a filter-preserving link, no duplicate", () => {
+        // Mirrors ai/impact/evidence/page.tsx's breadcrumbs.
+        const impactHref = withFilterParam("/ai/impact", defaultMetricFilter, undefined);
+        const trail = [
+            ...navTrailForPathname("/ai/impact").slice(0, -1),
+            { label: "Impact", href: impactHref },
+            { label: "PR Evidence" },
+        ];
+        expect(hasDuplicateFinalCrumb(trail)).toBe(false);
+        expect(trail.at(-2)).toEqual({ label: "Impact", href: impactHref });
+        expect(trail.at(-1)).toEqual({ label: "PR Evidence" });
     });
 });
