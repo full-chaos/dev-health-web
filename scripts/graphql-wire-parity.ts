@@ -58,6 +58,8 @@ import { createRequest, formatDocument, stringifyDocument } from "@urql/core";
 
 import { FEATURE_FLAG_REGISTRY_QUERY } from "../src/lib/feature-flags/queries";
 import {
+    CAPACITY_FORECAST_QUERY,
+    CAPACITY_FORECASTS_QUERY,
     COGNITIVE_LOAD_QUERY,
     COMPLEXITY_TIMESERIES_QUERY,
     FLOW_MATRIX_QUERY,
@@ -66,6 +68,7 @@ import {
     INVESTMENT_FULL_QUERY,
     OPERATING_REVIEW_QUERY,
     REVIEW_EDGES_QUERY,
+    THROUGHPUT_FORECAST_QUERY,
     WORK_GRAPH_ARTIFACTS_QUERY,
     WORK_GRAPH_EDGES_QUERY,
     WORK_GRAPH_FLOW_QUERY,
@@ -81,6 +84,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
  * graphqlFetch callers actually pass to `client.query(...)`.
  */
 export const OPERATION_MANIFEST: Record<string, string> = {
+    capacityForecast: CAPACITY_FORECAST_QUERY,
+    capacityForecasts: CAPACITY_FORECASTS_QUERY,
     cognitiveLoad: COGNITIVE_LOAD_QUERY,
     complexityTimeseries: COMPLEXITY_TIMESERIES_QUERY,
     featureFlags: FEATURE_FLAG_REGISTRY_QUERY,
@@ -90,6 +95,7 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     investmentFull: INVESTMENT_FULL_QUERY,
     operatingReview: OPERATING_REVIEW_QUERY,
     reviewEdges: REVIEW_EDGES_QUERY,
+    throughputForecast: THROUGHPUT_FORECAST_QUERY,
     workGraphArtifacts: WORK_GRAPH_ARTIFACTS_QUERY,
     workGraphEdges: WORK_GRAPH_EDGES_QUERY,
     workGraphFlow: WORK_GRAPH_FLOW_QUERY,
