@@ -3,6 +3,8 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { scrubTelemetryText } from "@/lib/sentry/scrubber-value";
 
+import { recordCapabilityRequestFaults } from "./helpers/capability-request-faults";
+
 export const EVIDENCE_ROOT = path.resolve(".qa-evidence/pagerduty-final-postremediation");
 export const PAGERDUTY_SYNC_CONFIG_EDIT_PATH = "/org/admin/sync/sync-config-pagerduty-1/edit";
 const MOCK_ORIGIN =
@@ -26,6 +28,7 @@ type BrowserSignals = {
     readonly requestfailed: BrowserRequest[];
     readonly requests: BrowserRequest[];
     readonly responses: BrowserResponse[];
+    readonly settleRequests: () => Promise<void>;
 };
 
 type BrowserRequest = {
@@ -117,7 +120,7 @@ export function collectBrowserSignals(page: Page): BrowserSignals {
     const requests: BrowserRequest[] = [];
     const responses: BrowserResponse[] = [];
     const nonOkResponses: BrowserResponse[] = [];
-    const requestfailed: BrowserRequest[] = [];
+    const capabilityRequestFaults = recordCapabilityRequestFaults(page);
     page.on("console", (message) => {
         if (message.type() === "error" || message.type() === "warning") {
             console.push(scrubTelemetryText(`${message.type()}: ${message.text()}`));
@@ -137,10 +140,19 @@ export function collectBrowserSignals(page: Page): BrowserSignals {
         responses.push(receipt);
         if (!receipt.ok) nonOkResponses.push(receipt);
     });
-    page.on("requestfailed", (request) => {
-        if (isEvidenceRequest(request.url())) requestfailed.push(sanitizeRequest(request));
-    });
-    return { console, nonOkResponses, requestfailed, requests, responses };
+    return {
+        console,
+        nonOkResponses,
+        get requestfailed() {
+            return capabilityRequestFaults
+                .failedRequests()
+                .filter((request) => isEvidenceRequest(request.url))
+                .map(sanitizeRequest);
+        },
+        requests,
+        responses,
+        settleRequests: () => capabilityRequestFaults.settle(),
+    };
 }
 
 function isEvidenceRequest(url: string): boolean {
@@ -148,13 +160,16 @@ function isEvidenceRequest(url: string): boolean {
     return path.includes("/org/admin/") || path.includes("/api/");
 }
 
-function sanitizeRequest(request: {
-    readonly method: () => string;
-    readonly url: () => string;
-}): BrowserRequest {
-    const url = new URL(request.url());
+function sanitizeRequest(
+    request:
+        | { readonly method: () => string; readonly url: () => string }
+        | { readonly method: string; readonly url: string },
+): BrowserRequest {
+    const method = typeof request.method === "function" ? request.method() : request.method;
+    const requestUrl = typeof request.url === "function" ? request.url() : request.url;
+    const url = new URL(requestUrl);
     return {
-        method: request.method(),
+        method,
         path: url.pathname,
         query_keys: [...url.searchParams.keys()].sort(),
     };
@@ -306,8 +321,13 @@ export async function captureScenario(
     if (layout) {
         expect(layout.horizontalOverflow).toBe(false);
     }
+    await expect
+        .poll(async () => {
+            await signals.settleRequests();
+            return signals.requestfailed;
+        })
+        .toEqual([]);
     expect(signals.nonOkResponses).toEqual([]);
-    expect(signals.requestfailed).toEqual([]);
     await writeFile(
         path.join(EVIDENCE_ROOT, `${scenario.id}-${scenario.viewport}.json`),
         JSON.stringify(

@@ -8,6 +8,7 @@ export type BrowserRequestEvent =
           readonly kind: "failed";
           readonly sequence: number;
           readonly url: string;
+          readonly method: string;
           readonly errorText: string;
       }
     | {
@@ -37,7 +38,9 @@ function isRecoveredCapabilityAbort(
     events: readonly BrowserRequestEvent[],
     pageOrigin: string | null,
 ): boolean {
-    if (failure.errorText !== REQUEST_ABORTED || pageOrigin === null) return false;
+    if (failure.errorText !== REQUEST_ABORTED || failure.method !== "GET" || pageOrigin === null) {
+        return false;
+    }
 
     const requestUrl = new URL(failure.url);
     if (requestUrl.origin !== pageOrigin || requestUrl.pathname !== CAPABILITIES_PATH) return false;
@@ -108,6 +111,7 @@ export function recordCapabilityRequestFaults(page: Page): CapabilityRequestFaul
             kind: "failed",
             sequence: sequenceFor(request),
             url: request.url(),
+            method: request.method(),
             errorText: request.failure()?.errorText ?? "",
         });
         markCapabilityRequestSettled(request);

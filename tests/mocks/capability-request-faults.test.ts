@@ -14,6 +14,7 @@ const abortedCapabilitiesRequest = {
     kind: "failed",
     sequence: 1,
     url: CAPABILITIES_URL,
+    method: "GET",
     errorText: "net::ERR_ABORTED",
 } as const satisfies BrowserRequestEvent;
 
@@ -38,6 +39,7 @@ function request({
 } = {}): Request {
     return {
         url: () => url,
+        method: () => "GET",
         failure: () => ({ errorText }),
         response: () => response,
     } as unknown as Request;
@@ -146,6 +148,7 @@ describe("capability request fault reconciliation", () => {
             kind: "failed",
             sequence: 1,
             url: `${ORIGIN}/api/v1/dev/other`,
+            method: "GET",
             errorText: "net::ERR_ABORTED",
         } as const satisfies BrowserRequestEvent;
         const result = unrecoveredBrowserRequestFailures(
@@ -164,6 +167,7 @@ describe("capability request fault reconciliation", () => {
             kind: "failed",
             sequence: 1,
             url: "http://127.0.0.1:3002/api/v1/dev/capabilities",
+            method: "GET",
             errorText: "net::ERR_ABORTED",
         } as const satisfies BrowserRequestEvent;
         const result = unrecoveredBrowserRequestFailures(
@@ -219,5 +223,18 @@ describe("capability request fault reconciliation", () => {
         );
 
         expect(result).toEqual([networkFailure]);
+    });
+
+    it("keeps a non-GET capability abort despite a later completed 200 replacement", () => {
+        const mutationFailure = { ...abortedCapabilitiesRequest, method: "POST" } as const;
+        const result = unrecoveredBrowserRequestFailures(
+            [
+                mutationFailure,
+                { kind: "finished", sequence: 2, url: CAPABILITIES_URL, status: 200 },
+            ],
+            `${ORIGIN}/superadmin/context-fabric/validation`,
+        );
+
+        expect(result).toEqual([mutationFailure]);
     });
 });
