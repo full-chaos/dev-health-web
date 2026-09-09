@@ -56,7 +56,10 @@ import { fileURLToPath } from "node:url";
 // package.json) — never a copy vendored into this script or into ops.
 import { createRequest, formatDocument, stringifyDocument } from "@urql/core";
 
-import { FEATURE_FLAG_REGISTRY_QUERY } from "../src/lib/feature-flags/queries";
+import {
+    FEATURE_FLAG_EVENTS_QUERY,
+    FEATURE_FLAG_REGISTRY_QUERY,
+} from "../src/lib/feature-flags/queries";
 import {
     CAPACITY_FORECAST_QUERY,
     CAPACITY_FORECASTS_QUERY,
@@ -89,6 +92,7 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     capacityForecasts: CAPACITY_FORECASTS_QUERY,
     cognitiveLoad: COGNITIVE_LOAD_QUERY,
     complexityTimeseries: COMPLEXITY_TIMESERIES_QUERY,
+    featureFlagEvents: FEATURE_FLAG_EVENTS_QUERY,
     featureFlags: FEATURE_FLAG_REGISTRY_QUERY,
     flowMatrix: FLOW_MATRIX_QUERY,
     hotspots: HOTSPOTS_QUERY,
