@@ -1,0 +1,195 @@
+diff --git a/lib/client.js b/lib/client.js
+index 9b8b6c4251b1eecac8eed743f2373a496b569373..93f41405479a2a74b718a0869bf837a77846bcad 100644
+--- a/lib/client.js
++++ b/lib/client.js
+@@ -8,6 +8,34 @@ class ClientFetchError extends AuthError {
+ export class ClientSessionError extends AuthError {
+ }
+ // ------------------------ Internal ------------------------
++// `GET /session` and `POST /session` both rotate the session cookie. A delayed
++// GET can therefore overwrite a newer POST cookie (see
++// https://github.com/nextauthjs/next-auth/issues/8897). Keep the existing
++// focus, storage, and polling reads, but serialize only browser session calls
++// within this tab. SSR and every other client endpoint stay concurrent.
++// Browser fetch() has no default timeout, so a stalled request would hold the
++// queue forever and deadlock every later session read in this tab.
++const BROWSER_SESSION_REQUEST_TIMEOUT_MS = 10_000;
++let browserSessionRequestTail = Promise.resolve();
++function queueBrowserSessionRequest(request) {
++    const previousRequest = browserSessionRequestTail;
++    let release = () => { };
++    browserSessionRequestTail = new Promise((resolve) => {
++        release = () => resolve();
++    });
++    return previousRequest.then(async () => {
++        try {
++            // Do not release until fetch() and response.json() have both completed,
++            // so the browser has applied this response's Set-Cookie first.
++            return await request(AbortSignal.timeout(BROWSER_SESSION_REQUEST_TIMEOUT_MS));
++        }
++        finally {
++            // `request()` turns failed responses into null, and this also covers an
++            // unexpected rejection so a later session request can still proceed.
++            release();
++        }
++    });
++}
+ /**
+  * If passed 'appContext' via getInitialProps() in _app.js
+  * then get the req object from ctx and use that for the
+@@ -17,28 +45,34 @@ export class ClientSessionError extends AuthError {
+  * @internal
+  */
+ export async function fetchData(path, __NEXTAUTH, logger, req = {}) {
+-    const url = `${apiBaseUrl(__NEXTAUTH)}/${path}`;
+-    try {
+-        const options = {
+-            headers: {
+-                "Content-Type": "application/json",
+-                ...(req?.headers?.cookie ? { cookie: req.headers.cookie } : {}),
+-            },
+-        };
+-        if (req?.body) {
+-            options.body = JSON.stringify(req.body);
+-            options.method = "POST";
++    const request = async (signal) => {
++        const url = `${apiBaseUrl(__NEXTAUTH)}/${path}`;
++        try {
++            const options = {
++                headers: {
++                    "Content-Type": "application/json",
++                    ...(req?.headers?.cookie ? { cookie: req.headers.cookie } : {}),
++                },
++                ...(signal ? { signal } : {}),
++            };
++            if (req?.body) {
++                options.body = JSON.stringify(req.body);
++                options.method = "POST";
++            }
++            const res = await fetch(url, options);
++            const data = await res.json();
++            if (!res.ok)
++                throw data;
++            return data;
+         }
+-        const res = await fetch(url, options);
+-        const data = await res.json();
+-        if (!res.ok)
+-            throw data;
+-        return data;
+-    }
+-    catch (error) {
+-        logger.error(new ClientFetchError(error.message, error));
+-        return null;
+-    }
++        catch (error) {
++            logger.error(new ClientFetchError(error.message, error));
++            return null;
++        }
++    };
++    if (path !== "session" || typeof window === "undefined")
++        return request();
++    return queueBrowserSessionRequest(request);
+ }
+ /** @internal */
+ export function apiBaseUrl(__NEXTAUTH) {
+diff --git a/src/lib/client.ts b/src/lib/client.ts
+index 22b0f0cbb2aceb5b4d7440ab2486b4721479d286..ac5188ecf0e3eb3f74f1d2138b4a4a7eea241246 100644
+--- a/src/lib/client.ts
++++ b/src/lib/client.ts
+@@ -128,6 +128,41 @@ export interface SessionProviderProps {
+ 
+ // ------------------------ Internal ------------------------
+ 
++// `GET /session` and `POST /session` both rotate the session cookie. A delayed
++// GET can therefore overwrite a newer POST cookie (see
++// https://github.com/nextauthjs/next-auth/issues/8897). Keep the existing
++// focus, storage, and polling reads, but serialize only browser session calls
++// within this tab. SSR and every other client endpoint stay concurrent.
++// Browser fetch() has no default timeout, so a stalled request would hold the
++// queue forever and deadlock every later session read in this tab.
++const BROWSER_SESSION_REQUEST_TIMEOUT_MS = 10_000
++
++let browserSessionRequestTail: Promise<void> = Promise.resolve()
++
++function queueBrowserSessionRequest<T>(
++  request: (signal?: AbortSignal) => Promise<T | null>
++) {
++  const previousRequest = browserSessionRequestTail
++  let release = () => {}
++  browserSessionRequestTail = new Promise<void>((resolve) => {
++    release = () => resolve()
++  })
++
++  return previousRequest.then(async () => {
++    try {
++      // Do not release until fetch() and response.json() have both completed,
++      // so the browser has applied this response's Set-Cookie first.
++      return await request(
++        AbortSignal.timeout(BROWSER_SESSION_REQUEST_TIMEOUT_MS)
++      )
++    } finally {
++      // `request()` turns failed responses into null, and this also covers an
++      // unexpected rejection so a later session request can still proceed.
++      release()
++    }
++  })
++}
++
+ /**
+  * If passed 'appContext' via getInitialProps() in _app.js
+  * then get the req object from ctx and use that for the
+@@ -142,28 +177,34 @@ export async function fetchData<T = any>(
+   logger: LoggerInstance,
+   req: any = {}
+ ): Promise<T | null> {
+-  const url = `${apiBaseUrl(__NEXTAUTH)}/${path}`
+-  try {
+-    const options: RequestInit = {
+-      headers: {
+-        "Content-Type": "application/json",
+-        ...(req?.headers?.cookie ? { cookie: req.headers.cookie } : {}),
+-      },
+-    }
++  const request = async (signal?: AbortSignal): Promise<T | null> => {
++    const url = `${apiBaseUrl(__NEXTAUTH)}/${path}`
++    try {
++      const options: RequestInit = {
++        headers: {
++          "Content-Type": "application/json",
++          ...(req?.headers?.cookie ? { cookie: req.headers.cookie } : {}),
++        },
++        ...(signal ? { signal } : {}),
++      }
+ 
+-    if (req?.body) {
+-      options.body = JSON.stringify(req.body)
+-      options.method = "POST"
+-    }
++      if (req?.body) {
++        options.body = JSON.stringify(req.body)
++        options.method = "POST"
++      }
+ 
+-    const res = await fetch(url, options)
+-    const data = await res.json()
+-    if (!res.ok) throw data
+-    return data
+-  } catch (error) {
+-    logger.error(new ClientFetchError((error as Error).message, error as any))
+-    return null
++      const res = await fetch(url, options)
++      const data = await res.json()
++      if (!res.ok) throw data
++      return data
++    } catch (error) {
++      logger.error(new ClientFetchError((error as Error).message, error as any))
++      return null
++    }
+   }
++
++  if (path !== "session" || typeof window === "undefined") return request()
++  return queueBrowserSessionRequest(request)
+ }
+ 
+ /** @internal */

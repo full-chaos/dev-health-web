@@ -1,4 +1,6 @@
-import { expect, test, type ConsoleMessage, type Page, type Request } from "@playwright/test";
+import { expect, test, type ConsoleMessage, type Page } from "@playwright/test";
+
+import { recordCapabilityRequestFaults } from "./helpers/capability-request-faults";
 
 const CONTEXT_FABRIC_VALIDATION_PATH = "/superadmin/context-fabric/validation";
 
@@ -15,16 +17,28 @@ const NEXT_DEV_EVAL_CSP_MESSAGE = "eval() is not supported in this environment."
 const browserFaults = (page: Page) => {
     const consoleErrors: string[] = [];
     const pageErrors: string[] = [];
-    const failedRequests: string[] = [];
+    const requestFaults = recordCapabilityRequestFaults(page);
     page.on("console", (message: ConsoleMessage) => {
         if (message.type() === "error" && !message.text().startsWith(NEXT_DEV_EVAL_CSP_MESSAGE)) {
             consoleErrors.push(message.text());
         }
     });
     page.on("pageerror", (error) => pageErrors.push(error.message));
-    page.on("requestfailed", (request: Request) => failedRequests.push(request.url()));
-    return { consoleErrors, pageErrors, failedRequests };
+    return { consoleErrors, pageErrors, requestFaults };
 };
+
+async function expectNoBrowserFaults(faults: ReturnType<typeof browserFaults>) {
+    await expect
+        .poll(async () => {
+            await faults.requestFaults.settle();
+            return {
+                consoleErrors: faults.consoleErrors,
+                pageErrors: faults.pageErrors,
+                failedRequests: faults.requestFaults.failedRequests(),
+            };
+        })
+        .toEqual({ consoleErrors: [], pageErrors: [], failedRequests: [] });
+}
 
 async function openExplorer(page: Page) {
     const faults = browserFaults(page);
@@ -46,9 +60,7 @@ async function expectHealthyExplorer({
     requests,
 }: Awaited<ReturnType<typeof openExplorer>>) {
     await expect.poll(() => requests).toEqual([]);
-    expect(faults.consoleErrors).toEqual([]);
-    expect(faults.pageErrors).toEqual([]);
-    expect(faults.failedRequests).toEqual([]);
+    await expectNoBrowserFaults(faults);
 }
 
 test.describe("Context Fabric Validation", () => {
@@ -92,9 +104,7 @@ test.describe("Context Fabric Validation", () => {
             page.getByRole("region", { name: "Context Fabric diagnostics" }),
         ).toBeVisible();
         await expect.poll(() => requests).toEqual([]);
-        expect(faults.consoleErrors).toEqual([]);
-        expect(faults.pageErrors).toEqual([]);
-        expect(faults.failedRequests).toEqual([]);
+        await expectNoBrowserFaults(faults);
     });
 
     test("focuses the invalid goal, updates the visible packet, and keeps the browser boundary silent", async ({
@@ -159,9 +169,28 @@ test.describe("Context Fabric Validation", () => {
         await expect(page.getByRole("heading", { name: "Pressure", level: 2 })).toBeVisible();
         await expect(page.getByText("Coverage is partial.")).toBeVisible();
         await expect.poll(() => requests).toEqual([]);
-        expect(faults.consoleErrors).toEqual([]);
-        expect(faults.pageErrors).toEqual([]);
-        expect(faults.failedRequests).toEqual([]);
+        await expectNoBrowserFaults(faults);
+    });
+
+    test("reports an unrecovered capability request abort", async ({ page }) => {
+        const faults = browserFaults(page);
+        await page.route("**/api/v1/dev/capabilities", (route) => route.abort("aborted"));
+        await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
+        await expect(
+            page.getByRole("heading", { name: "Context Fabric Validation", level: 1 }),
+        ).toBeVisible();
+
+        await expect
+            .poll(async () => {
+                await faults.requestFaults.settle();
+                return faults.requestFaults
+                    .failedRequests()
+                    .map(({ errorText, url }) => ({ errorText, url }));
+            })
+            .toContainEqual({
+                errorText: "net::ERR_ABORTED",
+                url: new URL("/api/v1/dev/capabilities", page.url()).href,
+            });
     });
 
     for (const scenario of [
@@ -177,9 +206,7 @@ test.describe("Context Fabric Validation", () => {
 
             await expect(page.getByTestId(scenario[1])).toBeVisible();
             await expect.poll(() => requests).toEqual([]);
-            expect(faults.consoleErrors).toEqual([]);
-            expect(faults.pageErrors).toEqual([]);
-            expect(faults.failedRequests).toEqual([]);
+            await expectNoBrowserFaults(faults);
         });
     }
 });

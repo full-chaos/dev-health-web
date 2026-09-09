@@ -32,6 +32,8 @@ jobs:
                         - '.github/workflows/live-e2e.yml'
                         - 'package.json'
                         - 'pnpm-lock.yaml'
+                        - 'pnpm-workspace.yaml'
+                        - 'patches/**'
                         - 'tsconfig.json'
                         - 'next.config.*'
                         - 'vitest.config.*'

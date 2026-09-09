@@ -51,6 +51,8 @@ jobs:
                         - '.github/workflows/build-static.yml'
                         - 'package.json'
                         - 'pnpm-lock.yaml'
+                        - 'pnpm-workspace.yaml'
+                        - 'patches/**'
                         - 'tsconfig.json'
                         - 'next.config.*'
                         - 'vitest.config.*'
@@ -166,6 +168,8 @@ jobs:
                       public
                       package.json
                       pnpm-lock.yaml
+                      pnpm-workspace.yaml
+                      patches
                       next.config.*
                   retention-days: 14
                   compression-level: 9
