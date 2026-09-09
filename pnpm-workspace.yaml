@@ -14,7 +14,8 @@ overrides:
     # in 3.1.6 per their own "Patched versions" field. The prior 3.1.5 floor
     # (for GHSA-7p8r-x3mc-p8w7) was one patch short of these.
     fast-uri: ">=3.1.6 <4"
-    sharp: 0.35.3
+    # Next.js image optimization: patched libheif (GHSA-rgj7-g3m4-5g8c).
+    sharp: 0.35.4
     # Security floors for advisories reachable only transitively (CHAOS-3096 audit gate).
     # postcss: next pins 8.4.31 exactly, so GHSA-6g55-p6wh-862q / GHSA-r28c-9q8g-f849
     # cannot be cleared by upgrading a direct dependency.

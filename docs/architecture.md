@@ -2,7 +2,7 @@
 
 ## Overview
 
-- **Framework**: Next.js 16.1.6 (React Server Components)
+- **Framework**: Next.js 16.3.4 (React Server Components)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS v4
 - **UI**: Custom components (no shadcn/radix)
