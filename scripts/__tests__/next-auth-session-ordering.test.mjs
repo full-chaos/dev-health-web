@@ -51,6 +51,7 @@ afterEach(() => {
     if (originalWindow === undefined) delete globalThis.window;
     else Object.defineProperty(globalThis, "window", originalWindow);
     vi.clearAllMocks();
+    vi.restoreAllMocks();
 });
 
 describe.sequential("next-auth session request ordering", () => {
@@ -83,6 +84,7 @@ describe.sequential("next-auth session request ordering", () => {
             expect(fetchSpy).toHaveBeenCalledOnce();
             expect(fetchSpy).toHaveBeenLastCalledWith("/api/auth/session", {
                 headers: { "Content-Type": "application/json" },
+                signal: expect.any(AbortSignal),
             });
 
             getBody.resolve({ user: { org_id: "old-org" } });
@@ -94,6 +96,7 @@ describe.sequential("next-auth session request ordering", () => {
                 body: JSON.stringify({ data: { onboardComplete: { org_id: "new-org" } } }),
                 headers: { "Content-Type": "application/json" },
                 method: "POST",
+                signal: expect.any(AbortSignal),
             });
 
             postBody.resolve({ user: { org_id: "new-org" } });
@@ -180,6 +183,11 @@ describe.sequential("next-auth session request ordering", () => {
                 "/api/auth/csrf",
                 "http://example.test/api/auth/session",
             ]);
+            expect(fetchSpy.mock.calls.map(([, options]) => "signal" in options)).toEqual([
+                true,
+                false,
+                false,
+            ]);
 
             browserSessionBody.resolve({ user: { org_id: "browser-org" } });
             nonSessionBody.resolve({ csrfToken: "csrf-token" });
@@ -195,6 +203,58 @@ describe.sequential("next-auth session request ordering", () => {
             nonSessionBody.resolve({ csrfToken: "csrf-token" });
             serverSessionBody.resolve({ user: { org_id: "server-org" } });
             await Promise.allSettled([browserSession, csrf, serverSession].filter(Boolean));
+        }
+    });
+
+    it("aborts a stalled session request on the timeout and releases the queue", async () => {
+        useBrowserRuntime();
+        // AbortSignal.timeout() runs on a native timer that fake timers cannot
+        // advance, so drive the abort through a controller we own instead.
+        let timeoutController;
+        const timeoutSpy = vi.spyOn(AbortSignal, "timeout").mockImplementation(() => {
+            timeoutController = new AbortController();
+            return timeoutController.signal;
+        });
+        const stalledFetchStarted = deferred();
+        const updateBody = deferred();
+        const fetchSpy = vi
+            .fn()
+            .mockImplementationOnce((_url, options) => {
+                stalledFetchStarted.resolve();
+                return new Promise((_resolve, reject) => {
+                    options.signal.addEventListener("abort", () => {
+                        reject(options.signal.reason);
+                    });
+                });
+            })
+            .mockResolvedValueOnce({ json: () => updateBody.promise, ok: true });
+        globalThis.fetch = fetchSpy;
+
+        const stalledSession = fetchData("session", clientConfig, logger);
+        let updateSession;
+
+        try {
+            await stalledFetchStarted.promise;
+            expect(timeoutSpy).toHaveBeenCalledWith(10_000);
+
+            updateSession = fetchData("session", clientConfig, logger, {
+                body: { data: { activeOrg: { user: { org_id: "new-org" } } } },
+            });
+            await Promise.resolve();
+            expect(fetchSpy).toHaveBeenCalledOnce();
+
+            timeoutController.abort(new DOMException("The operation timed out.", "TimeoutError"));
+            await expect(stalledSession).resolves.toBeNull();
+
+            await Promise.resolve();
+            expect(fetchSpy).toHaveBeenCalledTimes(2);
+            updateBody.resolve({ user: { org_id: "new-org" } });
+            await expect(updateSession).resolves.toEqual({ user: { org_id: "new-org" } });
+        } finally {
+            stalledFetchStarted.resolve();
+            timeoutController?.abort(new DOMException("The operation timed out.", "TimeoutError"));
+            updateBody.resolve({ user: { org_id: "new-org" } });
+            await Promise.allSettled([stalledSession, updateSession].filter(Boolean));
         }
     });
 });

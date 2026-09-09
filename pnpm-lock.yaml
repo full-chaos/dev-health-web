@@ -13,7 +13,7 @@ overrides:
   browserslist: '>=4.28.7'
 
 patchedDependencies:
-  next-auth@5.0.0-beta.32: 60dd91ca4b1e01ffb61005e1302ca42a811ad47f15d8eaa67aa38cd70adc1b1b
+  next-auth@5.0.0-beta.32: 38af8bbfa3bb63d3d2105bb6c8c43f08bca1cba6127861888b8c95e25ad3e710
 
 importers:
 
@@ -57,7 +57,7 @@ importers:
         version: 16.3.4(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       next-auth:
         specifier: ^5.0.0-beta.32
-        version: 5.0.0-beta.32(patch_hash=60dd91ca4b1e01ffb61005e1302ca42a811ad47f15d8eaa67aa38cd70adc1b1b)(next@16.3.4(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
+        version: 5.0.0-beta.32(patch_hash=38af8bbfa3bb63d3d2105bb6c8c43f08bca1cba6127861888b8c95e25ad3e710)(next@16.3.4(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)
       pino:
         specifier: ^10
         version: 10.3.1
@@ -10199,7 +10199,7 @@ snapshots:
 
   neo-async@2.6.2: {}
 
-  next-auth@5.0.0-beta.32(patch_hash=60dd91ca4b1e01ffb61005e1302ca42a811ad47f15d8eaa67aa38cd70adc1b1b)(next@16.3.4(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8):
+  next-auth@5.0.0-beta.32(patch_hash=38af8bbfa3bb63d3d2105bb6c8c43f08bca1cba6127861888b8c95e25ad3e710)(next@16.3.4(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8):
     dependencies:
       '@auth/core': 0.41.3
       next: 16.3.4(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@26.4.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)

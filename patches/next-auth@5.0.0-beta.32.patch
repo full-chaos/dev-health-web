@@ -1,8 +1,8 @@
 diff --git a/lib/client.js b/lib/client.js
-index 9b8b6c4251b1eecac8eed743f2373a496b569373..66f9ee12f7eb291cf06eabd6e56fef0b533a74cf 100644
+index 9b8b6c4251b1eecac8eed743f2373a496b569373..93f41405479a2a74b718a0869bf837a77846bcad 100644
 --- a/lib/client.js
 +++ b/lib/client.js
-@@ -8,6 +8,31 @@ class ClientFetchError extends AuthError {
+@@ -8,6 +8,34 @@ class ClientFetchError extends AuthError {
  export class ClientSessionError extends AuthError {
  }
  // ------------------------ Internal ------------------------
@@ -11,6 +11,9 @@ index 9b8b6c4251b1eecac8eed743f2373a496b569373..66f9ee12f7eb291cf06eabd6e56fef0b
 +// https://github.com/nextauthjs/next-auth/issues/8897). Keep the existing
 +// focus, storage, and polling reads, but serialize only browser session calls
 +// within this tab. SSR and every other client endpoint stay concurrent.
++// Browser fetch() has no default timeout, so a stalled request would hold the
++// queue forever and deadlock every later session read in this tab.
++const BROWSER_SESSION_REQUEST_TIMEOUT_MS = 10_000;
 +let browserSessionRequestTail = Promise.resolve();
 +function queueBrowserSessionRequest(request) {
 +    const previousRequest = browserSessionRequestTail;
@@ -22,7 +25,7 @@ index 9b8b6c4251b1eecac8eed743f2373a496b569373..66f9ee12f7eb291cf06eabd6e56fef0b
 +        try {
 +            // Do not release until fetch() and response.json() have both completed,
 +            // so the browser has applied this response's Set-Cookie first.
-+            return await request();
++            return await request(AbortSignal.timeout(BROWSER_SESSION_REQUEST_TIMEOUT_MS));
 +        }
 +        finally {
 +            // `request()` turns failed responses into null, and this also covers an
@@ -34,7 +37,7 @@ index 9b8b6c4251b1eecac8eed743f2373a496b569373..66f9ee12f7eb291cf06eabd6e56fef0b
  /**
   * If passed 'appContext' via getInitialProps() in _app.js
   * then get the req object from ctx and use that for the
-@@ -17,28 +42,33 @@ export class ClientSessionError extends AuthError {
+@@ -17,28 +45,34 @@ export class ClientSessionError extends AuthError {
   * @internal
   */
  export async function fetchData(path, __NEXTAUTH, logger, req = {}) {
@@ -49,7 +52,7 @@ index 9b8b6c4251b1eecac8eed743f2373a496b569373..66f9ee12f7eb291cf06eabd6e56fef0b
 -        if (req?.body) {
 -            options.body = JSON.stringify(req.body);
 -            options.method = "POST";
-+    const request = async () => {
++    const request = async (signal) => {
 +        const url = `${apiBaseUrl(__NEXTAUTH)}/${path}`;
 +        try {
 +            const options = {
@@ -57,6 +60,7 @@ index 9b8b6c4251b1eecac8eed743f2373a496b569373..66f9ee12f7eb291cf06eabd6e56fef0b
 +                    "Content-Type": "application/json",
 +                    ...(req?.headers?.cookie ? { cookie: req.headers.cookie } : {}),
 +                },
++                ...(signal ? { signal } : {}),
 +            };
 +            if (req?.body) {
 +                options.body = JSON.stringify(req.body);
@@ -90,10 +94,10 @@ index 9b8b6c4251b1eecac8eed743f2373a496b569373..66f9ee12f7eb291cf06eabd6e56fef0b
  /** @internal */
  export function apiBaseUrl(__NEXTAUTH) {
 diff --git a/src/lib/client.ts b/src/lib/client.ts
-index 22b0f0cbb2aceb5b4d7440ab2486b4721479d286..96521794636e69b386a4d52d969cf3e3b780210e 100644
+index 22b0f0cbb2aceb5b4d7440ab2486b4721479d286..ac5188ecf0e3eb3f74f1d2138b4a4a7eea241246 100644
 --- a/src/lib/client.ts
 +++ b/src/lib/client.ts
-@@ -128,6 +128,33 @@ export interface SessionProviderProps {
+@@ -128,6 +128,41 @@ export interface SessionProviderProps {
  
  // ------------------------ Internal ------------------------
  
@@ -102,9 +106,15 @@ index 22b0f0cbb2aceb5b4d7440ab2486b4721479d286..96521794636e69b386a4d52d969cf3e3
 +// https://github.com/nextauthjs/next-auth/issues/8897). Keep the existing
 +// focus, storage, and polling reads, but serialize only browser session calls
 +// within this tab. SSR and every other client endpoint stay concurrent.
++// Browser fetch() has no default timeout, so a stalled request would hold the
++// queue forever and deadlock every later session read in this tab.
++const BROWSER_SESSION_REQUEST_TIMEOUT_MS = 10_000
++
 +let browserSessionRequestTail: Promise<void> = Promise.resolve()
 +
-+function queueBrowserSessionRequest<T>(request: () => Promise<T | null>) {
++function queueBrowserSessionRequest<T>(
++  request: (signal?: AbortSignal) => Promise<T | null>
++) {
 +  const previousRequest = browserSessionRequestTail
 +  let release = () => {}
 +  browserSessionRequestTail = new Promise<void>((resolve) => {
@@ -115,7 +125,9 @@ index 22b0f0cbb2aceb5b4d7440ab2486b4721479d286..96521794636e69b386a4d52d969cf3e3
 +    try {
 +      // Do not release until fetch() and response.json() have both completed,
 +      // so the browser has applied this response's Set-Cookie first.
-+      return await request()
++      return await request(
++        AbortSignal.timeout(BROWSER_SESSION_REQUEST_TIMEOUT_MS)
++      )
 +    } finally {
 +      // `request()` turns failed responses into null, and this also covers an
 +      // unexpected rejection so a later session request can still proceed.
@@ -127,7 +139,7 @@ index 22b0f0cbb2aceb5b4d7440ab2486b4721479d286..96521794636e69b386a4d52d969cf3e3
  /**
   * If passed 'appContext' via getInitialProps() in _app.js
   * then get the req object from ctx and use that for the
-@@ -142,28 +169,33 @@ export async function fetchData<T = any>(
+@@ -142,28 +177,34 @@ export async function fetchData<T = any>(
    logger: LoggerInstance,
    req: any = {}
  ): Promise<T | null> {
@@ -139,7 +151,7 @@ index 22b0f0cbb2aceb5b4d7440ab2486b4721479d286..96521794636e69b386a4d52d969cf3e3
 -        ...(req?.headers?.cookie ? { cookie: req.headers.cookie } : {}),
 -      },
 -    }
-+  const request = async (): Promise<T | null> => {
++  const request = async (signal?: AbortSignal): Promise<T | null> => {
 +    const url = `${apiBaseUrl(__NEXTAUTH)}/${path}`
 +    try {
 +      const options: RequestInit = {
@@ -147,6 +159,7 @@ index 22b0f0cbb2aceb5b4d7440ab2486b4721479d286..96521794636e69b386a4d52d969cf3e3
 +          "Content-Type": "application/json",
 +          ...(req?.headers?.cookie ? { cookie: req.headers.cookie } : {}),
 +        },
++        ...(signal ? { signal } : {}),
 +      }
  
 -    if (req?.body) {
