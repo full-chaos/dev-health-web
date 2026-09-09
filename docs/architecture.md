@@ -39,6 +39,16 @@
     - Fallbacks: Feature-flagged GraphQL fallbacks in `api.ts`.
 - **Server Components**: Direct `await` fetch.
 
+Auth.js browser session reads and updates share a queue within each tab. The pinned
+patch in `patches/next-auth@5.0.0-beta.32.patch` waits for each response body before
+dispatching the next session request. This prevents an older session read from
+overwriting the workspace cookie set during onboarding. Failed requests release
+the queue. Other endpoints and server requests remain concurrent; the queue does
+not coordinate separate tabs. The patch addresses the same request-ordering race
+described in [Auth.js issue #8897](https://github.com/nextauthjs/next-auth/issues/8897).
+The regression test imports the installed dependency, so removing the patch fails
+the request-ordering checks.
+
 ## Navigation
 
 - **PrimaryNav**: `src/components/navigation/PrimaryNav.tsx`. Main sidebar with collapsible groups.

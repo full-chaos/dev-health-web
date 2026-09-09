@@ -53,6 +53,8 @@ jobs:
                           - '.github/workflows/build-docker.yml'
                           - 'package.json'
                           - 'pnpm-lock.yaml'
+                          - 'pnpm-workspace.yaml'
+                          - 'patches/**'
                           - 'tsconfig.json'
                           - 'next.config.*'
                           - 'Dockerfile'

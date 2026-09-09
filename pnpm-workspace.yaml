@@ -47,3 +47,6 @@ overrides:
     # GHSA-73wf-gq98-2v4g (prototype write via untrusted browserslist-stats.json) is
     # >=4.28.7 per both advisories' "Patched versions" field.
     browserslist: ">=4.28.7"
+
+patchedDependencies:
+    next-auth@5.0.0-beta.32: patches/next-auth@5.0.0-beta.32.patch
