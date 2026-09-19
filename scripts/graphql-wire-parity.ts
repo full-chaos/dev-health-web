@@ -62,6 +62,7 @@ import {
     FEATURE_FLAG_REGISTRY_QUERY,
 } from "../src/lib/feature-flags/queries";
 import {
+    BUS_FACTOR_QUERY,
     CAPACITY_FORECAST_QUERY,
     CAPACITY_FORECASTS_QUERY,
     CATALOG_VALUES_QUERY,
@@ -92,6 +93,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
  * graphqlFetch callers actually pass to `client.query(...)`.
  */
 export const OPERATION_MANIFEST: Record<string, string> = {
+    busFactor: BUS_FACTOR_QUERY,
     acrRepositoryScopes: ACR_REPOSITORY_SCOPES_QUERY,
     catalogValues: CATALOG_VALUES_QUERY,
     capacityForecast: CAPACITY_FORECAST_QUERY,
