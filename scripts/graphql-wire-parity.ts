@@ -58,6 +58,12 @@ import { createRequest, formatDocument, stringifyDocument } from "@urql/core";
 
 import { ACR_REPOSITORY_SCOPES_QUERY } from "../src/lib/acr/queries";
 import {
+    DataHealthIdentityDocument,
+    GetConnectorsDataHealthDocument,
+    GetMappingCoverageHealthDocument,
+    MetricLineageDocument,
+} from "../src/lib/graphql/__generated__/graphql";
+import {
     FEATURE_FLAG_EVENTS_QUERY,
     FEATURE_FLAG_REGISTRY_QUERY,
 } from "../src/lib/feature-flags/queries";
@@ -96,6 +102,10 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     busFactor: BUS_FACTOR_QUERY,
     acrRepositoryScopes: ACR_REPOSITORY_SCOPES_QUERY,
     catalogValues: CATALOG_VALUES_QUERY,
+    connectorsDataHealth: GetConnectorsDataHealthDocument.toString(),
+    dataHealthIdentity: DataHealthIdentityDocument.toString(),
+    mappingCoverageHealth: GetMappingCoverageHealthDocument.toString(),
+    metricLineage: MetricLineageDocument.toString(),
     capacityForecast: CAPACITY_FORECAST_QUERY,
     capacityForecasts: CAPACITY_FORECASTS_QUERY,
     cognitiveLoad: COGNITIVE_LOAD_QUERY,
