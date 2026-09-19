@@ -56,6 +56,7 @@ import { fileURLToPath } from "node:url";
 // package.json) — never a copy vendored into this script or into ops.
 import { createRequest, formatDocument, stringifyDocument } from "@urql/core";
 
+import { ACR_REPOSITORY_SCOPES_QUERY } from "../src/lib/acr/queries";
 import {
     FEATURE_FLAG_EVENTS_QUERY,
     FEATURE_FLAG_REGISTRY_QUERY,
@@ -63,6 +64,7 @@ import {
 import {
     CAPACITY_FORECAST_QUERY,
     CAPACITY_FORECASTS_QUERY,
+    CATALOG_VALUES_QUERY,
     COGNITIVE_LOAD_QUERY,
     COMPLEXITY_TIMESERIES_QUERY,
     FLOW_MATRIX_QUERY,
@@ -90,6 +92,8 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
  * graphqlFetch callers actually pass to `client.query(...)`.
  */
 export const OPERATION_MANIFEST: Record<string, string> = {
+    acrRepositoryScopes: ACR_REPOSITORY_SCOPES_QUERY,
+    catalogValues: CATALOG_VALUES_QUERY,
     capacityForecast: CAPACITY_FORECAST_QUERY,
     capacityForecasts: CAPACITY_FORECASTS_QUERY,
     cognitiveLoad: COGNITIVE_LOAD_QUERY,

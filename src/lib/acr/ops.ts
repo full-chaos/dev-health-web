@@ -5,15 +5,7 @@ import { z } from "zod";
 import { getBackendUrl } from "@/lib/origin";
 import { fetchBoundedJson } from "./http";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
-
-const ACR_REPOSITORY_SCOPES_QUERY = `query ACRRepositoryScopes($orgId: String!) {
-  catalog(orgId: $orgId, dimension: REPO) {
-    values {
-      value
-      count
-    }
-  }
-}`;
+import { ACR_REPOSITORY_SCOPES_QUERY } from "./queries";
 
 const entitlementSchema = z
     .object({
