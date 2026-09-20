@@ -1,3 +1,6 @@
+import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -252,4 +255,112 @@ describe("CHAOS-3017 executable CI boundaries", () => {
             expect(failed.result.status).toBe(42);
         },
     );
+
+    describe("wire-parity ops side (paired-change resolution)", () => {
+        const qualityJob = () => job(contents(TESTS_WORKFLOW), "quality");
+        const wireParityCommand = (environment) =>
+            recordHarnessPackageCommands(["quality"], { environment }).commands.find((command) =>
+                command.startsWith("graphql:wire-parity:check"),
+            );
+
+        it("hands the harness the resolved ops checkout and the main-push-only flag", () => {
+            const workflowJob = qualityJob();
+            expect(workflowJob).toContain("WIRE_PARITY_OPS_ROOT: dev-health-ops-parity");
+            expect(workflowJob).toContain(
+                "WIRE_PARITY_TOLERATE_MANIFEST_ONLY: ${{ github.event_name == 'push' && '1' || '' }}",
+            );
+            expect(workflowJob).toContain("path: dev-health-ops-parity");
+            expect(workflowJob).toContain("ref: ${{ steps.wire-parity-ops-ref.outputs.ref }}");
+            expect(workflowJob).toContain("go-version-file: dev-health-ops-parity/go.mod");
+        });
+
+        it("passes --ops-root from WIRE_PARITY_OPS_ROOT and the flag only when it is exactly 1", () => {
+            const parity = path.join(ROOT, "dev-health-ops-parity");
+            const main = path.join(ROOT, "dev-health-ops-main");
+            expect(wireParityCommand({})).toBe(`graphql:wire-parity:check --ops-root ${main}`);
+            expect(wireParityCommand({ WIRE_PARITY_OPS_ROOT: parity })).toBe(
+                `graphql:wire-parity:check --ops-root ${parity}`,
+            );
+            for (const value of ["", "0", "true"]) {
+                expect(
+                    wireParityCommand({
+                        WIRE_PARITY_OPS_ROOT: parity,
+                        WIRE_PARITY_TOLERATE_MANIFEST_ONLY: value,
+                    }),
+                ).toBe(`graphql:wire-parity:check --ops-root ${parity}`);
+            }
+            expect(
+                wireParityCommand({
+                    WIRE_PARITY_OPS_ROOT: parity,
+                    WIRE_PARITY_TOLERATE_MANIFEST_ONLY: "1",
+                }),
+            ).toBe(`graphql:wire-parity:check --ops-root ${parity} --tolerate-manifest-only`);
+        });
+
+        // Executes the workflow's own resolve step with a stub `git` whose
+        // `ls-remote` exits with the given status, so the branch-lookup
+        // decision is observed, not read.
+        const resolveOpsRef = (branch, lsRemoteStatus) => {
+            const directory = fs.mkdtempSync(path.join(os.tmpdir(), "wire-parity-resolve-"));
+            try {
+                const stub = [
+                    "#!/usr/bin/env bash",
+                    'echo "git $*" >> "$STUB_LOG"',
+                    'exit "${STUB_LS_REMOTE_STATUS}"',
+                    "",
+                ].join("\n");
+                fs.writeFileSync(path.join(directory, "git"), stub, { mode: 0o755 });
+                const output = path.join(directory, "github-output");
+                fs.writeFileSync(output, "");
+                const script = stepRun(qualityJob(), "Resolve dev-health-ops ref for wire parity");
+                const result = spawnSync("bash", ["-e", "-c", script], {
+                    encoding: "utf8",
+                    env: {
+                        ...process.env,
+                        BRANCH: branch,
+                        GITHUB_OUTPUT: output,
+                        PATH: `${directory}:${process.env.PATH}`,
+                        STUB_LOG: path.join(directory, "git.log"),
+                        STUB_LS_REMOTE_STATUS: String(lsRemoteStatus),
+                    },
+                });
+                const log = fs.existsSync(path.join(directory, "git.log"))
+                    ? fs.readFileSync(path.join(directory, "git.log"), "utf8")
+                    : "";
+                return { result, output: fs.readFileSync(output, "utf8"), log };
+            } finally {
+                fs.rmSync(directory, { force: true, recursive: true });
+            }
+        };
+
+        it("checks out the same-named ops branch when it exists", () => {
+            const { result, output, log } = resolveOpsRef("feat/paired", 0);
+            expectSuccessfulProcess(result);
+            expect(output).toBe("ref=feat/paired\n");
+            expect(log).toContain("ls-remote --exit-code --heads");
+        });
+
+        it("uses ops main when no ops branch has that name (ls-remote exit 2)", () => {
+            const { result, output } = resolveOpsRef("feat/unpaired", 2);
+            expectSuccessfulProcess(result);
+            expect(output).toBe("ref=main\n");
+        });
+
+        it.each([1, 128, 255])(
+            "fails the step instead of falling back to main when ls-remote fails (exit %i)",
+            (status) => {
+                const { result, output } = resolveOpsRef("feat/paired", status);
+                expect(result.status).not.toBe(0);
+                expect(output).toBe("");
+                expect(result.stdout).toContain("::error::wire parity: could not look up");
+            },
+        );
+
+        it.each(["main", ""])("does not look up a branch for %j and uses ops main", (branch) => {
+            const { result, output, log } = resolveOpsRef(branch, 128);
+            expectSuccessfulProcess(result);
+            expect(output).toBe("ref=main\n");
+            expect(log).toBe("");
+        });
+    });
 });
