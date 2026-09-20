@@ -69,8 +69,10 @@ import {
 } from "../src/lib/feature-flags/queries";
 import {
     AI_COMPARISON_QUERY,
+    AI_GOVERNANCE_SUMMARY_QUERY,
     AI_IMPACT_SUMMARY_QUERY,
     AI_REVIEW_LOAD_QUERY,
+    AI_WORKFLOW_DRILLDOWN_QUERY,
     BUS_FACTOR_QUERY,
     CAPACITY_FORECAST_QUERY,
     CAPACITY_FORECASTS_QUERY,
@@ -103,8 +105,10 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
  */
 export const OPERATION_MANIFEST: Record<string, string> = {
     aiComparison: AI_COMPARISON_QUERY,
+    aiGovernanceSummary: AI_GOVERNANCE_SUMMARY_QUERY,
     aiImpactSummary: AI_IMPACT_SUMMARY_QUERY,
     aiReviewLoad: AI_REVIEW_LOAD_QUERY,
+    aiWorkflowDrilldown: AI_WORKFLOW_DRILLDOWN_QUERY,
     busFactor: BUS_FACTOR_QUERY,
     acrRepositoryScopes: ACR_REPOSITORY_SCOPES_QUERY,
     catalogValues: CATALOG_VALUES_QUERY,
