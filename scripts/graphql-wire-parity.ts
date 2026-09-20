@@ -70,6 +70,7 @@ import {
 import {
     AI_COMPARISON_QUERY,
     AI_IMPACT_SUMMARY_QUERY,
+    AI_OPPORTUNITIES_QUERY,
     AI_REVIEW_LOAD_QUERY,
     BUS_FACTOR_QUERY,
     CAPACITY_FORECAST_QUERY,
@@ -79,6 +80,7 @@ import {
     COMPLEXITY_TIMESERIES_QUERY,
     FLOW_MATRIX_QUERY,
     HOTSPOTS_QUERY,
+    IMPROVE_OPPORTUNITIES_QUERY,
     INVESTMENT_BREAKDOWN_QUERY,
     INVESTMENT_FULL_QUERY,
     OPERATING_REVIEW_QUERY,
@@ -104,6 +106,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const OPERATION_MANIFEST: Record<string, string> = {
     aiComparison: AI_COMPARISON_QUERY,
     aiImpactSummary: AI_IMPACT_SUMMARY_QUERY,
+    aiOpportunities: AI_OPPORTUNITIES_QUERY,
     aiReviewLoad: AI_REVIEW_LOAD_QUERY,
     busFactor: BUS_FACTOR_QUERY,
     acrRepositoryScopes: ACR_REPOSITORY_SCOPES_QUERY,
@@ -120,6 +123,7 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     featureFlags: FEATURE_FLAG_REGISTRY_QUERY,
     flowMatrix: FLOW_MATRIX_QUERY,
     hotspots: HOTSPOTS_QUERY,
+    improveOpportunities: IMPROVE_OPPORTUNITIES_QUERY,
     investmentBreakdown: INVESTMENT_BREAKDOWN_QUERY,
     investmentFull: INVESTMENT_FULL_QUERY,
     operatingReview: OPERATING_REVIEW_QUERY,
