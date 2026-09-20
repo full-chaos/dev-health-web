@@ -76,8 +76,14 @@ import {
     FEATURE_FLAG_EVENTS_QUERY,
     FEATURE_FLAG_REGISTRY_QUERY,
     RELEASE_IMPACT_QUERY,
+    FEATURE_FLAG_TIMESERIES_QUERY,
 } from "../src/lib/feature-flags/queries";
 import { TESTOPS_RISK_QUERY } from "../src/lib/testops/queries";
+import {
+    TESTOPS_COVERAGE_QUERY,
+    TESTOPS_PIPELINE_QUERY,
+    TESTOPS_TEST_QUERY,
+} from "../src/lib/testops/queries";
 import {
     AI_ATTRIBUTED_PRS_QUERY,
     AI_ATTRIBUTION_OVERVIEW_QUERY,
@@ -149,6 +155,7 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     compoundingRisk: COMPOUNDING_RISK_QUERY,
     complexityTimeseries: COMPLEXITY_TIMESERIES_QUERY,
     featureFlagEvents: FEATURE_FLAG_EVENTS_QUERY,
+    featureFlagTimeseries: FEATURE_FLAG_TIMESERIES_QUERY,
     featureFlags: FEATURE_FLAG_REGISTRY_QUERY,
     flowMatrix: FLOW_MATRIX_QUERY,
     hotspots: HOTSPOTS_QUERY,
@@ -161,6 +168,9 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     reviewEdges: REVIEW_EDGES_QUERY,
     savedReport: SAVED_REPORT_QUERY,
     savedReports: SAVED_REPORTS_QUERY,
+    testOpsCoverage: TESTOPS_COVERAGE_QUERY,
+    testOpsPipeline: TESTOPS_PIPELINE_QUERY,
+    testOpsTest: TESTOPS_TEST_QUERY,
     securityAlerts: SECURITY_ALERTS_QUERY,
     securityOverview: SECURITY_OVERVIEW_QUERY,
     testopsRisk: TESTOPS_RISK_QUERY,
