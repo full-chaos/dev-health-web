@@ -27,7 +27,7 @@ export function runHarness(args, environment = {}) {
     });
 }
 
-export function recordHarnessPackageCommands(args, { failScript } = {}) {
+export function recordHarnessPackageCommands(args, { failScript, environment = {} } = {}) {
     const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "chaos-3017-contract-"));
     const commandLog = path.join(temporaryDirectory, "commands.log");
     const recorder = [
@@ -52,6 +52,7 @@ export function recordHarnessPackageCommands(args, { failScript } = {}) {
             PATH: `${temporaryDirectory}:${process.env.PATH}`,
             PLAYWRIGHT_REPORT_DIR: `${artifactRoot}/report`,
             PLAYWRIGHT_RESULTS_DIR: `${artifactRoot}/results`,
+            ...environment,
         });
         const commands = fs.readFileSync(commandLog, "utf8").trim().split(/\r?\n/u);
         return { commands, result };

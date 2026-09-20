@@ -40,6 +40,11 @@
  *   tsx scripts/graphql-wire-parity.ts check --ops-root <path-to-ops-checkout>
  *   tsx scripts/graphql-wire-parity.ts generate --ops-root <path> [--json]
  *
+ * `--tolerate-manifest-only` turns "the manifest names an operation ops does not
+ * register" into a warning (never the reverse direction). It exists for the
+ * window between the web half and the ops half of a paired change, which
+ * merges web first.
+ *
  * `check` exits non-zero and prints a mismatch table if ANY manifested
  * operation's Go-side digest and wire-side digest disagree, or if the
  * two sides' operation SETS disagree (a Go operation with no manifest
@@ -64,8 +69,13 @@ import {
     MetricLineageDocument,
 } from "../src/lib/graphql/__generated__/graphql";
 import {
+    PRODUCT_TELEMETRY_DASHBOARD_QUERY,
+    PRODUCT_TELEMETRY_PLATFORM_DASHBOARD_QUERY,
+} from "../src/lib/graphql/productTelemetryFetchers";
+import {
     FEATURE_FLAG_EVENTS_QUERY,
     FEATURE_FLAG_REGISTRY_QUERY,
+    RELEASE_IMPACT_QUERY,
 } from "../src/lib/feature-flags/queries";
 import {
     AI_COMPARISON_QUERY,
@@ -77,7 +87,9 @@ import {
     CAPACITY_FORECASTS_QUERY,
     CATALOG_VALUES_QUERY,
     COGNITIVE_LOAD_QUERY,
+    COMPOUNDING_RISK_QUERY,
     COMPLEXITY_TIMESERIES_QUERY,
+    EXPERIMENTS_QUERY,
     FLOW_MATRIX_QUERY,
     HOTSPOTS_QUERY,
     IMPROVE_OPPORTUNITIES_QUERY,
@@ -93,6 +105,11 @@ import {
     WORK_GRAPH_EDGES_QUERY,
     WORK_GRAPH_FLOW_QUERY,
 } from "../src/lib/graphql/queries";
+import {
+    REPORT_RUNS_QUERY,
+    SAVED_REPORT_QUERY,
+    SAVED_REPORTS_QUERY,
+} from "../src/lib/reports/queries";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -111,6 +128,9 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     busFactor: BUS_FACTOR_QUERY,
     acrRepositoryScopes: ACR_REPOSITORY_SCOPES_QUERY,
     catalogValues: CATALOG_VALUES_QUERY,
+    productTelemetryDashboard: PRODUCT_TELEMETRY_DASHBOARD_QUERY,
+    productTelemetryPlatformDashboard: PRODUCT_TELEMETRY_PLATFORM_DASHBOARD_QUERY,
+    experiments: EXPERIMENTS_QUERY,
     connectorsDataHealth: GetConnectorsDataHealthDocument.toString(),
     dataHealthIdentity: DataHealthIdentityDocument.toString(),
     mappingCoverageHealth: GetMappingCoverageHealthDocument.toString(),
@@ -118,6 +138,7 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     capacityForecast: CAPACITY_FORECAST_QUERY,
     capacityForecasts: CAPACITY_FORECASTS_QUERY,
     cognitiveLoad: COGNITIVE_LOAD_QUERY,
+    compoundingRisk: COMPOUNDING_RISK_QUERY,
     complexityTimeseries: COMPLEXITY_TIMESERIES_QUERY,
     featureFlagEvents: FEATURE_FLAG_EVENTS_QUERY,
     featureFlags: FEATURE_FLAG_REGISTRY_QUERY,
@@ -128,7 +149,11 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     investmentFull: INVESTMENT_FULL_QUERY,
     operatingReview: OPERATING_REVIEW_QUERY,
     pr: PR_DETAIL_QUERY,
+    releaseImpact: RELEASE_IMPACT_QUERY,
+    reportRuns: REPORT_RUNS_QUERY,
     reviewEdges: REVIEW_EDGES_QUERY,
+    savedReport: SAVED_REPORT_QUERY,
+    savedReports: SAVED_REPORTS_QUERY,
     securityAlerts: SECURITY_ALERTS_QUERY,
     securityOverview: SECURITY_OVERVIEW_QUERY,
     throughputForecast: THROUGHPUT_FORECAST_QUERY,
@@ -217,11 +242,16 @@ interface ParityRow {
 export function compareRegistry(
     goEntries: RegistryEntry[],
     manifest: Record<string, string>,
-): { rows: ParityRow[]; errors: string[] } {
+    options: { tolerateManifestOnly?: boolean } = {},
+): { rows: ParityRow[]; errors: string[]; warnings: string[] } {
     const errors: string[] = [];
+    const warnings: string[] = [];
     const goByOperation = new Map(goEntries.map((entry) => [entry.operation, entry]));
 
-    const goOnly = [...goByOperation.keys()].filter((op) => !(op in manifest));
+    // Own-property membership: `op in manifest` also matches inherited
+    // Object.prototype names (toString, constructor, ...), which would hide an
+    // ops operation of that name from the no-manifest-entry error.
+    const goOnly = [...goByOperation.keys()].filter((op) => !Object.hasOwn(manifest, op));
     const manifestOnly = Object.keys(manifest).filter((op) => !goByOperation.has(op));
     if (goOnly.length > 0) {
         errors.push(
@@ -229,9 +259,16 @@ export function compareRegistry(
         );
     }
     if (manifestOnly.length > 0) {
-        errors.push(
-            `OPERATION_MANIFEST names operation(s) query-api does not register: ${manifestOnly.join(", ")} — remove or fix the manifest entry.`,
-        );
+        const message = `OPERATION_MANIFEST names operation(s) query-api does not register: ${manifestOnly.join(", ")} — remove or fix the manifest entry.`;
+        if (options.tolerateManifestOnly) {
+            // A paired change merges web first, so for a short window this
+            // repo's main names an operation ops main has not registered yet.
+            // Only that direction is tolerated; an operation ops registers
+            // with no manifest entry stays an error.
+            warnings.push(message);
+        } else {
+            errors.push(message);
+        }
     }
 
     const rows: ParityRow[] = [];
@@ -256,29 +293,32 @@ export function compareRegistry(
         rows.push({ operation, goDigest, wireDigest, match: goDigest === wireDigest });
     }
     rows.sort((a, b) => a.operation.localeCompare(b.operation));
-    return { rows, errors };
+    return { rows, errors, warnings };
 }
 
 function parseArgs(argv: string[]) {
     const [mode, ...rest] = argv;
     let opsRoot: string | undefined;
     let json = false;
+    let tolerateManifestOnly = false;
     for (let i = 0; i < rest.length; i += 1) {
         if (rest[i] === "--ops-root") {
             opsRoot = rest[i + 1];
             i += 1;
         } else if (rest[i] === "--json") {
             json = true;
+        } else if (rest[i] === "--tolerate-manifest-only") {
+            tolerateManifestOnly = true;
         }
     }
-    return { mode, opsRoot, json };
+    return { mode, opsRoot, json, tolerateManifestOnly };
 }
 
 function main() {
-    const { mode, opsRoot, json } = parseArgs(process.argv.slice(2));
+    const { mode, opsRoot, json, tolerateManifestOnly } = parseArgs(process.argv.slice(2));
     if (mode !== "check" && mode !== "generate") {
         process.stderr.write(
-            "usage: graphql-wire-parity.ts <check|generate> --ops-root <path> [--json]\n",
+            "usage: graphql-wire-parity.ts <check|generate> --ops-root <path> [--json] [--tolerate-manifest-only]\n",
         );
         process.exitCode = 2;
         return;
@@ -290,7 +330,10 @@ function main() {
     }
 
     const goEntries = runRegistrydump(path.resolve(ROOT, opsRoot));
-    const { rows, errors } = compareRegistry(goEntries, OPERATION_MANIFEST);
+    const { rows, errors, warnings } = compareRegistry(goEntries, OPERATION_MANIFEST, {
+        tolerateManifestOnly,
+    });
+    for (const warning of warnings) process.stderr.write(`WARNING: ${warning}\n`);
 
     if (mode === "generate") {
         // codex review, CHAOS-4696 round 1, P3 EXECUTED: this branch used
