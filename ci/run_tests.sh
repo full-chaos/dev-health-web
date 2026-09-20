@@ -178,10 +178,18 @@ run_quality() {
   # the LIVE tip, not a pin: this is a live invariant, not a contract
   # sync) digests to what THIS repo's own pinned @urql/core actually
   # puts on the wire (createRequest + formatDocument + stringifyDocument
-  # -- the real exchange-chain functions). Reuses ASK_DEV_OPS_MAIN_ROOT's
-  # checkout rather than a second ops clone.
-  echo "==> pnpm graphql:wire-parity:check --ops-root ${ASK_DEV_OPS_MAIN_ROOT}"
-  pnpm graphql:wire-parity:check --ops-root "${ASK_DEV_OPS_MAIN_ROOT}"
+  # -- the real exchange-chain functions). Defaults to ASK_DEV_OPS_MAIN_ROOT's
+  # checkout.
+  # A paired change (same branch name on both repos) is checked against the
+  # ops branch, not main: CI passes WIRE_PARITY_OPS_ROOT for that, and
+  # WIRE_PARITY_TOLERATE_MANIFEST_ONLY=1 on the main-push run only.
+  wire_parity_root="${WIRE_PARITY_OPS_ROOT:-${ASK_DEV_OPS_MAIN_ROOT}}"
+  wire_parity_args=(--ops-root "${wire_parity_root}")
+  if [[ "${WIRE_PARITY_TOLERATE_MANIFEST_ONLY:-}" == "1" ]]; then
+    wire_parity_args+=(--tolerate-manifest-only)
+  fi
+  echo "==> pnpm graphql:wire-parity:check ${wire_parity_args[*]}"
+  pnpm graphql:wire-parity:check "${wire_parity_args[@]}"
   run_pnpm_script lint
   run_pnpm_script typecheck
 }
