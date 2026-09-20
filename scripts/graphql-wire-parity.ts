@@ -98,6 +98,11 @@ import {
     WORK_GRAPH_EDGES_QUERY,
     WORK_GRAPH_FLOW_QUERY,
 } from "../src/lib/graphql/queries";
+import {
+    REPORT_RUNS_QUERY,
+    SAVED_REPORT_QUERY,
+    SAVED_REPORTS_QUERY,
+} from "../src/lib/reports/queries";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -136,7 +141,10 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     operatingReview: OPERATING_REVIEW_QUERY,
     pr: PR_DETAIL_QUERY,
     releaseImpact: RELEASE_IMPACT_QUERY,
+    reportRuns: REPORT_RUNS_QUERY,
     reviewEdges: REVIEW_EDGES_QUERY,
+    savedReport: SAVED_REPORT_QUERY,
+    savedReports: SAVED_REPORTS_QUERY,
     securityAlerts: SECURITY_ALERTS_QUERY,
     securityOverview: SECURITY_OVERVIEW_QUERY,
     throughputForecast: THROUGHPUT_FORECAST_QUERY,
