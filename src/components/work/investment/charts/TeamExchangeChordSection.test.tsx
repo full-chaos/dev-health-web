@@ -189,4 +189,43 @@ describe("TeamExchangeChordSection", () => {
 
         expect(screen.getByText(/unable to load exchange view/i)).toBeInTheDocument();
     });
+    // A read that produced nothing (no error, not loading) is unavailable,
+    // never a measured "no flows match" empty chart; a produced empty list is.
+    const renderChord = () =>
+        render(
+            <TeamExchangeChordSection
+                orgId="org-123"
+                filters={{
+                    scope: { level: "org", ids: ["org-123"] },
+                    time: { range_days: 30, compare_days: 30 },
+                    who: { developers: [] },
+                    what: { repos: [] },
+                    why: { work_category: [], issue_type: [] },
+                    how: { flow_stage: [] },
+                }}
+                dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
+                effortUnit="hours"
+            />,
+        );
+
+    it("renders the unavailable state when the read produced nothing and did not error", () => {
+        mockUseChordFlow.mockReturnValue({ data: null, fetching: false, error: null });
+        renderChord();
+        expect(screen.getByText(/unable to load exchange view/i)).toBeInTheDocument();
+        expect(screen.queryByTestId("mock-chord-chart")).not.toBeInTheDocument();
+    });
+
+    it("renders the unavailable state when the read errored even if records are present", () => {
+        mockUseChordFlow.mockReturnValue({ data: records, fetching: false, error: new Error("x") });
+        renderChord();
+        expect(screen.getByText(/unable to load exchange view/i)).toBeInTheDocument();
+        expect(screen.queryByTestId("mock-chord-chart")).not.toBeInTheDocument();
+    });
+
+    it("renders the chart, not the unavailable state, for a produced empty list", () => {
+        mockUseChordFlow.mockReturnValue({ data: [], fetching: false, error: null });
+        renderChord();
+        expect(screen.queryByText(/unable to load exchange view/i)).not.toBeInTheDocument();
+        expect(screen.getByTestId("mock-chord-chart")).toBeInTheDocument();
+    });
 });
