@@ -1,8 +1,7 @@
 /**
  * GraphQL hooks for dev-health-web.
  *
- * These hooks use urql for data fetching with automatic caching
- * and real-time subscriptions.
+ * These hooks use urql for data fetching with automatic caching.
  */
 
 export { useAnalytics, useBreakdown, useSankey } from "./useAnalytics";
@@ -14,12 +13,6 @@ export {
     useInvestmentRepoTeamFlow,
     useWorkUnitTeamAttributions,
 } from "./useInvestment";
-export {
-    useMetricsUpdated,
-    useTaskStatus,
-    type MetricsUpdate,
-    type TaskStatus,
-} from "./useSubscription";
 export {
     useWorkGraphEdges,
     useWorkGraphFlow,

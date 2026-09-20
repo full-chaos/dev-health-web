@@ -8,7 +8,6 @@ The frontend uses [urql](https://formidable.com/open-source/urql/) for GraphQL o
 
 - **Normalized caching** - Automatic cache updates and deduplication
 - **React hooks** - Easy data fetching in components
-- **Subscriptions** - Real-time updates via WebSocket
 - **Zod validation** - Runtime type checking of responses
 
 ## Setup
@@ -162,49 +161,6 @@ function TeamSelect() {
             ))}
         </Select>
     );
-}
-```
-
-## Subscriptions
-
-### useMetricsUpdated
-
-Subscribe to metrics updates:
-
-```tsx
-import { useMetricsUpdated } from "@/lib/graphql/hooks";
-
-function Dashboard() {
-    useMetricsUpdated({
-        orgId: "my-org",
-        onUpdate: (update) => {
-            console.log(`Metrics updated for ${update.day}`);
-            refetchData();
-        },
-    });
-
-    // ...
-}
-```
-
-### useTaskStatus
-
-Monitor background task progress:
-
-```tsx
-import { useTaskStatus } from "@/lib/graphql/hooks";
-
-function TaskProgress({ taskId }) {
-    const { data } = useTaskStatus({
-        taskId,
-        onUpdate: (status) => {
-            if (status.status === "completed") {
-                showSuccess("Task complete!");
-            }
-        },
-    });
-
-    return <ProgressBar value={data?.progress ?? 0} />;
 }
 ```
 

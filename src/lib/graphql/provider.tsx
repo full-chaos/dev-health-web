@@ -7,7 +7,7 @@
  *
  * Since CHAOS-1217 Phase B this provider uses `@urql/next` instead of plain
  * `urql`. `@urql/next` re-exports the entire `urql`/`@urql/core` surface, so
- * downstream `useQuery`/`useSubscription` hooks are unaffected.
+ * downstream `useQuery` hooks are unaffected.
  */
 
 import { createContext, useContext, useMemo, type ReactNode } from "react";

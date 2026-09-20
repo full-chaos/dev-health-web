@@ -9,7 +9,6 @@ This guide covers migrating dev-health-web components from REST API to GraphQL.
 The frontend now defaults to GraphQL for analytics queries. This migration provides:
 
 - **Better performance** - Batch queries reduce round trips
-- **Real-time updates** - Subscriptions eliminate polling
 - **Type safety** - Zod validation catches API mismatches
 - **Simpler code** - urql hooks replace manual fetch logic
 
@@ -77,31 +76,7 @@ function TeamFilter() {
 }
 ```
 
-### 3. Add Real-time Updates
-
-**Before (polling):**
-
-```tsx
-useEffect(() => {
-    const interval = setInterval(refetch, 60000);
-    return () => clearInterval(interval);
-}, []);
-```
-
-**After (subscription):**
-
-```tsx
-import { useMetricsUpdated } from "@/lib/graphql/hooks";
-
-function Dashboard() {
-    useMetricsUpdated({
-        orgId: "my-org",
-        onUpdate: () => refetch(),
-    });
-}
-```
-
-### 4. Wrap with Provider
+### 3. Wrap with Provider
 
 Ensure your component tree has the GraphQL provider:
 
@@ -114,7 +89,7 @@ export default function Layout({ children }) {
 }
 ```
 
-### 5. Add Validation (Optional)
+### 4. Add Validation (Optional)
 
 For development, add Zod validation to catch API changes:
 
@@ -263,7 +238,6 @@ render(
 - [ ] Wrap app with `GraphQLProvider`
 - [ ] Replace `apiClient` calls with urql hooks
 - [ ] Update filter components to use `useDimensionValues`
-- [ ] Add subscriptions for real-time updates
 - [ ] Remove polling logic
 - [ ] Add Zod validation in development
 - [ ] Update tests to mock urql
