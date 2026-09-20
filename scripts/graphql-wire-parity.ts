@@ -77,6 +77,7 @@ import {
     FEATURE_FLAG_REGISTRY_QUERY,
     RELEASE_IMPACT_QUERY,
 } from "../src/lib/feature-flags/queries";
+import { TESTOPS_RISK_QUERY } from "../src/lib/testops/queries";
 import {
     AI_ATTRIBUTED_PRS_QUERY,
     AI_ATTRIBUTION_OVERVIEW_QUERY,
@@ -158,6 +159,7 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     savedReports: SAVED_REPORTS_QUERY,
     securityAlerts: SECURITY_ALERTS_QUERY,
     securityOverview: SECURITY_OVERVIEW_QUERY,
+    testopsRisk: TESTOPS_RISK_QUERY,
     throughputForecast: THROUGHPUT_FORECAST_QUERY,
     workGraphArtifacts: WORK_GRAPH_ARTIFACTS_QUERY,
     workGraphEdges: WORK_GRAPH_EDGES_QUERY,
