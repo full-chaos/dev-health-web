@@ -68,9 +68,12 @@ import {
     FEATURE_FLAG_REGISTRY_QUERY,
 } from "../src/lib/feature-flags/queries";
 import {
+    AI_ATTRIBUTED_PRS_QUERY,
+    AI_ATTRIBUTION_OVERVIEW_QUERY,
     AI_COMPARISON_QUERY,
     AI_IMPACT_SUMMARY_QUERY,
     AI_REVIEW_LOAD_QUERY,
+    AI_RISK_BREAKDOWN_QUERY,
     BUS_FACTOR_QUERY,
     CAPACITY_FORECAST_QUERY,
     CAPACITY_FORECASTS_QUERY,
@@ -102,9 +105,12 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
  * graphqlFetch callers actually pass to `client.query(...)`.
  */
 export const OPERATION_MANIFEST: Record<string, string> = {
+    aiAttributedPrs: AI_ATTRIBUTED_PRS_QUERY,
+    aiAttributionOverview: AI_ATTRIBUTION_OVERVIEW_QUERY,
     aiComparison: AI_COMPARISON_QUERY,
     aiImpactSummary: AI_IMPACT_SUMMARY_QUERY,
     aiReviewLoad: AI_REVIEW_LOAD_QUERY,
+    aiRiskBreakdown: AI_RISK_BREAKDOWN_QUERY,
     busFactor: BUS_FACTOR_QUERY,
     acrRepositoryScopes: ACR_REPOSITORY_SCOPES_QUERY,
     catalogValues: CATALOG_VALUES_QUERY,
