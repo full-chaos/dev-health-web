@@ -173,7 +173,7 @@ export function TeamExchangeChordSection({
                         <SkeletonChart height="h-[420px]" />
                         <ChordSummaryPanel dataset={null} unit={effortUnit} loading />
                     </>
-                ) : error ? (
+                ) : error || records === null ? (
                     <div className="lg:col-span-2">
                         <ErrorCard
                             title="Unable to load exchange view"

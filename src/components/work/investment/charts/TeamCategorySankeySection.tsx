@@ -2,7 +2,9 @@ import { useCallback, useMemo } from "react";
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { formatNumber } from "@/lib/formatters";
 import {
+    COVERAGE_UNAVAILABLE_REASON,
     isUnassignedLabel,
+    readFlowCoverage,
     stripSankeyPrefix,
     TOP_N_REPOS,
     UNASSIGNED_TEAM_LABEL,
@@ -110,13 +112,12 @@ export function TeamCategorySankeySection({
     }, [sankeyFlow]);
 
     const showBaselineDelta = !selectedCategory && baselineSankeyTotal > 0;
-    const sankeyCoverage = useMemo(() => {
-        const coverage = sankeyFlow?.coverage;
-        return {
-            team: coverage?.team ?? sankeyFlow?.team_coverage ?? 0,
-            repo: coverage?.repo ?? sankeyFlow?.repo_coverage ?? 0,
-        };
-    }, [sankeyFlow]);
+    // Missing is not zero: a leaf the backend did not produce stays null and
+    // renders as "unavailable"; a produced 0 renders as 0%.
+    const sankeyCoverage = useMemo(() => readFlowCoverage(sankeyFlow), [sankeyFlow]);
+    const coverageUnavailable = sankeyCoverage.team === null || sankeyCoverage.repo === null;
+    const formatCoverage = (value: number | null) =>
+        value === null ? "unavailable" : `${formatNumber(value * 100)}%`;
 
     const categoryShareSummary = useMemo(() => {
         if (!sankeyFlow || !sankeyFlow.links.length) return [];
@@ -216,13 +217,13 @@ export function TeamCategorySankeySection({
                             <span>
                                 Team coverage:{" "}
                                 <strong className="text-(--ink)">
-                                    {formatNumber(sankeyCoverage.team * 100)}%
+                                    {formatCoverage(sankeyCoverage.team)}
                                 </strong>
                             </span>
                             <span>
                                 Repo coverage:{" "}
                                 <strong className="text-(--ink)">
-                                    {formatNumber(sankeyCoverage.repo * 100)}%
+                                    {formatCoverage(sankeyCoverage.repo)}
                                 </strong>
                             </span>
                         </div>
@@ -292,7 +293,9 @@ export function TeamCategorySankeySection({
                     <p className="text-sm text-(--ink-muted)">Loading allocation data...</p>
                 ) : !sankeyFlow || !sankeyFlow.links.length ? (
                     <div className="flex h-56 items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-center text-sm text-(--ink-muted)">
-                        No allocation path available for this scope and window.
+                        {coverageUnavailable
+                            ? `Allocation could not be read for this window. ${COVERAGE_UNAVAILABLE_REASON}.`
+                            : "No allocation path available for this scope and window."}
                     </div>
                 ) : (
                     <SankeyChart

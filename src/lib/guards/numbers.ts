@@ -15,7 +15,7 @@ export const isFiniteNumber = (value: number | null | undefined): value is numbe
  * than two cannot form a trend line, so charts should fall back to an empty
  * state instead.
  */
-export const hasRenderableSeries = (series: Array<{ value: number }>): boolean =>
+export const hasRenderableSeries = (series: Array<{ value: number | null }>): boolean =>
     series.filter((point) => isFiniteNumber(point.value)).length >= 2;
 
 /**

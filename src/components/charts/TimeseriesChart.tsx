@@ -70,7 +70,9 @@ export function TimeseriesChart({
         ...style,
     };
 
-    const formatValue = (value: number | string | undefined): string => {
+    const formatValue = (value: number | string | null | undefined): string => {
+        // A null point is missing data (a gap), never Number(null) === 0.
+        if (value === null) return "No data";
         const numeric = typeof value === "number" ? value : Number(value);
         return Number.isFinite(numeric) ? formatChartValue(numeric, valueFormat) : `${value ?? ""}`;
     };
@@ -92,7 +94,8 @@ export function TimeseriesChart({
                             .map((entry) => {
                                 const item = entry as NumericChartParam;
                                 const label = item.name ?? "Value";
-                                return `${item.marker ?? ""}${label}: ${formatValue(item.value)}`;
+                                // ECharts hands a raw-null data point to the formatter as `undefined`.
+                                return `${item.marker ?? ""}${label}: ${formatValue(item.value ?? null)}`;
                             })
                             .join("<br/>");
                     },

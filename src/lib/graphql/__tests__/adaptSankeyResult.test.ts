@@ -63,6 +63,51 @@ describe("adaptSankeyResult", () => {
         expect(result.coverage).toEqual({ team: 0.9, repo: 0.6 });
     });
 
+    // Missing is not zero: coverage the backend did not produce must never
+    // become a number. A produced 0 stays 0.
+    describe("coverage the backend did not produce", () => {
+        const withCoverage = (coverage: unknown) =>
+            minimalSankey({ coverage } as unknown as Partial<SankeyResult>);
+
+        it("omits coverage when the wire carries coverage: null", () => {
+            expect(adaptSankeyResult(withCoverage(null), "investment").coverage).toBeUndefined();
+        });
+
+        it("omits a leaf the wire carries as null instead of coercing it to 0", () => {
+            const result = adaptSankeyResult(
+                withCoverage({ teamCoverage: null, repoCoverage: 0.5 }),
+                "investment",
+            );
+            expect(result.coverage?.team).toBeUndefined();
+            expect(result.coverage?.repo).toBe(0.5);
+        });
+
+        it("omits a non-finite leaf instead of coercing it to 0", () => {
+            const result = adaptSankeyResult(
+                withCoverage({ teamCoverage: Number.NaN, repoCoverage: 0.5 }),
+                "investment",
+            );
+            expect(result.coverage?.team).toBeUndefined();
+            expect(result.coverage?.repo).toBe(0.5);
+        });
+
+        it("omits coverage when both leaves are missing", () => {
+            const result = adaptSankeyResult(
+                withCoverage({ teamCoverage: null, repoCoverage: null }),
+                "investment",
+            );
+            expect(result.coverage).toBeUndefined();
+        });
+
+        it("keeps a produced 0 as 0 on both leaves", () => {
+            const result = adaptSankeyResult(
+                withCoverage({ teamCoverage: 0, repoCoverage: 0 }),
+                "investment",
+            );
+            expect(result.coverage).toEqual({ team: 0, repo: 0 });
+        });
+    });
+
     // CHAOS-4241: the backend echoes the effective weighting unit back on
     // the flow response so the UI never has to guess/derive it from an
     // unrelated field. adaptSankeyResult must pass it through unchanged.

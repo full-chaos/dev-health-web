@@ -45,7 +45,11 @@ export function normalizeAnalyticsDurations(result: AnalyticsResult): AnalyticsR
             DURATION_MEASURES_SECONDS.has(series.measure)
                 ? {
                       ...series,
-                      buckets: series.buckets.map((b) => ({ ...b, value: b.value / 60 })),
+                      buckets: series.buckets.map((b) => ({
+                          ...b,
+                          // A null bucket (no data) stays null, never null / 60 = 0 minutes.
+                          value: b.value === null ? null : b.value / 60,
+                      })),
                   }
                 : series,
         ),

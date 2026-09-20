@@ -119,7 +119,8 @@ export interface AnalyticsRequestInput {
 
 export interface TimeseriesBucket {
     date: string;
-    value: number;
+    /** null when the backend had no data for the bucket (missing is not zero). */
+    value: number | null;
 }
 
 export interface TimeseriesResult {
@@ -154,14 +155,15 @@ export interface SankeyEdge {
 }
 
 export interface SankeyCoverage {
-    teamCoverage: number;
-    repoCoverage: number;
+    teamCoverage: number | null;
+    repoCoverage: number | null;
 }
 
 export interface SankeyResult {
     nodes: SankeyNode[];
     edges: SankeyEdge[];
-    coverage?: SankeyCoverage;
+    /** null when the backend's coverage query failed and degraded by design. */
+    coverage?: SankeyCoverage | null;
     /** CHAOS-4241: unit of node/edge `value` — "WORK_UNITS" (default) | "LOC". */
     unit?: string;
 }

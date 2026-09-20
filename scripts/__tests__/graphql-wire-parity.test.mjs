@@ -84,6 +84,45 @@ describe("compareRegistry", () => {
         expect(errors.some((e) => e.includes("featureFlags"))).toBe(true);
     });
 
+    it.each(["toString", "constructor", "hasOwnProperty", "__proto__", "valueOf"])(
+        "reports an ops operation named %s as having no manifest entry (own-property membership)",
+        (operation) => {
+            const entry = {
+                operation,
+                document: `query ${operation} { x }`,
+                const_name: "registeredInheritedNameDocument",
+                digest: sha256Trim(`query ${operation} { x }`),
+            };
+            for (const options of [{}, { tolerateManifestOnly: true }]) {
+                const { errors } = compareRegistry([entry], {}, options);
+                expect(errors.some((e) => e.includes(operation))).toBe(true);
+            }
+        },
+    );
+
+    it("tolerates a manifest-only operation as a warning, and only in that direction", () => {
+        const entries = correctGoEntries().filter((e) => e.operation !== "featureFlags");
+        const tolerant = compareRegistry(entries, OPERATION_MANIFEST, {
+            tolerateManifestOnly: true,
+        });
+        expect(tolerant.errors).toEqual([]);
+        expect(tolerant.warnings.some((w) => w.includes("featureFlags"))).toBe(true);
+
+        const withUnmanifested = [
+            ...correctGoEntries(),
+            {
+                operation: "somethingNew",
+                document: "query SomethingNew { somethingNew }",
+                const_name: "registeredSomethingNewDocument",
+                digest: sha256Trim("query SomethingNew { somethingNew }"),
+            },
+        ];
+        const stillStrict = compareRegistry(withUnmanifested, OPERATION_MANIFEST, {
+            tolerateManifestOnly: true,
+        });
+        expect(stillStrict.errors.some((e) => e.includes("somethingNew"))).toBe(true);
+    });
+
     /**
      * Regression: caught live in dev-health-web#905's first CI run against
      * dev-health-ops main BEFORE the companion ops PR merged (an expected,

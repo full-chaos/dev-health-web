@@ -80,7 +80,9 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
     }
 
     const { summary } = ffData;
-    const severityBorder = SEVERITY_COLORS[summary.releaseFrictionSeverity] ?? "";
+    const severityBorder = summary.releaseFrictionSeverity
+        ? (SEVERITY_COLORS[summary.releaseFrictionSeverity] ?? "")
+        : "";
 
     return (
         <div className="min-h-screen bg-background text-foreground">
@@ -119,17 +121,17 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
                         <MetricCard
                             label={FF_MEASURES.RELEASE_FRICTION_DELTA.label}
                             href="/feature-flags"
-                            value={summary.releaseFrictionDelta}
+                            value={summary.releaseFrictionDelta ?? undefined}
                             unit="%"
                             spark={summary.releaseFrictionSpark}
-                            caption={`Severity: ${summary.releaseFrictionSeverity}`}
+                            caption={`Severity: ${summary.releaseFrictionSeverity ?? "unavailable"}`}
                             className={severityBorder ? `border-l-4 ${severityBorder}` : undefined}
                         />
 
                         <MetricCard
                             label={FF_MEASURES.RELEASE_ERROR_RATE_DELTA.label}
                             href="/feature-flags"
-                            value={summary.releaseErrorRateDelta}
+                            value={summary.releaseErrorRateDelta ?? undefined}
                             unit="%"
                             spark={summary.releaseErrorRateSpark}
                             caption={FF_MEASURES.RELEASE_ERROR_RATE_DELTA.description}
@@ -138,7 +140,7 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
                         <MetricCard
                             label={FF_MEASURES.COVERAGE_RATIO.label}
                             href="/feature-flags"
-                            value={summary.coverageRatio}
+                            value={summary.coverageRatio ?? undefined}
                             unit="%"
                             delta={summary.coverageRatioDelta}
                             spark={summary.coverageRatioSpark}

@@ -85,6 +85,8 @@ export function RepoTeamSankeySection({
         [buildSankeyTooltipFormatter, filters.time, repoTeamMetrics, repoTeamNodeMap],
     );
 
+    // A read that produced no flow (failed, or no flow and no error) is unavailable,
+    // never a measured "no teams associated" absence; only a produced flow can say that.
     return (
         <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -103,7 +105,7 @@ export function RepoTeamSankeySection({
             <div className="mt-0">
                 {isRepoTeamLoading ? (
                     <p className="text-sm text-(--ink-muted)">Loading destination view...</p>
-                ) : repoTeamFlowFailed ? (
+                ) : repoTeamFlowFailed || !repoTeamFlow ? (
                     <DataState
                         variant="detector-unavailable"
                         title="Repo-to-team allocation unavailable"

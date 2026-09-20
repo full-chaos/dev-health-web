@@ -212,12 +212,20 @@ export function adaptSankeyResult(
         value: e.value,
     }));
 
-    const coverage = graphqlSankey.coverage
-        ? {
-              team: Number(graphqlSankey.coverage.teamCoverage || 0),
-              repo: Number(graphqlSankey.coverage.repoCoverage || 0),
-          }
-        : undefined;
+    // Missing is not zero: the backend degrades coverage to null when its
+    // coverage query fails. Keep only leaves it actually produced (a finite
+    // number, including 0); never coerce null/NaN to 0.
+    const teamCoverage = graphqlSankey.coverage?.teamCoverage;
+    const repoCoverage = graphqlSankey.coverage?.repoCoverage;
+    const producedTeam = typeof teamCoverage === "number" && Number.isFinite(teamCoverage);
+    const producedRepo = typeof repoCoverage === "number" && Number.isFinite(repoCoverage);
+    const coverage: SankeyResponse["coverage"] | undefined =
+        producedTeam || producedRepo
+            ? {
+                  ...(producedTeam && { team: teamCoverage }),
+                  ...(producedRepo && { repo: repoCoverage }),
+              }
+            : undefined;
 
     return {
         mode: mode as SankeyResponse["mode"],

@@ -22,7 +22,8 @@ export type Freshness = {
 
 export type SparkPoint = {
     ts: string;
-    value: number;
+    /** null = no data for the bucket (rendered as a gap, never as 0). */
+    value: number | null;
 };
 
 export type MetricDelta = {
@@ -283,9 +284,10 @@ export type SankeyResponse = {
     flow_mode?: string;
     drill_category?: string;
     top_n_repos?: number;
+    /** Leaves are omitted when the backend did not produce them (missing is not zero). */
     coverage?: {
-        team: number;
-        repo: number;
+        team?: number;
+        repo?: number;
     };
 };
 
