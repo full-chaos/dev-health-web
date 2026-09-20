@@ -77,11 +77,17 @@ import {
     FEATURE_FLAG_REGISTRY_QUERY,
     RELEASE_IMPACT_QUERY,
 } from "../src/lib/feature-flags/queries";
+import { TESTOPS_RISK_QUERY } from "../src/lib/testops/queries";
 import {
+    AI_ATTRIBUTED_PRS_QUERY,
+    AI_ATTRIBUTION_OVERVIEW_QUERY,
     AI_COMPARISON_QUERY,
+    AI_GOVERNANCE_SUMMARY_QUERY,
     AI_IMPACT_SUMMARY_QUERY,
     AI_OPPORTUNITIES_QUERY,
     AI_REVIEW_LOAD_QUERY,
+    AI_WORKFLOW_DRILLDOWN_QUERY,
+    AI_RISK_BREAKDOWN_QUERY,
     BUS_FACTOR_QUERY,
     CAPACITY_FORECAST_QUERY,
     CAPACITY_FORECASTS_QUERY,
@@ -121,10 +127,15 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
  * graphqlFetch callers actually pass to `client.query(...)`.
  */
 export const OPERATION_MANIFEST: Record<string, string> = {
+    aiAttributedPrs: AI_ATTRIBUTED_PRS_QUERY,
+    aiAttributionOverview: AI_ATTRIBUTION_OVERVIEW_QUERY,
     aiComparison: AI_COMPARISON_QUERY,
+    aiGovernanceSummary: AI_GOVERNANCE_SUMMARY_QUERY,
     aiImpactSummary: AI_IMPACT_SUMMARY_QUERY,
     aiOpportunities: AI_OPPORTUNITIES_QUERY,
     aiReviewLoad: AI_REVIEW_LOAD_QUERY,
+    aiWorkflowDrilldown: AI_WORKFLOW_DRILLDOWN_QUERY,
+    aiRiskBreakdown: AI_RISK_BREAKDOWN_QUERY,
     busFactor: BUS_FACTOR_QUERY,
     acrRepositoryScopes: ACR_REPOSITORY_SCOPES_QUERY,
     catalogValues: CATALOG_VALUES_QUERY,
@@ -156,6 +167,7 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     savedReports: SAVED_REPORTS_QUERY,
     securityAlerts: SECURITY_ALERTS_QUERY,
     securityOverview: SECURITY_OVERVIEW_QUERY,
+    testopsRisk: TESTOPS_RISK_QUERY,
     throughputForecast: THROUGHPUT_FORECAST_QUERY,
     workGraphArtifacts: WORK_GRAPH_ARTIFACTS_QUERY,
     workGraphEdges: WORK_GRAPH_EDGES_QUERY,
