@@ -4,3 +4,4 @@
 
 export * from "./transforms";
 export * from "./teamAttribution";
+export * from "./coverage";

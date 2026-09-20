@@ -335,3 +335,101 @@ describe("AllocationCoverage — unassigned ownership tile", () => {
         expect(screen.queryByText("0%")).not.toBeInTheDocument();
     });
 });
+
+// Missing is not zero (North Star check 12): a coverage value the backend
+// did not produce must never render as a number or as "N% unmapped"; a
+// produced 0 renders as 0%.
+describe("AllocationCoverage — coverage the backend did not produce", () => {
+    const UNAVAILABLE = "Coverage could not be computed for this window";
+    const withCoverage = (
+        flow: SankeyResponse,
+        coverage: SankeyResponse["coverage"] | Record<string, unknown> | null | undefined,
+    ): SankeyResponse => ({ ...flow, coverage: coverage as SankeyResponse["coverage"] });
+
+    it("renders an unavailable state, no number and no unmapped statement, when coverage is null", () => {
+        render(
+            <AllocationCoverage
+                teamCategoryFlow={withCoverage(primaryFlow, null)}
+                repoTeamFlow={withCoverage(secondaryFlow, null)}
+                isLoading={false}
+            />,
+        );
+        expect(screen.getAllByText(UNAVAILABLE)).toHaveLength(2);
+        expect(screen.queryByText(/unmapped to a (team|repo)/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/100%/)).not.toBeInTheDocument();
+    });
+
+    it("renders an unavailable state when the coverage field is absent", () => {
+        render(
+            <AllocationCoverage
+                teamCategoryFlow={primaryFlow}
+                repoTeamFlow={secondaryFlow}
+                isLoading={false}
+            />,
+        );
+        expect(screen.getAllByText(UNAVAILABLE)).toHaveLength(2);
+        expect(screen.queryByText(/unmapped to a (team|repo)/i)).not.toBeInTheDocument();
+    });
+
+    it("treats a non-finite leaf as unavailable, never NaN%", () => {
+        render(
+            <AllocationCoverage
+                teamCategoryFlow={withCoverage(primaryFlow, { team: Number.NaN, repo: 0.4 })}
+                repoTeamFlow={null}
+                isLoading={false}
+            />,
+        );
+        expect(screen.getAllByText(UNAVAILABLE)).toHaveLength(1);
+        expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
+        expect(screen.getByText("40%")).toBeInTheDocument();
+        expect(screen.getByText(/60% unmapped to a repo/)).toBeInTheDocument();
+    });
+
+    it("renders a mixed state leaf by leaf: team number, repo unavailable", () => {
+        render(
+            <AllocationCoverage
+                teamCategoryFlow={withCoverage(primaryFlow, { team: 0.85, repo: null })}
+                repoTeamFlow={null}
+                isLoading={false}
+            />,
+        );
+        expect(screen.getByText("85%")).toBeInTheDocument();
+        expect(screen.getByText(/15% unmapped to a team/)).toBeInTheDocument();
+        expect(screen.getAllByText(UNAVAILABLE)).toHaveLength(1);
+        expect(screen.queryByText(/unmapped to a repo/)).not.toBeInTheDocument();
+    });
+
+    it("renders a produced 0 as 0% with its 100% unmapped statement", () => {
+        render(
+            <AllocationCoverage
+                teamCategoryFlow={withCoverage(primaryFlow, { team: 0, repo: 0 })}
+                repoTeamFlow={null}
+                isLoading={false}
+            />,
+        );
+        expect(screen.getAllByText("0%").length).toBeGreaterThanOrEqual(2);
+        expect(screen.getByText(/100% unmapped to a team/)).toBeInTheDocument();
+        expect(screen.getByText(/100% unmapped to a repo/)).toBeInTheDocument();
+        expect(screen.queryByText(UNAVAILABLE)).not.toBeInTheDocument();
+    });
+
+    it("falls back to the secondary flow's produced value, but never turns a missing one into 0", () => {
+        render(
+            <AllocationCoverage
+                teamCategoryFlow={withCoverage(primaryFlow, null)}
+                repoTeamFlow={withCoverage(secondaryFlow, { team: 0.9, repo: 0 })}
+                isLoading={false}
+            />,
+        );
+        expect(screen.getByText("90%")).toBeInTheDocument();
+        expect(screen.getByText(/100% unmapped to a repo/)).toBeInTheDocument();
+    });
+
+    it("says coverage could not be computed, not 'no allocation path', when no flow resolved", () => {
+        render(
+            <AllocationCoverage teamCategoryFlow={null} repoTeamFlow={null} isLoading={false} />,
+        );
+        expect(screen.getByText(new RegExp(UNAVAILABLE))).toBeInTheDocument();
+        expect(screen.queryByText(/No allocation path/i)).not.toBeInTheDocument();
+    });
+});
