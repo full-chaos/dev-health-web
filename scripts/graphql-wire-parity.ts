@@ -116,6 +116,7 @@ import {
     WORK_GRAPH_ARTIFACTS_QUERY,
     WORK_GRAPH_EDGES_QUERY,
     WORK_GRAPH_FLOW_QUERY,
+    WORK_UNIT_TEAM_ATTRIBUTIONS_QUERY,
 } from "../src/lib/graphql/queries";
 import {
     REPORT_RUNS_QUERY,
@@ -182,6 +183,7 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     workGraphArtifacts: WORK_GRAPH_ARTIFACTS_QUERY,
     workGraphEdges: WORK_GRAPH_EDGES_QUERY,
     workGraphFlow: WORK_GRAPH_FLOW_QUERY,
+    workUnitTeamAttributions: WORK_UNIT_TEAM_ATTRIBUTIONS_QUERY,
 };
 
 export interface RegistryEntry {
