@@ -399,9 +399,12 @@ export function IncidentCorrelationDashboard({
 
             {cfrDelta &&
                 (() => {
-                    const cfrTrendData = cfrDelta.spark.flatMap((point) =>
-                        isFiniteNumber(point.value) ? [{ day: point.ts, value: point.value }] : [],
-                    );
+                    // A missing / non-finite bucket stays a gap (null), never dropped (which
+                    // would join the line across it) and never 0.
+                    const cfrTrendData = cfrDelta.spark.map((point) => ({
+                        day: point.ts,
+                        value: isFiniteNumber(point.value) ? point.value : null,
+                    }));
                     const hasCfrTrend = hasRenderableSeries(cfrTrendData);
                     return (
                         <section

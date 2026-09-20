@@ -102,7 +102,8 @@ export function SparklineChart({
                         const first = list[0] as SparklineTooltipParam | undefined;
                         const axisValue = first?.axisValue ?? "";
                         const label = formatSparklineTooltipDate(axisValue);
-                        const value = formatSparklineTooltipValue(first?.value);
+                        // ECharts hands a raw-null data point to the formatter as `undefined`.
+                        const value = formatSparklineTooltipValue(first?.value ?? null);
                         return `${first?.marker ?? ""}${label}: ${value}`;
                     },
                 },

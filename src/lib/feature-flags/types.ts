@@ -67,7 +67,8 @@ export type FeatureFlagSummary = {
     releaseErrorRateDelta: number | null;
     releaseErrorRateSpark: SparkPoint[];
 
-    coverageRatio: number;
+    /** null when neither the timeseries nor the release graph can produce a ratio ("--"). */
+    coverageRatio: number | null;
     /**
      * Undefined when no backend measure for coverage-ratio delta is exposed
      * (FLAG_COVERAGE_RATIO_DELTA is not yet in the analytics schema). The card

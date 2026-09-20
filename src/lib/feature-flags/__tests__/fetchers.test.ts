@@ -732,6 +732,18 @@ describe("feature flag sparklines and cards with null buckets", () => {
         expect(summary.activeFlagsSpark.map((p) => p.value)).toEqual([0, 5]);
     });
 
+    it("a null latest coverage bucket with no releases is a null ratio (--), never 0", async () => {
+        mockSuccessfulFetch({ coverage: [60, null] });
+        const { summary } = await fetchFeatureFlagsData(DATE_RANGE);
+        expect(summary.coverageRatio).toBeNull();
+    });
+
+    it("a produced 0 latest coverage bucket stays 0", async () => {
+        mockSuccessfulFetch({ coverage: [60, 0] });
+        const { summary } = await fetchFeatureFlagsData(DATE_RANGE);
+        expect(summary.coverageRatio).toBe(0);
+    });
+
     it("a null last coverage bucket falls back to the work-graph ratio, not to 0 from the null", async () => {
         mockSuccessfulFetch({ coverage: [60, null] });
         const { summary } = await fetchFeatureFlagsData(DATE_RANGE);

@@ -282,18 +282,19 @@ export async function fetchFeatureFlagsData(
         // coverageRatio: source from FLAG_COVERAGE_RATIO timeseries (matches sparkline).
         // Fall back to work-graph computation when no timeseries data is available.
         // NOTE: The || 1 denominator fabrication has been removed — an empty release
-        // graph returns 0 rather than a synthetic 100% coverage figure.
+        // graph yields no ratio (null, "--") rather than a synthetic 100% or a 0.
         const coverageRatioFromTimeseries = latestFromSpark(coverageRatioSpark);
-        let coverageRatio: number;
+        let coverageRatio: number | null;
         if (coverageRatioFromTimeseries !== null) {
             coverageRatio = Math.round(coverageRatioFromTimeseries);
         } else {
             const impactEdges = impact.edges.filter((edge) => edge.edgeType === "IMPACTS");
             const totalReleases = getDistinctSourceIds(impact.edges).size;
             const withTelemetry = getDistinctSourceIds(impactEdges).size;
-            // When no releases exist yet, coverage is genuinely unknown — use 0.
+            // When no releases exist yet, coverage is genuinely unknown: null, never 0
+            // (a missing / null latest bucket must not read as a measured 0 %).
             coverageRatio =
-                totalReleases > 0 ? Math.round((withTelemetry / totalReleases) * 100) : 0;
+                totalReleases > 0 ? Math.round((withTelemetry / totalReleases) * 100) : null;
         }
 
         // activeFlagsDelta and coverageRatioDelta are intentionally omitted:

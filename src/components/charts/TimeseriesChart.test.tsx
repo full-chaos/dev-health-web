@@ -175,6 +175,15 @@ describe("TimeseriesChart with a null (missing) point", () => {
         expect(html).not.toMatch(/:\s*0/);
     });
 
+    it("says 'No data' when ECharts hands a raw-null point to the tooltip as undefined", () => {
+        render(<TimeseriesChart data={[{ day: "2026-06-02", value: null }]} />);
+        const option = (chartSpy.mock.calls.at(-1)?.[0] as { option: Record<string, unknown> })
+            .option as { tooltip: { formatter: (p: unknown) => string } };
+        expect(option.tooltip.formatter([{ name: "2026-06-02", value: undefined }])).toContain(
+            "No data",
+        );
+    });
+
     it("still formats a produced 0 in the tooltip", () => {
         render(<TimeseriesChart data={[{ day: "2026-06-01", value: 0 }]} valueFormat="number" />);
         const option = (chartSpy.mock.calls.at(-1)?.[0] as { option: Record<string, unknown> })

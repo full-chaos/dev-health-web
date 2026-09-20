@@ -94,7 +94,8 @@ export function TimeseriesChart({
                             .map((entry) => {
                                 const item = entry as NumericChartParam;
                                 const label = item.name ?? "Value";
-                                return `${item.marker ?? ""}${label}: ${formatValue(item.value)}`;
+                                // ECharts hands a raw-null data point to the formatter as `undefined`.
+                                return `${item.marker ?? ""}${label}: ${formatValue(item.value ?? null)}`;
                             })
                             .join("<br/>");
                     },

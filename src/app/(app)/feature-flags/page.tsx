@@ -140,7 +140,7 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
                         <MetricCard
                             label={FF_MEASURES.COVERAGE_RATIO.label}
                             href="/feature-flags"
-                            value={summary.coverageRatio}
+                            value={summary.coverageRatio ?? undefined}
                             unit="%"
                             delta={summary.coverageRatioDelta}
                             spark={summary.coverageRatioSpark}
