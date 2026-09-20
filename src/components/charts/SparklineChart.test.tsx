@@ -46,3 +46,12 @@ describe("formatSparklineTooltipValue", () => {
         expect(formatSparklineTooltipValue(undefined)).toBe("");
     });
 });
+
+describe("formatSparklineTooltipValue with a null (missing) value", () => {
+    it("says there is no data instead of printing nothing or 0", () => {
+        expect(formatSparklineTooltipValue(null as unknown as undefined)).toBe("No data");
+    });
+    it("still formats a produced 0", () => {
+        expect(formatSparklineTooltipValue(0)).toBe("0");
+    });
+});

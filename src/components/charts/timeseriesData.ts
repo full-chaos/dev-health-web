@@ -10,7 +10,8 @@
 
 export type TimeseriesPoint = {
     day: string;
-    value: number;
+    /** null = no data for the day: plotted as a gap, never as 0. */
+    value: number | null;
     /** Optional compact axis label (e.g. "MM-DD"). Ordering always uses `day`, so a
      *  truncated label can never reorder the series across a month/year boundary. */
     label?: string;
@@ -24,7 +25,7 @@ export type TimeseriesPoint = {
  */
 export function orderTimeseriesPoints(data: TimeseriesPoint[]): {
     categories: string[];
-    values: number[];
+    values: Array<number | null>;
 } {
     const ordered = [...data].sort((a, b) => a.day.localeCompare(b.day));
     return {

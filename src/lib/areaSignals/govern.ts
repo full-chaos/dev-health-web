@@ -37,7 +37,7 @@ import type { AnalyticsRequestInput, TimeseriesResult } from "@/lib/graphql/sche
 import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import { logger } from "@/lib/logger";
-import type { CockpitSignal, SignalSeverity } from "@/lib/types";
+import type { CockpitSignal } from "@/lib/types";
 import type { TestOpsData } from "@/lib/testops/types";
 
 import {
@@ -55,7 +55,8 @@ import type { AreaSignal, AreaSignalState } from "./types";
 function latestMeasure(timeseries: TimeseriesResult[], measure: string): number | undefined {
     const series = timeseries.find((t) => t.measure === measure);
     if (!series || series.buckets.length === 0) return undefined;
-    return series.buckets[series.buckets.length - 1].value;
+    // A null latest bucket is "no value", never a 0 that would derive a state.
+    return series.buckets[series.buckets.length - 1].value ?? undefined;
 }
 
 /** Map a backend compounding-risk severity onto the cockpit severity ladder. */
@@ -73,7 +74,11 @@ function mapCompoundingSeverity(severity: CompoundingRiskSeverity): AreaSignalSt
 }
 
 /** Map a feature-flag friction severity onto the cockpit severity ladder. */
-function mapFrictionSeverity(severity: "low" | "moderate" | "high" | "critical"): SignalSeverity {
+function mapFrictionSeverity(
+    severity: "low" | "moderate" | "high" | "critical" | null,
+): AreaSignalState {
+    // A null severity means the friction bucket was missing: unavailable, not healthy.
+    if (severity === null) return "unavailable";
     return severity === "moderate" ? "medium" : severity;
 }
 

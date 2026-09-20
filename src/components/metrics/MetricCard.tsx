@@ -74,7 +74,7 @@ export function MetricCard({
                     )}
                 </div>
                 <div className="h-16 w-full">
-                    {sparkValues.length > 1 ? (
+                    {sparkValues.filter((v) => v !== null).length > 1 ? (
                         <SparklineChart data={sparkValues} categories={sparkLabels} height={64} />
                     ) : (
                         <div

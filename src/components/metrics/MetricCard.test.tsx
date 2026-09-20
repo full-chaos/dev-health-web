@@ -1,4 +1,8 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+vi.mock("@/components/charts/SparklineChart", () => ({
+    SparklineChart: () => <div data-testid="sparkline" />,
+}));
 
 import { MetricCard } from "./MetricCard";
 import { render, screen } from "@/test/utils";
@@ -68,5 +72,35 @@ describe("MetricCard inverse-good delta coloring (lower-is-better metrics)", () 
         // ...but the tone is a regression (caution/negative), not positive/green.
         expect(deltaEl.className).toContain("--accent-negative");
         expect(deltaEl.className).not.toContain("--positive");
+    });
+});
+
+describe("MetricCard sparkline with null (missing) points", () => {
+    it("shows 'No trend yet' when fewer than two points are real values", () => {
+        render(
+            <MetricCard
+                label="Coverage"
+                value={undefined}
+                spark={[
+                    { ts: "2026-06-01", value: 50 },
+                    { ts: "2026-06-02", value: null },
+                    { ts: "2026-06-03", value: null },
+                ]}
+            />,
+        );
+        expect(screen.getByText("No trend yet")).toBeInTheDocument();
+    });
+    it("counts a produced 0 as a real point", () => {
+        render(
+            <MetricCard
+                label="Coverage"
+                value={0}
+                spark={[
+                    { ts: "2026-06-01", value: 0 },
+                    { ts: "2026-06-02", value: 0 },
+                ]}
+            />,
+        );
+        expect(screen.queryByText("No trend yet")).not.toBeInTheDocument();
     });
 });

@@ -57,11 +57,14 @@ export type FeatureFlagSummary = {
     activeFlagsDelta?: number;
     activeFlagsSpark: SparkPoint[];
 
-    releaseFrictionDelta: number;
-    releaseFrictionSeverity: "low" | "moderate" | "high" | "critical";
+    /** null when the latest friction bucket was missing (rendered as "--"). */
+    releaseFrictionDelta: number | null;
+    /** null when releaseFrictionDelta is null: severity is unknown, not "low". */
+    releaseFrictionSeverity: "low" | "moderate" | "high" | "critical" | null;
     releaseFrictionSpark: SparkPoint[];
 
-    releaseErrorRateDelta: number;
+    /** null when the latest error-rate bucket was missing (rendered as "--"). */
+    releaseErrorRateDelta: number | null;
     releaseErrorRateSpark: SparkPoint[];
 
     coverageRatio: number;

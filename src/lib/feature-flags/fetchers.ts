@@ -156,8 +156,9 @@ export async function fetchReleaseImpact(
 
 /**
  * Returns the value of the last bucket in a sparkline, or null when the
- * sparkline is empty. Use this to derive a card "current value" from the
- * same timeseries source that backs the sparkline, so card and trend agree.
+ * sparkline is empty or its last bucket has no data (null). Use this to derive
+ * a card "current value" from the same timeseries source that backs the
+ * sparkline, so card and trend agree.
  */
 export function latestFromSpark(spark: SparkPoint[]): number | null {
     if (spark.length === 0) return null;
@@ -166,23 +167,28 @@ export function latestFromSpark(spark: SparkPoint[]): number | null {
 
 /**
  * Returns the first→last change across a sparkline (last − first), rounded to
- * one decimal place. Returns null when fewer than two data points are present.
+ * one decimal place. Returns null when fewer than two data points are present
+ * or either endpoint has no data (null): a missing bucket is not a 0.
  * Use this to compute a period-over-period delta from an existing sparkline
  * when no dedicated delta measure is exposed by the backend.
  */
 export function deltaFromSpark(spark: SparkPoint[]): number | null {
     if (spark.length < 2) return null;
-    return Math.round((spark[spark.length - 1].value - spark[0].value) * 10) / 10;
+    const first = spark[0].value;
+    const last = spark[spark.length - 1].value;
+    if (first === null || last === null) return null;
+    return Math.round((last - first) * 10) / 10;
 }
 
 /**
  * Merge timeseries results for a given measure into a single sparkline.
  * When multiple dimension values exist (e.g. multiple repos), values
- * for the same date bucket are averaged.
+ * for the same date bucket are averaged over the non-null members only (a
+ * repo with no data is not a 0); a date where every member is null stays null.
  */
 function mergeToSpark(results: TimeseriesResult[], measure: string): SparkPoint[] {
     const matching = results.filter((r) => r.measure === measure);
-    const byDate = new Map<string, number[]>();
+    const byDate = new Map<string, Array<number | null>>();
     for (const result of matching) {
         for (const bucket of result.buckets) {
             const existing = byDate.get(bucket.date) ?? [];
@@ -192,10 +198,14 @@ function mergeToSpark(results: TimeseriesResult[], measure: string): SparkPoint[
     }
     return Array.from(byDate.entries())
         .sort(([a], [b]) => a.localeCompare(b))
-        .map(([ts, values]) => ({
-            ts,
-            value: Math.round((values.reduce((s, v) => s + v, 0) / values.length) * 100) / 100,
-        }));
+        .map(([ts, all]) => {
+            const values = all.filter((v): v is number => v !== null);
+            if (values.length === 0) return { ts, value: null };
+            return {
+                ts,
+                value: Math.round((values.reduce((s, v) => s + v, 0) / values.length) * 100) / 100,
+            };
+        });
 }
 
 async function fetchFeatureFlagTimeseries(
@@ -264,8 +274,10 @@ export async function fetchFeatureFlagsData(
         // FLAG_FRICTION_DELTA and FLAG_ERROR_RATE_DELTA are exposed via the analytics
         // timeseries API and are the canonical source for these card values.
         // Using the last bucket ensures the card matches the sparkline endpoint.
-        const releaseFrictionDelta = latestFromSpark(frictionSpark) ?? 0;
-        const releaseErrorRateDelta = latestFromSpark(errorSpark) ?? 0;
+        // A missing (null) latest bucket stays null: "--" and unknown severity,
+        // never a 0 that would read as a healthy, measured value.
+        const releaseFrictionDelta = latestFromSpark(frictionSpark);
+        const releaseErrorRateDelta = latestFromSpark(errorSpark);
 
         // coverageRatio: source from FLAG_COVERAGE_RATIO timeseries (matches sparkline).
         // Fall back to work-graph computation when no timeseries data is available.
@@ -298,7 +310,8 @@ export async function fetchFeatureFlagsData(
                 // activeFlagsDelta: intentionally absent — see comment above
                 activeFlagsSpark,
                 releaseFrictionDelta,
-                releaseFrictionSeverity: classifySeverity(releaseFrictionDelta),
+                releaseFrictionSeverity:
+                    releaseFrictionDelta === null ? null : classifySeverity(releaseFrictionDelta),
                 releaseFrictionSpark: frictionSpark,
                 releaseErrorRateDelta,
                 releaseErrorRateSpark: errorSpark,

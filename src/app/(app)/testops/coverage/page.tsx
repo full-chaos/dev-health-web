@@ -31,7 +31,8 @@ function getLatestValue(timeseries: TimeseriesResult[], measureId: string) {
 	const series = timeseries.find((s) => s.measure === measureId);
 	if (!series || !series.buckets || series.buckets.length === 0)
 		return undefined;
-	return series.buckets[series.buckets.length - 1].value;
+	// A null latest bucket is "no value" (rendered "--"), never a 0.
+	return series.buckets[series.buckets.length - 1].value ?? undefined;
 }
 
 function getSparkline(timeseries: TimeseriesResult[], measureId: string) {
@@ -216,7 +217,7 @@ export default async function CoveragePage({
 							}}
 							isError={fetchFailed}
 							stateMessage="Coverage analytics could not be loaded. Coverage history will reappear once the data service recovers."
-							isEmpty={timeseriesData.length === 0}
+							isEmpty={!timeseriesData.some((p) => p.value !== null)}
 							stateTitle="Coverage trend not populated"
 							stateDescription="Coverage history appears here once connected CI coverage data is available for this scope."
 						>

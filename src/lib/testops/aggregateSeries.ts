@@ -25,6 +25,8 @@ function isSumMeasure(measureId: string): boolean {
  *
  * - Rate / percentage / percentile / duration measures → **mean** per date.
  * - Raw-count measures (`COUNT`) → **sum** per date.
+ * - A null bucket (backend had no data) is skipped, never counted as 0; a date
+ *   where every team is null is null.
  *
  * Returns `undefined` when no matching series exist (matches prior `.find()`
  * behaviour so callers can still check for `undefined`).
@@ -38,7 +40,7 @@ export function mergeSeriesByMeasure(
     if (matching.length === 1) return matching[0];
 
     // Accumulate all values per date across every team series.
-    const dateMap = new Map<string, number[]>();
+    const dateMap = new Map<string, Array<number | null>>();
     for (const series of matching) {
         for (const bucket of series.buckets) {
             const existing = dateMap.get(bucket.date);
@@ -55,7 +57,11 @@ export function mergeSeriesByMeasure(
 
     const useSum = isSumMeasure(measureId);
     const mergedBuckets: TimeseriesBucket[] = sortedDates.map((date) => {
-        const values = dateMap.get(date)!;
+        // Missing is not zero: a team with a null bucket contributes nothing (it
+        // is not a 0 that deflates the mean), and a date where every team is
+        // null stays null.
+        const values = (dateMap.get(date) ?? []).filter((v): v is number => v !== null);
+        if (values.length === 0) return { date, value: null };
         const total = values.reduce((a, b) => a + b, 0);
         const combined = useSum ? total : total / values.length;
         return { date, value: combined };
@@ -74,21 +80,25 @@ export function mergeSeriesByMeasure(
 // Page-level helpers (shared across tests, pipelines, and overview pages)
 // ---------------------------------------------------------------------------
 
-/** Returns the most recent bucket value for `measureId`, merged across all teams. */
+/**
+ * Returns the most recent bucket value for `measureId`, merged across all teams.
+ * `undefined` (rendered as "--") when there is no bucket or the latest bucket is
+ * null; a produced 0 is returned as 0.
+ */
 export function getLatestValue(
     timeseries: TimeseriesResult[],
     measureId: string,
 ): number | undefined {
     const series = mergeSeriesByMeasure(timeseries, measureId);
     if (!series || series.buckets.length === 0) return undefined;
-    return series.buckets[series.buckets.length - 1].value;
+    return series.buckets[series.buckets.length - 1].value ?? undefined;
 }
 
 /** Returns sparkline data for `measureId`, merged across all teams. */
 export function getSparkline(
     timeseries: TimeseriesResult[],
     measureId: string,
-): { ts: string; value: number }[] | undefined {
+): { ts: string; value: number | null }[] | undefined {
     const series = mergeSeriesByMeasure(timeseries, measureId);
     if (!series) return undefined;
     return series.buckets.map((b: TimeseriesBucket) => ({ ts: b.date, value: b.value }));
@@ -104,6 +114,8 @@ export function getDelta(timeseries: TimeseriesResult[], measureId: string): num
     if (!buckets || buckets.length < 2) return undefined;
     const prev = buckets[0].value;
     const curr = buckets[buckets.length - 1].value;
+    // A null endpoint has no defined change; never compute against a phantom 0.
+    if (prev === null || curr === null) return undefined;
     if (prev === 0) return undefined;
     return ((curr - prev) / Math.abs(prev)) * 100;
 }

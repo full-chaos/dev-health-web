@@ -399,9 +399,9 @@ export function IncidentCorrelationDashboard({
 
             {cfrDelta &&
                 (() => {
-                    const cfrTrendData = cfrDelta.spark
-                        .filter((point) => isFiniteNumber(point.value))
-                        .map((point) => ({ day: point.ts, value: point.value }));
+                    const cfrTrendData = cfrDelta.spark.flatMap((point) =>
+                        isFiniteNumber(point.value) ? [{ day: point.ts, value: point.value }] : [],
+                    );
                     const hasCfrTrend = hasRenderableSeries(cfrTrendData);
                     return (
                         <section

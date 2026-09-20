@@ -141,3 +141,44 @@ describe("TimeseriesChart render path", () => {
         expect(series.markLine).toBeUndefined();
     });
 });
+
+describe("TimeseriesChart with a null (missing) point", () => {
+    beforeEach(() => chartSpy.mockClear());
+
+    it("orderTimeseriesPoints keeps null as null and 0 as 0", () => {
+        const { values } = orderTimeseriesPoints([
+            { day: "2026-06-01", value: 0 },
+            { day: "2026-06-02", value: null },
+            { day: "2026-06-03", value: 4 },
+        ]);
+        expect(values).toEqual([0, null, 4]);
+    });
+
+    it("passes the null through as a gap and the tooltip says 'No data', never 0", () => {
+        render(
+            <TimeseriesChart
+                data={[
+                    { day: "2026-06-01", value: 5 },
+                    { day: "2026-06-02", value: null },
+                ]}
+            />,
+        );
+        const option = (chartSpy.mock.calls.at(-1)?.[0] as { option: Record<string, unknown> })
+            .option as {
+            series: Array<{ data: Array<number | null>; connectNulls?: boolean }>;
+            tooltip: { formatter: (p: unknown) => string };
+        };
+        expect(option.series[0].data).toEqual([5, null]);
+        expect(option.series[0].connectNulls ?? false).toBe(false);
+        const html = option.tooltip.formatter([{ name: "2026-06-02", value: null }]);
+        expect(html).toContain("No data");
+        expect(html).not.toMatch(/:\s*0/);
+    });
+
+    it("still formats a produced 0 in the tooltip", () => {
+        render(<TimeseriesChart data={[{ day: "2026-06-01", value: 0 }]} valueFormat="number" />);
+        const option = (chartSpy.mock.calls.at(-1)?.[0] as { option: Record<string, unknown> })
+            .option as { tooltip: { formatter: (p: unknown) => string } };
+        expect(option.tooltip.formatter([{ name: "2026-06-01", value: 0 }])).toMatch(/:\s*0/);
+    });
+});

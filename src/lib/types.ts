@@ -22,7 +22,8 @@ export type Freshness = {
 
 export type SparkPoint = {
     ts: string;
-    value: number;
+    /** null = no data for the bucket (rendered as a gap, never as 0). */
+    value: number | null;
 };
 
 export type MetricDelta = {
