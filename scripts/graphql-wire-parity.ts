@@ -70,6 +70,7 @@ import {
 import {
     FEATURE_FLAG_EVENTS_QUERY,
     FEATURE_FLAG_REGISTRY_QUERY,
+    RELEASE_IMPACT_QUERY,
 } from "../src/lib/feature-flags/queries";
 import {
     AI_COMPARISON_QUERY,
@@ -134,6 +135,7 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     investmentFull: INVESTMENT_FULL_QUERY,
     operatingReview: OPERATING_REVIEW_QUERY,
     pr: PR_DETAIL_QUERY,
+    releaseImpact: RELEASE_IMPACT_QUERY,
     reviewEdges: REVIEW_EDGES_QUERY,
     securityAlerts: SECURITY_ALERTS_QUERY,
     securityOverview: SECURITY_OVERVIEW_QUERY,
