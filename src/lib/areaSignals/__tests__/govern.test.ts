@@ -281,3 +281,83 @@ describe("getGovernSignals — source → AreaSignal mapping", () => {
         expect(mockGraphql).not.toHaveBeenCalled();
     });
 });
+
+describe("getGovernSignals — null buckets are missing, not zero", () => {
+    const nullTs = (measure: string) => ({
+        dimension: "TEAM",
+        dimensionValue: "all",
+        measure,
+        buckets: [
+            { date: "2026-06-01", value: 50 },
+            { date: "2026-06-02", value: null },
+        ],
+    });
+    const absentTs = (measure: string) => ({
+        dimension: "TEAM",
+        dimensionValue: "all",
+        measure,
+        buckets: [] as { date: string; value: number | null }[],
+    });
+
+    // A latest bucket of null must resolve exactly like an absent measure
+    // (never like a produced 0, which would derive a critical state).
+    it.each([
+        ["COVERAGE_LINE_PCT", "coverage"],
+        ["TEST_FLAKE_RATE", "tests"],
+        ["PIPELINE_SUCCESS_RATE", "pipelines"],
+    ] as const)(
+        "%s: a null latest bucket resolves like an absent measure",
+        async (measure, key) => {
+            const withSeries = (series: ReturnType<typeof nullTs>) => {
+                mockTestOps.mockResolvedValue({
+                    pipelines: { timeseries: [ts("PIPELINE_SUCCESS_RATE", 92)], breakdowns: [] },
+                    tests: { timeseries: [ts("TEST_FLAKE_RATE", 4)], breakdowns: [] },
+                    coverage: { timeseries: [ts("COVERAGE_LINE_PCT", 83)], breakdowns: [] },
+                    [key]: { timeseries: [series], breakdowns: [] },
+                } as never);
+                mockCoverage.mockResolvedValue({
+                    timeseries: key === "coverage" ? [series] : [],
+                    breakdowns: [],
+                });
+            };
+            withSeries(absentTs(measure));
+            const absent = byId(await getGovernSignals(defaultMetricFilter)).testops;
+            withSeries(nullTs(measure));
+            const withNull = byId(await getGovernSignals(defaultMetricFilter)).testops;
+            expect(withNull.state).toBe(absent.state);
+            expect(withNull.value).toBe(absent.value);
+        },
+    );
+
+    it("a produced 0 coverage still derives its state (0 is a value)", async () => {
+        mockCoverage.mockResolvedValue({
+            timeseries: [ts("COVERAGE_LINE_PCT", 0)],
+            breakdowns: [],
+        });
+        mockTestOps.mockResolvedValue({
+            pipelines: { timeseries: [ts("PIPELINE_SUCCESS_RATE", 92)], breakdowns: [] },
+            tests: { timeseries: [ts("TEST_FLAKE_RATE", 4)], breakdowns: [] },
+            coverage: { timeseries: [ts("COVERAGE_LINE_PCT", 0)], breakdowns: [] },
+        });
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.testops.state).toBe("critical");
+    });
+
+    it("feature flags: a null friction severity is unavailable, not healthy", async () => {
+        mockFetchFlags.mockResolvedValue({
+            summary: {
+                activeFlags: 7,
+                activeFlagsSpark: [],
+                releaseFrictionDelta: null,
+                releaseFrictionSeverity: null,
+                releaseFrictionSpark: [],
+                releaseErrorRateDelta: null,
+                releaseErrorRateSpark: [],
+                coverageRatio: 0,
+                coverageRatioSpark: [],
+            },
+        } as never);
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals["feature-flags"].state).toBe("unavailable");
+    });
+});

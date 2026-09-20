@@ -53,7 +53,7 @@ vi.mock("@/components/charts/HorizontalBarChart", () => ({
 }));
 
 vi.mock("@/components/charts/TimeseriesChart", () => ({
-    TimeseriesChart: ({ data }: { data: Array<{ day: string; value: number }> }) => (
+    TimeseriesChart: ({ data }: { data: Array<{ day: string; value: number | null }> }) => (
         <div data-testid="timeseries-chart">{data.map((point) => point.value).join(",")}</div>
     ),
 }));
@@ -699,6 +699,57 @@ describe("IncidentCorrelationDashboard", () => {
         render(<IncidentCorrelationDashboard {...baseProps} deltas={[delta]} />);
         expect(screen.getByTestId("cfr-trend-chart")).toBeInTheDocument();
         expect(screen.getByTestId("timeseries-chart")).toHaveTextContent("0.04,0.06");
+    });
+
+    it("keeps a null CFR bucket as a gap (not dropped, not 0) between real points", () => {
+        const delta = {
+            metric: "change_failure_rate",
+            label: "Change Failure Rate",
+            value: 0.05,
+            unit: "%",
+            delta_pct: -0.1,
+            spark: [
+                { ts: "2026-05-01", value: 0.04 },
+                { ts: "2026-05-02", value: null },
+                { ts: "2026-05-03", value: 0.06 },
+            ],
+        };
+        render(<IncidentCorrelationDashboard {...baseProps} deltas={[delta as never]} />);
+        // join() renders null as "": two commas = the gap survived; a dropped point would be "0.04,0.06".
+        expect(screen.getByTestId("timeseries-chart")).toHaveTextContent("0.04,,0.06");
+    });
+
+    it("turns a non-finite CFR bucket into a gap, never NaN", () => {
+        const delta = {
+            metric: "change_failure_rate",
+            label: "Change Failure Rate",
+            value: 0.05,
+            unit: "%",
+            delta_pct: -0.1,
+            spark: [
+                { ts: "2026-05-01", value: 0.04 },
+                { ts: "2026-05-02", value: Number.NaN },
+                { ts: "2026-05-03", value: 0.06 },
+            ],
+        };
+        render(<IncidentCorrelationDashboard {...baseProps} deltas={[delta as never]} />);
+        expect(screen.getByTestId("timeseries-chart")).toHaveTextContent("0.04,,0.06");
+    });
+
+    it("does not count a null bucket as a trend point (one real point + null is empty)", () => {
+        const delta = {
+            metric: "change_failure_rate",
+            label: "Change Failure Rate",
+            value: 0.05,
+            unit: "%",
+            delta_pct: -0.1,
+            spark: [
+                { ts: "2026-05-01", value: 0.04 },
+                { ts: "2026-05-02", value: null },
+            ],
+        };
+        render(<IncidentCorrelationDashboard {...baseProps} deltas={[delta as never]} />);
+        expect(screen.getByTestId("cfr-trend-empty")).toBeInTheDocument();
     });
 
     it("renders a controlled empty state when CFR has insufficient trend data", () => {

@@ -12,7 +12,8 @@ import { formatNumber } from "@/lib/formatters";
 echarts.use([LineChart]);
 
 type SparklineChartProps = {
-    data: number[];
+    /** null entries are gaps (no data), never plotted as 0. */
+    data: Array<number | null>;
     categories?: Array<string | number>;
     height?: number | string;
     width?: number | string;
@@ -22,7 +23,7 @@ type SparklineChartProps = {
 
 type SparklineTooltipParam = {
     axisValue?: string | number;
-    value?: number | string;
+    value?: number | string | null;
     marker?: string;
 };
 
@@ -61,7 +62,8 @@ export function formatSparklineTooltipDate(axisValue: string | number): string {
     return str;
 }
 
-export function formatSparklineTooltipValue(value: number | string | undefined): string {
+export function formatSparklineTooltipValue(value: number | string | null | undefined): string {
+    if (value === null) return "No data";
     if (typeof value === "number") return formatNumber(value);
     return value ?? "";
 }
@@ -100,7 +102,8 @@ export function SparklineChart({
                         const first = list[0] as SparklineTooltipParam | undefined;
                         const axisValue = first?.axisValue ?? "";
                         const label = formatSparklineTooltipDate(axisValue);
-                        const value = formatSparklineTooltipValue(first?.value);
+                        // ECharts hands a raw-null data point to the formatter as `undefined`.
+                        const value = formatSparklineTooltipValue(first?.value ?? null);
                         return `${first?.marker ?? ""}${label}: ${value}`;
                     },
                 },

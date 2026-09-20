@@ -19,7 +19,7 @@ export const DateRangeSchema = z.object({
 
 export const TimeseriesBucketSchema = z.object({
     date: z.string(),
-    value: z.number(),
+    value: z.number().nullable(),
 });
 
 export const TimeseriesResultSchema = z.object({

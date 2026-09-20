@@ -57,14 +57,18 @@ export type FeatureFlagSummary = {
     activeFlagsDelta?: number;
     activeFlagsSpark: SparkPoint[];
 
-    releaseFrictionDelta: number;
-    releaseFrictionSeverity: "low" | "moderate" | "high" | "critical";
+    /** null when the latest friction bucket was missing (rendered as "--"). */
+    releaseFrictionDelta: number | null;
+    /** null when releaseFrictionDelta is null: severity is unknown, not "low". */
+    releaseFrictionSeverity: "low" | "moderate" | "high" | "critical" | null;
     releaseFrictionSpark: SparkPoint[];
 
-    releaseErrorRateDelta: number;
+    /** null when the latest error-rate bucket was missing (rendered as "--"). */
+    releaseErrorRateDelta: number | null;
     releaseErrorRateSpark: SparkPoint[];
 
-    coverageRatio: number;
+    /** null when neither the timeseries nor the release graph can produce a ratio ("--"). */
+    coverageRatio: number | null;
     /**
      * Undefined when no backend measure for coverage-ratio delta is exposed
      * (FLAG_COVERAGE_RATIO_DELTA is not yet in the analytics schema). The card

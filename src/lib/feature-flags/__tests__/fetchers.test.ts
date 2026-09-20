@@ -53,15 +53,20 @@ function makeEdge(overrides: Partial<WorkGraphEdge>): WorkGraphEdge {
  * fetchFeatureFlagTimeseries calls graphqlFetch before registry/impact (those
  * helpers await resolveOrgId first, deferring their graphqlFetch calls).
  */
-function mockSuccessfulFetch(timeseriesBuckets: {
-    friction?: number[];
-    error?: number[];
-    activation?: number[];
-    coverage?: number[];
-}) {
-    const makeTimeseries = (measure: string, values: number[]) => ({
+type BucketValues = Array<number | null>;
+
+function mockSuccessfulFetch(
+    timeseriesBuckets: {
+        friction?: BucketValues;
+        error?: BucketValues;
+        activation?: BucketValues;
+        coverage?: BucketValues;
+    },
+    secondRepo?: { friction?: BucketValues; activation?: BucketValues },
+) {
+    const makeTimeseries = (measure: string, values: BucketValues, repo = "repo-a") => ({
         dimension: "REPO",
-        dimensionValue: "repo-a",
+        dimensionValue: repo,
         measure,
         buckets: values.map((value, i) => ({
             date: `2026-05-${String(i + 1).padStart(2, "0")}`,
@@ -114,6 +119,18 @@ function mockSuccessfulFetch(timeseriesBuckets: {
                             "FLAG_COVERAGE_RATIO",
                             timeseriesBuckets.coverage ?? [60, 70],
                         ),
+                        ...(secondRepo?.friction
+                            ? [makeTimeseries("FLAG_FRICTION_DELTA", secondRepo.friction, "repo-b")]
+                            : []),
+                        ...(secondRepo?.activation
+                            ? [
+                                  makeTimeseries(
+                                      "FLAG_ACTIVATION_RATE",
+                                      secondRepo.activation,
+                                      "repo-b",
+                                  ),
+                              ]
+                            : []),
                     ],
                 },
             });
@@ -632,5 +649,106 @@ describe("resolveOrgId — no default-org fallback (CHAOS-4728)", () => {
             "org_id is required: not provided and not found in session",
         );
         expect(mockGraphql).not.toHaveBeenCalled();
+    });
+});
+
+// ── null buckets: missing is not zero ───────────────────────────────────────
+
+describe("feature flag sparklines and cards with null buckets", () => {
+    const DATE_RANGE = { startDate: "2026-05-01", endDate: "2026-05-14" };
+
+    beforeEach(() => {
+        mockGraphql.mockReset();
+        mockAuth.mockResolvedValue({ user: { org_id: "org-test" } } as never);
+    });
+
+    it("latestFromSpark returns null for a null last bucket", () => {
+        expect(
+            latestFromSpark([
+                { ts: "d1", value: 4 },
+                { ts: "d2", value: null },
+            ]),
+        ).toBeNull();
+    });
+
+    it("deltaFromSpark is null when either endpoint is null, and a 0 endpoint still computes", () => {
+        expect(
+            deltaFromSpark([
+                { ts: "d1", value: null },
+                { ts: "d2", value: 5 },
+            ]),
+        ).toBeNull();
+        expect(
+            deltaFromSpark([
+                { ts: "d1", value: 5 },
+                { ts: "d2", value: null },
+            ]),
+        ).toBeNull();
+        expect(
+            deltaFromSpark([
+                { ts: "d1", value: 0 },
+                { ts: "d2", value: 5 },
+            ]),
+        ).toBe(5);
+    });
+
+    it("a null last friction bucket yields a null card value and null severity (not 0 / low)", async () => {
+        mockSuccessfulFetch({ friction: [5, null] });
+        const { summary } = await fetchFeatureFlagsData(DATE_RANGE);
+        expect(summary.releaseFrictionDelta).toBeNull();
+        expect(summary.releaseFrictionSeverity).toBeNull();
+        expect(summary.releaseFrictionSpark.at(-1)?.value).toBeNull();
+    });
+
+    it("a null last error-rate bucket yields a null card value", async () => {
+        mockSuccessfulFetch({ error: [-1, null] });
+        const { summary } = await fetchFeatureFlagsData(DATE_RANGE);
+        expect(summary.releaseErrorRateDelta).toBeNull();
+    });
+
+    it("a produced 0 friction bucket stays 0 with severity low", async () => {
+        mockSuccessfulFetch({ friction: [5, 0] });
+        const { summary } = await fetchFeatureFlagsData(DATE_RANGE);
+        expect(summary.releaseFrictionDelta).toBe(0);
+        expect(summary.releaseFrictionSeverity).toBe("low");
+    });
+
+    it("keeps a null bucket as a gap in the sparkline and a 0 as 0", async () => {
+        mockSuccessfulFetch({ activation: [3, null, 0] });
+        const { summary } = await fetchFeatureFlagsData(DATE_RANGE);
+        expect(summary.activeFlagsSpark.map((p) => p.value)).toEqual([3, null, 0]);
+    });
+
+    it("averages repos over non-null buckets only, and is null when every repo is null", async () => {
+        mockSuccessfulFetch({ activation: [10, null, null] }, { activation: [null, 20, null] });
+        const { summary } = await fetchFeatureFlagsData(DATE_RANGE);
+        // d1: mean(10, null) = 10 (not 5); d2: mean(null, 20) = 20; d3: all null.
+        expect(summary.activeFlagsSpark.map((p) => p.value)).toEqual([10, 20, null]);
+    });
+
+    it("mean(0, null) is 0 and mean(0, 10) is 5", async () => {
+        mockSuccessfulFetch({ activation: [0, 0] }, { activation: [null, 10] });
+        const { summary } = await fetchFeatureFlagsData(DATE_RANGE);
+        expect(summary.activeFlagsSpark.map((p) => p.value)).toEqual([0, 5]);
+    });
+
+    it("a null latest coverage bucket with no releases is a null ratio (--), never 0", async () => {
+        mockSuccessfulFetch({ coverage: [60, null] });
+        const { summary } = await fetchFeatureFlagsData(DATE_RANGE);
+        expect(summary.coverageRatio).toBeNull();
+    });
+
+    it("a produced 0 latest coverage bucket stays 0", async () => {
+        mockSuccessfulFetch({ coverage: [60, 0] });
+        const { summary } = await fetchFeatureFlagsData(DATE_RANGE);
+        expect(summary.coverageRatio).toBe(0);
+    });
+
+    it("a null last coverage bucket falls back to the work-graph ratio, not to 0 from the null", async () => {
+        mockSuccessfulFetch({ coverage: [60, null] });
+        const { summary } = await fetchFeatureFlagsData(DATE_RANGE);
+        // Empty edges -> the documented work-graph fallback (0 when no releases exist); the
+        // null bucket must not be read as a 0 ratio from the timeseries.
+        expect(summary.coverageRatioSpark.at(-1)?.value).toBeNull();
     });
 });

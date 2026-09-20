@@ -119,7 +119,8 @@ export interface AnalyticsRequestInput {
 
 export interface TimeseriesBucket {
     date: string;
-    value: number;
+    /** null when the backend had no data for the bucket (missing is not zero). */
+    value: number | null;
 }
 
 export interface TimeseriesResult {

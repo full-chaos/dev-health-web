@@ -1,6 +1,34 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render } from "@/test/utils";
 
-import { formatSparklineTooltipDate, formatSparklineTooltipValue } from "./SparklineChart";
+import {
+    SparklineChart,
+    formatSparklineTooltipDate,
+    formatSparklineTooltipValue,
+} from "./SparklineChart";
+
+const { chartSpy } = vi.hoisted(() => ({ chartSpy: vi.fn() }));
+
+vi.mock("./chartTheme", () => ({
+    useChartTheme: () => ({
+        text: "#111",
+        grid: "#eee",
+        muted: "#666",
+        background: "#fff",
+        stroke: "#ddd",
+        accent1: "#00f",
+        accent2: "#70f",
+        accent3: "#f00",
+    }),
+    useChartColors: () => [],
+}));
+
+vi.mock("./Chart", () => ({
+    Chart: (props: unknown) => {
+        chartSpy(props);
+        return <div data-testid="sparkline-chart" />;
+    },
+}));
 
 describe("formatSparklineTooltipDate", () => {
     it("formats an ISO datetime string as a short date (not the raw ISO)", () => {
@@ -44,5 +72,39 @@ describe("formatSparklineTooltipValue", () => {
     it("preserves non-numeric tooltip values", () => {
         expect(formatSparklineTooltipValue("No data")).toBe("No data");
         expect(formatSparklineTooltipValue(undefined)).toBe("");
+    });
+});
+
+describe("formatSparklineTooltipValue with a null (missing) value", () => {
+    it("says there is no data instead of printing nothing or 0", () => {
+        expect(formatSparklineTooltipValue(null as unknown as undefined)).toBe("No data");
+    });
+    it("still formats a produced 0", () => {
+        expect(formatSparklineTooltipValue(0)).toBe("0");
+    });
+});
+
+describe("SparklineChart tooltip with a null (missing) point", () => {
+    beforeEach(() => chartSpy.mockClear());
+
+    const tooltip = () =>
+        (chartSpy.mock.calls.at(-1)?.[0] as { option: Record<string, unknown> }).option as {
+            series: Array<{ data: Array<number | null> }>;
+            tooltip: { formatter: (p: unknown) => string };
+        };
+
+    it("passes the null through as a gap and says 'No data' when ECharts hands undefined to the tooltip", () => {
+        render(<SparklineChart data={[3, null, 5]} categories={["a", "b", "c"]} />);
+        const option = tooltip();
+        expect(option.series[0].data).toEqual([3, null, 5]);
+        expect(option.tooltip.formatter([{ axisValue: "b", value: undefined }])).toContain(
+            "No data",
+        );
+        expect(option.tooltip.formatter([{ axisValue: "b", value: null }])).toContain("No data");
+    });
+
+    it("still formats a produced 0", () => {
+        render(<SparklineChart data={[0, 1]} categories={["a", "b"]} />);
+        expect(tooltip().tooltip.formatter([{ axisValue: "a", value: 0 }])).toMatch(/:\s*0$/);
     });
 });

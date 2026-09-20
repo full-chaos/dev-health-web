@@ -165,7 +165,9 @@ export function contextSpreadSummary(trend: TrendPoint[]): {
     latest: number | null;
     peak: number | null;
 } {
-    const { values } = orderTimeseriesPoints(trend);
+    // TrendPoint values are always numbers; the filter only narrows the shared
+    // chart type (which allows null gaps) back to number.
+    const values = orderTimeseriesPoints(trend).values.filter((v): v is number => v !== null);
     const hasData = values.length > 0;
     return {
         hasData,
