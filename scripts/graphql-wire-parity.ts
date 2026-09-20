@@ -64,6 +64,10 @@ import {
     MetricLineageDocument,
 } from "../src/lib/graphql/__generated__/graphql";
 import {
+    PRODUCT_TELEMETRY_DASHBOARD_QUERY,
+    PRODUCT_TELEMETRY_PLATFORM_DASHBOARD_QUERY,
+} from "../src/lib/graphql/productTelemetryFetchers";
+import {
     FEATURE_FLAG_EVENTS_QUERY,
     FEATURE_FLAG_REGISTRY_QUERY,
 } from "../src/lib/feature-flags/queries";
@@ -102,6 +106,8 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     busFactor: BUS_FACTOR_QUERY,
     acrRepositoryScopes: ACR_REPOSITORY_SCOPES_QUERY,
     catalogValues: CATALOG_VALUES_QUERY,
+    productTelemetryDashboard: PRODUCT_TELEMETRY_DASHBOARD_QUERY,
+    productTelemetryPlatformDashboard: PRODUCT_TELEMETRY_PLATFORM_DASHBOARD_QUERY,
     connectorsDataHealth: GetConnectorsDataHealthDocument.toString(),
     dataHealthIdentity: DataHealthIdentityDocument.toString(),
     mappingCoverageHealth: GetMappingCoverageHealthDocument.toString(),
