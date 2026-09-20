@@ -88,7 +88,6 @@ The following files all reference provider names or the `Provider` type. Each mu
 | `src/lib/admin/api/teams.ts`                                    | `discover(provider, ...)` — team-discovery endpoint is provider-scoped.                                                                                     |
 | `src/lib/admin/server/teams.ts`                                 | `discoverTeams(provider)` server action wrapping the API call above.                                                                                        |
 | `src/lib/graphql/schema.graphql`                                | `provider: String!` field on sync-related GraphQL types (lines 509, 597). Treated as an opaque string — no enum enforcement at the GraphQL layer.           |
-| `src/lib/graphql/hooks/useSubscription.ts`                      | Filters real-time sync-progress events by `provider` string (line 64).                                                                                      |
 | `src/components/admin/sync/SyncProgressBar.tsx`                 | Accepts `provider: string` prop; matches incoming subscription events by provider (line 30).                                                                |
 | `src/components/admin/sync/SyncConfigCard.tsx`                  | Renders `config.provider` as a capitalised label (line 87).                                                                                                 |
 

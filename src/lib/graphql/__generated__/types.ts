@@ -1565,14 +1565,6 @@ export type MetricLineage = {
   sourceTables: Array<Scalars['String']['output']>;
 };
 
-export type MetricsUpdate = {
-  __typename?: 'MetricsUpdate';
-  day: Scalars['String']['output'];
-  message: Scalars['String']['output'];
-  orgId: Scalars['String']['output'];
-  updatedAt: Scalars['DateTime']['output'];
-};
-
 export type MissingMapping = {
   __typename?: 'MissingMapping';
   reason: Scalars['String']['output'];
@@ -2356,8 +2348,11 @@ export type ReworkThemeAllocation = {
 
 export type SankeyCoverage = {
   __typename?: 'SankeyCoverage';
+  directRepoCoverage?: Maybe<Scalars['Float']['output']>;
   repoCoverage: Scalars['Float']['output'];
+  repoFanoutReposPerUnit?: Maybe<Scalars['Float']['output']>;
   teamCoverage: Scalars['Float']['output'];
+  teamFallbackRepoCoverage?: Maybe<Scalars['Float']['output']>;
 };
 
 export type SankeyEdge = {
@@ -2534,52 +2529,6 @@ export type SparkPoint = {
   __typename?: 'SparkPoint';
   ts: Scalars['String']['output'];
   value: Scalars['Float']['output'];
-};
-
-export type Subscription = {
-  __typename?: 'Subscription';
-  /** Subscribe to metrics updates for an organization */
-  metricsUpdated: MetricsUpdate;
-  /** Subscribe to data sync progress */
-  syncProgress: SyncProgress;
-  /** Subscribe to task status updates */
-  taskStatus: TaskStatus;
-};
-
-
-export type SubscriptionMetricsUpdatedArgs = {
-  orgId: Scalars['String']['input'];
-};
-
-
-export type SubscriptionSyncProgressArgs = {
-  orgId: Scalars['String']['input'];
-};
-
-
-export type SubscriptionTaskStatusArgs = {
-  taskId: Scalars['String']['input'];
-};
-
-export type SyncProgress = {
-  __typename?: 'SyncProgress';
-  itemsProcessed: Scalars['Int']['output'];
-  itemsTotal: Scalars['Int']['output'];
-  message?: Maybe<Scalars['String']['output']>;
-  orgId: Scalars['String']['output'];
-  provider: Scalars['String']['output'];
-  status: Scalars['String']['output'];
-  updatedAt: Scalars['DateTime']['output'];
-};
-
-export type TaskStatus = {
-  __typename?: 'TaskStatus';
-  message?: Maybe<Scalars['String']['output']>;
-  progress: Scalars['Float']['output'];
-  result?: Maybe<Scalars['String']['output']>;
-  status: Scalars['String']['output'];
-  taskId: Scalars['String']['output'];
-  updatedAt: Scalars['DateTime']['output'];
 };
 
 export type TeamAttributionConfidence =
