@@ -244,7 +244,10 @@ export function compareRegistry(
     const warnings: string[] = [];
     const goByOperation = new Map(goEntries.map((entry) => [entry.operation, entry]));
 
-    const goOnly = [...goByOperation.keys()].filter((op) => !(op in manifest));
+    // Own-property membership: `op in manifest` also matches inherited
+    // Object.prototype names (toString, constructor, ...), which would hide an
+    // ops operation of that name from the no-manifest-entry error.
+    const goOnly = [...goByOperation.keys()].filter((op) => !Object.hasOwn(manifest, op));
     const manifestOnly = Object.keys(manifest).filter((op) => !goByOperation.has(op));
     if (goOnly.length > 0) {
         errors.push(

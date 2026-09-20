@@ -145,12 +145,26 @@ jobs:
                   set -euo pipefail
                   ref=main
                   if [ -n "$BRANCH" ] && [ "$BRANCH" != "main" ]; then
-                    if git ls-remote --exit-code --heads https://github.com/full-chaos/dev-health-ops.git "refs/heads/${BRANCH}" >/dev/null 2>&1; then
-                      ref="$BRANCH"
-                      echo "::notice::wire parity: paired ops branch '$BRANCH' found; checking it out instead of main"
-                    else
-                      echo "::notice::wire parity: no ops branch named '$BRANCH' (unpaired change); using ops main"
-                    fi
+                    # --exit-code: 0 = branch exists, 2 = no such branch. Any
+                    # other status is a lookup failure (network, DNS, rate
+                    # limit) and must fail the step, not silently pick main --
+                    # a paired change would then be checked against the wrong
+                    # ops side.
+                    rc=0
+                    git ls-remote --exit-code --heads https://github.com/full-chaos/dev-health-ops.git "refs/heads/${BRANCH}" >/dev/null || rc=$?
+                    case "$rc" in
+                      0)
+                        ref="$BRANCH"
+                        echo "::notice::wire parity: paired ops branch '$BRANCH' found; checking it out instead of main"
+                        ;;
+                      2)
+                        echo "::notice::wire parity: no ops branch named '$BRANCH' (unpaired change); using ops main"
+                        ;;
+                      *)
+                        echo "::error::wire parity: could not look up ops branch '$BRANCH' (git ls-remote exit $rc); refusing to fall back to main"
+                        exit 1
+                        ;;
+                    esac
                   fi
                   echo "ref=$ref" >> "$GITHUB_OUTPUT"
             - name: Checkout dev-health-ops for wire parity

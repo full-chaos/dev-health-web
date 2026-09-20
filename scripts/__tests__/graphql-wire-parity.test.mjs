@@ -84,6 +84,22 @@ describe("compareRegistry", () => {
         expect(errors.some((e) => e.includes("featureFlags"))).toBe(true);
     });
 
+    it.each(["toString", "constructor", "hasOwnProperty", "__proto__", "valueOf"])(
+        "reports an ops operation named %s as having no manifest entry (own-property membership)",
+        (operation) => {
+            const entry = {
+                operation,
+                document: `query ${operation} { x }`,
+                const_name: "registeredInheritedNameDocument",
+                digest: sha256Trim(`query ${operation} { x }`),
+            };
+            for (const options of [{}, { tolerateManifestOnly: true }]) {
+                const { errors } = compareRegistry([entry], {}, options);
+                expect(errors.some((e) => e.includes(operation))).toBe(true);
+            }
+        },
+    );
+
     it("tolerates a manifest-only operation as a warning, and only in that direction", () => {
         const entries = correctGoEntries().filter((e) => e.operation !== "featureFlags");
         const tolerant = compareRegistry(entries, OPERATION_MANIFEST, {
