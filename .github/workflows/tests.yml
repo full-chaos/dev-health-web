@@ -102,6 +102,10 @@ jobs:
         env:
             ASK_DEV_OPS_ROOT: dev-health-ops
             ASK_DEV_OPS_MAIN_ROOT: dev-health-ops-main
+            WIRE_PARITY_OPS_ROOT: dev-health-ops-parity
+            # Main-push run only: the ops half of a paired change may land
+            # after this repo's main names its operation (see the resolve step).
+            WIRE_PARITY_TOLERATE_MANIFEST_ONLY: ${{ github.event_name == 'push' && '1' || '' }}
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             # Must stay equal to SOURCE_COMMIT in scripts/ask-dev-contracts.mjs
@@ -125,6 +129,37 @@ jobs:
                   ref: main
                   path: dev-health-ops-main
                   persist-credentials: false
+            # graphql:wire-parity:check is checked against the ops branch that
+            # carries the same name as this branch when one exists (a paired
+            # change), else ops main. A paired PR is then green on both sides
+            # before either merges. Merge order for a paired change is web
+            # FIRST: main-push runs tolerate a manifest entry ops has not
+            # registered yet (warning), while an ops operation with no manifest
+            # entry stays an error. The ask-dev currency guard above keeps
+            # reading ops main.
+            - name: Resolve dev-health-ops ref for wire parity
+              id: wire-parity-ops-ref
+              env:
+                  BRANCH: ${{ github.head_ref || github.ref_name }}
+              run: |
+                  set -euo pipefail
+                  ref=main
+                  if [ -n "$BRANCH" ] && [ "$BRANCH" != "main" ]; then
+                    if git ls-remote --exit-code --heads https://github.com/full-chaos/dev-health-ops.git "refs/heads/${BRANCH}" >/dev/null 2>&1; then
+                      ref="$BRANCH"
+                      echo "::notice::wire parity: paired ops branch '$BRANCH' found; checking it out instead of main"
+                    else
+                      echo "::notice::wire parity: no ops branch named '$BRANCH' (unpaired change); using ops main"
+                    fi
+                  fi
+                  echo "ref=$ref" >> "$GITHUB_OUTPUT"
+            - name: Checkout dev-health-ops for wire parity
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+              with:
+                  repository: full-chaos/dev-health-ops
+                  ref: ${{ steps.wire-parity-ops-ref.outputs.ref }}
+                  path: dev-health-ops-parity
+                  persist-credentials: false
             - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
             - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
               with:
@@ -138,8 +173,8 @@ jobs:
             - name: Set up Go (for graphql:wire-parity:check's registrydump)
               uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
               with:
-                  go-version-file: dev-health-ops-main/go.mod
-                  cache-dependency-path: dev-health-ops-main/go.sum
+                  go-version-file: dev-health-ops-parity/go.mod
+                  cache-dependency-path: dev-health-ops-parity/go.sum
             - run: pnpm install --frozen-lockfile
             # CHAOS-3273 Wave 0: the endpoint-profile gate (guardrail G-1)
             # validates endpoint-profiles.web.json against a closed

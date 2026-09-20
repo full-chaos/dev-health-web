@@ -40,6 +40,11 @@
  *   tsx scripts/graphql-wire-parity.ts check --ops-root <path-to-ops-checkout>
  *   tsx scripts/graphql-wire-parity.ts generate --ops-root <path> [--json]
  *
+ * `--tolerate-manifest-only` turns "the manifest names an operation ops does not
+ * register" into a warning (never the reverse direction). It exists for the
+ * window between the web half and the ops half of a paired change, which
+ * merges web first.
+ *
  * `check` exits non-zero and prints a mismatch table if ANY manifested
  * operation's Go-side digest and wire-side digest disagree, or if the
  * two sides' operation SETS disagree (a Go operation with no manifest
@@ -233,8 +238,10 @@ interface ParityRow {
 export function compareRegistry(
     goEntries: RegistryEntry[],
     manifest: Record<string, string>,
-): { rows: ParityRow[]; errors: string[] } {
+    options: { tolerateManifestOnly?: boolean } = {},
+): { rows: ParityRow[]; errors: string[]; warnings: string[] } {
     const errors: string[] = [];
+    const warnings: string[] = [];
     const goByOperation = new Map(goEntries.map((entry) => [entry.operation, entry]));
 
     const goOnly = [...goByOperation.keys()].filter((op) => !(op in manifest));
@@ -245,9 +252,16 @@ export function compareRegistry(
         );
     }
     if (manifestOnly.length > 0) {
-        errors.push(
-            `OPERATION_MANIFEST names operation(s) query-api does not register: ${manifestOnly.join(", ")} — remove or fix the manifest entry.`,
-        );
+        const message = `OPERATION_MANIFEST names operation(s) query-api does not register: ${manifestOnly.join(", ")} — remove or fix the manifest entry.`;
+        if (options.tolerateManifestOnly) {
+            // A paired change merges web first, so for a short window this
+            // repo's main names an operation ops main has not registered yet.
+            // Only that direction is tolerated; an operation ops registers
+            // with no manifest entry stays an error.
+            warnings.push(message);
+        } else {
+            errors.push(message);
+        }
     }
 
     const rows: ParityRow[] = [];
@@ -272,29 +286,32 @@ export function compareRegistry(
         rows.push({ operation, goDigest, wireDigest, match: goDigest === wireDigest });
     }
     rows.sort((a, b) => a.operation.localeCompare(b.operation));
-    return { rows, errors };
+    return { rows, errors, warnings };
 }
 
 function parseArgs(argv: string[]) {
     const [mode, ...rest] = argv;
     let opsRoot: string | undefined;
     let json = false;
+    let tolerateManifestOnly = false;
     for (let i = 0; i < rest.length; i += 1) {
         if (rest[i] === "--ops-root") {
             opsRoot = rest[i + 1];
             i += 1;
         } else if (rest[i] === "--json") {
             json = true;
+        } else if (rest[i] === "--tolerate-manifest-only") {
+            tolerateManifestOnly = true;
         }
     }
-    return { mode, opsRoot, json };
+    return { mode, opsRoot, json, tolerateManifestOnly };
 }
 
 function main() {
-    const { mode, opsRoot, json } = parseArgs(process.argv.slice(2));
+    const { mode, opsRoot, json, tolerateManifestOnly } = parseArgs(process.argv.slice(2));
     if (mode !== "check" && mode !== "generate") {
         process.stderr.write(
-            "usage: graphql-wire-parity.ts <check|generate> --ops-root <path> [--json]\n",
+            "usage: graphql-wire-parity.ts <check|generate> --ops-root <path> [--json] [--tolerate-manifest-only]\n",
         );
         process.exitCode = 2;
         return;
@@ -306,7 +323,10 @@ function main() {
     }
 
     const goEntries = runRegistrydump(path.resolve(ROOT, opsRoot));
-    const { rows, errors } = compareRegistry(goEntries, OPERATION_MANIFEST);
+    const { rows, errors, warnings } = compareRegistry(goEntries, OPERATION_MANIFEST, {
+        tolerateManifestOnly,
+    });
+    for (const warning of warnings) process.stderr.write(`WARNING: ${warning}\n`);
 
     if (mode === "generate") {
         // codex review, CHAOS-4696 round 1, P3 EXECUTED: this branch used
