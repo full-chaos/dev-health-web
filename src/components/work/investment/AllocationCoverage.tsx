@@ -3,7 +3,12 @@
 import { useMemo } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { formatNumber } from "@/lib/formatters";
-import { isUnassignedLabel, stripSankeyPrefix } from "@/lib/investment";
+import {
+    COVERAGE_UNAVAILABLE_REASON,
+    isUnassignedLabel,
+    readFlowCoverage,
+    stripSankeyPrefix,
+} from "@/lib/investment";
 import type { SankeyResponse } from "@/lib/types";
 
 type AllocationCoverageProps = {
@@ -142,8 +147,9 @@ export function readCoverage(flow: SankeyResponse | null | undefined): CoverageR
     if (!flow) {
         return { teamCoverage: null, repoCoverage: null, unassignedShare: null };
     }
-    const teamCoverage = flow.coverage?.team ?? flow.team_coverage ?? null;
-    const repoCoverage = flow.coverage?.repo ?? flow.repo_coverage ?? null;
+    // Missing is not zero: only a coverage value the backend produced (a
+    // finite number, 0 included) is a number here; anything else stays null.
+    const { team: teamCoverage, repo: repoCoverage } = readFlowCoverage(flow);
 
     return { teamCoverage, repoCoverage, unassignedShare: computeUnassignedShare(flow) };
 }
@@ -157,8 +163,9 @@ const asPct = (value: number) =>
  * Allocation answers "how is effort distributed across teams, repos, and
  * themes?" — so the honest counterpart is "how much of that effort could NOT be
  * attributed?". This reads coverage and unassigned shares straight off the
- * persisted Sankey responses (no recomputation) and degrades to an honest empty
- * state when no allocation path exists for the window.
+ * persisted Sankey responses (no recomputation). A coverage value the backend
+ * did not produce (its coverage query can fail and degrade to null) renders as
+ * "unavailable", never as a number; a produced 0 renders as 0%.
  */
 export function AllocationCoverage({
     teamCategoryFlow,
@@ -188,8 +195,8 @@ export function AllocationCoverage({
         return (
             <DataState
                 variant="insufficient-confidence"
-                title="Coverage not available yet"
-                description="No allocation path resolved for this scope and window, so team and repo coverage cannot be summarized."
+                title="Coverage not available"
+                description={`${COVERAGE_UNAVAILABLE_REASON}, so team and repo coverage cannot be summarized.`}
             />
         );
     }
@@ -240,7 +247,12 @@ export function AllocationCoverage({
                                 </p>
                             </>
                         ) : (
-                            <p className="mt-2 text-sm text-(--ink-muted)">Not reported</p>
+                            <>
+                                <p className="mt-2 text-sm font-medium text-(--ink)">Unavailable</p>
+                                <p className="mt-1 text-xs text-(--ink-muted)">
+                                    {COVERAGE_UNAVAILABLE_REASON}
+                                </p>
+                            </>
                         )}
                     </div>
                 ))}

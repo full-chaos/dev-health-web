@@ -154,14 +154,15 @@ export interface SankeyEdge {
 }
 
 export interface SankeyCoverage {
-    teamCoverage: number;
-    repoCoverage: number;
+    teamCoverage: number | null;
+    repoCoverage: number | null;
 }
 
 export interface SankeyResult {
     nodes: SankeyNode[];
     edges: SankeyEdge[];
-    coverage?: SankeyCoverage;
+    /** null when the backend's coverage query failed and degraded by design. */
+    coverage?: SankeyCoverage | null;
     /** CHAOS-4241: unit of node/edge `value` — "WORK_UNITS" (default) | "LOC". */
     unit?: string;
 }
