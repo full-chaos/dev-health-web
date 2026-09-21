@@ -129,11 +129,10 @@ jobs:
             # graphql:wire-parity:check is checked against the ops branch that
             # carries the same name as this branch when one exists (a paired
             # change), else ops main. A paired PR is then green on both sides
-            # before either merges. Merge order for a paired change is web
-            # FIRST: main-push runs tolerate a manifest entry ops has not
-            # registered yet (warning), while an ops operation with no manifest
-            # entry stays an error. The ask-dev currency guard above keeps
-            # reading ops main.
+            # before either merges. The check is strict on every run: a manifest
+            # entry ops has not registered and an ops operation with no
+            # manifest entry are both errors, so merge the ops half first.
+            # The ask-dev currency guard above keeps reading ops main.
             - name: Resolve dev-health-ops ref for wire parity
               id: wire-parity-ops-ref
               env:
