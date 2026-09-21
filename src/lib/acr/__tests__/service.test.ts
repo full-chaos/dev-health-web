@@ -120,9 +120,19 @@ function installOpsAuthorization(
                 .parse(body);
             expect(operation.query).toContain("query ACRRepositoryScopes($orgId: String!)");
             expect(operation.query).toContain("catalog(orgId: $orgId, dimension: REPO)");
+            expect(operation.query).toContain("__typename");
             expect(operation.variables).toEqual({ orgId: "org-123" });
             return HttpResponse.json({
-                data: { catalog: { values: scopes.map((value) => ({ count: 1, value })) } },
+                data: {
+                    catalog: {
+                        __typename: "CatalogResult",
+                        values: scopes.map((value) => ({
+                            __typename: "CatalogValueItem",
+                            count: 1,
+                            value,
+                        })),
+                    },
+                },
             });
         }),
     );

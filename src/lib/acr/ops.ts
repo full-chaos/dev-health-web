@@ -18,7 +18,15 @@ const scopesSchema = z
     .object({
         data: z.object({
             catalog: z.object({
-                values: z.array(z.object({ count: z.number(), value: z.string() }).strict()),
+                values: z.array(
+                    z
+                        .object({
+                            __typename: z.string().optional(),
+                            count: z.number(),
+                            value: z.string(),
+                        })
+                        .strict(),
+                ),
             }),
         }),
     })
