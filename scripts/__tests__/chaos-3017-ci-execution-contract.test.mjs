@@ -263,25 +263,24 @@ describe("CHAOS-3017 executable CI boundaries", () => {
                 command.startsWith("graphql:wire-parity:check"),
             );
 
-        it("hands the harness the resolved ops checkout and the main-push-only flag", () => {
+        it("hands the harness the resolved ops checkout and no tolerance input", () => {
             const workflowJob = qualityJob();
             expect(workflowJob).toContain("WIRE_PARITY_OPS_ROOT: dev-health-ops-parity");
-            expect(workflowJob).toContain(
-                "WIRE_PARITY_TOLERATE_MANIFEST_ONLY: ${{ github.event_name == 'push' && '1' || '' }}",
-            );
+            expect(workflowJob).not.toContain("WIRE_PARITY_TOLERATE_MANIFEST_ONLY");
             expect(workflowJob).toContain("path: dev-health-ops-parity");
             expect(workflowJob).toContain("ref: ${{ steps.wire-parity-ops-ref.outputs.ref }}");
             expect(workflowJob).toContain("go-version-file: dev-health-ops-parity/go.mod");
         });
 
-        it("passes --ops-root from WIRE_PARITY_OPS_ROOT and the flag only when it is exactly 1", () => {
+        it("passes --ops-root from WIRE_PARITY_OPS_ROOT and nothing else, whatever the environment", () => {
             const parity = path.join(ROOT, "dev-health-ops-parity");
             const main = path.join(ROOT, "dev-health-ops-main");
             expect(wireParityCommand({})).toBe(`graphql:wire-parity:check --ops-root ${main}`);
             expect(wireParityCommand({ WIRE_PARITY_OPS_ROOT: parity })).toBe(
                 `graphql:wire-parity:check --ops-root ${parity}`,
             );
-            for (const value of ["", "0", "true"]) {
+            // The old variable no longer reaches the command.
+            for (const value of ["", "0", "true", "1"]) {
                 expect(
                     wireParityCommand({
                         WIRE_PARITY_OPS_ROOT: parity,
@@ -289,12 +288,6 @@ describe("CHAOS-3017 executable CI boundaries", () => {
                     }),
                 ).toBe(`graphql:wire-parity:check --ops-root ${parity}`);
             }
-            expect(
-                wireParityCommand({
-                    WIRE_PARITY_OPS_ROOT: parity,
-                    WIRE_PARITY_TOLERATE_MANIFEST_ONLY: "1",
-                }),
-            ).toBe(`graphql:wire-parity:check --ops-root ${parity} --tolerate-manifest-only`);
         });
 
         // Executes the workflow's own resolve step with a stub `git` whose

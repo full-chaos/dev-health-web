@@ -181,15 +181,11 @@ run_quality() {
   # -- the real exchange-chain functions). Defaults to ASK_DEV_OPS_MAIN_ROOT's
   # checkout.
   # A paired change (same branch name on both repos) is checked against the
-  # ops branch, not main: CI passes WIRE_PARITY_OPS_ROOT for that, and
-  # WIRE_PARITY_TOLERATE_MANIFEST_ONLY=1 on the main-push run only.
+  # ops branch, not main: CI passes WIRE_PARITY_OPS_ROOT for that. The check
+  # is strict on every run.
   wire_parity_root="${WIRE_PARITY_OPS_ROOT:-${ASK_DEV_OPS_MAIN_ROOT}}"
-  wire_parity_args=(--ops-root "${wire_parity_root}")
-  if [[ "${WIRE_PARITY_TOLERATE_MANIFEST_ONLY:-}" == "1" ]]; then
-    wire_parity_args+=(--tolerate-manifest-only)
-  fi
-  echo "==> pnpm graphql:wire-parity:check ${wire_parity_args[*]}"
-  pnpm graphql:wire-parity:check "${wire_parity_args[@]}"
+  echo "==> pnpm graphql:wire-parity:check --ops-root ${wire_parity_root}"
+  pnpm graphql:wire-parity:check --ops-root "${wire_parity_root}"
   run_pnpm_script lint
   run_pnpm_script typecheck
 }
