@@ -3,6 +3,8 @@ export const ACR_REPOSITORY_SCOPES_QUERY = `query ACRRepositoryScopes($orgId: St
     values {
       value
       count
+      __typename
     }
+    __typename
   }
 }`;
