@@ -103,9 +103,6 @@ jobs:
             ASK_DEV_OPS_ROOT: dev-health-ops
             ASK_DEV_OPS_MAIN_ROOT: dev-health-ops-main
             WIRE_PARITY_OPS_ROOT: dev-health-ops-parity
-            # Main-push run only: the ops half of a paired change may land
-            # after this repo's main names its operation (see the resolve step).
-            WIRE_PARITY_TOLERATE_MANIFEST_ONLY: ${{ github.event_name == 'push' && '1' || '' }}
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             # Must stay equal to SOURCE_COMMIT in scripts/ask-dev-contracts.mjs

@@ -93,34 +93,19 @@ describe("compareRegistry", () => {
                 const_name: "registeredInheritedNameDocument",
                 digest: sha256Trim(`query ${operation} { x }`),
             };
-            for (const options of [{}, { tolerateManifestOnly: true }]) {
-                const { errors } = compareRegistry([entry], {}, options);
-                expect(errors.some((e) => e.includes(operation))).toBe(true);
-            }
+            const { errors } = compareRegistry([entry], {});
+            expect(errors.some((e) => e.includes(operation))).toBe(true);
         },
     );
 
-    it("tolerates a manifest-only operation as a warning, and only in that direction", () => {
+    it("has no tolerance for a manifest-only operation: it is an error, whatever a caller passes", () => {
         const entries = correctGoEntries().filter((e) => e.operation !== "featureFlags");
-        const tolerant = compareRegistry(entries, OPERATION_MANIFEST, {
+        // A stale caller still passing the removed option must not soften the result.
+        const result = compareRegistry(entries, OPERATION_MANIFEST, {
             tolerateManifestOnly: true,
         });
-        expect(tolerant.errors).toEqual([]);
-        expect(tolerant.warnings.some((w) => w.includes("featureFlags"))).toBe(true);
-
-        const withUnmanifested = [
-            ...correctGoEntries(),
-            {
-                operation: "somethingNew",
-                document: "query SomethingNew { somethingNew }",
-                const_name: "registeredSomethingNewDocument",
-                digest: sha256Trim("query SomethingNew { somethingNew }"),
-            },
-        ];
-        const stillStrict = compareRegistry(withUnmanifested, OPERATION_MANIFEST, {
-            tolerateManifestOnly: true,
-        });
-        expect(stillStrict.errors.some((e) => e.includes("somethingNew"))).toBe(true);
+        expect(result.errors.some((e) => e.includes("featureFlags"))).toBe(true);
+        expect(Object.keys(result)).toEqual(["rows", "errors"]);
     });
 
     /**
