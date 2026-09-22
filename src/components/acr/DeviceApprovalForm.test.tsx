@@ -110,15 +110,42 @@ describe("DeviceApprovalForm", () => {
         );
     });
 
-    it("Given a valid initialUserCode, when rendered, then prefills the verification code and the typed fallback still works", () => {
+    it("Given a valid initialUserCode, when rendered, then prefills the verification code without sending any request", () => {
+        const fetchMock = vi.fn();
+        vi.stubGlobal("fetch", fetchMock);
+
         render(<DeviceApprovalForm initialUserCode="EP23TUGG" />);
 
         const verificationCode = screen.getByLabelText("Verification code");
         expect(verificationCode).toHaveValue("EP23TUGG");
         expect(screen.getByRole("button", { name: "Preview request" })).toBeEnabled();
+        expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it("Given a valid initialUserCode, when the typed fallback overwrites it and the form is submitted, then previews using the EDITED code, not the prefill", async () => {
+        const fetchMock = vi.fn().mockResolvedValueOnce(
+            new Response(JSON.stringify({ repositoryHints: ["full-chaos/platform"] }), {
+                status: 200,
+            }),
+        );
+        vi.stubGlobal("fetch", fetchMock);
+
+        render(<DeviceApprovalForm initialUserCode="EP23TUGG" />);
+        const verificationCode = screen.getByLabelText("Verification code");
 
         fireEvent.change(verificationCode, { target: { value: "ZZ234567" } });
         expect(verificationCode).toHaveValue("ZZ234567");
+
+        fireEvent.click(screen.getByRole("button", { name: "Preview request" }));
+
+        await screen.findByRole("heading", { name: "Review device access" });
+        expect(fetchMock).toHaveBeenCalledWith(
+            "/api/acr/device",
+            expect.objectContaining({
+                body: JSON.stringify({ action: "preview", user_code: "ZZ234567" }),
+                method: "POST",
+            }),
+        );
     });
 
     it("Given no initialUserCode, when rendered, then the verification code starts empty and the button starts disabled", () => {
