@@ -373,7 +373,7 @@ export default function ContextFabricUseCasesPage() {
                             {CTA_LABELS.getStarted}
                         </Link>
                         <a
-                            href="https://github.com/full-chaos/dev-health-acr/blob/main/docs/mcp-sidecar.md"
+                            href="https://github.com/full-chaos/context-fabric-agents"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="rounded-full border border-(--card-stroke) bg-(--card-70) px-8 py-3 text-sm font-medium transition hover:border-foreground/30"
