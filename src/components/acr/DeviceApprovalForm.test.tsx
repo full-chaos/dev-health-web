@@ -110,6 +110,25 @@ describe("DeviceApprovalForm", () => {
         );
     });
 
+    it("Given a valid initialUserCode, when rendered, then prefills the verification code and the typed fallback still works", () => {
+        render(<DeviceApprovalForm initialUserCode="EP23TUGG" />);
+
+        const verificationCode = screen.getByLabelText("Verification code");
+        expect(verificationCode).toHaveValue("EP23TUGG");
+        expect(screen.getByRole("button", { name: "Preview request" })).toBeEnabled();
+
+        fireEvent.change(verificationCode, { target: { value: "ZZ234567" } });
+        expect(verificationCode).toHaveValue("ZZ234567");
+    });
+
+    it("Given no initialUserCode, when rendered, then the verification code starts empty and the button starts disabled", () => {
+        render(<DeviceApprovalForm />);
+
+        const verificationCode = screen.getByLabelText("Verification code");
+        expect(verificationCode).toHaveValue("");
+        expect(screen.getByRole("button", { name: "Preview request" })).toBeDisabled();
+    });
+
     it("Given a malformed eight-character code, when ACR rejects it, then shows the rejection", async () => {
         const fetchMock = vi
             .fn()

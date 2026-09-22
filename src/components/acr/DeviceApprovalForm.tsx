@@ -9,6 +9,13 @@ type ApprovalState = "denied" | "expired" | "pending" | "review" | "success";
 
 type DeviceApprovalFormProps = {
     readonly initialState?: ApprovalState;
+    // Prefill from the acr-printed `verification_uri_complete` link
+    // (`?user_code=...`, CHAOS-6233's RFC 8628 device grant). The page
+    // component validates this against acr's own user-code alphabet before
+    // it ever reaches here, so it is trusted input, not raw query text --
+    // this form still renders the SAME editable input either way, so a
+    // typed or corrected code always works too.
+    readonly initialUserCode?: string;
 };
 
 type ApprovalResponse = {
@@ -53,8 +60,11 @@ function errorState(response: Response): ApprovalState {
     return "pending";
 }
 
-export function DeviceApprovalForm({ initialState = "pending" }: DeviceApprovalFormProps) {
-    const [code, setCode] = useState("");
+export function DeviceApprovalForm({
+    initialState = "pending",
+    initialUserCode,
+}: DeviceApprovalFormProps) {
+    const [code, setCode] = useState(initialUserCode ?? "");
     const [state, setState] = useState<ApprovalState>(initialState);
     const [message, setMessage] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
