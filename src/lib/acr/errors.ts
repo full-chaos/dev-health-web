@@ -12,6 +12,16 @@ export const acrRuntimeErrorCodes = {
     upstream: "upstream",
     unavailable: "unavailable",
     timeout: "timeout",
+    // OAuth consent (CHAOS-6226): distinct terminal states ACR reports for a
+    // handle, kept separate from the generic `upstream` fallback so the
+    // consent page can render the right copy instead of a blank retry.
+    expired: "expired",
+    alreadyCompleted: "already_completed",
+    // Per-handle throttle on acr's POST /authorize/consent (ACR wire body
+    // `{"error":"slow_down"}`, 20/min). Kept distinct from the generic
+    // `upstream` 429 so the consent page can show a wait time and keep the
+    // Approve/Deny buttons usable instead of a terminal error.
+    rateLimited: "rate_limited",
     // CHAOS-3791 prep: error.v1 codes ACR will add once CHAOS-3784 merges (see
     // client.ts upstreamFailure). Web hardcodes retryable: true here per the
     // closed wire contract rather than trusting the upstream body's own
@@ -25,6 +35,7 @@ export type AcrRuntimeErrorCode = (typeof acrRuntimeErrorCodes)[keyof typeof acr
 type AcrRuntimeErrorOptions = {
     readonly cause?: unknown;
     readonly retryable?: boolean;
+    readonly retryAfterSeconds?: number;
     readonly status?: number;
 };
 
@@ -32,6 +43,8 @@ export class AcrRuntimeError extends Error {
     readonly name = "AcrRuntimeError";
     readonly status: number;
     readonly retryable: boolean;
+    /** Present only when the upstream response carried a `Retry-After`. */
+    readonly retryAfterSeconds: number | undefined;
 
     constructor(
         readonly code: AcrRuntimeErrorCode,
@@ -41,6 +54,7 @@ export class AcrRuntimeError extends Error {
         super(message, { cause: options.cause });
         this.status = options.status ?? 503;
         this.retryable = options.retryable ?? false;
+        this.retryAfterSeconds = options.retryAfterSeconds;
     }
 }
 
@@ -50,10 +64,14 @@ export function isAcrRuntimeError(error: unknown): error is AcrRuntimeError {
 
 export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
     switch (code) {
+        case acrRuntimeErrorCodes.alreadyCompleted:
+            return "This request was already completed.";
         case acrRuntimeErrorCodes.configuration:
         case acrRuntimeErrorCodes.unavailable:
         case acrRuntimeErrorCodes.upstream:
             return "Agent Context Runtime is temporarily unavailable.";
+        case acrRuntimeErrorCodes.expired:
+            return "This request has expired.";
         case acrRuntimeErrorCodes.incompatible:
             return "Agent Context Runtime needs a compatible service version.";
         case acrRuntimeErrorCodes.interpretationRejected:
@@ -64,6 +82,8 @@ export function safeAcrRuntimeMessage(code: AcrRuntimeErrorCode): string {
             return "Agent Context Runtime returned an invalid response.";
         case acrRuntimeErrorCodes.notEntitled:
             return "Agent Context Runtime is not available for this organization.";
+        case acrRuntimeErrorCodes.rateLimited:
+            return "Too many attempts. Please wait and try again.";
         case acrRuntimeErrorCodes.repositoryNotAvailable:
             return "The requested context is not available.";
         case acrRuntimeErrorCodes.responseTooLarge:

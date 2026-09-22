@@ -703,6 +703,77 @@
             ]
         },
         {
+            "id": "POST /api/acr/authorize [dev-health-web]",
+            "surface_kind": "rest",
+            "method": "POST",
+            "route": "/api/acr/authorize",
+            "graphql_field_name": null,
+            "service": "dev-health-web",
+            "source": {
+                "file": "src/app/api/acr/authorize/route.ts",
+                "line": 118
+            },
+            "classification": "protected",
+            "public_rationale": null,
+            "accepted_credential_classes": ["auth_js_browser_session"],
+            "primary_validator": {
+                "description": "Route itself only enforces Origin==expectedOrigin + IP/handle rate limits before dispatch (no session check at this layer, same shape as acr/device). All three actions (preview|approve|deny) call previewOAuthConsent/decideOAuthConsent, which internally call auth()+sessionOrError (401 if absent), validate the handle shape server-side (canonicalHandle, src/lib/acr/service.ts:149-152) before ever calling ACR, and EXPLICITLY REJECT an impersonated session (refuseIfImpersonating, src/lib/acr/service.ts:155-171) before issuing a credential -- same positive pattern as acr/device.",
+                "anchor": {
+                    "path": "src/lib/acr/service.ts",
+                    "line": 266,
+                    "line_end": 322
+                }
+            },
+            "token_shape": {
+                "token_type": "auth_js_browser_session (the body also names an opaque 43-char acr request handle; it is a resource reference, not a credential)",
+                "issuer": null,
+                "audience": null,
+                "algorithm": null
+            },
+            "reachable_validators": [
+                {
+                    "description": "proxy.ts's session+org gate (see acr/device row) also runs ahead of this route -- '/api/acr' is not in PREFIX_PUBLIC_PATHS and not in ORG_EXEMPT_PATHS, so the same proxy gate applies to this POST as well as to the /acr/authorize page itself.",
+                    "anchor": {
+                        "path": "src/proxy.ts",
+                        "line": 250,
+                        "line_end": 279
+                    },
+                    "is_intended_validator": false,
+                    "reachable_but_not_owner": true
+                }
+            ],
+            "action": "acr.oauth_consent.preview | acr.oauth_consent.approve | acr.oauth_consent.deny",
+            "resource_resolver": "handle from request body, validated against ^[A-Za-z0-9_-]{43}$ (src/lib/acr/service.ts:149-152) before any ACR call; repository_scopes on approve canonicalized+validated the same way as acr/device (canonicalApprovalScopes, src/lib/acr/service.ts:173-186); deny is always org-wide (['*']) since it carries no grant. Org from session (real_org_id, impersonation-blocked).",
+            "tenant_requirement": "org_scoped",
+            "current_state_cache_behavior": "Cache-Control: no-store on every response.",
+            "impersonation_policy": "subject_to_impersonation_override",
+            "entitlement_requirement": "agent_context_runtime (requireAcrEntitlement via resolveOpsCredentialIssuanceAuthorization, src/lib/acr/ops.ts:134-143)",
+            "disclosure_behavior": "safeError() maps AcrRuntimeError to {code, safeAcrRuntimeMessage(code), retryable} -- upstream/internal detail never crosses the browser boundary (src/app/api/acr/authorize/route.ts). The route's own structured log line is deliberately limited to {action, outcome, status} -- the handle, the OAuth code, redirect_url and the signed assertion are never logged (src/app/api/acr/authorize/route.ts, logOutcome).",
+            "gaps": [
+                "ISSUER SURFACE: same as acr/device -- the approve/deny success path causes web to MINT an acr_web_assertion (EdDSA, signWebAssertion) and send it on to acr as the AcrRuntimeClient's request credential; the schema has no field to record an endpoint's OUTBOUND/issued credential class (see acr/device row); documented narratively only.",
+                "REDIRECT SURFACE: this route passes ACR's redirect_url through to the browser completely unchanged (never constructed in web, src/lib/acr/client.ts oauthConsentDecide); the browser-side component only calls window.location.assign when the URL's protocol is http/https (src/components/acr/OAuthConsentForm.tsx). This schema has no field for an endpoint's outbound open-redirect surface; documented narratively only."
+            ],
+            "issued_credential": [
+                {
+                    "class_id": "acr_web_assertion",
+                    "direction": "outbound_to_dependency",
+                    "anchor": {
+                        "path": "src/lib/acr/assertion.ts",
+                        "line": 30,
+                        "line_end": 53,
+                        "note": "Same single mint path as acr/device -- signWebAssertion() via the private AcrRuntimeClient.request (src/lib/acr/client.ts), now also invoked by oauthConsentPreview/oauthConsentDecide."
+                    },
+                    "issuer": "ACR_WEB_ASSERTION_ISSUER (deployment env var, read at src/lib/acr/config.ts; claim set at src/lib/acr/assertion.ts:38)",
+                    "audience": "ACR_WEB_ASSERTION_AUDIENCE (deployment env var, read at src/lib/acr/config.ts; claim set at src/lib/acr/assertion.ts:34)",
+                    "algorithm": "EdDSA (Ed25519). Header alg is a literal, not negotiated (src/lib/acr/assertion.ts:32); kid comes from ACR_WEB_ASSERTION_KID (src/lib/acr/config.ts).",
+                    "lifetime_seconds": 30,
+                    "key_source": "ACR_WEB_ASSERTION_KEY_FILE -- identical key material and loader as acr/device; see that row's note.",
+                    "verified_by": "acr:internal/auth/web_assertion.go:90 (WebAssertionVerifier.Verify - Ed25519 JWKS keys, replay cache, and body-digest binding via internal/auth/web_assertion_binding.go)",
+                    "note": "Reached via previewOAuthConsent (src/lib/acr/service.ts:266) or decideOAuthConsent (:289) -> client.oauthConsentPreview / client.oauthConsentDecide. Both first obtain a credential-issuance authorization from ops (resolveOpsCredentialIssuanceAuthorization) and both refuse outright while impersonating (refuseIfImpersonating, service.ts:155-171), so an impersonated session can never cause a mint."
+                }
+            ]
+        },
+        {
             "id": "POST /api/agent-context/context-packets [dev-health-web]",
             "surface_kind": "rest",
             "method": "POST",
