@@ -120,4 +120,18 @@ describe("DeviceApprovalPage", () => {
             "data-initial-user-code",
         );
     });
+
+    it("does not crash on a repeated user_code query parameter and falls back to typed entry", async () => {
+        // Next.js gives a repeated query key as a string array, never a
+        // scalar -- ?user_code=A&user_code=B resolves to { user_code: ["A", "B"] }.
+        render(
+            await DeviceApprovalPage({
+                searchParams: Promise.resolve({ user_code: [VALID_CODE, "ZZ234567"] }),
+            }),
+        );
+
+        expect(screen.getByTestId("device-approval-form")).not.toHaveAttribute(
+            "data-initial-user-code",
+        );
+    });
 });

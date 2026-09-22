@@ -13,7 +13,10 @@ export const dynamic = "force-dynamic";
 // reaches the rendered page.
 const USER_CODE_PATTERN = /^[2-9A-HJ-NP-Z]{8}$/u;
 
-type SearchParams = Promise<{ user_code?: string }>;
+// Next.js gives a repeated query key (`?user_code=A&user_code=B`) as a
+// string array, never a scalar -- the type below is honest about that so a
+// caller can't assume `.trim()` is safe without checking first.
+type SearchParams = Promise<{ user_code?: string | string[] }>;
 
 export default async function DeviceApprovalPage({
     searchParams,
@@ -21,7 +24,12 @@ export default async function DeviceApprovalPage({
     readonly searchParams: SearchParams;
 }) {
     const params = await searchParams;
-    const candidate = params.user_code?.trim().toUpperCase();
+    // A repeated user_code is never a value ACR itself would print (its own
+    // verification_uri_complete carries exactly one) -- treat the array
+    // shape as malformed input and fall through to the typed-entry state,
+    // the same as any other value that fails the pattern below.
+    const rawUserCode = typeof params.user_code === "string" ? params.user_code : undefined;
+    const candidate = rawUserCode?.trim().toUpperCase();
     const initialUserCode = candidate && USER_CODE_PATTERN.test(candidate) ? candidate : undefined;
 
     const session = await auth();
