@@ -208,6 +208,13 @@ export async function proxy(request: NextRequest) {
 
     const response = await handleRequest(request);
 
+    // The OAuth consent handle lives in this URL — never let it leak via a
+    // Referer header on an outbound navigation (belt-and-suspenders with the
+    // page's own `no-referrer` metadata).
+    if (pathname.startsWith("/acr/authorize")) {
+        response.headers.set("Referrer-Policy", "no-referrer");
+    }
+
     log.info(
         { method, path: pathname, status: response.status, duration_ms: Date.now() - start },
         "request",

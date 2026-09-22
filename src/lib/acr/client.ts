@@ -37,9 +37,16 @@ const capabilitiesSchema = z
 
 export type AcrCapabilities = z.infer<typeof capabilitiesSchema>;
 
+type UpstreamErrorMapper = (
+    status: number,
+    wireErrorCode?: string,
+    retryAfterSeconds?: number,
+) => AcrRuntimeError;
+
 type AcrRequest = {
     readonly authorization: OpsAuthorization;
     readonly body?: string;
+    readonly errorMapper?: UpstreamErrorMapper;
     readonly method: "GET" | "POST";
     readonly path: string;
     readonly permissions: readonly ("context:read" | "credential:issue" | "evidence:read")[];
@@ -64,6 +71,12 @@ type DeviceApprovalRequest = {
     readonly signal: AbortSignal;
 };
 
+type OAuthConsentRequest = {
+    readonly authorization: OpsAuthorization;
+    readonly body: string;
+    readonly signal: AbortSignal;
+};
+
 const deviceApprovalResponseSchema = z
     .object({
         schema_version: z.literal("device_approval_response.v1"),
@@ -78,6 +91,30 @@ const deviceApprovalPreviewResponseSchema = z
         repository_hints: z.array(z.string()).default([]),
     })
     .strict();
+
+const oauthConsentPreviewResponseSchema = z
+    .object({
+        client_kind: z.string().min(1),
+        client_name: z.string(),
+        client_self_asserted: z.boolean(),
+        expires_at: z.string().min(1),
+        redirect_origin: z.string().min(1),
+        resource: z.string().min(1),
+        scopes: z.array(z.string()),
+    })
+    .strict();
+
+export type OAuthConsentPreview = {
+    readonly clientKind: string;
+    readonly clientName: string;
+    readonly clientSelfAsserted: boolean;
+    readonly expiresAt: string;
+    readonly redirectOrigin: string;
+    readonly resource: string;
+    readonly scopes: readonly string[];
+};
+
+const oauthConsentDecisionResponseSchema = z.object({ redirect_url: z.string().min(1) }).strict();
 
 function clientUrl(config: AcrRuntimeConfig, path: string): URL {
     const url = new URL(path, config.apiOrigin);
@@ -95,7 +132,11 @@ function clientUrl(config: AcrRuntimeConfig, path: string): URL {
 // existing "without exposing the upstream body" boundary in upstreamFailure.
 const upstreamErrorCodeSchema = z.object({ error: z.object({ code: z.string() }).loose() }).loose();
 
-function upstreamFailure(status: number, wireErrorCode?: string): AcrRuntimeError {
+function upstreamFailure(
+    status: number,
+    wireErrorCode?: string,
+    retryAfterSeconds?: number,
+): AcrRuntimeError {
     if (status === 401) {
         return new AcrRuntimeError(
             acrRuntimeErrorCodes.unauthenticated,
@@ -121,7 +162,7 @@ function upstreamFailure(status: number, wireErrorCode?: string): AcrRuntimeErro
         return new AcrRuntimeError(
             acrRuntimeErrorCodes.upstream,
             "Agent Context Runtime is temporarily busy.",
-            { retryable: true, status },
+            { retryable: true, retryAfterSeconds, status },
         );
     }
     // error.v1 (CHAOS-3784): both codes are always retryable: true. Hardcoded
@@ -146,6 +187,46 @@ function upstreamFailure(status: number, wireErrorCode?: string): AcrRuntimeErro
         "Agent Context Runtime is temporarily unavailable.",
         { retryable: status >= 500, status },
     );
+}
+
+// OAuth consent (CHAOS-6226): the wire codes at 400/409/410/429 mean something
+// specific to a handle's lifecycle, distinct enough from the generic upstream
+// fallback that the consent page needs to tell them apart to render the right
+// state (429 in particular stays interactive with a wait time, never a
+// terminal one). Everything else still falls through to upstreamFailure.
+function oauthConsentFailure(
+    status: number,
+    wireErrorCode?: string,
+    retryAfterSeconds?: number,
+): AcrRuntimeError {
+    if (status === 400) {
+        return new AcrRuntimeError(
+            acrRuntimeErrorCodes.invalidRequest,
+            "The authorization request is invalid.",
+            { status },
+        );
+    }
+    if (status === 409) {
+        return new AcrRuntimeError(
+            acrRuntimeErrorCodes.alreadyCompleted,
+            "This request was already completed.",
+            { status },
+        );
+    }
+    if (status === 429) {
+        // ACR wire body: {"error":"slow_down"}, per-handle limit 20/min.
+        return new AcrRuntimeError(
+            acrRuntimeErrorCodes.rateLimited,
+            "Too many attempts. Please wait and try again.",
+            { retryable: true, retryAfterSeconds, status },
+        );
+    }
+    if (status === 410) {
+        return new AcrRuntimeError(acrRuntimeErrorCodes.expired, "This request has expired.", {
+            status,
+        });
+    }
+    return upstreamFailure(status, wireErrorCode, retryAfterSeconds);
 }
 
 function ensureCapabilities(capabilities: AcrCapabilities): void {
@@ -273,6 +354,53 @@ export class AcrRuntimeClient {
         };
     }
 
+    async oauthConsentPreview(input: OAuthConsentRequest): Promise<OAuthConsentPreview> {
+        const value = await this.request({
+            ...input,
+            errorMapper: oauthConsentFailure,
+            method: "POST",
+            path: "/authorize/consent",
+            permissions: ["credential:issue"],
+        });
+        const parsed = oauthConsentPreviewResponseSchema.safeParse(value);
+        if (!parsed.success) {
+            throw new AcrRuntimeError(
+                acrRuntimeErrorCodes.malformedResponse,
+                "Agent Context Runtime returned an invalid response.",
+            );
+        }
+        return {
+            clientKind: parsed.data.client_kind,
+            clientName: parsed.data.client_name,
+            clientSelfAsserted: parsed.data.client_self_asserted,
+            expiresAt: parsed.data.expires_at,
+            redirectOrigin: parsed.data.redirect_origin,
+            resource: parsed.data.resource,
+            scopes: parsed.data.scopes,
+        };
+    }
+
+    async oauthConsentDecide(
+        input: OAuthConsentRequest,
+    ): Promise<{ readonly redirectUrl: string }> {
+        const value = await this.request({
+            ...input,
+            errorMapper: oauthConsentFailure,
+            method: "POST",
+            path: "/authorize/consent",
+            permissions: ["credential:issue"],
+        });
+        const parsed = oauthConsentDecisionResponseSchema.safeParse(value);
+        if (!parsed.success) {
+            throw new AcrRuntimeError(
+                acrRuntimeErrorCodes.malformedResponse,
+                "Agent Context Runtime returned an invalid response.",
+            );
+        }
+        // Passed through unchanged — ACR is the only party allowed to build it.
+        return { redirectUrl: parsed.data.redirect_url };
+    }
+
     private async request(input: AcrRequest): Promise<unknown> {
         const body = input.body ?? "";
         const response = await fetchBoundedJson({
@@ -307,9 +435,11 @@ export class AcrRuntimeClient {
             );
         }
         const wireError = upstreamErrorCodeSchema.safeParse(response.value);
-        throw upstreamFailure(
+        const mapper = input.errorMapper ?? upstreamFailure;
+        throw mapper(
             response.status,
             wireError.success ? wireError.data.error.code : undefined,
+            response.retryAfterSeconds,
         );
     }
 }

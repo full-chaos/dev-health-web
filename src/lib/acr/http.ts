@@ -14,7 +14,16 @@ type BoundedJsonRequest = {
 export type JsonHttpResponse = {
     readonly status: number;
     readonly value: unknown;
+    /** Parsed `Retry-After` (seconds form only), when the upstream sent one. */
+    readonly retryAfterSeconds?: number;
 };
+
+function retryAfterSeconds(response: Response): number | undefined {
+    const value = response.headers.get("retry-after");
+    if (value === null) return undefined;
+    const seconds = Number(value);
+    return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
+}
 
 async function readBoundedText(
     stream: ReadableStream<Uint8Array> | null,
@@ -113,6 +122,7 @@ export async function fetchBoundedJson(input: BoundedJsonRequest): Promise<JsonH
     }
     return {
         status: response.status,
+        retryAfterSeconds: retryAfterSeconds(response),
         value: parseJson(await readBoundedText(response.body, 1_048_576)),
     };
 }

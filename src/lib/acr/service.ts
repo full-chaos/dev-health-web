@@ -1,13 +1,16 @@
 import "server-only";
 
 import { auth } from "@/lib/auth";
-import { AcrRuntimeClient } from "./client";
+import { AcrRuntimeClient, type OAuthConsentPreview } from "./client";
 import { loadAcrRuntimeConfig } from "./config";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
 import { resolveOpsAuthorization, resolveOpsCredentialIssuanceAuthorization } from "./ops";
 import { contextPacketRequest, parseContextPacketForm, parseEvidenceSelection } from "./protocol";
 
 const repositoryScope = /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._-]*$/u;
+// Opaque handle minted by ACR for the /acr/authorize flow — 43 base64url
+// characters (the un-padded encoding of a 256-bit value).
+const oauthHandlePattern = /^[A-Za-z0-9_-]{43}$/u;
 
 type WebSession = {
     readonly accessToken: string;
@@ -135,6 +138,38 @@ function invalidApprovalRequest(): AcrRuntimeError {
     );
 }
 
+function invalidOAuthConsentRequest(): AcrRuntimeError {
+    return new AcrRuntimeError(
+        acrRuntimeErrorCodes.invalidRequest,
+        "The authorization request is invalid.",
+        { status: 400 },
+    );
+}
+
+function canonicalHandle(handle: string): string {
+    if (!oauthHandlePattern.test(handle)) throw invalidOAuthConsentRequest();
+    return handle;
+}
+
+/** Same impersonation refusal as {@link approveDeviceAuthorization}. */
+function refuseIfImpersonating(
+    rawSession: Awaited<ReturnType<typeof auth>>,
+    session: WebSession,
+): void {
+    if (
+        rawSession?.user.real_org_id !== undefined &&
+        session.orgId !== rawSession.user.real_org_id
+    ) {
+        throw new AcrRuntimeError(
+            acrRuntimeErrorCodes.notEntitled,
+            "Approval is unavailable while impersonating.",
+            {
+                status: 403,
+            },
+        );
+    }
+}
+
 function canonicalApprovalScopes(scopes: readonly string[]): readonly string[] {
     if (scopes.length === 1 && scopes[0] === "*") return scopes;
     const sorted = [...scopes].sort((left, right) => left.localeCompare(right));
@@ -222,6 +257,64 @@ export async function previewDeviceAuthorization(input: {
         user_code: input.userCode,
     });
     return new AcrRuntimeClient(loadAcrRuntimeConfig()).deviceApprovalPreview({
+        authorization,
+        body,
+        signal: input.signal,
+    });
+}
+
+export async function previewOAuthConsent(input: {
+    readonly handle: string;
+    readonly signal: AbortSignal;
+}): Promise<OAuthConsentPreview> {
+    const handle = canonicalHandle(input.handle);
+    const rawSession = await auth();
+    const session = sessionOrError(rawSession);
+    refuseIfImpersonating(rawSession, session);
+    const authorization = await resolveOpsCredentialIssuanceAuthorization({
+        accessToken: session.accessToken,
+        orgId: session.orgId,
+        repositoryScopes: ["*"],
+        signal: input.signal,
+        subject: session.subject,
+    });
+    const body = JSON.stringify({ action: "preview", handle });
+    return new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentPreview({
+        authorization,
+        body,
+        signal: input.signal,
+    });
+}
+
+export async function decideOAuthConsent(input: {
+    readonly action: "approve" | "deny";
+    readonly handle: string;
+    readonly repositoryScopes?: readonly string[];
+    readonly signal: AbortSignal;
+}): Promise<{ readonly redirectUrl: string }> {
+    const handle = canonicalHandle(input.handle);
+    const rawSession = await auth();
+    const session = sessionOrError(rawSession);
+    refuseIfImpersonating(rawSession, session);
+    // Denial carries no repository grant — the assertion still needs a
+    // repository_scopes claim, so it is bound org-wide like preview.
+    const requestedScopes =
+        input.action === "approve"
+            ? canonicalApprovalScopes(input.repositoryScopes ?? ["*"])
+            : (["*"] as const);
+    const authorization = await resolveOpsCredentialIssuanceAuthorization({
+        accessToken: session.accessToken,
+        orgId: session.orgId,
+        repositoryScopes: requestedScopes,
+        signal: input.signal,
+        subject: session.subject,
+    });
+    const body = JSON.stringify(
+        input.action === "approve"
+            ? { action: "approve", handle, repository_scopes: requestedScopes }
+            : { action: "deny", handle },
+    );
+    return new AcrRuntimeClient(loadAcrRuntimeConfig()).oauthConsentDecide({
         authorization,
         body,
         signal: input.signal,
