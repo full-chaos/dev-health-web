@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createHash } from "node:crypto";
 
+import { toConsentDecisionWire } from "@/lib/acr/consent-wire";
 import { decideOAuthConsent, previewOAuthConsent } from "@/lib/acr/service";
 import { AcrRuntimeError, safeAcrRuntimeMessage } from "@/lib/acr/errors";
 import { getClientIp, isTrustProxyEnabled } from "@/lib/client-ip";
@@ -168,7 +169,9 @@ export async function POST(request: Request): Promise<NextResponse> {
             signal: request.signal,
         });
         logOutcome(action, "success", 200);
-        return NextResponse.json(decision, { headers: { "Cache-Control": "no-store" } });
+        return NextResponse.json(toConsentDecisionWire(decision), {
+            headers: { "Cache-Control": "no-store" },
+        });
     } catch (error) {
         if (error instanceof AcrRuntimeError) {
             logOutcome(action, "acr_error", error.status);

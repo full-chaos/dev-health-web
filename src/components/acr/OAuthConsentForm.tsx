@@ -1,5 +1,6 @@
 "use client";
 
+import type { OAuthConsentDecisionWire } from "@/lib/acr/consent-wire";
 import { useId, useState } from "react";
 
 import { Button } from "@/components/shared/Button";
@@ -56,9 +57,7 @@ type OAuthConsentFormProps =
           readonly preview?: undefined;
       };
 
-type DecisionResponse = {
-    readonly redirect_url?: unknown;
-};
+type DecisionResponse = Partial<Record<keyof OAuthConsentDecisionWire, unknown>>;
 
 function stateCopy(state: ConsentState): { readonly description: string; readonly title: string } {
     switch (state) {

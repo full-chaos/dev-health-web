@@ -1,3 +1,4 @@
+import { toConsentDecisionWire } from "@/lib/acr/consent-wire";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -55,11 +56,11 @@ describe("OAuthConsentForm", () => {
 
     it("Given approval succeeds, when the server returns a safe redirect_url, then navigates to it unchanged", async () => {
         const redirectUrl = "http://localhost:53141/callback?code=abc&state=xyz&iss=acr";
-        const fetchMock = vi
-            .fn()
-            .mockResolvedValueOnce(
-                new Response(JSON.stringify({ redirect_url: redirectUrl }), { status: 200 }),
-            );
+        const fetchMock = vi.fn().mockResolvedValueOnce(
+            new Response(JSON.stringify(toConsentDecisionWire({ redirectUrl })), {
+                status: 200,
+            }),
+        );
         vi.stubGlobal("fetch", fetchMock);
 
         render(<OAuthConsentForm handle={HANDLE} preview={PREVIEW} />);
@@ -84,7 +85,9 @@ describe("OAuthConsentForm", () => {
         const fetchMock = vi.fn().mockResolvedValueOnce(
             new Response(
                 JSON.stringify({
-                    redirect_url: "http://localhost:53141/callback?error=access_denied",
+                    ...toConsentDecisionWire({
+                        redirectUrl: "http://localhost:53141/callback?error=access_denied",
+                    }),
                 }),
                 { status: 200 },
             ),
@@ -161,7 +164,11 @@ describe("OAuthConsentForm", () => {
         // And a retry can succeed without re-rendering the form.
         fetchMock.mockResolvedValueOnce(
             new Response(
-                JSON.stringify({ redirect_url: "http://localhost:53141/callback?code=abc" }),
+                JSON.stringify(
+                    toConsentDecisionWire({
+                        redirectUrl: "http://localhost:53141/callback?code=abc",
+                    }),
+                ),
                 { status: 200 },
             ),
         );

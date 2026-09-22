@@ -61,8 +61,9 @@ describe("POST /api/acr/authorize", () => {
         const response = await POST(request());
 
         expect(response.status).toBe(200);
+        // The wire field the consent page reads (OAuthConsentDecisionWire).
         expect(await response.json()).toEqual({
-            redirectUrl: "http://localhost:53141/callback?code=abc&state=xyz&iss=acr",
+            redirect_url: "http://localhost:53141/callback?code=abc&state=xyz&iss=acr",
         });
         expect(checkRateLimitMock).toHaveBeenCalledTimes(2);
         expect(decideOAuthConsentMock).toHaveBeenCalledWith(
