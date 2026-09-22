@@ -715,7 +715,7 @@
             },
             "classification": "protected",
             "public_rationale": null,
-            "accepted_credential_classes": ["auth_js_browser_session", "acr_oauth_consent_handle"],
+            "accepted_credential_classes": ["auth_js_browser_session"],
             "primary_validator": {
                 "description": "Route itself only enforces Origin==expectedOrigin + IP/handle rate limits before dispatch (no session check at this layer, same shape as acr/device). All three actions (preview|approve|deny) call previewOAuthConsent/decideOAuthConsent, which internally call auth()+sessionOrError (401 if absent), validate the handle shape server-side (canonicalHandle, src/lib/acr/service.ts:149-152) before ever calling ACR, and EXPLICITLY REJECT an impersonated session (refuseIfImpersonating, src/lib/acr/service.ts:155-171) before issuing a credential -- same positive pattern as acr/device.",
                 "anchor": {
@@ -725,7 +725,7 @@
                 }
             },
             "token_shape": {
-                "token_type": "auth_js_browser_session + acr_oauth_consent_handle (opaque 43-char base64url handle minted by acr, body param)",
+                "token_type": "auth_js_browser_session (the body also names an opaque 43-char acr request handle; it is a resource reference, not a credential)",
                 "issuer": null,
                 "audience": null,
                 "algorithm": null
