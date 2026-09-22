@@ -91,7 +91,7 @@ test.describe("Context Fabric marketing pages", () => {
         );
         await expect(page.getByRole("link", { name: "Configure ACR and MCP" })).toHaveAttribute(
             "href",
-            "https://github.com/full-chaos/dev-health-acr/blob/main/docs/mcp-sidecar.md",
+            "https://github.com/full-chaos/context-fabric-agents",
         );
         await expect(page.getByRole("link", { name: "Context Fabric overview" })).toHaveAttribute(
             "href",

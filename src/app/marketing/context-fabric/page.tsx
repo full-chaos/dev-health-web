@@ -286,7 +286,7 @@ export default function ContextFabricMarketingPage() {
                         </p>
                         <QuestionList questions={AGENT_QUESTIONS} />
                         <a
-                            href="https://github.com/full-chaos/dev-health-acr/blob/main/docs/mcp-sidecar.md"
+                            href="https://github.com/full-chaos/context-fabric-agents"
                             target="_blank"
                             rel="noopener noreferrer"
                             className="mt-8 inline-flex rounded-full border border-(--card-stroke) bg-(--card-70) px-6 py-2.5 text-sm font-medium transition hover:border-foreground/30"
