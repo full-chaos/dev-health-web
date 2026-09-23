@@ -78,6 +78,7 @@ export default defineConfig({
                 /admin-customer-push\.spec\.ts/,
                 /nav-reachability\.spec\.ts/,
                 /pagerduty-final-qa-p[0-3]\.spec\.ts/,
+                /acr-device-fresh-session\.spec\.ts/,
             ],
             dependencies: ["auth-setup"],
             use: {
@@ -92,6 +93,7 @@ export default defineConfig({
                 /marketing-pricing\.spec\.ts/,
                 /auth-signup\.spec\.ts/,
                 /auth-onboard-legacy\.spec\.ts/,
+                /acr-device-fresh-session\.spec\.ts/,
             ],
         },
     ],

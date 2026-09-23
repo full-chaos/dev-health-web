@@ -4,6 +4,7 @@ import { getServerEnv } from "@/lib/config";
 import { getBackendUrl } from "@/lib/origin";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
+import { safeReturnTo } from "@/lib/onboarding/returnTo";
 import { checkRateLimit, type RateLimitOptions } from "@/lib/rate-limit";
 
 const log = logger.child({ module: "proxy" });
@@ -101,12 +102,18 @@ export function isPublicPath(pathname: string): boolean {
     return PREFIX_PUBLIC_PATHS.some((prefix) => pathname.startsWith(prefix));
 }
 
-/** Ensure callback URLs are local-only to prevent open redirects. */
+/**
+ * Ensure callback URLs are local-only to prevent open redirects.
+ *
+ * Delegates to `safeReturnTo` (the hardened check already used one hop
+ * downstream by `post-login-redirect.ts` for the identical threat model)
+ * instead of a weaker ad hoc `startsWith("/")` test -- that ad hoc form let a
+ * backslash or control character ride through this, the ONE place that
+ * builds the callbackUrl from a raw, attacker-influenceable request path +
+ * query (CHAOS-6317).
+ */
 export function sanitizeCallbackUrl(url: string): string {
-    if (url.startsWith("/") && !url.startsWith("//")) {
-        return url;
-    }
-    return "/dashboard";
+    return safeReturnTo(url) ?? "/dashboard";
 }
 
 /**
@@ -264,6 +271,11 @@ async function handleRequest(request: NextRequest) {
             );
             const redirect = NextResponse.redirect(signInUrl, 303);
             redirect.headers.set("Content-Security-Policy", csp);
+            // Next's own page-render pipeline auto-sets no-store on a dynamic
+            // page's 200 response; a middleware-issued redirect gets nothing
+            // by default. Belt-and-suspenders against any intermediary that
+            // caches redirects more aggressively than RFC 7231's default.
+            redirect.headers.set("Cache-Control", "private, no-store");
             return redirect;
         }
         accessToken = session.access_token;
