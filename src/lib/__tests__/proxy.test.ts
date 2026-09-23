@@ -78,6 +78,22 @@ describe("sanitizeCallbackUrl", () => {
         expect(sanitizeCallbackUrl("/dashboard")).toBe("/dashboard");
         expect(sanitizeCallbackUrl("/org/123?tab=settings")).toBe("/org/123?tab=settings");
     });
+
+    // CHAOS-6317: this guard is built from the raw, attacker-influenceable
+    // request path + query on EVERY protected route (not just /acr/device).
+    // `safeReturnTo` (src/lib/onboarding/returnTo.ts) already hardens the
+    // identical threat one hop downstream in post-login-redirect.ts -- this
+    // pins that proxy.ts's copy of the check gets the same hardening,
+    // not a weaker `startsWith("/")` test.
+    it("rejects backslash forms that WHATWG URL parsing treats as a host separator", () => {
+        expect(sanitizeCallbackUrl("/\\evil.example/p")).toBe("/dashboard");
+        expect(sanitizeCallbackUrl("/\\/evil.example/p")).toBe("/dashboard");
+    });
+
+    it("rejects control characters (header/redirect splitting)", () => {
+        expect(sanitizeCallbackUrl("/acr/device?user_code=A\r\nSet-Cookie:x=y")).toBe("/dashboard");
+        expect(sanitizeCallbackUrl("/acr/device?user_code=A\n")).toBe("/dashboard");
+    });
 });
 
 describe("org-scoped route guard", () => {
@@ -138,6 +154,19 @@ describe("org-scoped route guard", () => {
         expect(res.status).toBe(303);
         expect(location.pathname).toBe("/auth/signin");
         expect(location.searchParams.get("callbackUrl")).toBe("/settings?tab=integrations");
+    });
+
+    // CHAOS-6317: a middleware-issued redirect gets no Cache-Control by
+    // default (unlike Next's own page-render 200s, which auto-set
+    // no-store) -- pin it explicitly so a shared/intermediary cache can
+    // never serve a stale sign-in bounce.
+    it("marks the sign-in redirect as non-cacheable", async () => {
+        mockAuth.mockResolvedValue(null);
+
+        const res = await proxy(makeRequest("/acr/device?user_code=F6KR8VXX"));
+
+        expect(res.status).toBe(303);
+        expect(res.headers.get("Cache-Control")).toBe("private, no-store");
     });
 
     it("redirects superuser without org from non-exempt path to /superadmin", async () => {
