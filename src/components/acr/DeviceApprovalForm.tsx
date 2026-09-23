@@ -5,7 +5,7 @@ import { type SyntheticEvent, useId, useState } from "react";
 import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 
-type ApprovalState = "denied" | "expired" | "invalid" | "pending" | "review" | "success";
+type ApprovalState = "denied" | "expired" | "pending" | "review" | "success";
 
 type DeviceApprovalFormProps = {
     readonly initialState?: ApprovalState;
@@ -35,18 +35,6 @@ function stateCopy(state: ApprovalState): { readonly description: string; readon
                 description: "This code has expired. Return to your terminal to request a new one.",
                 title: "Code expired",
             };
-        case "invalid":
-            // acr's device-approval endpoint reports "no such authorization",
-            // "wrong flow", and "expired" as the SAME wire shape (HTTP 400) --
-            // the web layer cannot tell which one happened, so this copy
-            // never asserts "expired" as fact (that word is reserved for a
-            // real HTTP 410, which acr does not currently emit for this
-            // reason).
-            return {
-                description:
-                    "This code is no longer valid — it may have expired or already been used. Return to your terminal and start again.",
-                title: "Code no longer valid",
-            };
         case "pending":
             return {
                 description: "Enter the code from your terminal to review the request.",
@@ -71,19 +59,35 @@ function errorState(response: Response): ApprovalState {
     // writeDeviceApprovalError) collapses "no such device authorization",
     // "wrong flow", and "expired" into ONE wire shape: HTTP 400
     // invalid_request -- it never emits 410, and the web layer cannot tell
-    // which of the three happened. Before this fix, a real expired/unknown
-    // code's 400 fell through to "pending" (the default), silently
-    // resetting the user to the same empty-looking screen with a generic
-    // status line and no indication the code was no longer usable
-    // (CHAOS-6317: chris's failed Approve clicks landed seconds after that
-    // code's expiry). "invalid" says only what acr's response actually
-    // proves -- the code is no longer usable -- without asserting a cause
-    // acr didn't report. "expired" stays reserved for a real HTTP 410
-    // (acr does not currently send one, kept for forward compatibility).
+    // which of the three happened, including whether the code was simply
+    // TYPED WRONG (still 8 valid-alphabet characters, but never issued).
+    // That ambiguity means a 400 must stay in "pending" -- it keeps the
+    // typed-entry recovery path available for a mistyped code, same as
+    // before this ticket's fix -- rather than moving to a terminal state
+    // that only fits the unambiguous "restart from scratch" cases. What
+    // was actually missing (CHAOS-6317: chris's failed Approve clicks
+    // landed seconds after that code's expiry) was a clear MESSAGE, not a
+    // different state; see `statusMessage` below. "expired" stays reserved
+    // for a real HTTP 410 (acr does not currently send one, kept for
+    // forward compatibility) since that status is unambiguous -- retyping
+    // never recovers it.
     if (response.status === 410) return "expired";
-    if (response.status === 400) return "invalid";
     if (response.status === 403 || response.status === 409) return "denied";
     return "pending";
+}
+
+function statusMessage(response: Response, action: "approve" | "preview"): string {
+    if (response.status === 429) return "Too many attempts. Please wait before trying again.";
+    if (response.status === 400) {
+        // Covers acr's collapsed "no such authorization" / "wrong flow" /
+        // "expired" shape (see errorState above) -- never asserts a single
+        // cause, and names both recovery paths since a typo is exactly as
+        // likely here as a genuinely stale code.
+        return "This code is no longer valid — it may have expired, already been used, or been typed incorrectly. Check the code and try again, or return to your terminal to start over.";
+    }
+    return action === "preview"
+        ? "We could not preview this request."
+        : "We could not approve this request.";
 }
 
 export function DeviceApprovalForm({
@@ -113,11 +117,7 @@ export function DeviceApprovalForm({
                 return;
             }
             setState(errorState(response));
-            setMessage(
-                response.status === 429
-                    ? "Too many attempts. Please wait before trying again."
-                    : "We could not preview this request.",
-            );
+            setMessage(statusMessage(response, "preview"));
         } catch {
             setMessage("We could not reach the approval service. Please try again.");
         } finally {
@@ -145,11 +145,7 @@ export function DeviceApprovalForm({
                 return;
             }
             setState(errorState(response));
-            setMessage(
-                response.status === 429
-                    ? "Too many attempts. Please wait before trying again."
-                    : "We could not approve this request.",
-            );
+            setMessage(statusMessage(response, "approve"));
         } catch {
             setMessage("We could not reach the approval service. Please try again.");
         } finally {

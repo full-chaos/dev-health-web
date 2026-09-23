@@ -2,20 +2,21 @@ import { expect, test } from "@playwright/test";
 
 // CHAOS-6317: acr's device-approval endpoint returns HTTP 400 invalid_request
 // for "no such device authorization", "wrong flow", AND "expired" alike --
-// it never emits 410, and the web layer cannot tell which one happened.
-// Before the fix, DeviceApprovalForm's errorState() only mapped 410 ->
-// "expired", so a real 400 fell through to "pending", silently resetting the
-// signed-in user to the same-looking screen with a generic status line and
-// the stale code still in the input -- exactly the prod symptom ("Approve
-// doesn't go through at all"). The fix's copy says only what acr's response
-// actually proves (the code is no longer valid), never asserting "expired"
-// as fact for a case that could equally be "already used" or "wrong flow".
-// This spec runs under the default `authenticated` Playwright project (real
-// signed-in session, see auth.setup.ts) and proves the corrected behavior
-// end to end.
+// it never emits 410, and the web layer cannot tell which one happened,
+// including whether the code was simply typed wrong. Before the fix,
+// DeviceApprovalForm's errorState() only mapped 410 -> "expired", so a real
+// 400 fell through to "pending" with a generic, unhelpful status line --
+// exactly the prod symptom ("Approve doesn't go through at all"). The fix
+// keeps the "pending" state (so a mistyped code stays correctable, per a
+// codex review finding on the first cut of this fix) and gives the status
+// line a specific, cause-agnostic message instead: it never asserts
+// "expired" as fact for a case that could equally be "already used",
+// "wrong flow", or a typo. This spec runs under the default `authenticated`
+// Playwright project (real signed-in session, see auth.setup.ts) and proves
+// the corrected behavior end to end.
 const USER_CODE = "EP23TUGG";
 
-test("a code that is no longer valid between Preview and Approve shows a clear message, not a silent reset", async ({
+test("a code that is no longer valid between Preview and Approve shows a clear message and stays editable, not a silent/terminal reset", async ({
     page,
 }) => {
     await page.route("**/api/acr/device", async (route) => {
@@ -47,10 +48,13 @@ test("a code that is no longer valid between Preview and Approve shows a clear m
 
     await page.getByRole("button", { name: "Confirm" }).click();
 
-    await expect(page.getByRole("heading", { name: "Code no longer valid" })).toBeVisible();
     await expect(
         page.getByText(
-            "This code is no longer valid — it may have expired or already been used. Return to your terminal and start again.",
+            "This code is no longer valid — it may have expired, already been used, or been typed incorrectly. Check the code and try again, or return to your terminal to start over.",
         ),
     ).toBeVisible();
+    // Not a terminal dead-end: back on the editable pending form, code intact.
+    await expect(page.getByRole("heading", { name: "Approve device access" })).toBeVisible();
+    await expect(page.getByLabel("Verification code")).toHaveValue(USER_CODE);
+    await expect(page.getByRole("button", { name: "Preview request" })).toBeEnabled();
 });
