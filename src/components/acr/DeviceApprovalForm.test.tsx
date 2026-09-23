@@ -12,6 +12,7 @@ describe("DeviceApprovalForm", () => {
         ["success", "Approval complete"],
         ["denied", "Request not approved"],
         ["expired", "Code expired"],
+        ["invalid", "Code no longer valid"],
     ] as const)("Given a %s state, when rendered, then announces %s", (state, title) => {
         render(<DeviceApprovalForm initialState={state} />);
 
@@ -156,11 +157,13 @@ describe("DeviceApprovalForm", () => {
         expect(screen.getByRole("button", { name: "Preview request" })).toBeDisabled();
     });
 
-    it("Given a device code ACR no longer recognizes (invalid_request, e.g. never issued), when previewing, then shows the code-expired state, not a silent reset", async () => {
+    it("Given a device code ACR no longer recognizes (invalid_request, e.g. never issued), when previewing, then shows a no-longer-valid state, not a silent reset", async () => {
         // acr's device-approval endpoint returns HTTP 400 invalid_request for
         // "no such device authorization", wrong-flow, AND expired alike (it
         // never emits 410) -- so a real unrecognized/expired code arrives at
-        // the web layer as a bare 400.
+        // the web layer as a bare 400, and the copy must not assert
+        // "expired" as fact since the web layer cannot tell which one
+        // actually happened.
         const fetchMock = vi.fn().mockResolvedValueOnce(
             new Response(JSON.stringify({ error: { code: "invalid_request", message: "" } }), {
                 status: 400,
@@ -175,10 +178,10 @@ describe("DeviceApprovalForm", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "Preview request" }));
 
-        await screen.findByRole("heading", { name: "Code expired" });
+        await screen.findByRole("heading", { name: "Code no longer valid" });
         expect(
             screen.getByText(
-                "This code has expired. Return to your terminal to request a new one.",
+                "This code is no longer valid — it may have expired or already been used. Return to your terminal and start again.",
             ),
         ).toBeVisible();
         expect(fetchMock).toHaveBeenCalledWith(
@@ -190,7 +193,7 @@ describe("DeviceApprovalForm", () => {
         );
     });
 
-    it("Given a device code that expires BETWEEN a successful preview and Approve, when approving, then shows the code-expired state, not a silent reset (CHAOS-6317)", async () => {
+    it("Given a device code that expires BETWEEN a successful preview and Approve, when approving, then shows a no-longer-valid state, not a silent reset (CHAOS-6317)", async () => {
         // The reported prod shape: the code was still valid when the review
         // screen loaded (preview 200'd), but expired before the user clicked
         // Confirm -- acr's Approve call then 400s the same way Preview would.
@@ -214,10 +217,10 @@ describe("DeviceApprovalForm", () => {
 
         fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
 
-        await screen.findByRole("heading", { name: "Code expired" });
+        await screen.findByRole("heading", { name: "Code no longer valid" });
         expect(
             screen.getByText(
-                "This code has expired. Return to your terminal to request a new one.",
+                "This code is no longer valid — it may have expired or already been used. Return to your terminal and start again.",
             ),
         ).toBeVisible();
     });

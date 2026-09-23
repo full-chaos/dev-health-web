@@ -5,7 +5,7 @@ import { type SyntheticEvent, useId, useState } from "react";
 import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 
-type ApprovalState = "denied" | "expired" | "pending" | "review" | "success";
+type ApprovalState = "denied" | "expired" | "invalid" | "pending" | "review" | "success";
 
 type DeviceApprovalFormProps = {
     readonly initialState?: ApprovalState;
@@ -35,6 +35,18 @@ function stateCopy(state: ApprovalState): { readonly description: string; readon
                 description: "This code has expired. Return to your terminal to request a new one.",
                 title: "Code expired",
             };
+        case "invalid":
+            // acr's device-approval endpoint reports "no such authorization",
+            // "wrong flow", and "expired" as the SAME wire shape (HTTP 400) --
+            // the web layer cannot tell which one happened, so this copy
+            // never asserts "expired" as fact (that word is reserved for a
+            // real HTTP 410, which acr does not currently emit for this
+            // reason).
+            return {
+                description:
+                    "This code is no longer valid — it may have expired or already been used. Return to your terminal and start again.",
+                title: "Code no longer valid",
+            };
         case "pending":
             return {
                 description: "Enter the code from your terminal to review the request.",
@@ -58,14 +70,18 @@ function errorState(response: Response): ApprovalState {
     // acr's device-approval endpoint (internal/api/device_routes.go
     // writeDeviceApprovalError) collapses "no such device authorization",
     // "wrong flow", and "expired" into ONE wire shape: HTTP 400
-    // invalid_request -- it never emits 410. Before this fix, only 410 was
-    // treated as "expired"; a real expired/unknown code's 400 fell through
-    // to "pending" (the default), silently resetting the user to the same
-    // empty-looking screen with a generic status line and no indication the
-    // code was no longer usable (CHAOS-6317: chris's failed Approve clicks
-    // landed seconds after that code's expiry). 410 is kept for forward
-    // compatibility in case acr's contract ever widens to use it.
-    if (response.status === 410 || response.status === 400) return "expired";
+    // invalid_request -- it never emits 410, and the web layer cannot tell
+    // which of the three happened. Before this fix, a real expired/unknown
+    // code's 400 fell through to "pending" (the default), silently
+    // resetting the user to the same empty-looking screen with a generic
+    // status line and no indication the code was no longer usable
+    // (CHAOS-6317: chris's failed Approve clicks landed seconds after that
+    // code's expiry). "invalid" says only what acr's response actually
+    // proves -- the code is no longer usable -- without asserting a cause
+    // acr didn't report. "expired" stays reserved for a real HTTP 410
+    // (acr does not currently send one, kept for forward compatibility).
+    if (response.status === 410) return "expired";
+    if (response.status === 400) return "invalid";
     if (response.status === 403 || response.status === 409) return "denied";
     return "pending";
 }
