@@ -156,10 +156,16 @@ describe("DeviceApprovalForm", () => {
         expect(screen.getByRole("button", { name: "Preview request" })).toBeDisabled();
     });
 
-    it("Given a malformed eight-character code, when ACR rejects it, then shows the rejection", async () => {
-        const fetchMock = vi
-            .fn()
-            .mockResolvedValueOnce(new Response(JSON.stringify({}), { status: 400 }));
+    it("Given a device code ACR no longer recognizes (invalid_request, e.g. never issued), when previewing, then shows the code-expired state, not a silent reset", async () => {
+        // acr's device-approval endpoint returns HTTP 400 invalid_request for
+        // "no such device authorization", wrong-flow, AND expired alike (it
+        // never emits 410) -- so a real unrecognized/expired code arrives at
+        // the web layer as a bare 400.
+        const fetchMock = vi.fn().mockResolvedValueOnce(
+            new Response(JSON.stringify({ error: { code: "invalid_request", message: "" } }), {
+                status: 400,
+            }),
+        );
         vi.stubGlobal("fetch", fetchMock);
 
         render(<DeviceApprovalForm />);
@@ -169,7 +175,12 @@ describe("DeviceApprovalForm", () => {
         });
         fireEvent.click(screen.getByRole("button", { name: "Preview request" }));
 
-        await screen.findByText("We could not preview this request.");
+        await screen.findByRole("heading", { name: "Code expired" });
+        expect(
+            screen.getByText(
+                "This code has expired. Return to your terminal to request a new one.",
+            ),
+        ).toBeVisible();
         expect(fetchMock).toHaveBeenCalledWith(
             "/api/acr/device",
             expect.objectContaining({
@@ -177,5 +188,37 @@ describe("DeviceApprovalForm", () => {
                 method: "POST",
             }),
         );
+    });
+
+    it("Given a device code that expires BETWEEN a successful preview and Approve, when approving, then shows the code-expired state, not a silent reset (CHAOS-6317)", async () => {
+        // The reported prod shape: the code was still valid when the review
+        // screen loaded (preview 200'd), but expired before the user clicked
+        // Confirm -- acr's Approve call then 400s the same way Preview would.
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValueOnce(
+                new Response(JSON.stringify({ repositoryHints: ["full-chaos/platform"] }), {
+                    status: 200,
+                }),
+            )
+            .mockResolvedValueOnce(
+                new Response(JSON.stringify({ error: { code: "invalid_request", message: "" } }), {
+                    status: 400,
+                }),
+            );
+        vi.stubGlobal("fetch", fetchMock);
+
+        render(<DeviceApprovalForm initialUserCode="EP23TUGG" />);
+        fireEvent.click(screen.getByRole("button", { name: "Preview request" }));
+        await screen.findByRole("heading", { name: "Review device access" });
+
+        fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+        await screen.findByRole("heading", { name: "Code expired" });
+        expect(
+            screen.getByText(
+                "This code has expired. Return to your terminal to request a new one.",
+            ),
+        ).toBeVisible();
     });
 });
