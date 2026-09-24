@@ -4,7 +4,8 @@
  *
  * query-api (ops repo) resolves a request to a registered operation by
  * sha256(strings.TrimSpace(<raw request query text>)) — see
- * cmd/query-api/query_route.go's operationForDocument. But a real browser
+ * query_route.go's operationForDocument (internal/queryapi/server/, formerly
+ * cmd/query-api/). But a real browser
  * never sends the query-api registered*Document const's own text: it
  * sends whatever urql's `client.query(...)` puts on the wire, which is
  * graphql-js-family `print()` output (via @0no-co/graphql.web, the
@@ -22,7 +23,7 @@
  * Independence, stated explicitly (per CHAOS-4696's evidence bar —
  * "ask what your gate cannot see"):
  *   - Side A (the Go const's digest) is read via `registrydump`, which
- *     parses cmd/query-api/query_route.go's SOURCE with go/ast — it
+ *     parses query_route.go's SOURCE with go/ast — it
  *     never touches urql, graphql, or this script.
  *   - Side B (the wire digest) is computed by importing the web
  *     repo's OWN, LIVE query source modules (never a copy pasted into
@@ -49,6 +50,7 @@
  */
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -188,7 +190,7 @@ export interface RegistryEntry {
     digest: string;
 }
 
-/** sha256(trimmed text), hex — the exact algorithm cmd/query-api/internal/digest.Document implements. */
+/** sha256(trimmed text), hex — the exact algorithm the ops repo's digest.Document (internal/queryapi/digest) implements. */
 export function sha256Trim(text: string): string {
     return createHash("sha256").update(text.trim()).digest("hex");
 }
@@ -214,7 +216,7 @@ export function sha256Trim(text: string): string {
  *      `03f73cd3...` — but a real captured request off this repo's own
  *      `graphqlFetch`, through the real exchange chain, digests to
  *      `06ca28a0...` instead, because of this exact __typename
- *      injection; see cmd/query-api/testdata/wire_capture/README.md in
+ *      injection; see testdata/wire_capture/README.md beside query_route.go in
  *      the ops repo for the captured fixture and both digests).
  *   3. `stringifyDocument` is the exact function `fetchExchange` calls on
  *      `request.query` when constructing the HTTP body/URL (see
@@ -230,13 +232,37 @@ export function wireForm(sourceQueryText: string): string {
     return stringifyDocument(formatted);
 }
 
-/** Runs `go run ./cmd/query-api/tools/registrydump` inside opsRoot and parses its JSON. */
+/**
+ * The ops paths of the route file and of registrydump. The ops repo moved
+ * both: query_route.go to internal/queryapi/server/, registrydump to
+ * cmd/registrydump. Each is resolved new path first, then the old one, so
+ * this gate works against an ops checkout from before or after the move.
+ * If neither path exists, the error names both.
+ */
+export const QUERY_ROUTE_PATHS = [
+    "internal/queryapi/server/query_route.go",
+    "cmd/query-api/query_route.go",
+] as const;
+export const REGISTRYDUMP_PATHS = ["cmd/registrydump", "cmd/query-api/tools/registrydump"] as const;
+
+export function resolveOpsPath(opsRoot: string, candidates: readonly string[]): string {
+    for (const candidate of candidates) {
+        if (existsSync(path.join(opsRoot, candidate))) {
+            return candidate;
+        }
+    }
+    throw new Error(`none of ${candidates.join(", ")} exists under --ops-root ${opsRoot}`);
+}
+
+/** Runs registrydump (see REGISTRYDUMP_PATHS) inside opsRoot and parses its JSON. */
 function runRegistrydump(opsRoot: string): RegistryEntry[] {
-    const result = spawnSync(
-        "go",
-        ["run", "./cmd/query-api/tools/registrydump", "-file", "cmd/query-api/query_route.go"],
-        { cwd: opsRoot, encoding: "utf8", env: { ...process.env, GOTOOLCHAIN: "go1.27.0" } },
-    );
+    const tool = resolveOpsPath(opsRoot, REGISTRYDUMP_PATHS);
+    const routeFile = resolveOpsPath(opsRoot, QUERY_ROUTE_PATHS);
+    const result = spawnSync("go", ["run", `./${tool}`, "-file", routeFile], {
+        cwd: opsRoot,
+        encoding: "utf8",
+        env: { ...process.env, GOTOOLCHAIN: "go1.27.0" },
+    });
     if (result.status !== 0) {
         throw new Error(
             `registrydump failed (exit ${result.status}) in ${opsRoot}:\n${result.stderr}`,
@@ -294,7 +320,7 @@ export function compareRegistry(
         // mismatch for the wrong reason).
         if (typeof goEntry.digest !== "string" || goEntry.digest.length === 0) {
             errors.push(
-                `registrydump's entry for operation "${operation}" has no digest field (got ${JSON.stringify(goEntry.digest)}) -- the ops checkout at --ops-root predates CHAOS-4696's registrydump digest field, or its JSON is malformed. Point --ops-root at a checkout that includes cmd/query-api/internal/digest.`,
+                `registrydump's entry for operation "${operation}" has no digest field (got ${JSON.stringify(goEntry.digest)}) -- the ops checkout at --ops-root predates CHAOS-4696's registrydump digest field, or its JSON is malformed. Point --ops-root at a checkout that includes the digest package (internal/queryapi/digest, formerly cmd/query-api/internal/digest).`,
             );
             continue;
         }

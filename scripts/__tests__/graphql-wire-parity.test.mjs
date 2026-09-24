@@ -1,8 +1,15 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
     OPERATION_MANIFEST,
+    QUERY_ROUTE_PATHS,
+    REGISTRYDUMP_PATHS,
     compareRegistry,
+    resolveOpsPath,
     sha256Trim,
     wireForm,
 } from "../graphql-wire-parity.ts";
@@ -159,5 +166,46 @@ describe("wireForm", () => {
         // featureFlags has two non-root selection sets: `flags { ... }`
         // and the root `featureFlags(...) { ... }` field selection.
         expect(wire.match(/__typename/g)).toHaveLength(2);
+    });
+});
+
+describe("resolveOpsPath", () => {
+    /** An ops-root stand-in holding only the given relative paths. */
+    function opsRootWith(paths) {
+        const root = mkdtempSync(path.join(tmpdir(), "wire-parity-ops-"));
+        for (const relative of paths) {
+            if (relative.endsWith(".go")) {
+                mkdirSync(path.dirname(path.join(root, relative)), { recursive: true });
+                writeFileSync(path.join(root, relative), "package x\n");
+            } else {
+                mkdirSync(path.join(root, relative), { recursive: true });
+            }
+        }
+        return root;
+    }
+
+    it.each([
+        ["after the move", [QUERY_ROUTE_PATHS[0], REGISTRYDUMP_PATHS[0]], 0],
+        ["before the move", [QUERY_ROUTE_PATHS[1], REGISTRYDUMP_PATHS[1]], 1],
+        ["both present", [...QUERY_ROUTE_PATHS, ...REGISTRYDUMP_PATHS], 0],
+    ])("resolves each path in an ops checkout %s", (_name, present, want) => {
+        const root = opsRootWith(present);
+        try {
+            expect(resolveOpsPath(root, QUERY_ROUTE_PATHS)).toBe(QUERY_ROUTE_PATHS[want]);
+            expect(resolveOpsPath(root, REGISTRYDUMP_PATHS)).toBe(REGISTRYDUMP_PATHS[want]);
+        } finally {
+            rmSync(root, { recursive: true, force: true });
+        }
+    });
+
+    it("names every candidate when none exists", () => {
+        const root = opsRootWith([]);
+        try {
+            expect(() => resolveOpsPath(root, QUERY_ROUTE_PATHS)).toThrow(
+                QUERY_ROUTE_PATHS.join(", "),
+            );
+        } finally {
+            rmSync(root, { recursive: true, force: true });
+        }
     });
 });
