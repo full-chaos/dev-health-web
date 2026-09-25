@@ -116,9 +116,14 @@ import {
     WORK_UNIT_TEAM_ATTRIBUTIONS_QUERY,
 } from "../src/lib/graphql/queries";
 import {
+    CLONE_REPORT_MUTATION,
+    CREATE_REPORT_MUTATION,
+    DELETE_REPORT_MUTATION,
     REPORT_RUNS_QUERY,
     SAVED_REPORT_QUERY,
     SAVED_REPORTS_QUERY,
+    TRIGGER_REPORT_MUTATION,
+    UPDATE_REPORT_MUTATION,
 } from "../src/lib/reports/queries";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -166,6 +171,9 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     operatingReview: OPERATING_REVIEW_QUERY,
     pr: PR_DETAIL_QUERY,
     releaseImpact: RELEASE_IMPACT_QUERY,
+    cloneSavedReport: CLONE_REPORT_MUTATION,
+    createSavedReport: CREATE_REPORT_MUTATION,
+    deleteSavedReport: DELETE_REPORT_MUTATION,
     reportRuns: REPORT_RUNS_QUERY,
     reviewEdges: REVIEW_EDGES_QUERY,
     savedReport: SAVED_REPORT_QUERY,
@@ -177,6 +185,8 @@ export const OPERATION_MANIFEST: Record<string, string> = {
     securityOverview: SECURITY_OVERVIEW_QUERY,
     testopsRisk: TESTOPS_RISK_QUERY,
     throughputForecast: THROUGHPUT_FORECAST_QUERY,
+    triggerReport: TRIGGER_REPORT_MUTATION,
+    updateSavedReport: UPDATE_REPORT_MUTATION,
     workGraphArtifacts: WORK_GRAPH_ARTIFACTS_QUERY,
     workGraphEdges: WORK_GRAPH_EDGES_QUERY,
     workGraphFlow: WORK_GRAPH_FLOW_QUERY,
