@@ -244,6 +244,13 @@ jobs:
                   # SAME end-user JWT the Python api issues.
                   JWT_SECRET_KEY: live-e2e-test-secret-do-not-use-in-production
                   GO_API_EDGE_JWT_SECRET: live-e2e-test-secret-do-not-use-in-production
+                  # Same value as the Python api's SETTINGS_ENCRYPTION_KEY above: go-api's
+                  # credentials routes seal/open the SAME encrypted column
+                  # (integration_credentials.credentials_encrypted) Python writes, with the same
+                  # cipher (internal/api/credentials/connection.go requires this explicitly --
+                  # confirmed via the failing run's log: "provider credential is invalid" on save,
+                  # unrelated to the request payload).
+                  SETTINGS_ENCRYPTION_KEY: live-e2e-test-settings-key-do-not-use
                   # Same reason the Python api step sets it: the fail-closed rate-limit posture
                   # otherwise refuses to start without a shared VALKEY_URI.
                   ENVIRONMENT: development
