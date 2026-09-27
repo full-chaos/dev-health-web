@@ -103,6 +103,28 @@ export function isPublicPath(pathname: string): boolean {
 }
 
 /**
+ * CHAOS-6262: every web caller of the Ask Dev product was deleted from this
+ * repo. `/api/v1/dev/*` was this repo's own BFF proxy (also deleted); the
+ * other two families are ops-owned REST routes that remain live on ops until
+ * its own deletion PR lands. Blocking all three here, unconditionally,
+ * before any auth check or backend rewrite, means no request ever reaches
+ * ops through this host regardless of which side has deleted its half yet --
+ * this stays in place even after ops's routes are gone for real, as
+ * harmless defense in depth.
+ */
+const DELETED_ASK_DEV_PATH_FAMILIES = [
+    "/api/v1/dev",
+    "/api/v1/admin/ask-dev",
+    "/api/v1/admin/platform/ask-dev",
+] as const;
+
+export function isDeletedAskDevPath(pathname: string): boolean {
+    return DELETED_ASK_DEV_PATH_FAMILIES.some(
+        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+    );
+}
+
+/**
  * Ensure callback URLs are local-only to prevent open redirects.
  *
  * Delegates to `safeReturnTo` (the hardened check already used one hop
@@ -237,6 +259,13 @@ async function handleRequest(request: NextRequest) {
     const nonce = generateNonce();
     const csp = buildCspHeader(nonce);
 
+    if (isDeletedAskDevPath(pathname)) {
+        const response = new NextResponse(null, { status: 404 });
+        response.headers.set("x-nonce", nonce);
+        response.headers.set("Content-Security-Policy", csp);
+        return response;
+    }
+
     if (pathname === "/") {
         const session = await auth();
         if (session && session.access_token) {
@@ -309,15 +338,6 @@ async function handleRequest(request: NextRequest) {
             !pathname.startsWith("/api/auth") &&
             !pathname.startsWith("/api/acr") &&
             !pathname.startsWith("/api/agent-context") &&
-            // CHAOS-6262: the Ask Dev BFF handlers under /api/v1/dev/** are
-            // deleted, not just unlinked -- until the ops-side routes are
-            // also deleted, they would otherwise still be live behind the
-            // generic backend rewrite below, which enforces neither the
-            // origin check nor the request-size bound the deleted handlers
-            // had. Excluding them here means an unmatched Next.js route (a
-            // real 404) instead of a proxied request.
-            pathname !== "/api/v1/dev" &&
-            !pathname.startsWith("/api/v1/dev/") &&
             !pathname.startsWith("/api/v1/llm-proxy"));
 
     if (!shouldProxy) {
