@@ -309,6 +309,15 @@ async function handleRequest(request: NextRequest) {
             !pathname.startsWith("/api/auth") &&
             !pathname.startsWith("/api/acr") &&
             !pathname.startsWith("/api/agent-context") &&
+            // CHAOS-6262: the Ask Dev BFF handlers under /api/v1/dev/** are
+            // deleted, not just unlinked -- until the ops-side routes are
+            // also deleted, they would otherwise still be live behind the
+            // generic backend rewrite below, which enforces neither the
+            // origin check nor the request-size bound the deleted handlers
+            // had. Excluding them here means an unmatched Next.js route (a
+            // real 404) instead of a proxied request.
+            pathname !== "/api/v1/dev" &&
+            !pathname.startsWith("/api/v1/dev/") &&
             !pathname.startsWith("/api/v1/llm-proxy"));
 
     if (!shouldProxy) {

@@ -296,6 +296,16 @@ describe("proxy rate limiting", () => {
         expect(res.headers.get("x-middleware-rewrite")).toBeNull();
     });
 
+    it("no longer proxies the deleted Ask Dev BFF routes to the backend (CHAOS-6262)", async () => {
+        mockAuth.mockResolvedValue(session);
+
+        const exact = await proxy(makeRequest("/api/v1/dev", "GET"));
+        const nested = await proxy(makeRequest("/api/v1/dev/conversations", "POST"));
+
+        expect(exact.headers.get("x-middleware-rewrite")).toBeNull();
+        expect(nested.headers.get("x-middleware-rewrite")).toBeNull();
+    });
+
     it("keeps device-approval BFF routes local instead of rewriting them to the backend", async () => {
         mockAuth.mockResolvedValue(session);
 
