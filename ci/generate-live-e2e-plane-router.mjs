@@ -12,20 +12,38 @@
 //
 // Usage:
 //   node ci/generate-live-e2e-plane-router.mjs <go_served_paths.tsv> \
-//     --api-port 8000 --go-api-port 8001 --query-api-port 8090
+//     --api-port 8000 --go-api-port 8001 --query-api-port 8090 \
+//     [--query-api-only /api/v1/meta,/api/v1/other]
+//
+// --query-api-only restricts the query-api-owned path set to the given
+// intersection with the ledger, rather than every query-api row in it. Several
+// query-api routes (e.g. /api/v1/home) additionally require
+// GO_API_ENVELOPE_*/GO_API_REGISTRY_POSTGRES_URI to actually mount -- without
+// that provisioning they stay unmounted and 404 even though the ledger lists
+// them, which is worse than leaving them on the still-real Python
+// implementation the catch-all already reaches. Omit the flag to route every
+// ledger-listed query-api path (only correct once every route's own
+// activation prerequisites are provisioned too).
 //
 // Prints the traefik dynamic YAML config to stdout.
 
 import { readFileSync } from "node:fs";
 
 function parseArgs(argv) {
-    const args = { tsv: null, apiPort: "8000", goApiPort: "8001", queryApiPort: "8090" };
+    const args = {
+        tsv: null,
+        apiPort: "8000",
+        goApiPort: "8001",
+        queryApiPort: "8090",
+        queryApiOnly: null,
+    };
     const rest = [];
     for (let i = 0; i < argv.length; i++) {
         const a = argv[i];
         if (a === "--api-port") args.apiPort = argv[++i];
         else if (a === "--go-api-port") args.goApiPort = argv[++i];
         else if (a === "--query-api-port") args.queryApiPort = argv[++i];
+        else if (a === "--query-api-only") args.queryApiOnly = argv[++i].split(",");
         else rest.push(a);
     }
     args.tsv = rest[0];
@@ -112,18 +130,30 @@ function main() {
         process.exit(2);
     }
     const text = readFileSync(args.tsv, "utf8");
-    const { goPaths, queryPaths } = parseTsv(text);
+    const { goPaths, queryPaths: allQueryPaths } = parseTsv(text);
     if (goPaths.length === 0) {
         console.error(
             "generate-live-e2e-plane-router: found ZERO go-api rows -- refusing to emit an empty router (go_served_paths.tsv shape may have changed)",
         );
         process.exit(1);
     }
-    if (queryPaths.length === 0) {
+    if (allQueryPaths.length === 0) {
         console.error(
             "generate-live-e2e-plane-router: found ZERO query-api rows -- refusing to emit an empty router (go_served_paths.tsv shape may have changed)",
         );
         process.exit(1);
+    }
+    let queryPaths = allQueryPaths;
+    if (args.queryApiOnly) {
+        const allowed = new Set(args.queryApiOnly);
+        const unknown = args.queryApiOnly.filter((p) => !allQueryPaths.includes(p));
+        if (unknown.length > 0) {
+            console.error(
+                `generate-live-e2e-plane-router: --query-api-only names path(s) not in the ledger: ${unknown.join(", ")}`,
+            );
+            process.exit(1);
+        }
+        queryPaths = allQueryPaths.filter((p) => allowed.has(p));
     }
     process.stdout.write(
         emitDynamicConfig({
