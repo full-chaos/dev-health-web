@@ -1,28 +1,45 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import "./fc-infinity-themes.css";
 import { WebVitalsReporter } from "@/components/WebVitalsReporter";
 import { getServerEnv } from "@/lib/config";
 
-const bodyFont = Inter({
+// CHAOS-7007: vendored, not next/font/google -- a hosted-runner fetch of
+// Google Fonts metadata at build time was a structural CI dependency, not a
+// flake (confirmed hitting main's own post-merge CI directly). Each file is
+// a static per-weight instance cut from Google's own OFL-licensed variable
+// source with fonttools varLib.instancer (Inter pinned at opsz=14, the same
+// optical size Google's non-Display "Inter" static family uses), matching
+// next/font/google's static weight files rather than a raw variable range.
+const bodyFont = localFont({
+    src: [
+        { path: "../fonts/inter/Inter-400.ttf", weight: "400", style: "normal" },
+        { path: "../fonts/inter/Inter-500.ttf", weight: "500", style: "normal" },
+        { path: "../fonts/inter/Inter-600.ttf", weight: "600", style: "normal" },
+        { path: "../fonts/inter/Inter-700.ttf", weight: "700", style: "normal" },
+    ],
     variable: "--font-body",
-    weight: ["400", "500", "600", "700"],
-    subsets: ["latin"],
     display: "swap",
 });
 
-const displayFont = Inter({
+const displayFont = localFont({
+    src: [
+        { path: "../fonts/inter/Inter-500.ttf", weight: "500", style: "normal" },
+        { path: "../fonts/inter/Inter-600.ttf", weight: "600", style: "normal" },
+        { path: "../fonts/inter/Inter-700.ttf", weight: "700", style: "normal" },
+    ],
     variable: "--font-display",
-    weight: ["500", "600", "700"],
-    subsets: ["latin"],
     display: "swap",
 });
 
-const monoFont = JetBrains_Mono({
+const monoFont = localFont({
+    src: [
+        { path: "../fonts/jetbrains-mono/JetBrainsMono-400.ttf", weight: "400", style: "normal" },
+        { path: "../fonts/jetbrains-mono/JetBrainsMono-500.ttf", weight: "500", style: "normal" },
+        { path: "../fonts/jetbrains-mono/JetBrainsMono-600.ttf", weight: "600", style: "normal" },
+    ],
     variable: "--font-mono",
-    weight: ["400", "500", "600"],
-    subsets: ["latin"],
     display: "swap",
 });
 
