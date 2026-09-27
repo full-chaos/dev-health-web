@@ -76,6 +76,12 @@ jobs:
                     CLICKHOUSE_PASSWORD: ch
                 ports:
                     - 8123:8123
+                    # CHAOS-7001: dev-health-ops's Go binaries (dho api / dho query-api) open
+                    # CLICKHOUSE_URI over the NATIVE protocol on port 9000 -- unlike Python's
+                    # clickhouse-connect, which is happy on the HTTP port 8123 this service
+                    # already published. Without this, the Go planes below cannot reach
+                    # ClickHouse at all regardless of what else is configured correctly.
+                    - 9000:9000
                 options: >-
                     --health-cmd "clickhouse-client --user ch --password ch --query 'SELECT 1'" --health-interval 10s --health-timeout 5s --health-retries 5
 
@@ -125,6 +131,19 @@ jobs:
                   pip install -r requirements.txt
               working-directory: dev-health-ops
 
+            - name: Setup Go
+              uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+              with:
+                  go-version-file: dev-health-ops/go.mod
+                  cache-dependency-path: dev-health-ops/go.sum
+
+            - name: Build dev-health-ops go binary (dho)
+              # CHAOS-7001: the go-api and query-api planes below are two subcommands of this
+              # ONE binary (`dho api`, `dho query-api`), the same binary prod/bigboy run --
+              # never a separate build.
+              run: go build -o /tmp/dho ./cmd/dho
+              working-directory: dev-health-ops
+
             - name: Check GraphQL schema drift
               run: |
                   if ! PYTHONPATH=dev-health-ops/src python3 -m dev_health_ops.api.graphql.export_schema \
@@ -166,7 +185,7 @@ jobs:
                   REDIS_URL: redis://localhost:6379/0
                   CELERY_BROKER_URL: redis://localhost:6379/0
                   CELERY_RESULT_BACKEND: redis://localhost:6379/0
-                  CORS_ALLOWED_ORIGINS: "http://127.0.0.1:3002,http://localhost:3002,http://127.0.0.1:8000"
+                  CORS_ALLOWED_ORIGINS: "http://127.0.0.1:3002,http://localhost:3002,http://127.0.0.1:8000,http://127.0.0.1:8099"
                   # Ops CHAOS-1553/1554 fail-closed rate-limit posture refuses to start
                   # without REDIS_URL unless ENVIRONMENT=development. Live-e2e provides
                   # a local Redis service for rate limiting and Celery endpoints.
@@ -206,6 +225,130 @@ jobs:
                   cat /tmp/dev-health-ops-api.log || true
                   exit 1
               working-directory: dev-health-ops
+
+            - name: Start dev-health-ops go-api and query-api
+              # CHAOS-7001: mirror what prod's Ingress and bigboy's traefik plane-split router
+              # do -- routes ci/go_served_paths.tsv marks go-api/query-api-owned are served by
+              # these two dho subcommands, not by the Python api above. Bare processes, same
+              # style as "Start dev-health-ops API" -- no docker network needed since the
+              # traefik router below reaches all three over 127.0.0.1 (--network host).
+              env:
+                  POSTGRES_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+                  API_DATABASE_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+                  # Native protocol, port 9000 (see the clickhouse service's port comment above)
+                  # -- NOT the 8123 HTTP port Python's CLICKHOUSE_URI above uses.
+                  CLICKHOUSE_URI: clickhouse://ch:ch@localhost:9000/default
+                  API_CLICKHOUSE_URI: clickhouse://ch:ch@localhost:9000/default
+                  # Same value as the Python api's JWT_SECRET_KEY above: both go-api (its own
+                  # edgetoken check) and query-api (GO_API_EDGE_JWT_SECRET) must verify the
+                  # SAME end-user JWT the Python api issues.
+                  JWT_SECRET_KEY: live-e2e-test-secret-do-not-use-in-production
+                  GO_API_EDGE_JWT_SECRET: live-e2e-test-secret-do-not-use-in-production
+                  # Same value as the Python api's SETTINGS_ENCRYPTION_KEY above: go-api's
+                  # credentials routes seal/open the SAME encrypted column
+                  # (integration_credentials.credentials_encrypted) Python writes, with the same
+                  # cipher (internal/api/credentials/connection.go requires this explicitly --
+                  # confirmed via the failing run's log: "provider credential is invalid" on save,
+                  # unrelated to the request payload).
+                  SETTINGS_ENCRYPTION_KEY: live-e2e-test-settings-key-do-not-use
+                  # Same reason the Python api step sets it: the fail-closed rate-limit posture
+                  # otherwise refuses to start without a shared VALKEY_URI.
+                  ENVIRONMENT: development
+                  CORS_ALLOWED_ORIGINS: "http://127.0.0.1:3002,http://localhost:3002,http://127.0.0.1:8000,http://127.0.0.1:8099"
+                  # query-api's per-route Go-plane switches -- plain in-memory flags flipped once
+                  # at boot (never Postgres, never the routeswitch ledger). Copied verbatim from
+                  # ci/bigboy/compose.bigboy.images.yml's query-api block (deploy/values.prod.yaml's
+                  # own queryApi env), the canonical list -- re-derive from there, never hand-add.
+                  GO_API_QUADRANT_ENABLED: "true"
+                  GO_API_FILTER_OPTIONS_ENABLED: "true"
+                  GO_API_DRILLDOWN_PRS_ENABLED: "true"
+                  GO_API_DRILLDOWN_ISSUES_ENABLED: "true"
+                  GO_API_META_ENABLED: "true"
+                  GO_API_EXPLAIN_ENABLED: "true"
+                  GO_API_PEOPLE_SEARCH_ENABLED: "true"
+                  GO_API_PEOPLE_SUMMARY_ENABLED: "true"
+                  GO_API_PEOPLE_METRIC_ENABLED: "true"
+                  GO_API_FLAME_ENABLED: "true"
+                  GO_API_PEOPLE_DRILLDOWN_PRS_ENABLED: "true"
+                  GO_API_PEOPLE_DRILLDOWN_ISSUES_ENABLED: "true"
+                  GO_API_FLAME_AGGREGATED_ENABLED: "true"
+                  GO_API_HEATMAP_ENABLED: "true"
+                  GO_API_SANKEY_ENABLED: "true"
+                  GO_API_INVESTMENT_ENABLED: "true"
+                  GO_API_INVESTMENT_FLOW_ENABLED: "true"
+                  GO_API_INVESTMENT_SUNBURST_ENABLED: "true"
+                  GO_API_HOME_ENABLED: "true"
+                  GO_API_OPPORTUNITIES_ENABLED: "true"
+                  GO_API_WORK_UNITS_ENABLED: "true"
+                  GO_API_WORK_UNIT_EXPLAIN_ENABLED: "true"
+                  GO_API_INVESTMENT_EXPLAIN_ENABLED: "true"
+              run: |
+                  nohup /tmp/dho api --api-addr=127.0.0.1:8001 --http-addr=127.0.0.1:8002 \
+                    >/tmp/dev-health-go-api.log 2>&1 &
+                  echo $! >/tmp/dev-health-go-api.pid
+                  nohup /tmp/dho query-api --query-addr=127.0.0.1:8090 --http-addr=127.0.0.1:8092 \
+                    >/tmp/dev-health-query-api.log 2>&1 &
+                  echo $! >/tmp/dev-health-query-api.pid
+
+                  for name_addr in "go-api 127.0.0.1:8002" "query-api 127.0.0.1:8092"; do
+                    name="${name_addr%% *}"
+                    addr="${name_addr#* }"
+                    ok=0
+                    for i in {1..60}; do
+                      if curl -fsS "http://${addr}/healthz" >/dev/null; then
+                        ok=1
+                        break
+                      fi
+                      sleep 2
+                    done
+                    if [ "${ok}" -ne 1 ]; then
+                      echo "${name} failed health check startup window"
+                      cat "/tmp/dev-health-${name}.log" || true
+                      exit 1
+                    fi
+                  done
+              working-directory: dev-health-ops
+
+            - name: Generate and start live-e2e plane router (traefik)
+              # CHAOS-7001: the piece that actually makes the plane split real -- without a
+              # router, PLAYWRIGHT_LIVE_BACKEND_URL still points straight at the Python api and
+              # every go-api/query-api-owned request 500s exactly as it does on main today.
+              #
+              # --query-api-only /api/v1/meta: query-api's OTHER ledger-listed paths (home,
+              # investment/flow, sankey, people/*, flame, ...) additionally require
+              # GO_API_ENVELOPE_*/GO_API_REGISTRY_POSTGRES_URI to actually mount (see
+              # internal/queryapi/server/server.go's buildHomeRoute gate) -- confirmed locally:
+              # without that provisioning they stay UNMOUNTED and 404, which is worse than
+              # leaving them on the still-real Python implementation the catch-all already
+              # reaches (measured: /api/v1/home passes today via Python, would regress to 404
+              # if routed to an unprovisioned query-api). go-api needs no equivalent narrowing --
+              # its ~100 ledger paths mount unconditionally.
+              run: |
+                  mkdir -p /tmp/traefik-dynamic
+                  node ci/generate-live-e2e-plane-router.mjs \
+                    dev-health-ops/ci/go_served_paths.tsv \
+                    --api-port 8000 --go-api-port 8001 --query-api-port 8090 \
+                    --query-api-only /api/v1/meta \
+                    > /tmp/traefik-dynamic/planes.yml
+                  cat /tmp/traefik-dynamic/planes.yml
+
+                  docker run -d --name live-e2e-traefik --network host \
+                    -v /tmp/traefik-dynamic:/etc/traefik/dynamic:ro \
+                    traefik:v3.1 \
+                    --providers.file.directory=/etc/traefik/dynamic \
+                    --providers.file.watch=false \
+                    --entrypoints.web.address=:8099 \
+                    --log.level=INFO
+
+                  for i in {1..30}; do
+                    if curl -fsS http://127.0.0.1:8099/health >/dev/null; then
+                      exit 0
+                    fi
+                    sleep 1
+                  done
+                  echo "traefik router failed health check startup window (via catch-all -> api)"
+                  docker logs live-e2e-traefik || true
+                  exit 1
 
             - name: Seed test superuser
               env:
@@ -291,7 +434,10 @@ jobs:
 
             - name: Run live backend e2e tier
               env:
-                  PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8000
+                  # CHAOS-7001: through the plane-split router, not the Python api directly --
+                  # go-api/query-api-owned paths must reach those planes the way prod's Ingress
+                  # (and bigboy's traefik) route them, or they 500 on their Python stub.
+                  PLAYWRIGHT_LIVE_BACKEND_URL: http://127.0.0.1:8099
                   TEST_SUPERUSER_EMAIL: admin@devhealth.example
                   TEST_SUPERUSER_PASSWORD: DevHealth123!Admin
                   TEST_TARGET_USER_ID: ${{ secrets.TEST_TARGET_USER_ID }}
@@ -310,7 +456,10 @@ jobs:
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: dev-health-ops-api-log
-                  path: /tmp/dev-health-ops-api.log
+                  path: |
+                      /tmp/dev-health-ops-api.log
+                      /tmp/dev-health-go-api.log
+                      /tmp/dev-health-query-api.log
 
             - name: Stop dev-health-ops API
               if: always()
@@ -318,3 +467,10 @@ jobs:
                   if [ -f /tmp/dev-health-ops-api.pid ]; then
                     kill "$(cat /tmp/dev-health-ops-api.pid)" || true
                   fi
+                  if [ -f /tmp/dev-health-go-api.pid ]; then
+                    kill "$(cat /tmp/dev-health-go-api.pid)" || true
+                  fi
+                  if [ -f /tmp/dev-health-query-api.pid ]; then
+                    kill "$(cat /tmp/dev-health-query-api.pid)" || true
+                  fi
+                  docker rm -f live-e2e-traefik >/dev/null 2>&1 || true
