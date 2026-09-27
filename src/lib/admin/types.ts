@@ -1012,106 +1012,6 @@ export interface LLMSettingsStatusResponse {
     readiness_safe_failure_reason: string | null;
 }
 
-// ---- Ask Dev administration (CHAOS-3217) ----
-
-export type AskDevEntitlementState =
-    "enabled" | "not_entitled" | "globally_disabled" | "org_disabled" | "unavailable";
-
-export type AskDevAdminReadiness =
-    | "ready"
-    | "unsupported_model"
-    | "missing_credentials"
-    | "disabled"
-    | "degraded"
-    | "stale_readiness";
-
-export type AskDevFallbackPolicy = "fail_closed" | "platform";
-export type AskDevRetentionDays = 0 | 30;
-
-export interface AskDevAdminSettings {
-    retention_days: AskDevRetentionDays;
-    fallback_policy: AskDevFallbackPolicy;
-    emergency_disabled: boolean;
-    platform_monthly_request_limit: number;
-    platform_monthly_cost_limit_microusd: number;
-}
-
-export interface AskDevAdminSettingsPatch {
-    retention_days?: AskDevRetentionDays;
-    fallback_policy?: AskDevFallbackPolicy;
-    emergency_disabled?: boolean;
-    platform_monthly_request_limit?: number;
-    platform_monthly_cost_limit_microusd?: number;
-}
-
-export interface AskDevRequestLimits {
-    active_runs_per_user: number;
-    active_runs_per_organization: number;
-    requests_per_user_per_15_minutes: number;
-    requests_per_organization_per_hour: number;
-}
-
-export interface AskDevPlatformAllowanceBounds {
-    request_minimum: number;
-    request_maximum: number;
-    cost_minimum_microusd: number;
-    cost_maximum_microusd: number;
-}
-
-export type AskDevPlatformAllowanceWarning =
-    "none" | "eighty_percent" | "ninety_percent" | "exhausted";
-
-export interface AskDevPlatformAllowanceUsage {
-    window_start: string;
-    reset_at: string;
-    request_limit: number;
-    request_used: number;
-    request_remaining: number;
-    cost_limit_microusd: number;
-    cost_used_microusd: number;
-    cost_remaining_microusd: number;
-    warning: AskDevPlatformAllowanceWarning;
-}
-
-export interface AskDevAdminResponse {
-    schema_version: string;
-    entitlement_state: AskDevEntitlementState;
-    ask_dev_enabled: boolean;
-    chat_window_available: boolean;
-    full_page_available: boolean;
-    effective_provider_label: string | null;
-    effective_model_label: string | null;
-    provider_source: "platform" | "byo" | null;
-    readiness: AskDevAdminReadiness;
-    readiness_checked_at: string | null;
-    readiness_version: string | null;
-    administrator_safe_failure_reason: string | null;
-    settings: AskDevAdminSettings;
-    retention_options: AskDevRetentionDays[];
-    fallback_options: AskDevFallbackPolicy[];
-    request_limits: AskDevRequestLimits;
-    platform_allowance_bounds: AskDevPlatformAllowanceBounds;
-    no_training_by_default: boolean;
-}
-
-export interface AskDevAdminUsageResponse {
-    schema_version: string;
-    use_case: "ask_dev";
-    since: string;
-    through: string;
-    request_count: number;
-    run_count: number;
-    completed_runs: number;
-    failed_runs: number;
-    degraded_runs: number;
-    input_tokens: number;
-    output_tokens: number;
-    estimated_cost_microusd: number | null;
-    failure_rate: number;
-    degraded_rate: number;
-    readiness: AskDevAdminReadiness;
-    platform_allowance: AskDevPlatformAllowanceUsage;
-}
 // ---- Provider types ----
 
 export type Provider = "github" | "gitlab" | "jira" | "linear" | "launchdarkly" | "pagerduty";
@@ -1193,27 +1093,6 @@ export interface PlatformStats {
     active_sync_configs: number;
     recent_syncs_success: number;
     recent_syncs_failed: number;
-}
-
-// ---- Platform Ask Dev Readiness (CHAOS-3265) ----
-
-/**
- * GET/POST /admin/platform/ask-dev/readiness response. Superuser-only —
- * describes the operator/platform-owned Ask Dev provider (env-configured),
- * never an organization's BYO configuration. `readiness` reuses
- * `AskDevAdminReadiness` because the enum values are identical; do not
- * duplicate the union.
- */
-export interface PlatformAskDevReadinessResponse {
-    schema_version: "platform_ask_dev_readiness.v1";
-    configured: boolean;
-    /** Safe label only, e.g. "OpenAI compatible" — never a raw endpoint or credential. */
-    provider_label: string | null;
-    model_label: string | null;
-    readiness: AskDevAdminReadiness;
-    readiness_checked_at: string | null;
-    readiness_version: string | null;
-    safe_remediation: string | null;
 }
 
 // ---- Licensing & Feature Flags ----

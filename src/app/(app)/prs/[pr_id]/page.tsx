@@ -1,5 +1,4 @@
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
-import { AskDevContextRegistration } from "@/components/ask-dev/AskDevContextRegistration";
 import { BackLink } from "@/components/shared/BackLink";
 import { CommitHashDisclosure } from "@/components/shared/CommitHashDisclosure";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
@@ -214,17 +213,7 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
             <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
                 <PrimaryNav filters={defaultMetricFilter} />
                 <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <PrHeader
-                        context={
-                            prResult.pr
-                                ? {
-                                      entityId: prId,
-                                      label: `${prResult.pr.repoName ?? prResult.pr.repoId} #${prResult.pr.number}`,
-                                      repositoryId: prResult.pr.repoId,
-                                  }
-                                : undefined
-                        }
-                    />
+                    <PrHeader />
 
                     {prResult.pr ? (
                         <PrDetailSummary pr={prResult.pr} />
@@ -281,11 +270,7 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
     );
 }
 
-function PrHeader({
-    context,
-}: {
-    context?: { entityId: string; label: string; repositoryId: string };
-} = {}) {
+function PrHeader() {
     return (
         <header className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -298,26 +283,6 @@ function PrHeader({
                 </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-                {context ? (
-                    <AskDevContextRegistration
-                        context={{
-                            routeId: "pull_request_detail",
-                            entityRefs: [
-                                {
-                                    entity_type: "pull_request",
-                                    entity_id: context.entityId,
-                                    display_label: context.label.slice(0, 120),
-                                    repository_id: context.repositoryId,
-                                },
-                            ],
-                            suggestedQuestionIds: [
-                                "delivery_status",
-                                "remaining_work",
-                                "data_trust",
-                            ],
-                        }}
-                    />
-                ) : null}
                 <BackLink area="Explore" href="/explore" />
             </div>
         </header>

@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { AskDevContextRegistration } from "@/components/ask-dev/AskDevContextRegistration";
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -57,21 +56,6 @@ export default async function IssueDetailPage({ params }: IssueDetailPageProps) 
                             </p>
                         </div>
                         <div className="flex flex-wrap items-center gap-3">
-                            <AskDevContextRegistration
-                                context={{
-                                    routeId: "issue_detail",
-                                    entityRefs: [
-                                        {
-                                            entity_type: "issue",
-                                            entity_id: issueId,
-                                            display_label: String(
-                                                flame?.entity?.work_item_id ?? issueId,
-                                            ).slice(0, 120),
-                                        },
-                                    ],
-                                    suggestedQuestionIds: ["remaining_work", "data_trust"],
-                                }}
-                            />
                             <Link
                                 href="/explore"
                                 className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"

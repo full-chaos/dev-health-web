@@ -23,10 +23,8 @@ describe("AISetupPage", () => {
     });
 
     it.each([
-        [{ ask_dev: true, byo_llm: false }, "/org/admin/ai/ask-dev"],
-        [{ ask_dev: false, byo_llm: true }, "/org/admin/ai/byo-llm"],
-        [{ ask_dev: true, byo_llm: true }, "/org/admin/ai/ask-dev"],
-        [{ ask_dev: false, byo_llm: false }, "/org/admin"],
+        [{ byo_llm: true }, "/org/admin/ai/byo-llm"],
+        [{ byo_llm: false }, "/org/admin"],
     ] as const)("redirects %o to %s without looping", async (features, destination) => {
         getOrgEntitlementsMock.mockResolvedValue({ data: { features } });
 
