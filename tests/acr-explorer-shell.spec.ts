@@ -172,26 +172,12 @@ test.describe("Context Fabric Validation", () => {
         await expectNoBrowserFaults(faults);
     });
 
-    test("reports an unrecovered capability request abort", async ({ page }) => {
-        const faults = browserFaults(page);
-        await page.route("**/api/v1/dev/capabilities", (route) => route.abort("aborted"));
-        await page.goto(CONTEXT_FABRIC_VALIDATION_PATH);
-        await expect(
-            page.getByRole("heading", { name: "Context Fabric Validation", level: 1 }),
-        ).toBeVisible();
-
-        await expect
-            .poll(async () => {
-                await faults.requestFaults.settle();
-                return faults.requestFaults
-                    .failedRequests()
-                    .map(({ errorText, url }) => ({ errorText, url }));
-            })
-            .toContainEqual({
-                errorText: "net::ERR_ABORTED",
-                url: new URL("/api/v1/dev/capabilities", page.url()).href,
-            });
-    });
+    // CHAOS-6262 deleted this test's subject: AskDevProvider and its only
+    // caller of /api/v1/dev/capabilities, lib/dev/client.ts's capability
+    // probe. Nothing in the app requests that URL any more, so the
+    // interceptor this test set up to abort it never fires -- it was
+    // pinning AskDevProvider's own request-failure resilience, not anything
+    // this page (Context Fabric Validation) owns itself.
 
     for (const scenario of [
         ["not-entitled", "data-state-not-entitled"],
