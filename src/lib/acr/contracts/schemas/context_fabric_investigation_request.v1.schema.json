@@ -34,6 +34,75 @@
       "maxItems": 20,
       "uniqueItems": true
     },
+    "prior_window_receipts": {
+      "description": "CHAOS-3900 W1: winr_-namespaced receipts naming a prior result's own WindowClarification option. A NEW, parallel field to prior_subject_receipts, not an overload of it -- the match target and effect both differ.",
+      "type": "array",
+      "items": {
+        "$ref": "context_fabric_common.v1.schema.json#/$defs/WindowBoundReceipt"
+      },
+      "maxItems": 20,
+      "uniqueItems": true
+    },
+    "prior_kind_receipts": {
+      "description": "CHAOS-3900 P1: kindr_-namespaced receipts naming a prior result's own StructureNeeds.kind_options entry. A NEW, parallel field, not an overload of prior_subject_receipts or prior_window_receipts -- the match target and effect both differ.",
+      "type": "array",
+      "items": {
+        "$ref": "context_fabric_common.v1.schema.json#/$defs/KindBoundReceipt"
+      },
+      "maxItems": 20,
+      "uniqueItems": true
+    },
+    "prior_anchor_receipts": {
+      "description": "CHAOS-3900 P1: ancr_-namespaced receipts naming a prior result's own StructureNeeds.anchor_options entry.",
+      "type": "array",
+      "items": {
+        "$ref": "context_fabric_common.v1.schema.json#/$defs/AnchorBoundReceipt"
+      },
+      "maxItems": 20,
+      "uniqueItems": true
+    },
+    "prior_handle_receipts": {
+      "description": "CHAOS-3900 P1: handr_-namespaced receipts naming a prior result's own StructureNeeds.handle_options entry.",
+      "type": "array",
+      "items": {
+        "$ref": "context_fabric_common.v1.schema.json#/$defs/HandleBoundReceipt"
+      },
+      "maxItems": 20,
+      "uniqueItems": true
+    },
+    "prior_candidate_receipts": {
+      "description": "CHAOS-4012: candr_-namespaced receipts naming a prior result's own StructureNeeds.candidate_options entry.",
+      "type": "array",
+      "items": {
+        "$ref": "context_fabric_common.v1.schema.json#/$defs/CandidateBoundReceipt"
+      },
+      "maxItems": 20,
+      "uniqueItems": true
+    },
+    "parent_result_id": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 256,
+      "description": "Result id of the investigation this turn follows. Optional. Seeds the same-conversation carry walk only; it never binds the named result's subjects into this turn. Bounded identically to prior_*_receipts[].result_id so the two can never disagree about what a well-formed result id is."
+    },
+    "expected_kinds": {
+      "description": "CHAOS-3972 P3, design brief section 2.3/2.0/DP12(b): the caller's own explicit expected_kind guess(es). Per the DP12(b) uniform surface split, this NEVER mints question_stated authority by itself -- on the MCP surface it enters at inferred_default/explicit_unattributed (drives census-narrowing and offer-shaping only); every other surface keeps 3900 v5.2's ordinary question_stated rule.",
+      "type": "array",
+      "items": {
+        "$ref": "context_fabric_common.v1.schema.json#/$defs/SubjectKind"
+      },
+      "maxItems": 15,
+      "uniqueItems": true
+    },
+    "subject_handles": {
+      "description": "CHAOS-3972 P3, design brief section 2.3: grammar-typed handle values the caller already knows. pattern_id must name one of the closed handle-grammar registry entries this deployment discloses via StructureNeeds.accepted_grammars -- never free text or a caller-supplied regex.",
+      "type": "array",
+      "items": {
+        "$ref": "context_fabric_common.v1.schema.json#/$defs/RequestedHandle"
+      },
+      "maxItems": 20,
+      "uniqueItems": true
+    },
     "requested_scope": {
       "$ref": "context_fabric_common.v1.schema.json#/$defs/RequestedScope"
     },

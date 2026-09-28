@@ -1,13 +1,13 @@
 {
-  "source_commit": "d1da16cd456968c555943737551deb4a510220ca",
+  "source_commit": "ea83e38cf32a823ffb49cd2936f154c20997d59a",
   "files": [
     {
       "path": "openapi/acr-v1.json",
-      "sha256": "a50f686ea48c2ce69927007e3a8f55699e3230c7a1e02e7833ed13eb488f6b0f"
+      "sha256": "9811e52a08a4bd44fbf35af2873a12ff17e48f6bcfa15b6386578ce93a5606ad"
     },
     {
       "path": "schemas/capabilities.v1.schema.json",
-      "sha256": "d48c1dd7b3e57a0d14482f6b4b98131eabacfe410698ca43abfa7b25b0e8d9b5"
+      "sha256": "e7a8281f258f914dbab5714133b2d7a21f1a24d5e028a5c630d40855a6fe5be9"
     },
     {
       "path": "schemas/context_packet.v1.schema.json",
@@ -23,7 +23,7 @@
     },
     {
       "path": "schemas/error.v1.schema.json",
-      "sha256": "e9b2b0b0de2eb66bff9f9f893e30fdf70a3ebab30a063c07141ed4d5ea4f3384"
+      "sha256": "8ca4b52c38345ae64255643cd88423295d49ceca00f6e77f3abd546456fcb20d"
     },
     {
       "path": "schemas/evidence_ref.v1.schema.json",
@@ -43,7 +43,7 @@
     },
     {
       "path": "schemas/acr_client_credential.v1.schema.json",
-      "sha256": "687990c8026a4addde1a0ddc53ed8fee3f477a3aa662b234378a5109ced1ae61"
+      "sha256": "6f5f9c326ec3ea5330a44f8b4030aa99ed080f9777c7cdbaa9aec6b2ff268661"
     },
     {
       "path": "schemas/agent_episode.v1.schema.json",
@@ -55,15 +55,23 @@
     },
     {
       "path": "schemas/context_fabric_common.v1.schema.json",
-      "sha256": "b85e7da9f235ab3ad8e8ace5150d0fdd261003d58b1f1b0a2c5f156e7aa33fc3"
+      "sha256": "355d78d55d45e360f0cb0c74a974d6f33cb23a5291825b76818131fd3a30a8bd"
+    },
+    {
+      "path": "schemas/context_fabric_answer_projection.v1.schema.json",
+      "sha256": "a655f417f932b68a9cf002f73b718e9bc33ba170eecd443d7469f8e89d3dba97"
     },
     {
       "path": "schemas/context_fabric_investigation_request.v1.schema.json",
-      "sha256": "d146b0fc47bc5ec303ffdda17024cf3225e00495d3287f0463d02d745d59e8bd"
+      "sha256": "db34def69344d0293cbd5e6373735bada695bbfdcaf40af2222c6456e6bb6486"
     },
     {
       "path": "schemas/context_fabric_investigation_result.v1.schema.json",
-      "sha256": "0c91a2eb6b4917c3e49d8130947e9315a496af543876af2bb2da99669de9d82b"
+      "sha256": "56243a35687300b06d56c38c7a4cd12eac0a5bb8a3b2fa2446d293bc09f3715b"
+    },
+    {
+      "path": "schemas/context_fabric_investigation_result.v2.schema.json",
+      "sha256": "19da703d289b39422fdfb678d6baeb37d5c1b115620a8de95ea76c0073229c2a"
     },
     {
       "path": "schemas/context_fabric_org_model_config.v1.schema.json",
@@ -124,6 +132,14 @@
     {
       "path": "schemas/oauth_device_error.v1.schema.json",
       "sha256": "0c2a80787e66035f544c316faa1a4ed98b0ee04bdaa5d0382ca82bf7349b4e86"
+    },
+    {
+      "path": "schemas/oauth_token_exchange_error.v1.schema.json",
+      "sha256": "83579c972b059011eeb3a4dcb5ee08eba746d7d25283daa6e6ed2eb5e45a7078"
+    },
+    {
+      "path": "schemas/token_exchange_response.v1.schema.json",
+      "sha256": "cd3b9be63140ef7787aa13f4c8cfcc56769468bc6a1850a8e6302668f485c671"
     }
   ]
 }

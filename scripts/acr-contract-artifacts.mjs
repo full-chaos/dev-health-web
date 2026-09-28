@@ -37,13 +37,17 @@ function typeName(schemaPath) {
 }
 
 function symbolName(fileName) {
-    return fileName
-        .replace(/\.v1(?:\.schema)?\.json$/u, "")
+    // v1 keeps its historical bare symbol; a later major version carries a
+    // V<n> suffix so v1 and v2 of one schema never collide.
+    const version = /\.v([0-9]+)(?:\.schema)?\.json$/u.exec(fileName)?.[1];
+    const base = fileName
+        .replace(/\.v[0-9]+(?:\.schema)?\.json$/u, "")
         .split("_")
         .map((word, index) =>
             index === 0 ? word : `${word[0]?.toUpperCase() ?? ""}${word.slice(1)}`,
         )
         .join("");
+    return version === undefined || version === "1" ? base : `${base}V${version}`;
 }
 
 // Collects every `$ref` string appearing anywhere in a parsed schema, however
@@ -159,6 +163,19 @@ function insertUnique(target, key, value, context) {
     }
     target[key] = value;
 }
+
+// Schemas that are vendored (so the runtime validators and the copied OpenAPI
+// document resolve every reference) but get no generated TypeScript type. Their
+// types overlap with the v1 schemas already generated (duplicate names such as
+// RenderPresentation / WindowOption), which the flat generated.ts cannot hold,
+// and no web code consumes them. Generating them needs a single-pass type
+// bundle; that is separate work.
+const TYPE_GENERATION_EXCLUDED = new Set([
+    "context_fabric_answer_projection.v1.schema.json",
+    "context_fabric_investigation_result.v2.schema.json",
+    "oauth_token_exchange_error.v1.schema.json",
+    "token_exchange_response.v1.schema.json",
+]);
 
 async function dtoModule(schemaFiles, prettierOptions) {
     const sourceRoot = fs.mkdtempSync(path.join(os.tmpdir(), "acr-contract-types-"));
@@ -298,6 +315,9 @@ export async function expectedArtifacts({ sourceCommit, sourceFiles, prettierOpt
         ...rawArtifacts,
         "manifest.json": stableJson(manifest),
         "../contracts.ts": await validatorModule(schemaFiles, exampleFiles, prettierOptions),
-        "../generated.ts": await dtoModule(schemaFiles, prettierOptions),
+        "../generated.ts": await dtoModule(
+            schemaFiles.filter((file) => !TYPE_GENERATION_EXCLUDED.has(path.basename(file.path))),
+            prettierOptions,
+        ),
     };
 }

@@ -56,8 +56,10 @@ describe("ACR REST contract boundary", () => {
             "schemas/agent_episode.v1.schema.json",
             "schemas/agent_episode_create.v1.schema.json",
             "schemas/context_fabric_common.v1.schema.json",
+            "schemas/context_fabric_answer_projection.v1.schema.json",
             "schemas/context_fabric_investigation_request.v1.schema.json",
             "schemas/context_fabric_investigation_result.v1.schema.json",
+            "schemas/context_fabric_investigation_result.v2.schema.json",
             "schemas/context_fabric_org_model_config.v1.schema.json",
             "schemas/context_fabric_org_model_config_write_request.v1.schema.json",
             "schemas/credential_revoke_request.v1.schema.json",
@@ -73,9 +75,11 @@ describe("ACR REST contract boundary", () => {
             "schemas/device_token_request.v1.schema.json",
             "schemas/device_token_response.v1.schema.json",
             "schemas/oauth_device_error.v1.schema.json",
+            "schemas/oauth_token_exchange_error.v1.schema.json",
+            "schemas/token_exchange_response.v1.schema.json",
         ]);
         expect(JSON.stringify(manifest)).not.toMatch(/generated_at|timestamp|created_at/u);
-        expect(manifest.source_commit).toBe("d1da16cd456968c555943737551deb4a510220ca");
+        expect(manifest.source_commit).toBe("ea83e38cf32a823ffb49cd2936f154c20997d59a");
     });
 
     it("accepts every committed golden with its paired Draft 2020-12 schema", () => {
@@ -159,5 +163,32 @@ describe("ACR generated.ts cross-file $defs types keep their real members", () =
         for (const expectedMember of expectedMembers) {
             expect(members?.has(expectedMember)).toBe(true);
         }
+    });
+
+    // CHAOS-7125: acr answers a ClickHouse outage with error.v1 code
+    // store_unavailable (acr CHAOS-6745). The vendored schema must accept it,
+    // or web reports the retryable outage as a malformed response.
+    it("accepts acr's store_unavailable error body", () => {
+        const body = {
+            schema_version: "error.v1",
+            request_id: "req_01J0ACR005",
+            error: {
+                code: "store_unavailable",
+                message: "A required data store is temporarily unavailable",
+                http_status: 503,
+                retryable: true,
+            },
+        };
+
+        expect(validateAcrContract("error.v1.schema.json", body)).toEqual({
+            valid: true,
+            errors: [],
+        });
+        expect(
+            validateAcrContract("error.v1.schema.json", {
+                ...body,
+                error: { ...body.error, code: "not_a_real_code" },
+            }).valid,
+        ).toBe(false);
     });
 });
