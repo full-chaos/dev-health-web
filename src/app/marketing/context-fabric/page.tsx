@@ -68,13 +68,6 @@ const USE_CASE_TEASERS = [
     "Agent planning and investigation",
 ] as const;
 
-const ASK_DEV_QUESTIONS = [
-    "What needs attention across this portfolio?",
-    "Which teams show sustained pressure, and why?",
-    "Where is engineering investment going?",
-    "What operational deficiencies should we investigate first?",
-] as const;
-
 const AGENT_QUESTIONS = [
     "Who owns or is affected by this change?",
     "What decisions and dependencies already govern it?",
@@ -138,7 +131,7 @@ export default function ContextFabricMarketingPage() {
                 <div
                     className="rounded-[2rem] border border-(--card-stroke) bg-(--card-80) p-5 shadow-2xl shadow-black/10 sm:p-7"
                     role="img"
-                    aria-label="Context Fabric connects the engineering ecosystem to Ask Dev and ACR MCP consumers"
+                    aria-label="Context Fabric connects the engineering ecosystem to ACR MCP consumers"
                 >
                     <div className="grid grid-cols-2 gap-3">
                         {CONNECTED_SIGNALS.map((signal) => (
@@ -158,17 +151,9 @@ export default function ContextFabricMarketingPage() {
                         </p>
                     </div>
                     <div className="mx-auto my-5 h-8 w-px bg-(--card-stroke)" aria-hidden="true" />
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card) p-4 text-center">
-                            <p className="font-(--font-display) text-lg">Ask Dev</p>
-                            <p className="mt-1 text-xs text-(--ink-muted)">For people</p>
-                        </div>
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card) p-4 text-center">
-                            <p className="font-(--font-display) text-lg">ACR / MCP</p>
-                            <p className="mt-1 text-xs text-(--ink-muted)">
-                                For developers and agents
-                            </p>
-                        </div>
+                    <div className="rounded-2xl border border-(--card-stroke) bg-(--card) p-4 text-center">
+                        <p className="font-(--font-display) text-lg">ACR / MCP</p>
+                        <p className="mt-1 text-xs text-(--ink-muted)">For developers and agents</p>
                     </div>
                 </div>
             </section>
@@ -247,33 +232,13 @@ export default function ContextFabricMarketingPage() {
             <section className="mx-auto max-w-7xl px-6 pb-24">
                 <div className="mx-auto max-w-3xl text-center">
                     <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                        Two experiences
+                        For agents
                     </p>
                     <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
-                        One fabric, built for people and agents
+                        One fabric, built for agents
                     </h2>
                 </div>
-                <div className="mt-10 grid gap-5 lg:grid-cols-2">
-                    <article className="rounded-[2rem] border border-(--card-stroke) bg-(--card-80) p-7 sm:p-9">
-                        <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">
-                            For teams and leaders
-                        </p>
-                        <h3 className="mt-4 font-(--font-display) text-3xl">Ask Dev</h3>
-                        <p className="mt-4 text-sm leading-relaxed text-(--ink-muted)">
-                            Ask Dev is the people-facing conversational layer in Dev Health. It
-                            brings project, team, portfolio, delivery, reliability, investment,
-                            operational, and data-trust evidence into one investigation.
-                        </p>
-                        <QuestionList questions={ASK_DEV_QUESTIONS} />
-                        <a
-                            href="https://github.com/full-chaos/dev-health-ops/blob/main/docs/use/ai-workflows/index.md#use-ask-dev-for-a-human-investigation"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="mt-8 inline-flex rounded-full border border-(--card-stroke) bg-(--card-70) px-6 py-2.5 text-sm font-medium transition hover:border-foreground/30"
-                        >
-                            {CTA_LABELS.readAskDevGuide}
-                        </a>
-                    </article>
+                <div className="mt-10 mx-auto max-w-2xl">
                     <article className="rounded-[2rem] border border-(--card-stroke) bg-(--card-80) p-7 sm:p-9">
                         <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">
                             For developers and agents
@@ -331,8 +296,7 @@ export default function ContextFabricMarketingPage() {
                         Understand the whole context before deciding what happens next.
                     </h2>
                     <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-(--ink-muted)">
-                        Use Ask Dev when a person needs an evidence-backed investigation. Use ACR
-                        and MCP when an agent needs scoped context before it works.
+                        Use ACR and MCP when an agent needs scoped context before it works.
                     </p>
                     <div className="mt-8 flex flex-wrap justify-center gap-4">
                         <Link

@@ -17,8 +17,7 @@ export function AISetupShell({ children }: { children: React.ReactNode }) {
                     <p className="text-label-caps text-(--text-muted)">Organization settings</p>
                     <h1 className="mt-2 text-h1 text-(--text-primary)">AI Setup</h1>
                     <p className="mt-2 max-w-2xl text-body text-(--text-secondary)">
-                        Manage Ask Dev controls and organization-owned model provider settings as
-                        separate capabilities.
+                        Manage organization-owned model provider settings.
                     </p>
                 </header>
                 <ViewSet

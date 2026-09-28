@@ -31,65 +31,6 @@ const ACTUAL_STATE = [
     "Available to users",
 ] as const;
 
-const PEOPLE_USE_CASES = [
-    {
-        eyebrow: "Project and portfolio readiness",
-        title: "Know what is complete, blocked, ready, or still uncertain",
-        question: "What is the status of these projects, and which need attention?",
-        description:
-            "Connect declared state with required work, reviews, CI, releases, incidents, dependencies, and source freshness. See remaining work and blockers without averaging unknown projects into a misleading portfolio percentage.",
-        signals: ["Actual completion", "Remaining work", "Blockers", "Readiness", "Coverage"],
-    },
-    {
-        eyebrow: "Project health",
-        title: "Understand the conditions affecting safe delivery",
-        question: "What does project health look like, and what is driving it?",
-        description:
-            "Bring together delivery flow, execution state, reliability, code and ownership risk, review pressure, investment mix, dependencies, and data trust as an inspectable profile—not one unexplained score.",
-        signals: ["Delivery flow", "Reliability", "Code risk", "Dependencies", "Data trust"],
-    },
-    {
-        eyebrow: "Team health",
-        title: "Find teams that may need attention without ranking people",
-        question: "Which teams show sustained pressure, and why?",
-        description:
-            "Look for supported patterns across flow, WIP, review demand, reliability, ownership concentration, investment, and source coverage. A single bad week or one metric is not enough to label a team.",
-        signals: ["Flow", "Review demand", "Reliability", "Ownership", "Sustained pressure"],
-    },
-    {
-        eyebrow: "Workload pressure",
-        title: "Separate visible pressure from unsupported workload claims",
-        question: "Which teams appear overburdened?",
-        description:
-            "Compare active work, WIP, review demand, ownership breadth, team size, and historical or cohort baselines. When a defensible denominator is missing, report higher observed pressure rather than pretending burden is known.",
-        signals: ["WIP", "Review load", "Ownership breadth", "Denominators", "Baselines"],
-    },
-    {
-        eyebrow: "Investment balance",
-        title: "See where engineering effort is going—and what remains unclassified",
-        question: "Which teams are light on feature work, and what are they working on instead?",
-        description:
-            "Read new-value work beside KTLO, security, infrastructure, and unclassified work with enough coverage and a valid comparison period. Maintenance and platform work remain visible rather than being treated as less valuable.",
-        signals: ["New value", "KTLO", "Security", "Infrastructure", "Coverage"],
-    },
-    {
-        eyebrow: "Operational deficiencies",
-        title: "Prioritize evidence-backed gaps across the delivery system",
-        question: "What operational deficiencies should we investigate first?",
-        description:
-            "Surface versioned, evidence-linked gaps in data coverage, planning relationships, delivery flow, review and CI, reliability, ownership and code risk, capacity pressure, and investment balance.",
-        signals: ["Data coverage", "Delivery flow", "CI controls", "Reliability", "Code risk"],
-    },
-    {
-        eyebrow: "Change and source trust",
-        title: "Understand what improved, worsened, or cannot yet be concluded",
-        question: "What changed over the last 90 days, and which sources can we trust?",
-        description:
-            "Compare canonical metrics and operating conditions while keeping stale, missing, unavailable, unconfigured, and not-applicable sources distinct. Missing evidence never silently becomes zero or healthy.",
-        signals: ["Observed change", "Freshness", "Coverage", "Conflicts", "Uncertainty"],
-    },
-] as const;
-
 const AGENT_USE_CASES = [
     {
         title: "Plan a change without starting cold",
@@ -242,52 +183,6 @@ export default function ContextFabricUseCasesPage() {
             <section className="mx-auto max-w-7xl px-6 pb-24">
                 <div className="mx-auto max-w-3xl text-center">
                     <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                        For teams and leaders
-                    </p>
-                    <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
-                        Ask operating questions across the ecosystem
-                    </h2>
-                    <p className="mt-5 text-base leading-relaxed text-(--ink-muted)">
-                        Ask Dev is the people-facing path into Context Fabric. It can bring the
-                        relevant authorized sources into one bounded investigation while keeping
-                        evidence, coverage, and uncertainty visible.
-                    </p>
-                </div>
-
-                <div className="mt-12 grid gap-5 lg:grid-cols-2">
-                    {PEOPLE_USE_CASES.map((useCase) => (
-                        <article
-                            key={useCase.title}
-                            className="rounded-[2rem] border border-(--card-stroke) bg-(--card-80) p-7 sm:p-8"
-                        >
-                            <p className="text-xs uppercase tracking-[0.16em] text-(--accent)">
-                                {useCase.eyebrow}
-                            </p>
-                            <h3 className="mt-4 font-(--font-display) text-2xl">{useCase.title}</h3>
-                            <p className="mt-5 rounded-2xl border border-(--card-stroke) bg-(--card) p-4 text-sm font-medium">
-                                “{useCase.question}”
-                            </p>
-                            <p className="mt-5 text-sm leading-relaxed text-(--ink-muted)">
-                                {useCase.description}
-                            </p>
-                            <div className="mt-6 flex flex-wrap gap-2">
-                                {useCase.signals.map((signal) => (
-                                    <span
-                                        key={signal}
-                                        className="rounded-full border border-(--card-stroke) bg-(--card) px-3 py-1.5 text-xs text-(--ink-muted)"
-                                    >
-                                        {signal}
-                                    </span>
-                                ))}
-                            </div>
-                        </article>
-                    ))}
-                </div>
-            </section>
-
-            <section className="mx-auto max-w-7xl px-6 pb-24">
-                <div className="mx-auto max-w-3xl text-center">
-                    <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
                         For developers and agents
                     </p>
                     <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
@@ -359,11 +254,10 @@ export default function ContextFabricUseCasesPage() {
             <section className="mx-auto max-w-7xl px-6 pb-24">
                 <div className="rounded-[2rem] border border-(--card-stroke) bg-(--card-80) p-8 text-center sm:p-12">
                     <h2 className="font-(--font-display) text-3xl sm:text-4xl">
-                        Give the next conversation—or the next agent—the whole relevant context.
+                        Give the next agent the whole relevant context.
                     </h2>
                     <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-(--ink-muted)">
-                        Start with Ask Dev for people, or connect a compatible agent through the ACR
-                        MCP sidecar.
+                        Connect a compatible agent through the ACR MCP sidecar.
                     </p>
                     <div className="mt-8 flex flex-wrap justify-center gap-4">
                         <Link

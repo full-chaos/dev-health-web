@@ -61,7 +61,7 @@ describe("AdminSidebar", () => {
                     audit_log: true,
                     ip_allowlist: true,
                     custom_retention: true,
-                    ask_dev: true,
+                    byo_llm: true,
                 }}
             />,
         );
@@ -98,11 +98,9 @@ describe("AdminSidebar", () => {
     });
 
     it.each([
-        [{ ask_dev: true, byo_llm: false }, true],
-        [{ ask_dev: false, byo_llm: true }, true],
-        [{ ask_dev: true, byo_llm: true }, true],
-        [{ ask_dev: false, byo_llm: false }, false],
-    ] as const)("keeps AI Setup independent for %o", (features, visible) => {
+        [{ byo_llm: true }, true],
+        [{ byo_llm: false }, false],
+    ] as const)("shows AI Setup only when entitled for %o", (features, visible) => {
         render(<AdminSidebar features={features} />);
 
         const link = screen.queryByRole("link", { name: /^AI Setup$/ });
@@ -141,12 +139,11 @@ describe("AdminSidebar", () => {
         ["/org/admin/users/new", /^Users$/],
         ["/org/admin/integrations/github", /^Providers$/],
         ["/org/admin/teams/team-1/edit", /^Teams$/],
-        ["/org/admin/ai/ask-dev", /^AI Setup$/],
         ["/org/admin/ai/byo-llm", /^AI Setup$/],
     ])("keeps the parent nav item active for descendant route %s", (route, linkName) => {
         pathname = route;
 
-        render(<AdminSidebar features={{ ask_dev: true, byo_llm: true }} />);
+        render(<AdminSidebar features={{ byo_llm: true }} />);
 
         const activeLinks = screen
             .getAllByRole("link")

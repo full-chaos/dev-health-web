@@ -157,33 +157,22 @@ run_quality() {
   echo "==> pnpm audit --audit-level=high --prod"
   pnpm audit --audit-level=high --prod
   run_pnpm_script codegen:check
-  if [[ -z "${ASK_DEV_OPS_ROOT:-}" ]]; then
-    echo "ASK_DEV_OPS_ROOT must name the clean, pinned dev-health-ops checkout." >&2
-    return 1
-  fi
-  echo "==> pnpm ask-dev:contracts:check --source ${ASK_DEV_OPS_ROOT}"
-  pnpm ask-dev:contracts:check --source "${ASK_DEV_OPS_ROOT}"
-  # CHAOS-3511: the pin's CURRENCY, not only its internal consistency -- a
-  # separate ops checkout at main's current tip, diffed against the pinned
-  # commit over the consumed surface only (contracts/ask-dev/v1/).
-  if [[ -z "${ASK_DEV_OPS_MAIN_ROOT:-}" ]]; then
-    echo "ASK_DEV_OPS_MAIN_ROOT must name a clean dev-health-ops checkout at ops main (CHAOS-3511 currency guard)." >&2
-    return 1
-  fi
-  echo "==> pnpm ask-dev:contracts:check-currency --pinned ${ASK_DEV_OPS_ROOT} --current ${ASK_DEV_OPS_MAIN_ROOT}"
-  pnpm ask-dev:contracts:check-currency --pinned "${ASK_DEV_OPS_ROOT}" --current "${ASK_DEV_OPS_MAIN_ROOT}"
   # CHAOS-4696: query-api resolves a request by digesting the raw query
   # text it receives. This asserts, for every registered document, that
   # query-api's const (read via ops main's own registrydump -- always
   # the LIVE tip, not a pin: this is a live invariant, not a contract
   # sync) digests to what THIS repo's own pinned @urql/core actually
   # puts on the wire (createRequest + formatDocument + stringifyDocument
-  # -- the real exchange-chain functions). Defaults to ASK_DEV_OPS_MAIN_ROOT's
+  # -- the real exchange-chain functions). Defaults to WIRE_PARITY_OPS_MAIN_ROOT's
   # checkout.
   # A paired change (same branch name on both repos) is checked against the
   # ops branch, not main: CI passes WIRE_PARITY_OPS_ROOT for that. The check
   # is strict on every run.
-  wire_parity_root="${WIRE_PARITY_OPS_ROOT:-${ASK_DEV_OPS_MAIN_ROOT}}"
+  if [[ -z "${WIRE_PARITY_OPS_ROOT:-}" && -z "${WIRE_PARITY_OPS_MAIN_ROOT:-}" ]]; then
+    echo "WIRE_PARITY_OPS_ROOT or WIRE_PARITY_OPS_MAIN_ROOT must name a clean dev-health-ops checkout." >&2
+    return 1
+  fi
+  wire_parity_root="${WIRE_PARITY_OPS_ROOT:-${WIRE_PARITY_OPS_MAIN_ROOT}}"
   echo "==> pnpm graphql:wire-parity:check --ops-root ${wire_parity_root}"
   pnpm graphql:wire-parity:check --ops-root "${wire_parity_root}"
   run_pnpm_script lint

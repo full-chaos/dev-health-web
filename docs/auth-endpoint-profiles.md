@@ -6,7 +6,7 @@ _architecture_; this one is the per-surface inventory Guardrail G-1 requires
 it rather than duplicating it: read `auth-system.md` first.
 
 - Machine-readable inventory: [`../../contracts/auth/v1/endpoint-profiles.web.json`](../../contracts/auth/v1/endpoint-profiles.web.json)
-  (168 rows: 18 REST + 150 `server_action`)
+  (157 rows: 12 REST + 145 `server_action`)
 - Discovery script (independent re-derivation): [`../../ci/discover_web_routes.ts`](../../ci/discover_web_routes.ts)
 - CI gate (diffs discovery against the inventory; fails on an unowned
   surface, a stale row, a duplicate id, a closed-vocabulary violation,
@@ -29,11 +29,10 @@ it rather than duplicating it: read `auth-system.md` first.
 
 ## Coverage
 
-18 REST surfaces across 15 `route.ts` files under `src/app/api/` (one file,
-`conversations/[conversationId]/route.ts`, registers 3 methods; the
-NextAuth catch-all is represented as a single `api_route` row). This matches
-the orchestrator's file count (15) exactly; the row count (18) reflects
-per-method splitting, mirroring ops's convention.
+12 REST surfaces across 8 `route.ts` files under `src/app/api/` (the
+NextAuth catch-all is represented as a single `api_route` row). The Ask Dev
+proxy family (`v1/dev/*`, 7 files, 10 rows) was deleted with its routes
+(CHAOS-6262) and no longer appears in either count.
 
 Two families, by how they reach ops:
 
@@ -41,7 +40,6 @@ Two families, by how they reach ops:
 | ------------------ | ------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | Direct (own fetch) | `auth/[...nextauth]`, `auth/organizations`, `auth/switch-org`, `feedback` | Inline `auth()` check, own `fetch()` to ops                                                                                              |
 | ACR-issuing        | `acr/device`, `agent-context/*`                                           | `auth()` inside `src/lib/acr/service.ts`, then **mints and sends an `acr_web_assertion`** to the ACR service (see "web as issuer" below) |
-| Ask Dev proxy      | `v1/dev/*` (7 files, 10 rows)                                             | Shared `src/app/api/v1/dev/_proxy.ts` forwards `Authorization: Bearer` to ops                                                            |
 
 ## `src/proxy.ts` — the only middleware
 
@@ -146,26 +144,19 @@ two minting routes rely only on `session.user.org_id` already being
 impersonation-resolved (`resolveActiveOrgId()`), which is weaker (silently
 scopes to the impersonated org rather than refusing).
 
-## FINDING: `/api/v1/dev/*` never forwards `X-Org-Id`
+## FINDING: `/api/v1/dev/*` never forwards `X-Org-Id` — RESOLVED (route deleted)
 
-`src/app/api/v1/dev/_proxy.ts::proxyDevRequest()` forwards only
-`Authorization: Bearer <access_token>` to ops — never `X-Org-Id`, unlike
-`proxy.ts`'s own rewrite path. `session.access_token` is the admin's
-original ops JWT; it is **not** re-minted per impersonation target (only
-`session.user.org_id` is remapped client-side via `resolveActiveOrgId()`).
-Whether ops's `/api/v1/dev/*` handlers derive org from the JWT alone, and if
-so whether that equals the impersonated org or the admin's real org, is an
-**ops-repo question this lane cannot verify** (ops worktree is read-only for
-L2). Reported to auth-cp for ticketing, not guessed at.
+`/api/v1/dev/*` and `src/app/api/v1/dev/_proxy.ts` were deleted with the
+whole Ask Dev surface (CHAOS-6262); the finding no longer has a live subject.
 
 ## FINDING: inconsistent mutation CSRF/Origin checks
 
-Three different postures across mutating routes:
+Two postures remain across mutating routes:
 
-- `acr/device` (`route.ts:94-99`) and `v1/dev/_proxy.ts`
-  (`hasValidMutationOrigin()`, lines 67-115) both explicitly check the
-  `Origin` header against `AUTH_URL`/`NEXTAUTH_URL` (or a same-site
-  fallback).
+- `acr/device` (`route.ts:94-99`) explicitly checks the `Origin` header
+  against `AUTH_URL`/`NEXTAUTH_URL` (or a same-site fallback)
+  (`hasValidMutationOrigin()`, deleted with `v1/dev/_proxy.ts`, had the same
+  check).
 - `auth/switch-org`, `agent-context/context-packets` have **no** explicit
   Origin check — CSRF defense is whatever the Auth.js session cookie's
   `SameSite` attribute provides (next-auth default, not verified as an
@@ -223,13 +214,14 @@ key on the action id itself: it changes on every build.
 
 **Discovery.** `ci/discover_web_routes.ts` independently walks every file
 under `src/` whose first non-comment, non-blank line is the `"use server"`
-directive (20 files) and emits one `serverActions` record per exported
-function — `export async function NAME(...)` or the async-arrow form,
-`export type`/`export interface` lines correctly excluded since Next.js
-erases them at compile time and does not require them to be async
-functions. Current count: **150** actions across those 20 files, all now
-carrying rows in `endpoint-profiles.web.json`, bringing the file's total
-row count to 168 (18 REST + 150 server\_action).
+directive (18 files — `admin/server/ask-dev.ts` and `admin/server/platform.ts`
+deleted with the Ask Dev surface, CHAOS-6262) and emits one `serverActions`
+record per exported function — `export async function NAME(...)` or the
+async-arrow form, `export type`/`export interface` lines correctly excluded
+since Next.js erases them at compile time and does not require them to be
+async functions. Current count: **145** actions across those 18 files, all
+now carrying rows in `endpoint-profiles.web.json`, bringing the file's total
+row count to 157 (12 REST + 145 server\_action).
 
 **Reconciliation.** An earlier pass estimated "~98" Server Actions while
 flagging the exclusion above; that estimate was never produced by running

@@ -70,7 +70,7 @@ const navItems: NavItem[] = [
         id: "ai-setup",
         label: "AI Setup",
         href: "/org/admin/ai",
-        featureKeys: ["ask_dev", "byo_llm"],
+        featureKeys: ["byo_llm"],
     },
 ];
 

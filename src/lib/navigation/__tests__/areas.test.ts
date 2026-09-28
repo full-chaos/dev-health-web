@@ -141,7 +141,6 @@ describe("selectedAreaIdForPathname", () => {
         { pathname: "/people/abc", expected: "diagnose" },
         { pathname: "/landscape", expected: "diagnose" },
         { pathname: "/explore", expected: "diagnose" },
-        { pathname: "/dev", expected: "diagnose" },
         { pathname: "/agent-context/context-packet", expected: "diagnose" },
         { pathname: "/plan", expected: "plan" },
         { pathname: "/plan/delivery-forecast", expected: "plan" },
@@ -300,14 +299,6 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
     it("returns undefined for an owned area route with no matching child", () => {
         expect(selectedChildForPathname(areaById("admin"), "/org/admin/users")).toBeUndefined();
     });
-
-    // CHAOS-3524 (chris's ruling): Ask Dev is deliberately NOT a left-nav
-    // destination — one ingress only (the in-context trigger/window path).
-    // /dev stays inside Diagnose's ownedPathPrefixes (so landing there via
-    // the trigger still highlights Diagnose), but selects no child row.
-    it("returns undefined for /dev — Ask Dev has no left-nav row", () => {
-        expect(selectedChildForPathname(areaById("diagnose"), "/dev")).toBeUndefined();
-    });
 });
 
 describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
@@ -316,12 +307,6 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/diagnose/work-graph")).toBe("Work Graph");
         expect(navTitleForPathname("/metrics")).toBe("Flow");
         expect(navTitleForPathname("/landscape")).toBe("Landscape");
-        // CHAOS-3524 (chris's ruling): Ask Dev has no left-nav child row
-        // anymore, so /dev now titles/trails as the area-only case (rule
-        // A6 still holds — it just resolves one level up, to Diagnose,
-        // since there's no child label to use instead).
-        expect(navTitleForPathname("/dev")).toBe("Diagnose");
-        expect(navTrailForPathname("/dev")).toEqual([{ label: "Diagnose" }]);
         expect(navTitleForPathname("/agent-context/context-packet")).toBe("Diagnose");
         expect(navTitleForPathname("/plan")).toBe("Overview");
         expect(navTitleForPathname("/plan/delivery-forecast")).toBe("Overview");

@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import { WorkGraphExplorer, WorkGraphLegend } from "@/components/charts/WorkGraphExplorer";
-import { AskDevContextRegistration } from "@/components/ask-dev/AskDevContextRegistration";
 import { DataState } from "@/components/ui/DataState";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { useWorkGraphEdges, useWorkGraphFlow, useWorkGraphArtifacts } from "@/lib/graphql/hooks";
@@ -991,33 +990,6 @@ function NodeDetailPanel({ node, incomingEdges, outgoingEdges, onClose }: NodeDe
         DEPLOYMENT: "bg-sky-500",
         INCIDENT: "bg-red-500",
     };
-    const askDevContext =
-        node.type === "ISSUE"
-            ? {
-                  routeId: "work_graph" as const,
-                  entityRefs: [
-                      {
-                          entity_type: "issue" as const,
-                          entity_id: node.id,
-                          display_label: "Selected issue",
-                      },
-                  ],
-                  suggestedQuestionIds: ["remaining_work" as const, "data_trust" as const],
-              }
-            : node.type === "PR"
-              ? {
-                    routeId: "work_graph" as const,
-                    entityRefs: [
-                        {
-                            entity_type: "pull_request" as const,
-                            entity_id: node.id,
-                            display_label: "Selected pull request",
-                        },
-                    ],
-                    suggestedQuestionIds: ["remaining_work" as const, "data_trust" as const],
-                }
-              : null;
-
     return (
         <div className="bg-card rounded-lg border border-(--card-stroke) p-4">
             <div className="flex items-start justify-between mb-4">
@@ -1031,7 +1003,6 @@ function NodeDetailPanel({ node, incomingEdges, outgoingEdges, onClose }: NodeDe
                     </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                    {askDevContext ? <AskDevContextRegistration context={askDevContext} /> : null}
                     <button
                         type="button"
                         onClick={onClose}

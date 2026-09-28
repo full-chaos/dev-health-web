@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { AskDevContextRegistration } from "@/components/ask-dev/AskDevContextRegistration";
 import { formatNumber } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
 import {
@@ -190,25 +189,6 @@ export function InvestmentView({
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    {data.selectedUnit ? (
-                        <AskDevContextRegistration
-                            context={{
-                                routeId: "work_unit_detail",
-                                entityRefs: [
-                                    {
-                                        entity_type: "work_unit",
-                                        entity_id: data.selectedUnit.work_unit_id,
-                                        display_label: "Selected work unit",
-                                    },
-                                ],
-                                suggestedQuestionIds: [
-                                    "delivery_status",
-                                    "remaining_work",
-                                    "data_trust",
-                                ],
-                            }}
-                        />
-                    ) : null}
                     <label
                         className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
                         htmlFor="work-unit-select"
