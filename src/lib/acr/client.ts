@@ -89,6 +89,14 @@ const deviceApprovalPreviewResponseSchema = z
         organization_id_hint: z.string().min(1).max(128).optional(),
         schema_version: z.literal("device_approval_preview_response.v1"),
         repository_hints: z.array(z.string()).default([]),
+        // The scopes the device grant asked for (acr CHAOS-7106): a closed set,
+        // unique, 1-3 entries. Optional so an older acr that omits it still parses.
+        requested_scopes: z
+            .array(z.enum(["context:read", "evidence:read", "data:read"]))
+            .min(1)
+            .max(3)
+            .refine((scopes) => new Set(scopes).size === scopes.length)
+            .optional(),
     })
     .strict();
 
@@ -332,6 +340,7 @@ export class AcrRuntimeClient {
     async deviceApprovalPreview(input: DeviceApprovalRequest): Promise<{
         readonly organizationIdHint?: string;
         readonly repositoryHints: readonly string[];
+        readonly requestedScopes?: readonly string[];
     }> {
         const value = await this.request({
             ...input,
@@ -351,6 +360,9 @@ export class AcrRuntimeClient {
                 ? {}
                 : { organizationIdHint: parsed.data.organization_id_hint }),
             repositoryHints: parsed.data.repository_hints,
+            ...(parsed.data.requested_scopes === undefined
+                ? {}
+                : { requestedScopes: parsed.data.requested_scopes }),
         };
     }
 

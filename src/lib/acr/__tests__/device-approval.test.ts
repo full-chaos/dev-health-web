@@ -289,6 +289,55 @@ describe("approveDeviceAuthorization", () => {
         ).resolves.toEqual({ repositoryHints: [] });
     });
 
+    it("Given a preview with requested scopes, when ACR returns them, then passes them through in order", async () => {
+        installOpsAuthorization();
+        server.use(
+            http.post("https://acr.example.test/api/v1/oauth/device_approval", () =>
+                HttpResponse.json({
+                    schema_version: "device_approval_preview_response.v1",
+                    requested_scopes: ["context:read", "data:read"],
+                }),
+            ),
+        );
+
+        await expect(
+            previewDeviceAuthorization({
+                signal: new AbortController().signal,
+                userCode: "ABCD2345",
+            }),
+        ).resolves.toEqual({
+            repositoryHints: [],
+            requestedScopes: ["context:read", "data:read"],
+        });
+    });
+
+    it.each([
+        ["an unknown scope", ["episode:write"]],
+        ["an empty list", []],
+        ["a duplicate", ["data:read", "data:read"]],
+        ["a non-string", [7]],
+    ])(
+        "Given %s in requested_scopes, when previewing, then rejects the malformed response",
+        async (_name, scopes) => {
+            installOpsAuthorization();
+            server.use(
+                http.post("https://acr.example.test/api/v1/oauth/device_approval", () =>
+                    HttpResponse.json({
+                        schema_version: "device_approval_preview_response.v1",
+                        requested_scopes: scopes,
+                    }),
+                ),
+            );
+
+            await expect(
+                previewDeviceAuthorization({
+                    signal: new AbortController().signal,
+                    userCode: "ABCD2345",
+                }),
+            ).rejects.toMatchObject({ code: "malformed_response" });
+        },
+    );
+
     it.each([
         ["a null hint", null],
         ["an empty hint", ""],

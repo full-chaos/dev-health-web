@@ -265,4 +265,52 @@ describe("DeviceApprovalForm", () => {
         expect(screen.getByRole("heading", { name: "Approve device access" })).toBeVisible();
         expect(screen.getByLabelText("Verification code")).toHaveValue("EP23TUGG");
     });
+
+    it("Given requested scopes in the preview, when reviewing, then lists them beside the code", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValueOnce(
+                new Response(
+                    JSON.stringify({
+                        repositoryHints: [],
+                        requestedScopes: ["context:read", "data:read"],
+                    }),
+                    { status: 200 },
+                ),
+            ),
+        );
+
+        render(<DeviceApprovalForm />);
+        fireEvent.change(screen.getByLabelText("Verification code"), {
+            target: { value: "EP23TUGG" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "Preview request" }));
+
+        await screen.findByRole("heading", { name: "Review device access" });
+        const scopes = screen.getByRole("list", { name: "Requested access" });
+        expect(scopes).toHaveTextContent("context:read");
+        expect(scopes).toHaveTextContent("data:read");
+        expect(screen.queryByText("evidence:read")).not.toBeInTheDocument();
+        expect(screen.getByText("EP23TUGG")).toBeVisible();
+    });
+
+    it("Given no requested scopes in the preview, when reviewing, then shows no scope list", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi
+                .fn()
+                .mockResolvedValueOnce(
+                    new Response(JSON.stringify({ repositoryHints: [] }), { status: 200 }),
+                ),
+        );
+
+        render(<DeviceApprovalForm />);
+        fireEvent.change(screen.getByLabelText("Verification code"), {
+            target: { value: "EP23TUGG" },
+        });
+        fireEvent.click(screen.getByRole("button", { name: "Preview request" }));
+
+        await screen.findByRole("heading", { name: "Review device access" });
+        expect(screen.queryByRole("list", { name: "Requested access" })).not.toBeInTheDocument();
+    });
 });
