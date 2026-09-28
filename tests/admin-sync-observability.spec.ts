@@ -183,21 +183,33 @@ test.describe("Journey 2 — gap-driven backfill flow", () => {
     }) => {
         await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
         const timeline = timelineRegion(page);
-
-        await timeline
-            .getByRole("checkbox", {
-                name: "Select gap Jun 24, 2026 to Jun 26, 2026 for backfill",
-            })
-            .check();
-        await timeline
-            .getByRole("checkbox", {
-                name: "Select failed Jun 25, 2026 to Jun 27, 2026 for backfill",
-            })
-            .check();
-        await timeline.getByRole("button", { name: "Backfill selected (2)" }).click();
-
+        const gapCheckbox = timeline.getByRole("checkbox", {
+            name: "Select gap Jun 24, 2026 to Jun 26, 2026 for backfill",
+        });
+        const failedCheckbox = timeline.getByRole("checkbox", {
+            name: "Select failed Jun 25, 2026 to Jun 27, 2026 for backfill",
+        });
+        // Same swallowed-pre-hydration-click race as the dialog open below --
+        // Playwright reports the click as performed but the checkbox's onChange
+        // handler wasn't attached yet, so .check() throws "did not change its
+        // state" on the first attempt. Retry the whole check(), not just the
+        // timeout, so a swallowed click is loud and bounded.
+        await expect(async () => {
+            await gapCheckbox.check();
+        }).toPass({ timeout: 10000, intervals: [300, 700, 1500] });
+        await expect(async () => {
+            await failedCheckbox.check();
+        }).toPass({ timeout: 10000, intervals: [300, 700, 1500] });
         const dialog = page.getByRole("dialog");
-        await expect(dialog).toBeVisible();
+        const openWizard = timeline.getByRole("button", { name: "Backfill selected (2)" });
+        // Same swallowed-pre-hydration-click race as "canonical backfill entry
+        // prefills the exact server-owned window" below: retry the click itself,
+        // not just the assertion, so a click fired before hydration attaches is
+        // loud and bounded instead of a bare 5s toBeVisible timeout.
+        await expect(async () => {
+            await openWizard.click();
+            await expect(dialog).toBeVisible({ timeout: 3000 });
+        }).toPass({ timeout: 30000, intervals: [300, 700, 1500] });
         await expect(dialog.getByRole("status")).toContainText("2 exact windows selected");
         await dialog.getByRole("button", { name: "Continue" }).click();
 
@@ -217,10 +229,14 @@ test.describe("Journey 2 — gap-driven backfill flow", () => {
         await page.goto(`${DETAIL_URL}?coverage_scenario=truncated`);
         const timeline = timelineRegion(page);
 
-        await timeline.getByRole("button", { name: "Backfill this failure" }).click();
-
         const dialog = page.getByRole("dialog");
-        await expect(dialog).toBeVisible();
+        const openWizard = timeline.getByRole("button", { name: "Backfill this failure" });
+        // Same swallowed-pre-hydration-click race as "canonical backfill entry
+        // prefills the exact server-owned window" below.
+        await expect(async () => {
+            await openWizard.click();
+            await expect(dialog).toBeVisible({ timeout: 3000 });
+        }).toPass({ timeout: 30000, intervals: [300, 700, 1500] });
         await expect(dialog.getByLabel("Since (inclusive)")).toHaveValue("2026-06-25");
         await expect(dialog.getByLabel("Before (exclusive)")).toHaveValue("2026-06-27");
         await expect(dialog.getByLabel("fullchaos/billing-service")).toBeChecked();
@@ -432,9 +448,14 @@ test.describe("Journey 4 — datasets the provider supports but nobody enabled",
         await page.goto(NOT_ENABLED_URL);
         const timeline = timelineRegion(page);
 
-        await timeline.getByRole("button", { name: "Backfill this gap" }).first().click();
         const dialog = page.getByRole("dialog");
-        await expect(dialog).toBeVisible();
+        const openWizard = timeline.getByRole("button", { name: "Backfill this gap" }).first();
+        // Same swallowed-pre-hydration-click race as "canonical backfill entry
+        // prefills the exact server-owned window" in the journey above.
+        await expect(async () => {
+            await openWizard.click();
+            await expect(dialog).toBeVisible({ timeout: 3000 });
+        }).toPass({ timeout: 30000, intervals: [300, 700, 1500] });
         await dialog.getByRole("radio", { name: /Choose specific datasets/ }).check();
 
         await expect(
