@@ -730,6 +730,20 @@ export type ConnectorStatus = {
   scope: Scalars['String']['output'];
 };
 
+export type ConstraintCard = {
+  __typename?: 'ConstraintCard';
+  claim: Scalars['String']['output'];
+  evidence: Array<ConstraintEvidence>;
+  experiments: Array<Scalars['String']['output']>;
+  title: Scalars['String']['output'];
+};
+
+export type ConstraintEvidence = {
+  __typename?: 'ConstraintEvidence';
+  label: Scalars['String']['output'];
+  link: Scalars['String']['output'];
+};
+
 export type Coverage = {
   __typename?: 'Coverage';
   issuesWithCycleStatesPct: Scalars['Float']['output'];
@@ -780,6 +794,14 @@ export type DimensionInput =
   | 'TEAM'
   | 'THEME'
   | 'WORK_TYPE';
+
+export type EventItem = {
+  __typename?: 'EventItem';
+  link: Scalars['String']['output'];
+  text: Scalars['String']['output'];
+  ts: Scalars['String']['output'];
+  type: Scalars['String']['output'];
+};
 
 export type EvidenceQualityStats = {
   __typename?: 'EvidenceQualityStats';
@@ -888,13 +910,95 @@ export type Freshness = {
   __typename?: 'Freshness';
   coverage?: Maybe<Coverage>;
   lastIngestedAt?: Maybe<Scalars['String']['output']>;
+  /** ISO timestamp of the most recent sync that succeeded across every connected source, or null when none ever has. */
+  latestSuccessfulSyncAt?: Maybe<Scalars['String']['output']>;
+  /** One entry per connected source (provider name and its own sync status) -- not a fixed set of keys. */
+  sources: Array<HomeFreshnessSource>;
+};
+
+export type HealthState = {
+  __typename?: 'HealthState';
+  asOf?: Maybe<Scalars['String']['output']>;
+  headline: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+  summary: Scalars['String']['output'];
+};
+
+export type HomeDataConfidence = {
+  __typename?: 'HomeDataConfidence';
+  caveats: Array<Scalars['String']['output']>;
+  connectedSources: Array<Scalars['String']['output']>;
+  /** Null when coverage could not be computed for this window. */
+  coveragePct?: Maybe<Scalars['Float']['output']>;
+  level: Scalars['String']['output'];
+  missingSources: Array<Scalars['String']['output']>;
+};
+
+export type HomeFreshnessSource = {
+  __typename?: 'HomeFreshnessSource';
+  provider: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+};
+
+export type HomeLimitingFactor = {
+  __typename?: 'HomeLimitingFactor';
+  claim: Scalars['String']['output'];
+  confidence: Scalars['String']['output'];
+  evidenceRef?: Maybe<Scalars['String']['output']>;
+  recommendedAction: Scalars['String']['output'];
+  whyItMatters: Scalars['String']['output'];
 };
 
 export type HomeResult = {
   __typename?: 'HomeResult';
+  constraint: ConstraintCard;
+  dataConfidence: HomeDataConfidence;
   deltas: Array<MetricDelta>;
+  events: Array<EventItem>;
   freshness: Freshness;
+  healthState: HealthState;
+  limitingFactor: HomeLimitingFactor;
   reworkThemeAllocation: Array<ReworkThemeAllocation>;
+  signals: Array<HomeSignal>;
+  summary: Array<SummarySentence>;
+  tiles: Array<HomeTileEntry>;
+};
+
+export type HomeSignal = {
+  __typename?: 'HomeSignal';
+  affectedScope: Scalars['String']['output'];
+  category: Scalars['String']['output'];
+  confidence: Scalars['String']['output'];
+  currentValue: Scalars['String']['output'];
+  delta?: Maybe<Scalars['String']['output']>;
+  direction: Scalars['String']['output'];
+  evidenceCount: Scalars['Int']['output'];
+  /** Opaque reference into the evidence store, or null when the signal carries none. */
+  evidenceRef?: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  metric: Scalars['String']['output'];
+  priorValue?: Maybe<Scalars['String']['output']>;
+  /** The action the builder recommends, verbatim -- deterministic output of home.BuildResponse, not an LLM suggestion and not re-ranked here. */
+  recommendedAction: Scalars['String']['output'];
+  /** Null when the signal is not scoped to one entity (e.g. an org-wide signal). */
+  scopeEntity?: Maybe<ScopeEntityRef>;
+  severity: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+  whyItMatters: Scalars['String']['output'];
+};
+
+export type HomeTile = {
+  __typename?: 'HomeTile';
+  link: Scalars['String']['output'];
+  subtitle: Scalars['String']['output'];
+  title: Scalars['String']['output'];
+};
+
+/** One entry of HomeResult.tiles -- a list, not a map, so field order matches the builder's own ordering. */
+export type HomeTileEntry = {
+  __typename?: 'HomeTileEntry';
+  key: Scalars['String']['output'];
+  value: HomeTile;
 };
 
 export type HotspotRow = {
@@ -1808,6 +1912,12 @@ export type SavedReportType = {
   updatedAt: Scalars['DateTime']['output'];
 };
 
+export type ScopeEntityRef = {
+  __typename?: 'ScopeEntityRef';
+  displayName: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+};
+
 export type ScopeFilterInput = {
   ids?: Array<Scalars['String']['input']>;
   level?: ScopeLevelInput;
@@ -1921,6 +2031,13 @@ export type SparkPoint = {
   __typename?: 'SparkPoint';
   ts: Scalars['String']['output'];
   value: Scalars['Float']['output'];
+};
+
+export type SummarySentence = {
+  __typename?: 'SummarySentence';
+  evidenceLink: Scalars['String']['output'];
+  id: Scalars['String']['output'];
+  text: Scalars['String']['output'];
 };
 
 export type TeamAttributionConfidence =

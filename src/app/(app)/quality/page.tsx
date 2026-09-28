@@ -7,7 +7,8 @@ import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
-import { getExplainData, getHomeData } from "@/lib/api/home";
+import { getExplainData } from "@/lib/api/home";
+import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
@@ -37,7 +38,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
     // Run health check in parallel with all data fetches to eliminate the waterfall.
     const [health, home, explain] = await Promise.all([
         checkApiHealth(),
-        fetchOrNull(getHomeData(filters), "quality/home-data"),
+        fetchOrNull(getHomeDataViaGraphQL(filters), "quality/home-data"),
         fetchOrNull(
             getExplainData({ metric: "change_failure_rate", filters }),
             "quality/explain-change_failure_rate",

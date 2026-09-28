@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // The resolver fans out to these; we drive each independently to assert the
 // source → AreaSignal mapping (DERIVE vs RETURNED) without any network.
 
-vi.mock("@/lib/api/home", () => ({ getHomeData: vi.fn() }));
+vi.mock("@/lib/graphql/homeFetchers", () => ({ getHomeDataViaGraphQL: vi.fn() }));
 vi.mock("@/lib/feature-flags/fetchers", () => ({
     fetchFeatureFlagsData: vi.fn(),
 }));
@@ -21,7 +21,7 @@ vi.mock("@/lib/logger", () => ({
     logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
 
-import { getHomeData } from "@/lib/api/home";
+import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { fetchFeatureFlagsData } from "@/lib/feature-flags/fetchers";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { fetchCoverageMetrics, fetchRiskMetrics, fetchTestOpsData } from "@/lib/testops/fetchers";
@@ -30,7 +30,7 @@ import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { getGovernSignals } from "../govern";
 import type { AreaSignal } from "../types";
 
-const mockGetHomeData = vi.mocked(getHomeData);
+const mockGetHomeData = vi.mocked(getHomeDataViaGraphQL);
 const mockFetchFlags = vi.mocked(fetchFeatureFlagsData);
 const mockGraphql = vi.mocked(graphqlFetch);
 const mockTestOps = vi.mocked(fetchTestOpsData);

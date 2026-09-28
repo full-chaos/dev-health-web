@@ -5,7 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 // The resolver fans out to these; we drive each independently to assert the
 // source → AreaSignal mapping (DERIVE vs RETURNED) without any network.
 
-vi.mock("@/lib/api/home", () => ({ getHomeData: vi.fn() }));
+vi.mock("@/lib/graphql/homeFetchers", () => ({ getHomeDataViaGraphQL: vi.fn() }));
 vi.mock("@/lib/graphql/server", () => ({ graphqlFetch: vi.fn() }));
 vi.mock("@/lib/api/code", () => ({ getBusFactorData: vi.fn() }));
 vi.mock("@/lib/graphql/cognitiveLoadFetchers", () => ({
@@ -18,7 +18,7 @@ vi.mock("@/lib/logger", () => ({
     logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
 
-import { getHomeData } from "@/lib/api/home";
+import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { getBusFactorData } from "@/lib/api/code";
 import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers";
@@ -27,7 +27,7 @@ import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { getDiagnoseSignals } from "../diagnose";
 import type { AreaSignal } from "../types";
 
-const mockGetHomeData = vi.mocked(getHomeData);
+const mockGetHomeData = vi.mocked(getHomeDataViaGraphQL);
 const mockGraphql = vi.mocked(graphqlFetch);
 const mockGetBusFactorData = vi.mocked(getBusFactorData);
 const mockGetCognitiveLoad = vi.mocked(getCognitiveLoadViaGraphQL);

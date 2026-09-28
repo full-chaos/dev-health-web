@@ -761,3 +761,148 @@ export interface ExperimentsResult {
 export interface ExperimentsQueryResponse {
     experiments: ExperimentsResult;
 }
+
+// CHAOS-7064: GraphQL `home` field response shape. Field names mirror
+// HomeResult in schema.graphql exactly (camelCase); the REST-shaped
+// equivalent (snake_case, HomeResponse) lives in src/lib/types.ts.
+// src/lib/graphql/homeFetchers.ts's toHomeResponse converts between them.
+
+export interface HomeGraphQLFreshnessSource {
+    provider: string;
+    status: string;
+}
+
+export interface HomeGraphQLFreshness {
+    lastIngestedAt: string | null;
+    latestSuccessfulSyncAt: string | null;
+    sources: HomeGraphQLFreshnessSource[];
+    coverage: {
+        reposCoveredPct: number;
+        prsLinkedToIssuesPct: number;
+        issuesWithCycleStatesPct: number;
+    } | null;
+}
+
+export interface HomeGraphQLSparkPoint {
+    ts: string;
+    value: number | null;
+}
+
+export interface HomeGraphQLDelta {
+    metric: string;
+    label: string;
+    value: number;
+    unit: string;
+    deltaPct: number;
+    spark: HomeGraphQLSparkPoint[];
+}
+
+export interface HomeGraphQLReworkThemeAllocation {
+    theme: string;
+    label: string;
+    allocation: number;
+    allocationPct: number;
+    prsMerged: number;
+    churnLoc: number;
+}
+
+export interface HomeGraphQLSummarySentence {
+    id: string;
+    text: string;
+    evidenceLink: string;
+}
+
+export interface HomeGraphQLTile {
+    title: string;
+    subtitle: string;
+    link: string;
+}
+
+export interface HomeGraphQLTileEntry {
+    key: string;
+    value: HomeGraphQLTile;
+}
+
+export interface HomeGraphQLConstraintEvidence {
+    label: string;
+    link: string;
+}
+
+export interface HomeGraphQLConstraint {
+    title: string;
+    claim: string;
+    evidence: HomeGraphQLConstraintEvidence[];
+    experiments: string[];
+}
+
+export interface HomeGraphQLEvent {
+    ts: string;
+    type: string;
+    text: string;
+    link: string;
+}
+
+export interface HomeGraphQLHealthState {
+    status: string;
+    headline: string;
+    summary: string;
+    asOf: string | null;
+}
+
+export interface HomeGraphQLScopeEntity {
+    id: string;
+    displayName: string;
+}
+
+export interface HomeGraphQLSignal {
+    id: string;
+    title: string;
+    metric: string;
+    currentValue: string;
+    priorValue: string | null;
+    delta: string | null;
+    direction: string;
+    severity: string;
+    confidence: string;
+    affectedScope: string;
+    evidenceCount: number;
+    whyItMatters: string;
+    recommendedAction: string;
+    evidenceRef: string | null;
+    category: string;
+    scopeEntity: HomeGraphQLScopeEntity | null;
+}
+
+export interface HomeGraphQLLimitingFactor {
+    claim: string;
+    whyItMatters: string;
+    recommendedAction: string;
+    confidence: string;
+    evidenceRef: string | null;
+}
+
+export interface HomeGraphQLDataConfidence {
+    level: string;
+    coveragePct: number | null;
+    connectedSources: string[];
+    missingSources: string[];
+    caveats: string[];
+}
+
+export interface HomeGraphQLResult {
+    freshness: HomeGraphQLFreshness;
+    deltas: HomeGraphQLDelta[];
+    reworkThemeAllocation: HomeGraphQLReworkThemeAllocation[];
+    summary: HomeGraphQLSummarySentence[];
+    tiles: HomeGraphQLTileEntry[];
+    constraint: HomeGraphQLConstraint;
+    events: HomeGraphQLEvent[];
+    healthState: HomeGraphQLHealthState;
+    signals: HomeGraphQLSignal[];
+    limitingFactor: HomeGraphQLLimitingFactor;
+    dataConfidence: HomeGraphQLDataConfidence;
+}
+
+export interface HomeQueryResponse {
+    home: HomeGraphQLResult;
+}

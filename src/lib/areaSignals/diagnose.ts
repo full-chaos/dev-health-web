@@ -24,7 +24,7 @@
 // Load (avg PR interruption load via the cognitiveLoad resolver) are now wired.
 
 import { auth } from "@/lib/auth";
-import { getHomeData } from "@/lib/api/home";
+import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { getBusFactorData } from "@/lib/api/code";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { COMPLEXITY_TIMESERIES_QUERY } from "@/lib/graphql/queries";
@@ -249,7 +249,7 @@ export async function getDiagnoseSignals(
     // ── Fetch every source in parallel (no serial N+1) ───────────────────────
     // Metrics + Code + Bottlenecks all come from a single getHomeData call.
     const [homeData, complexityData, busFactor, cognitiveLoad] = await Promise.all([
-        safe(() => getHomeData(filters), "home"),
+        safe(() => getHomeDataViaGraphQL(filters), "home"),
         safe(
             () =>
                 isTestMode

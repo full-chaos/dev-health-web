@@ -19,7 +19,8 @@ import { HeatmapPanel } from "@/components/charts/HeatmapPanel";
 import { EvidenceView } from "@/components/work/EvidenceView";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { checkApiHealth } from "@/lib/api/system";
-import { getExplainData, getHomeData } from "@/lib/api/home";
+import { getExplainData } from "@/lib/api/home";
+import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { getHeatmap, getQuadrant } from "@/lib/api/visuals";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
@@ -53,7 +54,7 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
     const [health, home, wipExplain, blockedExplain, wipQuadrant, reviewQuadrant, reviewHeatmap] =
         await Promise.all([
             checkApiHealth(),
-            fetchOrNull(getHomeData(filters), "bottleneck/home-data"),
+            fetchOrNull(getHomeDataViaGraphQL(filters), "bottleneck/home-data"),
             fetchOrNull(
                 getExplainData({ metric: "wip_saturation", filters }),
                 "bottleneck/explain-wip_saturation",

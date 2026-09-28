@@ -10,7 +10,8 @@ import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { getBusFactorData } from "@/lib/api/code";
 import { checkApiHealth } from "@/lib/api/system";
-import { getExplainData, getHomeData } from "@/lib/api/home";
+import { getExplainData } from "@/lib/api/home";
+import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getHeatmap, getQuadrant } from "@/lib/api/visuals";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -48,7 +49,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
     const [health, home, churnExplain, hotspotHeatmap, churnThroughput, busFactor] =
         await Promise.all([
             checkApiHealth(),
-            fetchOrNull(getHomeData(filters), "code/home-data"),
+            fetchOrNull(getHomeDataViaGraphQL(filters), "code/home-data"),
             fetchOrNull(getExplainData({ metric: "churn", filters }), "code/explain-churn"),
             fetchOrNull(
                 getHeatmap({

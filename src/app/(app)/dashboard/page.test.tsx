@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@/test/utils";
 
-import { getHomeData } from "@/lib/api/home";
+import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getSetupStatus } from "@/lib/admin/server";
 import type { HomeResponse } from "@/lib/types";
 import Home from "./page";
 
-vi.mock("@/lib/api/home", () => ({ getHomeData: vi.fn() }));
+vi.mock("@/lib/graphql/homeFetchers", () => ({ getHomeDataViaGraphQL: vi.fn() }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn(), getApiMeta: vi.fn() }));
 vi.mock("@/lib/admin/server", () => ({ getSetupStatus: vi.fn() }));
 vi.mock("@/lib/auth", () => ({
@@ -67,7 +67,7 @@ describe("dashboard freshness", () => {
             supported_endpoints: [],
         });
         vi.mocked(getSetupStatus).mockResolvedValue({ error: "not needed for this test" });
-        vi.mocked(getHomeData).mockResolvedValue(HOME_DATA);
+        vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(HOME_DATA);
     });
 
     it("renders the org-readable successful sync time instead of older metric computation time", async () => {
@@ -79,7 +79,7 @@ describe("dashboard freshness", () => {
     it.each([null, undefined])(
         "falls back to metric computation time when successful sync time is %s",
         async (latestSuccessfulSyncAt) => {
-            vi.mocked(getHomeData).mockResolvedValue({
+            vi.mocked(getHomeDataViaGraphQL).mockResolvedValue({
                 ...HOME_DATA,
                 freshness: {
                     ...HOME_DATA.freshness,
