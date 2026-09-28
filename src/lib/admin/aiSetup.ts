@@ -1,19 +1,12 @@
 export const AI_SETUP_PATHS = {
-    askDev: "/org/admin/ai/ask-dev",
     byoLlm: "/org/admin/ai/byo-llm",
 } as const;
 
-export type AISetupTabId = "ask-dev" | "byo-llm";
+export type AISetupTabId = "byo-llm";
 
-export type AISetupFeatureDecisions = Readonly<Partial<Record<"ask_dev" | "byo_llm", boolean>>>;
+export type AISetupFeatureDecisions = Readonly<Partial<Record<"byo_llm", boolean>>>;
 
 export const AI_SETUP_TABS = [
-    {
-        id: "ask-dev",
-        label: "Ask Dev",
-        path: AI_SETUP_PATHS.askDev,
-        feature: "ask_dev",
-    },
     {
         id: "byo-llm",
         label: "BYO LLM",
@@ -32,7 +25,6 @@ export function visibleAISetupTabs(features: AISetupFeatureDecisions) {
 }
 
 export function resolveAISetupDefaultPath(features: AISetupFeatureDecisions): string {
-    if (features.ask_dev === true) return AI_SETUP_PATHS.askDev;
     if (features.byo_llm === true) return AI_SETUP_PATHS.byoLlm;
     return "/org/admin";
 }

@@ -13,41 +13,10 @@
  * literal strings, so the labels live here and nowhere else.
  */
 export const CTA_LABELS = {
-    /** Submit the current investigation question to Ask Dev. */
-    askDev: "Ask",
-    /** Open the persistent Ask Dev window from the authenticated shell. */
-    openAskDev: "Open Ask Dev",
-    /** Start a separate Ask Dev conversation without reusing committed scope. */
-    newAskDevConversation: "New conversation",
-    /** Expand the persistent Ask Dev window without starting another run. */
-    expandAskDev: "Expand Ask Dev panel",
-    /** Return the expanded Ask Dev window to its compact size. */
-    reduceAskDev: "Reduce Ask Dev panel",
-    /** Reveal the Ask Dev conversation history panel below the `lg` breakpoint. */
-    showAskDevHistory: "Show conversations",
-    /** Collapse the Ask Dev conversation history panel below the `lg` breakpoint. */
-    hideAskDevHistory: "Hide conversations",
-    /** Record positive feedback on an Ask Dev answer. */
-    askDevHelpful: "Helpful",
-    /** Record negative feedback on an Ask Dev answer. */
-    askDevNotHelpful: "Not helpful",
-    /** Open Ask Dev with an approved page or entity context proposed. */
-    /** Use a visible disambiguation candidate for the next explicit question. */
-    useAskDevScope: "Use this scope",
-    /** Open the full Ask Dev investigation workspace. */
-    askDevWorkspace: "Ask Dev workspace",
-    /** Return the full Ask Dev workspace to the app-wide permanent window. */
-    returnToAskDevWindow: "Return to Ask Dev window",
     /** Return to the Dev Health cockpit from global brand navigation. */
     devHealthCockpit: "Full Chaos Dev Health cockpit",
     /** Open the evidence trail behind a signal / metric / work unit. */
     openEvidence: "Open evidence",
-    /** Expand the Ask Dev answer's evidence lane accordion (CHAOS-3524, icon-only control — aria-label). */
-    expandEvidenceLane: "Expand evidence",
-    /** Collapse the Ask Dev answer's evidence lane accordion (CHAOS-3524, icon-only control — aria-label). */
-    collapseEvidenceLane: "Collapse evidence",
-    /** Expand every row in the Ask Dev answer's evidence accordion in one action (CHAOS-3524, icon-only control — aria-label). */
-    unfoldAllEvidence: "Unfold all evidence",
     generateContext: "Generate context",
     markContextIncorrect: "Mark context as incorrect",
     markContextStale: "Mark context as stale",
@@ -124,9 +93,7 @@ export const CTA_LABELS = {
     checkConnectionStatus: "Check connection status",
     disconnect: "Disconnect",
     runPreflight: "Run preflight",
-    /** Trigger the platform-admin-only Ask Dev provider preflight (CHAOS-3265). */
-    runPlatformPreflight: "Run platform preflight",
-    /** Trigger the org-scoped BYO-LLM preflight, independent of Ask Dev's active provider (CHAOS-3265). */
+    /** Trigger the org-scoped BYO-LLM preflight (CHAOS-3265). */
     runByoPreflight: "Run BYO preflight",
     /** Advance to the next step of the guided onboarding flow (CHAOS-2675). */
     continueStep: "Continue",
@@ -268,7 +235,7 @@ export const CTA_LABELS = {
     goToValidate: "Validate",
     /** Inline link to the runner setup examples from the empty batch-list state (CHAOS-2714). */
     goToCiJob: "CI job",
-    /** Link from the Ask Dev empty state to the customer doc explaining the Ask Dev / Context Fabric relationship (CHAOS-3215). */
+    /** Marketing link to the customer doc explaining Ask Dev / Context Fabric (CHAOS-3215). */
     viewAskDevDocs: "Learn more",
     confirmMapping: "Confirm Mapping",
     deleteUser: "Delete User",
@@ -349,16 +316,6 @@ export function backToArea(area: string): string {
 
 export function upgradeToPlan(plan: string): string {
     return `Upgrade to ${plan}`;
-}
-
-/**
- * Per-item accessible name for an Ask Dev evidence accordion row's icon-only
- * fold toggle (CHAOS-3524). `label` names the specific evidence item so
- * assistive tech can distinguish rows that would otherwise all announce as
- * "Expand evidence" / "Collapse evidence".
- */
-export function toggleEvidenceItem(label: string, open: boolean): string {
-    return `${open ? "Collapse" : "Expand"} evidence: ${label}`;
 }
 
 /**

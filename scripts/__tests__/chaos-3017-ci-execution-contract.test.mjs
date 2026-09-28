@@ -19,23 +19,7 @@ import {
 
 const TESTS_WORKFLOW = path.join(ROOT, ".github/workflows/tests.yml");
 const PACKAGE_JSON = path.join(ROOT, "package.json");
-const ASK_DEV_CONTRACTS_SCRIPT = path.join(ROOT, "scripts/ask-dev-contracts.mjs");
 
-/**
- * The ops commit the Ask Dev contracts are pinned to, read from the sync
- * script that owns it rather than transcribed here. The quality job checks
- * out ops at this ref and then runs `ask-dev:contracts:check`, which refuses
- * any source whose HEAD is not exactly SOURCE_COMMIT — so a re-pin that
- * moved one and not the other would fail in CI only. Deriving it means the
- * workflow and the script cannot disagree in the first place.
- */
-function pinnedOpsCommit() {
-    const match = /^const SOURCE_COMMIT = "([0-9a-f]{40})";$/mu.exec(
-        contents(ASK_DEV_CONTRACTS_SCRIPT),
-    );
-    if (!match) throw new Error("Could not read SOURCE_COMMIT from scripts/ask-dev-contracts.mjs.");
-    return match[1];
-}
 const GENERAL_TIERS = [
     {
         commands: ["format:check:changed"],
@@ -47,8 +31,6 @@ const GENERAL_TIERS = [
         commands: [
             "audit --audit-level=high --prod",
             "codegen:check",
-            `ask-dev:contracts:check --source ${path.join(ROOT, "dev-health-ops")}`,
-            `ask-dev:contracts:check-currency --pinned ${path.join(ROOT, "dev-health-ops")} --current ${path.join(ROOT, "dev-health-ops-main")}`,
             `graphql:wire-parity:check --ops-root ${path.join(ROOT, "dev-health-ops-main")}`,
             "lint",
             "typecheck",
@@ -56,8 +38,6 @@ const GENERAL_TIERS = [
         jobId: "quality",
         packageScripts: {
             "codegen:check": "graphql-codegen --config codegen.ts --check",
-            "ask-dev:contracts:check": "node scripts/ask-dev-contracts.mjs check",
-            "ask-dev:contracts:check-currency": "node scripts/ask-dev-contracts.mjs check-currency",
             "graphql:wire-parity:check": "tsx scripts/graphql-wire-parity.ts check",
             lint: "eslint src",
             typecheck: "tsc --noEmit",
@@ -161,21 +141,6 @@ describe("CHAOS-3017 executable CI boundaries", () => {
             expect(runStep(workflowJob, workflowCommand)).toBe(
                 `            - run: ${workflowCommand}`,
             );
-            if (jobId === "quality") {
-                expect(workflowJob).toContain(
-                    "        env:\n            ASK_DEV_OPS_ROOT: dev-health-ops\n" +
-                        "            ASK_DEV_OPS_MAIN_ROOT: dev-health-ops-main",
-                );
-                expect(workflowJob).toContain("repository: full-chaos/dev-health-ops");
-                expect(workflowJob).toContain(`ref: ${pinnedOpsCommit()}`);
-                expect(workflowJob).toContain("path: dev-health-ops");
-                // CHAOS-3511 currency guard: a SECOND, separate ops checkout
-                // at main's current tip -- never the same path as the pinned
-                // one, or the pinned checkout's exact-SHA requirement above
-                // would be violated by whichever checkout runs second.
-                expect(workflowJob).toContain("ref: main");
-                expect(workflowJob).toContain("path: dev-health-ops-main");
-            }
             for (const [name, implementation] of Object.entries(packageScripts)) {
                 expect(scripts[name]).toBe(implementation);
             }

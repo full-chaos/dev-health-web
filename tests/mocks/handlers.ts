@@ -2138,9 +2138,7 @@ export const handlers = [
                       ? { ...MOCK_ORG_ENTITLEMENTS.features, canonical_incident_ingestion: true }
                       : scenario === "canonical-disabled"
                         ? { ...MOCK_ORG_ENTITLEMENTS.features, canonical_incident_ingestion: false }
-                        : scenario === "ask-dev-disabled"
-                          ? { ...MOCK_ORG_ENTITLEMENTS.features, ask_dev: false }
-                          : MOCK_ORG_ENTITLEMENTS.features,
+                        : MOCK_ORG_ENTITLEMENTS.features,
         });
     }),
 

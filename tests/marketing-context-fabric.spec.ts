@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("Context Fabric marketing pages", () => {
-    test("renders the ecosystem-wide product story and both supported experiences", async ({
+    test("renders the ecosystem-wide product story for the agent experience, with Ask Dev gone (CHAOS-6262)", async ({
         page,
     }) => {
         await page.goto("/marketing/context-fabric");
@@ -22,11 +22,12 @@ test.describe("Context Fabric marketing pages", () => {
         await expect(page.getByRole("heading", { name: "How", exact: true })).toBeVisible();
         await expect(
             page.getByRole("img", {
-                name: "Context Fabric connects the engineering ecosystem to Ask Dev and ACR MCP consumers",
+                name: "Context Fabric connects the engineering ecosystem to ACR MCP consumers",
                 exact: true,
             }),
         ).toBeVisible();
-        await expect(page.getByRole("heading", { name: "Ask Dev" })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Ask Dev" })).toHaveCount(0);
+        await expect(page.getByText("Ask Dev")).toHaveCount(0);
         await expect(page.getByRole("heading", { name: "ACR and MCP" })).toBeVisible();
         await expect(page.getByRole("link", { name: "Explore use cases" }).first()).toHaveAttribute(
             "href",
@@ -34,7 +35,7 @@ test.describe("Context Fabric marketing pages", () => {
         );
     });
 
-    test("keeps project status as one use case and covers broader people and agent questions", async ({
+    test("keeps project status as one use case, covers agent questions, with Ask Dev gone (CHAOS-6262)", async ({
         page,
     }) => {
         await page.goto("/marketing/context-fabric/use-cases");
@@ -54,17 +55,18 @@ test.describe("Context Fabric marketing pages", () => {
             page.getByRole("heading", {
                 name: /know what is complete, blocked, ready, or still uncertain/i,
             }),
-        ).toBeVisible();
+        ).toHaveCount(0);
         await expect(
             page.getByRole("heading", {
                 name: /find teams that may need attention without ranking people/i,
             }),
-        ).toBeVisible();
+        ).toHaveCount(0);
         await expect(
             page.getByRole("heading", {
                 name: /prioritize evidence-backed gaps across the delivery system/i,
             }),
-        ).toBeVisible();
+        ).toHaveCount(0);
+        await expect(page.getByText("Ask Dev")).toHaveCount(0);
         await expect(
             page.getByRole("heading", {
                 name: /bring the surrounding context to the agent before it works/i,

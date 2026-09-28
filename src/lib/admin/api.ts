@@ -12,7 +12,6 @@ import { auditApi, platformAuditApi } from "./api/audit";
 import { ipAllowlistApi } from "./api/security";
 import { retentionApi } from "./api/retention";
 import { llmSettingsApi } from "./api/llm-settings";
-import { askDevAdminApi } from "./api/ask-dev";
 import { platformApi, impersonationApi } from "./api/platform";
 import { setupApi } from "./api/setup";
 import { customerPushApi } from "./api/customer-push";
@@ -33,7 +32,6 @@ export const adminApi = {
     ipAllowlist: ipAllowlistApi,
     retention: retentionApi,
     llmSettings: llmSettingsApi,
-    askDev: askDevAdminApi,
     impersonation: impersonationApi,
     platform: platformApi,
     platformAudit: platformAuditApi,

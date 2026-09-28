@@ -2,7 +2,6 @@ import { beforeEach, describe, it, expect, vi } from "vitest";
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { render } from "@/test/utils";
-import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { PrimaryNav } from "./PrimaryNav";
 import type { MetricFilter } from "@/lib/filters/types";
 
@@ -138,29 +137,6 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
         expect(screen.getByRole("link", { name: /^Opportunities$/i })).toBeInTheDocument();
         // Both Experiments (CHAOS-2219) and Automations (CHAOS-2220) are now navVisible:true.
         expect(screen.getByRole("link", { name: /^Experiments$/i })).toBeInTheDocument();
-    });
-
-    // CHAOS-3524 (chris's ruling): Ask Dev is deliberately NOT a left-nav
-    // destination anymore — one ingress only, the in-context
-    // trigger/window → workspace path. Previously this suite asserted the
-    // opposite (a link rendered when `ask_dev` was provisioned, gated by
-    // `requiredFeature`); that entry is gone from the nav config entirely
-    // now, so the correct regression guard is that no such link ever
-    // appears, regardless of feature state.
-    it.each([
-        ["provisioned", { ask_dev: true }],
-        ["missing", {}],
-        ["explicitly false", { ask_dev: false }],
-    ] as const)("never renders an Ask Dev nav link, feature %s", (_state, features) => {
-        navigationMock.pathname = "/work";
-        render(
-            <AdminTierProvider tier="enterprise" features={features} limits={{}}>
-                <PrimaryNav filters={makeFilter()} active="work" />
-            </AdminTierProvider>,
-        );
-
-        expect(screen.queryByRole("link", { name: /^Ask Dev$/i })).not.toBeInTheDocument();
-        expect(screen.getByRole("link", { name: /^Flow$/i })).toBeInTheDocument();
     });
 
     it("renders Improve → Automations now that navVisible:true (CHAOS-2220)", () => {
