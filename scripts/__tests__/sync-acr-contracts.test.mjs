@@ -135,7 +135,9 @@ describe("sync-acr-contracts", () => {
 
         expect(result.status).toBe(0);
         expect(result.stdout).toContain("ACR contracts are current");
-    });
+        // The check formats the whole generated module; with the CHAOS-7125 snapshot
+        // it takes about 7 s on a slow host, over vitest's default 5 s.
+    }, 60_000);
 
     it("records the exact Todo 4 primary order before the explicit OpenAPI schema closure", () => {
         const manifest = JSON.parse(
@@ -157,8 +159,10 @@ describe("sync-acr-contracts", () => {
             "schemas/agent_episode.v1.schema.json",
             "schemas/agent_episode_create.v1.schema.json",
             "schemas/context_fabric_common.v1.schema.json",
+            "schemas/context_fabric_answer_projection.v1.schema.json",
             "schemas/context_fabric_investigation_request.v1.schema.json",
             "schemas/context_fabric_investigation_result.v1.schema.json",
+            "schemas/context_fabric_investigation_result.v2.schema.json",
             "schemas/context_fabric_org_model_config.v1.schema.json",
             "schemas/context_fabric_org_model_config_write_request.v1.schema.json",
             "schemas/credential_revoke_request.v1.schema.json",
@@ -174,6 +178,8 @@ describe("sync-acr-contracts", () => {
             "schemas/device_token_request.v1.schema.json",
             "schemas/device_token_response.v1.schema.json",
             "schemas/oauth_device_error.v1.schema.json",
+            "schemas/oauth_token_exchange_error.v1.schema.json",
+            "schemas/token_exchange_response.v1.schema.json",
         ]);
     });
 
