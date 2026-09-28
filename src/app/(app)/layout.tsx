@@ -8,7 +8,6 @@ import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { TrialBanner } from "@/components/billing/TrialBanner";
-import { AskDevProvider } from "@/components/ask-dev/AskDevProvider";
 import { TelemetryProvider } from "@/components/telemetry/TelemetryProvider";
 import { getOrgEntitlements } from "@/lib/admin/server/billing";
 import { requireSession } from "@/lib/auth";
@@ -26,7 +25,6 @@ export default async function AppLayout({
         : undefined;
     const entitlements = entitlementResult?.data;
     const hasValidEntitlements = entitlements?.is_valid === true;
-    const askDevEnabled = hasValidEntitlements && entitlements.features.ask_dev === true;
 
     const authenticatedShell = (
         <div className="min-h-screen bg-[image:var(--app-gradient)] bg-fixed">
@@ -85,18 +83,7 @@ export default async function AppLayout({
             >
                 <GraphQLProvider orgId={session.user.org_id}>
                     <TelemetryProvider orgId={session.user.org_id} userId={session.user.id}>
-                        {askDevEnabled && session.user.org_id ? (
-                            <AskDevProvider
-                                orgId={session.user.org_id}
-                                contextualEntrypointsEnabled={
-                                    entitlements.features.ask_dev_contextual_entrypoints === true
-                                }
-                            >
-                                {authenticatedShell}
-                            </AskDevProvider>
-                        ) : (
-                            authenticatedShell
-                        )}
+                        {authenticatedShell}
                     </TelemetryProvider>
                 </GraphQLProvider>
             </AdminTierProvider>
