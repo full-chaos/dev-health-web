@@ -296,16 +296,40 @@ describe("proxy rate limiting", () => {
         expect(res.headers.get("x-middleware-rewrite")).toBeNull();
     });
 
-    it("keeps Ask Dev BFF routes local while legacy API routes still proxy", async () => {
-        mockAuth.mockResolvedValue(session);
+    it.each([
+        ["/api/v1/dev", "GET"],
+        ["/api/v1/dev/conversations", "POST"],
+        ["/api/v1/admin/ask-dev", "GET"],
+        ["/api/v1/admin/ask-dev/settings", "PATCH"],
+        ["/api/v1/admin/platform/ask-dev/readiness", "POST"],
+    ] as const)(
+        "returns 404 without ever reaching the backend rewrite for the deleted %s (CHAOS-6262)",
+        async (path, method) => {
+            mockAuth.mockResolvedValue(session);
 
-        const askDevResponse = await proxy(makeRequest("/api/v1/dev/capabilities", "GET"));
-        const legacyResponse = await proxy(makeRequest("/api/v1/admin/ask-dev", "GET"));
+            const res = await proxy(makeRequest(path, method));
 
-        expect(askDevResponse.headers.get("x-middleware-rewrite")).toBeNull();
-        expect(legacyResponse.headers.get("x-middleware-rewrite")).toBe(
-            "http://localhost:8000/api/v1/admin/ask-dev",
+            expect(res.status).toBe(404);
+            expect(res.headers.get("x-middleware-rewrite")).toBeNull();
+        },
+    );
+
+    it("returns 404, not a 200 rewrite, for an unauthenticated origin-less mutation against the deleted Ask Dev API (CHAOS-6262 r1 repro)", async () => {
+        // Re-runs the r1 codex reviewer's exact repro shape: no session, no
+        // Origin header, a ~40 KiB body -- the deleted BFF's Origin check and
+        // 32 KiB mutation body bound no longer exist to catch this, so the
+        // request must never reach the generic backend rewrite at all.
+        mockAuth.mockResolvedValue(null);
+        const body = "a".repeat(40_975);
+        const request = new NextRequest(
+            new URL("/api/v1/dev/conversations", "http://localhost:3000"),
+            { method: "POST", body },
         );
+
+        const res = await proxy(request);
+
+        expect(res.status).toBe(404);
+        expect(res.headers.get("x-middleware-rewrite")).toBeNull();
     });
 
     it("keeps device-approval BFF routes local instead of rewriting them to the backend", async () => {

@@ -23,9 +23,6 @@
         "codegen:check": "graphql-codegen --config codegen.ts --check",
         "acr:contracts:generate": "node scripts/sync-acr-contracts.mjs generate --allow-write",
         "acr:contracts:check": "node scripts/sync-acr-contracts.mjs check",
-        "ask-dev:contracts:generate": "node scripts/ask-dev-contracts.mjs generate --allow-write",
-        "ask-dev:contracts:check": "node scripts/ask-dev-contracts.mjs check",
-        "ask-dev:contracts:check-currency": "node scripts/ask-dev-contracts.mjs check-currency",
         "graphql:wire-parity:check": "tsx scripts/graphql-wire-parity.ts check",
         "graphql:wire-parity:generate": "tsx scripts/graphql-wire-parity.ts generate",
         "auth-profiles:gate": "tsx ci/gate_web_auth_profiles.ts",
@@ -37,8 +34,6 @@
         "test:e2e:context-fabric": "node scripts/context-fabric-qa.mjs",
         "test:e2e:onboarding": "playwright test -c playwright.onboarding.config.ts",
         "test:e2e:live": "playwright test -c playwright.live.config.ts",
-        "test:ask-dev-acceptance": "playwright test -c playwright.ask-dev-acceptance.config.ts",
-        "test:ask-dev-graph-acceptance": "playwright test -c playwright.ask-dev-graph-acceptance.config.ts",
         "test:unit": "vitest run",
         "test:ci": "bash ci/run_tests.sh ci"
     },
