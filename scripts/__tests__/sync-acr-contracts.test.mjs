@@ -3,9 +3,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { isNotLockState } from "./acr-fixture-copy.mjs";
+
+// Every test here spawns the sync script, which formats the whole generated
+// module (CHAOS-7125 made it much larger); the source-backed tests generate it
+// twice. On a slow host that is 8-10 s, over vitest's 5 s default.
+vi.setConfig({ testTimeout: 60_000 });
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const SCRIPT = path.join(ROOT, "scripts/sync-acr-contracts.mjs");
@@ -135,9 +140,7 @@ describe("sync-acr-contracts", () => {
 
         expect(result.status).toBe(0);
         expect(result.stdout).toContain("ACR contracts are current");
-        // The check formats the whole generated module; with the CHAOS-7125 snapshot
-        // it takes about 7 s on a slow host, over vitest's default 5 s.
-    }, 60_000);
+    });
 
     it("records the exact Todo 4 primary order before the explicit OpenAPI schema closure", () => {
         const manifest = JSON.parse(
