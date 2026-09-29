@@ -201,7 +201,7 @@ export function TeamExchangeChordSection({
                     </div>
                 ) : singleEntity ? (
                     <div
-                        className="lg:col-span-2 flex min-h-[220px] items-center justify-center text-center text-sm text-muted-foreground"
+                        className="lg:col-span-2 flex items-center py-16 justify-center text-center text-sm text-muted-foreground"
                         data-testid="team-exchange-chord-single-entity"
                     >
                         Only one{" "}
