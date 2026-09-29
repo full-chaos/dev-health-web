@@ -13,8 +13,12 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn() }));
 import { auth } from "@/lib/auth";
 import contextPacket from "../contracts/examples/context_packet.v1.json";
 import expandedEvidence from "../contracts/examples/expanded_evidence.v1.json";
+import capabilitiesSchema from "../contracts/schemas/capabilities.v1.schema.json";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "../errors";
 import { createContextPacket, getExpandedEvidence, listAuthorizedRepositories } from "../service";
+
+const capabilitiesSchemaTools: readonly string[] =
+    capabilitiesSchema.properties.enabled_tools.items.enum;
 
 const server = setupServer();
 const temporaryPaths: string[] = [];
@@ -157,7 +161,10 @@ function decodeWebAssertion(assertion: string): z.infer<typeof webAssertionPaylo
     );
 }
 
-function installAcrHappyResponses(includeDebug = false): void {
+function installAcrHappyResponses(
+    includeDebug = false,
+    enabledTools: readonly string[] = capabilities.enabled_tools,
+): void {
     server.use(
         http.get("https://acr.example.test/api/v1/agent-context/capabilities", ({ request }) => {
             const assertion = request.headers.get("x-acr-web-assertion");
@@ -176,7 +183,7 @@ function installAcrHappyResponses(includeDebug = false): void {
             const evidenceRead = payload.permissions.includes("evidence:read");
             return HttpResponse.json({
                 ...capabilities,
-                enabled_tools: evidenceRead ? capabilities.enabled_tools : ["context_for_task"],
+                enabled_tools: evidenceRead ? enabledTools : ["context_for_task"],
                 permissions: { ...capabilities.permissions, evidence_read: evidenceRead },
             });
         }),
@@ -259,6 +266,50 @@ describe("ACR server-only runtime service", () => {
         });
 
         expect(packet).toEqual(contextPacket);
+    });
+
+    // CHAOS-7141: acr lists investigate_question / investigation_result in its
+    // capabilities whenever the investigation surface is composed (as in
+    // production). The tool list is the vendored capabilities schema's enum,
+    // so web must accept every tool in it and still refuse one outside it.
+    it.each([
+        [
+            "the answer tools",
+            ["context_for_task", "source_evidence", "investigate_question", "investigation_result"],
+        ],
+        ["every tool in the vendored schema", capabilitiesSchemaTools],
+    ])("accepts capabilities that list %s", async (_name, tools) => {
+        installOpsAuthorization();
+        installAcrHappyResponses(false, tools);
+
+        await expect(
+            createContextPacket({
+                body: {
+                    branchOrCommit: "abcdef1",
+                    goal: "Verify the server-only boundary",
+                    repository: "full-chaos/dev-health-acr",
+                    taskReference: "CHAOS-2911",
+                },
+                signal: new AbortController().signal,
+            }),
+        ).resolves.toEqual(contextPacket);
+    });
+
+    it("refuses capabilities that list a tool outside the vendored schema", async () => {
+        installOpsAuthorization();
+        installAcrHappyResponses(false, ["context_for_task", "source_evidence", "made_up_tool"]);
+
+        await expect(
+            createContextPacket({
+                body: {
+                    branchOrCommit: "abcdef1",
+                    goal: "Verify the server-only boundary",
+                    repository: "full-chaos/dev-health-acr",
+                    taskReference: "CHAOS-2911",
+                },
+                signal: new AbortController().signal,
+            }),
+        ).rejects.toMatchObject({ code: acrRuntimeErrorCodes.malformedResponse });
     });
 
     it("expands evidence only through the narrowed evidence route capability", async () => {

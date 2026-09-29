@@ -5,14 +5,23 @@ import { z } from "zod";
 
 import { signWebAssertion } from "./assertion";
 import type { AcrRuntimeConfig } from "./config";
+import capabilitiesContract from "./contracts/schemas/capabilities.v1.schema.json";
 import { validateAcrContract } from "./contracts";
 import { AcrRuntimeError, acrRuntimeErrorCodes } from "./errors";
 import { fetchBoundedJson } from "./http";
 import type { OpsAuthorization } from "./ops";
 
+// The tool list is the vendored capabilities schema's own enum (CHAOS-7141), so
+// web accepts exactly the tools acr's published contract names and a snapshot
+// bump moves this with it. A hand-written list here refused
+// investigate_question / investigation_result, which acr advertises whenever
+// its investigation surface is composed.
+const [firstEnabledTool, ...otherEnabledTools] = capabilitiesContract.properties.enabled_tools.items
+    .enum as [string, ...string[]];
+
 const capabilitiesSchema = z
     .object({
-        enabled_tools: z.array(z.enum(["context_for_task", "source_evidence", "record_episode"])),
+        enabled_tools: z.array(z.enum([firstEnabledTool, ...otherEnabledTools])),
         entitlements: z.object({ agent_context_runtime: z.boolean() }).strict(),
         limits: z
             .object({
