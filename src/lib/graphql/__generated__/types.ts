@@ -902,6 +902,13 @@ export type FlowMatrixRequestInput = {
 
 export type FlowMatrixResult = {
   __typename?: 'FlowMatrixResult';
+  /**
+   * Non-null only when the underlying ClickHouse execution failed and
+   * was swallowed to an empty nodes/edges result (Python-parity
+   * behaviour, analytics.py:959-961) -- CHAOS-7092: the caller must be
+   * able to tell a genuinely empty result apart from a degraded one.
+   */
+  degradedReason?: Maybe<Scalars['String']['output']>;
   edges: Array<SankeyEdge>;
   nodes: Array<SankeyNode>;
 };
