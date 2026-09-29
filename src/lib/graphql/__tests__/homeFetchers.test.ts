@@ -272,4 +272,40 @@ describe("getHomeDataViaGraphQL", () => {
         expect(callArgs[2]).toEqual({ orgId: "org-1" });
         expect(result).toEqual(toHomeResponse(graphqlFixture));
     });
+
+    it("forwards the selected time window and never drops it", async () => {
+        mockedFetch.mockResolvedValueOnce({ home: graphqlFixture });
+
+        await getHomeDataViaGraphQL({
+            ...baseFilters,
+            time: {
+                range_days: 90,
+                compare_days: 30,
+                start_date: "2026-06-01",
+                end_date: "2026-08-30",
+            },
+        });
+
+        expect(mockedFetch.mock.calls[0][1]).toMatchObject({
+            window: {
+                rangeDays: 90,
+                compareDays: 30,
+                startDate: "2026-06-01",
+                endDate: "2026-08-30",
+            },
+        });
+    });
+
+    it("falls back team scope with no ids to org, as the REST call did", async () => {
+        mockedFetch.mockResolvedValueOnce({ home: graphqlFixture });
+
+        await getHomeDataViaGraphQL({
+            ...baseFilters,
+            scope: { level: "team", ids: [] },
+        });
+
+        expect(mockedFetch.mock.calls[0][1]).toMatchObject({
+            filters: { scope: { level: "ORG", ids: [] } },
+        });
+    });
 });

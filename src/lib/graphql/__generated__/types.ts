@@ -1001,6 +1001,14 @@ export type HomeTileEntry = {
   value: HomeTile;
 };
 
+/** Time window of the `home` query, the same members as `filters.time` of the REST home endpoint (range_days, compare_days, start_date, end_date). An unset member takes the REST default: 14, 14, no explicit dates. */
+export type HomeWindowInput = {
+  compareDays?: InputMaybe<Scalars['Int']['input']>;
+  endDate?: InputMaybe<Scalars['Date']['input']>;
+  rangeDays?: InputMaybe<Scalars['Int']['input']>;
+  startDate?: InputMaybe<Scalars['Date']['input']>;
+};
+
 export type HotspotRow = {
   __typename?: 'HotspotRow';
   blameConcentration?: Maybe<Scalars['Float']['output']>;
@@ -1629,6 +1637,7 @@ export type QueryFeatureFlagsArgs = {
 export type QueryHomeArgs = {
   filters?: InputMaybe<FilterInput>;
   orgId: Scalars['String']['input'];
+  window?: InputMaybe<HomeWindowInput>;
 };
 
 

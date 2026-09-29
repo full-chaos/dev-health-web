@@ -1099,8 +1099,8 @@ query WorkUnitTeamAttributions($orgId: String!, $workUnitIds: [String!], $teamId
 // truth for the query-api registeredHomeDocument once this document is
 // live — never hand-copy this text into the Go const.
 export const HOME_QUERY = `
-query Home($orgId: String!, $filters: FilterInput) {
-  home(orgId: $orgId, filters: $filters) {
+query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
+  home(orgId: $orgId, filters: $filters, window: $window) {
     freshness {
       lastIngestedAt
       latestSuccessfulSyncAt

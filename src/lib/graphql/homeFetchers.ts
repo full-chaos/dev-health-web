@@ -15,6 +15,7 @@
 
 import { cache } from "react";
 import type { MetricFilter } from "@/lib/filters/types";
+import { normalizeFilters } from "@/lib/api/_shared";
 import type {
     HomeResponse,
     CockpitHealthStatus,
@@ -27,6 +28,32 @@ import { HOME_QUERY } from "./queries";
 import { translateMetricFilterToGraphQL, getOrgId } from "./investmentFetchers";
 import { graphqlFetch } from "./urqlClient";
 import type { HomeGraphQLResult, HomeQueryResponse } from "./types";
+import type { FilterInput, HomeWindowInput } from "./__generated__/types";
+
+/**
+ * Build the `home` filters and window variables from a MetricFilter. Mirrors
+ * what the REST call sent: filters pass through `normalizeFilters` (team scope
+ * with no ids falls back to org) and the time window (`range_days`/
+ * `compare_days`/`start_date`/`end_date`) travels as the separate `window`
+ * argument. Without it the resolver silently falls back to its default
+ * 14/14-day window.
+ */
+export function toHomeVariables(filters: MetricFilter): {
+    filters: FilterInput;
+    window: HomeWindowInput;
+} {
+    const normalized = normalizeFilters(filters);
+    const { range_days, compare_days, start_date, end_date } = normalized.time;
+    return {
+        filters: translateMetricFilterToGraphQL(normalized),
+        window: {
+            rangeDays: range_days,
+            compareDays: compare_days,
+            startDate: start_date,
+            endDate: end_date,
+        },
+    };
+}
 
 /**
  * Convert a GraphQL `home` field response into the REST-shaped HomeResponse.
@@ -153,11 +180,11 @@ export const getHomeDataViaGraphQL = cache(async function getHomeDataViaGraphQL(
     }
 
     const orgId = getOrgId(filters, contextOrgId);
-    const graphqlFilters = translateMetricFilterToGraphQL(filters);
+    const variables = toHomeVariables(filters);
 
     const response = await graphqlFetch<HomeQueryResponse>(
         HOME_QUERY,
-        { orgId, filters: graphqlFilters },
+        { orgId, ...variables },
         { orgId },
     );
 
