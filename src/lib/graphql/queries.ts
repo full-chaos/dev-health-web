@@ -1211,7 +1211,7 @@ query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
 // ids (see WORK_UNIT_TEAM_ATTRIBUTIONS_QUERY above). Team attribution is
 // derived BACKEND-ONLY (ClickHouse system-of-record); the web layer is
 // render-only. CHAOS-7069 (CHAOS-6084 split): typed query + hook only — no
-// web view consumes this yet (D2912/D2914, no new UI in this ticket).
+// web view consumes this yet (typed query + hook only; no new UI).
 export const WORK_ITEM_TEAM_ATTRIBUTIONS_QUERY = `
 query WorkItemTeamAttributions($orgId: String!, $workItemIds: [String!], $teamId: String) {
   workItemTeamAttributions(orgId: $orgId, workItemIds: $workItemIds, teamId: $teamId) {

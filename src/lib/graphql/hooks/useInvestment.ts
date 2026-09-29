@@ -406,8 +406,8 @@ interface WorkItemTeamAttributionsResponse {
  * BACKEND-ONLY: this hook only surfaces the resolver's result, never
  * recomputes a mapping client-side.
  *
- * No web view calls this hook yet (D2912/D2914: typed query + hook only,
- * no new UI in CHAOS-7069). `@/lib/investment/teamAttribution.ts` and
+ * No web view calls this hook yet (typed query + hook only,
+ * no new UI). `@/lib/investment/teamAttribution.ts` and
  * `TeamAttributionBadge` already exist for `WorkItemTeamAttribution` display
  * and are the natural future consumer once a view needs one.
  */
