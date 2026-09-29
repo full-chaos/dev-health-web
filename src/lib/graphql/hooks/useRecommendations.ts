@@ -30,8 +30,8 @@ const DEFAULT_WINDOW: WindowInput = { value: 4, unit: "WEEK" };
  * window (CHAOS-7068 / CHAOS-6084). Recommendations are derived BACKEND-ONLY;
  * the web layer is render-only and never recomputes rules or severity.
  *
- * No web view calls this hook yet (D2912/D2914: typed query + hook only, no
- * new UI in this ticket). `team` is required — the resolver has no org-wide
+ * No web view calls this hook yet (typed query + hook only, no
+ * new UI). `team` is required — the resolver has no org-wide
  * form — so callers must resolve a concrete team id before using this hook.
  */
 export function useRecommendations(options: UseRecommendationsOptions): UseRecommendationsResult {
