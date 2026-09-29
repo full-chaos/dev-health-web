@@ -57,6 +57,27 @@ export function TeamExchangeChordSection({
         return new Set((records ?? []).flatMap((record) => [record.source, record.target])).size;
     }, [records]);
 
+    // Honest empty state: every edge is a self-edge of one entity, so no exchange exists.
+    // Read from the same response (self-edges are always returned; the toggle only
+    // decides whether they are drawn).
+    const singleEntity = useMemo(() => {
+        if (!records || records.length === 0) {
+            return null;
+        }
+        if (records.some((record) => record.source !== record.target)) {
+            return null;
+        }
+        const names = new Set(records.map((record) => record.source));
+        if (names.size !== 1) {
+            return null;
+        }
+        const [name] = [...names];
+        const units = records.reduce((sum, record) => sum + record.value, 0);
+        return { name, units };
+    }, [records]);
+
+    const groupingNoun = controls.grouping === "work_type" ? "work type" : controls.grouping;
+
     const otherAvailable = useMemo(() => {
         return entityCount > controls.topN;
     }, [controls.topN, entityCount]);
@@ -179,6 +200,17 @@ export function TeamExchangeChordSection({
                             title="Unable to load exchange view"
                             message="We couldn’t load exchange pairs for this window. Try again after adjusting the date range or scope."
                         />
+                    </div>
+                ) : singleEntity ? (
+                    <div
+                        className="lg:col-span-2 flex items-center py-16 justify-center text-center text-sm text-muted-foreground"
+                        data-testid="team-exchange-chord-single-entity"
+                    >
+                        Only one {groupingNoun} has effort in this window: {singleEntity.name} (
+                        {singleEntity.units.toLocaleString()} {effortUnit}).{" "}
+                        {controls.showSelfLinks
+                            ? `That is all within-${groupingNoun} flow. A chord needs at least two to draw an exchange between them, so try a longer date range.`
+                            : `Exchange needs at least two, so there are no flows to draw. Turn on Include self-links to see within-${groupingNoun} flow, or try a longer date range.`}
                     </div>
                 ) : (
                     <>
