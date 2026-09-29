@@ -215,7 +215,7 @@ describe("TeamExchangeChordSection", () => {
         expect(screen.queryByTestId("mock-chord-chart")).not.toBeInTheDocument();
     });
 
-    it("hides the single-team note once self-links are on", () => {
+    it("keeps the single-team note, worded for within-team flow, once self-links are on", () => {
         currentSearchParams = new URLSearchParams("chord.self=true");
         mockUseChordFlow.mockReturnValue({
             data: [{ source: "CHAOS", target: "CHAOS", value: 7 }],
@@ -230,8 +230,9 @@ describe("TeamExchangeChordSection", () => {
                 effortUnit="units"
             />,
         );
-        expect(screen.queryByTestId("team-exchange-chord-single-entity")).not.toBeInTheDocument();
-        expect(screen.getByTestId("mock-chord-chart")).toBeInTheDocument();
+        const note = screen.getByTestId("team-exchange-chord-single-entity");
+        expect(note).toHaveTextContent(/all within-team flow/i);
+        expect(note).not.toHaveTextContent(/turn on include self-links/i);
     });
 
     it("renders the unavailable state when the read errored even if records are present", () => {

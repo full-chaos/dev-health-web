@@ -199,7 +199,7 @@ export function TeamExchangeChordSection({
                             message="We couldn’t load exchange pairs for this window. Try again after adjusting the date range or scope."
                         />
                     </div>
-                ) : singleEntity && !controls.showSelfLinks ? (
+                ) : singleEntity ? (
                     <div
                         className="lg:col-span-2 flex min-h-[220px] items-center justify-center text-center text-sm text-muted-foreground"
                         data-testid="team-exchange-chord-single-entity"
@@ -207,9 +207,10 @@ export function TeamExchangeChordSection({
                         Only one{" "}
                         {controls.grouping === "work_type" ? "work type" : controls.grouping} has
                         effort in this window: {singleEntity.name} (
-                        {singleEntity.units.toLocaleString()} {effortUnit}). Exchange needs at least
-                        two, so there are no flows to draw. Turn on Include self-links to see
-                        within-team flow, or try a longer date range.
+                        {singleEntity.units.toLocaleString()} {effortUnit}).{" "}
+                        {controls.showSelfLinks
+                            ? "That is all within-team flow. A chord needs at least two to draw an exchange between them, so try a longer date range."
+                            : "Exchange needs at least two, so there are no flows to draw. Turn on Include self-links to see within-team flow, or try a longer date range."}
                     </div>
                 ) : (
                     <>
