@@ -4,9 +4,11 @@ import acrClientCredentialSchema from "./contracts/schemas/acr_client_credential
 import agentEpisodeCreateSchema from "./contracts/schemas/agent_episode_create.v1.schema.json";
 import agentEpisodeSchema from "./contracts/schemas/agent_episode.v1.schema.json";
 import capabilitiesSchema from "./contracts/schemas/capabilities.v1.schema.json";
+import contextFabricAnswerProjectionSchema from "./contracts/schemas/context_fabric_answer_projection.v1.schema.json";
 import contextFabricCommonSchema from "./contracts/schemas/context_fabric_common.v1.schema.json";
 import contextFabricInvestigationRequestSchema from "./contracts/schemas/context_fabric_investigation_request.v1.schema.json";
 import contextFabricInvestigationResultSchema from "./contracts/schemas/context_fabric_investigation_result.v1.schema.json";
+import contextFabricInvestigationResultV2Schema from "./contracts/schemas/context_fabric_investigation_result.v2.schema.json";
 import contextFabricOrgModelConfigWriteRequestSchema from "./contracts/schemas/context_fabric_org_model_config_write_request.v1.schema.json";
 import contextFabricOrgModelConfigSchema from "./contracts/schemas/context_fabric_org_model_config.v1.schema.json";
 import contextPacketItemSchema from "./contracts/schemas/context_packet_item.v1.schema.json";
@@ -28,6 +30,8 @@ import errorSchema from "./contracts/schemas/error.v1.schema.json";
 import evidenceRefSchema from "./contracts/schemas/evidence_ref.v1.schema.json";
 import expandedEvidenceSchema from "./contracts/schemas/expanded_evidence.v1.schema.json";
 import oauthDeviceErrorSchema from "./contracts/schemas/oauth_device_error.v1.schema.json";
+import oauthTokenExchangeErrorSchema from "./contracts/schemas/oauth_token_exchange_error.v1.schema.json";
+import tokenExchangeResponseSchema from "./contracts/schemas/token_exchange_response.v1.schema.json";
 import contextPacketExample from "./contracts/examples/context_packet.v1.json";
 import expandedEvidenceExample from "./contracts/examples/expanded_evidence.v1.json";
 
@@ -36,9 +40,11 @@ export const acrSchemas = {
     agentEpisodeCreate: agentEpisodeCreateSchema,
     agentEpisode: agentEpisodeSchema,
     capabilities: capabilitiesSchema,
+    contextFabricAnswerProjection: contextFabricAnswerProjectionSchema,
     contextFabricCommon: contextFabricCommonSchema,
     contextFabricInvestigationRequest: contextFabricInvestigationRequestSchema,
     contextFabricInvestigationResult: contextFabricInvestigationResultSchema,
+    contextFabricInvestigationResultV2: contextFabricInvestigationResultV2Schema,
     contextFabricOrgModelConfigWriteRequest: contextFabricOrgModelConfigWriteRequestSchema,
     contextFabricOrgModelConfig: contextFabricOrgModelConfigSchema,
     contextPacketItem: contextPacketItemSchema,
@@ -60,6 +66,8 @@ export const acrSchemas = {
     evidenceRef: evidenceRefSchema,
     expandedEvidence: expandedEvidenceSchema,
     oauthDeviceError: oauthDeviceErrorSchema,
+    oauthTokenExchangeError: oauthTokenExchangeErrorSchema,
+    tokenExchangeResponse: tokenExchangeResponseSchema,
 };
 
 const acrSchemaFiles = {
@@ -67,9 +75,11 @@ const acrSchemaFiles = {
     "agent_episode_create.v1.schema.json": agentEpisodeCreateSchema,
     "agent_episode.v1.schema.json": agentEpisodeSchema,
     "capabilities.v1.schema.json": capabilitiesSchema,
+    "context_fabric_answer_projection.v1.schema.json": contextFabricAnswerProjectionSchema,
     "context_fabric_common.v1.schema.json": contextFabricCommonSchema,
     "context_fabric_investigation_request.v1.schema.json": contextFabricInvestigationRequestSchema,
     "context_fabric_investigation_result.v1.schema.json": contextFabricInvestigationResultSchema,
+    "context_fabric_investigation_result.v2.schema.json": contextFabricInvestigationResultV2Schema,
     "context_fabric_org_model_config_write_request.v1.schema.json":
         contextFabricOrgModelConfigWriteRequestSchema,
     "context_fabric_org_model_config.v1.schema.json": contextFabricOrgModelConfigSchema,
@@ -92,6 +102,8 @@ const acrSchemaFiles = {
     "evidence_ref.v1.schema.json": evidenceRefSchema,
     "expanded_evidence.v1.schema.json": expandedEvidenceSchema,
     "oauth_device_error.v1.schema.json": oauthDeviceErrorSchema,
+    "oauth_token_exchange_error.v1.schema.json": oauthTokenExchangeErrorSchema,
+    "token_exchange_response.v1.schema.json": tokenExchangeResponseSchema,
 };
 
 export const acrExamples = [

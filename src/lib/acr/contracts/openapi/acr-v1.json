@@ -272,6 +272,17 @@
               "minLength": 8,
               "maxLength": 256
             }
+          },
+          {
+            "name": "result_id",
+            "in": "query",
+            "required": false,
+            "description": "Scopes an acr:v1 evidence reference to the stored investigation result of the answer being verified. Without it the newest citing result answers (deprecated, logged).",
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 256
+            }
           }
         ],
         "responses": {
@@ -446,11 +457,18 @@
         },
         "responses": {
           "200": {
-            "description": "Investigation result; status may be complete, partial, degraded, clarification_required, or no_match",
+            "description": "Investigation result; status may be complete, partial, degraded, clarification_required, or no_match. schema_version is context_fabric_investigation_result.v1, or .v2 when the result minted an anchor membership-verify offer (CHAOS-4042).",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "../schemas/context_fabric_investigation_result.v1.schema.json"
+                  "oneOf": [
+                    {
+                      "$ref": "../schemas/context_fabric_investigation_result.v1.schema.json"
+                    },
+                    {
+                      "$ref": "../schemas/context_fabric_investigation_result.v2.schema.json"
+                    }
+                  ]
                 }
               }
             }
@@ -480,6 +498,139 @@
             "$ref": "#/components/responses/Error"
           },
           "502": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          },
+          "504": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/context-fabric/investigations/{result_id}": {
+      "get": {
+        "operationId": "getContextFabricInvestigation",
+        "summary": "Re-read one immutable investigation result by its opaque result_id.",
+        "description": "Returns the canonical result a prior investigation persisted. A bounded consumer that received an answer projection uses this to fetch the full detail behind a claim, so every answer does not have to be inflated for the rare caller that wants everything; replay and diagnostics read the same way. Strictly read-only: no graph, canonical fact, or model work happens. view=projection returns the bounded answer projection instead of the canonical snapshot, produced by the same projection code the MCP answer tool calls, so a consumer cannot receive a different judgment from either surface. result_id is a frozen, opaque handle and must not be parsed. An unknown result_id, a malformed one, and one belonging to another organization are indistinguishable: all three answer 404, so result_id can never act as a cross-tenant existence oracle.",
+        "x-required-scope": "context:read",
+        "x-required-entitlement": "agent_context_runtime",
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "webAssertionAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestID"
+          },
+          {
+            "$ref": "#/components/parameters/ClientVersion"
+          },
+          {
+            "name": "result_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 256
+            }
+          },
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "description": "Representation to return. 'canonical' (default) returns the full context_fabric_investigation_result.v1 or .v2 (CHAOS-4042). 'projection' returns the bounded context_fabric_answer_projection.v1, produced by the SAME projection code the MCP answer tool uses, so the two surfaces cannot disagree about what an answer says.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "canonical",
+                "projection"
+              ]
+            }
+          },
+          {
+            "name": "max_drivers",
+            "in": "query",
+            "required": false,
+            "description": "Maximum drivers to retain in the projection view. Valid only with view=projection; omitted means the projection default. Every drop it causes is declared in projection_budget.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          },
+          {
+            "name": "max_cohort_members",
+            "in": "query",
+            "required": false,
+            "description": "Maximum cohort members to retain in the projection view. Valid only with view=projection; omitted means the projection default. Every drop it causes is declared in projection_budget.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 250
+            }
+          },
+          {
+            "name": "max_evidence_refs",
+            "in": "query",
+            "required": false,
+            "description": "Maximum evidence references the projection's index may carry. Valid only with view=projection; omitted means the projection default. Every drop it causes is declared in projection_budget.",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Persisted immutable investigation result. The canonical snapshot by default (schema_version context_fabric_investigation_result.v1, or .v2 when the result minted an anchor membership-verify offer -- see CHAOS-4042), or its bounded consumer projection when view=projection.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "../schemas/context_fabric_investigation_result.v1.schema.json"
+                    },
+                    {
+                      "$ref": "../schemas/context_fabric_investigation_result.v2.schema.json"
+                    },
+                    {
+                      "$ref": "../schemas/context_fabric_answer_projection.v1.schema.json"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error"
+          },
+          "413": {
+            "$ref": "#/components/responses/Error"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "500": {
             "$ref": "#/components/responses/Error"
           },
           "503": {
@@ -535,6 +686,7 @@
       "post": {
         "security": [],
         "operationId": "exchangeDeviceToken",
+        "description": "Dispatches by Content-Type (CHAOS-4013): application/json is the pre-existing RFC 8628 device-code grant, unchanged; application/x-www-form-urlencoded is the RFC 8693 workload token-exchange grant.",
         "requestBody": {
           "required": true,
           "content": {
@@ -542,26 +694,66 @@
               "schema": {
                 "$ref": "../schemas/device_token_request.v1.schema.json"
               }
+            },
+            "application/x-www-form-urlencoded": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["grant_type", "subject_token", "subject_token_type"],
+                "properties": {
+                  "grant_type": {
+                    "const": "urn:ietf:params:oauth:grant-type:token-exchange"
+                  },
+                  "subject_token": {
+                    "type": "string",
+                    "description": "The k8s projected ServiceAccount JWT, validated via Kubernetes TokenReview."
+                  },
+                  "subject_token_type": {
+                    "const": "urn:ietf:params:oauth:token-type:jwt"
+                  },
+                  "requested_token_type": {
+                    "const": "urn:ietf:params:oauth:token-type:access_token"
+                  },
+                  "scope": {
+                    "type": "string",
+                    "description": "Space-delimited requested scope; may only narrow the resolved binding's grant, never widen it."
+                  }
+                }
+              }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Device grant redeemed once",
+            "description": "Device grant redeemed once, or a workload token successfully exchanged",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "../schemas/device_token_response.v1.schema.json"
+                  "oneOf": [
+                    {
+                      "$ref": "../schemas/device_token_response.v1.schema.json"
+                    },
+                    {
+                      "$ref": "../schemas/token_exchange_response.v1.schema.json"
+                    }
+                  ]
                 }
               }
             }
           },
           "400": {
-            "description": "Pinned RFC device grant error",
+            "description": "Pinned RFC device grant error, or an RFC 8693 token-exchange error",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "../schemas/oauth_device_error.v1.schema.json"
+                  "oneOf": [
+                    {
+                      "$ref": "../schemas/oauth_device_error.v1.schema.json"
+                    },
+                    {
+                      "$ref": "../schemas/oauth_token_exchange_error.v1.schema.json"
+                    }
+                  ]
                 }
               }
             }
@@ -899,6 +1091,170 @@
             "$ref": "#/components/responses/Error"
           },
           "500": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/context-fabric/data/catalog": {
+      "get": {
+        "operationId": "readContextFabricDataCatalog",
+        "summary": "Direct data catalogue (data_catalog). CHAOS-7071 (S0) registers the route and its protection chain only: every authorized request answers 501 feature_not_enabled with details.reason not_implemented until the slice that fills it lands.",
+        "x-required-scope": "context:read",
+        "x-required-entitlement": "agent_context_runtime",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestID"
+          },
+          {
+            "$ref": "#/components/parameters/ClientVersion"
+          }
+        ],
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "501": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/context-fabric/data/subjects": {
+      "post": {
+        "operationId": "findContextFabricDataSubjects",
+        "summary": "Direct subject lookup (find_subjects). CHAOS-7071 (S0) registers the route and its protection chain only: every authorized request answers 501 feature_not_enabled with details.reason not_implemented until the slice that fills it lands.",
+        "x-required-scope": "context:read",
+        "x-required-entitlement": "agent_context_runtime",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestID"
+          },
+          {
+            "$ref": "#/components/parameters/ClientVersion"
+          }
+        ],
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "501": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/context-fabric/data/facts": {
+      "post": {
+        "operationId": "readContextFabricDataFacts",
+        "summary": "Direct fact read (read_facts). CHAOS-7071 (S0) registers the route and its protection chain only: every authorized request answers 501 feature_not_enabled with details.reason not_implemented until the slice that fills it lands.",
+        "x-required-scope": "context:read",
+        "x-required-entitlement": "agent_context_runtime",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestID"
+          },
+          {
+            "$ref": "#/components/parameters/ClientVersion"
+          }
+        ],
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "501": {
+            "$ref": "#/components/responses/Error"
+          },
+          "503": {
+            "$ref": "#/components/responses/Error"
+          }
+        }
+      }
+    },
+    "/api/v1/context-fabric/data/operations": {
+      "post": {
+        "operationId": "runContextFabricDataOperation",
+        "summary": "Registered analytics operation (run_operation). Requires the data:read scope. CHAOS-7071 (S0) registers the route and its protection chain only: every authorized request answers 501 feature_not_enabled with details.reason not_implemented until the slice that fills it lands.",
+        "x-required-scope": "data:read",
+        "x-required-entitlement": "agent_context_runtime",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/RequestID"
+          },
+          {
+            "$ref": "#/components/parameters/ClientVersion"
+          }
+        ],
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/Error"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error"
+          },
+          "426": {
+            "$ref": "#/components/responses/Error"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error"
+          },
+          "501": {
             "$ref": "#/components/responses/Error"
           },
           "503": {

@@ -1,12 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://contracts.fullchaos.dev/acr/v1/context_fabric_investigation_result.v1.schema.json",
-  "title": "ACR Context Fabric Investigation Result v1",
+  "$id": "https://contracts.fullchaos.dev/acr/v1/context_fabric_investigation_result.v2.schema.json",
+  "title": "ACR Context Fabric Investigation Result v2",
+  "description": "CHAOS-4042 (sol-max ruling): identical to Investigation Result v1 in every field except structure_needs, whose anchor_options carry AnchorOptionV2 (membership-verify) semantics instead of AnchorOption (unique-claimant). A result only ever carries this schema_version when it minted at least one membership-verify anchor option; v1 AnchorOption/results stay permanently unique-claimant and are never reinterpreted under this schema.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
     "schema_version": {
-      "const": "context_fabric_investigation_result.v1"
+      "const": "context_fabric_investigation_result.v2"
     },
     "result_id": {
       "type": "string",
@@ -167,7 +168,7 @@
       "$ref": "context_fabric_common.v1.schema.json#/$defs/WindowClarification"
     },
     "structure_needs": {
-      "$ref": "context_fabric_common.v1.schema.json#/$defs/StructureNeeds"
+      "$ref": "context_fabric_common.v1.schema.json#/$defs/StructureNeedsV2"
     },
     "confirmed_structure": {
       "type": "array",

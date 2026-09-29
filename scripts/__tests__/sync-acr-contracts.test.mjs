@@ -3,9 +3,14 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { isNotLockState } from "./acr-fixture-copy.mjs";
+
+// Every test here spawns the sync script, which formats the whole generated
+// module (CHAOS-7125 made it much larger); the source-backed tests generate it
+// twice. On a slow host that is 8-10 s, over vitest's 5 s default.
+vi.setConfig({ testTimeout: 60_000 });
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const SCRIPT = path.join(ROOT, "scripts/sync-acr-contracts.mjs");
@@ -157,8 +162,10 @@ describe("sync-acr-contracts", () => {
             "schemas/agent_episode.v1.schema.json",
             "schemas/agent_episode_create.v1.schema.json",
             "schemas/context_fabric_common.v1.schema.json",
+            "schemas/context_fabric_answer_projection.v1.schema.json",
             "schemas/context_fabric_investigation_request.v1.schema.json",
             "schemas/context_fabric_investigation_result.v1.schema.json",
+            "schemas/context_fabric_investigation_result.v2.schema.json",
             "schemas/context_fabric_org_model_config.v1.schema.json",
             "schemas/context_fabric_org_model_config_write_request.v1.schema.json",
             "schemas/credential_revoke_request.v1.schema.json",
@@ -174,6 +181,8 @@ describe("sync-acr-contracts", () => {
             "schemas/device_token_request.v1.schema.json",
             "schemas/device_token_response.v1.schema.json",
             "schemas/oauth_device_error.v1.schema.json",
+            "schemas/oauth_token_exchange_error.v1.schema.json",
+            "schemas/token_exchange_response.v1.schema.json",
         ]);
     });
 

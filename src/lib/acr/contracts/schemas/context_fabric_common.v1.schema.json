@@ -27,6 +27,10 @@
         "end": {
           "type": "string",
           "format": "date-time"
+        },
+        "evidence_window": {
+          "description": "CHAOS-3900 W1: legal ONLY when axis is current -- every other axis's own as_of/start/end already IS the window that axis answers for.",
+          "$ref": "#/$defs/RequestedEvidenceWindow"
         }
       },
       "required": [
@@ -82,6 +86,11 @@
                 "required": [
                   "end"
                 ]
+              },
+              {
+                "required": [
+                  "evidence_window"
+                ]
               }
             ]
           }
@@ -97,11 +106,499 @@
             "end"
           ],
           "not": {
-            "required": [
-              "as_of"
+            "anyOf": [
+              {
+                "required": [
+                  "as_of"
+                ]
+              },
+              {
+                "required": [
+                  "evidence_window"
+                ]
+              }
             ]
           }
         }
+      ]
+    },
+    "RequestedEvidenceWindow": {
+      "description": "CHAOS-3900 W1: the caller's own evidence-window intent. Structurally cannot carry provenance/class/confidence -- those are server-computed. RelativeID all_time requires start/end to both be absent; every other shape requires both.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "relative_id": {
+          "$ref": "#/$defs/RelativeWindowID"
+        }
+      },
+      "if": {
+        "properties": {
+          "relative_id": {
+            "const": "all_time"
+          }
+        },
+        "required": [
+          "relative_id"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "start"
+              ]
+            },
+            {
+              "required": [
+                "end"
+              ]
+            }
+          ]
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "relative_id"
+          ]
+        },
+        {
+          "required": [
+            "start",
+            "end"
+          ]
+        }
+      ],
+      "not": {
+        "description": "CHAOS-3900 W1 (codex round 7): the anyOf above proves AT LEAST ONE of relative_id/start+end is present, but does not by itself forbid a partial bound alongside a relative_id (e.g. relative_id+start with no end) -- that shape satisfies the anyOf's first branch regardless of how incomplete the bounds are. This guard closes exactly that gap: whichever of start/end is present, the other must be too, matching validate_context_fabric_window.go's validate() line 49 (\"requires an ordered start and end\") for every non-all_time shape, independent of whether relative_id is also present.",
+        "anyOf": [
+          {
+            "required": [
+              "start"
+            ],
+            "not": {
+              "required": [
+                "end"
+              ]
+            }
+          },
+          {
+            "required": [
+              "end"
+            ],
+            "not": {
+              "required": [
+                "start"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "EffectiveEvidenceWindow": {
+      "description": "CHAOS-3900 W1: the window an answer actually speaks for once canonicalization has run. Server-computed; never accepted from the wire.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "relative_id": {
+          "$ref": "#/$defs/RelativeWindowID"
+        },
+        "window_class": {
+          "type": "string",
+          "enum": [
+            "trend_assessment",
+            "recent_activity_lookup",
+            "state_snapshot",
+            "explicit_window"
+          ]
+        },
+        "provenance": {
+          "type": "string",
+          "enum": [
+            "inferred_default",
+            "question_stated",
+            "clarification_confirmed"
+          ]
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "low"
+          ]
+        }
+      },
+      "required": [
+        "provenance"
+      ],
+      "if": {
+        "properties": {
+          "relative_id": {
+            "const": "all_time"
+          }
+        },
+        "required": [
+          "relative_id"
+        ]
+      },
+      "then": {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "start"
+              ]
+            },
+            {
+              "required": [
+                "end"
+              ]
+            }
+          ]
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "relative_id"
+          ]
+        },
+        {
+          "required": [
+            "start",
+            "end"
+          ]
+        }
+      ],
+      "not": {
+        "description": "CHAOS-3900 W1 (codex round 7): mirrors RequestedEvidenceWindow's own completeness guard -- the anyOf above proves at least one of relative_id/start+end is present but does not forbid a partial bound alongside a relative_id. See RequestedEvidenceWindow's identical clause for the full explanation.",
+        "anyOf": [
+          {
+            "required": [
+              "start"
+            ],
+            "not": {
+              "required": [
+                "end"
+              ]
+            }
+          },
+          {
+            "required": [
+              "end"
+            ],
+            "not": {
+              "required": [
+                "start"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "RelativeWindowID": {
+      "description": "CHAOS-3900 W1: the closed, server-owned relative-window identifier registry (design brief v5.2 §5.1).",
+      "type": "string",
+      "enum": [
+        "trailing_30d",
+        "trailing_90d",
+        "trailing_365d",
+        "all_time"
+      ]
+    },
+    "WindowOption": {
+      "description": "CHAOS-3900 W1: one server-offered window choice, minted onto a stored result so a later turn can confirm it via winr_ receipt redemption. Start/end are the FROZEN absolute bounds computed at offer time.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "receipt_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256,
+          "pattern": "^winr_"
+        },
+        "option_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "relative_id": {
+          "$ref": "#/$defs/RelativeWindowID"
+        },
+        "start": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "end": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "receipt_id",
+        "option_id",
+        "label"
+      ],
+      "allOf": [
+        {
+          "description": "CHAOS-3900 W1: a non-all_time relative_id's bounds are the FROZEN offer-time computation, so both must be present -- mirrors window.validate() lines 33-52's non-all_time branch (via WindowOption.Validate's own additional relative_id-non-all_time-requires-bounds check, validate_context_fabric_window.go:115-117).",
+          "if": {
+            "properties": {
+              "relative_id": {
+                "not": {
+                  "const": "all_time"
+                }
+              }
+            },
+            "required": [
+              "relative_id"
+            ]
+          },
+          "then": {
+            "required": [
+              "start",
+              "end"
+            ]
+          }
+        },
+        {
+          "description": "CHAOS-3900 W1 (codex round 7): all_time forbids any bound -- mirrors window.validate() lines 37-40, which the original if/then above never encoded because its own 'if' matches only the non-all_time direction. Deliberately does NOT also fire when relative_id is absent: an option with no relative_id and BOTH bounds present is a legal explicit-bounds-only shape (window.validate() lines 43-52), which this clause must not forbid.",
+          "if": {
+            "properties": {
+              "relative_id": {
+                "const": "all_time"
+              }
+            },
+            "required": [
+              "relative_id"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "start"
+                  ]
+                },
+                {
+                  "required": [
+                    "end"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "anyOf": [
+        {
+          "description": "CHAOS-3900 W1 (codex round 7): baseline presence -- an option with neither relative_id nor any bound satisfies neither if/then above (both require relative_id to fire) and so previously passed schema validation despite window.validate() lines 43-47 rejecting it ('requires a relative_id or explicit bounds').",
+          "required": [
+            "relative_id"
+          ]
+        },
+        {
+          "required": [
+            "start",
+            "end"
+          ]
+        }
+      ],
+      "not": {
+        "description": "CHAOS-3900 W1 (codex round 7): completeness guard, identical to RequestedEvidenceWindow's own -- the anyOf above is satisfied by a relative_id present alongside only ONE bound (it does not check the bound pair for completeness), which window.validate() line 49 rejects regardless of relative_id. Forbids exactly-one-of-start/end unconditionally.",
+        "anyOf": [
+          {
+            "required": [
+              "start"
+            ],
+            "not": {
+              "required": [
+                "end"
+              ]
+            }
+          },
+          {
+            "required": [
+              "end"
+            ],
+            "not": {
+              "required": [
+                "start"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    "WindowExpandOption": {
+      "description": "CHAOS-4314; semantics widened CHAOS-4336: a gated window's recommendation that a wider tier is available to try -- presence is a statement about tier ordering alone, never evidence that an offers-only pool was found non-empty (see candidate_label/candidate_kind, now genuinely optional). receipt_id/option_id/label/relative_id are copied VERBATIM from one entry the same result's own window_options already carries (no fresh bounds here -- redemption applies the referenced WindowOption's own frozen start/end, never a value on this type).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "receipt_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256,
+          "pattern": "^winr_"
+        },
+        "option_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "relative_id": {
+          "$ref": "#/$defs/RelativeWindowID"
+        },
+        "window_class": {
+          "type": "string",
+          "enum": [
+            "trend_assessment",
+            "recent_activity_lookup",
+            "state_snapshot",
+            "explicit_window"
+          ]
+        },
+        "candidate_label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "candidate_kind": {
+          "$ref": "#/$defs/SubjectKind"
+        }
+      },
+      "required": [
+        "receipt_id",
+        "option_id",
+        "label"
+      ]
+    },
+    "WindowClarification": {
+      "description": "CHAOS-3900 W1: every window option a stored result offered. RESIDUAL, SERVER-SIDE-ONLY INVARIANT (codex round 7): options.uniqueItems below rejects two options that are structurally identical in EVERY field, but standard JSON Schema (draft 2020-12) has no keyword to express uniqueness on a DERIVED SUBSET of fields -- so two options differing only in, say, label but sharing the same receipt_id or option_id pass this schema even though ContextFabricWindowClarification.Validate (validate_context_fabric_window.go, the design brief's own 'm5' invariant) rejects them. That per-field uniqueness is enforced by Go alone; it is not expressible here.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WindowOption"
+          },
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "options"
+      ]
+    },
+    "TemporalLabel": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "The time an answer actually speaks for on a historical time axis (CHAOS-3781, AC-3781-2). Absent on the current axis. Effective is always narrower than or equal to requested; an answer may speak for less time than was asked about, never more.",
+      "properties": {
+        "requested": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/TimeContext"
+            },
+            {
+              "properties": {
+                "axis": {
+                  "enum": [
+                    "valid_time",
+                    "observed_time",
+                    "range"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "effective": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/TimeContext"
+            },
+            {
+              "properties": {
+                "axis": {
+                  "enum": [
+                    "valid_time",
+                    "observed_time",
+                    "range"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "grain": {
+          "type": "string",
+          "enum": [
+            "instant",
+            "day",
+            "none"
+          ]
+        },
+        "coverage_complete": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "requested",
+        "effective",
+        "grain",
+        "coverage_complete"
+      ]
+    },
+    "SubjectKind": {
+      "description": "CHAOS-3900 P1: the closed ContextFabricSubjectKind vocabulary, given its own $def so KindOption/AnchorOption/HandleOption/AcceptedGrammar can $ref it directly rather than each re-duplicating the enum inline the way SubjectRef/SubjectCandidate/etc. still do at their own call sites.",
+      "type": "string",
+      "enum": [
+        "organization",
+        "team",
+        "project",
+        "repository",
+        "work_item",
+        "pull_request",
+        "deployment",
+        "incident",
+        "document",
+        "decision",
+        "episode",
+        "metric",
+        "pull_request_review",
+        "ci_pipeline_run",
+        "work_item_ref"
       ]
     },
     "SubjectRef": {
@@ -124,7 +621,8 @@
             "episode",
             "metric",
             "pull_request_review",
-            "ci_pipeline_run"
+            "ci_pipeline_run",
+            "work_item_ref"
           ]
         },
         "canonical_id": {
@@ -164,7 +662,8 @@
             "episode",
             "metric",
             "pull_request_review",
-            "ci_pipeline_run"
+            "ci_pipeline_run",
+            "work_item_ref"
           ]
         },
         "id": {
@@ -251,6 +750,900 @@
         "receipt_id"
       ]
     },
+    "WindowBoundReceipt": {
+      "description": "CHAOS-3900 W1: same shape as BoundSubjectReceipt, but receipt_id is additionally constrained to the closed winr_ namespace (design brief section 5, pivot brief section 2's closed kindr_/ancr_/handr_/winr_ set) -- a separate type, not a reuse of BoundSubjectReceipt, so the schema itself rejects a subject-namespaced id in prior_window_receipts the same way validate_context_fabric_request.go does.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "result_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "receipt_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256,
+          "pattern": "^winr_"
+        }
+      },
+      "required": [
+        "result_id",
+        "receipt_id"
+      ]
+    },
+    "KindBoundReceipt": {
+      "description": "CHAOS-3900 P1: same shape as BoundSubjectReceipt, but receipt_id is additionally constrained to the closed kindr_ namespace (pivot-intent design brief section 2's closed kindr_/ancr_/handr_/winr_ set) -- mirrors WindowBoundReceipt's own reasoning exactly.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "result_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "receipt_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256,
+          "pattern": "^kindr_"
+        }
+      },
+      "required": [
+        "result_id",
+        "receipt_id"
+      ]
+    },
+    "AnchorBoundReceipt": {
+      "description": "CHAOS-3900 P1: same shape as BoundSubjectReceipt, but receipt_id is additionally constrained to the closed ancr_ namespace -- mirrors WindowBoundReceipt's own reasoning exactly.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "result_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "receipt_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256,
+          "pattern": "^ancr_"
+        }
+      },
+      "required": [
+        "result_id",
+        "receipt_id"
+      ]
+    },
+    "HandleBoundReceipt": {
+      "description": "CHAOS-3900 P1: same shape as BoundSubjectReceipt, but receipt_id is additionally constrained to the closed handr_ namespace -- mirrors WindowBoundReceipt's own reasoning exactly.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "result_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "receipt_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256,
+          "pattern": "^handr_"
+        }
+      },
+      "required": [
+        "result_id",
+        "receipt_id"
+      ]
+    },
+    "CandidateBoundReceipt": {
+      "description": "CHAOS-4012: same shape as BoundSubjectReceipt, but receipt_id is additionally constrained to the closed candr_ namespace -- mirrors WindowBoundReceipt's own reasoning exactly.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "result_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "receipt_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256,
+          "pattern": "^candr_"
+        }
+      },
+      "required": [
+        "result_id",
+        "receipt_id"
+      ]
+    },
+    "StructureNeedKind": {
+      "description": "CHAOS-3900 P1: the closed enum for which intent-frame member is missing or ambiguous (pivot-intent design brief section 2.1).",
+      "type": "string",
+      "enum": [
+        "expected_kind",
+        "subject_anchor",
+        "subject_handle",
+        "window",
+        "subject_candidate"
+      ]
+    },
+    "StructureOfferSource": {
+      "description": "CHAOS-3900 P1: closed vocabulary distinguishing an engine-derived offer from a Bridge-proposed one (design brief section 2.1/2.4).",
+      "type": "string",
+      "enum": [
+        "engine",
+        "prior"
+      ]
+    },
+    "KindOption": {
+      "description": "CHAOS-3900 P1: one server-offered census-kind choice, minted onto a stored result so a later turn can confirm it via kindr_ receipt redemption.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "receipt_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256,
+          "pattern": "^kindr_"
+        },
+        "option_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "$ref": "#/$defs/SubjectKind"
+        },
+        "offer_source": {
+          "$ref": "#/$defs/StructureOfferSource"
+        },
+        "prior_version_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "prior_entry_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "phrasing": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "receipt_id",
+        "option_id",
+        "label",
+        "kind",
+        "offer_source"
+      ]
+    },
+    "AnchorOption": {
+      "description": "CHAOS-3900 P1: one server-offered unique-claimant anchor candidate, minted onto a stored result so a later turn can confirm it via ancr_ receipt redemption. Re-verification identity is (kind, canonical_id, matched_term_hash) -- see internal/contextfabric's verifyAnchorClaimantUnique. matched_term_hash is the SHA-256 digest of the normalized matched term, never the raw term.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "receipt_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256,
+          "pattern": "^ancr_"
+        },
+        "option_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "$ref": "#/$defs/SubjectKind"
+        },
+        "canonical_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "matched_term_hash": {
+          "type": "string",
+          "minLength": 24,
+          "maxLength": 24,
+          "pattern": "^[0-9a-f]{24}$"
+        },
+        "offer_source": {
+          "$ref": "#/$defs/StructureOfferSource"
+        },
+        "prior_version_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "prior_entry_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "phrasing": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "receipt_id",
+        "option_id",
+        "label",
+        "kind",
+        "canonical_id",
+        "matched_term_hash",
+        "offer_source"
+      ]
+    },
+    "CandidateOption": {
+      "description": "CHAOS-4012: one server-offered top-ranked SubjectCandidate from the resolution's own pool, minted onto a stored result so a later turn can confirm it via candr_ receipt redemption. Fires independently of KindOption above -- offered whenever nothing committed and the pool is non-empty, regardless of how many distinct kinds it spans. Field shape mirrors AnchorOption minus matched_term_hash: a candidate claims no per-term uniqueness, so there is no hash to re-verify.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "receipt_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256,
+          "pattern": "^candr_"
+        },
+        "option_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "$ref": "#/$defs/SubjectKind"
+        },
+        "canonical_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "offer_source": {
+          "$ref": "#/$defs/StructureOfferSource"
+        },
+        "prior_version_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "prior_entry_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "phrasing": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "receipt_id",
+        "option_id",
+        "label",
+        "kind",
+        "canonical_id",
+        "offer_source"
+      ]
+    },
+    "AnchorOptionV2": {
+      "description": "CHAOS-4042 (sol-max ruling): one server-offered anchor candidate under MEMBERSHIP-VERIFY semantics -- the claimant set is NOT required to be unique. Redemption re-verifies that (kind, canonical_id) remains a member of the term's complete claimant set at the pinned ResolvedGraphBinding epoch, matched by (matched_term_hash, kind, canonical_id) together, never id or hash alone. Wire shape is identical to v1 AnchorOption; only the meaning differs, which is why this is a distinct, permanently-separate contract rather than a v1 revision. Only ever carried on a result whose schema_version is context_fabric_investigation_result.v2 -- a v1 result (context_fabric_investigation_result.v1) uses AnchorOption and stays unique-claimant permanently.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "receipt_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256,
+          "pattern": "^ancr_"
+        },
+        "option_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "$ref": "#/$defs/SubjectKind"
+        },
+        "canonical_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "matched_term_hash": {
+          "type": "string",
+          "minLength": 24,
+          "maxLength": 24,
+          "pattern": "^[0-9a-f]{24}$"
+        },
+        "offer_source": {
+          "$ref": "#/$defs/StructureOfferSource"
+        },
+        "prior_version_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "prior_entry_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "phrasing": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "receipt_id",
+        "option_id",
+        "label",
+        "kind",
+        "canonical_id",
+        "matched_term_hash",
+        "offer_source"
+      ]
+    },
+    "HandleOption": {
+      "description": "CHAOS-3900 P1: one server-offered grammar-valid handle candidate, minted onto a stored result so a later turn can confirm it via handr_ receipt redemption. pattern_id names the closed handle-grammar registry pattern -- never regex text on the wire.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "receipt_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256,
+          "pattern": "^handr_"
+        },
+        "option_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "kind": {
+          "$ref": "#/$defs/SubjectKind"
+        },
+        "pattern_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "source_column": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "offer_source": {
+          "$ref": "#/$defs/StructureOfferSource"
+        },
+        "prior_version_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "prior_entry_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "phrasing": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        }
+      },
+      "required": [
+        "receipt_id",
+        "option_id",
+        "label",
+        "kind",
+        "pattern_id",
+        "value",
+        "source_column",
+        "offer_source"
+      ]
+    },
+    "AcceptedGrammar": {
+      "description": "CHAOS-3900 P1: discloses one grammar the engine accepts for explicit supply (design brief section 2.1). pattern_id is registry-pinned, never regex text.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "member": {
+          "$ref": "#/$defs/StructureNeedKind"
+        },
+        "kind": {
+          "$ref": "#/$defs/SubjectKind"
+        },
+        "pattern_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "member",
+        "pattern_id"
+      ]
+    },
+    "StructureNeeds": {
+      "description": "CHAOS-3900 P1: the disclosure block -- present whenever an investigation round ends short of decisive. relation_family and cohort_shape are unrepresentable here by design (design brief section 1.1's demotion).",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "missing": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StructureNeedKind"
+          },
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true
+        },
+        "kind_options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/KindOption"
+          },
+          "maxItems": 20
+        },
+        "anchor_options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AnchorOption"
+          },
+          "maxItems": 20
+        },
+        "handle_options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HandleOption"
+          },
+          "maxItems": 20
+        },
+        "window_options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WindowOption"
+          },
+          "maxItems": 20
+        },
+        "accepted_grammars": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AcceptedGrammar"
+          },
+          "maxItems": 20
+        },
+        "candidate_options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CandidateOption"
+          },
+          "maxItems": 20
+        },
+        "window_expand_options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WindowExpandOption"
+          },
+          "maxItems": 1
+        }
+      },
+      "required": [
+        "missing"
+      ]
+    },
+    "StructureNeedsV2": {
+      "description": "CHAOS-4042: the disclosure block carried on a context_fabric_investigation_result.v2 result -- identical to StructureNeeds except anchor_options items are AnchorOptionV2 (membership-verify semantics) rather than AnchorOption (unique-claimant). kind_options/handle_options/window_options/accepted_grammars are unchanged from v1.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "missing": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StructureNeedKind"
+          },
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true
+        },
+        "kind_options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/KindOption"
+          },
+          "maxItems": 20
+        },
+        "anchor_options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AnchorOptionV2"
+          },
+          "maxItems": 20
+        },
+        "handle_options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/HandleOption"
+          },
+          "maxItems": 20
+        },
+        "window_options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WindowOption"
+          },
+          "maxItems": 20
+        },
+        "accepted_grammars": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/AcceptedGrammar"
+          },
+          "maxItems": 20
+        },
+        "candidate_options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CandidateOption"
+          },
+          "maxItems": 20
+        },
+        "window_expand_options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/WindowExpandOption"
+          },
+          "maxItems": 1
+        }
+      },
+      "required": [
+        "missing"
+      ]
+    },
+    "StructureSource": {
+      "description": "CHAOS-3900 P1: closed vocabulary for how a ConfirmedStructureEntry's value entered (design brief section 2.1's echo).",
+      "type": "string",
+      "enum": [
+        "receipt",
+        "explicit",
+        "explicit_unattributed",
+        "carried"
+      ]
+    },
+    "WindowConfirmationMode": {
+      "description": "CHAOS-3900 W2, design brief section 4/DW3: closed vocabulary for how a caller wants an INFERRED (non-confirmed) evidence window disclosed. Both modes carry the same WindowClarification/EffectiveEvidenceWindow data; the mode only controls whether the disclosure is also nudged through Warnings. The empty string is the caller's own 'not set' state, mapped to headless by the engine. CHAOS-4040 (sol-max ruling 2026-08-21): every inferred window is gated out of decisive terminals regardless of this field, so the mode selects the nudge sentence on that confirmation-required terminal, not between a nudge and an otherwise-decisive answer.",
+      "type": "string",
+      "enum": [
+        "",
+        "headless",
+        "nudge"
+      ]
+    },
+    "RequestedHandle": {
+      "description": "CHAOS-3972 P3, design brief section 2.3: one caller-supplied explicit subject_handle value -- a typed (kind, pattern_id, value) triple the engine grammar-validates before it may become a receipt-bound HandleOption offer.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/SubjectKind"
+        },
+        "pattern_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "kind",
+        "pattern_id",
+        "value"
+      ]
+    },
+    "StructureProvenance": {
+      "description": "CHAOS-3900 P1: closed authority-tier vocabulary for a ConfirmedStructureEntry (design brief section 2.0's authority table). A distinct enum from WindowProvenance despite sharing the same three values -- each frame member owns its own authority vocabulary independently. engine_committed (v1-additive) is a carried subject_anchor member the engine bound to the frame's own anchor with no clarification ever offered.",
+      "type": "string",
+      "enum": [
+        "inferred_default",
+        "question_stated",
+        "clarification_confirmed",
+        "engine_committed"
+      ]
+    },
+    "StructureDisposition": {
+      "description": "CHAOS-3900 P1: closed vocabulary for what happened to one carried structure member (design brief section 2.1's silent-drop closure).",
+      "type": "string",
+      "enum": [
+        "applied",
+        "vetoed_unresolved",
+        "vetoed_conflict",
+        "vetoed_stale",
+        "superseded_by_caller",
+        "not_evaluated"
+      ]
+    },
+    "FactScopeCensusRecord": {
+      "description": "CHAOS-5405 D-d: one attempted requirement/origin scope decision, as served -- what population was measured, how much of it the caller was authorized to see, how much was admitted, and whether the answer was cut short. It is SERVED rather than only logged because two distinctions the answer depends on cannot be recovered from anything else on the result: a measured zero versus an unmeasured population, and which policy a successful expansion ran on. Counts from overlapping origin groups are NOT additive, and authorized_population_count always means the CALLER-VISIBLE population, never the organization's unrestricted one.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requirement_kind": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "origin_kind": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "policy": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "basis": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "axis": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "outcome": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "target_limit": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "population_measured": {
+          "type": "boolean"
+        },
+        "authorized_population_count": {
+          "description": "NULLABLE on purpose: null means the census did not complete, 0 means it completed and the caller-visible authorized population is genuinely none. A non-nullable integer would make those two answers the same document, which is the ambiguity this record exists to remove.",
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "admitted_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "requirement_kind",
+        "origin_kind",
+        "policy",
+        "basis",
+        "axis",
+        "outcome",
+        "target_limit",
+        "population_measured",
+        "authorized_population_count",
+        "admitted_count",
+        "truncated"
+      ],
+      "if": {
+        "properties": {
+          "population_measured": {
+            "const": true
+          }
+        },
+        "required": [
+          "population_measured"
+        ]
+      },
+      "then": {
+        "properties": {
+          "authorized_population_count": {
+            "type": "integer"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "authorized_population_count": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    "ConfirmedStructureEntry": {
+      "description": "CHAOS-3900 P1: the wire-visible disposition for one carried structure member -- one entry per carried member, including vetoed ones.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "member": {
+          "$ref": "#/$defs/StructureNeedKind"
+        },
+        "applied_value": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "source": {
+          "$ref": "#/$defs/StructureSource"
+        },
+        "prior_result_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "receipt_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "offer_source": {
+          "$ref": "#/$defs/StructureOfferSource"
+        },
+        "prior_version_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "prior_entry_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "provenance": {
+          "$ref": "#/$defs/StructureProvenance"
+        },
+        "disposition": {
+          "$ref": "#/$defs/StructureDisposition"
+        }
+      },
+      "required": [
+        "member",
+        "applied_value",
+        "source",
+        "provenance",
+        "disposition"
+      ],
+      "if": {
+        "properties": {
+          "source": {
+            "const": "receipt"
+          }
+        },
+        "required": [
+          "source"
+        ]
+      },
+      "then": {
+        "required": [
+          "prior_result_id",
+          "receipt_id"
+        ]
+      },
+      "else": {
+        "if": {
+          "properties": {
+            "source": {
+              "const": "carried"
+            }
+          },
+          "required": [
+            "source"
+          ]
+        },
+        "then": {
+          "required": [
+            "prior_result_id"
+          ],
+          "not": {
+            "required": [
+              "receipt_id"
+            ]
+          }
+        },
+        "else": {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "prior_result_id"
+                ]
+              },
+              {
+                "required": [
+                  "receipt_id"
+                ]
+              }
+            ]
+          }
+        }
+      }
+    },
+    "StructureOfferSnapshotEntry": {
+      "description": "CHAOS-3900 P1: one echoed offer inside a decisive result's structure_offer_snapshot (design brief section 2.1's B5 gap). Ids/ranks/enums only, never display text.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "member": {
+          "$ref": "#/$defs/StructureNeedKind"
+        },
+        "offer_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "offer_source": {
+          "$ref": "#/$defs/StructureOfferSource"
+        },
+        "prior_version_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "prior_entry_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "required": [
+        "member",
+        "offer_id",
+        "rank",
+        "offer_source"
+      ]
+    },
     "RequestedScope": {
       "type": "object",
       "additionalProperties": false,
@@ -333,6 +1726,9 @@
         },
         "include_debug": {
           "type": "boolean"
+        },
+        "window_confirmation_mode": {
+          "$ref": "#/$defs/WindowConfirmationMode"
         }
       },
       "required": [
@@ -417,6 +1813,22 @@
           "minimum": 0,
           "maximum": 1
         },
+        "match_mechanisms": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "exact",
+              "alias",
+              "provider_key",
+              "lexical",
+              "vector",
+              "traversal_parent"
+            ]
+          },
+          "maxItems": 6,
+          "uniqueItems": true
+        },
         "evidence_ref_ids": {
           "type": "array",
           "items": {
@@ -459,11 +1871,102 @@
         "clarification_prompt": {
           "type": "string",
           "maxLength": 2000
+        },
+        "retrieval_degraded": {
+          "type": "boolean"
+        },
+        "graph_not_projected": {
+          "type": "boolean"
+        },
+        "commit_decision_digests": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CommitDecisionDigest"
+          },
+          "maxItems": 250
+        },
+        "prior_subject_receipt_dispositions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PriorSubjectReceiptDispositionEntry"
+          },
+          "maxItems": 20
         }
       },
       "required": [
         "candidates",
         "committed"
+      ]
+    },
+    "CommitDecisionDigest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "subject": {
+          "$ref": "#/$defs/SubjectRef"
+        },
+        "commit_gate": {
+          "type": "string",
+          "enum": [
+            "",
+            "caller_hint_short_circuit",
+            "pre_committed_exact_hint",
+            "exact_index",
+            "identity_fast_path",
+            "lone_floor",
+            "top_of_two",
+            "vector_margin_rescue",
+            "evidence_census"
+          ]
+        },
+        "identity_proven": {
+          "type": "boolean"
+        },
+        "search_truncated": {
+          "type": "boolean"
+        },
+        "alias_lookup_complete": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "subject"
+      ]
+    },
+    "PriorSubjectReceiptDisposition": {
+      "description": "CHAOS-3478/CHAOS-3813: closed vocabulary for what happened to one PriorSubjectReceipts entry -- unlike StructureDisposition, a skip here never vetoes the investigation (a plural, best-effort conversational hint list degrades per-item by design), it is disclosed instead.",
+      "type": "string",
+      "enum": [
+        "applied",
+        "skipped_unloadable",
+        "skipped_no_match",
+        "skipped_stale_graph_epoch",
+        "skipped_failed_reauth"
+      ]
+    },
+    "PriorSubjectReceiptDispositionEntry": {
+      "description": "CHAOS-3478/CHAOS-3813: the wire-visible disposition for one PriorSubjectReceipts entry the caller sent -- one entry per carried receipt, including skipped ones.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prior_result_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "receipt_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "disposition": {
+          "$ref": "#/$defs/PriorSubjectReceiptDisposition"
+        }
+      },
+      "required": [
+        "prior_result_id",
+        "receipt_id",
+        "disposition"
       ]
     },
     "Cohort": {
@@ -486,7 +1989,8 @@
             "episode",
             "metric",
             "pull_request_review",
-            "ci_pipeline_run"
+            "ci_pipeline_run",
+            "work_item_ref"
           ]
         },
         "members": {
@@ -513,6 +2017,25 @@
         },
         "truncated": {
           "type": "boolean"
+        },
+        "groups": {
+          "description": "CHAOS-4636: absent on every flat cohort. When present, the cohort-level complete/truncated above are AT LEAST AS CONSERVATIVE as the conjunction/disjunction over these groups (complete=true requires every group complete; any group truncated requires the cohort truncated), so a reader that ignores groups gets a conservative summary of the whole union rather than a boolean describing only the first group. CHAOS-4733: the cohort-level pair can be MORE conservative than the groups alone show -- complete=false, or truncated=true, while every group individually looks complete -- because a discovery-level cap on the whole cohort (before any group existed) is not a fact any one group's own total-vs-presented count can carry.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CohortGroup"
+          },
+          "maxItems": 250
+        },
+        "score_meaning": {
+          "description": "CHAOS-5774: the closed-vocabulary statement of what member score/attention_rank/ranking_basis/drivers actually measure. Present iff at least one member has ranking_computed=true.",
+          "type": "string",
+          "enum": [
+            "attention"
+          ]
+        },
+        "judgment_mismatch": {
+          "description": "server-computed, true when the investigation's requested judgment asked for a comparison score_meaning does not support. Never set without score_meaning also present.",
+          "type": "boolean"
         }
       },
       "required": [
@@ -535,7 +2058,26 @@
           "complete",
           "truncated"
         ]
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "judgment_mismatch"
+            ],
+            "properties": {
+              "judgment_mismatch": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "score_meaning"
+            ]
+          }
+        }
+      ]
     },
     "CohortMember": {
       "type": "object",
@@ -568,12 +2110,514 @@
           },
           "maxItems": 100,
           "uniqueItems": true
+        },
+        "ranking_computed": {
+          "type": "boolean"
+        },
+        "attention_rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "ranking_basis": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "enum": [
+              "investment_mix",
+              "health.compounding_risk",
+              "operational_deficiencies.severity",
+              "readiness.coverage_gap",
+              "workload.forecast_pressure",
+              "investment_mix.reactive_share_high",
+              "investment_mix.deliberate_share_low",
+              "investment_mix.mix_concentrated",
+              "investment_mix.mix_shift_toward_operational",
+              "investment_mix.mix_shift_toward_feature",
+              "investment_mix.mix_shift_other"
+            ]
+          },
+          "maxItems": 16,
+          "uniqueItems": true
+        },
+        "data_completeness": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "partial",
+            "degraded"
+          ]
+        },
+        "drivers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CohortMemberDriver"
+          },
+          "maxItems": 5
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "qualified",
+            "provisional",
+            "insufficient_evidence",
+            "not_applicable"
+          ]
+        },
+        "missing_signals": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "investment_mix",
+              "health.compounding_risk",
+              "operational_deficiencies.severity",
+              "readiness.coverage_gap",
+              "workload.forecast_pressure"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 5,
+          "uniqueItems": true
         }
       },
       "required": [
         "subject",
         "rank",
         "inclusion_reasons"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "data_completeness": {
+                "const": "complete"
+              }
+            },
+            "required": [
+              "data_completeness"
+            ]
+          },
+          "then": {
+            "properties": {
+              "drivers": {
+                "minItems": 5,
+                "maxItems": 5
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "data_completeness": {
+                "const": "partial"
+              }
+            },
+            "required": [
+              "data_completeness"
+            ]
+          },
+          "then": {
+            "properties": {
+              "drivers": {
+                "minItems": 3,
+                "maxItems": 4
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "data_completeness": {
+                "const": "degraded"
+              }
+            },
+            "required": [
+              "data_completeness"
+            ]
+          },
+          "then": {
+            "properties": {
+              "drivers": {
+                "maxItems": 2
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "ranking_computed": {
+                "const": true
+              }
+            },
+            "required": [
+              "ranking_computed"
+            ]
+          },
+          "then": {
+            "required": [
+              "outcome"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "enum": [
+                  "qualified",
+                  "provisional"
+                ]
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "required": [
+              "score"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "enum": [
+                  "insufficient_evidence",
+                  "not_applicable"
+                ]
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "score"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "const": "qualified"
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "missing_signals"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "enum": [
+                  "provisional",
+                  "insufficient_evidence",
+                  "not_applicable"
+                ]
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "required": [
+              "missing_signals"
+            ]
+          }
+        }
+      ]
+    },
+    "CohortMemberDriver": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "signal": {
+          "type": "string",
+          "enum": [
+            "investment_mix",
+            "health.compounding_risk",
+            "operational_deficiencies.severity",
+            "readiness.coverage_gap",
+            "workload.forecast_pressure"
+          ]
+        },
+        "value": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "weight": {
+          "type": "number",
+          "minimum": 0
+        },
+        "weight_contributed": {
+          "type": "number",
+          "minimum": 0
+        },
+        "window": {
+          "type": "string",
+          "enum": [
+            "current",
+            "current_vs_prior"
+          ]
+        },
+        "threshold_labels": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "enum": [
+              "investment_mix.reactive_share_high",
+              "investment_mix.deliberate_share_low",
+              "investment_mix.mix_concentrated",
+              "investment_mix.mix_shift_toward_operational",
+              "investment_mix.mix_shift_toward_feature",
+              "investment_mix.mix_shift_other"
+            ]
+          },
+          "maxItems": 4,
+          "uniqueItems": true
+        },
+        "concentration": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "concentration_method": {
+          "type": "string",
+          "enum": [
+            "max_share"
+          ]
+        },
+        "source_claimed_fact_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 256
+          },
+          "maxItems": 250,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "signal",
+        "value",
+        "weight",
+        "weight_contributed",
+        "window"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "signal": {
+                "const": "investment_mix"
+              }
+            },
+            "required": [
+              "signal"
+            ]
+          },
+          "then": {
+            "properties": {
+              "weight": {
+                "const": 30
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "signal": {
+                "const": "health.compounding_risk"
+              }
+            },
+            "required": [
+              "signal"
+            ]
+          },
+          "then": {
+            "properties": {
+              "weight": {
+                "const": 25
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "signal": {
+                "const": "operational_deficiencies.severity"
+              }
+            },
+            "required": [
+              "signal"
+            ]
+          },
+          "then": {
+            "properties": {
+              "weight": {
+                "const": 20
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "signal": {
+                "const": "readiness.coverage_gap"
+              }
+            },
+            "required": [
+              "signal"
+            ]
+          },
+          "then": {
+            "properties": {
+              "weight": {
+                "const": 15
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "signal": {
+                "const": "workload.forecast_pressure"
+              }
+            },
+            "required": [
+              "signal"
+            ]
+          },
+          "then": {
+            "properties": {
+              "weight": {
+                "const": 10
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "window": {
+                "const": "current_vs_prior"
+              }
+            },
+            "required": [
+              "window"
+            ]
+          },
+          "then": {
+            "properties": {
+              "signal": {
+                "const": "investment_mix"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "signal": {
+                "not": {
+                  "const": "investment_mix"
+                }
+              }
+            },
+            "required": [
+              "signal"
+            ]
+          },
+          "then": {
+            "properties": {
+              "threshold_labels": {
+                "maxItems": 0
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "signal": {
+                "const": "investment_mix"
+              }
+            },
+            "required": [
+              "signal"
+            ]
+          },
+          "then": {
+            "required": [
+              "concentration",
+              "concentration_method"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "signal": {
+                "not": {
+                  "const": "investment_mix"
+                }
+              }
+            },
+            "required": [
+              "signal"
+            ]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "concentration"
+                  ]
+                },
+                {
+                  "required": [
+                    "concentration_method"
+                  ]
+                }
+              ]
+            }
+          }
+        }
       ]
     },
     "CohortExclusion": {
@@ -610,7 +2654,9 @@
             "BLOCKS",
             "PART_OF",
             "RELATES_TO",
-            "DUPLICATES"
+            "DUPLICATES",
+            "BELONGS_TO_PROJECT",
+            "OWNED_BY_TEAM"
           ]
         },
         "from": {
@@ -689,7 +2735,7 @@
             "$ref": "#/$defs/SubjectRef"
           },
           "minItems": 2,
-          "maxItems": 64
+          "maxItems": 51
         },
         "edges": {
           "type": "array",
@@ -697,7 +2743,7 @@
             "$ref": "#/$defs/RelationshipEdge"
           },
           "minItems": 1,
-          "maxItems": 63
+          "maxItems": 50
         },
         "why_relevant": {
           "type": "string",
@@ -918,6 +2964,24 @@
         },
         "kind": {
           "type": "string",
+          "enum": [
+            "status",
+            "actual_completion",
+            "work",
+            "blockers",
+            "reviews",
+            "continuous_integration",
+            "deployments",
+            "incidents",
+            "health",
+            "workload",
+            "investment",
+            "readiness",
+            "operational_deficiency",
+            "source_health",
+            "relationship",
+            "narrative"
+          ],
           "minLength": 1,
           "maxLength": 128
         },
@@ -995,7 +3059,10 @@
             "readiness",
             "operational_deficiencies",
             "source_health",
-            "evidence"
+            "evidence",
+            "flow",
+            "landscape",
+            "cardinality"
           ]
         },
         "subject": {
@@ -1008,6 +3075,30 @@
         },
         "value": {
           "$ref": "#/$defs/ScalarValue"
+        },
+        "rows": {
+          "description": "CHAOS-4347, additive: a renderable table for a fact whose evidence is genuinely a set of rows (e.g. a project's per-team metrics rollup) rather than one scalar. Optional; a claim carries `field`/`value` as its primary scalar either way.",
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/ClaimedFactRow"
+          }
+        },
+        "table": {
+          "description": "CHAOS-4637 / CHAOS-4627, additive and OPTIONAL: the producer's own declaration of what `rows` IS -- a closed shape, the composite key that identifies a row, and the measures. Selection keys on this declaration instead of inferring an axis and a set of measures from row geometry, which is what three defeated inferences and one withdrawn rule (dated_fact_trend) cost. ABSENT means undeclared, and an undeclared table is never charted.",
+          "$ref": "#/$defs/ClaimedFactTable"
+        },
+        "time_series_rows": {
+          "description": "CHAOS-4682 (§5.1 P2 dual-read cutover), additive and OPTIONAL: the CHAOS-4645 time_series rows riding ALONGSIDE the legacy field `rows` already serves, present only on a dual-table fact (a legacy table AND a time_series table at once). `rows`/`table` above keep their CURRENT meaning and preference unconditionally -- this never changes what they carry. Nil on a single-table fact, whose one table is already served by `rows`.",
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/ClaimedFactRow"
+          }
+        },
+        "time_series_table": {
+          "description": "CHAOS-4682 (§5.1 P2), additive and OPTIONAL: declares what `time_series_rows` IS, the same way `table` declares `rows`. Its shape is ALWAYS time_series when present -- that is the entire reason this pair exists, distinct from `table`, whose shape is never time_series whenever this pair is populated.",
+          "$ref": "#/$defs/ClaimedFactTable"
         }
       },
       "required": [
@@ -1038,7 +3129,8 @@
             "no_data",
             "truncated",
             "conflicted",
-            "not_applicable"
+            "not_applicable",
+            "pruned"
           ]
         },
         "observed_at": {
@@ -1052,6 +3144,14 @@
         "reason": {
           "type": "string",
           "maxLength": 2000
+        },
+        "label": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "state_label": {
+          "type": "string",
+          "maxLength": 160
         }
       },
       "required": [
@@ -1085,7 +3185,8 @@
                   "no_data",
                   "truncated",
                   "conflicted",
-                  "not_applicable"
+                  "not_applicable",
+                  "pruned"
                 ]
               },
               "observed_at": {
@@ -1099,6 +3200,14 @@
               "reason": {
                 "type": "string",
                 "maxLength": 2000
+              },
+              "label": {
+                "type": "string",
+                "maxLength": 160
+              },
+              "state_label": {
+                "type": "string",
+                "maxLength": 160
               }
             },
             "required": [
@@ -1119,11 +3228,117 @@
             "maxLength": 2000
           },
           "maxItems": 100
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/CoverageDetail"
+          },
+          "maxItems": 100
         }
       },
       "required": [
         "sources",
         "partial"
+      ]
+    },
+    "AnswerCompleteness": {
+      "description": "CHAOS-4413: promotes the answer-rate/terminal-state measurement (formerly harness-only telemetry, CHAOS-4386) into the public contract. terminal_status/terminal_reason answer WHY the answer stopped where it did; claimed_facts_count/rows_count answer HOW MUCH of an answer is here -- the un-clamped totals, independent of any bounded consumer's own projection budget.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "terminal_status": {
+          "type": "string",
+          "enum": [
+            "complete",
+            "partial",
+            "degraded",
+            "clarification_required",
+            "no_match"
+          ]
+        },
+        "terminal_reason": {
+          "type": "string",
+          "enum": [
+            "clarification_reason_disclosed",
+            "degraded_reason_disclosed",
+            "limitation_disclosed",
+            "warning_disclosed",
+            "undisclosed"
+          ],
+          "description": "Absent (or empty) exactly when terminal_status is complete -- there is nothing to disclose. Present and one of these closed values on every other status; never the engine's or a model's own raw text."
+        },
+        "claimed_facts_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "rows_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "state": {
+          "type": "string",
+          "enum": [
+            "not_derived",
+            "complete",
+            "partial",
+            "degraded"
+          ],
+          "description": "What the outcome set below adds up to, DERIVED from it and never authored independently: complete when every row is satisfied or not_applicable, partial when any row is narrowed or not_attempted and none is unavailable, degraded when any row is unavailable, and not_derived when there are no rows at all. not_derived is a real state, not a gap -- an empty set would otherwise derive complete vacuously, letting an answer whose outcomes were never derived claim the strongest completeness there is."
+        },
+        "outcomes": {
+          "type": "array",
+          "maxItems": 200,
+          "description": "The ONE authority for what this answer was supposed to contain and what became of it. Every narrowing stage between planning and the served document APPENDS to it; no stage rewrites or removes another stage's row, and state above is derived from the whole set at the surface that serves the answer. That ordering is what makes it impossible to measure completeness and then shrink the document somewhere the measurement cannot see.",
+          "items": {
+            "$ref": "#/$defs/PlanRequirementOutcomeRow"
+          }
+        },
+        "refusal_basis": {
+          "type": "string",
+          "enum": [
+            "member_kind_unservable",
+            "frame_invariant_violated",
+            "unspecified",
+            "continuation_context_unverifiable",
+            "declared_kind_unmatched",
+            "organization_scope_unsupported",
+            "subject_identity_unconfirmed"
+          ],
+          "description": "CHAOS-5442: names WHY the server refused to act on this question's frame, over a closed vocabulary. ABSENT on every turn that was not refused -- absence means \"not refused\", never \"refused for a reason nobody recorded\" (that state is the `unspecified` member). Orthogonal to terminal_reason, which names the CHANNEL an explanation travelled through rather than the decision taken: a refused frame carries both. `continuation_context_unverifiable` refuses a window-only continuation whose prior semantic context the server could not verify; it is not a frame refusal, and the document carries its own fixed limitation sentence."
+        }
+      },
+      "required": [
+        "terminal_status",
+        "claimed_facts_count",
+        "rows_count",
+        "state"
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "terminal_status": {
+                "const": "complete"
+              }
+            },
+            "required": [
+              "terminal_status"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "terminal_reason"
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "terminal_reason"
+            ]
+          }
+        }
       ]
     },
     "VersionSet": {
@@ -1218,7 +3433,9 @@
             "readiness",
             "operational_deficiencies",
             "source_health",
-            "evidence"
+            "evidence",
+            "flow",
+            "landscape"
           ]
         },
         "subjects": {
@@ -1286,7 +3503,7 @@
           "items": {
             "$ref": "#/$defs/FactRequirement"
           },
-          "maxItems": 50
+          "maxItems": 22
         },
         "clarification_needed": {
           "type": "boolean"
@@ -1294,6 +3511,31 @@
         "clarification_reason": {
           "type": "string",
           "maxLength": 2000
+        },
+        "window_class": {
+          "description": "CHAOS-3900 W1: the model's own sanitized, closed-vocabulary evidence-window classification pick. Absent means the model made no pick.",
+          "type": "string",
+          "enum": [
+            "trend_assessment",
+            "recent_activity_lookup",
+            "state_snapshot",
+            "explicit_window"
+          ]
+        },
+        "window_confidence": {
+          "type": "string",
+          "enum": [
+            "high",
+            "low"
+          ]
+        },
+        "requested_judgment_kind": {
+          "description": "the model's own closed-vocabulary classification of what BASIS requested_judgment asks for. Absent means the model made no pick (equivalent to unspecified) -- never derived from requested_judgment's own text by a consumer.",
+          "type": "string",
+          "enum": [
+            "performance",
+            "attention"
+          ]
         }
       },
       "required": [
@@ -1468,6 +3710,17 @@
           "maxItems": 100,
           "uniqueItems": true
         },
+        "provider_aliases": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "pattern": "^[^|]*$"
+          },
+          "maxItems": 100,
+          "uniqueItems": true
+        },
         "previous_names": {
           "type": "array",
           "items": {
@@ -1583,7 +3836,9 @@
             "BLOCKS",
             "PART_OF",
             "RELATES_TO",
-            "DUPLICATES"
+            "DUPLICATES",
+            "BELONGS_TO_PROJECT",
+            "OWNED_BY_TEAM"
           ]
         },
         "from": {
@@ -1905,6 +4160,1015 @@
         "reason",
         "effective_at",
         "source_version"
+      ]
+    },
+    "ClaimedFactRow": {
+      "description": "CHAOS-4347: one row of a claimed fact's OPTIONAL renderable table. A row's own fields are plain scalars -- it never nests another table.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "fields": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 32,
+          "additionalProperties": {
+            "$ref": "#/$defs/ScalarValue"
+          }
+        }
+      },
+      "required": [
+        "fields"
+      ]
+    },
+    "RenderKind": {
+      "description": "CHAOS-4415: the CLOSED vocabulary of renderable answer shapes. Every member is defined now so a consumer can switch exhaustively; only \"series\" has a producer in slice 1.",
+      "type": "string",
+      "enum": [
+        "series",
+        "table",
+        "quadrant",
+        "treemap",
+        "sunburst",
+        "sankey",
+        "burndown",
+        "forecast"
+      ]
+    },
+    "RenderPresentation": {
+      "description": "CHAOS-4415: the visual encoding of a \"series\" shape. Kind names the DATA shape, presentation names the drawing -- a bar chart and a line chart carry identical payloads, so bars are not their own kind.",
+      "type": "string",
+      "enum": [
+        "bars",
+        "stacked_bars",
+        "line"
+      ]
+    },
+    "RenderAxisKind": {
+      "description": "CHAOS-4415: whether a point label is a category name or an ISO-8601 date/date-time. A time axis is positioned by elapsed time, never by index.",
+      "type": "string",
+      "enum": [
+        "category",
+        "time"
+      ]
+    },
+    "RenderShapeRule": {
+      "description": "CHAOS-4415: the CLOSED vocabulary of deterministic selection rules. Exactly one rule produced any given shape; a shape with no rule would be the default-charting this contract forbids.",
+      "type": "string",
+      "enum": [
+        "cohort_attention_score",
+        "cohort_driver_contribution",
+        "dated_fact_trend"
+      ]
+    },
+    "RenderPointSource": {
+      "description": "CHAOS-4415: where in THIS SAME document a plotted number came from. Validation resolves it and requires exact equality, so a chart number can never be authored, re-derived, rounded or aggregated.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "cohort_member_score",
+            "cohort_driver_weight_contributed",
+            "claimed_fact_row"
+          ]
+        },
+        "subject_canonical_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "signal": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "claim_id": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 256
+        },
+        "row_index": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "field": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "kind"
+      ]
+    },
+    "RenderPoint": {
+      "description": "CHAOS-4415: one plotted number and its provenance.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "value": {
+          "type": "number"
+        },
+        "source": {
+          "$ref": "#/$defs/RenderPointSource"
+        }
+      },
+      "required": [
+        "label",
+        "value",
+        "source"
+      ]
+    },
+    "RenderSeries": {
+      "description": "CHAOS-4415: one named line/bar family within a shape. A series with no point for a label has a genuine gap there -- never a zero.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "points": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/RenderPoint"
+          }
+        }
+      },
+      "required": [
+        "key",
+        "label",
+        "points"
+      ]
+    },
+    "RenderShape": {
+      "description": "CHAOS-4415: ONE renderable shape an answer carries, selected by a deterministic rule from the interpreted intent and the facts the answer already holds. Conditional on intent, never default.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "shape_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "kind": {
+          "$ref": "#/$defs/RenderKind"
+        },
+        "presentation": {
+          "$ref": "#/$defs/RenderPresentation"
+        },
+        "selected_by": {
+          "$ref": "#/$defs/RenderShapeRule"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "axis_kind": {
+          "$ref": "#/$defs/RenderAxisKind"
+        },
+        "axis_label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "value_label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "series": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "$ref": "#/$defs/RenderSeries"
+          }
+        }
+      },
+      "required": [
+        "shape_id",
+        "kind",
+        "selected_by",
+        "title",
+        "axis_kind",
+        "axis_label",
+        "value_label",
+        "series"
+      ]
+    },
+    "CohortGroup": {
+      "description": "CHAOS-4636: one group of a GROUPED cohort answer. Members are named by canonical id into Cohort.members rather than nested, so the flattened member list stays authoritative and a grouped answer does not pay for every member twice against the byte budget. A group carries its OWN complete/truncated, which is the representation the flat cohort booleans could not express.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "subject": {
+          "$ref": "#/$defs/SubjectRef"
+        },
+        "member_canonical_ids": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
+          "maxItems": 250
+        },
+        "complete": {
+          "type": "boolean",
+          "description": "CHAOS-4733: carries the pre-grouping, discovery-level completeness as well as this group's own placement -- a group built from a discovery-capped cohort is never complete=true."
+        },
+        "truncated": {
+          "type": "boolean",
+          "description": "CHAOS-4733: this group's OWN presented-vs-total signal only (implies total > member_canonical_ids.length). A discovery-level cap on the whole cohort before this group existed is carried on the cohort's own truncated field instead, not here -- see Cohort.groups' description."
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "This group's member count AS DISCOVERED when the group was built, before any narrowing. Not adjusted for an upstream discovery-level cap that may have left members belonging to this group undiscovered entirely; that possibility is disclosed via complete and the cohort's own truncated, never by inflating total past what was actually seen."
+        }
+      },
+      "required": [
+        "subject",
+        "member_canonical_ids",
+        "complete",
+        "truncated",
+        "total"
+      ],
+      "not": {
+        "properties": {
+          "complete": {
+            "const": true
+          },
+          "truncated": {
+            "const": true
+          }
+        },
+        "required": [
+          "complete",
+          "truncated"
+        ]
+      }
+    },
+    "QuestionFamily": {
+      "description": "CHAOS-4636 (promoted from CHAOS-4632's shadow vocabulary once its false-emission rate was measured on real data). The closed question-family vocabulary. It does not replace InvestigationShape.",
+      "type": "string",
+      "enum": [
+        "subject_investigation",
+        "discovered_cohort_ranking",
+        "scoped_cohort_status",
+        "grouped_cohort_status",
+        "explicit_comparison",
+        "trend",
+        "investment_allocation",
+        "unclassified"
+      ]
+    },
+    "QuestionFamilySource": {
+      "description": "How a family was reached. On the wire beside the family because \"the model said so at N=1\" and \"carried from the previous turn\" are different warrants for the same value.",
+      "type": "string",
+      "enum": [
+        "model_consensus",
+        "model",
+        "model_plurality_rejected",
+        "carried",
+        "structure_precedence",
+        "fallback",
+        "none"
+      ]
+    },
+    "PlanNarrowingStage": {
+      "description": "The three moments a plan may narrow. Three, because the budgets become knowable at three different times: cardinality is all that is knowable pre-read; synthesis CREATES the drivers/findings/claims the item budget charges, so pre-synthesis can only bound its INPUTS; and only the assembled result can be measured.",
+      "type": "string",
+      "enum": [
+        "cardinality",
+        "synthesis_input",
+        "assembled_result"
+      ]
+    },
+    "NarrowingBasis": {
+      "description": "The declared order a narrowing step takes members in. canonical_id_lexical is ARBITRARY and says so -- what a pre-read guard needs is stability, not relevance. attention_rank exists only after the fact read. overlap_aware_set_cover (CHAOS-4678) is an exact minimum set cover over a grouped narrowing's groups, used up to a small group-count guard; beyond it a grouped narrowing falls back to largest_group_round_robin and reports that basis instead.",
+      "type": "string",
+      "enum": [
+        "canonical_id_lexical",
+        "largest_group_round_robin",
+        "attention_rank",
+        "overlap_aware_set_cover"
+      ]
+    },
+    "BudgetOverrun": {
+      "description": "Which budget axis an assembled answer exceeded.",
+      "type": "string",
+      "enum": [
+        "fits",
+        "items",
+        "bytes"
+      ]
+    },
+    "PlanNarrowing": {
+      "description": "One recorded narrowing step. On the wire because it IS the disclosure: \"showing 2 of 3 teams, 3 of N projects each\" is a useful partial answer only if the caller is told.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stage": {
+          "$ref": "#/$defs/PlanNarrowingStage"
+        },
+        "basis": {
+          "$ref": "#/$defs/NarrowingBasis"
+        },
+        "before": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "after": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "groups": {
+          "type": "boolean"
+        },
+        "overrun": {
+          "$ref": "#/$defs/BudgetOverrun"
+        }
+      },
+      "required": [
+        "stage",
+        "basis",
+        "before",
+        "after"
+      ]
+    },
+    "RequirementRefinement": {
+      "description": "One recorded reduction of one requirement: which stage narrowed it, on what declared basis, and from what count to what count. Modelled on PlanNarrowing, the established shape for a disclosed narrowing, one level down. Stages append; the chain runs from the row's declared count to its served count, so a reduction nobody recorded leaves a gap.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stage": {
+          "type": "string",
+          "enum": [
+            "planning",
+            "assembled_result",
+            "projection",
+            "reuse"
+          ],
+          "description": "Which stage took this step. The enclosing row's own vocabulary, not the plan's cohort-narrowing stages: those have no member for planning, the projection or a reuse degrade."
+        },
+        "basis": {
+          "type": "string",
+          "enum": [
+            "canonical_id_lexical",
+            "largest_group_round_robin",
+            "attention_rank",
+            "overlap_aware_set_cover"
+          ],
+          "description": "The declared selection order that chose the survivors, when a selection ran. Absent when a ceiling forced the reduction and no order was consulted."
+        },
+        "overrun": {
+          "type": "string",
+          "enum": [
+            "fits",
+            "items",
+            "bytes"
+          ],
+          "description": "The declared ceiling that forced the reduction, when a ceiling did. A refinement must name at least one of basis and overrun: a reduction with no cause is the generic truncation this layer exists to replace."
+        },
+        "coverage": {
+          "type": "string",
+          "description": "A coverage event that caused the reduction, from the published coverage detail code vocabulary. A refinement must name at least one of basis, overrun and coverage: a reduction with no cause is the generic truncation this layer exists to replace."
+        },
+        "before": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "after": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "stage",
+        "before",
+        "after"
+      ]
+    },
+    "AnswerPlanBudget": {
+      "description": "The ceiling the plan was built against and the headroom it reserved, persisted so an over-budget answer names the number that was wrong.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "max_items": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_serialized_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_members": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "synthesis_headroom": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "narrowing_basis": {
+          "$ref": "#/$defs/NarrowingBasis"
+        }
+      },
+      "required": [
+        "max_items",
+        "max_serialized_bytes",
+        "max_members",
+        "synthesis_headroom",
+        "narrowing_basis"
+      ]
+    },
+    "AnswerPlan": {
+      "description": "CHAOS-4636: what the question was PLANNED to be answered with, produced by a deterministic stage between interpretation and discovery. Declares which render kinds the question authorizes (so a chart is never drawn merely because the geometry allowed it), which fact kinds it needs, and the budget it was built against.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "family": {
+          "$ref": "#/$defs/QuestionFamily"
+        },
+        "family_source": {
+          "$ref": "#/$defs/QuestionFamilySource"
+        },
+        "family_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "group_kind": {
+          "$ref": "#/$defs/SubjectKind"
+        },
+        "member_kind": {
+          "$ref": "#/$defs/SubjectKind"
+        },
+        "require_drivers": {
+          "type": "boolean"
+        },
+        "require_ranking": {
+          "type": "boolean"
+        },
+        "render_kinds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RenderKind"
+          },
+          "maxItems": 8
+        },
+        "fact_kinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "identity",
+              "membership",
+              "status",
+              "actual_completion",
+              "work",
+              "blockers",
+              "required_children",
+              "pull_requests",
+              "reviews",
+              "continuous_integration",
+              "deployments",
+              "incidents",
+              "metrics",
+              "health",
+              "workload",
+              "investment",
+              "readiness",
+              "operational_deficiencies",
+              "source_health",
+              "evidence",
+              "flow",
+              "landscape"
+            ]
+          },
+          "maxItems": 22
+        },
+        "axes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/StructureNeedKind"
+          },
+          "maxItems": 5
+        },
+        "budget": {
+          "$ref": "#/$defs/AnswerPlanBudget"
+        },
+        "narrowing": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlanNarrowing"
+          },
+          "maxItems": 8
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/PlanRequirement"
+          },
+          "maxItems": 200,
+          "description": "The derived requirement rows this turn planned, one per coordinate. Optional: absent means no rows were derived, which the completeness state reports as not_derived."
+        }
+      },
+      "required": [
+        "family",
+        "family_source",
+        "family_version",
+        "require_drivers",
+        "require_ranking",
+        "budget"
+      ]
+    },
+    "PlanRequirement": {
+      "description": "One derived requirement: the obligation/role/subject coordinate, what serves it, and -- for a computation -- what that step consumes and whether anything runs it. Derived once before any narrowing, so it says what the answer was PLANNED to contain; the completeness outcome rows say what became of each, joined by the same coordinate string. Carries no member kind: that is written after subject resolution, and these rows are derived before it.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requirement": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "The row's identity: the obligation/role/subject coordinate, \"/\"-separated, in that order. The same string the outcome rows carry, so the two arrays join without either minting an id."
+        },
+        "obligation": {
+          "type": "string",
+          "enum": [
+            "state",
+            "completion",
+            "readiness",
+            "health",
+            "principal_drivers",
+            "ranking",
+            "remaining_work",
+            "evidence",
+            "coverage",
+            "count",
+            "allocation_breakdown",
+            "trend_series",
+            "period_delta"
+          ],
+          "description": "The obligation at stake. Mirrors the server's own closed vocabulary; must equal the identity's first segment."
+        },
+        "role": {
+          "type": "string",
+          "enum": [
+            "subject",
+            "member",
+            "group",
+            "operand"
+          ],
+          "description": "The subject role this obligation attaches to. Must equal the identity's second segment."
+        },
+        "subject": {
+          "$ref": "#/$defs/SubjectKind",
+          "description": "The role's subject kind. Must equal the identity's third segment."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "read",
+            "computed",
+            "answer_contract"
+          ],
+          "description": "How the obligation is satisfied at all. What makes the server fields legible: a read populates fact_kinds, a computation populates step, and an unavailable cell populates neither."
+        },
+        "fact_kinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "identity",
+              "membership",
+              "status",
+              "actual_completion",
+              "work",
+              "blockers",
+              "required_children",
+              "pull_requests",
+              "reviews",
+              "continuous_integration",
+              "deployments",
+              "incidents",
+              "metrics",
+              "health",
+              "workload",
+              "investment",
+              "readiness",
+              "operational_deficiencies",
+              "source_health",
+              "evidence",
+              "flow",
+              "landscape"
+            ]
+          },
+          "uniqueItems": true,
+          "maxItems": 22
+        },
+        "step": {
+          "type": "string",
+          "enum": [
+            "rank_cohort",
+            "membership_cardinality"
+          ],
+          "description": "The server step that satisfies a computed obligation."
+        },
+        "step_execution": {
+          "type": "string",
+          "enum": [
+            "server_executed",
+            "declared_only"
+          ],
+          "description": "Whether a server function actually RUNS the step. Travels with input_class because either alone misleads: a step declared to consume nothing and a step nobody executes are indistinguishable from the inputs."
+        },
+        "input_class": {
+          "type": "string",
+          "enum": [
+            "fact_kinds",
+            "resolved_member_set"
+          ],
+          "description": "What the computation consumes, stated positively. A step that consumes no fact and a step whose inputs nobody declared both present as an empty list; resolved_member_set says the first, an absent class says the second."
+        },
+        "input_fact_kinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "identity",
+              "membership",
+              "status",
+              "actual_completion",
+              "work",
+              "blockers",
+              "required_children",
+              "pull_requests",
+              "reviews",
+              "continuous_integration",
+              "deployments",
+              "incidents",
+              "metrics",
+              "health",
+              "workload",
+              "investment",
+              "readiness",
+              "operational_deficiencies",
+              "source_health",
+              "evidence",
+              "flow",
+              "landscape"
+            ]
+          },
+          "uniqueItems": true,
+          "maxItems": 22,
+          "description": "The fact kinds the step CONSUMES. Deliberately not fact_kinds: those are the kinds that can SERVE this cell, and a computation's inputs are facts some other cell is responsible for reading."
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "single_subject",
+            "each_operand",
+            "each_member",
+            "each_group"
+          ],
+          "description": "The population the requirement completes over."
+        },
+        "quantifier": {
+          "type": "string",
+          "enum": [
+            "at_least_one",
+            "corroborated",
+            "exact",
+            "all",
+            "none"
+          ],
+          "description": "How much of that population must be served. Always none on an unavailable row."
+        },
+        "unavailable": {
+          "type": "string",
+          "enum": [
+            "subject_kind_unsupported",
+            "no_declaring_producer",
+            "table_shape_undeclared",
+            "computed_population_absent"
+          ],
+          "description": "Why the cell has no server, absent when it has one. Each member is actionable by a different party: a new producer, a declaration change, a query change, or nothing at all."
+        }
+      },
+      "required": [
+        "requirement",
+        "obligation",
+        "role",
+        "subject",
+        "kind",
+        "scope",
+        "quantifier"
+      ]
+    },
+    "ClaimedFactTable": {
+      "description": "CHAOS-4637: the declaration of what a fact's row table is. Carries no rows of its own -- it describes the rows carried beside it, so a declaration can never double a table's bytes against the response budget.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "field": {
+          "description": "The canonical fact field the rows came from. A fact may carry more than one row-shaped field, so a declaration that did not name its own field would describe an unidentified table.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "shape": {
+          "description": "What the table IS. `time_series` is one entity indexed by an instant (exactly one key column, parsing as an instant on every row); `breakdown` is many entities with one observation each; `ranking` is many entities ordered by the measure `order_by` names.",
+          "type": "string",
+          "enum": [
+            "time_series",
+            "breakdown",
+            "ranking"
+          ]
+        },
+        "key": {
+          "description": "The COMPOSITE identity of a row, in declared order. Names ROW columns only -- row identity is relative to the fact's own subject, which is carried by `subject` and is never duplicated here. Exactly one column for `time_series`.",
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "measures": {
+          "description": "The columns that MEASURE something. A measure may legitimately be absent from an individual row; a key column may not.",
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "observations": {
+          "description": "CHAOS-4680: columns that vary row to row, are not part of the row's identity, and are not a quantity -- a per-day severity label, say. Every column of every row belongs to exactly one of key, measures or observations at the producer; like a measure, an observation may legitimately be absent from an individual row.",
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "order_by": {
+          "description": "For `ranking` only: which declared measure the row order is by.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "required": [
+        "field",
+        "shape",
+        "key"
+      ]
+    },
+    "CoverageDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "detail_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "source": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "code": {
+          "type": "string",
+          "enum": [
+            "fact_unconfigured",
+            "fact_no_declaring_producer",
+            "fact_table_shape_undeclared",
+            "fact_scope_unexpanded",
+            "fact_read_failed",
+            "fact_provider_reported",
+            "fact_pruned",
+            "fact_narrowed",
+            "graph_endpoint_lookup_failed",
+            "graph_exact_name_candidates_truncated",
+            "graph_cohort_denied_by_authorization",
+            "graph_unknown_relationship_type",
+            "graph_validity_unbounded",
+            "reuse_auxiliary_refs_stripped",
+            "answer_terminated_before_attempt",
+            "population_truncated",
+            "requirement_read_not_planned",
+            "read_population_unverified",
+            "fact_read_origin_state",
+            "kind_census_truncated"
+          ]
+        },
+        "degrading": {
+          "type": "boolean"
+        },
+        "fact_kind": {
+          "type": "string"
+        },
+        "source_state": {
+          "type": "string"
+        },
+        "scope_outcome": {
+          "type": "string"
+        },
+        "origin_kind": {
+          "type": "string"
+        },
+        "supported_kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32
+        },
+        "skipped_kinds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32
+        },
+        "policy": {
+          "type": "string"
+        },
+        "basis": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "narrowed": {
+          "type": "boolean"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "phrasing": {
+          "type": "string",
+          "maxLength": 400
+        },
+        "raw": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "organization",
+            "team",
+            "project",
+            "repository",
+            "work_item",
+            "pull_request",
+            "deployment",
+            "incident",
+            "document",
+            "decision",
+            "episode",
+            "metric",
+            "pull_request_review",
+            "ci_pipeline_run",
+            "work_item_ref"
+          ]
+        },
+        "declared": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "served": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "detail_id",
+        "source",
+        "code",
+        "degrading",
+        "label"
+      ]
+    },
+    "PlanRequirementOutcomeRow": {
+      "description": "One requirement outcome: what the answer was supposed to contain, what became of it, and what the reader loses where it did not happen. Every field is a closed token or an integer -- never free text, which the degraded-reason and limitation channels already carry.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stage": {
+          "type": "string",
+          "enum": [
+            "planning",
+            "assembled_result",
+            "projection",
+            "reuse"
+          ],
+          "description": "Which stage produced this row. Its own vocabulary, not the plan's cohort-narrowing stages: those name the three points at which the cohort is narrowed and have no member for planning or for the projection, so borrowing them would force every row to claim a stage it did not come from."
+        },
+        "requirement": {
+          "type": "string",
+          "maxLength": 256,
+          "description": "The requirement's own identity (obligation/role/subject kind). Absent when the served document was narrowed on a turn for which no requirement rows were derived -- an honest state, and one the reader can tell apart because state is then not_derived."
+        },
+        "obligation": {
+          "type": "string",
+          "maxLength": 64,
+          "description": "The requirement's obligation, copied so a reader of the row alone knows what was at stake. Present exactly when requirement is."
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "satisfied",
+            "narrowed",
+            "unavailable",
+            "not_applicable",
+            "not_attempted"
+          ]
+        },
+        "impact": {
+          "type": "string",
+          "enum": [
+            "none",
+            "scope",
+            "depth",
+            "dimension"
+          ],
+          "description": "What the reader loses. none exactly when the outcome is satisfied or not_applicable; any other outcome carries a real impact."
+        },
+        "cause_overrun": {
+          "type": "string",
+          "enum": [
+            "fits",
+            "items",
+            "bytes"
+          ],
+          "description": "The declared ceiling that forced the reduction, when a ceiling did."
+        },
+        "cause_coverage": {
+          "type": "string",
+          "description": "A coverage event that caused it, from the published coverage detail code vocabulary."
+        },
+        "cause_narrowing": {
+          "type": "string",
+          "description": "The selection order that chose the survivors, when a selection ran."
+        },
+        "cause_observed": {
+          "type": "boolean",
+          "description": "Whether the named cause was REPORTED by a mechanism or DEFAULTED to. Without it a defaulted cause reads as an observed one."
+        },
+        "served": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "declared": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "refinements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/RequirementRefinement"
+          },
+          "maxItems": 4,
+          "description": "The reduction steps behind served and declared, in order. Those two numbers are a before and an after with everything between them erased; these say which stage cut what, and on what basis."
+        }
+      },
+      "required": [
+        "stage",
+        "outcome",
+        "impact",
+        "cause_observed",
+        "served",
+        "declared"
       ]
     }
   }
