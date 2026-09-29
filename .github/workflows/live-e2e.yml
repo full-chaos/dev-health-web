@@ -145,14 +145,17 @@ jobs:
               working-directory: dev-health-ops
 
             - name: Check GraphQL schema drift
+              # The Go gqlgen schema is the source of truth; the ops repo pins it byte-for-byte
+              # at contracts/graphql/v1/schema.graphql (checked out above). A missing file or
+              # any diff FAILS -- there is no skip path.
               run: |
-                  if ! PYTHONPATH=dev-health-ops/src python3 -m dev_health_ops.api.graphql.export_schema \
-                    --out /tmp/backend-schema.graphql 2>/dev/null; then
-                    echo "::warning::export_schema module not available, skipping drift check"
-                    exit 0
+                  pin=dev-health-ops/contracts/graphql/v1/schema.graphql
+                  if [ ! -f "$pin" ]; then
+                    echo "::error::ops GraphQL contract pin not found at $pin"
+                    exit 1
                   fi
-                  diff src/lib/graphql/schema.graphql /tmp/backend-schema.graphql || {
-                    echo "::error::GraphQL schema drift detected! Run codegen and commit updated schema."
+                  diff -u "$pin" src/lib/graphql/schema.graphql || {
+                    echo "::error::GraphQL schema drift vs ops contract pin. Copy $pin verbatim to src/lib/graphql/schema.graphql and run codegen."
                     exit 1
                   }
 
