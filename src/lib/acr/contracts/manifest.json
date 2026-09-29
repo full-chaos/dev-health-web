@@ -1,13 +1,13 @@
 {
-  "source_commit": "ea83e38cf32a823ffb49cd2936f154c20997d59a",
+  "source_commit": "e6fd76beb42fb88dbe63accd91f91d7a0914aa81",
   "files": [
     {
       "path": "openapi/acr-v1.json",
-      "sha256": "9811e52a08a4bd44fbf35af2873a12ff17e48f6bcfa15b6386578ce93a5606ad"
+      "sha256": "1bebfaf2ffb366d1d5bc2c17dd25c524347e1b3e2ac3be004f89ef7dfdc3af11"
     },
     {
       "path": "schemas/capabilities.v1.schema.json",
-      "sha256": "e7a8281f258f914dbab5714133b2d7a21f1a24d5e028a5c630d40855a6fe5be9"
+      "sha256": "7028b560a1f6d19cea3606768234460474e22070508654093dbb39c2fe32ee1b"
     },
     {
       "path": "schemas/context_packet.v1.schema.json",
@@ -103,7 +103,7 @@
     },
     {
       "path": "schemas/device_approval_preview_response.v1.schema.json",
-      "sha256": "4035f47ea3abcd6b67755496db07b1d24409a11ee1d85a49983f6e3f005a761b"
+      "sha256": "7c699d0848fe88ff17502afa46c683d2baec4112bedea4c4151ed850ab4fa72e"
     },
     {
       "path": "schemas/device_approval_request.v1.schema.json",
@@ -128,6 +128,22 @@
     {
       "path": "schemas/device_token_response.v1.schema.json",
       "sha256": "ec6599f33029a3a58d80409700a17a73dc77172f9621cedda02d8f769dc93dc6"
+    },
+    {
+      "path": "schemas/mcp_read_facts_request.v1.schema.json",
+      "sha256": "78ca0c6b9f9701a84c30c5ff2bf22acb6c1514da890657fc0df8bbcb3ee1bc67"
+    },
+    {
+      "path": "schemas/mcp_read_facts_response.v1.schema.json",
+      "sha256": "c6f797ab84fb5cebce3613affd5fd340c3ede7ddcf827d6c703d8fc9b281371d"
+    },
+    {
+      "path": "schemas/mcp_read_relationships_request.v1.schema.json",
+      "sha256": "f678920db9f1e23221c970c8d5cf3f8038c4332eed9dcf956684bb62d92e68eb"
+    },
+    {
+      "path": "schemas/mcp_read_relationships_response.v1.schema.json",
+      "sha256": "bb026502971161831b7903f1a58cf72261a9c9e00b80ef8a5f6fc394aa9737d0"
     },
     {
       "path": "schemas/oauth_device_error.v1.schema.json",

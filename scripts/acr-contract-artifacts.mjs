@@ -168,13 +168,18 @@ function insertUnique(target, key, value, context) {
 // document resolve every reference) but get no generated TypeScript type. Their
 // types overlap with the v1 schemas already generated (duplicate names such as
 // RenderPresentation / WindowOption), which the flat generated.ts cannot hold,
-// and no web code consumes them. Generating them needs a single-pass type
+// and no web code consumes them (the mcp_read_* schemas add unresolved $defs
+// names on top). Generating them needs a single-pass type
 // bundle; that is separate work.
 const TYPE_GENERATION_EXCLUDED = new Set([
     "context_fabric_answer_projection.v1.schema.json",
     "context_fabric_investigation_result.v2.schema.json",
     "oauth_token_exchange_error.v1.schema.json",
     "token_exchange_response.v1.schema.json",
+    "mcp_read_facts_request.v1.schema.json",
+    "mcp_read_facts_response.v1.schema.json",
+    "mcp_read_relationships_request.v1.schema.json",
+    "mcp_read_relationships_response.v1.schema.json",
 ]);
 
 async function dtoModule(schemaFiles, prettierOptions) {
