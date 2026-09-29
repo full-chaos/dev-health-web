@@ -5,8 +5,9 @@ import {
     INVESTMENT_BREAKDOWN_QUERY,
     INVESTMENT_FULL_QUERY,
     WORK_UNIT_TEAM_ATTRIBUTIONS_QUERY,
+    WORK_ITEM_TEAM_ATTRIBUTIONS_QUERY,
 } from "../queries";
-import type { WorkUnitTeamAttribution } from "../__generated__/types";
+import type { WorkUnitTeamAttribution, WorkItemTeamAttribution } from "../__generated__/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { InvestmentResponse, SankeyResponse } from "@/lib/types";
 import {
@@ -370,6 +371,86 @@ export function useWorkUnitTeamAttributions(
 
     return {
         byWorkUnitId,
+        loading: result.fetching,
+        error: result.error ?? null,
+        refetch: reexecute,
+    };
+}
+
+interface UseWorkItemTeamAttributionsOptions {
+    filters: MetricFilter;
+    /** Work ITEM ids (provider issue/PR keys, e.g. "linear:CHAOS-xxxx") to fetch owning teams for. */
+    workItemIds: string[];
+    /** Optional team filter passed straight through to the backend. */
+    teamId?: string | null;
+    pause?: boolean;
+}
+
+interface UseWorkItemTeamAttributionsResult {
+    /** workItemId -> the item's owning team. Render-only; never recomputed. */
+    byWorkItemId: Map<string, WorkItemTeamAttribution>;
+    loading: boolean;
+    error: Error | null;
+    refetch: () => void;
+}
+
+interface WorkItemTeamAttributionsResponse {
+    workItemTeamAttributions: WorkItemTeamAttribution[];
+}
+
+/**
+ * Fetch the backend-computed owning team per work ITEM (CHAOS-2608 / CS7,
+ * CHAOS-7069). A work item is keyed by its provider issue/PR id
+ * (`work_item_id`, e.g. "linear:CHAOS-xxxx") — a DISJOINT id space from the
+ * work UNIT id `useWorkUnitTeamAttributions` uses. Attribution stays
+ * BACKEND-ONLY: this hook only surfaces the resolver's result, never
+ * recomputes a mapping client-side.
+ *
+ * No web view calls this hook yet (typed query + hook only,
+ * no new UI). `@/lib/investment/teamAttribution.ts` and
+ * `TeamAttributionBadge` already exist for `WorkItemTeamAttribution` display
+ * and are the natural future consumer once a view needs one.
+ */
+export function useWorkItemTeamAttributions(
+    options: UseWorkItemTeamAttributionsOptions,
+): UseWorkItemTeamAttributionsResult {
+    const { filters, workItemIds, teamId = null, pause = false } = options;
+    const contextOrgId = useOrgId();
+
+    const variables = useMemo(() => {
+        // Provenance is render-only — a missing org context must NOT crash the
+        // view. Resolve the org id defensively and pause instead of throwing.
+        let orgId = "";
+        try {
+            orgId = getOrgId(filters, contextOrgId);
+        } catch {
+            orgId = "";
+        }
+        // Stable, de-duplicated ID list so urql can cache identical requests.
+        const ids = Array.from(new Set(workItemIds)).sort();
+        return { orgId, workItemIds: ids, teamId };
+    }, [filters, workItemIds, teamId, contextOrgId]);
+
+    const [result, reexecute] = useQuery<WorkItemTeamAttributionsResponse>({
+        query: WORK_ITEM_TEAM_ATTRIBUTIONS_QUERY,
+        variables,
+        pause: pause || !variables.orgId || variables.workItemIds.length === 0,
+        requestPolicy: "cache-and-network",
+    });
+
+    const byWorkItemId = useMemo(() => {
+        // One row per item (the backend already picked the owning team), so this
+        // is a direct index — no client-side primary selection.
+        const map = new Map<string, WorkItemTeamAttribution>();
+        const rows = result.data?.workItemTeamAttributions ?? [];
+        for (const row of rows) {
+            map.set(row.workItemId, row);
+        }
+        return map;
+    }, [result.data]);
+
+    return {
+        byWorkItemId,
         loading: result.fetching,
         error: result.error ?? null,
         refetch: reexecute,

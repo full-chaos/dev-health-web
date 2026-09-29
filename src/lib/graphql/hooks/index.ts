@@ -12,6 +12,7 @@ export {
     useInvestmentFlow,
     useInvestmentRepoTeamFlow,
     useWorkUnitTeamAttributions,
+    useWorkItemTeamAttributions,
 } from "./useInvestment";
 export {
     useWorkGraphEdges,
