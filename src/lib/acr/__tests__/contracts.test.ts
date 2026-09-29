@@ -74,12 +74,16 @@ describe("ACR REST contract boundary", () => {
             "schemas/device_authorization_response.v1.schema.json",
             "schemas/device_token_request.v1.schema.json",
             "schemas/device_token_response.v1.schema.json",
+            "schemas/mcp_read_facts_request.v1.schema.json",
+            "schemas/mcp_read_facts_response.v1.schema.json",
+            "schemas/mcp_read_relationships_request.v1.schema.json",
+            "schemas/mcp_read_relationships_response.v1.schema.json",
             "schemas/oauth_device_error.v1.schema.json",
             "schemas/oauth_token_exchange_error.v1.schema.json",
             "schemas/token_exchange_response.v1.schema.json",
         ]);
         expect(JSON.stringify(manifest)).not.toMatch(/generated_at|timestamp|created_at/u);
-        expect(manifest.source_commit).toBe("ea83e38cf32a823ffb49cd2936f154c20997d59a");
+        expect(manifest.source_commit).toBe("24b5692a8beb3e5b9fa1e5f709c331790daafda0");
     });
 
     it("accepts every committed golden with its paired Draft 2020-12 schema", () => {
@@ -188,6 +192,50 @@ describe("ACR generated.ts cross-file $defs types keep their real members", () =
             validateAcrContract("error.v1.schema.json", {
                 ...body,
                 error: { ...body.error, code: "not_a_real_code" },
+            }).valid,
+        ).toBe(false);
+    });
+
+    // CHAOS-7140: web validates acr's capabilities at runtime against the
+    // vendored schema. After the acr data tools land, acr lists them, and the
+    // vendored enum must accept each one (and still refuse an unknown tool).
+    it("accepts capabilities that list the acr data tools", () => {
+        const body = {
+            schema_version: "capabilities.v1",
+            service: "dev-health-acr",
+            service_version: "1.0.0",
+            minimum_sidecar_version: "1.0.0",
+            generated_at: "2026-09-29T00:00:00Z",
+            enabled_tools: [
+                "context_for_task",
+                "source_evidence",
+                "investigate_question",
+                "investigation_result",
+                "read_facts",
+                "data_catalog",
+                "find_subjects",
+                "run_operation",
+                "read_relationships",
+            ],
+            entitlements: { agent_context_runtime: true },
+            limits: {
+                max_items: 50,
+                max_output_tokens: 16_000,
+                max_serialized_bytes: 1_048_576,
+                requests_per_minute: 120,
+            },
+            permissions: { context_read: true, episode_write: false, evidence_read: true },
+            supported_schema_versions: ["context_packet.v1"],
+        };
+
+        expect(validateAcrContract("capabilities.v1.schema.json", body)).toEqual({
+            valid: true,
+            errors: [],
+        });
+        expect(
+            validateAcrContract("capabilities.v1.schema.json", {
+                ...body,
+                enabled_tools: [...body.enabled_tools, "made_up_tool"],
             }).valid,
         ).toBe(false);
     });

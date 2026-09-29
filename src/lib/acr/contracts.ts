@@ -29,6 +29,10 @@ import deviceTokenResponseSchema from "./contracts/schemas/device_token_response
 import errorSchema from "./contracts/schemas/error.v1.schema.json";
 import evidenceRefSchema from "./contracts/schemas/evidence_ref.v1.schema.json";
 import expandedEvidenceSchema from "./contracts/schemas/expanded_evidence.v1.schema.json";
+import mcpReadFactsRequestSchema from "./contracts/schemas/mcp_read_facts_request.v1.schema.json";
+import mcpReadFactsResponseSchema from "./contracts/schemas/mcp_read_facts_response.v1.schema.json";
+import mcpReadRelationshipsRequestSchema from "./contracts/schemas/mcp_read_relationships_request.v1.schema.json";
+import mcpReadRelationshipsResponseSchema from "./contracts/schemas/mcp_read_relationships_response.v1.schema.json";
 import oauthDeviceErrorSchema from "./contracts/schemas/oauth_device_error.v1.schema.json";
 import oauthTokenExchangeErrorSchema from "./contracts/schemas/oauth_token_exchange_error.v1.schema.json";
 import tokenExchangeResponseSchema from "./contracts/schemas/token_exchange_response.v1.schema.json";
@@ -65,6 +69,10 @@ export const acrSchemas = {
     error: errorSchema,
     evidenceRef: evidenceRefSchema,
     expandedEvidence: expandedEvidenceSchema,
+    mcpReadFactsRequest: mcpReadFactsRequestSchema,
+    mcpReadFactsResponse: mcpReadFactsResponseSchema,
+    mcpReadRelationshipsRequest: mcpReadRelationshipsRequestSchema,
+    mcpReadRelationshipsResponse: mcpReadRelationshipsResponseSchema,
     oauthDeviceError: oauthDeviceErrorSchema,
     oauthTokenExchangeError: oauthTokenExchangeErrorSchema,
     tokenExchangeResponse: tokenExchangeResponseSchema,
@@ -101,6 +109,10 @@ const acrSchemaFiles = {
     "error.v1.schema.json": errorSchema,
     "evidence_ref.v1.schema.json": evidenceRefSchema,
     "expanded_evidence.v1.schema.json": expandedEvidenceSchema,
+    "mcp_read_facts_request.v1.schema.json": mcpReadFactsRequestSchema,
+    "mcp_read_facts_response.v1.schema.json": mcpReadFactsResponseSchema,
+    "mcp_read_relationships_request.v1.schema.json": mcpReadRelationshipsRequestSchema,
+    "mcp_read_relationships_response.v1.schema.json": mcpReadRelationshipsResponseSchema,
     "oauth_device_error.v1.schema.json": oauthDeviceErrorSchema,
     "oauth_token_exchange_error.v1.schema.json": oauthTokenExchangeErrorSchema,
     "token_exchange_response.v1.schema.json": tokenExchangeResponseSchema,

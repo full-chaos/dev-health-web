@@ -135,7 +135,12 @@ export interface ACRCapabilitiesV1 {
         | "source_evidence"
         | "investigate_question"
         | "investigation_result"
+        | "read_facts"
         | "record_episode"
+        | "data_catalog"
+        | "find_subjects"
+        | "run_operation"
+        | "read_relationships"
     )[];
     entitlements: {
         agent_context_runtime: boolean;
@@ -4326,6 +4331,23 @@ export interface DeviceApprovalPreviewResponseV1 {
      * @maxItems 100
      */
     repository_hints?: [string, ...string[]];
+    /**
+     * The scopes the device grant asked for, in canonical order. The default pair (context:read, evidence:read) when the grant named none or the device authorization has no OAuth grant (legacy acr-mcp login).
+     *
+     * @minItems 1
+     * @maxItems 3
+     */
+    requested_scopes?:
+        | ["context:read" | "evidence:read" | "data:read"]
+        | [
+              "context:read" | "evidence:read" | "data:read",
+              "context:read" | "evidence:read" | "data:read",
+          ]
+        | [
+              "context:read" | "evidence:read" | "data:read",
+              "context:read" | "evidence:read" | "data:read",
+              "context:read" | "evidence:read" | "data:read",
+          ];
 }
 
 export interface DeviceApprovalRequestV1 {

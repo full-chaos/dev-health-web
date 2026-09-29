@@ -14,7 +14,7 @@ import {
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const ARTIFACT_ROOT = path.join(ROOT, "src/lib/acr/contracts");
-const SOURCE_COMMIT = "ea83e38cf32a823ffb49cd2936f154c20997d59a";
+const SOURCE_COMMIT = "24b5692a8beb3e5b9fa1e5f709c331790daafda0";
 const PRETTIER_OPTIONS = Object.freeze({
     parser: "typescript",
     printWidth: 100,
@@ -61,6 +61,10 @@ const DEPENDENCY_CLOSURE_PATHS = [
     "contracts/jsonschema/v1/device_authorization_response.v1.schema.json",
     "contracts/jsonschema/v1/device_token_request.v1.schema.json",
     "contracts/jsonschema/v1/device_token_response.v1.schema.json",
+    "contracts/jsonschema/v1/mcp_read_facts_request.v1.schema.json",
+    "contracts/jsonschema/v1/mcp_read_facts_response.v1.schema.json",
+    "contracts/jsonschema/v1/mcp_read_relationships_request.v1.schema.json",
+    "contracts/jsonschema/v1/mcp_read_relationships_response.v1.schema.json",
     "contracts/jsonschema/v1/oauth_device_error.v1.schema.json",
     "contracts/jsonschema/v1/oauth_token_exchange_error.v1.schema.json",
     "contracts/jsonschema/v1/token_exchange_response.v1.schema.json",
