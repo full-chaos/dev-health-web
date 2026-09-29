@@ -41,7 +41,8 @@
 //     (CHAOS-2223) — the shared mock GraphQL server has no `improveOpportunities`
 //     handler, so without this the card degraded to a false "not connected".
 
-import { getHomeData, getOpportunities } from "@/lib/api/home";
+import { getOpportunities } from "@/lib/api/home";
+import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { IMPROVE_OPPORTUNITIES_QUERY } from "@/lib/graphql/queries";
 import type { ImproveOpportunitiesResult } from "@/lib/graphql/__generated__/types";
@@ -172,7 +173,7 @@ export async function getImproveSignals(
     // automations data comes from FlowOpportunityDetector via GraphQL.
     const [opportunitiesData, homeData, automationsData] = await Promise.all([
         safe(() => getOpportunities(filters), "opportunities"),
-        safe(() => getHomeData(filters), "home"),
+        safe(() => getHomeDataViaGraphQL(filters), "home"),
         safe(() => {
             // Test mode: deterministic sample data (CHAOS-2223), same convention as
             // Govern/Diagnose's GraphQL-direct sources — bypasses the network so the

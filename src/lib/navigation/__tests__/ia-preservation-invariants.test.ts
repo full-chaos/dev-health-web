@@ -8,7 +8,9 @@ import { describe, expect, it, vi } from "vitest";
 // honest-empty data instead of attempting a real network request in the unit env.
 vi.mock("@/lib/api/home", () => ({
     getOpportunities: vi.fn().mockResolvedValue({ items: [] }),
-    getHomeData: vi.fn().mockResolvedValue({ deltas: [] }),
+}));
+vi.mock("@/lib/graphql/homeFetchers", () => ({
+    getHomeDataViaGraphQL: vi.fn().mockResolvedValue({ deltas: [] }),
 }));
 
 import { iaPreservationBaseline } from "../__fixtures__/iaPreservationBaseline";

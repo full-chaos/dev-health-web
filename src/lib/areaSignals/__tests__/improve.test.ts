@@ -9,8 +9,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/api/home", () => ({
     getOpportunities: vi.fn(),
-    getHomeData: vi.fn(),
 }));
+vi.mock("@/lib/graphql/homeFetchers", () => ({ getHomeDataViaGraphQL: vi.fn() }));
 vi.mock("@/lib/graphql/server", () => ({ graphqlFetch: vi.fn() }));
 vi.mock("@/lib/auth", () => ({
     auth: vi.fn().mockResolvedValue({ user: { org_id: "test-org" } }),
@@ -19,7 +19,8 @@ vi.mock("@/lib/logger", () => ({
     logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
 
-import { getHomeData, getOpportunities } from "@/lib/api/home";
+import { getOpportunities } from "@/lib/api/home";
+import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
@@ -27,7 +28,7 @@ import { getImproveSignals } from "../improve";
 import type { AreaSignal } from "../types";
 
 const mockGetOpportunities = vi.mocked(getOpportunities);
-const mockGetHomeData = vi.mocked(getHomeData);
+const mockGetHomeData = vi.mocked(getHomeDataViaGraphQL);
 const mockGraphqlFetch = vi.mocked(graphqlFetch);
 
 function byId(signals: AreaSignal[]): Record<string, AreaSignal> {

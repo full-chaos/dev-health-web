@@ -10,7 +10,8 @@ import { BackLink } from "@/components/shared/BackLink";
 import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
-import { getExplainData, getHomeData } from "@/lib/api/home";
+import { getExplainData } from "@/lib/api/home";
+import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { getQuadrant } from "@/lib/api/visuals";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -105,7 +106,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
     // Run health check in parallel with all data fetches to eliminate the waterfall.
     const [health, home, highlight, quadrant] = await Promise.all([
         checkApiHealth(),
-        fetchOrNull(getHomeData(filters), "metrics/home-data"),
+        fetchOrNull(getHomeDataViaGraphQL(filters), "metrics/home-data"),
         fetchOrNull(
             getExplainData({ metric: activeTab.highlight, filters }),
             `metrics/explain-${activeTab.highlight}`,

@@ -13,7 +13,7 @@ import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { getLensFromSearchParams, getLensConfig, DEFAULT_ROLE } from "@/lib/lensContext";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
-import { getHomeData } from "@/lib/api/home";
+import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { getSetupStatus } from "@/lib/admin/server";
 import { SetupBanner } from "@/components/onboarding/SetupBanner";
 import { auth } from "@/lib/auth";
@@ -49,10 +49,10 @@ const MONITORING_VIEWS = [
 ];
 
 const loadHome = async (
-    filters: Parameters<typeof getHomeData>[0],
+    filters: Parameters<typeof getHomeDataViaGraphQL>[0],
 ): Promise<HomeResponse | null> => {
     try {
-        return await getHomeData(filters);
+        return await getHomeDataViaGraphQL(filters);
     } catch {
         return null;
     }

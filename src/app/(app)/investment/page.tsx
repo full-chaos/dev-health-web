@@ -15,7 +15,7 @@ import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { InvestmentGatedBody } from "./_components/InvestmentGatedBody";
 import { INVESTMENT_TABS, type InvestmentTab } from "@/components/work/investment/types";
-import { getHomeData } from "@/lib/api/home";
+import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 
@@ -51,7 +51,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
     const [health, orgResult, home] = await Promise.all([
         checkApiHealth(),
         getCurrentOrg().catch(() => ({ data: undefined })),
-        fetchOrNull(getHomeData(filters), "investment/home-data"),
+        fetchOrNull(getHomeDataViaGraphQL(filters), "investment/home-data"),
     ]);
 
     if (!health.ok) {

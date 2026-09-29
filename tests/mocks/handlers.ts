@@ -1043,6 +1043,241 @@ const buildDeploymentFlameResponse = (deploymentId: string) => ({
     ],
 });
 
+// REST-shaped home payload. Served directly by the REST mock, and (through
+// homeRestToGraphQL) as the GraphQL `home` document, so both transports render
+// the same data.
+function homeRestFixture() {
+    return {
+        freshness: {
+            last_ingested_at: new Date().toISOString(),
+            sources: { github: "ok" },
+            coverage: { repos: 10, people: 5 },
+        },
+        deltas: [
+            {
+                metric: "cycle_time",
+                label: "Cycle Time",
+                unit: "hours",
+                value: 48,
+                delta_pct: -12,
+            },
+            {
+                metric: "throughput",
+                label: "Throughput",
+                unit: "PRs/week",
+                value: 15,
+                delta_pct: 8,
+            },
+            {
+                metric: "review_latency",
+                label: "Review Latency",
+                unit: "hours",
+                value: 6,
+                delta_pct: -5,
+            },
+            { metric: "churn", label: "Churn", unit: "%", value: 18, delta_pct: 3 },
+            // CHAOS-2163: pr_rework_ratio replaces legacy rework_ratio on the Investment/Quality rework card.
+            // value is already a 0-100 percentage (ops emits value * 100).
+            {
+                metric: "pr_rework_ratio",
+                label: "PR Rework Ratio",
+                unit: "%",
+                value: 18,
+                delta_pct: -3,
+            },
+        ],
+        summary: [{ text: "Team velocity appears stable over the past 14 days." }],
+        tiles: {},
+        constraint: {
+            label: "WIP Saturation",
+            metric: "wip_saturation",
+            value: 0.6,
+            threshold: 0.8,
+            status: "ok",
+        },
+        events: [],
+        health_state: {
+            status: "at_risk",
+            headline: "Review latency is the limiting factor this week",
+            summary: "Reviews are taking longer and slowing delivery across the payments repos.",
+        },
+        signals: [
+            {
+                id: "sig-review-latency",
+                title: "Review latency is climbing",
+                metric: "review_latency",
+                current_value: "2.4d",
+                prior_value: "1.6d",
+                delta: "+50%",
+                direction: "up",
+                severity: "high",
+                confidence: "medium",
+                affected_scope: "3 repos · payments",
+                evidence_count: 7,
+                why_it_matters: "Longer reviews delay delivery and frustrate contributors.",
+                recommended_action: "Rebalance reviewers on the payments repos.",
+                evidence_ref: "/api/v1/explain?metric=review_latency",
+                category: "delivery",
+            },
+            {
+                id: "sig-throughput",
+                title: "Throughput is recovering",
+                metric: "throughput",
+                current_value: "15 PRs/wk",
+                prior_value: "13 PRs/wk",
+                delta: "+8%",
+                direction: "up",
+                severity: "low",
+                confidence: "medium",
+                affected_scope: "org-wide",
+                evidence_count: 4,
+                why_it_matters: "Delivery pace is trending back toward baseline.",
+                recommended_action: "Maintain current WIP limits.",
+                evidence_ref: "/api/v1/explain?metric=throughput",
+                category: "delivery",
+            },
+        ],
+        limiting_factor: {
+            claim: "Review latency appears to be the limiting factor.",
+            why_it_matters: "It is the largest current drag on delivery flow this window.",
+            recommended_action: "Rebalance reviewers and set a review SLA on the payments repos.",
+            confidence: "medium",
+            evidence_ref: "/api/v1/explain?metric=review_latency",
+        },
+        data_confidence: {
+            level: "medium",
+            coverage_pct: 72,
+            connected_sources: ["GitHub"],
+            missing_sources: ["CI", "Incidents"],
+            caveats: ["Some repos lack linked issues."],
+        },
+        // CHAOS-2163: allocation_pct is already 0-100 (ops computes allocation/total*100.0).
+        // Themes are canonical keys from investment_taxonomy.py.
+        rework_theme_allocation: [
+            {
+                theme: "feature_delivery",
+                label: "Feature Delivery",
+                allocation: 120,
+                allocation_pct: 40,
+                prs_merged: 120,
+                churn_loc: 45000,
+            },
+            {
+                theme: "maintenance",
+                label: "Maintenance / Tech Debt",
+                allocation: 75,
+                allocation_pct: 25,
+                prs_merged: 75,
+                churn_loc: 28000,
+            },
+            {
+                theme: "quality",
+                label: "Quality / Reliability",
+                allocation: 60,
+                allocation_pct: 20,
+                prs_merged: 60,
+                churn_loc: 22000,
+            },
+            {
+                theme: "operational",
+                label: "Operational / Support",
+                allocation: 30,
+                allocation_pct: 10,
+                prs_merged: 30,
+                churn_loc: 11000,
+            },
+            {
+                theme: "risk",
+                label: "Risk / Security",
+                allocation: 15,
+                allocation_pct: 5,
+                prs_merged: 15,
+                churn_loc: 5500,
+            },
+        ],
+    };
+}
+
+type HomeRestFixture = ReturnType<typeof homeRestFixture>;
+
+// Inverse of toHomeResponse (src/lib/graphql/homeFetchers.ts): REST shape ->
+// GraphQL `home` shape, so the GraphQL mock cannot drift from the REST one.
+function homeRestToGraphQL(rest: HomeRestFixture) {
+    return {
+        freshness: {
+            lastIngestedAt: rest.freshness.last_ingested_at,
+            latestSuccessfulSyncAt: rest.freshness.last_ingested_at,
+            sources: Object.entries(rest.freshness.sources).map(([provider, status]) => ({
+                provider,
+                status,
+            })),
+            coverage: null,
+        },
+        deltas: rest.deltas.map((d) => ({
+            metric: d.metric,
+            label: d.label,
+            value: d.value,
+            unit: d.unit,
+            deltaPct: d.delta_pct,
+            spark: [] as { ts: string; value: number | null }[],
+        })),
+        reworkThemeAllocation: rest.rework_theme_allocation.map((r) => ({
+            theme: r.theme,
+            label: r.label,
+            allocation: r.allocation,
+            allocationPct: r.allocation_pct,
+            prsMerged: r.prs_merged,
+            churnLoc: r.churn_loc,
+        })),
+        summary: rest.summary.map((x, i) => ({
+            id: `summary-${i}`,
+            text: x.text,
+            evidenceLink: "",
+        })),
+        tiles: [] as { key: string; value: { title: string; subtitle: string; link: string } }[],
+        constraint: {
+            title: rest.constraint.label,
+            claim: rest.constraint.label,
+            evidence: [] as { label: string; link: string }[],
+            experiments: [] as string[],
+        },
+        events: [] as { ts: string; type: string; text: string; link: string }[],
+        healthState: { ...rest.health_state, asOf: null },
+        signals: rest.signals.map((sg) => ({
+            id: sg.id,
+            title: sg.title,
+            metric: sg.metric,
+            currentValue: sg.current_value,
+            priorValue: sg.prior_value,
+            delta: sg.delta,
+            direction: sg.direction,
+            severity: sg.severity,
+            confidence: sg.confidence,
+            affectedScope: sg.affected_scope,
+            evidenceCount: sg.evidence_count,
+            whyItMatters: sg.why_it_matters,
+            recommendedAction: sg.recommended_action,
+            evidenceRef: sg.evidence_ref,
+            category: sg.category,
+            scopeEntity: null,
+        })),
+        limitingFactor: {
+            claim: rest.limiting_factor.claim,
+            whyItMatters: rest.limiting_factor.why_it_matters,
+            recommendedAction: rest.limiting_factor.recommended_action,
+            confidence: rest.limiting_factor.confidence,
+            evidenceRef: rest.limiting_factor.evidence_ref,
+        },
+        dataConfidence: {
+            level: rest.data_confidence.level,
+            coveragePct: rest.data_confidence.coverage_pct,
+            connectedSources: rest.data_confidence.connected_sources,
+            missingSources: rest.data_confidence.missing_sources,
+            caveats: rest.data_confidence.caveats,
+        },
+    };
+}
+
 // ---------------------------------------------------------------------------
 // GraphQL dispatcher
 //
@@ -1115,6 +1350,10 @@ function dispatchGraphQL(query: string, variables: Record<string, unknown>): Res
         return HttpResponse.json({
             data: { workUnitTeamAttributions: filtered },
         });
+    }
+
+    if (query.includes("query Home(")) {
+        return HttpResponse.json({ data: { home: homeRestToGraphQL(homeRestFixture()) } });
     }
 
     if (query.includes("BusFactor")) {
@@ -2326,159 +2565,7 @@ export const handlers = [
     }),
 
     // ---- Home ----
-    http.post("*/api/v1/home", () =>
-        HttpResponse.json({
-            freshness: {
-                last_ingested_at: new Date().toISOString(),
-                sources: { github: "ok" },
-                coverage: { repos: 10, people: 5 },
-            },
-            deltas: [
-                {
-                    metric: "cycle_time",
-                    label: "Cycle Time",
-                    unit: "hours",
-                    value: 48,
-                    delta_pct: -12,
-                },
-                {
-                    metric: "throughput",
-                    label: "Throughput",
-                    unit: "PRs/week",
-                    value: 15,
-                    delta_pct: 8,
-                },
-                {
-                    metric: "review_latency",
-                    label: "Review Latency",
-                    unit: "hours",
-                    value: 6,
-                    delta_pct: -5,
-                },
-                { metric: "churn", label: "Churn", unit: "%", value: 18, delta_pct: 3 },
-                // CHAOS-2163: pr_rework_ratio replaces legacy rework_ratio on the Investment/Quality rework card.
-                // value is already a 0-100 percentage (ops emits value * 100).
-                {
-                    metric: "pr_rework_ratio",
-                    label: "PR Rework Ratio",
-                    unit: "%",
-                    value: 18,
-                    delta_pct: -3,
-                },
-            ],
-            summary: [{ text: "Team velocity appears stable over the past 14 days." }],
-            tiles: {},
-            constraint: {
-                label: "WIP Saturation",
-                metric: "wip_saturation",
-                value: 0.6,
-                threshold: 0.8,
-                status: "ok",
-            },
-            events: [],
-            health_state: {
-                status: "at_risk",
-                headline: "Review latency is the limiting factor this week",
-                summary:
-                    "Reviews are taking longer and slowing delivery across the payments repos.",
-            },
-            signals: [
-                {
-                    id: "sig-review-latency",
-                    title: "Review latency is climbing",
-                    metric: "review_latency",
-                    current_value: "2.4d",
-                    prior_value: "1.6d",
-                    delta: "+50%",
-                    direction: "up",
-                    severity: "high",
-                    confidence: "medium",
-                    affected_scope: "3 repos · payments",
-                    evidence_count: 7,
-                    why_it_matters: "Longer reviews delay delivery and frustrate contributors.",
-                    recommended_action: "Rebalance reviewers on the payments repos.",
-                    evidence_ref: "/api/v1/explain?metric=review_latency",
-                    category: "delivery",
-                },
-                {
-                    id: "sig-throughput",
-                    title: "Throughput is recovering",
-                    metric: "throughput",
-                    current_value: "15 PRs/wk",
-                    prior_value: "13 PRs/wk",
-                    delta: "+8%",
-                    direction: "up",
-                    severity: "low",
-                    confidence: "medium",
-                    affected_scope: "org-wide",
-                    evidence_count: 4,
-                    why_it_matters: "Delivery pace is trending back toward baseline.",
-                    recommended_action: "Maintain current WIP limits.",
-                    evidence_ref: "/api/v1/explain?metric=throughput",
-                    category: "delivery",
-                },
-            ],
-            limiting_factor: {
-                claim: "Review latency appears to be the limiting factor.",
-                why_it_matters: "It is the largest current drag on delivery flow this window.",
-                recommended_action:
-                    "Rebalance reviewers and set a review SLA on the payments repos.",
-                confidence: "medium",
-                evidence_ref: "/api/v1/explain?metric=review_latency",
-            },
-            data_confidence: {
-                level: "medium",
-                coverage_pct: 72,
-                connected_sources: ["GitHub"],
-                missing_sources: ["CI", "Incidents"],
-                caveats: ["Some repos lack linked issues."],
-            },
-            // CHAOS-2163: allocation_pct is already 0-100 (ops computes allocation/total*100.0).
-            // Themes are canonical keys from investment_taxonomy.py.
-            rework_theme_allocation: [
-                {
-                    theme: "feature_delivery",
-                    label: "Feature Delivery",
-                    allocation: 120,
-                    allocation_pct: 40,
-                    prs_merged: 120,
-                    churn_loc: 45000,
-                },
-                {
-                    theme: "maintenance",
-                    label: "Maintenance / Tech Debt",
-                    allocation: 75,
-                    allocation_pct: 25,
-                    prs_merged: 75,
-                    churn_loc: 28000,
-                },
-                {
-                    theme: "quality",
-                    label: "Quality / Reliability",
-                    allocation: 60,
-                    allocation_pct: 20,
-                    prs_merged: 60,
-                    churn_loc: 22000,
-                },
-                {
-                    theme: "operational",
-                    label: "Operational / Support",
-                    allocation: 30,
-                    allocation_pct: 10,
-                    prs_merged: 30,
-                    churn_loc: 11000,
-                },
-                {
-                    theme: "risk",
-                    label: "Risk / Security",
-                    allocation: 15,
-                    allocation_pct: 5,
-                    prs_merged: 15,
-                    churn_loc: 5500,
-                },
-            ],
-        }),
-    ),
+    http.post("*/api/v1/home", () => HttpResponse.json(homeRestFixture())),
 
     // ---- Investment ----
     http.post("*/api/v1/investment", () => HttpResponse.json(investmentMixSample)),

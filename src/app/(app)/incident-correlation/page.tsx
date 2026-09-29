@@ -24,7 +24,8 @@ import { IncidentCorrelationDashboard } from "@/components/incident-correlation/
 import type { WorkGraphEdge } from "@/components/incident-correlation/IncidentCorrelationDashboard";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
-import { getExplainData, getHomeData } from "@/lib/api/home";
+import { getExplainData } from "@/lib/api/home";
+import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { requireSession } from "@/lib/auth";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -99,7 +100,7 @@ export default async function IncidentCorrelationPage({ searchParams }: PageProp
     // Run all fetches in parallel to eliminate waterfall
     const [health, home, explain, deploysEdges, incidentEdges] = await Promise.all([
         checkApiHealth(),
-        fetchOrNull(getHomeData(filters), "incident-correlation/home-data"),
+        fetchOrNull(getHomeDataViaGraphQL(filters), "incident-correlation/home-data"),
         fetchOrNull(
             getExplainData({ metric: "change_failure_rate", filters }),
             "incident-correlation/explain-cfr",

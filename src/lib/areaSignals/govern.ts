@@ -18,7 +18,7 @@
 //     compoundingRisk rows, feature-flag friction severity).
 
 import { auth } from "@/lib/auth";
-import { getHomeData } from "@/lib/api/home";
+import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { fetchFeatureFlagsData } from "@/lib/feature-flags/fetchers";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { COMPOUNDING_RISK_QUERY, SECURITY_OVERVIEW_QUERY } from "@/lib/graphql/queries";
@@ -212,7 +212,7 @@ export async function getGovernSignals(
     // three measures this resolver needs), reuse it to avoid a duplicate POST.
     const [homeData, testOps, coverage, risk, security, compounding, featureFlags] =
         await Promise.all([
-            safe(() => getHomeData(filters), "home"),
+            safe(() => getHomeDataViaGraphQL(filters), "home"),
             prefetched?.testOpsData
                 ? Promise.resolve(prefetched.testOpsData)
                 : safe(() => fetchTestOpsData(analyticsBatch, isTestMode), "testops"),

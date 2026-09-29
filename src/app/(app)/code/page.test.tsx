@@ -37,8 +37,11 @@ vi.mock("@/lib/api/system", () => ({
 }));
 
 vi.mock("@/lib/api/home", () => ({
-    getHomeData: (...args: unknown[]) => getHomeDataMock(...args),
     getExplainData: (...args: unknown[]) => getExplainDataMock(...args),
+}));
+
+vi.mock("@/lib/graphql/homeFetchers", () => ({
+    getHomeDataViaGraphQL: (...args: unknown[]) => getHomeDataMock(...args),
 }));
 
 vi.mock("@/lib/api/visuals", () => ({

@@ -1091,3 +1091,117 @@ query WorkUnitTeamAttributions($orgId: String!, $workUnitIds: [String!], $teamId
   }
 }
 `;
+
+// CHAOS-7064 (CHAOS-6084 / CHAOS-7070). The web home/cockpit payload,
+// GraphQL-served. Field selection covers every HomeResult field so the
+// REST /api/v1/home payload can be reconstructed from it 1:1 (see
+// src/lib/graphql/homeFetchers.ts's toHomeResponse transform). Source of
+// truth for the query-api registeredHomeDocument once this document is
+// live — never hand-copy this text into the Go const.
+export const HOME_QUERY = `
+query Home($orgId: String!, $filters: FilterInput, $window: HomeWindowInput) {
+  home(orgId: $orgId, filters: $filters, window: $window) {
+    freshness {
+      lastIngestedAt
+      latestSuccessfulSyncAt
+      sources {
+        provider
+        status
+      }
+      coverage {
+        reposCoveredPct
+        prsLinkedToIssuesPct
+        issuesWithCycleStatesPct
+      }
+    }
+    deltas {
+      metric
+      label
+      value
+      unit
+      deltaPct
+      spark {
+        ts
+        value
+      }
+    }
+    reworkThemeAllocation {
+      theme
+      label
+      allocation
+      allocationPct
+      prsMerged
+      churnLoc
+    }
+    summary {
+      id
+      text
+      evidenceLink
+    }
+    tiles {
+      key
+      value {
+        title
+        subtitle
+        link
+      }
+    }
+    constraint {
+      title
+      claim
+      evidence {
+        label
+        link
+      }
+      experiments
+    }
+    events {
+      ts
+      type
+      text
+      link
+    }
+    healthState {
+      status
+      headline
+      summary
+      asOf
+    }
+    signals {
+      id
+      title
+      metric
+      currentValue
+      priorValue
+      delta
+      direction
+      severity
+      confidence
+      affectedScope
+      evidenceCount
+      whyItMatters
+      recommendedAction
+      evidenceRef
+      category
+      scopeEntity {
+        id
+        displayName
+      }
+    }
+    limitingFactor {
+      claim
+      whyItMatters
+      recommendedAction
+      confidence
+      evidenceRef
+    }
+    dataConfidence {
+      level
+      coveragePct
+      connectedSources
+      missingSources
+      caveats
+    }
+  }
+}
+`;
