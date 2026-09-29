@@ -215,6 +215,25 @@ describe("TeamExchangeChordSection", () => {
         expect(screen.queryByTestId("mock-chord-chart")).not.toBeInTheDocument();
     });
 
+    it("hides the single-team note once self-links are on", () => {
+        currentSearchParams = new URLSearchParams("chord.self=true");
+        mockUseChordFlow.mockReturnValue({
+            data: [{ source: "CHAOS", target: "CHAOS", value: 7 }],
+            fetching: false,
+            error: null,
+        });
+        render(
+            <TeamExchangeChordSection
+                orgId="org-123"
+                filters={filters}
+                dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
+                effortUnit="units"
+            />,
+        );
+        expect(screen.queryByTestId("team-exchange-chord-single-entity")).not.toBeInTheDocument();
+        expect(screen.getByTestId("mock-chord-chart")).toBeInTheDocument();
+    });
+
     it("renders the unavailable state when the read errored even if records are present", () => {
         mockUseChordFlow.mockReturnValue({ data: records, fetching: false, error: new Error("x") });
         renderChord();
@@ -226,6 +245,60 @@ describe("TeamExchangeChordSection", () => {
         mockUseChordFlow.mockReturnValue({ data: [], fetching: false, error: null });
         renderChord();
         expect(screen.queryByText(/unable to load exchange view/i)).not.toBeInTheDocument();
+        expect(screen.getByTestId("mock-chord-chart")).toBeInTheDocument();
+    });
+
+    const filters = {
+        scope: { level: "org" as const, ids: ["org-123"] },
+        time: { range_days: 30, compare_days: 30 },
+        who: { developers: [] },
+        what: { repos: [] },
+        why: { work_category: [], issue_type: [] },
+        how: { flow_stage: [] },
+    };
+
+    it("says only one team has effort when every edge is a self-edge", () => {
+        mockUseChordFlow.mockReturnValue({
+            data: [{ source: "CHAOS", target: "CHAOS", value: 7 }],
+            fetching: false,
+            error: null,
+        });
+
+        render(
+            <TeamExchangeChordSection
+                orgId="org-123"
+                filters={filters}
+                dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
+                effortUnit="units"
+            />,
+        );
+
+        const note = screen.getByTestId("team-exchange-chord-single-entity");
+        expect(note).toHaveTextContent(/only one team has effort in this window/i);
+        expect(note).toHaveTextContent("CHAOS");
+        expect(note).toHaveTextContent("7 units");
+        expect(note).toHaveTextContent(/include self-links/i);
+        expect(screen.queryByTestId("mock-chord-chart")).not.toBeInTheDocument();
+    });
+
+    it("keeps the chart when distinct teams exchange effort", async () => {
+        mockUseChordFlow.mockReturnValue({
+            data: [
+                { source: "A", target: "B", value: 2 },
+                { source: "A", target: "A", value: 9 },
+            ],
+            fetching: false,
+            error: null,
+        });
+        render(
+            <TeamExchangeChordSection
+                orgId="org-123"
+                filters={filters}
+                dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
+                effortUnit="units"
+            />,
+        );
+        expect(screen.queryByTestId("team-exchange-chord-single-entity")).not.toBeInTheDocument();
         expect(screen.getByTestId("mock-chord-chart")).toBeInTheDocument();
     });
 });
