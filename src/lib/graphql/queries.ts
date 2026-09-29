@@ -1226,3 +1226,33 @@ query WorkItemTeamAttributions($orgId: String!, $workItemIds: [String!], $teamId
   }
 }
 `;
+
+// Backend-computed rule-based recommendations for a team + rolling window.
+// CHAOS-7068 (CHAOS-6084 split): typed query + hook only — no web view
+// consumes this yet (no new UI). Distinct from
+// OperatingReview.recommendations (plain strings) and ImproveOpportunity
+// (REST-backed, unrelated shape).
+export const RECOMMENDATIONS_QUERY = `
+query Recommendations($orgId: String!, $team: ID!, $window: WindowInput!) {
+  recommendations(orgId: $orgId, team: $team, window: $window) {
+    ruleId
+    teamId
+    orgId
+    computedAt
+    windowStart
+    windowEnd
+    severity
+    title
+    rationale
+    successCriterion
+    evidence {
+      teamId
+      metricTable
+      windowStart
+      windowEnd
+      field
+      value
+    }
+  }
+}
+`;

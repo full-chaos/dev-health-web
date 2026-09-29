@@ -21,3 +21,4 @@ export {
     useNodeEdges,
 } from "./useWorkGraph";
 export { useSecurityOverview, useSecurityAlerts } from "./useSecurity";
+export { useRecommendations } from "./useRecommendations";
