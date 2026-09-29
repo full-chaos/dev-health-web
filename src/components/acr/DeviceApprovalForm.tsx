@@ -18,6 +18,15 @@ type DeviceApprovalFormProps = {
     readonly initialUserCode?: string;
 };
 
+// Plain-language names for the scopes acr can put on a device grant. The raw
+// scope id is always shown next to the name; an id this table does not know is
+// shown as the raw id alone, never hidden.
+const SCOPE_LABELS: Readonly<Record<string, string>> = {
+    "context:read": "Read context packets",
+    "data:read": "Run direct data operations",
+    "evidence:read": "Read evidence sources",
+};
+
 type ApprovalResponse = {
     readonly status?: "approved";
 };
@@ -97,6 +106,7 @@ export function DeviceApprovalForm({
     const [code, setCode] = useState(initialUserCode ?? "");
     const [state, setState] = useState<ApprovalState>(initialState);
     const [message, setMessage] = useState<string | null>(null);
+    const [requestedScopes, setRequestedScopes] = useState<readonly string[]>([]);
     const [submitting, setSubmitting] = useState(false);
     const descriptionId = useId();
     const stateMessage = stateCopy(state);
@@ -113,6 +123,13 @@ export function DeviceApprovalForm({
             });
             const result = await response.json();
             if (response.ok && Array.isArray(result.repositoryHints)) {
+                setRequestedScopes(
+                    Array.isArray(result.requestedScopes)
+                        ? result.requestedScopes.filter(
+                              (scope: unknown): scope is string => typeof scope === "string",
+                          )
+                        : [],
+                );
                 setState("review");
                 return;
             }
@@ -218,6 +235,35 @@ export function DeviceApprovalForm({
                                 organization.
                             </p>
                         </section>
+                        {requestedScopes.length > 0 ? (
+                            <section
+                                aria-labelledby="requested-access-title"
+                                className="rounded-(--radius-md) border border-(--card-stroke) bg-background px-4 py-4"
+                            >
+                                <h2 id="requested-access-title" className="text-h3 font-medium">
+                                    Requested access
+                                </h2>
+                                <p className="mt-1 text-sm text-(--ink-muted)">
+                                    Code <span className="font-mono tracking-[0.16em]">{code}</span>{" "}
+                                    asks this device for:
+                                </p>
+                                <ul aria-label="Requested access" className="mt-3 space-y-2">
+                                    {requestedScopes.map((scope) => (
+                                        <li
+                                            key={scope}
+                                            className="flex flex-wrap items-baseline gap-x-3 text-sm"
+                                        >
+                                            {SCOPE_LABELS[scope] ? (
+                                                <span>{SCOPE_LABELS[scope]}</span>
+                                            ) : null}
+                                            <code className="font-mono text-(--ink-muted)">
+                                                {scope}
+                                            </code>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </section>
+                        ) : null}
                         <div className="flex gap-3">
                             <Button
                                 disabled={submitting}
