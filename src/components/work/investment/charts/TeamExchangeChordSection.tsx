@@ -76,6 +76,8 @@ export function TeamExchangeChordSection({
         return { name, units };
     }, [records]);
 
+    const groupingNoun = controls.grouping === "work_type" ? "work type" : controls.grouping;
+
     const otherAvailable = useMemo(() => {
         return entityCount > controls.topN;
     }, [controls.topN, entityCount]);
@@ -204,13 +206,11 @@ export function TeamExchangeChordSection({
                         className="lg:col-span-2 flex items-center py-16 justify-center text-center text-sm text-muted-foreground"
                         data-testid="team-exchange-chord-single-entity"
                     >
-                        Only one{" "}
-                        {controls.grouping === "work_type" ? "work type" : controls.grouping} has
-                        effort in this window: {singleEntity.name} (
+                        Only one {groupingNoun} has effort in this window: {singleEntity.name} (
                         {singleEntity.units.toLocaleString()} {effortUnit}).{" "}
                         {controls.showSelfLinks
-                            ? "That is all within-team flow. A chord needs at least two to draw an exchange between them, so try a longer date range."
-                            : "Exchange needs at least two, so there are no flows to draw. Turn on Include self-links to see within-team flow, or try a longer date range."}
+                            ? `That is all within-${groupingNoun} flow. A chord needs at least two to draw an exchange between them, so try a longer date range.`
+                            : `Exchange needs at least two, so there are no flows to draw. Turn on Include self-links to see within-${groupingNoun} flow, or try a longer date range.`}
                     </div>
                 ) : (
                     <>

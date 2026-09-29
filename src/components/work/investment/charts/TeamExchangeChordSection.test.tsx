@@ -302,4 +302,25 @@ describe("TeamExchangeChordSection", () => {
         expect(screen.queryByTestId("team-exchange-chord-single-entity")).not.toBeInTheDocument();
         expect(screen.getByTestId("mock-chord-chart")).toBeInTheDocument();
     });
+
+    it("words the single-entity note for the selected grouping, not always as a team", () => {
+        currentSearchParams = new URLSearchParams("chord.self=true&chord.group=repo");
+        mockUseChordFlow.mockReturnValue({
+            data: [{ source: "payments", target: "payments", value: 7 }],
+            fetching: false,
+            error: null,
+        });
+        render(
+            <TeamExchangeChordSection
+                orgId="org-123"
+                filters={filters}
+                dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
+                effortUnit="units"
+            />,
+        );
+        const note = screen.getByTestId("team-exchange-chord-single-entity");
+        expect(note).toHaveTextContent(/only one repo has effort/i);
+        expect(note).toHaveTextContent(/within-repo flow/i);
+        expect(note).not.toHaveTextContent(/within-team flow/i);
+    });
 });
