@@ -159,26 +159,39 @@ jobs:
                     exit 1
                   }
 
-            - name: Run dev-health-ops migrations
+            - name: Run dev-health-ops migrations (dho)
+              # CHAOS-7053: the Go runner of the same schema: Postgres, then the standard
+              # feature flags, then the ClickHouse schema (ops internal/rivermigrate/upgrade.go).
+              # ClickHouse over the NATIVE port 9000, like the go-api/query-api step below.
               env:
-                  DATABASE_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
-              run: python -m dev_health_ops.cli --db "$DATABASE_URI" migrate postgres
-              working-directory: dev-health-ops
-
-            - name: Seed dev-health-ops fixtures
-              env:
-                  CLICKHOUSE_URI: clickhouse://ch:ch@localhost:8123/default
                   POSTGRES_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
+                  CLICKHOUSE_URI: clickhouse://ch:ch@localhost:9000/default
+                  # Production's settings; without them `dho migrate postgres` refuses
+                  # (ops ci/check_go_containers.sh smoke_migrate_postgres).
+                  DEV_HEALTH_ALLOW_CELERY_RIVER_CUTOVER: "1"
+                  OPERATIONAL_ORDERING_CONTRACT: "2"
+              run: /tmp/dho migrate upgrade
+
+            - name: Seed dev-health-ops fixtures (dho)
+              # CHAOS-7053: the frozen world the web e2e caller owns (ops
+              # internal/fixturescli/generate_integration_test.go generateParameterSets):
+              # any other parameter set is refused. Only CLICKHOUSE_URI is set: the verb
+              # refuses when a Postgres URI is present (it does not seed demo users).
+              env:
+                  CLICKHOUSE_URI: clickhouse://ch:ch@localhost:9000/default
               run: |
-                  python -m dev_health_ops.cli \
-                    --db "$POSTGRES_URI" \
-                    --analytics-db "$CLICKHOUSE_URI" \
-                    fixtures generate \
+                  /tmp/dho fixtures generate \
                     --sink "$CLICKHOUSE_URI" \
-                    --days 30 \
+                    --db-type clickhouse \
+                    --repo-name acme/live-e2e \
+                    --provider synthetic \
+                    --days 14 \
+                    --commits-per-day 6 \
+                    --pr-count 24 \
+                    --team-count 10 \
+                    --seed 20260219 \
                     --with-metrics \
                     --with-work-graph
-              working-directory: dev-health-ops
 
             - name: Start dev-health-ops API
               env:

@@ -277,17 +277,22 @@ describe("CHAOS-3017 CI contracts", () => {
         }
     });
 
-    it("uses the application migrator without authorizing the River cutover", () => {
+    it("uses the Go application migrator (dho) under the production settings its baseline requires", () => {
+        // CHAOS-7053: the Python migrator was run WITHOUT authorizing the River cutover. The Go
+        // migrator's PostgreSQL head baseline IS the post-cutover production shape and refuses to
+        // run without DEV_HEALTH_ALLOW_CELERY_RIVER_CUTOVER (settings_mismatch, exit 1, before it
+        // connects; ops internal/rivermigrate), so the step now sets it -- on this step only.
+        const workflow = contents(LIVE_E2E_WORKFLOW);
         const migrationStep = step(
-            job(contents(LIVE_E2E_WORKFLOW), "live-e2e"),
-            "Run dev-health-ops migrations",
+            job(workflow, "live-e2e"),
+            "Run dev-health-ops migrations (dho)",
         );
 
-        expect(migrationStep).toContain("python -m dev_health_ops.cli");
-        expect(migrationStep).toContain('--db "$DATABASE_URI"');
-        expect(migrationStep).toContain("migrate postgres");
+        expect(migrationStep).toContain("/tmp/dho migrate upgrade");
+        expect(migrationStep).toContain('DEV_HEALTH_ALLOW_CELERY_RIVER_CUTOVER: "1"');
+        expect(migrationStep).not.toContain("python");
         expect(migrationStep).not.toContain("alembic");
-        expect(migrationStep).not.toContain("DEV_HEALTH_ALLOW_CELERY_RIVER_CUTOVER");
+        expect(workflow.match(/DEV_HEALTH_ALLOW_CELERY_RIVER_CUTOVER/g)?.length).toBe(1);
     });
 
     it("pins paths-filter to the reviewed commit in every touched workflow", () => {
