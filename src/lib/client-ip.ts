@@ -69,13 +69,20 @@ export function parseIpEntry(raw: string | null | undefined): string | null {
     return canonical;
 }
 
+/**
+ * Best-effort key when no trusted client address exists. It hashes only headers a
+ * browser keeps stable between requests; x-vercel-id and cf-ray are NOT included
+ * (they differ on every request, so they gave every request its own key, and a
+ * client can write them). Every input is still client-written, so this key can be
+ * split by changing user-agent: it is a shared-bucket approximation, not identity.
+ * A deployment that needs hard per-client limits must run with TRUST_PROXY on
+ * behind a proxy that owns X-Forwarded-For.
+ */
 function anonymousFingerprint(request: HeaderReadable): string {
     const fallbackIdentifier = [
         request.headers.get("user-agent") ?? "",
         request.headers.get("accept-language") ?? "",
         request.headers.get("sec-ch-ua") ?? "",
-        request.headers.get("x-vercel-id") ?? "",
-        request.headers.get("cf-ray") ?? "",
     ].join("|");
 
     if (!fallbackIdentifier.replaceAll("|", "")) {
@@ -107,9 +114,12 @@ export function isTrustProxyEnabled(value: string | undefined): boolean {
 export function getClientIp(request: HeaderReadable, options: ClientIpOptions = {}): string {
     if (options.trustProxy) {
         const hops = options.trustedProxyHops ?? DEFAULT_TRUSTED_PROXY_HOPS;
-        const chain = (request.headers.get("x-forwarded-for") ?? "").split(",");
+        const forwarded = request.headers.get("x-forwarded-for") ?? "";
+        const chain = forwarded.split(",");
         const index = chain.length - Math.max(1, Math.trunc(hops));
-        if (chain.join("").trim() !== "" && index >= 0) {
+        // A header with any content (even "," alone) is a chain: its empty selected
+        // entry is malformed and must not fall through to x-real-ip.
+        if (forwarded.trim() !== "" && index >= 0) {
             const hop = parseIpEntry(chain[index]);
             return hop ?? anonymousFingerprint(request);
         }

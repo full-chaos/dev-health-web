@@ -130,6 +130,33 @@ describe("client-ip", () => {
             expect(getClientIp(request, trusted)).toMatch(/^anon:/);
         });
 
+        it("a comma-only chain is malformed: it does not fall through to x-real-ip (r1)", () => {
+            const request = requestWithHeaders({
+                "x-forwarded-for": ",",
+                "x-real-ip": "203.0.113.20",
+                "user-agent": "ua",
+            });
+            expect(getClientIp(request, trusted)).toMatch(/^anon:/);
+            const whitespace = requestWithHeaders({
+                "x-forwarded-for": "   ",
+                "x-real-ip": "203.0.113.20",
+            });
+            expect(getClientIp(whitespace, trusted)).toBe("203.0.113.20");
+        });
+
+        it("the fingerprint ignores x-vercel-id and cf-ray (per-request, client-written) (r1)", () => {
+            const base = { "user-agent": "ua" };
+            const keys = new Set(
+                ["a", "b", "c"].map((id) =>
+                    getClientIp(requestWithHeaders({ ...base, "x-vercel-id": id, "cf-ray": id }), {
+                        trustProxy: false,
+                    }),
+                ),
+            );
+            expect(keys.size).toBe(1);
+            expect([...keys][0]).toMatch(/^anon:/);
+        });
+
         it("an empty chosen entry is malformed", () => {
             const request = requestWithHeaders({
                 "x-forwarded-for": "198.51.100.7,",
