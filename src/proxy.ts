@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getClientIp, isTrustProxyEnabled } from "@/lib/client-ip";
+import { getClientIpFromEnv } from "@/lib/client-ip";
 import { getServerEnv } from "@/lib/config";
 import { getBackendUrl } from "@/lib/origin";
 import { auth } from "@/lib/auth";
@@ -211,7 +211,7 @@ async function enforceProxyRateLimit(
     if (!routeLimit) return null;
 
     const env = getServerEnv();
-    const clientIp = getClientIp(request, { trustProxy: isTrustProxyEnabled(env.TRUST_PROXY) });
+    const clientIp = getClientIpFromEnv(request, env);
     const bucket = pathBucket(pathname);
     const isUserKeyed =
         pathname.startsWith("/api/v1/admin/credentials/test-connection") ||

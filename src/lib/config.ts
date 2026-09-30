@@ -100,6 +100,13 @@ const serverEnvSchema = z.object({
      * spoofing attacks.
      */
     TRUST_PROXY: z.string().optional(),
+    /**
+     * Number of trusted reverse proxies in front of the app (integer 1..32,
+     * default 1). With TRUST_PROXY on, the client is that many entries from the
+     * RIGHT of `X-Forwarded-For`; entries to its left are client-written and are
+     * never read. Invalid values fall back to 1.
+     */
+    TRUSTED_PROXY_HOPS: z.string().optional(),
     USE_GRAPHQL_ANALYTICS: z.string().optional(),
     DEV_HEALTH_TEST_MODE: z.string().optional(),
     DEMO_EXPORT: z.string().optional(),

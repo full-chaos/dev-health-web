@@ -919,7 +919,7 @@ describe("admin/server IP allowlist actions", () => {
             vi.stubEnv("TRUST_PROXY", "true");
             const { headers } = await import("next/headers");
             vi.mocked(headers).mockResolvedValue(
-                new Headers({ "x-forwarded-for": "198.51.100.10, 10.0.0.1" }),
+                new Headers({ "x-forwarded-for": "6.6.6.6, 198.51.100.10" }),
             );
 
             const result = await getCurrentClientIp();

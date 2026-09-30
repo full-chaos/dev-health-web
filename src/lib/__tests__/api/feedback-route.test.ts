@@ -40,6 +40,7 @@ describe("POST /api/feedback", () => {
         // Clear environment variables
         delete process.env.LINEAR_API_KEY;
         delete process.env.LINEAR_TEAM_ID;
+        delete process.env.TRUST_PROXY;
     });
 
     afterEach(() => {
@@ -76,6 +77,7 @@ describe("POST /api/feedback", () => {
     it("returns 503 when LINEAR_TEAM_ID is missing", async () => {
         process.env.LINEAR_API_KEY = "key-123";
         delete process.env.LINEAR_TEAM_ID;
+        delete process.env.TRUST_PROXY;
 
         const { POST } = await import("@/app/api/feedback/route");
 
@@ -710,6 +712,66 @@ describe("POST /api/feedback", () => {
         expect(response.status).toBe(429);
         expect(data.success).toBe(false);
         expect(data.error).toBe("Rate limit exceeded. Please try again later.");
+    });
+
+    // CHAOS-7205: a client that writes a different leftmost X-Forwarded-For entry on
+    // every request must stay in ONE rate-limit bucket (TRUST_PROXY on, one proxy).
+    it("returns 429 on the 6th request even when the leftmost x-forwarded-for entry changes", async () => {
+        process.env.LINEAR_API_KEY = "key-123";
+        process.env.LINEAR_TEAM_ID = "team-123";
+        process.env.TRUST_PROXY = "true";
+        // No user id: the route then keys the limiter on the client IP.
+        const { auth } = await import("@/lib/auth");
+        const authMock = vi.mocked(auth) as unknown as ReturnType<typeof vi.fn>;
+        authMock.mockResolvedValue({ access_token: "test-token" });
+
+        global.fetch = vi.fn().mockImplementation(() =>
+            Promise.resolve(
+                new Response(
+                    JSON.stringify({
+                        data: {
+                            issueCreate: {
+                                success: true,
+                                issue: {
+                                    id: "i",
+                                    identifier: "ENG-1",
+                                    url: "https://linear.app/i",
+                                },
+                            },
+                        },
+                    }),
+                    { status: 200 },
+                ),
+            ),
+        );
+
+        const { POST } = await import("@/app/api/feedback/route");
+        const send = (spoof: string) =>
+            POST(
+                new Request("http://localhost/api/feedback", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "x-forwarded-for": `${spoof}, 198.51.100.77`,
+                    },
+                    body: JSON.stringify({
+                        title: "Test Bug",
+                        description: "Test description",
+                        type: "bug",
+                        url: "http://example.com",
+                        userAgent: "Mozilla/5.0",
+                        timestamp: "2024-01-01T00:00:00Z",
+                    }),
+                }),
+            );
+
+        for (let i = 0; i < 5; i++) expect((await send(`9.9.9.${i}`)).status).toBe(200);
+        expect((await send("9.9.9.99")).status).toBe(429);
+        delete process.env.TRUST_PROXY;
+        authMock.mockResolvedValue({
+            user: { id: "test-user-1", email: "test@example.com" },
+            access_token: "test-token",
+        });
     });
 
     it("returns 429 when Redis is unavailable (fail-closed, CHAOS-3589)", async () => {

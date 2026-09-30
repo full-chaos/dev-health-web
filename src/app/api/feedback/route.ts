@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import type { FeedbackPayload, FeedbackResponse } from "@/components/feedback/types";
 import { auth } from "@/lib/auth";
-import { getClientIp, isTrustProxyEnabled } from "@/lib/client-ip";
+import { getClientIpFromEnv } from "@/lib/client-ip";
 import { getServerEnv } from "@/lib/config";
 import { ApiErrors, linearApiRequestFailedMessage } from "@/lib/constants/errors";
 import { isRateLimited } from "@/lib/rate-limit";
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
         );
     }
 
-    const ip = getClientIp(request, { trustProxy: isTrustProxyEnabled(env.TRUST_PROXY) });
+    const ip = getClientIpFromEnv(request, env);
     const rateLimitKey = session.user?.id ?? ip;
 
     // failClosed: rate limiting has no in-memory fallback (CHAOS-3589), so an

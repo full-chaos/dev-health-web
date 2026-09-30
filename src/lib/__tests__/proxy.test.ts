@@ -232,6 +232,44 @@ describe("proxy rate limiting", () => {
         );
     });
 
+    // CHAOS-7205: the limiter key must not follow a client-written X-Forwarded-For
+    // entry or a client-written platform header.
+    it("TRUST_PROXY on: a spoofed leftmost x-forwarded-for entry keeps ONE rate-limit key", async () => {
+        vi.stubEnv("TRUST_PROXY", "true");
+        mockCheckRateLimit.mockResolvedValue({ limited: false, retryAfter: 0 });
+        for (const spoof of ["1.1.1.1", "2.2.2.2", "not-an-ip"]) {
+            await proxy(
+                new NextRequest(new URL("/api/v1/auth/login", "http://localhost:3000"), {
+                    method: "POST",
+                    headers: {
+                        "user-agent": "proxy-test",
+                        "x-forwarded-for": `${spoof}, 198.51.100.7`,
+                    },
+                }),
+            );
+        }
+        const keys = new Set(mockCheckRateLimit.mock.calls.map((call) => call[0]));
+        expect([...keys]).toEqual(["proxy:POST:auth-login:ip:198.51.100.7"]);
+    });
+
+    it("TRUST_PROXY off: cf-connecting-ip and x-forwarded-for cannot mint keys", async () => {
+        mockCheckRateLimit.mockResolvedValue({ limited: false, retryAfter: 0 });
+        for (const spoof of ["1.1.1.1", "2.2.2.2"]) {
+            await proxy(
+                new NextRequest(new URL("/api/v1/auth/login", "http://localhost:3000"), {
+                    method: "POST",
+                    headers: {
+                        "user-agent": "proxy-test",
+                        "x-forwarded-for": spoof,
+                        "cf-connecting-ip": spoof,
+                    },
+                }),
+            );
+        }
+        const keys = new Set(mockCheckRateLimit.mock.calls.map((call) => call[0]));
+        expect(keys.size).toBe(1);
+    });
+
     it("limits password reset with the auth-pwreset route options", async () => {
         mockCheckRateLimit.mockResolvedValue({ limited: true, retryAfter: 120 });
 
