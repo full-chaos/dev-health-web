@@ -20,8 +20,7 @@ vi.mock("@/lib/acr/service", () => ({
 }));
 vi.mock("@/lib/auth", () => ({ auth: authMock }));
 vi.mock("@/lib/client-ip", () => ({
-    getClientIp: getClientIpMock,
-    isTrustProxyEnabled: () => false,
+    getClientIpFromEnv: getClientIpMock,
 }));
 vi.mock("@/lib/rate-limit", () => ({ checkRateLimit: checkRateLimitMock }));
 

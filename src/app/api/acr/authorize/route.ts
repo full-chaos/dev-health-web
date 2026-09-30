@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { toConsentDecisionWire } from "@/lib/acr/consent-wire";
 import { decideOAuthConsent, previewOAuthConsent } from "@/lib/acr/service";
 import { AcrRuntimeError, safeAcrRuntimeMessage } from "@/lib/acr/errors";
-import { getClientIp, isTrustProxyEnabled } from "@/lib/client-ip";
+import { getClientIpFromEnv } from "@/lib/client-ip";
 import { logger } from "@/lib/logger";
 import { checkRateLimit } from "@/lib/rate-limit";
 
@@ -123,9 +123,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             { status: 403 },
         );
     }
-    const clientIp = getClientIp(request, {
-        trustProxy: isTrustProxyEnabled(process.env.TRUST_PROXY),
-    });
+    const clientIp = getClientIpFromEnv(request);
     const general = await checkRateLimit(clientIp, GENERAL_LIMIT);
     if (general.limited) {
         logOutcome(undefined, "rate_limited_general", 429);

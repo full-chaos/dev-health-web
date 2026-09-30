@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 
 import { approveDeviceAuthorization, previewDeviceAuthorization } from "@/lib/acr/service";
 import { AcrRuntimeError, safeAcrRuntimeMessage } from "@/lib/acr/errors";
-import { getClientIp, isTrustProxyEnabled } from "@/lib/client-ip";
+import { getClientIpFromEnv } from "@/lib/client-ip";
 import { checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
@@ -97,9 +97,7 @@ export async function POST(request: Request): Promise<NextResponse> {
             { status: 403 },
         );
     }
-    const clientIp = getClientIp(request, {
-        trustProxy: isTrustProxyEnabled(process.env.TRUST_PROXY),
-    });
+    const clientIp = getClientIpFromEnv(request);
     const general = await checkRateLimit(clientIp, GENERAL_LIMIT);
     if (general.limited) return limitedResponse(general.retryAfter);
     const body = await parseBody(request);

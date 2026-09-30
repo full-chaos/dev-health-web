@@ -32,13 +32,18 @@
  * `getClientIp()` from `@/lib/client-ip`, NOT by reading `x-forwarded-for`
  * directly. The helper enforces the following policy:
  *
- *   - `TRUST_PROXY=true`  -> reads the leftmost `X-Forwarded-For` hop, then
- *     falls back to `X-Real-IP`. Use only when the app is deployed behind a
- *     known, trusted reverse proxy that strips/rewrites these headers.
- *   - `TRUST_PROXY=false` (default) -> ignores `X-Forwarded-For` entirely to
- *     prevent IP spoofing. Falls back to platform-injected headers
- *     (`x-vercel-forwarded-for`, `cf-connecting-ip`) and then to an
- *     anonymous SHA-256 fingerprint of stable request headers.
+ *   - `TRUST_PROXY=true`  -> reads `X-Forwarded-For` from the RIGHT: the
+ *     `TRUSTED_PROXY_HOPS`-th entry (default 1) is the client, never the
+ *     leftmost, which a client can write (CHAOS-7205). A chain shorter than the
+ *     hop count falls back to `X-Real-IP`, then `x-vercel-forwarded-for`, then
+ *     `cf-connecting-ip`; a malformed entry gets the anonymous fingerprint. Use
+ *     only when the app is deployed behind that many known reverse proxies, each
+ *     appending to or replacing `X-Forwarded-For`.
+ *   - `TRUST_PROXY=false` (default) -> ignores every forwarded and platform
+ *     header (`X-Forwarded-For`, `X-Real-IP`, `x-vercel-forwarded-for`,
+ *     `cf-connecting-ip`; each is client-writable without a proxy that owns it)
+ *     and uses an anonymous SHA-256 fingerprint of stable request headers.
+ *     Vercel/Cloudflare deployments must set TRUST_PROXY to get per-IP keys.
  *
  * Never read `X-Forwarded-For` outside of `getClientIp()` in this module.
  *
