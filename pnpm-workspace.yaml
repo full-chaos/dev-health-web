@@ -39,8 +39,10 @@ overrides:
     # minimatch; 10.68.0 is the newest release in the declared ^10 range (GHSA-mh99-v99m-4gvg).
     # Scoped to minimatch@10 deliberately: an unscoped floor also hits minimatch@3, whose
     # v1 brace-expansion API differs, breaking ESLint with "expand is not a function".
-    # Floor raised to 5.0.9 for GHSA-rgw5-rvv9-x895 (unbounded intermediate arrays).
-    minimatch@10>brace-expansion: ">=5.0.9"
+    # Floor raised to 5.0.9 for GHSA-rgw5-rvv9-x895 (unbounded intermediate arrays), then to
+    # 5.0.11 for GHSA-6j4f-fj2g-mc7p (parseCommaParts, patched >=5.0.10) and GHSA-qhr7-859c-m2p7
+    # (nested brace groups, patched >=5.0.11); read off the advisories' "Patched versions" field.
+    minimatch@10>brace-expansion: ">=5.0.11"
     # browserslist: reached only transitively, via @sentry/nextjs's @babel/core and
     # webpack chains (8 paths, no direct dependency to upgrade — same shape as the
     # nanoid entry above). Floor for GHSA-c83g-rgw3-j3cx (unbounded cache growth) and
