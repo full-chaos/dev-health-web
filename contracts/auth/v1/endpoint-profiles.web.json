@@ -4141,7 +4141,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 174
+                "line": 171
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4180,7 +4180,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:178, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:175, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -4306,7 +4306,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 290
+                "line": 287
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4345,7 +4345,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:292, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:289, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -4361,7 +4361,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 197
+                "line": 194
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4400,7 +4400,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:199, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:196, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -4471,7 +4471,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 206
+                "line": 203
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4510,7 +4510,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:211, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:208, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -4581,7 +4581,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 272
+                "line": 269
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4620,7 +4620,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:274, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:271, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -4636,7 +4636,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 245
+                "line": 242
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4675,7 +4675,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:247, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:244, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -4691,7 +4691,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 259
+                "line": 256
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4730,7 +4730,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:263, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:260, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -4746,7 +4746,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 319
+                "line": 316
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4785,7 +4785,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:323, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:320, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -4911,7 +4911,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 164
+                "line": 161
             },
             "classification": "protected",
             "public_rationale": null,
@@ -4950,7 +4950,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:169, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:166, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -4966,7 +4966,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 216
+                "line": 213
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5005,7 +5005,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:218, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:215, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -5131,7 +5131,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 305
+                "line": 302
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5170,7 +5170,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:309, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:306, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -5241,7 +5241,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 185
+                "line": 182
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5280,7 +5280,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:190, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:187, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
@@ -5406,7 +5406,7 @@
             "service": "dev-health-web",
             "source": {
                 "file": "src/lib/admin/server/settings.ts",
-                "line": 279
+                "line": 276
             },
             "classification": "protected",
             "public_rationale": null,
@@ -5445,7 +5445,7 @@
             "entitlement_requirement": null,
             "disclosure_behavior": "withErrorHandling (src/lib/admin/server/_shared.ts:37-48) catches a thrown AdminApiError and returns {error: detail-or-message}; passes through ops's error detail text verbatim, no additional web-side redaction.",
             "gaps": [
-                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:283, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
+                "This action's own call to getSessionContext() is at src/lib/admin/server/settings.ts:280, verified during the CHAOS-3273 Wave 0 sweep (2026-09-01). action/resource_resolver were not independently re-derived per row beyond the function signature -- this pass prioritized the credential/session-check predicate (rejects/degrades-silently/no-check) per Chris's ruling; a field-by-field authorization-mapping pass (action scope, resource ownership check depth) was not performed for every one of the 150 discovered actions and is a declared gap."
             ],
             "exposure": {
                 "reachability": "public_via_edge",
