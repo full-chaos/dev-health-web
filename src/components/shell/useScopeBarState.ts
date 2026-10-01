@@ -10,7 +10,10 @@ import type { MetricFilter } from "@/lib/filters/types";
 type ScopeBarStateProps = Pick<
     FilterBarClientProps,
     "view" | "tab" | "resolvedVisibility" | "resolvedScopeLock"
->;
+> & {
+    /** `false`: no default `f` is written (a bar with no page filters). */
+    writeDefaultFilter?: boolean;
+};
 
 /**
  * State of the scope bar: the filter state machine of the page filter bar

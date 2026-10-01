@@ -116,7 +116,7 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
                     {donutRows.length ? (
                         <DonutChart data={donutRows} height={260} />
                     ) : (
-                        <DataState variant="detector-enabled-no-findings" />
+                        <DataState variant="detector-enabled-no-findings" compact />
                     )}
                 </AIPanelCard>
 
@@ -136,7 +136,7 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
                     {trend.length ? (
                         <TimeseriesChart data={trend} height={180} />
                     ) : (
-                        <DataState variant="detector-enabled-no-findings" />
+                        <DataState variant="detector-enabled-no-findings" compact />
                     )}
                 </AIPanelCard>
 
@@ -220,7 +220,7 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
                             <ScopeRollupList label="Teams" rows={summary?.teamBreakdown ?? []} />
                             {evidenceHref && (
                                 <Link
-                                    className="text-sm font-medium text-accent underline-offset-4 hover:underline"
+                                    className="text-sm font-medium text-(--accent-2) underline-offset-4 hover:underline"
                                     href={evidenceHref}
                                 >
                                     {CTA_LABELS.openEvidence} →
@@ -246,7 +246,7 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
                             diagnostics and candidate triage can evolve independently.
                         </p>
                         <Link
-                            className="font-medium text-accent underline-offset-4 hover:underline"
+                            className="font-medium text-(--accent-2) underline-offset-4 hover:underline"
                             href="/ai/automations"
                         >
                             {CTA_LABELS.seeAIAutomations} →

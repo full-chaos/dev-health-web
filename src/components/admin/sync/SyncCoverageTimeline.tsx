@@ -411,7 +411,7 @@ export function SyncCoverageTimeline({
                                     type="button"
                                     aria-label={`Backfill ${formatDateUTC(window.since)} to ${formatDateUTC(window.before)}`}
                                     onClick={() => onBackfillWindowAction(window)}
-                                    className="text-sm font-medium text-(--accent) hover:underline"
+                                    className="text-sm font-medium text-(--accent-2) hover:underline"
                                 >
                                     {CTA_LABELS.backfillThisWindow}
                                 </button>
@@ -619,7 +619,7 @@ export function SyncCoverageTimeline({
                                                                                 backfillWindows[0],
                                                                             )
                                                                         }
-                                                                        className="text-(--accent) hover:underline"
+                                                                        className="text-(--accent-2) hover:underline"
                                                                     >
                                                                         {row.kind === "failed"
                                                                             ? CTA_LABELS.backfillThisFailure
@@ -663,7 +663,7 @@ export function SyncCoverageTimeline({
                                                                                             window,
                                                                                         )
                                                                                     }
-                                                                                    className="text-left text-(--accent) hover:underline"
+                                                                                    className="text-left text-(--accent-2) hover:underline"
                                                                                 >
                                                                                     {
                                                                                         CTA_LABELS.backfillThisWindow

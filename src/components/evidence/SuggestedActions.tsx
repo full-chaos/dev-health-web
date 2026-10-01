@@ -22,7 +22,7 @@ export function SuggestedActions({ actions }: SuggestedActionsProps) {
                 {actions.map((action) => (
                     <div
                         key={action.id}
-                        className="rounded-full border border-(--accent)/20 bg-(--accent)/5 px-3 py-1.5 text-xs font-medium text-(--accent)"
+                        className="rounded-full border border-(--accent-2)/20 bg-(--accent-2)/5 px-3 py-1.5 text-xs font-medium text-(--info)"
                     >
                         {action.label}
                     </div>

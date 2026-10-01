@@ -47,10 +47,7 @@ export function Breadcrumbs({ items }: { items: Crumb[] }) {
                                 )}
                             </li>
                             {!isLast && (
-                                <li
-                                    aria-hidden="true"
-                                    className="select-none text-(--ink-muted)/60"
-                                >
+                                <li aria-hidden="true" className="select-none text-(--text-muted)">
                                     /
                                 </li>
                             )}

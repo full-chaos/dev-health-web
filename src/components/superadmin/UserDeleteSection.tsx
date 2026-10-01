@@ -38,13 +38,11 @@ export function UserDeleteSection({ userId, userEmail }: UserDeleteSectionProps)
             danger
         >
             <div className="space-y-4">
-                <div className="rounded-md bg-red-50 p-4 dark:bg-red-900/20">
+                <div className="rounded-md bg-(--negative)/12 p-4">
                     <div className="flex">
                         <div className="ml-3">
-                            <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
-                                Warning
-                            </h3>
-                            <div className="mt-2 text-sm text-red-700 dark:text-red-300">
+                            <h3 className="text-sm font-medium text-(--negative)">Warning</h3>
+                            <div className="mt-2 text-sm text-(--negative)">
                                 <p>
                                     This will permanently delete the user{" "}
                                     <strong>{userEmail}</strong> and remove all associated data.
@@ -67,14 +65,14 @@ export function UserDeleteSection({ userId, userEmail }: UserDeleteSectionProps)
                             id="confirm-email"
                             value={confirmEmail}
                             onChange={(e) => setConfirmEmail(e.target.value)}
-                            className="block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500"
+                            className="block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--negative) focus:outline-none focus:ring-1 focus:ring-(--negative)"
                             placeholder={userEmail}
                         />
                         <button
                             type="button"
                             onClick={handleDelete}
                             disabled={isDeleting || confirmEmail !== userEmail}
-                            className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50"
+                            className="rounded-md bg-(--negative) px-4 py-2 text-sm font-medium text-(--accent-foreground) hover:bg-(--negative)/90 focus:outline-none focus:ring-2 focus:ring-(--negative) focus:ring-offset-2 disabled:opacity-50"
                         >
                             {isDeleting ? "Deleting..." : "Delete User"}
                         </button>

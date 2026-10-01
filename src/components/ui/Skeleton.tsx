@@ -12,7 +12,7 @@ export function SkeletonLine({
 
 export function SkeletonCard({ lines = 3 }: { lines?: number }) {
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-6 space-y-3 animate-pulse">
+        <div className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-6 space-y-3 animate-pulse motion-reduce:animate-none">
             <div className="h-6 bg-(--card-70) rounded w-1/3" />
             {Array.from({ length: lines }, (_, i) => (
                 <div
@@ -26,7 +26,7 @@ export function SkeletonCard({ lines = 3 }: { lines?: number }) {
 
 export function SkeletonTable({ rows = 5, cols = 4 }: { rows?: number; cols?: number }) {
     return (
-        <div className="space-y-2 animate-pulse">
+        <div className="space-y-2 animate-pulse motion-reduce:animate-none">
             <div className="grid gap-4" style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}>
                 {Array.from({ length: cols }, (_, i) => (
                     <div key={`skeleton-header-${i}`} className="h-4 bg-(--card-70) rounded" />
@@ -53,7 +53,7 @@ export function SkeletonTable({ rows = 5, cols = 4 }: { rows?: number; cols?: nu
 export function SkeletonChart({ height = "h-64" }: { height?: string }) {
     return (
         <div
-            className={`${height} rounded-3xl border border-(--card-stroke) bg-card p-6 animate-pulse`}
+            className={`${height} rounded-(--radius-md) border border-(--card-stroke) bg-card p-6 animate-pulse`}
         >
             <div className="h-5 bg-(--card-70) rounded w-1/4 mb-6" />
             <div className="h-full bg-(--card-70) rounded" />
