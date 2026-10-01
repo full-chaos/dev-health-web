@@ -119,7 +119,7 @@ describe("today: Team -> Theme -> Repo clicks", () => {
         expect(setFocusSubcategory).not.toHaveBeenCalled();
     });
 
-    it("subcategory node: focuses the subcategory for the page, the chart is not filtered", () => {
+    it("subcategory node: focuses the subcategory for the page (the section alone, with no selection handler, does not filter)", () => {
         const withSub: SankeyResponse = {
             ...flow,
             nodes: [...flow.nodes, { name: "Bugfix", group: "subcategory" }],
@@ -196,7 +196,7 @@ describe("today: Theme -> Repo -> Team clicks", () => {
             />,
         );
 
-    it("subcategory node focuses the subcategory; the chart is not filtered", () => {
+    it("subcategory node focuses the subcategory (the section alone, with no selection handler, does not filter)", () => {
         renderRepoTeam();
         props().onItemClickAction({ type: "node", name: "Bugfix" });
         expect(setFocusSubcategory).toHaveBeenCalledWith("quality.bugfix");

@@ -10,6 +10,12 @@ import {
     UNASSIGNED_TEAM_LABEL,
 } from "@/lib/investment";
 import { computeSankeyMetrics, filterSankeyToTeam } from "@/lib/sankey";
+import {
+    computeSelectedPath,
+    filterSankeyToEntity,
+    type SelectedEntity,
+} from "@/lib/allocationSelection";
+import { SelectedPathPanel } from "./SelectedPathPanel";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyNode, SankeyResponse } from "@/lib/types";
 
@@ -24,7 +30,7 @@ type BuildSankeyTooltipFormatter = (context: {
     showBaselineDelta?: boolean;
 }) => (params: unknown, unit: string) => string;
 
-type TeamCategorySankeySectionProps = {
+export type TeamCategorySankeySectionProps = {
     filters: MetricFilter;
     focusedTeam: string | null;
     setFocusedTeam: (value: string | null) => void;
@@ -41,7 +47,13 @@ type TeamCategorySankeySectionProps = {
     prepareSankeyFlow: PrepareSankeyFlow;
     buildSankeyTooltipFormatter: BuildSankeyTooltipFormatter;
     resolveSubcategoryIdFromLabel: (label: string) => string | null;
+    /** Subcategory / repo selection (new): filters the chart to that entity. Team and theme
+     * keep their production drill (focusedTeam / selectedCategory). */
+    selectedEntity?: SelectedEntity | null;
+    onSelectEntity?: (entity: SelectedEntity | null) => void;
 };
+
+const KIND_CHIP_LABEL = { team: "Team", theme: "Theme", subcategory: "Subcategory", repo: "Repo" };
 
 export function TeamCategorySankeySection({
     filters,
@@ -58,6 +70,8 @@ export function TeamCategorySankeySection({
     prepareSankeyFlow,
     buildSankeyTooltipFormatter,
     resolveSubcategoryIdFromLabel,
+    selectedEntity = null,
+    onSelectEntity = () => {},
 }: TeamCategorySankeySectionProps) {
     const rawSankeyFlow = useMemo(
         () => filterSankeyToTeam(teamCategoryFlow ?? null, focusedTeam),
@@ -92,6 +106,39 @@ export function TeamCategorySankeySection({
         );
     }, [baselineSankeyFlow?.mode, prepareSankeyFlow, rawBaselineFlow]);
     const isSankeyLoading = isCategoryFlowLoading;
+
+    // The flow before any team focus: the base for a TEAM selection's share.
+    const unfilteredFlow = useMemo(
+        () =>
+            teamCategoryFlow
+                ? prepareSankeyFlow(
+                      {
+                          ...teamCategoryFlow,
+                          mode: teamCategoryFlow.mode ?? "team_category_repo",
+                      } as SankeyResponse,
+                      TOP_N_REPOS,
+                  )
+                : null,
+        [prepareSankeyFlow, teamCategoryFlow],
+    );
+    const unfilteredBaseline = useMemo(
+        () =>
+            baselineSankeyFlow
+                ? prepareSankeyFlow(
+                      {
+                          ...baselineSankeyFlow,
+                          mode: baselineSankeyFlow.mode ?? "team_category_repo",
+                      } as SankeyResponse,
+                      TOP_N_REPOS,
+                  )
+                : null,
+        [prepareSankeyFlow, baselineSankeyFlow],
+    );
+    // What the chart draws: the flow cut to the selected subcategory / repo, if any.
+    const chartFlow = useMemo(
+        () => (selectedEntity ? filterSankeyToEntity(sankeyFlow, selectedEntity.name) : sankeyFlow),
+        [sankeyFlow, selectedEntity],
+    );
 
     const sankeyMetrics = useMemo(
         () => (sankeyFlow ? computeSankeyMetrics(sankeyFlow.nodes, sankeyFlow.links) : null),
@@ -168,9 +215,10 @@ export function TeamCategorySankeySection({
             }
             setSelectedCategory(null);
             setFocusSubcategory(null);
+            onSelectEntity(null);
             setFocusedTeam(teamName);
         },
-        [setFocusedTeam, setFocusSubcategory, setSelectedCategory],
+        [onSelectEntity, setFocusedTeam, setFocusSubcategory, setSelectedCategory],
     );
 
     const handleCategoryFocus = useCallback(
@@ -179,10 +227,87 @@ export function TeamCategorySankeySection({
                 return;
             }
             setFocusSubcategory(null);
+            onSelectEntity(null);
             setSelectedCategory((current) => (current === categoryName ? null : categoryName));
         },
-        [setFocusSubcategory, setSelectedCategory],
+        [onSelectEntity, setFocusSubcategory, setSelectedCategory],
     );
+
+    // Subcategory / repo selection (new): a second click on the same entity clears it.
+    const toggleEntity = useCallback(
+        (entity: SelectedEntity) => {
+            onSelectEntity(
+                selectedEntity?.kind === entity.kind && selectedEntity.name === entity.name
+                    ? null
+                    : entity,
+            );
+        },
+        [onSelectEntity, selectedEntity],
+    );
+
+    // Panel: the side view of whatever the chart is filtered to (entity > team > theme).
+    const panel = useMemo(() => {
+        const teamNode = focusedTeam
+            ? (rawSankeyFlow?.nodes ?? []).find(
+                  (node) => node.group === "team" && stripSankeyPrefix(node.name) === focusedTeam,
+              )
+            : undefined;
+        if (selectedEntity) {
+            const numbers = computeSelectedPath({
+                base: sankeyFlow,
+                baseline: baselineFlow,
+                name: selectedEntity.name,
+            });
+            const shareBase = selectedCategory
+                ? "the drilled theme"
+                : focusedTeam
+                  ? `${focusedTeam}'s allocation`
+                  : "all allocation";
+            return {
+                selection: {
+                    kind: selectedEntity.kind,
+                    label: stripSankeyPrefix(selectedEntity.name),
+                },
+                numbers,
+                shareBase,
+                reason: undefined as string | undefined,
+            };
+        }
+        if (teamNode) {
+            return {
+                selection: { kind: "team" as const, label: focusedTeam ?? teamNode.name },
+                numbers: computeSelectedPath({
+                    base: unfilteredFlow,
+                    baseline: unfilteredBaseline,
+                    name: teamNode.name,
+                }),
+                shareBase: "all allocation",
+                reason: undefined as string | undefined,
+            };
+        }
+        if (selectedCategory) {
+            return {
+                selection: { kind: "theme" as const, label: selectedCategory },
+                numbers: computeSelectedPath({
+                    base: sankeyFlow,
+                    baseline: baselineFlow,
+                    name: selectedCategory,
+                }),
+                shareBase: "all allocation",
+                reason: "A theme drill holds only that theme, so its share of all allocation is not shown. Clear the drill to see it.",
+            };
+        }
+        return null;
+    }, [
+        baselineFlow,
+        focusedTeam,
+        rawSankeyFlow,
+        sankeyFlow,
+        selectedCategory,
+        selectedEntity,
+        unfilteredBaseline,
+        unfilteredFlow,
+    ]);
 
     const sankeyTooltipFormatter = useMemo(
         () =>
@@ -233,7 +358,7 @@ export function TeamCategorySankeySection({
                             ? "Team to Theme to Subcategory to Repo"
                             : "Team to Theme to Repo"}
                     </p>
-                    {(focusedTeam || selectedCategory) && (
+                    {(focusedTeam || selectedCategory || selectedEntity) && (
                         <div className="mt-3 flex flex-wrap items-center gap-2">
                             {focusedTeam && (
                                 <button
@@ -255,6 +380,22 @@ export function TeamCategorySankeySection({
                                     className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
                                 >
                                     Drilldown: Theme = {selectedCategory}
+                                    <span className="text-xs">x</span>
+                                </button>
+                            )}
+                            {selectedEntity && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        onSelectEntity(null);
+                                        if (selectedEntity.kind === "subcategory") {
+                                            setFocusSubcategory(null);
+                                        }
+                                    }}
+                                    className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
+                                >
+                                    Selected: {KIND_CHIP_LABEL[selectedEntity.kind]} ={" "}
+                                    {stripSankeyPrefix(selectedEntity.name)}
                                     <span className="text-xs">x</span>
                                 </button>
                             )}
@@ -298,38 +439,54 @@ export function TeamCategorySankeySection({
                             : "No allocation path available for this scope and window."}
                     </div>
                 ) : (
-                    <SankeyChart
-                        nodes={sankeyFlow.nodes}
-                        links={sankeyFlow.links}
-                        unit={effortUnit}
-                        height={320}
-                        tooltipFormatterAction={sankeyTooltipFormatter}
-                        onItemClickAction={(item) => {
-                            if (!sankeyFlow) return;
-                            if (item.type === "node") {
-                                const node = sankeyFlow.nodes.find((n) => n.name === item.name);
-                                if (node?.group === "team") {
-                                    handleTeamFocus(stripSankeyPrefix(node.name));
-                                    return;
-                                }
-                                if (node?.group === "category") {
-                                    handleCategoryFocus(node.name);
-                                    return;
-                                }
-                                if (node?.group === "subcategory") {
-                                    const subId = resolveSubcategoryIdFromLabel(node.name);
+                    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_16rem]">
+                        <SankeyChart
+                            nodes={(chartFlow ?? sankeyFlow).nodes}
+                            links={(chartFlow ?? sankeyFlow).links}
+                            unit={effortUnit}
+                            height={320}
+                            tooltipFormatterAction={sankeyTooltipFormatter}
+                            onItemClickAction={(item) => {
+                                if (!sankeyFlow) return;
+                                if (item.type === "node") {
+                                    const node = sankeyFlow.nodes.find((n) => n.name === item.name);
+                                    if (node?.group === "team") {
+                                        handleTeamFocus(stripSankeyPrefix(node.name));
+                                        return;
+                                    }
+                                    if (node?.group === "category") {
+                                        handleCategoryFocus(node.name);
+                                        return;
+                                    }
+                                    if (node?.group === "subcategory") {
+                                        const subId = resolveSubcategoryIdFromLabel(node.name);
+                                        if (subId) {
+                                            setFocusSubcategory(subId);
+                                        }
+                                        toggleEntity({ kind: "subcategory", name: node.name });
+                                        return;
+                                    }
+                                    if (node?.group === "repo" && !isUnassignedLabel(node.name)) {
+                                        toggleEntity({ kind: "repo", name: node.name });
+                                    }
+                                } else if (item.type === "link" && selectedCategory) {
+                                    const subId = resolveSubcategoryIdFromLabel(item.source ?? "");
                                     if (subId) {
                                         setFocusSubcategory(subId);
+                                        toggleEntity({ kind: "subcategory", name: item.source! });
                                     }
                                 }
-                            } else if (item.type === "link" && selectedCategory) {
-                                const subId = resolveSubcategoryIdFromLabel(item.source ?? "");
-                                if (subId) {
-                                    setFocusSubcategory(subId);
-                                }
-                            }
-                        }}
-                    />
+                            }}
+                        />
+                        <SelectedPathPanel
+                            selection={panel?.selection ?? null}
+                            numbers={panel?.numbers ?? null}
+                            unit={effortUnit}
+                            shareBase={panel?.shareBase ?? "all allocation"}
+                            shareUnavailableReason={panel?.reason}
+                            hasBaseline
+                        />
+                    </div>
                 )}
             </div>
         </div>
