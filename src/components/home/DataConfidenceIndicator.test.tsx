@@ -114,3 +114,40 @@ describe("DataConfidenceIndicator text pin (CHAOS-7611 5.1a)", () => {
         expect(out).toMatchSnapshot();
     });
 });
+
+describe("DataConfidenceIndicator as a Notice (CHAOS-7611 5.1a)", () => {
+    it.each([
+        ["high", "good"],
+        ["medium", "warn"],
+        ["low", "warn"],
+    ] as const)(
+        "%s confidence is a %s notice with its word and icon, not color alone",
+        (level, variant) => {
+            const { container } = render(
+                <DataConfidenceIndicator confidence={{ ...base, level }} />,
+            );
+            const notice = container.querySelector("[data-notice-variant]") as HTMLElement;
+            expect(notice).toHaveAttribute("data-notice-variant", variant);
+            expect(notice.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+            expect(
+                screen.getByText(`${level[0].toUpperCase()}${level.slice(1)} confidence`),
+            ).toBeInTheDocument();
+        },
+    );
+
+    it("is not a live region (the page is static content)", () => {
+        render(<DataConfidenceIndicator confidence={base} />);
+        expect(screen.queryByRole("status")).toBeNull();
+    });
+
+    it("shows the Evidence & context card only when there is something to show", () => {
+        const { rerender } = render(<DataConfidenceIndicator confidence={base} />);
+        expect(screen.getByRole("heading", { name: "Evidence & context" })).toBeInTheDocument();
+        rerender(
+            <DataConfidenceIndicator
+                confidence={{ ...base, connected_sources: [], missing_sources: [], caveats: [] }}
+            />,
+        );
+        expect(screen.queryByRole("heading", { name: "Evidence & context" })).toBeNull();
+    });
+});

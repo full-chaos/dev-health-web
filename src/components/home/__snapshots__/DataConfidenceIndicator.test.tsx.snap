@@ -10,7 +10,7 @@ exports[`DataConfidenceIndicator text pin (CHAOS-7611 5.1a) > shows the same tex
     ],
     "label": "Data confidence: High confidence",
     "level": "high",
-    "text": "High confidence92% coverageMost sources this view relies on are connected and recent.ConnectedGitHubJiraMissingGitLab•Weekend data is sparse.",
+    "text": "OK: High confidenceMost sources this view relies on are connected and recent.92% coverageEvidence & contextConnectedGitHubJiraMissingGitLab•Weekend data is sparse.",
   },
   {
     "ids": [
@@ -20,7 +20,7 @@ exports[`DataConfidenceIndicator text pin (CHAOS-7611 5.1a) > shows the same tex
     ],
     "label": "Data confidence: Medium confidence",
     "level": "medium",
-    "text": "Medium confidence92% coverageSome sources are missing or sparse — read trends, not point values.ConnectedGitHubJiraMissingGitLab•Weekend data is sparse.",
+    "text": "Warning: Medium confidenceSome sources are missing or sparse — read trends, not point values.92% coverageEvidence & contextConnectedGitHubJiraMissingGitLab•Weekend data is sparse.",
   },
   {
     "ids": [
@@ -30,7 +30,7 @@ exports[`DataConfidenceIndicator text pin (CHAOS-7611 5.1a) > shows the same tex
     ],
     "label": "Data confidence: Low confidence",
     "level": "low",
-    "text": "Low confidence92% coverageCoverage is limited — this view may not reflect the full picture.ConnectedGitHubJiraMissingGitLab•Weekend data is sparse.",
+    "text": "Warning: Low confidenceCoverage is limited — this view may not reflect the full picture.92% coverageEvidence & contextConnectedGitHubJiraMissingGitLab•Weekend data is sparse.",
   },
 ]
 `;

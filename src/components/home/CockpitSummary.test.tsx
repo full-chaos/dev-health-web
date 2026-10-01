@@ -225,3 +225,23 @@ describe("CockpitSummary markup pin (CHAOS-7611 5.1a)", () => {
         expect(html).toMatchSnapshot();
     });
 });
+
+describe("CockpitSummary hero look (CHAOS-7611 5.1a)", () => {
+    it.each([
+        ["healthy", "border-l-(--positive)"],
+        ["watch", "border-l-(--info)"],
+        ["at_risk", "border-l-(--caution)"],
+        ["critical", "border-l-(--negative)"],
+    ] as const)("%s has a status edge, no gradient, and the state in words", (status, edge) => {
+        render(
+            <CockpitSummary
+                home={makeHome({ health_state: { status, headline: "H", summary: "S" } })}
+                filters={filters}
+            />,
+        );
+        const root = screen.getByTestId("cockpit-summary");
+        expect(root.className).toContain(edge);
+        expect(root.className).not.toContain("gradient");
+        expect(screen.getByTestId("cockpit-health-status").textContent).toMatch(/\S/);
+    });
+});
