@@ -24,32 +24,50 @@ type TooltipOptions = {
     fontSize?: number;
 };
 
+type PointerLine = { color: string; width: 1; type: "solid" };
+
+/** What `buildTooltip` returns; `axisPointer` and `formatter` are present only when asked for. */
+export type BuiltTooltip = {
+    trigger: "axis" | "item";
+    confine: boolean;
+    backgroundColor: string;
+    borderColor: string;
+    textStyle: { color: string; fontSize?: number };
+    axisPointer?: {
+        type: "line" | "cross";
+        lineStyle: PointerLine;
+        crossStyle?: PointerLine;
+        label?: { backgroundColor: string };
+    };
+    formatter?: TooltipComponentOption["formatter"];
+};
+
 /** The one tooltip: surface background, hairline border, text token. Identity is the marker swatch. */
-export const buildTooltip = (theme: ChartTheme, options: TooltipOptions = {}) => ({
-    trigger: options.trigger ?? ("axis" as const),
-    confine: options.confine ?? true,
-    backgroundColor: theme.background,
-    borderColor: theme.stroke,
-    textStyle: { color: theme.text, ...(options.fontSize ? { fontSize: options.fontSize } : {}) },
-    ...(options.crosshair && options.pointer === "cross"
-        ? {
-              axisPointer: {
-                  type: "cross" as const,
-                  lineStyle: { color: theme.muted, width: 1, type: "solid" as const },
-                  crossStyle: { color: theme.muted, width: 1, type: "solid" as const },
-                  label: { backgroundColor: theme.muted },
-              },
-          }
-        : options.crosshair
+export const buildTooltip = (theme: ChartTheme, options: TooltipOptions = {}): BuiltTooltip => {
+    const line: PointerLine = { color: theme.muted, width: 1, type: "solid" };
+    const axisPointer: BuiltTooltip["axisPointer"] = !options.crosshair
+        ? undefined
+        : options.pointer === "cross"
           ? {
-                axisPointer: {
-                    type: "line" as const,
-                    lineStyle: { color: theme.muted, width: 1, type: "solid" as const },
-                },
+                type: "cross",
+                lineStyle: line,
+                crossStyle: line,
+                label: { backgroundColor: theme.muted },
             }
-          : {}),
-    ...(options.formatter ? { formatter: options.formatter } : {}),
-});
+          : { type: "line", lineStyle: line };
+    return {
+        trigger: options.trigger ?? "axis",
+        confine: options.confine ?? true,
+        backgroundColor: theme.background,
+        borderColor: theme.stroke,
+        textStyle: {
+            color: theme.text,
+            ...(options.fontSize ? { fontSize: options.fontSize } : {}),
+        },
+        ...(axisPointer ? { axisPointer } : {}),
+        ...(options.formatter ? { formatter: options.formatter } : {}),
+    };
+};
 
 /** A 2px line with round caps and joins. */
 export const lineMark = { width: 2, cap: "round" as const, join: "round" as const };
