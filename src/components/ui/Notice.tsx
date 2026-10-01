@@ -48,12 +48,12 @@ const VARIANTS: Record<
 
 /**
  * Solid fill for security-relevant strips. Warn only (an info or good notice
- * keeps its tinted surface). Production's impersonation strip drew
- * `bg-amber-500` with black ink in both themes: the same pair is kept here
- * (black on amber-500 = 9.78:1), because the theme `--caution` token is a dark
- * text color in light and fails as a fill.
+ * keeps its tinted surface). Production's impersonation strip drew a bright
+ * amber fill with black ink in both themes; the theme tokens `--caution-solid` and
+ * `--on-caution-solid` hold that same pair (black on the fill = 9.78:1), because
+ * the theme `--caution` token is a dark text color in light and fails as a fill.
  */
-const STRONG_WARN = "border-transparent bg-amber-500 text-black";
+const STRONG_WARN = "border-transparent bg-(--caution-solid) text-(--on-caution-solid)";
 
 export type NoticeProps = Omit<ComponentPropsWithoutRef<"div">, "title" | "role"> & {
     variant?: NoticeVariant;

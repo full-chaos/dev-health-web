@@ -124,7 +124,6 @@ const ALLOWLIST: Record<string, number> = {
     "components/superadmin/UserDeleteSection.tsx": 11,
     "components/superadmin/UserTable.tsx": 9,
     "components/testops/PrTestOpsSummary.tsx": 19,
-    "components/ui/Notice.tsx": 2,
     "components/work/CapacityView.tsx": 6,
     "components/work/GraphView.tsx": 13,
     "components/work/investment/ConfidencePanel.tsx": 8,

@@ -250,6 +250,18 @@ describe("infinity palette", () => {
         expect(dark["--text-muted"]).toBe("#8b959c");
     });
 
+    it.each(THEMES)(
+        "keeps production's solid caution strip: amber fill, black ink (%s)",
+        (theme) => {
+            const t = infinity(theme);
+            expect(t["--caution-solid"]).toBe("#f59e0b");
+            expect(t["--on-caution-solid"]).toBe("#000000");
+            expect(contrast(t["--on-caution-solid"], t["--caution-solid"])).toBeGreaterThanOrEqual(
+                9.7,
+            );
+        },
+    );
+
     it.each(THEMES)("keeps status pill text readable on its own tint (%s)", (theme) => {
         const t = infinity(theme);
         // Pills: status token as text on the same token at STATUS_PILL_ALPHA over the card.
@@ -267,6 +279,8 @@ describe("infinity palette", () => {
             "--accent",
             "--accent-foreground",
             "--accent-text",
+            "--caution-solid",
+            "--on-caution-solid",
             "--accent-1",
             "--accent-2",
             "--accent-3",
