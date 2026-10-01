@@ -153,10 +153,10 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
                                                 <td className="px-4 py-3 text-(--ink-muted)">
                                                     {pr.workType ?? "—"}
                                                 </td>
-                                                <td className="px-4 py-3 text-xs text-(--ink-muted)">
+                                                <td className="whitespace-nowrap px-4 py-3 text-xs text-(--ink-muted)">
                                                     <EntityLabel id={pr.repoId} />
                                                 </td>
-                                                <td className="px-4 py-3 text-(--ink-muted)">
+                                                <td className="whitespace-nowrap px-4 py-3 text-(--ink-muted)">
                                                     {formatMergedAt(pr.mergedAt)}
                                                 </td>
                                             </tr>
