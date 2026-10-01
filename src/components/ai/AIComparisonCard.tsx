@@ -28,7 +28,8 @@ export function AIComparisonCard({
     const format = percent
         ? formatPercent
         : (value?: number | null) => (value == null ? "—" : value.toFixed(2));
-    const spark = [baselineValue ?? 0, aiValue ?? 0];
+    // A missing value is a gap in the mark, never a zero.
+    const spark = [baselineValue, aiValue];
 
     const hasDelta = typeof delta === "number" && Number.isFinite(delta);
 

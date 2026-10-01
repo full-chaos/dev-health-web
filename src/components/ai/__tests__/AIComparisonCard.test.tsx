@@ -138,3 +138,34 @@ describe("AIComparisonCard missing delta (CHAOS-7763, decision A3)", () => {
         expect(pill.className).toMatch(/positive/);
     });
 });
+
+describe("AIComparisonCard missing values are not plotted as zero (CHAOS-7763)", () => {
+    it("a missing baseline VALUE draws no baseline point: the mark gets a gap, not a 0", () => {
+        render(
+            <AIComparisonCard
+                label="L"
+                aiSide={ai}
+                baselineSide={null}
+                delta={null}
+                metric="reworkRate"
+            />,
+        );
+        const spark = screen.getByTestId("sparkline");
+        expect(spark.getAttribute("data-data")).toBe("[null,0.12]");
+        expect(screen.getByText("No baseline")).toBeInTheDocument();
+        expect(screen.getAllByText("12.0%").length).toBeGreaterThanOrEqual(1);
+    });
+
+    it("a missing AI-side value draws no AI point either", () => {
+        render(
+            <AIComparisonCard
+                label="L"
+                aiSide={null}
+                baselineSide={base}
+                delta={null}
+                metric="reworkRate"
+            />,
+        );
+        expect(screen.getByTestId("sparkline").getAttribute("data-data")).toBe("[0.08,null]");
+    });
+});
