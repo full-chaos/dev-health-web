@@ -486,7 +486,7 @@ jobs:
                   echo "graphql status=${gql_status}"
                   head -c 300 /tmp/gql.json || true; echo
                   if [ "${gql_status}" != "200" ]; then
-                    echo "::error::/graphql through the router did not answer 200 (Go query-api not serving the product path)."
+                    echo "::error::/graphql on query-api did not answer 200 (Go query-api not serving the product path)."
                     exit 1
                   fi
 
