@@ -106,6 +106,20 @@ describe("ConfidenceBandChart percentile markers", () => {
         expect(new Set(lines.map((l) => l.label.offset[1])).size).toBe(3);
     });
 
+    it("the label of a marker near the right edge is right-aligned, others centred", () => {
+        render(
+            <ConfidenceBandChart
+                backlogSize={20}
+                p50Days={2}
+                p85Days={4}
+                p95Days={6}
+                throughputMean={4}
+            />,
+        );
+        const lines = marked()[0].markLine!.data as Array<Mark & { label: { align: string } }>;
+        expect(lines.map((l) => l.label.align)).toEqual(["center", "center", "right"]);
+    });
+
     it("a dot sits on the burn line at each percentile day", () => {
         render(
             <ConfidenceBandChart

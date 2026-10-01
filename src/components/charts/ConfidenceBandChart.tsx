@@ -153,6 +153,9 @@ export function ConfidenceBandChart({
                         show: true,
                         formatter: markerLabel(point.name, point.date, point.day),
                         position: "end" as const,
+                        // a label near the right edge is right-aligned so it is never clipped
+                        align: (point.day >= maxDays * 0.85 ? "right" : "center") as
+                            "right" | "center",
                         // one row per percentile, so the three labels never collide
                         offset: [0, -index * LABEL_ROW] as [number, number],
                         color: chartTheme.text,
@@ -180,6 +183,7 @@ export function ConfidenceBandChart({
         chartTheme.text,
         dayLabels,
         lowVariance,
+        maxDays,
         p50Date,
         p50Days,
         p85Date,
@@ -278,6 +282,7 @@ export function ConfidenceBandChart({
                           smooth: true,
                           lineStyle: { width: 2, color: tide },
                           showSymbol: false,
+                          itemStyle: { color: tide },
                           areaStyle: {
                               opacity: 0.3,
                               color: tide,
@@ -294,6 +299,7 @@ export function ConfidenceBandChart({
                           smooth: true,
                           lineStyle: { width: 0 },
                           showSymbol: false,
+                          itemStyle: { color: tide },
                           areaStyle: {
                               opacity: 0.15,
                               color: tide,
@@ -307,6 +313,7 @@ export function ConfidenceBandChart({
                           smooth: true,
                           lineStyle: { width: 0 },
                           showSymbol: false,
+                          itemStyle: { color: tide },
                           areaStyle: {
                               opacity: 0.25,
                               color: tide,
@@ -320,6 +327,7 @@ export function ConfidenceBandChart({
                           smooth: true,
                           lineStyle: { width: 2, color: tide },
                           showSymbol: false,
+                          itemStyle: { color: tide },
                           areaStyle: {
                               opacity: 0.35,
                               color: tide,
