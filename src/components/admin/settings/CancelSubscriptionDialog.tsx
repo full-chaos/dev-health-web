@@ -65,8 +65,8 @@ export function CancelSubscriptionDialog({
                         </button>
                     </div>
 
-                    <div className="rounded-md border border-red-300 p-3">
-                        <p className="text-sm font-medium text-red-700">Cancel immediately</p>
+                    <div className="rounded-md border border-(--negative)/30 p-3">
+                        <p className="text-sm font-medium text-(--negative)">Cancel immediately</p>
                         <p className="mt-1 text-xs text-(--ink-muted)">
                             Access ends now. This cannot be undone.
                         </p>
@@ -74,7 +74,7 @@ export function CancelSubscriptionDialog({
                             type="button"
                             onClick={onConfirmImmediate}
                             disabled={isPending}
-                            className="mt-3 w-full rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                            className="mt-3 w-full rounded-md bg-(--negative) px-3 py-2 text-sm font-medium text-(--accent-foreground) hover:bg-(--negative)/90 disabled:opacity-50"
                         >
                             {isPending ? "Canceling…" : CTA_LABELS.cancelImmediately}
                         </button>

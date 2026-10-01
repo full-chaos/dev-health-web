@@ -45,7 +45,7 @@ export function CustomerPushSourceOverview({ provider, source }: CustomerPushSou
                 <div
                     key={warning}
                     role="alert"
-                    className="rounded-lg border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-600"
+                    className="rounded-lg border border-(--caution)/30 bg-(--caution)/12 p-4 text-sm text-(--caution)"
                 >
                     {warning}
                 </div>
