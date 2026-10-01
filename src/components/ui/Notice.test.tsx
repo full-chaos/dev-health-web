@@ -61,13 +61,16 @@ describe("Notice", () => {
         expect(screen.getByRole("heading", { level: 2, name: "T" })).toBeInTheDocument();
     });
 
-    it("strong warn fills solid amber with black ink, as production did", () => {
+    it("strong warn fills solid amber with black ink, as production did, through the theme tokens", () => {
         const { container } = render(
             <Notice variant="warn" emphasis="strong" live={false}>
                 x
             </Notice>,
         );
-        expect(container.firstChild).toHaveClass("bg-amber-500", "text-black");
+        expect(container.firstChild).toHaveClass(
+            "bg-(--caution-solid)",
+            "text-(--on-caution-solid)",
+        );
     });
 });
 

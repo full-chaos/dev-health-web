@@ -1,9 +1,6 @@
-import Link from "next/link";
-
-import { FilterBar } from "@/components/filters/FilterBar";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { QuadrantChart } from "@/components/charts/QuadrantChart";
@@ -11,11 +8,9 @@ import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { DataState } from "@/components/ui/DataState";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { withFilterParam } from "@/lib/filters/url";
 import { fetchRiskMetrics } from "@/lib/testops/fetchers";
 import { getServerEnv } from "@/lib/config";
 import { chartEntityLabel } from "@/lib/labels/entityLabel";
-import { CTA_LABELS } from "@/lib/design/cta";
 import { isFiniteNumber, normalizePercent } from "@/lib/guards/numbers";
 
 type RiskPageProps = {
@@ -25,8 +20,6 @@ type RiskPageProps = {
 export default async function RiskPage({ searchParams }: RiskPageProps) {
     const params = (await searchParams) ?? {};
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-    const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
-    const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
@@ -80,7 +73,7 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
     ]);
 
     if ((!health.ok && !isTestMode) || !riskData) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     const timeseriesData = riskData.timeseries
@@ -146,106 +139,84 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
     };
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="risk" role={activeRole} />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                TestOps
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">Delivery Risk</h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Deployment confidence and risk assessment.
-                            </p>
-                        </div>
-                        <Link
-                            href={withFilterParam("/", filters, activeRole)}
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-                        >
-                            {CTA_LABELS.backToCockpit}
-                        </Link>
-                    </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8">
+            <PageHeader
+                title="Delivery Risk"
+                subtitle="Deployment confidence and risk assessment."
+            ></PageHeader>
 
-                    <GlobalContextBar filters={filters} />
-                    <FilterBar view="testops" />
+            <ScopeBar view="testops" />
+            <section className="grid gap-4 lg:grid-cols-3">
+                <MetricCard
+                    label="Release Confidence"
+                    value={
+                        riskData.release_confidence != null
+                            ? riskData.release_confidence * 100
+                            : undefined
+                    }
+                    unit="%"
+                    delta={riskData.confidence_delta}
+                    spark={riskData.confidence_spark}
+                    caption="Overall confidence score for deployments"
+                />
+                <MetricCard
+                    label="Quality Drag"
+                    value={riskData.quality_drag_hours}
+                    unit="h"
+                    delta={riskData.drag_delta}
+                    spark={riskData.drag_spark}
+                    caption="Hours lost to test/pipeline issues"
+                />
+                <MetricCard
+                    label="Pipeline Stability"
+                    value={
+                        riskData.pipeline_stability != null
+                            ? riskData.pipeline_stability * 100
+                            : undefined
+                    }
+                    unit="%"
+                    delta={riskData.stability_delta}
+                    spark={riskData.stability_spark}
+                    caption="Stability score across all pipelines"
+                />
+            </section>
 
-                    <section className="grid gap-4 lg:grid-cols-3">
-                        <MetricCard
-                            label="Release Confidence"
-                            value={
-                                riskData.release_confidence != null
-                                    ? riskData.release_confidence * 100
-                                    : undefined
-                            }
-                            unit="%"
-                            delta={riskData.confidence_delta}
-                            spark={riskData.confidence_spark}
-                            caption="Overall confidence score for deployments"
+            <section className="grid gap-6 lg:grid-cols-2">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                    <h2 className="font-(--font-display) text-xl mb-4">Risk Trend</h2>
+                    <div className="h-64">
+                        <TimeseriesChart data={timeseriesData} valueFormat="percent" />
+                    </div>
+                </div>
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                    <h2 className="font-(--font-display) text-xl mb-4">Quality Drag Breakdown</h2>
+                    <div className="h-64">
+                        <HorizontalBarChart
+                            categories={dragCategories}
+                            values={dragValues}
+                            valueFormat="hours"
                         />
-                        <MetricCard
-                            label="Quality Drag"
-                            value={riskData.quality_drag_hours}
-                            unit="h"
-                            delta={riskData.drag_delta}
-                            spark={riskData.drag_spark}
-                            caption="Hours lost to test/pipeline issues"
-                        />
-                        <MetricCard
-                            label="Pipeline Stability"
-                            value={
-                                riskData.pipeline_stability != null
-                                    ? riskData.pipeline_stability * 100
-                                    : undefined
-                            }
-                            unit="%"
-                            delta={riskData.stability_delta}
-                            spark={riskData.stability_spark}
-                            caption="Stability score across all pipelines"
-                        />
-                    </section>
+                    </div>
+                </div>
+            </section>
 
-                    <section className="grid gap-6 lg:grid-cols-2">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                            <h2 className="font-(--font-display) text-xl mb-4">Risk Trend</h2>
-                            <div className="h-64">
-                                <TimeseriesChart data={timeseriesData} valueFormat="percent" />
-                            </div>
-                        </div>
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                            <h2 className="font-(--font-display) text-xl mb-4">
-                                Quality Drag Breakdown
-                            </h2>
-                            <div className="h-64">
-                                <HorizontalBarChart
-                                    categories={dragCategories}
-                                    values={dragValues}
-                                    valueFormat="hours"
-                                />
-                            </div>
-                        </div>
-                    </section>
-
-                    <section className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                        <h2 className="font-(--font-display) text-xl mb-4">
-                            Risk vs Throughput (by Repo)
-                        </h2>
-                        {quadrantPoints.length > 0 ? (
-                            <div className="h-96" data-testid="risk-throughput-chart">
-                                <QuadrantChart data={quadrantData} scopeType="repo" />
-                            </div>
-                        ) : (
-                            <DataState
-                                variant="insufficient-confidence"
-                                title="No repo risk data for this window"
-                                description="This scatterplot needs finite repo-level pipeline success and test pass rates before it can be drawn."
-                                data-testid="risk-throughput-empty"
-                            />
-                        )}
-                    </section>
-                </main>
-            </div>
+            <section className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                <h2 className="font-(--font-display) text-xl mb-4">Risk vs Throughput (by Repo)</h2>
+                {quadrantPoints.length > 0 ? (
+                    <div className="h-96" data-testid="risk-throughput-chart">
+                        <QuadrantChart data={quadrantData} scopeType="repo" />
+                    </div>
+                ) : (
+                    <DataState
+                        variant="insufficient-confidence"
+                        title="No repo risk data for this window"
+                        description="This scatterplot needs finite repo-level pipeline success and test pass rates before it can be drawn."
+                        data-testid="risk-throughput-empty"
+                    />
+                )}
+            </section>
         </div>
     );
 }

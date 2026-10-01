@@ -325,7 +325,7 @@ function ScopeTable({
                                     {workGraphHref ? (
                                         <Link
                                             href={workGraphHref}
-                                            className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent) hover:underline"
+                                            className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
                                             data-testid="open-in-work-graph"
                                         >
                                             {CTA_LABELS.openWorkGraph} ↗
@@ -436,9 +436,9 @@ export function CompoundingRiskDashboard({
             <section className="overflow-hidden rounded-[2rem] border border-(--card-stroke) bg-(--card-80) shadow-sm">
                 <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
                     <div className="p-8">
-                        <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
+                        <h2 className="text-3xl font-semibold tracking-tight md:text-5xl">
                             Where change pressure is compounding risk.
-                        </h1>
+                        </h2>
                         <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
                             A deterministic composite of churn, complexity trend, ownership
                             concentration, and review-latency tail. Every score is fully

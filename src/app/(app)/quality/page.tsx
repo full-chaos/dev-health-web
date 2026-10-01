@@ -1,10 +1,10 @@
 import Link from "next/link";
 
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
-import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
+import { ReworkThemeBars } from "@/components/quality/ReworkThemeBars";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
@@ -12,8 +12,8 @@ import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { formatDelta, formatMetricValue, formatNumber } from "@/lib/formatters";
+import { buildExploreUrl } from "@/lib/filters/url";
+import { formatDelta, formatMetricValue } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 import { EntityLabel } from "@/components/labels/EntityLabel";
@@ -46,7 +46,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
     ]);
 
     if (!health.ok) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
@@ -70,224 +70,169 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
     );
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="quality" role={activeRole} />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Quality
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">Quality</h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Change failure, CI stability, and rework indicators.
-                            </p>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Open a metric to investigate.
-                            </p>
-                        </div>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8">
+            <PageHeader
+                title="Quality"
+                subtitle="Change failure, CI stability, and rework indicators."
+            >
+                <p className="text-sm text-(--ink-muted)">Open a metric to investigate.</p>
+            </PageHeader>
+
+            <ScopeBar view="quality" />
+
+            <section className="grid gap-4 lg:grid-cols-3">
+                <MetricCard
+                    label={changeFailureMetric?.label ?? "Change Failure Rate"}
+                    href={buildExploreUrl({
+                        metric: "change_failure_rate",
+                        filters,
+                        role: activeRole,
+                    })}
+                    value={placeholderDeltas ? undefined : changeFailureMetric?.value}
+                    unit={changeFailureMetric?.unit}
+                    delta={placeholderDeltas ? undefined : changeFailureMetric?.delta_pct}
+                    spark={changeFailureMetric?.spark}
+                    caption="Change failure rate"
+                />
+                <MetricCard
+                    label={ciMetric?.label ?? "CI Success Rate"}
+                    href={buildExploreUrl({
+                        metric: "ci_success",
+                        filters,
+                        role: activeRole,
+                    })}
+                    value={placeholderDeltas ? undefined : ciMetric?.value}
+                    unit={ciMetric?.unit}
+                    delta={placeholderDeltas ? undefined : ciMetric?.delta_pct}
+                    spark={ciMetric?.spark}
+                    caption="Pipeline success"
+                />
+                <MetricCard
+                    label={reworkMetric?.label ?? "PR Rework Ratio"}
+                    href={buildExploreUrl({
+                        metric: "pr_rework_ratio",
+                        filters,
+                        role: activeRole,
+                    })}
+                    value={placeholderDeltas ? undefined : reworkMetric?.value}
+                    unit={reworkMetric?.unit}
+                    delta={placeholderDeltas ? undefined : reworkMetric?.delta_pct}
+                    spark={reworkMetric?.spark}
+                    caption="PRs requiring rework"
+                />
+            </section>
+
+            {reworkThemeAllocation.length > 0 && (
+                <section className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
+                    <h2 className="font-(--font-display) text-xl">Rework by Theme</h2>
+                    <p className="mt-1 text-sm text-(--ink-muted)">
+                        Distribution of rework pressure across investment themes in the selected
+                        window.
+                    </p>
+                    <ReworkThemeBars rows={reworkThemeAllocation} />
+                </section>
+            )}
+
+            <section className="grid gap-6 lg:grid-cols-2">
+                <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-(--font-display) text-xl">
+                            Change Failure Associations
+                        </h2>
                         <Link
-                            href={withFilterParam("/", filters, activeRole)}
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-                        >
-                            {CTA_LABELS.backToCockpit}
-                        </Link>
-                    </header>
-
-                    <GlobalContextBar filters={filters} />
-                    <FilterBar view="quality" />
-
-                    <section className="grid gap-4 lg:grid-cols-3">
-                        <MetricCard
-                            label={changeFailureMetric?.label ?? "Change Failure Rate"}
                             href={buildExploreUrl({
                                 metric: "change_failure_rate",
                                 filters,
                                 role: activeRole,
                             })}
-                            value={placeholderDeltas ? undefined : changeFailureMetric?.value}
-                            unit={changeFailureMetric?.unit}
-                            delta={placeholderDeltas ? undefined : changeFailureMetric?.delta_pct}
-                            spark={changeFailureMetric?.spark}
-                            caption="Change failure rate"
-                        />
-                        <MetricCard
-                            label={ciMetric?.label ?? "CI Success Rate"}
-                            href={buildExploreUrl({
-                                metric: "ci_success",
-                                filters,
-                                role: activeRole,
-                            })}
-                            value={placeholderDeltas ? undefined : ciMetric?.value}
-                            unit={ciMetric?.unit}
-                            delta={placeholderDeltas ? undefined : ciMetric?.delta_pct}
-                            spark={ciMetric?.spark}
-                            caption="Pipeline success"
-                        />
-                        <MetricCard
-                            label={reworkMetric?.label ?? "PR Rework Ratio"}
-                            href={buildExploreUrl({
-                                metric: "pr_rework_ratio",
-                                filters,
-                                role: activeRole,
-                            })}
-                            value={placeholderDeltas ? undefined : reworkMetric?.value}
-                            unit={reworkMetric?.unit}
-                            delta={placeholderDeltas ? undefined : reworkMetric?.delta_pct}
-                            spark={reworkMetric?.spark}
-                            caption="PRs requiring rework"
-                        />
-                    </section>
-
-                    {reworkThemeAllocation.length > 0 && (
-                        <section className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                            <h2 className="font-(--font-display) text-xl">Rework by Theme</h2>
-                            <p className="mt-1 text-sm text-(--ink-muted)">
-                                Distribution of rework pressure across investment themes in the
-                                selected window.
-                            </p>
-                            <ul className="mt-4 space-y-4">
-                                {reworkThemeAllocation.map((row) => (
-                                    <li key={row.theme}>
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="font-medium">{row.label}</span>
-                                            <span className="text-xs text-(--ink-muted)">
-                                                {formatNumber(row.allocation_pct, {
-                                                    maximumFractionDigits: 1,
-                                                })}
-                                                %
-                                            </span>
-                                        </div>
-                                        <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-(--card-stroke)">
-                                            <div
-                                                className="h-full rounded-full bg-(--accent-2)"
-                                                style={{
-                                                    width: `${Math.min(100, row.allocation_pct)}%`,
-                                                }}
-                                            />
-                                        </div>
-                                        <div className="mt-1 flex gap-3 text-xs text-(--ink-muted)">
-                                            <span>
-                                                {row.prs_merged.toLocaleString()} PR
-                                                {row.prs_merged !== 1 ? "s" : ""}
-                                            </span>
-                                            <span>
-                                                {formatNumber(row.churn_loc / 1000, {
-                                                    maximumFractionDigits: 1,
-                                                })}
-                                                k churn LOC
-                                            </span>
-                                        </div>
-                                    </li>
+                            className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                        >
+                            {CTA_LABELS.openEvidence}
+                        </Link>
+                    </div>
+                    {drivers.length ? (
+                        <div className="mt-4 space-y-4">
+                            <HorizontalBarChart
+                                categories={driverChartLabels.labels}
+                                values={drivers.map((driver) => Math.abs(driver.delta_pct))}
+                                categoryTitles={driverChartLabels.titles}
+                            />
+                            <div className="space-y-2 text-sm">
+                                {drivers.map((driver) => (
+                                    <Link
+                                        key={driver.id}
+                                        href={buildExploreUrl({
+                                            api: driver.evidence_link,
+                                            filters,
+                                            role: activeRole,
+                                        })}
+                                        className="flex items-center justify-between rounded-(--radius-md) border border-(--border) bg-(--surface-raised) px-4 py-2"
+                                    >
+                                        <EntityLabel
+                                            id={driver.id}
+                                            displayName={driver.display_name}
+                                        />
+                                        <span className="text-xs text-(--ink-muted)">
+                                            {formatDelta(driver.delta_pct)}
+                                        </span>
+                                    </Link>
                                 ))}
-                            </ul>
-                        </section>
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="mt-4 text-sm text-(--ink-muted)">
+                            Association detail will appear once data is ingested.
+                        </p>
                     )}
+                </div>
 
-                    <section className="grid gap-6 lg:grid-cols-2">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                            <div className="flex items-center justify-between">
-                                <h2 className="font-(--font-display) text-xl">
-                                    Change Failure Associations
-                                </h2>
+                <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-(--font-display) text-xl">Contributors</h2>
+                        <Link
+                            href={buildExploreUrl({
+                                metric: "change_failure_rate",
+                                filters,
+                                role: activeRole,
+                            })}
+                            className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                        >
+                            {CTA_LABELS.openEvidence}
+                        </Link>
+                    </div>
+                    {contributors.length ? (
+                        <div className="mt-4 space-y-2 text-sm">
+                            {contributors.map((contributor) => (
                                 <Link
+                                    key={contributor.id}
                                     href={buildExploreUrl({
-                                        metric: "change_failure_rate",
+                                        api: contributor.evidence_link,
                                         filters,
                                         role: activeRole,
                                     })}
-                                    className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                                    className="flex items-center justify-between rounded-(--radius-md) border border-(--border) bg-(--surface-raised) px-4 py-2"
                                 >
-                                    {CTA_LABELS.openEvidence}
-                                </Link>
-                            </div>
-                            {drivers.length ? (
-                                <div className="mt-4 space-y-4">
-                                    <HorizontalBarChart
-                                        categories={driverChartLabels.labels}
-                                        values={drivers.map((driver) => Math.abs(driver.delta_pct))}
-                                        categoryTitles={driverChartLabels.titles}
+                                    <EntityLabel
+                                        id={contributor.id}
+                                        displayName={contributor.display_name}
                                     />
-                                    <div className="space-y-2 text-sm">
-                                        {drivers.map((driver) => (
-                                            <Link
-                                                key={driver.id}
-                                                href={buildExploreUrl({
-                                                    api: driver.evidence_link,
-                                                    filters,
-                                                    role: activeRole,
-                                                })}
-                                                className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
-                                            >
-                                                <EntityLabel
-                                                    id={driver.id}
-                                                    displayName={driver.display_name}
-                                                />
-                                                <span className="text-xs text-(--ink-muted)">
-                                                    {formatDelta(driver.delta_pct)}
-                                                </span>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="mt-4 text-sm text-(--ink-muted)">
-                                    Association detail will appear once data is ingested.
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                            <div className="flex items-center justify-between">
-                                <h2 className="font-(--font-display) text-xl">Contributors</h2>
-                                <Link
-                                    href={buildExploreUrl({
-                                        metric: "change_failure_rate",
-                                        filters,
-                                        role: activeRole,
-                                    })}
-                                    className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                                >
-                                    {CTA_LABELS.openEvidence}
+                                    <span className="text-xs text-(--ink-muted)">
+                                        {explain
+                                            ? formatMetricValue(contributor.value, explain.unit)
+                                            : "--"}
+                                    </span>
                                 </Link>
-                            </div>
-                            {contributors.length ? (
-                                <div className="mt-4 space-y-2 text-sm">
-                                    {contributors.map((contributor) => (
-                                        <Link
-                                            key={contributor.id}
-                                            href={buildExploreUrl({
-                                                api: contributor.evidence_link,
-                                                filters,
-                                                role: activeRole,
-                                            })}
-                                            className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
-                                        >
-                                            <EntityLabel
-                                                id={contributor.id}
-                                                displayName={contributor.display_name}
-                                            />
-                                            <span className="text-xs text-(--ink-muted)">
-                                                {explain
-                                                    ? formatMetricValue(
-                                                          contributor.value,
-                                                          explain.unit,
-                                                      )
-                                                    : "--"}
-                                            </span>
-                                        </Link>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="mt-4 text-sm text-(--ink-muted)">
-                                    Contributor detail will appear once data is ingested.
-                                </p>
-                            )}
+                            ))}
                         </div>
-                    </section>
-                </main>
-            </div>
+                    ) : (
+                        <p className="mt-4 text-sm text-(--ink-muted)">
+                            Contributor detail will appear once data is ingested.
+                        </p>
+                    )}
+                </div>
+            </section>
         </div>
     );
 }

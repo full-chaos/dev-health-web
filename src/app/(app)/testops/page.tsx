@@ -1,12 +1,9 @@
-import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
-import { BackLink } from "@/components/shared/BackLink";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
 import { TESTOPS_MEASURES } from "@/lib/testops/constants";
 import { getLatestValue, getSparkline, getDelta } from "@/lib/testops/aggregateSeries";
@@ -93,7 +90,7 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
     ]);
 
     if (!health.ok && !isTestMode) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     const pipelineTimeseries = testOpsData.pipelines.timeseries || [];
@@ -111,69 +108,52 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
     ];
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="testops" role={activeRole} />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-col gap-4">
-                        <BackLink href={withFilterParam("/", filters, activeRole)} />
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                TestOps
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">TestOps</h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Pipeline, test, and coverage operations in one durable destination.
-                            </p>
-                        </div>
-                    </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8">
+            <PageHeader
+                title="TestOps"
+                subtitle="Pipeline, test, and coverage operations in one durable destination."
+            ></PageHeader>
 
-                    <TestOpsTabs activeId="overview" filters={filters} role={activeRole} />
+            <TestOpsTabs activeId="overview" filters={filters} role={activeRole} />
 
-                    <GlobalContextBar filters={filters} />
-                    <FilterBar view="testops" />
+            <ScopeBar view="testops" />
+            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                    TestOps summary
+                </p>
+                <p className="mt-2 text-sm text-(--ink-muted)">
+                    Overview of pipeline stability, test reliability, and coverage health.
+                </p>
+            </section>
 
-                    <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                            TestOps summary
-                        </p>
-                        <p className="mt-2 text-sm text-(--ink-muted)">
-                            Overview of pipeline stability, test reliability, and coverage health.
-                        </p>
-                    </section>
+            <section className="grid gap-4 lg:grid-cols-3">
+                {measures.map(({ id, ts }) => {
+                    const def = TESTOPS_MEASURES[id];
+                    if (!def) return null;
 
-                    <section className="grid gap-4 lg:grid-cols-3">
-                        {measures.map(({ id, ts }) => {
-                            const def = TESTOPS_MEASURES[id];
-                            if (!def) return null;
+                    const value = getLatestValue(ts, id);
+                    const spark = getSparkline(ts, id);
+                    const delta = getDelta(ts, id);
 
-                            const value = getLatestValue(ts, id);
-                            const spark = getSparkline(ts, id);
-                            const delta = getDelta(ts, id);
-
-                            return (
-                                <MetricCard
-                                    key={id}
-                                    label={def.label}
-                                    value={value}
-                                    unit={
-                                        def.unit === "percentage"
-                                            ? "%"
-                                            : def.unit === "duration"
-                                              ? "m"
-                                              : ""
-                                    }
-                                    delta={delta}
-                                    deltaUnavailableLabel="Insufficient history"
-                                    inverseGood={def.goodDirection === "down"}
-                                    spark={spark}
-                                    caption={def.description}
-                                />
-                            );
-                        })}
-                    </section>
-                </main>
-            </div>
+                    return (
+                        <MetricCard
+                            key={id}
+                            label={def.label}
+                            value={value}
+                            unit={
+                                def.unit === "percentage" ? "%" : def.unit === "duration" ? "m" : ""
+                            }
+                            delta={delta}
+                            deltaUnavailableLabel="Insufficient history"
+                            inverseGood={def.goodDirection === "down"}
+                            spark={spark}
+                            caption={def.description}
+                        />
+                    );
+                })}
+            </section>
         </div>
     );
 }

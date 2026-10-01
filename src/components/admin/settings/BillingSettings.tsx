@@ -29,11 +29,11 @@ type BillingSettingsProps = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-    active: "bg-green-500/15 text-green-700",
-    past_due: "bg-yellow-500/15 text-yellow-700",
-    canceled: "bg-red-500/15 text-red-700",
-    trialing: "bg-blue-500/15 text-blue-700",
-    incomplete: "bg-zinc-500/15 text-zinc-700",
+    active: "bg-(--positive)/12 text-(--positive)",
+    past_due: "bg-(--caution)/12 text-(--caution)",
+    canceled: "bg-(--negative)/12 text-(--negative)",
+    trialing: "bg-(--info)/12 text-(--info)",
+    incomplete: "bg-(--card-stroke) text-(--ink-muted)",
 };
 
 export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
@@ -69,8 +69,8 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
     }
 
     const statusClass = hasSubscription
-        ? (STATUS_COLORS[subscription.status] ?? "bg-zinc-500/15 text-zinc-700")
-        : "bg-green-500/15 text-green-700";
+        ? (STATUS_COLORS[subscription.status] ?? "bg-(--card-stroke) text-(--ink-muted)")
+        : "bg-(--positive)/12 text-(--positive)";
 
     const statusLabel = useMemo(() => {
         if (!hasSubscription) return "Free";

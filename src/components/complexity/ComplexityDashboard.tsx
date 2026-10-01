@@ -355,7 +355,7 @@ function EvidenceCell({ url }: { url: string | null }) {
         return (
             <Link
                 href={url}
-                className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent) hover:underline"
+                className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
                 data-testid="evidence-link"
             >
                 Open evidence →

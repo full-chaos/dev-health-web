@@ -45,46 +45,56 @@ export function MetricCard({
     const sparkLabels = spark?.map((point) => point.ts) ?? [];
     // Only a real destination earns the clickable affordance + "Open evidence" cue.
     const captionText = caption ?? (href ? CTA_LABELS.openEvidence : null);
-    const cardClassName = `group rounded-3xl border border-(--card-stroke) bg-card p-4 ${
+    const hasSpark = sparkValues.filter((v) => v !== null).length > 1;
+    const hasValue = value !== undefined && value !== null;
+    // Concept `.metric` (theme.css min-height 124, style.css padding 18px 20px,
+    // theme.css radius 10). Tiles stay in each page's grid.
+    const cardClassName = `group relative min-h-31 min-w-0 rounded-(--radius-md) border border-(--card-stroke) bg-card px-5 py-4.5 ${
         href ? "transition hover:-translate-y-1 hover:shadow-lg" : ""
     } ${className ?? ""}`;
 
     const body = (
         <>
-            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                <div className="flex items-center">
-                    <span>{label}</span>
-                    {lineageMetricId && <LineagePopover metricId={lineageMetricId} />}
-                </div>
+            {/* Concept `.metric-title`; label-caps is the design-system rule for uppercase descriptors. */}
+            <div className="flex items-center text-label-caps uppercase text-(--ink-muted)">
+                <span>{label}</span>
+                {lineageMetricId && <LineagePopover metricId={lineageMetricId} />}
+            </div>
+            {/* Concept `.metric-value` (theme.css 28px, tabular figures, no gradient). */}
+            <p
+                className={`mt-2.5 text-[1.75rem] font-semibold leading-tight tabular-nums ${
+                    hasValue ? "text-foreground" : "text-(--ink-muted)"
+                }`}
+            >
+                {hasValue ? formatMetricValue(value, unit ?? "") : "--"}
+            </p>
+            {/* Concept `.metric-meta`: `delta · note` as running text; the dot sits only between the two. */}
+            <div className={`mt-2 text-xs text-(--ink-muted) ${hasSpark ? "max-w-[55%]" : ""}`}>
                 <MetricDelta
                     value={delta}
                     unavailableLabel={deltaUnavailableLabel}
                     inverseGood={inverseGood}
+                    leadingDot={false}
                 />
+                {captionText ? (
+                    <>
+                        <span aria-hidden="true"> · </span>
+                        <span>{captionText}</span>
+                    </>
+                ) : null}
             </div>
-            <div className="mt-3 flex items-center justify-between gap-4">
-                <div>
-                    <p className="text-2xl font-semibold metric-hero">
-                        {value === undefined || value === null
-                            ? "--"
-                            : formatMetricValue(value, unit ?? "")}
-                    </p>
-                    {captionText && (
-                        <p className="mt-2 text-xs text-(--ink-muted)">{captionText}</p>
-                    )}
-                </div>
-                <div className="h-16 w-full">
-                    {sparkValues.filter((v) => v !== null).length > 1 ? (
-                        <SparklineChart data={sparkValues} categories={sparkLabels} height={64} />
-                    ) : (
-                        <div
-                            title="Not enough data points to plot a trend yet"
-                            className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) px-2 text-center text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)"
-                        >
-                            No trend yet
-                        </div>
-                    )}
-                </div>
+            {/* Concept `.metric .spark` (87x31, bottom-right). End dot, weight and tone: CHAOS-7602. */}
+            <div className="absolute bottom-6.5 right-4 h-7.75 w-21.75">
+                {hasSpark ? (
+                    <SparklineChart data={sparkValues} categories={sparkLabels} height={31} />
+                ) : (
+                    <span
+                        title="Not enough data points to plot a trend yet"
+                        className="flex h-full items-center justify-end text-label-caps uppercase text-(--ink-muted)"
+                    >
+                        No trend yet
+                    </span>
+                )}
             </div>
         </>
     );
@@ -94,10 +104,10 @@ export function MetricCard({
     }
 
     return (
-        <div className={`relative ${cardClassName}`}>
+        <div className={cardClassName}>
             <Link
                 href={href}
-                className="absolute inset-0 z-10 rounded-3xl"
+                className="absolute inset-0 z-10 rounded-(--radius-md)"
                 aria-label={`${label}: ${captionText}`}
             >
                 <span className="sr-only" aria-hidden="true">

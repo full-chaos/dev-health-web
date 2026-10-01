@@ -4,19 +4,17 @@ import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { HeatmapPanel } from "@/components/charts/HeatmapPanel";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { PersonRangeBar } from "@/components/people/PersonRangeBar";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { checkApiHealth } from "@/lib/api/system";
 import { getHeatmap } from "@/lib/api/visuals";
 import { getPersonDrilldown, getPersonMetric, getPersonSummary } from "@/lib/api/people";
-import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { decodeFilter } from "@/lib/filters/encode";
 import { formatNumber } from "@/lib/formatters";
 import { getMetricLabel } from "@/lib/metrics/catalog";
-import { backToArea, CTA_LABELS } from "@/lib/design/cta";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { getRangeParams, withRangeParams } from "@/lib/people/query";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
+import { PageHeader } from "@/components/shell/PageHeader";
 
 const getItemTitle = (item: Record<string, unknown>, index: number) => {
     const title =
@@ -84,8 +82,6 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
     const { person_id: personId, metric } = await params;
     const rawParams = (await searchParams) ?? {};
     const { range_days, compare_days } = getRangeParams(rawParams);
-    const encodedFilter = Array.isArray(rawParams.f) ? rawParams.f[0] : rawParams.f;
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : defaultMetricFilter;
 
     const evidenceParam = Array.isArray(rawParams.evidence)
         ? rawParams.evidence[0]
@@ -197,320 +193,299 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
         });
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="people" />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-wrap items-start justify-between gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Individual metric
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">{label}</h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                {person?.display_name ?? "Individual"} • {range_days}d window
-                            </p>
-                            <div className="mt-3 flex flex-wrap gap-2 text-xs text-(--ink-muted)">
-                                {(person?.identities ?? []).map((identity) => (
-                                    <span
-                                        key={`${personId}-${identity.provider}-${identity.handle}`}
-                                        className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
-                                    >
-                                        {identity.provider}: {identity.handle}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            <Link
-                                href={withRangeParams(
-                                    `/people/${personId}`,
-                                    range_days,
-                                    compare_days,
-                                )}
-                                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-                            >
-                                {backToArea("Individual")}
-                            </Link>
-                        </div>
-                    </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            <PageHeader
+                title={label}
+                subtitle={
+                    <>
+                        {person?.display_name ?? "Individual"} • {range_days}d window
+                    </>
+                }
+                back={{
+                    href: withRangeParams(`/people/${personId}`, range_days, compare_days),
+                    area: "Individual",
+                }}
+            >
+                <div className="flex flex-wrap gap-2 text-xs text-(--ink-muted)">
+                    {(person?.identities ?? []).map((identity) => (
+                        <span
+                            key={`${personId}-${identity.provider}-${identity.handle}`}
+                            className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
+                        >
+                            {identity.provider}: {identity.handle}
+                        </span>
+                    ))}
+                </div>
+            </PageHeader>
 
-                    {!health.ok && (
-                        <div className="rounded-3xl border border-dashed border-amber-400/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
-                            Data service unavailable. Evidence will refresh once the API is back.
+            {!health.ok && (
+                <div className="rounded-3xl border border-dashed border-amber-400/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
+                    Data service unavailable. Evidence will refresh once the API is back.
+                </div>
+            )}
+
+            <PersonRangeBar rangeDays={range_days} />
+
+            <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+                    <h2 className="font-(--font-display) text-xl">Definition</h2>
+                    <p className="mt-2 text-sm text-(--ink-muted)">
+                        {definitionSummary ??
+                            "Definition will appear when the indicator library is available."}
+                    </p>
+                    {interpretation && (
+                        <p className="mt-3 text-sm text-(--ink-muted)">
+                            How to interpret: {interpretation}
+                        </p>
+                    )}
+                    {definitionEntries.length > 0 && (
+                        <div className="mt-4 grid gap-2 text-xs text-(--ink-muted)">
+                            {definitionEntries.map(([key, value]) => (
+                                <div
+                                    key={key}
+                                    className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-card px-3 py-2"
+                                >
+                                    <span className="uppercase tracking-[0.2em]">
+                                        {key.replace(/[_-]+/g, " ")}
+                                    </span>
+                                    <span className="font-semibold text-foreground">
+                                        {Array.isArray(value) ? value.join(", ") : String(value)}
+                                    </span>
+                                </div>
+                            ))}
                         </div>
                     )}
+                </div>
 
-                    <PersonRangeBar rangeDays={range_days} />
+                <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-(--font-display) text-xl">Timeseries</h2>
+                        <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                            Daily
+                        </span>
+                    </div>
+                    <div className="mt-4">
+                        {timeseries.length ? (
+                            <TimeseriesChart data={timeseries} height={240} />
+                        ) : (
+                            <div className="flex h-60 items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
+                                Timeseries data unavailable.
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </section>
 
-                    <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
-                            <h2 className="font-(--font-display) text-xl">Definition</h2>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                {definitionSummary ??
-                                    "Definition will appear when the indicator library is available."}
-                            </p>
-                            {interpretation && (
-                                <p className="mt-3 text-sm text-(--ink-muted)">
-                                    How to interpret: {interpretation}
-                                </p>
-                            )}
-                            {definitionEntries.length > 0 && (
-                                <div className="mt-4 grid gap-2 text-xs text-(--ink-muted)">
-                                    {definitionEntries.map(([key, value]) => (
-                                        <div
-                                            key={key}
-                                            className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-card px-3 py-2"
-                                        >
-                                            <span className="uppercase tracking-[0.2em]">
-                                                {key.replace(/[_-]+/g, " ")}
-                                            </span>
-                                            <span className="font-semibold text-foreground">
-                                                {Array.isArray(value)
-                                                    ? value.join(", ")
-                                                    : String(value)}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </div>
+            <section>
+                <HeatmapPanel
+                    title="Active hours distribution"
+                    description="See when work concentrates across weekdays and hours."
+                    request={{
+                        type: "individual",
+                        metric: "active_hours",
+                        scope_type: "developer",
+                        scope_id: personId,
+                        range_days,
+                    }}
+                    initialData={activeHoursHeatmap}
+                    emptyState="Active hours heatmap unavailable."
+                    evidenceTitle="Commit evidence"
+                />
+            </section>
 
-                        <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
+            <section className="grid gap-6 lg:grid-cols-3">
+                {breakdownGroups.map((group) => {
+                    // Repo breakdown labels are entity ids — route through the A7
+                    // resolver so a raw repo id degrades to a stable short token
+                    // (with the full id in the axis tooltip). Work-type / stage
+                    // labels are plain categories and pass through untouched.
+                    const chartLabels = group.isEntity
+                        ? resolveEntityLabels(
+                              group.items.map((item) => item.label),
+                              {
+                                  unresolvedFallback: "Unresolved",
+                              },
+                          )
+                        : null;
+                    return (
+                        <div
+                            key={group.id}
+                            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                        >
                             <div className="flex items-center justify-between">
-                                <h2 className="font-(--font-display) text-xl">Timeseries</h2>
+                                <h2 className="font-(--font-display) text-xl">{group.label}</h2>
                                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                    Daily
+                                    Breakdown
                                 </span>
                             </div>
                             <div className="mt-4">
-                                {timeseries.length ? (
-                                    <TimeseriesChart data={timeseries} height={240} />
+                                {group.items.length ? (
+                                    <HorizontalBarChart
+                                        categories={
+                                            chartLabels
+                                                ? chartLabels.labels
+                                                : group.items.map((item) => item.label)
+                                        }
+                                        values={group.items.map((item) => item.value)}
+                                        categoryTitles={
+                                            chartLabels ? chartLabels.titles : undefined
+                                        }
+                                    />
                                 ) : (
-                                    <div className="flex h-60 items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
-                                        Timeseries data unavailable.
+                                    <div className="flex h-56 items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
+                                        No breakdown data.
                                     </div>
                                 )}
                             </div>
-                        </div>
-                    </section>
-
-                    <section>
-                        <HeatmapPanel
-                            title="Active hours distribution"
-                            description="See when work concentrates across weekdays and hours."
-                            request={{
-                                type: "individual",
-                                metric: "active_hours",
-                                scope_type: "developer",
-                                scope_id: personId,
-                                range_days,
-                            }}
-                            initialData={activeHoursHeatmap}
-                            emptyState="Active hours heatmap unavailable."
-                            evidenceTitle="Commit evidence"
-                        />
-                    </section>
-
-                    <section className="grid gap-6 lg:grid-cols-3">
-                        {breakdownGroups.map((group) => {
-                            // Repo breakdown labels are entity ids — route through the A7
-                            // resolver so a raw repo id degrades to a stable short token
-                            // (with the full id in the axis tooltip). Work-type / stage
-                            // labels are plain categories and pass through untouched.
-                            const chartLabels = group.isEntity
-                                ? resolveEntityLabels(
-                                      group.items.map((item) => item.label),
-                                      {
-                                          unresolvedFallback: "Unresolved",
-                                      },
-                                  )
-                                : null;
-                            return (
-                                <div
-                                    key={group.id}
-                                    className="rounded-3xl border border-(--card-stroke) bg-card p-5"
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <h2 className="font-(--font-display) text-xl">
-                                            {group.label}
-                                        </h2>
-                                        <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                            Breakdown
+                            <div className="mt-4 space-y-2 text-sm">
+                                {group.items.map((item) => (
+                                    <div
+                                        key={`${group.id}-${item.label ?? "unknown"}-${item.value}`}
+                                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
+                                    >
+                                        {group.isEntity ? (
+                                            <EntityLabel id={item.label} />
+                                        ) : (
+                                            <span>{item.label}</span>
+                                        )}
+                                        <span className="text-xs text-(--ink-muted)">
+                                            {formatNumber(item.value)}
                                         </span>
                                     </div>
-                                    <div className="mt-4">
-                                        {group.items.length ? (
-                                            <HorizontalBarChart
-                                                categories={
-                                                    chartLabels
-                                                        ? chartLabels.labels
-                                                        : group.items.map((item) => item.label)
-                                                }
-                                                values={group.items.map((item) => item.value)}
-                                                categoryTitles={
-                                                    chartLabels ? chartLabels.titles : undefined
-                                                }
-                                            />
-                                        ) : (
-                                            <div className="flex h-56 items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
-                                                No breakdown data.
-                                            </div>
+                                ))}
+                            </div>
+                        </div>
+                    );
+                })}
+            </section>
+
+            <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+                <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-(--font-display) text-xl">Associations</h2>
+                        <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                            Evidence linked
+                        </span>
+                    </div>
+                    <div className="mt-4 space-y-3 text-sm">
+                        {drivers.length ? (
+                            drivers.map((driver) => {
+                                const evidence = getEvidenceTypeFromLink(driver.link);
+                                const href = evidence ? evidenceHref(evidence) : null;
+                                return (
+                                    <div
+                                        key={`${driver.text}-${driver.link}`}
+                                        className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
+                                    >
+                                        <p className="text-sm text-foreground">{driver.text}</p>
+                                        {href && (
+                                            <Link
+                                                href={href}
+                                                className="mt-2 inline-flex text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                                            >
+                                                {CTA_LABELS.openEvidence}
+                                            </Link>
                                         )}
                                     </div>
-                                    <div className="mt-4 space-y-2 text-sm">
-                                        {group.items.map((item) => (
-                                            <div
-                                                key={`${group.id}-${item.label ?? "unknown"}-${item.value}`}
-                                                className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
-                                            >
-                                                {group.isEntity ? (
-                                                    <EntityLabel id={item.label} />
-                                                ) : (
-                                                    <span>{item.label}</span>
-                                                )}
-                                                <span className="text-xs text-(--ink-muted)">
-                                                    {formatNumber(item.value)}
-                                                </span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </section>
+                                );
+                            })
+                        ) : (
+                            <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
+                                Association statements will appear once data is ingested.
+                            </p>
+                        )}
+                    </div>
+                </div>
 
-                    <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                            <div className="flex items-center justify-between">
-                                <h2 className="font-(--font-display) text-xl">Associations</h2>
-                                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                    Evidence linked
-                                </span>
-                            </div>
-                            <div className="mt-4 space-y-3 text-sm">
-                                {drivers.length ? (
-                                    drivers.map((driver) => {
-                                        const evidence = getEvidenceTypeFromLink(driver.link);
-                                        const href = evidence ? evidenceHref(evidence) : null;
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-(--font-display) text-xl">{CTA_LABELS.evidence}</h2>
+                        <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                            Drilldown
+                        </span>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em]">
+                        <Link
+                            href={evidenceHref("prs")}
+                            className={`rounded-full border px-3 py-2 ${
+                                evidenceType === "prs"
+                                    ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                                    : "border-(--card-stroke) text-(--ink-muted)"
+                            }`}
+                        >
+                            {CTA_LABELS.pullRequests}
+                        </Link>
+                        <Link
+                            href={evidenceHref("issues")}
+                            className={`rounded-full border px-3 py-2 ${
+                                evidenceType === "issues"
+                                    ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                                    : "border-(--card-stroke) text-(--ink-muted)"
+                            }`}
+                        >
+                            {CTA_LABELS.issues}
+                        </Link>
+                    </div>
+                    {evidenceType && (
+                        <div className="mt-4 overflow-auto text-xs">
+                            <table className="min-w-full border-collapse">
+                                <thead className="text-left text-(--ink-muted)">
+                                    <tr>
+                                        <th className="border-b border-(--card-stroke) pb-2">
+                                            Item
+                                        </th>
+                                        <th className="border-b border-(--card-stroke) pb-2">
+                                            Details
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {(drilldown?.items ?? []).map((item, index) => {
+                                        const fallbackHref = evidenceHref(evidenceType);
+                                        const href = getItemHref(item, fallbackHref);
+                                        const itemKey = JSON.stringify(item);
                                         return (
-                                            <div
-                                                key={`${driver.text}-${driver.link}`}
-                                                className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
+                                            <tr
+                                                key={itemKey}
+                                                className="border-b border-(--card-stroke)"
                                             >
-                                                <p className="text-sm text-foreground">
-                                                    {driver.text}
-                                                </p>
-                                                {href && (
-                                                    <Link
+                                                <td className="py-2 pr-4 font-medium">
+                                                    <a
                                                         href={href}
-                                                        className="mt-2 inline-flex text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                                                        className="block text-foreground"
                                                     >
-                                                        {CTA_LABELS.openEvidence}
-                                                    </Link>
-                                                )}
-                                            </div>
-                                        );
-                                    })
-                                ) : (
-                                    <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
-                                        Association statements will appear once data is ingested.
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-                            <div className="flex items-center justify-between">
-                                <h2 className="font-(--font-display) text-xl">
-                                    {CTA_LABELS.evidence}
-                                </h2>
-                                <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                    Drilldown
-                                </span>
-                            </div>
-                            <div className="mt-4 flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em]">
-                                <Link
-                                    href={evidenceHref("prs")}
-                                    className={`rounded-full border px-3 py-2 ${
-                                        evidenceType === "prs"
-                                            ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                                            : "border-(--card-stroke) text-(--ink-muted)"
-                                    }`}
-                                >
-                                    {CTA_LABELS.pullRequests}
-                                </Link>
-                                <Link
-                                    href={evidenceHref("issues")}
-                                    className={`rounded-full border px-3 py-2 ${
-                                        evidenceType === "issues"
-                                            ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                                            : "border-(--card-stroke) text-(--ink-muted)"
-                                    }`}
-                                >
-                                    {CTA_LABELS.issues}
-                                </Link>
-                            </div>
-                            {evidenceType && (
-                                <div className="mt-4 overflow-auto text-xs">
-                                    <table className="min-w-full border-collapse">
-                                        <thead className="text-left text-(--ink-muted)">
-                                            <tr>
-                                                <th className="border-b border-(--card-stroke) pb-2">
-                                                    Item
-                                                </th>
-                                                <th className="border-b border-(--card-stroke) pb-2">
-                                                    Details
-                                                </th>
+                                                        <EntityLabel
+                                                            variant="text"
+                                                            id={getItemTitle(item, index)}
+                                                        />
+                                                    </a>
+                                                </td>
+                                                <td className="py-2 text-(--ink-muted)">
+                                                    <a href={href} className="block">
+                                                        {JSON.stringify(item)}
+                                                    </a>
+                                                </td>
                                             </tr>
-                                        </thead>
-                                        <tbody>
-                                            {(drilldown?.items ?? []).map((item, index) => {
-                                                const fallbackHref = evidenceHref(evidenceType);
-                                                const href = getItemHref(item, fallbackHref);
-                                                const itemKey = JSON.stringify(item);
-                                                return (
-                                                    <tr
-                                                        key={itemKey}
-                                                        className="border-b border-(--card-stroke)"
-                                                    >
-                                                        <td className="py-2 pr-4 font-medium">
-                                                            <a
-                                                                href={href}
-                                                                className="block text-foreground"
-                                                            >
-                                                                <EntityLabel
-                                                                    variant="text"
-                                                                    id={getItemTitle(item, index)}
-                                                                />
-                                                            </a>
-                                                        </td>
-                                                        <td className="py-2 text-(--ink-muted)">
-                                                            <a href={href} className="block">
-                                                                {JSON.stringify(item)}
-                                                            </a>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                    {!drilldown?.items?.length && (
-                                        <p className="mt-3 text-sm text-(--ink-muted)">
-                                            Evidence rows will appear once data is ingested.
-                                        </p>
-                                    )}
-                                </div>
-                            )}
-                            {!evidenceType && (
-                                <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
-                                    Choose PRs or Issues to review evidence.
-                                </div>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                            {!drilldown?.items?.length && (
+                                <p className="mt-3 text-sm text-(--ink-muted)">
+                                    Evidence rows will appear once data is ingested.
+                                </p>
                             )}
                         </div>
-                    </section>
-                </main>
-            </div>
+                    )}
+                    {!evidenceType && (
+                        <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
+                            Choose PRs or Issues to review evidence.
+                        </div>
+                    )}
+                </div>
+            </section>
         </div>
     );
 }

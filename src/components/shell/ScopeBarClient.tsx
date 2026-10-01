@@ -29,11 +29,16 @@ export type ScopeBarClientProps = Pick<
     origin?: string | null;
     /** Organization name. Defaults to the shell's active organization. */
     orgName?: string;
+    /**
+     * `false` for a bar with no page filters: no default `f` is written, and
+     * with no `f` in the URL the scope is the organization, as the page reads it.
+     */
+    writeDefaultFilter?: boolean;
 };
 
 const LABEL_CLASS = "text-label-caps font-semibold uppercase text-(--text-muted)";
 const SEPARATOR = (
-    <span aria-hidden="true" className="text-(--text-muted)/60">
+    <span aria-hidden="true" className="text-(--text-muted)">
         ·
     </span>
 );
@@ -71,8 +76,10 @@ export function ScopeBarClient({
     resolvedScopeLock,
     origin,
     orgName,
+    writeDefaultFilter,
 }: ScopeBarClientProps) {
     const {
+        allowAdvanced,
         artifacts,
         barRef,
         copyFallbackUrl,
@@ -84,6 +91,7 @@ export function ScopeBarClient({
         issueType,
         openMenu,
         options,
+        peopleQuery,
         repos,
         resetFilters,
         roles,
@@ -94,9 +102,16 @@ export function ScopeBarClient({
         setWindow,
         teamIds,
         updateFilters,
+        updatePeopleQuery,
         visibility,
         workCategory,
-    } = useScopeBarState({ view, tab, resolvedVisibility, resolvedScopeLock });
+    } = useScopeBarState({
+        view,
+        tab,
+        resolvedVisibility,
+        resolvedScopeLock,
+        writeDefaultFilter,
+    });
 
     const organization = useShellOrganization();
     const orgLabel = orgName ?? organization?.name ?? ORG_FALLBACK;
@@ -144,8 +159,71 @@ export function ScopeBarClient({
             ? `${CTA_LABELS.filters}, ${activeFilterCount} active`
             : CTA_LABELS.filters;
 
+    // The People view has no filter drawer (as its filter bar had no panel): it
+    // has the person search in the row.
     const hasDrawerFilters = Boolean(
-        visibility.developer || visibility.workType || visibility.flowStage,
+        allowAdvanced && (visibility.developer || visibility.workType || visibility.flowStage),
+    );
+
+    // The page filters with a list of options. They are in the drawer; a view
+    // with no drawer (People) keeps them in the row, where its filter bar had them.
+    const pageFilterMenus = (
+        <>
+            {visibility.developer ? (
+                <QuickFilterMenu
+                    active={developers}
+                    emptyLabel="All"
+                    items={options.developers}
+                    label="Developer"
+                    menuKey="developer"
+                    onChange={(next) =>
+                        updateFilters({
+                            ...filters,
+                            who: { ...filters.who, developers: next },
+                        })
+                    }
+                    openMenu={openMenu}
+                    setOpenMenu={setOpenMenu}
+                    toggleValue={toggleValue}
+                />
+            ) : null}
+            {visibility.workType ? (
+                <QuickFilterMenu
+                    active={workCategory}
+                    emptyLabel="All"
+                    items={options.work_category}
+                    label="Work"
+                    menuKey="work"
+                    onChange={(next) =>
+                        updateFilters({
+                            ...filters,
+                            why: { ...filters.why, work_category: next },
+                        })
+                    }
+                    openMenu={openMenu}
+                    setOpenMenu={setOpenMenu}
+                    toggleValue={toggleValue}
+                />
+            ) : null}
+            {visibility.flowStage ? (
+                <QuickFilterMenu
+                    active={flowStage}
+                    emptyLabel="All"
+                    items={options.flow_stage}
+                    label="Flow"
+                    menuKey="flow"
+                    onChange={(next) =>
+                        updateFilters({
+                            ...filters,
+                            how: { ...filters.how, flow_stage: next },
+                        })
+                    }
+                    openMenu={openMenu}
+                    setOpenMenu={setOpenMenu}
+                    toggleValue={toggleValue}
+                />
+            ) : null}
+        </>
     );
 
     return (
@@ -245,6 +323,8 @@ export function ScopeBarClient({
                     </div>
                 </div>
 
+                {!hasDrawerFilters ? pageFilterMenus : null}
+
                 {origin ? (
                     <div className="flex items-center gap-2 text-xs text-(--text-secondary)">
                         <span className={LABEL_CLASS}>Origin</span>
@@ -253,6 +333,17 @@ export function ScopeBarClient({
                 ) : null}
 
                 <div className="ml-auto flex flex-wrap items-center gap-2">
+                    {view === "people" ? (
+                        <label className="flex items-center gap-2 text-xs">
+                            <span className={LABEL_CLASS}>Search</span>
+                            <input
+                                value={peopleQuery}
+                                onChange={(event) => updatePeopleQuery(event.target.value)}
+                                placeholder="Name or handle"
+                                className="w-full rounded-(--radius-pill) border border-(--border) bg-(--surface-raised) px-4 py-2 text-xs text-(--text-primary) sm:w-56"
+                            />
+                        </label>
+                    ) : null}
                     {hasDrawerFilters ? (
                         <button
                             type="button"
@@ -379,62 +470,7 @@ export function ScopeBarClient({
                     onClose={closeFilters}
                     onEscape={handleFiltersEscape}
                 >
-                    <div className="flex flex-wrap items-center gap-3">
-                        {visibility.developer ? (
-                            <QuickFilterMenu
-                                active={developers}
-                                emptyLabel="All"
-                                items={options.developers}
-                                label="Developer"
-                                menuKey="developer"
-                                onChange={(next) =>
-                                    updateFilters({
-                                        ...filters,
-                                        who: { ...filters.who, developers: next },
-                                    })
-                                }
-                                openMenu={openMenu}
-                                setOpenMenu={setOpenMenu}
-                                toggleValue={toggleValue}
-                            />
-                        ) : null}
-                        {visibility.workType ? (
-                            <QuickFilterMenu
-                                active={workCategory}
-                                emptyLabel="All"
-                                items={options.work_category}
-                                label="Work"
-                                menuKey="work"
-                                onChange={(next) =>
-                                    updateFilters({
-                                        ...filters,
-                                        why: { ...filters.why, work_category: next },
-                                    })
-                                }
-                                openMenu={openMenu}
-                                setOpenMenu={setOpenMenu}
-                                toggleValue={toggleValue}
-                            />
-                        ) : null}
-                        {visibility.flowStage ? (
-                            <QuickFilterMenu
-                                active={flowStage}
-                                emptyLabel="All"
-                                items={options.flow_stage}
-                                label="Flow"
-                                menuKey="flow"
-                                onChange={(next) =>
-                                    updateFilters({
-                                        ...filters,
-                                        how: { ...filters.how, flow_stage: next },
-                                    })
-                                }
-                                openMenu={openMenu}
-                                setOpenMenu={setOpenMenu}
-                                toggleValue={toggleValue}
-                            />
-                        ) : null}
-                    </div>
+                    <div className="flex flex-wrap items-center gap-3">{pageFilterMenus}</div>
                     <AdvancedFiltersPanel
                         artifacts={artifacts}
                         blocked={blocked}
