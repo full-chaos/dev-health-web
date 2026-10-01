@@ -119,18 +119,6 @@ jobs:
             - name: Install web dependencies
               run: pnpm install --frozen-lockfile
 
-            - name: Setup Python
-              uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-              with:
-                  python-version: "3.14"
-                  cache: pip
-
-            - name: Install dev-health-ops dependencies
-              run: |
-                  python -m pip install --upgrade pip
-                  pip install -r requirements.txt
-              working-directory: dev-health-ops
-
             - name: Setup Go
               uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
               with:
@@ -193,59 +181,29 @@ jobs:
                     --with-metrics \
                     --with-work-graph
 
-            - name: Start dev-health-ops API
-              env:
-                  DATABASE_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
-                  CLICKHOUSE_URI: clickhouse://ch:ch@localhost:8123/default
-                  POSTGRES_URI: postgresql+asyncpg://postgres:postgres@localhost:5432/test_db
-                  REDIS_URL: redis://localhost:6379/0
-                  CELERY_BROKER_URL: redis://localhost:6379/0
-                  CELERY_RESULT_BACKEND: redis://localhost:6379/0
-                  CORS_ALLOWED_ORIGINS: "http://127.0.0.1:3002,http://localhost:3002,http://127.0.0.1:8000,http://127.0.0.1:8099"
-                  # Ops CHAOS-1553/1554 fail-closed rate-limit posture refuses to start
-                  # without REDIS_URL unless ENVIRONMENT=development. Live-e2e provides
-                  # a local Redis service for rate limiting and Celery endpoints.
-                  ENVIRONMENT: development
-                  # Backend auth service requires a JWT signing secret; derivation
-                  # from SETTINGS_ENCRYPTION_KEY was removed. Without this every
-                  # /api/v1/auth/login responds 500 (the AuthService singleton
-                  # fails to initialize), which is exactly what masked the
-                  # onboarding-ui regression for weeks.
-                  JWT_SECRET_KEY: live-e2e-test-secret-do-not-use-in-production
-                  SETTINGS_ENCRYPTION_KEY: live-e2e-test-settings-key-do-not-use
-                  # Ops default is 3/hour per IP (rate_limit.py: AUTH_REGISTER_LIMIT
-                  # falls back to "3/hour" when unset). This suite is
-                  # self-bootstrapping: nearly every describe group registers its own
-                  # user, and in CI every request arrives from one IP -- so past the
-                  # third registration the rest of the run is talking to a throttle
-                  # instead of the API, and the tests that depend on that identity
-                  # skip or fail for reasons unrelated to what they assert.
-                  #
-                  # Raised HERE only. The production default is untouched: it lives in
-                  # the ops fallback, not in this file, so nothing about this line
-                  # changes deployed behaviour.
-                  AUTH_REGISTER_LIMIT: 1000/hour
+            - name: Generate the query-api envelope JWKS (job-local, nothing stored)
+              # CHAOS-7554: since ops CHAOS-6290 (edge users store) query-api refuses to start with
+              # GO_API_EDGE_JWT_SECRET set unless its /query route is configured, and that route needs
+              # GO_API_REGISTRY_POSTGRES_URI plus the envelope trio (JWKS path, issuer, audience). Same
+              # recipe as ops ci/lib/go_api_prove_e2e.sh: an ed25519 key pair is generated here, the PUBLIC
+              # half is written as the JWKS the verifier reads, and the private half is deleted at once:
+              # nothing in this job signs an envelope, so no key outlives this step and nothing is echoed.
               run: |
-                  nohup python -m dev_health_ops.cli \
-                    --db "$DATABASE_URI" \
-                    --analytics-db "$CLICKHOUSE_URI" \
-                    api --host 127.0.0.1 --port 8000 >/tmp/dev-health-ops-api.log 2>&1 &
-                  echo $! >/tmp/dev-health-ops-api.pid
-                  for i in {1..60}; do
-                    if curl -fsS http://127.0.0.1:8000/health >/dev/null; then
-                      exit 0
-                    fi
-                    sleep 2
-                  done
-                  echo "API failed health check startup window"
-                  cat /tmp/dev-health-ops-api.log || true
-                  exit 1
-              working-directory: dev-health-ops
+                  set -euo pipefail
+                  umask 077
+                  dir="${RUNNER_TEMP}/live-e2e-envelope"
+                  mkdir -p "${dir}"
+                  openssl genpkey -algorithm ed25519 -out "${dir}/envelope.pem"
+                  x="$(openssl pkey -in "${dir}/envelope.pem" -pubout -outform DER | tail -c 32 | openssl base64 -A | tr '+/' '-_' | tr -d '=')"
+                  rm -f "${dir}/envelope.pem"
+                  printf '{"keys":[{"kty":"OKP","crv":"Ed25519","kid":"live-e2e","use":"sig","alg":"EdDSA","x":"%s"}]}\n' "${x}" > "${dir}/jwks.json"
+                  test "$(openssl base64 -d -A <<<"$(printf '%s' "${x}" | tr '_-' '/+')==" | wc -c)" -ge 32
+                  echo "LIVE_E2E_JWKS_PATH=${dir}/jwks.json" >> "${GITHUB_ENV}"
 
             - name: Start dev-health-ops go-api and query-api
               # CHAOS-7001: mirror what prod's Ingress and bigboy's traefik plane-split router
               # do -- routes ci/go_served_paths.tsv marks go-api/query-api-owned are served by
-              # these two dho subcommands, not by the Python api above. Bare processes, same
+              # these two dho subcommands (CHAOS-7523: there is no Python api any more; the catch-all is go-api). Bare processes, same
               # style as "Start dev-health-ops API" -- no docker network needed since the
               # traefik router below reaches all three over 127.0.0.1 (--network host).
               env:
@@ -255,21 +213,31 @@ jobs:
                   # -- NOT the 8123 HTTP port Python's CLICKHOUSE_URI above uses.
                   CLICKHOUSE_URI: clickhouse://ch:ch@localhost:9000/default
                   API_CLICKHOUSE_URI: clickhouse://ch:ch@localhost:9000/default
-                  # Same value as the Python api's JWT_SECRET_KEY above: both go-api (its own
+                  # The edge JWT secret: both go-api (its own
                   # edgetoken check) and query-api (GO_API_EDGE_JWT_SECRET) must verify the
-                  # SAME end-user JWT the Python api issues.
+                  # SAME end-user JWT go-api issues.
                   JWT_SECRET_KEY: live-e2e-test-secret-do-not-use-in-production
                   GO_API_EDGE_JWT_SECRET: live-e2e-test-secret-do-not-use-in-production
-                  # Same value as the Python api's SETTINGS_ENCRYPTION_KEY above: go-api's
+                  # The settings encryption key: go-api's
                   # credentials routes seal/open the SAME encrypted column
                   # (integration_credentials.credentials_encrypted) Python writes, with the same
                   # cipher (internal/api/credentials/connection.go requires this explicitly --
                   # confirmed via the failing run's log: "provider credential is invalid" on save,
                   # unrelated to the request payload).
                   SETTINGS_ENCRYPTION_KEY: live-e2e-test-settings-key-do-not-use
-                  # Same reason the Python api step sets it: the fail-closed rate-limit posture
+                  # The fail-closed rate-limit posture
                   # otherwise refuses to start without a shared VALKEY_URI.
                   ENVIRONMENT: development
+                  # The suite registers a user per describe group from one IP; the default register throttle
+                  # (3/hour, ops internal/api/session AUTH_REGISTER_LIMIT) would throttle the rest of the run.
+                  # Raised HERE only (CHAOS-7523: go-api now serves register; the Python step that set it is gone).
+                  AUTH_REGISTER_LIMIT: 1000/hour
+                  # CHAOS-7554: the /query route's own configuration (see the JWKS step above): registry
+                  # Postgres in the pgx form, and the envelope trio the route requires.
+                  GO_API_REGISTRY_POSTGRES_URI: postgres://postgres:postgres@localhost:5432/test_db?sslmode=disable
+                  GO_API_ENVELOPE_JWKS_PATH: ${{ env.LIVE_E2E_JWKS_PATH }}
+                  GO_API_ENVELOPE_ISSUER: dev-health-ops-edge
+                  GO_API_ENVELOPE_AUDIENCE: query-api
                   CORS_ALLOWED_ORIGINS: "http://127.0.0.1:3002,http://localhost:3002,http://127.0.0.1:8000,http://127.0.0.1:8099"
                   # query-api's per-route Go-plane switches -- plain in-memory flags flipped once
                   # at boot (never Postgres, never the routeswitch ledger). Copied verbatim from
@@ -326,25 +294,21 @@ jobs:
               working-directory: dev-health-ops
 
             - name: Generate and start live-e2e plane router (traefik)
-              # CHAOS-7001: the piece that actually makes the plane split real -- without a
-              # router, PLAYWRIGHT_LIVE_BACKEND_URL still points straight at the Python api and
-              # every go-api/query-api-owned request 500s exactly as it does on main today.
+              # CHAOS-7001: the piece that actually makes the plane split real. CHAOS-7523: there is no
+              # Python api any more; the catch-all ("/") is go-api, as on prod's api host, and /graphql
+              # is query-api.
               #
-              # --query-api-only /api/v1/meta: query-api's OTHER ledger-listed paths (home,
-              # investment/flow, sankey, people/*, flame, ...) additionally require
-              # GO_API_ENVELOPE_*/GO_API_REGISTRY_POSTGRES_URI to actually mount (see
-              # internal/queryapi/server/server.go's buildHomeRoute gate) -- confirmed locally:
-              # without that provisioning they stay UNMOUNTED and 404, which is worse than
-              # leaving them on the still-real Python implementation the catch-all already
-              # reaches (measured: /api/v1/home passes today via Python, would regress to 404
-              # if routed to an unprovisioned query-api). go-api needs no equivalent narrowing --
-              # its ~100 ledger paths mount unconditionally.
+              # --query-api-only /api/v1/meta,/api/v1/home: query-api's other ledger-listed paths
+              # (investment/flow, sankey, people/*, flame, ...) are not exercised by the live suite;
+              # meta and home are, and home mounts now that the step above provisions /query
+              # (GO_API_ENVELOPE_*, GO_API_REGISTRY_POSTGRES_URI). Everything else falls to go-api,
+              # whose ~100 ledger paths mount unconditionally.
               run: |
                   mkdir -p /tmp/traefik-dynamic
                   node ci/generate-live-e2e-plane-router.mjs \
                     dev-health-ops/ci/go_served_paths.tsv \
-                    --api-port 8000 --go-api-port 8001 --query-api-port 8090 \
-                    --query-api-only /api/v1/meta \
+                    --api-port 8001 --go-api-port 8001 --query-api-port 8090 \
+                    --query-api-only /api/v1/meta,/api/v1/home --query-api-extra /graphql \
                     > /tmp/traefik-dynamic/planes.yml
                   cat /tmp/traefik-dynamic/planes.yml
 
@@ -368,7 +332,7 @@ jobs:
 
             - name: Seed test superuser
               env:
-                  BACKEND_URL: http://127.0.0.1:8000
+                  BACKEND_URL: http://127.0.0.1:8099
                   SUPERUSER_EMAIL: admin@devhealth.example
                   SUPERUSER_PASSWORD: DevHealth123!Admin
                   PGPASSWORD: postgres
@@ -448,6 +412,36 @@ jobs:
                     exit 1
                   fi
 
+                  # CHAOS-7554: reach the Go /graphql on query-api itself (:8090, the router does not send /graphql
+                  # there yet) with the seeded user's token and a REGISTERED document (query-api answers
+                  # UNREGISTERED_DOCUMENT for anything else), built the way the web client puts it on the wire
+                  # (ci/live-e2e-graphql-body.ts). The token is read into a variable and never printed.
+                  token="$(jq -r '.access_token // .token // empty' /tmp/login.json)"
+                  org_id="$(jq -r '.user.org_id // empty' /tmp/login.json)"
+                  test -n "${token}" && test -n "${org_id}" || { echo "::error::login response carries no access token or org id"; exit 1; }
+                  # the tsx binary directly (not `pnpm exec`): pnpm may write its own lines to stdout,
+                  # and the body file must be exactly the JSON the script prints.
+                  ./node_modules/.bin/tsx ci/live-e2e-graphql-body.ts "${org_id}" > /tmp/gql-body.json
+                  jq -e '.query and .variables' /tmp/gql-body.json >/dev/null || { echo "::error::the smoke body is not the expected JSON"; exit 1; }
+                  gql_status=$(curl -s -o /tmp/gql.json -w '%{http_code}' \
+                    -X POST "http://127.0.0.1:8090/graphql" \
+                    -H 'Content-Type: application/json' \
+                    -H "Authorization: Bearer ${token}" \
+                    --data-binary @/tmp/gql-body.json)
+                  echo "graphql status=${gql_status}"
+                  head -c 300 /tmp/gql.json || true; echo
+                  # 200 alone is not proof: assert the answer is the Go query-api's own GraphQL answer for a
+                  # registered document: data, or the operation-switch refusal (CI has no routing rows, so data
+                  # operations answer OPERATION_NOT_ENABLED here). UNREGISTERED_DOCUMENT or a 401 is a failure.
+                  if ! jq -e '(.data != null) or (.errors[0].extensions.code == "OPERATION_NOT_ENABLED")' /tmp/gql.json >/dev/null; then
+                    echo "::error::/graphql on query-api answered, but not as the Go registered-document path."
+                    exit 1
+                  fi
+                  if [ "${gql_status}" != "200" ]; then
+                    echo "::error::/graphql on query-api did not answer 200 (Go query-api not serving the product path)."
+                    exit 1
+                  fi
+
             - name: Run live backend e2e tier
               env:
                   # CHAOS-7001: through the plane-split router, not the Python api directly --
@@ -471,18 +465,14 @@ jobs:
               if: failure()
               uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
-                  name: dev-health-ops-api-log
+                  name: dev-health-ops-go-logs
                   path: |
-                      /tmp/dev-health-ops-api.log
                       /tmp/dev-health-go-api.log
                       /tmp/dev-health-query-api.log
 
             - name: Stop dev-health-ops API
               if: always()
               run: |
-                  if [ -f /tmp/dev-health-ops-api.pid ]; then
-                    kill "$(cat /tmp/dev-health-ops-api.pid)" || true
-                  fi
                   if [ -f /tmp/dev-health-go-api.pid ]; then
                     kill "$(cat /tmp/dev-health-go-api.pid)" || true
                   fi

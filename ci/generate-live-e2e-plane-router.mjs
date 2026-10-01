@@ -13,7 +13,11 @@
 // Usage:
 //   node ci/generate-live-e2e-plane-router.mjs <go_served_paths.tsv> \
 //     --api-port 8000 --go-api-port 8001 --query-api-port 8090 \
-//     [--query-api-only /api/v1/meta,/api/v1/other]
+//     [--query-api-only /api/v1/meta,/api/v1/other] [--query-api-extra /graphql]
+//
+// CHAOS-7523: live-e2e no longer starts a Python api. The catch-all points at go-api (pass
+// --api-port <go-api port>), the way prod's api host does ("/" is the Go api), and the product
+// /graphql path goes to query-api through --query-api-extra.
 //
 // --query-api-only restricts the query-api-owned path set to the given
 // intersection with the ledger, rather than every query-api row in it. Several
@@ -36,6 +40,7 @@ function parseArgs(argv) {
         goApiPort: "8001",
         queryApiPort: "8090",
         queryApiOnly: null,
+        queryApiExtra: [],
     };
     const rest = [];
     for (let i = 0; i < argv.length; i++) {
@@ -44,6 +49,7 @@ function parseArgs(argv) {
         else if (a === "--go-api-port") args.goApiPort = argv[++i];
         else if (a === "--query-api-port") args.queryApiPort = argv[++i];
         else if (a === "--query-api-only") args.queryApiOnly = argv[++i].split(",");
+        else if (a === "--query-api-extra") args.queryApiExtra = argv[++i].split(",");
         else rest.push(a);
     }
     args.tsv = rest[0];
@@ -154,6 +160,18 @@ function main() {
             process.exit(1);
         }
         queryPaths = allQueryPaths.filter((p) => allowed.has(p));
+    }
+    // --query-api-extra: query-api-owned paths the ledger does not list (the product /graphql path is
+    // mounted by query-api on its own, ops internal/queryapi/server/graphql_edge_route.go, and is not an
+    // ingress-ledger row). Each must be an absolute path; they are added verbatim.
+    for (const extra of args.queryApiExtra) {
+        if (!extra.startsWith("/")) {
+            console.error(
+                `generate-live-e2e-plane-router: --query-api-extra path ${extra} is not absolute`,
+            );
+            process.exit(1);
+        }
+        if (!queryPaths.includes(extra)) queryPaths = [...queryPaths, extra];
     }
     process.stdout.write(
         emitDynamicConfig({

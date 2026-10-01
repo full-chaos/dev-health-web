@@ -33,7 +33,7 @@ const WORKFLOW_PATH = path.join(
     "live-e2e.yml",
 );
 
-const START_STEP = "name: Start dev-health-ops API";
+const START_STEP = "name: Start dev-health-ops go-api and query-api";
 
 /** The text of one workflow step, by its `name:` line. */
 function stepBlock(source, stepName) {
@@ -91,13 +91,6 @@ function healthCommand(block) {
     return match?.[1] ?? null;
 }
 
-function envValue(block, variableName) {
-    const match = new RegExp(`^\\s+${variableName}:\\s*"?([^"\\s#]+)"?\\s*$`, "mu").exec(block);
-    return match?.[1] ?? null;
-}
-
-const REDIS_URL = "redis://localhost:6379/0";
-
 describe("live-e2e backend raises the registration limit", () => {
     it("sets AUTH_REGISTER_LIMIT in the step that starts the API", () => {
         const block = stepBlock(readFileSync(WORKFLOW_PATH, "utf8"), START_STEP);
@@ -124,7 +117,7 @@ describe("live-e2e backend raises the registration limit", () => {
     });
 });
 
-describe("live-e2e backend supplies Celery Redis", () => {
+describe("live-e2e backend keeps the Redis service", () => {
     it("declares a healthy Redis service on the job", () => {
         // Given: the live-e2e workflow source.
         const source = readFileSync(WORKFLOW_PATH, "utf8");
@@ -137,18 +130,5 @@ describe("live-e2e backend supplies Celery Redis", () => {
         expect(serviceValue(redis, "image")).toBe("redis:7");
         expect(hasPortMapping(redis, 6379)).toBe(true);
         expect(healthCommand(redis)).toBe("redis-cli ping");
-    });
-
-    it("passes explicit Celery broker and result-backend URLs to API startup", () => {
-        // Given: the environment mapping for the API-start step.
-        const block = stepBlock(readFileSync(WORKFLOW_PATH, "utf8"), START_STEP);
-
-        // When: the Celery endpoint values are read from that step's env mapping.
-        const brokerUrl = envValue(block, "CELERY_BROKER_URL");
-        const resultBackendUrl = envValue(block, "CELERY_RESULT_BACKEND");
-
-        // Then: both Celery roles point at the published Redis service.
-        expect(brokerUrl).toBe(REDIS_URL);
-        expect(resultBackendUrl).toBe(REDIS_URL);
     });
 });
