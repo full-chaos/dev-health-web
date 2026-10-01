@@ -15,12 +15,12 @@ type UserTableProps = {
 
 function getStatusDisplay(user: User): { label: string; className: string } {
     if (!user.is_active) {
-        return { label: "inactive", className: "bg-red-500/10 text-red-500" };
+        return { label: "inactive", className: "bg-(--negative)/12 text-(--negative)" };
     }
     if (!user.is_verified) {
-        return { label: "pending", className: "bg-yellow-500/10 text-yellow-500" };
+        return { label: "pending", className: "bg-(--caution)/12 text-(--caution)" };
     }
-    return { label: "active", className: "bg-green-500/10 text-green-500" };
+    return { label: "active", className: "bg-(--positive)/12 text-(--positive)" };
 }
 
 function includesSearch(value: string | null | undefined, query: string): boolean {
@@ -110,7 +110,7 @@ export function UserTable({ users }: UserTableProps) {
             render: (user) => (
                 <Link
                     href={`/org/admin/users/${user.id}/edit`}
-                    className="text-(--accent) hover:underline"
+                    className="text-(--accent-2) hover:underline"
                 >
                     {CTA_LABELS.edit}
                 </Link>

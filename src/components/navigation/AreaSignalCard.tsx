@@ -23,6 +23,16 @@ import type { MetricFilter } from "@/lib/filters/types";
 // number. Demoted signals (R4 low-value single surfaces) render visually
 // secondary — tighter padding, no emphasis — within their cluster.
 
+// Concept `.hero-signal`: a 3px left edge in the severity color. The word on the badge still says
+// the state; the edge only repeats it.
+const HERO_EDGE: Record<Exclude<AreaSignal["state"], "unavailable">, string> = {
+    critical: "border-l-(--accent-negative)",
+    high: "border-l-(--accent-3)",
+    medium: "border-l-(--accent-2)",
+    low: "border-l-(--ink-muted)",
+    neutral: "border-l-(--ink-muted)",
+};
+
 type AreaSignalCardProps = {
     signal: AreaSignal;
     filters: MetricFilter;
@@ -44,11 +54,10 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
     // sub-area stays a link so it remains reachable; a preview sub-area renders as
     // a plain <div> (same visual) so the dead route is never linked.
     if (signal.state === "unavailable") {
-        // Base dashed treatment; only ROUTED (clickable) cards get the hover
+        // The dashed box is the DataState inside (3.6); only ROUTED (clickable) cards get the hover
         // affordance — a preview card must not look interactive.
-        const unavailableBaseClassName =
-            "group block rounded-2xl border border-dashed border-(--card-stroke)/70 bg-(--card-80)/60 p-4 opacity-70 transition";
-        const unavailableClassName = `${unavailableBaseClassName} hover:border-(--accent) hover:opacity-100`;
+        const unavailableBaseClassName = "group block rounded-(--radius-md)";
+        const unavailableClassName = `${unavailableBaseClassName} transition hover:[&_.border-dashed]:border-(--accent)`;
         const body = (
             <>
                 <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
@@ -59,6 +68,7 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                     title={AREA_UNAVAILABLE_EMPTY_STATE.title}
                     description={AREA_UNAVAILABLE_EMPTY_STATE.description}
                     className="mt-3"
+                    compact
                     data-testid="area-signal-unavailable"
                 />
             </>
@@ -107,10 +117,10 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
             data-emphasized={emphasized ? "true" : "false"}
             className={
                 emphasized
-                    ? "group relative block overflow-hidden rounded-3xl border border-(--accent)/30 bg-gradient-to-br from-(--card) to-(--card-80) p-6 shadow-lg ring-1 ring-(--accent)/10 transition hover:-translate-y-1 hover:border-(--accent)"
+                    ? `group relative block overflow-hidden rounded-(--radius-md) border border-l-3 border-(--card-stroke) bg-(--card) p-6 transition hover:-translate-y-0.5 hover:border-(--accent) ${HERO_EDGE[signal.state]}`
                     : demoted
-                      ? "group block rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3 transition hover:border-(--accent)"
-                      : "group block overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card) p-4 transition hover:-translate-y-1 hover:border-(--accent)"
+                      ? "group block rounded-(--radius-md) border border-(--card-stroke) bg-(--card-70) px-4 py-3 transition hover:border-(--accent)"
+                      : "group block min-h-30 overflow-hidden rounded-(--radius-md) border border-(--card-stroke) bg-(--card) p-4.75 transition hover:-translate-y-0.5 hover:border-(--accent)"
             }
         >
             {emphasized ? (
@@ -123,7 +133,7 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                 <h3
                     className={
                         emphasized
-                            ? "font-(--font-display) text-xl leading-tight text-foreground"
+                            ? "font-(--font-display) text-xl leading-7 text-foreground"
                             : demoted
                               ? "text-sm font-medium text-foreground"
                               : "font-(--font-display) text-base leading-tight text-foreground"
@@ -147,8 +157,10 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                         data-testid="area-signal-value"
                         className={
                             demoted
-                                ? "metric-hero text-lg font-semibold text-foreground"
-                                : "metric-hero text-2xl font-semibold text-foreground"
+                                ? "text-lg font-semibold tabular-nums text-foreground"
+                                : emphasized
+                                  ? "text-[2.3125rem] font-semibold leading-tight tabular-nums text-foreground"
+                                  : "text-2xl font-semibold tabular-nums text-foreground"
                         }
                     >
                         {signal.value}

@@ -58,7 +58,7 @@ export default async function SyncRunDetailPage({ params }: PageProps) {
         <div className="space-y-8">
             <Link
                 href={`/org/admin/sync/${configId}`}
-                className="inline-flex items-center text-sm font-medium text-(--ink-muted) hover:text-(--accent)"
+                className="inline-flex items-center text-sm font-medium text-(--ink-muted) hover:text-(--accent-2)"
             >
                 {backToArea("config")}
             </Link>

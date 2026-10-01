@@ -8,16 +8,8 @@ const getHeatmapMock = vi.fn();
 const getQuadrantMock = vi.fn();
 const getBusFactorDataMock = vi.fn();
 
-vi.mock("@/components/navigation/PrimaryNav", () => ({
-    PrimaryNav: () => <nav data-testid="primary-nav" />,
-}));
-
-vi.mock("@/components/navigation/GlobalContextBar", () => ({
-    GlobalContextBar: () => <div data-testid="global-context" />,
-}));
-
-vi.mock("@/components/filters/FilterBar", () => ({
-    FilterBar: () => <div data-testid="filter-bar" />,
+vi.mock("@/components/shell/ScopeBar", () => ({
+    ScopeBar: () => <div data-testid="scope-bar" />,
 }));
 
 vi.mock("@/components/metrics/MetricCard", () => ({
@@ -105,5 +97,30 @@ describe("CodePage", () => {
                 /connect a git provider with commit history to surface ownership/i,
             ),
         ).not.toBeInTheDocument();
+    });
+
+    it("brings the shared header and one scope bar, and no chrome of its own (shared app shell)", async () => {
+        checkApiHealthMock.mockResolvedValue({ ok: true });
+        getHomeDataMock.mockResolvedValue({ deltas: [] });
+        getExplainDataMock.mockResolvedValue({ contributors: [], unit: "loc" });
+        getHeatmapMock.mockResolvedValue(null);
+        getQuadrantMock.mockResolvedValue(null);
+        getBusFactorDataMock.mockResolvedValue(null);
+
+        await renderPage();
+
+        const headings = screen.getAllByRole("heading", { level: 1 });
+        expect(headings).toHaveLength(1);
+        expect(headings[0]).toHaveTextContent("Churn and Ownership");
+        const header = within(screen.getByTestId("page-header"));
+        expect(
+            header.getByText("Hotspots and ownership concentration in the selected window."),
+        ).toBeInTheDocument();
+        expect(header.getByText("Open a card to investigate.")).toBeInTheDocument();
+        expect(screen.getAllByTestId("scope-bar")).toHaveLength(1);
+        // The shell owns these: the page has no main, no navigation and no way back of its own.
+        expect(screen.queryByRole("main")).toBeNull();
+        expect(screen.queryByRole("navigation")).toBeNull();
+        expect(screen.queryByRole("link", { name: /Back to/ })).toBeNull();
     });
 });

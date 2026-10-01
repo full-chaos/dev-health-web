@@ -3,8 +3,35 @@ import { describe, expect, it } from "vitest";
 import { SHELL_ROUTES, isShellRoute, shellRouteForPathname } from "./shellRoutes";
 
 describe("shell route registry", () => {
-    it("registers the Cockpit and nothing else in this change", () => {
-        expect(SHELL_ROUTES.map((route) => route.prefix)).toEqual(["/dashboard"]);
+    it("registers the Cockpit and the migrated Diagnose and Govern routes", () => {
+        expect(SHELL_ROUTES.map((route) => route.prefix)).toEqual([
+            "/dashboard",
+            "/diagnose",
+            "/diagnose/work-graph",
+            "/metrics",
+            "/explore",
+            "/investment",
+            "/landscape",
+            "/code",
+            "/complexity",
+            "/bottleneck",
+            "/cognitive-load",
+            "/people",
+            "/govern",
+            "/quality",
+            "/testops",
+            "/incident-correlation",
+            "/risk/compounding",
+            "/security",
+            "/feature-flags",
+        ]);
+    });
+
+    it("matches an exact route only on its own path", () => {
+        const routes = [{ prefix: "/diagnose", exact: true }];
+        expect(isShellRoute("/diagnose", routes)).toBe(true);
+        expect(isShellRoute("/diagnose/work-graph", routes)).toBe(false);
+        expect(isShellRoute("/diagnoses", routes)).toBe(false);
     });
 
     it("matches a registered prefix and its descendants", () => {
@@ -17,7 +44,7 @@ describe("shell route registry", () => {
         expect(isShellRoute("/dashboard-old")).toBe(false);
     });
 
-    it.each(["/diagnose", "/org/admin", "/superadmin", "/settings", "/ai/impact", "/"])(
+    it.each(["/plan", "/improve", "/org/admin", "/superadmin", "/settings", "/ai/impact", "/"])(
         "keeps %s outside the shell",
         (pathname) => {
             expect(isShellRoute(pathname)).toBe(false);
@@ -41,5 +68,13 @@ describe("shell route registry", () => {
 
     it("keeps the Cockpit's default role injection", () => {
         expect(shellRouteForPathname("/dashboard")?.defaultRole).toBe(true);
+    });
+
+    it("marks the Security routes as routes with their own `f` encoding, and no other route", () => {
+        expect(shellRouteForPathname("/security")?.filterParam).toBe("page");
+        expect(shellRouteForPathname("/security/repos/repo-1")?.filterParam).toBe("page");
+        expect(
+            SHELL_ROUTES.filter((route) => route.filterParam).map((route) => route.prefix),
+        ).toEqual(["/security"]);
     });
 });

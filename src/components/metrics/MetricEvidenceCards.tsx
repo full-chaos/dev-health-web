@@ -3,10 +3,9 @@
 import { useState } from "react";
 
 import { EvidencePanel } from "@/components/evidence";
-import { SparklineChart } from "@/components/charts/SparklineChart";
-import { CTA_LABELS } from "@/lib/design/cta";
+import { MetricCard } from "@/components/metrics/MetricCard";
 import { buildExploreUrl } from "@/lib/filters/url";
-import { formatDelta, formatMetricValue } from "@/lib/formatters";
+import { formatDelta } from "@/lib/formatters";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta } from "@/lib/types";
 
@@ -53,69 +52,40 @@ export function MetricEvidenceCards({
                 {metrics.map((metric) => {
                     const data = getMetric(deltas, metric);
                     const label = data?.label ?? metric;
-                    const sparkValues = data?.spark?.map((point) => point.value) ?? [];
-                    const sparkLabels = data?.spark?.map((point) => point.ts) ?? [];
+                    const hasValue = !placeholderDeltas && data?.value !== undefined;
 
                     return (
-                        <article
+                        <MetricCard
                             key={metric}
-                            className="group rounded-3xl border border-(--card-stroke) bg-card p-4 transition hover:-translate-y-1 hover:shadow-lg"
-                        >
-                            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                <span>{label}</span>
+                            as="article"
+                            label={label}
+                            value={hasValue ? data?.value : undefined}
+                            unit={data?.unit}
+                            spark={data?.spark}
+                            noTrendLabel="Trend"
+                            // This page has no per-metric polarity, so it keeps its own delta
+                            // (sign and tone, "--" when missing) instead of MetricDelta's good / bad.
+                            deltaSlot={
                                 <span className={deltaTone(data?.delta_pct)}>
                                     {placeholderDeltas || data?.delta_pct === undefined
                                         ? "--"
                                         : formatDelta(data.delta_pct)}
                                 </span>
-                            </div>
-                            <div className="mt-3 flex items-center justify-between gap-4">
-                                <div>
-                                    <p className="text-2xl font-semibold metric-hero">
-                                        {placeholderDeltas || data?.value === undefined
-                                            ? "--"
-                                            : formatMetricValue(data.value, data.unit ?? "")}
-                                    </p>
-                                    <button
-                                        type="button"
-                                        onClick={() =>
-                                            setActiveMetric(
-                                                data ?? {
-                                                    metric,
-                                                    label,
-                                                    value: 0,
-                                                    unit: "",
-                                                    delta_pct: 0,
-                                                    spark: [],
-                                                },
-                                            )
-                                        }
-                                        className="mt-2 text-left text-xs text-(--accent-2) underline-offset-4 hover:underline"
-                                    >
-                                        {CTA_LABELS.openEvidence}
-                                    </button>
-                                </div>
-                                <div className="h-16 w-full">
-                                    {sparkValues.length > 1 ? (
-                                        <SparklineChart
-                                            data={sparkValues}
-                                            categories={sparkLabels}
-                                            height={64}
-                                        />
-                                    ) : (
-                                        <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
-                                            Trend
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <a
-                                href={buildExploreUrl({ metric, filters, role: activeRole })}
-                                className="mt-3 block text-label-caps uppercase tracking-[0.18em] text-(--ink-muted) hover:text-foreground"
-                            >
-                                {CTA_LABELS.openEvidence}
-                            </a>
-                        </article>
+                            }
+                            onOpenEvidence={() =>
+                                setActiveMetric(
+                                    data ?? {
+                                        metric,
+                                        label,
+                                        value: 0,
+                                        unit: "",
+                                        delta_pct: 0,
+                                        spark: [],
+                                    },
+                                )
+                            }
+                            evidenceHref={buildExploreUrl({ metric, filters, role: activeRole })}
+                        />
                     );
                 })}
             </section>

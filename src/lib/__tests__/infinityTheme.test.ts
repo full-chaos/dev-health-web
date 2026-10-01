@@ -232,24 +232,63 @@ describe("infinity palette", () => {
                     contrast(t["--ink-muted"], fill),
                     `ink-muted on ${name}`,
                 ).toBeGreaterThanOrEqual(4.5);
-                // Dark text-muted is unchanged by the light ticket and sits under 4.5 on accent tints.
-                if (theme === "light" || name === "card" || name === "page") {
+                expect(
+                    contrast(t["--text-muted"], fill),
+                    `text-muted on ${name}`,
+                ).toBeGreaterThanOrEqual(4.5);
+            }
+        },
+    );
+
+    it("pins the muted ink values: light as before, dark one notch lighter", () => {
+        expect(infinity("light")["--text-muted"]).toBe("#5c6269");
+        expect(infinity("light")["--ink-muted"]).toBe("#5c6269");
+        const dark = infinity("dark");
+        // Every `text-(--accent-text)` renders the same color as the `text-(--accent)` it replaced.
+        expect(dark["--accent-text"]).toBe(dark["--accent"]);
+        expect(dark["--ink-muted"]).toBe("#a7afb5");
+        expect(dark["--text-muted"]).toBe("#8b959c");
+    });
+
+    it.each(THEMES)(
+        "keeps production's solid caution strip: amber fill, black ink (%s)",
+        (theme) => {
+            const t = infinity(theme);
+            expect(t["--caution-solid"]).toBe("#fe9a00");
+            expect(t["--on-caution-solid"]).toBe("#000000");
+            expect(contrast(t["--on-caution-solid"], t["--caution-solid"])).toBeGreaterThanOrEqual(
+                9.7,
+            );
+        },
+    );
+
+    it.each(THEMES)(
+        "keeps action text readable on cards, the page and action tints (%s)",
+        (theme) => {
+            const t = infinity(theme);
+            // Links and actions use --accent-2 (the action color) on cards and the page...
+            for (const [name, fill] of Object.entries({
+                card: t["--card"],
+                page: t["--background"],
+                "action 5 on card": over(t["--accent-2"], t["--card"], 0.05),
+            })) {
+                expect(
+                    contrast(t["--accent-2"], fill),
+                    `action text on ${name}`,
+                ).toBeGreaterThanOrEqual(4.5);
+            }
+            // ...and --info on the tinted action pills (--accent-2 at 5 to 20 percent).
+            for (const alpha of [0.05, 0.1, 0.2]) {
+                for (const base of [t["--card"], t["--background"]]) {
+                    const fill = over(t["--accent-2"], base, alpha);
                     expect(
-                        contrast(t["--text-muted"], fill),
-                        `text-muted on ${name}`,
+                        contrast(t["--info"], fill),
+                        `info on action ${alpha}`,
                     ).toBeGreaterThanOrEqual(4.5);
                 }
             }
         },
     );
-
-    it("leaves the dark theme's colors unchanged: orange text resolves to --accent, muted ink as before", () => {
-        const dark = infinity("dark");
-        // Every `text-(--accent-text)` renders the same color as the `text-(--accent)` it replaced.
-        expect(dark["--accent-text"]).toBe(dark["--accent"]);
-        expect(dark["--ink-muted"]).toBe("#a7afb5");
-        expect(dark["--text-muted"]).toBe("#808990");
-    });
 
     it.each(THEMES)("keeps status pill text readable on its own tint (%s)", (theme) => {
         const t = infinity(theme);
@@ -268,6 +307,8 @@ describe("infinity palette", () => {
             "--accent",
             "--accent-foreground",
             "--accent-text",
+            "--caution-solid",
+            "--on-caution-solid",
             "--accent-1",
             "--accent-2",
             "--accent-3",
