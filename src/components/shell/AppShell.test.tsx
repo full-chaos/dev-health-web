@@ -305,7 +305,7 @@ describe("AppShell — a route outside the registry keeps today's chrome", () =>
         ]);
     });
 
-    it.each(["/org/admin/users", "/superadmin", "/settings", "/reports/1", "/dashboards"])(
+    it.each(["/org/admin/users", "/superadmin", "/settings", "/data-health", "/dashboards"])(
         "keeps %s on the legacy chrome",
         (pathname) => {
             navigationMock.pathname = pathname;
