@@ -5,7 +5,7 @@ vi.mock("@/components/charts/SparklineChart", () => ({
 }));
 
 import { MetricCard } from "./MetricCard";
-import { render, screen } from "@/test/utils";
+import { render, screen, userEvent } from "@/test/utils";
 
 describe("MetricCard tile layout (CHAOS-7597)", () => {
     it("puts the delta before the note on one meta line, after the value", () => {
@@ -81,5 +81,61 @@ describe("MetricCard meta line separators (CHAOS-7597)", () => {
             <MetricCard label="L" value={1} deltaUnavailableLabel="Insufficient history" />,
         );
         expect(meta(second.container).textContent).toBe("Insufficient history");
+    });
+});
+
+describe("MetricCard opt-in evidence props (CHAOS-7705)", () => {
+    it("deltaSlot replaces the delta, byte for byte, and MetricDelta is not rendered", () => {
+        const { container } = render(
+            <MetricCard
+                label="L"
+                value={1}
+                delta={5}
+                deltaSlot={<span data-testid="mine">+9%</span>}
+            />,
+        );
+        expect(screen.getByTestId("mine")).toHaveTextContent("+9%");
+        expect(container.textContent).not.toContain("↑");
+    });
+
+    it("onOpenEvidence renders an Open evidence button after the delta that calls it", async () => {
+        const onOpen = vi.fn();
+        render(<MetricCard label="L" value={1} delta={5} onOpenEvidence={onOpen} />);
+        await userEvent.click(screen.getByRole("button", { name: "Open evidence" }));
+        expect(onOpen).toHaveBeenCalledTimes(1);
+    });
+
+    it("evidenceHref adds a footer link and moves the sparkline slot to the top", () => {
+        const { container } = render(
+            <MetricCard
+                label="L"
+                value={1}
+                evidenceHref="/explore?metric=x"
+                spark={[
+                    { ts: "a", value: 1 },
+                    { ts: "b", value: 2 },
+                ]}
+            />,
+        );
+        expect(screen.getByRole("link", { name: "Open evidence" })).toHaveAttribute(
+            "href",
+            "/explore?metric=x",
+        );
+        expect(container.querySelector(".top-15")).not.toBeNull();
+    });
+
+    it("without the new props the markup has no button, no footer link and the bottom slot", () => {
+        const { container } = render(<MetricCard label="L" value={1} delta={5} />);
+        expect(container.querySelector("button")).toBeNull();
+        expect(container.querySelector("a")).toBeNull();
+        expect(container.querySelector(".bottom-6\\.5")).not.toBeNull();
+    });
+
+    it("noTrendLabel and as change only the text and the root element", () => {
+        const { container } = render(
+            <MetricCard label="L" value={1} as="article" noTrendLabel="Trend" />,
+        );
+        expect(container.firstElementChild?.tagName).toBe("ARTICLE");
+        expect(screen.getByText("Trend")).toBeInTheDocument();
     });
 });
