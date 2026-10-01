@@ -7,10 +7,13 @@ const RAW =
     /\b(?:text|bg|border|fill)-(?:red|orange|amber|yellow|green|emerald|blue|indigo|purple|gray|slate)-\d{2,3}/u;
 
 describe("org admin class mappings", () => {
-    it("provider logos on the integrations page use theme tokens", () => {
+    it("provider logos keep their brand marks and carry no status token", () => {
         const s = src("app/(app)/org/admin/integrations/page.tsx");
-        expect(s).not.toMatch(/<svg[^>]*(?:text|fill)-(?:gray|orange|blue|indigo|emerald)-/u);
-        expect(s).toContain("fill-current text-foreground");
+        const logos = s.match(/<svg[^>]*fill-current[^>]*>/gu) ?? [];
+        expect(logos.length).toBeGreaterThanOrEqual(5);
+        for (const logo of logos) {
+            expect(logo).not.toMatch(/text-\(--(?:positive|negative|caution|info)\)/u);
+        }
     });
     it("status chips and delete buttons use status tokens", () => {
         for (const f of [

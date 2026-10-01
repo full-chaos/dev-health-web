@@ -23,7 +23,8 @@ const ALLOWLIST: Record<string, number> = {
     "app/(app)/org/admin/integrations/[provider]/customer-push/[source_id]/batches/page.tsx": 3,
     "app/(app)/org/admin/integrations/[provider]/customer-push/[source_id]/credentials/page.tsx": 3,
     "app/(app)/org/admin/integrations/[provider]/page.tsx": 6,
-    "app/(app)/org/admin/integrations/page.tsx": 3,
+    // 6 provider brand-mark hits (Admin page pass) + 3 in one red banner (Notice danger).
+    "app/(app)/org/admin/integrations/page.tsx": 9,
     "app/(app)/org/admin/ip-allowlist/page.tsx": 3,
     "app/(app)/org/admin/retention/page.tsx": 3,
     "app/(app)/org/admin/settings/page.tsx": 3,
