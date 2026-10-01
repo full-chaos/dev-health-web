@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { STATUS_PILL_ALPHA, ZONE_FILL_ALPHA } from "../themeTints";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 const infinityCss = read("../../app/fc-infinity-themes.css");
@@ -69,6 +70,24 @@ const simulate = (hex: string, kind: keyof typeof CVD) => {
 const deltaE = (a: string, b: string, kind: keyof typeof CVD) => {
     const x = toOklab(simulate(a, kind));
     const y = toOklab(simulate(b, kind));
+    return 100 * Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
+};
+
+const toHex = (linear: number[]) =>
+    `#${linear
+        .map((v) =>
+            Math.round(clamp01(v) * 255)
+                .toString(16)
+                .padStart(2, "0"),
+        )
+        .join("")}`;
+/** The color a canvas or CSS paints for `foreground` at `alpha` over `background` (sRGB blend). */
+const over = (foreground: string, background: string, alpha: number) =>
+    toHex(toRgb(foreground).map((v, i) => v * alpha + toRgb(background)[i] * (1 - alpha)));
+/** OKLab distance on a 0-100 scale, normal vision. */
+const deltaENormal = (a: string, b: string) => {
+    const x = toOklab(toRgb(a).map(linearize));
+    const y = toOklab(toRgb(b).map(linearize));
     return 100 * Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
 };
 
@@ -142,6 +161,53 @@ describe("infinity palette", () => {
             }
         },
     );
+
+    it.each(THEMES)(
+        "draws each quadrant zone visibly and apart from its neighbours (%s)",
+        (theme) => {
+            const t = infinity(theme);
+            const rendered = [1, 2, 3, 4].map((n) =>
+                over(t[`--quadrant-zone-${n}`], t["--card"], ZONE_FILL_ALPHA),
+            );
+            rendered.forEach((fill, i) => {
+                expect(
+                    deltaENormal(fill, t["--card"]),
+                    `zone ${i + 1} vs chart surface`,
+                ).toBeGreaterThanOrEqual(4);
+            });
+            // Zones tile a 2 x 2 grid in the ring 1-2-3-4: each shares an edge with the next.
+            for (const [a, b] of [
+                [1, 2],
+                [2, 3],
+                [3, 4],
+                [4, 1],
+            ]) {
+                expect(
+                    deltaENormal(rendered[a - 1], rendered[b - 1]),
+                    `zone ${a} vs ${b}`,
+                ).toBeGreaterThanOrEqual(3);
+            }
+            // Text and points drawn on a zone keep their contrast.
+            for (const fill of rendered) {
+                expect(contrast(t["--chart-text"], fill)).toBeGreaterThanOrEqual(4.5);
+                expect(contrast(t["--chart-muted"], fill)).toBeGreaterThanOrEqual(3);
+                // The focused point is drawn in series 1.
+                expect(
+                    contrast(t["--chart-color-1"], fill),
+                    "focus point on zone",
+                ).toBeGreaterThanOrEqual(3);
+            }
+        },
+    );
+
+    it.each(THEMES)("keeps status pill text readable on its own tint (%s)", (theme) => {
+        const t = infinity(theme);
+        // Pills: status token as text on the same token at STATUS_PILL_ALPHA over the card.
+        for (const token of ["--positive", "--caution", "--negative", "--info"]) {
+            const fill = over(t[token], t["--card"], STATUS_PILL_ALPHA);
+            expect(contrast(t[token], fill), `${token} pill`).toBeGreaterThanOrEqual(4.5);
+        }
+    });
 
     it.each(THEMES)("defines every token the removed palettes defined (%s)", (theme) => {
         const required = [
