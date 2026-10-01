@@ -46,11 +46,14 @@ const VARIANTS: Record<
     },
 };
 
-const STRONG: Record<NoticeVariant, string> = {
-    info: "border-transparent bg-(--info) text-black",
-    warn: "border-transparent bg-(--caution) text-black",
-    good: "border-transparent bg-(--positive) text-black",
-};
+/**
+ * Solid fill for security-relevant strips. Warn only (an info or good notice
+ * keeps its tinted surface). Production's impersonation strip drew
+ * `bg-amber-500` with black ink in both themes: the same pair is kept here
+ * (black on amber-500 = 9.78:1), because the theme `--caution` token is a dark
+ * text color in light and fails as a fill.
+ */
+const STRONG_WARN = "border-transparent bg-amber-500 text-black";
 
 export type NoticeProps = Omit<ComponentPropsWithoutRef<"div">, "title" | "role"> & {
     variant?: NoticeVariant;
@@ -64,7 +67,7 @@ export type NoticeProps = Omit<ComponentPropsWithoutRef<"div">, "title" | "role"
     dismissLabel?: string;
     /** `true` (default): `role="status"` + `aria-live="polite"`. `false`: no live region. */
     live?: boolean;
-    /** `strong`: solid status fill for security-relevant strips (for example impersonation). */
+    /** `strong`: solid amber fill with black ink; applies to `warn` only (for example impersonation). */
     emphasis?: "default" | "strong";
     /** Center title and action in the row; the dismiss button is pinned to the far right. */
     centered?: boolean;
@@ -86,8 +89,8 @@ export function Notice({
 }: NoticeProps) {
     const base = VARIANTS[variant];
     const { label, Icon } = base;
-    const strong = emphasis === "strong";
-    const surface = strong ? STRONG[variant] : base.surface;
+    const strong = emphasis === "strong" && variant === "warn";
+    const surface = strong ? STRONG_WARN : base.surface;
     const accent = strong ? "text-current" : base.accent;
     return (
         <div

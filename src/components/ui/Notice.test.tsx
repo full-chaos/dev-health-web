@@ -61,13 +61,13 @@ describe("Notice", () => {
         expect(screen.getByRole("heading", { level: 2, name: "T" })).toBeInTheDocument();
     });
 
-    it("strong emphasis fills solid with the variant color", () => {
+    it("strong warn fills solid amber with black ink, as production did", () => {
         const { container } = render(
             <Notice variant="warn" emphasis="strong" live={false}>
                 x
             </Notice>,
         );
-        expect(container.firstChild).toHaveClass("bg-(--caution)");
+        expect(container.firstChild).toHaveClass("bg-amber-500", "text-black");
     });
 });
 
@@ -79,5 +79,28 @@ describe("Notice centered", () => {
             </Notice>,
         );
         expect(screen.getByRole("button", { name: "Dismiss" })).toHaveClass("absolute", "right-4");
+    });
+});
+
+const channels = (hex: string) =>
+    [1, 3, 5].map((i) => {
+        const c = Number.parseInt(hex.slice(i, i + 2), 16) / 255;
+        return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+    });
+const luminance = (hex: string) => {
+    const [r, g, b] = channels(hex);
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+};
+const contrast = (a: string, b: string) => {
+    const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (hi + 0.05) / (lo + 0.05);
+};
+
+describe("Notice strong contrast", () => {
+    it("black on amber-500 passes 4.5:1 (the pair is theme independent)", () => {
+        expect(contrast("#000000", "#f59e0b")).toBeGreaterThanOrEqual(4.5);
+    });
+    it("the light caution token as a fill under black ink fails, so it is not used", () => {
+        expect(contrast("#000000", "#8a5700")).toBeLessThan(4.5);
     });
 });
