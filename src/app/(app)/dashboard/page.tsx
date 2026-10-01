@@ -10,7 +10,6 @@ import { DataConfidenceIndicator } from "@/components/home/DataConfidenceIndicat
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { getLensFromSearchParams, getLensConfig, DEFAULT_ROLE } from "@/lib/lensContext";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
@@ -94,7 +93,8 @@ export default async function Home({ searchParams }: HomePageProps) {
     const setupOrgId = session?.user?.org_id ?? null;
 
     if (!health.ok) {
-        return <ServiceUnavailable />;
+        // The shared app shell owns the `<main>` landmark for this route.
+        return <ServiceUnavailable landmark={false} />;
     }
     const lastUpdatedAt =
         home?.freshness.latest_successful_sync_at ?? home?.freshness.last_ingested_at ?? null;
@@ -114,135 +114,122 @@ export default async function Home({ searchParams }: HomePageProps) {
     const aiDominant = isAiDominant({ signals: home?.signals ?? null });
 
     return (
-        <div className="min-h-screen bg-(image:--hero-gradient) text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-20 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="home" role={activeRole} />
-                <main className="flex min-w-0 flex-1 flex-col gap-10">
-                    <header className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.4)]">
-                        <div className="flex flex-col gap-6">
-                            <div className="flex flex-wrap items-center justify-between gap-4">
-                                <div>
-                                    <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                        Status
-                                    </p>
-                                    <h1 className="mt-4 font-(--font-display) text-3xl leading-tight sm:text-4xl">
-                                        Developer Health Ops Cockpit
-                                    </h1>
-                                    <p className="mt-3 max-w-xl text-sm text-(--ink-muted)">
-                                        System patterns over the last {filters.time.range_days}{" "}
-                                        days.
-                                    </p>
-                                    {lensConfig.framing ? (
-                                        <p className="mt-1 text-xs text-(--accent-2)/80">
-                                            {lensConfig.framing}
-                                        </p>
-                                    ) : null}
-                                </div>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                                <BackendBanner meta={meta} />
-                                <p className="text-body font-medium text-(--text-secondary)">
-                                    <ClientTimestamp
-                                        value={lastUpdatedAt}
-                                        prefix="Last updated: "
-                                    />
-                                </p>
-                            </div>
-                        </div>
-                    </header>
-
-                    {setupStatus ? <SetupBanner status={setupStatus} orgId={setupOrgId} /> : null}
-
-                    <GlobalContextBar filters={filters} />
-                    <FilterBar view="home" />
-
-                    {/* Minimal freshness indicator only — no integration status UI */}
-
-                    {home?.data_confidence && (
-                        <DataConfidenceIndicator confidence={home.data_confidence} />
-                    )}
-
-                    <CockpitSummary home={home} filters={filters} />
-
-                    {home?.signals && home.signals.length > 0 ? (
-                        <RankedSignals signals={home.signals} filters={filters} />
-                    ) : null}
-
-                    <AiWorkflowCallout
-                        filters={filters}
-                        activeRole={activeRole}
-                        prominent={aiDominant}
-                    />
-
-                    <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                    Monitoring views
-                                </p>
-                                <p className="mt-1 text-sm text-(--ink-muted)">
-                                    Tabs for steady trend monitoring.
-                                </p>
-                            </div>
-                            <Link
-                                href={withFilterParam("/metrics?tab=dora", filters, activeRole)}
-                                className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                            >
-                                {CTA_LABELS.openMetrics}
-                            </Link>
-                        </div>
-                        <div className="mt-4 grid gap-3 md:grid-cols-2">
-                            {prioritizedViews.map((view) => (
-                                <Link
-                                    key={view.id}
-                                    href={withFilterParam(view.href, filters, activeRole)}
-                                    className="group rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
-                                >
-                                    <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                        <span>{view.label}</span>
-                                        <span className="text-(--accent-2)">Open</span>
-                                    </div>
-                                    <p className="mt-2 text-sm font-semibold text-foreground">
-                                        {view.description}
-                                    </p>
-                                    <p className="mt-2 text-xs text-(--ink-muted)">{view.focus}</p>
-                                </Link>
-                            ))}
-                        </div>
-                    </section>
-
-                    <CockpitClient home={home} filters={filters} activeRole={activeRole} />
-
-                    <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-10 text-foreground">
+            <header className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.4)]">
+                <div className="flex flex-col gap-6">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
                         <div>
-                            <h3 className="font-(--font-display) text-xl">Investment mix</h3>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Work allocation snapshot for the selected window.
+                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                                Status
                             </p>
-                            <div className="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-[0.2em]">
-                                <Link
-                                    href={withFilterParam("/work", filters, activeRole)}
-                                    className="text-(--accent-2)"
-                                >
-                                    {CTA_LABELS.openWorkView}
-                                </Link>
-                                <Link
-                                    href={buildExploreUrl({
-                                        metric: "throughput",
-                                        filters,
-                                        role: activeRole,
-                                    })}
-                                    className="text-(--accent-2)"
-                                >
-                                    {CTA_LABELS.openEvidence}
-                                </Link>
-                            </div>
+                            <h1 className="mt-4 font-(--font-display) text-3xl leading-tight sm:text-4xl">
+                                Developer Health Ops Cockpit
+                            </h1>
+                            <p className="mt-3 max-w-xl text-sm text-(--ink-muted)">
+                                System patterns over the last {filters.time.range_days} days.
+                            </p>
+                            {lensConfig.framing ? (
+                                <p className="mt-1 text-xs text-(--accent-2)/80">
+                                    {lensConfig.framing}
+                                </p>
+                            ) : null}
                         </div>
-                        <InvestmentPreview filters={filters} />
-                    </section>
-                </main>
-            </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <BackendBanner meta={meta} />
+                        <p className="text-body font-medium text-(--text-secondary)">
+                            <ClientTimestamp value={lastUpdatedAt} prefix="Last updated: " />
+                        </p>
+                    </div>
+                </div>
+            </header>
+
+            {setupStatus ? <SetupBanner status={setupStatus} orgId={setupOrgId} /> : null}
+
+            <GlobalContextBar filters={filters} />
+            <FilterBar view="home" />
+
+            {/* Minimal freshness indicator only — no integration status UI */}
+
+            {home?.data_confidence && <DataConfidenceIndicator confidence={home.data_confidence} />}
+
+            <CockpitSummary home={home} filters={filters} />
+
+            {home?.signals && home.signals.length > 0 ? (
+                <RankedSignals signals={home.signals} filters={filters} />
+            ) : null}
+
+            <AiWorkflowCallout filters={filters} activeRole={activeRole} prominent={aiDominant} />
+
+            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                            Monitoring views
+                        </p>
+                        <p className="mt-1 text-sm text-(--ink-muted)">
+                            Tabs for steady trend monitoring.
+                        </p>
+                    </div>
+                    <Link
+                        href={withFilterParam("/metrics?tab=dora", filters, activeRole)}
+                        className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                    >
+                        {CTA_LABELS.openMetrics}
+                    </Link>
+                </div>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {prioritizedViews.map((view) => (
+                        <Link
+                            key={view.id}
+                            href={withFilterParam(view.href, filters, activeRole)}
+                            className="group rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
+                        >
+                            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                                <span>{view.label}</span>
+                                <span className="text-(--accent-2)">Open</span>
+                            </div>
+                            <p className="mt-2 text-sm font-semibold text-foreground">
+                                {view.description}
+                            </p>
+                            <p className="mt-2 text-xs text-(--ink-muted)">{view.focus}</p>
+                        </Link>
+                    ))}
+                </div>
+            </section>
+
+            <CockpitClient home={home} filters={filters} activeRole={activeRole} />
+
+            <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+                <div>
+                    <h3 className="font-(--font-display) text-xl">Investment mix</h3>
+                    <p className="mt-2 text-sm text-(--ink-muted)">
+                        Work allocation snapshot for the selected window.
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-[0.2em]">
+                        <Link
+                            href={withFilterParam("/work", filters, activeRole)}
+                            className="text-(--accent-2)"
+                        >
+                            {CTA_LABELS.openWorkView}
+                        </Link>
+                        <Link
+                            href={buildExploreUrl({
+                                metric: "throughput",
+                                filters,
+                                role: activeRole,
+                            })}
+                            className="text-(--accent-2)"
+                        >
+                            {CTA_LABELS.openEvidence}
+                        </Link>
+                    </div>
+                </div>
+                <InvestmentPreview filters={filters} />
+            </section>
         </div>
     );
 }

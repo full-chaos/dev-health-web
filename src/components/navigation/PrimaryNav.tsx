@@ -6,10 +6,12 @@ import { useRef, useState } from "react";
 import { BetaBadge } from "@/components/BetaBadge";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { OrgSwitcher } from "@/components/navigation/OrgSwitcher";
+import { useInShell } from "@/components/shell/ShellContext";
 
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
 import {
+    isNavChildVisible,
     navAreas,
     selectedAreaIdForPathname,
     selectedChildForPathname,
@@ -34,18 +36,12 @@ type PrimaryNavProps = {
     role?: string;
 };
 
-function isVisibleChild(child: NavChildRoute, features: Record<string, boolean>): boolean {
-    return (
-        child.navVisible &&
-        (child.requiredFeature === undefined || features[child.requiredFeature] === true)
-    );
-}
-
 export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
     const mobileNavControlRef = useRef<HTMLButtonElement>(null);
     const { features } = useAdminTier();
+    const inShell = useInShell();
     const selectedAreaId = selectedAreaIdForPathname(navAreas, pathname, active);
 
     const mainAreas = navAreas.filter((area) => area.placement === "main");
@@ -84,7 +80,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
         // Exactly one row is highlighted.
         const visibleChildren =
             isActive && area.placement === "main"
-                ? area.children.filter((child) => isVisibleChild(child, features))
+                ? area.children.filter((child) => isNavChildVisible(child, features))
                 : [];
         const selectedChild = isActive ? selectedChildForPathname(area, pathname) : undefined;
         const activeChild = visibleChildren.find((child) => child.id === selectedChild?.id);
@@ -124,6 +120,10 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
             </div>
         );
     };
+
+    // Inside the shared app shell the layout owns the navigation. A page that
+    // still renders its own `PrimaryNav` must not show a second one.
+    if (inShell) return null;
 
     return (
         <aside

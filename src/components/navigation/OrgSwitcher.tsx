@@ -37,7 +37,31 @@ function dataLabel(org: OrganizationOption) {
     return `Data through ${new Date(org.last_metrics_at).toLocaleDateString()}`;
 }
 
-export function OrgSwitcher() {
+type OrgSwitcherProps = {
+    /**
+     * `panel` is the legacy look inside `PrimaryNav` / `AdminSidebar`. `card` is
+     * the workspace card of the shared app shell. Behaviour is the same.
+     */
+    variant?: "panel" | "card";
+};
+
+const VARIANT_CLASSES = {
+    panel: {
+        container: "mt-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) p-3",
+        label: "text-label-caps uppercase tracking-widest text-(--ink-muted)",
+        select: "mt-2 w-full rounded-xl border border-(--card-stroke) bg-(--background) px-3 py-2 text-sm text-foreground outline-none transition focus:border-(--accent) disabled:opacity-60",
+        note: "mt-2 text-xs text-(--ink-muted)",
+    },
+    card: {
+        container: "rounded-(--radius-sm) border border-(--border) bg-(--surface-raised) p-3",
+        label: "text-label-caps uppercase text-(--text-muted)",
+        select: "mt-2 w-full rounded-(--radius-sm) border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-primary) outline-none transition focus:border-(--accent-2) disabled:opacity-60",
+        note: "mt-2 text-xs text-(--text-secondary)",
+    },
+} as const;
+
+export function OrgSwitcher({ variant = "panel" }: OrgSwitcherProps = {}) {
+    const classes = VARIANT_CLASSES[variant];
     const router = useRouter();
     const { data: session, update } = useSession();
     const [state, setState] = useState<OrganizationsResponse | null>(null);
@@ -97,11 +121,8 @@ export function OrgSwitcher() {
     }
 
     return (
-        <div className="mt-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) p-3">
-            <label
-                htmlFor="org-switcher"
-                className="text-label-caps uppercase tracking-widest text-(--ink-muted)"
-            >
+        <div className={classes.container} data-variant={variant}>
+            <label htmlFor="org-switcher" className={classes.label}>
                 {canSwitchOrganizations ? "Organization" : "Current organization"}
             </label>
             <select
@@ -109,7 +130,7 @@ export function OrgSwitcher() {
                 value={activeOrgId}
                 disabled={isPending || !canSwitchOrganizations}
                 onChange={(event) => switchOrg(event.target.value)}
-                className="mt-2 w-full rounded-xl border border-(--card-stroke) bg-(--background) px-3 py-2 text-sm text-foreground outline-none transition focus:border-(--accent) disabled:opacity-60"
+                className={classes.select}
                 aria-describedby="org-switcher-data"
             >
                 {state.organizations.map((org) => (
@@ -118,7 +139,7 @@ export function OrgSwitcher() {
                     </option>
                 ))}
             </select>
-            <p id="org-switcher-data" className="mt-2 text-xs text-(--ink-muted)">
+            <p id="org-switcher-data" className={classes.note}>
                 {activeOrg ? dataLabel(activeOrg) : "Choose the organization used for dashboards."}
                 {!canSwitchOrganizations ? " · Only organization on this account" : null}
             </p>

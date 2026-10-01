@@ -7,7 +7,19 @@ import { useState, useRef, useEffect } from "react";
 import { BugReportButton } from "@/components/feedback/BugReportButton";
 import { CTA_LABELS } from "@/lib/design/cta";
 
-export function UserMenu() {
+type UserMenuProps = {
+    /**
+     * `bar` is the account bar (menu opens downward, right-aligned). `sidebar` is
+     * the account block of the shared app shell (full width, menu opens upward).
+     */
+    placement?: "bar" | "sidebar";
+};
+
+export function UserMenu({ placement = "bar" }: UserMenuProps = {}) {
+    const inSidebar = placement === "sidebar";
+    // Both placements can be mounted at once (the shell shows one per breakpoint),
+    // so each needs its own menu id.
+    const menuId = inSidebar ? "account-options-sidebar" : "account-options";
     const { data: session, status } = useSession();
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
@@ -38,28 +50,45 @@ export function UserMenu() {
     }
 
     return (
-        <div className="relative flex max-w-full justify-end" ref={menuRef}>
+        <div
+            className={inSidebar ? "relative flex w-full" : "relative flex max-w-full justify-end"}
+            ref={menuRef}
+        >
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                aria-controls="account-options"
+                aria-controls={menuId}
                 aria-expanded={isOpen}
                 aria-label={CTA_LABELS.accountOptions}
-                className="flex items-center gap-2 rounded-(--radius-pill) border border-(--card-stroke) bg-(--card) px-3 py-1.5 text-sm transition hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                className={`flex items-center gap-2 border border-(--card-stroke) bg-(--card) px-3 py-1.5 text-sm transition hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50 ${
+                    inSidebar ? "w-full min-w-0 rounded-(--radius-sm)" : "rounded-(--radius-pill)"
+                }`}
             >
-                <div className="flex h-6 w-6 items-center justify-center rounded-(--radius-pill) bg-(--accent) text-xs font-bold text-white">
+                <div
+                    className={`flex h-6 w-6 items-center justify-center rounded-(--radius-pill) bg-(--accent) text-xs font-bold text-white ${
+                        inSidebar ? "shrink-0" : ""
+                    }`}
+                >
                     {session.user?.email?.[0]?.toUpperCase() || "U"}
                 </div>
                 <span className="font-medium text-foreground">Account</span>
-                <span className="hidden text-(--ink-muted) sm:block">
+                <span
+                    className={
+                        inSidebar
+                            ? "min-w-0 truncate text-(--ink-muted)"
+                            : "hidden text-(--ink-muted) sm:block"
+                    }
+                >
                     {session.user?.email?.split("@")[0]}
                 </span>
             </button>
 
             {isOpen && (
                 <div
-                    className="absolute right-0 top-full z-50 mt-2 w-48 rounded-(--radius-sm) border border-(--card-stroke) bg-(--card) shadow-(--elevation-card)"
-                    id="account-options"
+                    className={`absolute z-50 rounded-(--radius-sm) border border-(--card-stroke) bg-(--card) shadow-(--elevation-card) ${
+                        inSidebar ? "bottom-full left-0 mb-2 w-full" : "right-0 top-full mt-2 w-48"
+                    }`}
+                    id={menuId}
                 >
                     <div className="py-1">
                         <div className="border-b border-(--card-stroke) px-4 py-2 text-xs text-(--ink-muted)">
