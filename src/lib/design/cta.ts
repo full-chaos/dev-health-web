@@ -15,6 +15,8 @@
 export const CTA_LABELS = {
     /** Return to the Dev Health cockpit from global brand navigation. */
     devHealthCockpit: "Full Chaos Dev Health cockpit",
+    /** Cognitive Load overview: jump to the Load Drivers tab. */
+    exploreLoadDrivers: "Explore load drivers",
     /** Light / dark theme switch (pressed = light). */
     themeSwitchLight: "Light theme",
     /** Keyboard skip link: move focus past the app shell to the page content. */
