@@ -364,7 +364,7 @@ describe("ComplexityDashboard", () => {
         expect(screen.getAllByTestId("churn-row")).toHaveLength(2);
         // Churn bars use the tide data token, not the accent (scarlet) color.
         const bar = screen.getAllByTestId("churn-row")[0].querySelector("span[aria-hidden]");
-        expect(bar?.className).toContain("bg-(--theme-operational)");
+        expect(bar?.className).toContain("bg-(--chart-color-1)");
         expect(bar?.className).not.toMatch(/accent/u);
     });
 

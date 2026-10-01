@@ -44,7 +44,7 @@ export function EvidenceQualityBands({ evidenceQualityDistribution }: EvidenceQu
 
     // Four ordinal bands: one hue (tide), strength = opacity (unchanged). Unknown is NOT a step of
     // that ramp: neutral ink with a dashed outline, so missing evidence never reads as "low".
-    const BAND_FILL = "bg-(--theme-operational)";
+    const BAND_FILL = "bg-(--chart-color-1)";
     const UNKNOWN_FILL = "bg-(--ink-muted)/35 border border-dashed border-(--ink-muted)";
     const segments = [
         ...EVIDENCE_QUALITY_BANDS.map((band) => ({

@@ -341,7 +341,7 @@ export function ConfidencePanel({
                                         {row.allocation_pct > 0 && (
                                             <div
                                                 aria-hidden
-                                                className="h-full rounded-r-(--radius-sm) bg-(--theme-operational)"
+                                                className="h-full rounded-r-(--radius-sm) bg-(--chart-color-1)"
                                                 style={{
                                                     width: `${Math.min(100, row.allocation_pct)}%`,
                                                     minWidth: 2,

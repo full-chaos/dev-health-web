@@ -39,7 +39,7 @@ describe("EvidenceQualityBands", () => {
         };
         for (const [id, cls] of Object.entries(opacity)) {
             const el = seg(container, id);
-            expect(el.className).toContain("bg-(--theme-operational)");
+            expect(el.className).toContain("bg-(--chart-color-1)");
             expect(el.className).toContain(cls);
             expect(el.className).not.toMatch(/accent/u);
         }
@@ -51,7 +51,7 @@ describe("EvidenceQualityBands", () => {
     it("unknown is neutral ink with a dashed outline, never a step of the tide ramp", () => {
         const { container } = render(<EvidenceQualityBands evidenceQualityDistribution={dist} />);
         for (const el of [seg(container, "unknown"), swatch(container, "unknown")]) {
-            expect(el.className).not.toContain("theme-operational");
+            expect(el.className).not.toContain("chart-color-1");
             expect(el.className).toContain("border-dashed");
             expect(el.className).toContain("bg-(--ink-muted)");
         }

@@ -746,8 +746,8 @@ describe("GraphView", () => {
         const [inflow, outflow] = Array.from(
             screen.getAllByTestId("inflow-outflow-row")[0].querySelectorAll("span[aria-hidden]"),
         );
-        expect(inflow.className).toContain("bg-(--theme-operational)");
-        expect(outflow.className).toContain("bg-(--theme-risk)");
+        expect(inflow.className).toContain("bg-(--chart-color-1)");
+        expect(outflow.className).toContain("bg-(--chart-color-2)");
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
     });
 

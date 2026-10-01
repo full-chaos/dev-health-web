@@ -220,7 +220,7 @@ describe("InvestmentView — Confidence tab", () => {
         const bar = container.querySelector('[style*="width: 25%"]');
         expect(bar).not.toBeNull();
         // Small-bar recipe: tide fill (never the action/accent colors), 2px minimum, on a track.
-        expect(bar?.className).toContain("bg-(--theme-operational)");
+        expect(bar?.className).toContain("bg-(--chart-color-1)");
         expect(bar?.className).not.toMatch(/accent/u);
         expect((bar as HTMLElement).style.minWidth).toBe("2px");
         expect(bar?.parentElement?.className).toContain("bg-(--card-stroke)");
