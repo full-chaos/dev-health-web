@@ -93,11 +93,34 @@ describe("AI overview cards", () => {
         expect(within(risk).queryByTestId("area-signal-value")).toBeNull();
     });
 
-    it("sorts by severity and puts the unavailable card last", async () => {
+    it("sorts by severity and puts the unavailable card last, in each group", async () => {
         await renderPage();
-        const order = cards().map((c) => c.getAttribute("data-signal-id"));
-        expect(order.indexOf("review")).toBeLessThan(order.indexOf("impact"));
-        expect(order[order.length - 1]).toBe("risk");
+        const groups = screen.getAllByTestId("area-hub-cluster");
+        const ids = (g: HTMLElement) =>
+            within(g)
+                .getAllByTestId("area-signal-card")
+                .map((c) => c.getAttribute("data-signal-id"));
+        expect(groups.map((g) => g.getAttribute("data-cluster"))).toEqual(["Signal", "Action"]);
+        expect(ids(groups[0])).toEqual(["review", "impact", "risk"]);
+        expect(ids(groups[1])).toEqual(["auto"]);
+    });
+
+    it("has no hero above the groups, and no frame card around them", async () => {
+        await renderPage();
+        expect(screen.queryByTestId("area-overview-hero")).toBeNull();
+        expect(screen.getByTestId("area-hub").className).not.toMatch(/border|bg-/);
+    });
+
+    it("shows the driver line only on Impact, with the number that sets its state", async () => {
+        signals.current[0] = {
+            ...signals.current[0],
+            driver: "Rework drag 12% · AI-assisted work",
+        };
+        await renderPage();
+        const drivers = screen.getAllByTestId("area-signal-driver");
+        expect(drivers).toHaveLength(1);
+        expect(drivers[0]).toHaveTextContent("Rework drag 12% · AI-assisted work");
+        expect(drivers[0].closest("[data-signal-id]")).toHaveAttribute("data-signal-id", "impact");
     });
 
     it("emphasizes the most severe severity-bearing card, once", async () => {
