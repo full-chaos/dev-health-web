@@ -51,7 +51,7 @@ export function AIComparisonCard({
                     </span>
                 ) : (
                     // No baseline to compare with: a missing delta is not good news (A3).
-                    <span className="rounded-full border border-dashed border-(--card-stroke) px-2 py-1 text-xs text-(--ink-muted)">
+                    <span className="whitespace-nowrap rounded-full border border-dashed border-(--card-stroke) px-2 py-1 text-xs text-(--ink-muted)">
                         No baseline
                     </span>
                 )}
