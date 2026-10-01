@@ -102,7 +102,13 @@ export function AdvancedFiltersPanel({
                     updateWorkCategory={(nextValues) =>
                         updateFilters({
                             ...filters,
-                            why: { ...filters.why, work_category: nextValues },
+                            why: {
+                                ...filters.why,
+                                // One work type where the queries take one (the AI pages).
+                                work_category: visibility.workTypeSingle
+                                    ? nextValues.slice(0, 1)
+                                    : nextValues,
+                            },
                         })
                     }
                     workCategory={workCategory}

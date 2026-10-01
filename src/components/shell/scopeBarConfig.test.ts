@@ -184,3 +184,15 @@ describe("resolveScopeBarConfig — AI pages (CHAOS-7744)", () => {
         expect(resolveScopeBarConfig("ai").resolvedVisibility.workType).toBe(true);
     });
 });
+
+describe("resolveScopeBarConfig — Work is single-select on AI pages (CHAOS-7784)", () => {
+    it("the AI queries take one work type, so the AI view is single-select", () => {
+        expect(resolveScopeBarConfig("ai").resolvedVisibility.workTypeSingle).toBe(true);
+    });
+
+    it("every other view keeps multi-select", () => {
+        for (const view of ALL_VIEWS.filter((v) => v !== "ai")) {
+            expect(resolveVisibility(view).workTypeSingle, view).toBeUndefined();
+        }
+    });
+});
