@@ -6,7 +6,7 @@ import { useCallback, useMemo } from "react";
 import { SunburstChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
-import { useChartColors, useChartTheme } from "./chartTheme";
+import { investmentThemeColor, useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
 import { formatNumber, formatPercent } from "@/lib/formatters";
@@ -54,6 +54,7 @@ export function InvestmentMixSunburst({
 }: InvestmentMixSunburstProps) {
     const chartTheme = useChartTheme();
     const chartColors = useChartColors();
+    const tokens = useChartTokens();
     const mergedStyle: CSSProperties = { height, width, ...style };
 
     const sortedThemes = useMemo(
@@ -84,10 +85,13 @@ export function InvestmentMixSunburst({
     const themeColorMap = useMemo(() => {
         const map = new Map<string, string>();
         sortedThemes.forEach((theme, index) => {
-            map.set(theme.key, chartColors[index % chartColors.length]);
+            map.set(
+                theme.key,
+                investmentThemeColor(theme.key, tokens, chartColors[index % chartColors.length]),
+            );
         });
         return map;
-    }, [sortedThemes, chartColors]);
+    }, [sortedThemes, chartColors, tokens]);
 
     const data = useMemo(() => {
         const subEntries = Object.entries(subcategoryDistribution)

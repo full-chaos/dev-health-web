@@ -114,8 +114,8 @@ export const buildTooltipHtml = (params: {
         unit,
         percent,
         extra,
-        mutedColor = "#6b7280",
-        accentColor = "#8b5cf6",
+        mutedColor = "var(--chart-muted)",
+        accentColor = "var(--accent-2)",
     } = params;
     const formattedValue =
         typeof value === "number"
@@ -142,22 +142,6 @@ export const buildTooltipHtml = (params: {
  */
 export const buildPathString = (path: string[]): string => {
     return path.join(" → ");
-};
-
-/**
- * Common gradient colors for stacked area charts.
- */
-export const GRADIENT_COLORS = {
-    planned: { start: "rgba(59, 130, 246, 0.8)", end: "rgba(59, 130, 246, 0.1)" },
-    unplanned: {
-        start: "rgba(168, 85, 247, 0.8)",
-        end: "rgba(168, 85, 247, 0.1)",
-    },
-    rework: { start: "rgba(249, 115, 22, 0.8)", end: "rgba(249, 115, 22, 0.1)" },
-    abandonment: {
-        start: "rgba(239, 68, 68, 0.8)",
-        end: "rgba(239, 68, 68, 0.1)",
-    },
 };
 
 /**

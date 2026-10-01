@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor, within } from "@/test/utils";
 import { QuadrantPanel } from "./QuadrantPanel";
 
@@ -11,6 +11,18 @@ vi.mock("./InvestigationPanel", () => ({
 }));
 
 describe("QuadrantPanel", () => {
+    beforeAll(() => {
+        // The panel reads zone colors from the theme store, which watches the color scheme.
+        Object.defineProperty(window, "matchMedia", {
+            configurable: true,
+            value: () => ({
+                matches: false,
+                addEventListener: () => undefined,
+                removeEventListener: () => undefined,
+            }),
+        });
+    });
+
     const defaultProps = {
         title: "Test Quadrant",
         description: "Test description",
