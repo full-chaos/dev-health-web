@@ -39,6 +39,7 @@ export const SHELL_ROUTES: readonly ShellRoute[] = [
     { prefix: "/people" },
     // Govern
     { prefix: "/govern", exact: true },
+    { prefix: "/quality" },
 ];
 
 function matchesRoute(pathname: string, route: ShellRoute): boolean {

@@ -18,6 +18,7 @@ describe("shell route registry", () => {
             "/cognitive-load",
             "/people",
             "/govern",
+            "/quality",
         ]);
     });
 
