@@ -69,7 +69,7 @@ describe("AIWorkspaceChrome", () => {
         expect(screen.getByRole("heading", { level: 1, name: "AI" })).toBeInTheDocument();
     });
 
-    it("renders a BackLink returning to the cockpit (A5)", () => {
+    it("renders a BackLink returning to Home (A5)", () => {
         render(<AIWorkspaceChrome>content</AIWorkspaceChrome>);
         const backLink = screen.getByRole("link", { name: /back to home/i });
         expect(backLink).toBeInTheDocument();
