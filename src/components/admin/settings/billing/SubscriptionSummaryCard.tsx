@@ -81,7 +81,7 @@ export function SubscriptionSummaryCard({
                             type="button"
                             onClick={onCancelClick}
                             disabled={isPending}
-                            className="rounded-md border border-red-300 px-3 py-2 text-sm text-red-700 hover:bg-red-50 disabled:opacity-50"
+                            className="rounded-md border border-(--negative)/30 px-3 py-2 text-sm text-(--negative) hover:bg-(--negative)/12 disabled:opacity-50"
                         >
                             {CTA_LABELS.cancel}
                         </button>
@@ -91,7 +91,7 @@ export function SubscriptionSummaryCard({
                             type="button"
                             onClick={onReactivate}
                             disabled={isPending}
-                            className="rounded-md border border-blue-300 px-3 py-2 text-sm text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+                            className="rounded-md border border-(--info)/30 px-3 py-2 text-sm text-(--info) hover:bg-(--info)/12 disabled:opacity-50"
                         >
                             {CTA_LABELS.reactivateSubscription}
                         </button>
