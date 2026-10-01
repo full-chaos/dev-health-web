@@ -139,3 +139,74 @@ describe("DataTable baseline (behaviour before the row-action and footer props)"
         expect(container.innerHTML).toMatchSnapshot();
     });
 });
+
+describe("DataTable rowActions and footerNote (CHAOS-7599)", () => {
+    it("adds one trailing cell per row with the row's own action and an Actions header", () => {
+        const { container } = render(
+            <DataTable
+                {...base}
+                rowActions={(r) => <button type="button">Open {r.name}</button>}
+            />,
+        );
+        expect(screen.getByRole("columnheader", { name: "Actions" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Open Alpha" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Open Beta" })).toBeInTheDocument();
+        const rows = container.querySelectorAll("tbody tr");
+        rows.forEach((tr) => expect(tr.querySelectorAll("td")).toHaveLength(3));
+    });
+
+    it("keeps the action visible (no hover-only class) and does not make the row a link", () => {
+        const { container } = render(
+            <DataTable {...base} rowActions={() => <button type="button">Go</button>} />,
+        );
+        expect(container.innerHTML).not.toMatch(/group-hover|opacity-0|invisible/);
+        expect(container.querySelector("tbody tr a")).toBeNull();
+    });
+
+    it("widens the empty row by the actions column, unless emptyColSpan is given", () => {
+        const { rerender } = render(
+            <DataTable {...base} data={[]} rowActions={() => <span>x</span>} />,
+        );
+        expect(screen.getByText("Nothing here")).toHaveAttribute("colspan", "3");
+        rerender(
+            <DataTable {...base} data={[]} emptyColSpan={7} rowActions={() => <span>x</span>} />,
+        );
+        expect(screen.getByText("Nothing here")).toHaveAttribute("colspan", "7");
+    });
+
+    it("ignores rowActions when renderRowAction renders the whole row", () => {
+        const { container } = render(
+            <DataTable
+                {...base}
+                renderRowAction={(r) => (
+                    <tr>
+                        <td>{r.name}</td>
+                    </tr>
+                )}
+                rowActions={() => <button type="button">Never</button>}
+            />,
+        );
+        expect(screen.queryByRole("button", { name: "Never" })).toBeNull();
+        expect(container.querySelectorAll("tbody tr td")).toHaveLength(2);
+    });
+
+    it("shows the footer note under the table and leaves the pager as it was", () => {
+        const { container } = render(
+            <DataTable
+                {...base}
+                footerNote={<span>Last computed 12:03</span>}
+                summaryLabel="things"
+                pagination={{ limit: 1, offset: 0, total: 2 }}
+                onPageChangeAction={() => {}}
+            />,
+        );
+        const footer = container.querySelector("[data-table-footer]") as HTMLElement;
+        expect(footer).toHaveTextContent("Last computed 12:03");
+        const region = screen.getByRole("region", { name: "Things" });
+        expect(
+            region.compareDocumentPosition(footer) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(screen.getByText(/Page 1 of 2/)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
+    });
+});
