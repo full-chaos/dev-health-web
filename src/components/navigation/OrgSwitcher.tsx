@@ -39,6 +39,7 @@ function dataLabel(org: OrganizationOption) {
 
 /** Data state of the active organization, as the switcher shows it. */
 export type ActiveOrganizationData = {
+    name: string;
     hasData: boolean;
     lastMetricsAt: string | null;
 };
@@ -126,6 +127,7 @@ export function OrgSwitcher({
         onActiveOrganizationChange(
             activeOrg
                 ? {
+                      name: activeOrg.name,
                       hasData: activeOrg.has_data,
                       lastMetricsAt: activeOrg.last_metrics_at ?? null,
                   }

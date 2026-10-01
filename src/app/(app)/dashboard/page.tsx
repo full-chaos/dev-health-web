@@ -8,9 +8,8 @@ import { RankedSignals } from "@/components/home/RankedSignals";
 import { AiWorkflowCallout } from "@/components/home/AiWorkflowCallout";
 import { DataConfidenceIndicator } from "@/components/home/DataConfidenceIndicator";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { FilterBar } from "@/components/filters/FilterBar";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 import { getLensFromSearchParams, getLensConfig, DEFAULT_ROLE } from "@/lib/lensContext";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
@@ -135,8 +134,7 @@ export default async function Home({ searchParams }: HomePageProps) {
 
             {setupStatus ? <SetupBanner status={setupStatus} orgId={setupOrgId} /> : null}
 
-            <GlobalContextBar filters={filters} />
-            <FilterBar view="home" />
+            <ScopeBar view="home" />
 
             {/* Minimal freshness indicator only — no integration status UI */}
 

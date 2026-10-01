@@ -34,7 +34,6 @@ vi.mock("@/lib/auth", () => ({
     auth: vi.fn(async () => ({ user: { org_id: "org-1" } })),
 }));
 
-vi.mock("@/components/filters/FilterBar", () => ({ FilterBar: () => null }));
 vi.mock("@/components/home/AiWorkflowCallout", () => ({ AiWorkflowCallout: () => null }));
 vi.mock("@/components/home/BackendBanner", () => ({ BackendBanner: () => null }));
 vi.mock("@/components/home/CockpitClient", () => ({ CockpitClient: () => null }));
@@ -43,7 +42,7 @@ vi.mock("@/components/home/DataConfidenceIndicator", () => ({
 }));
 vi.mock("@/components/home/InvestmentPreview", () => ({ InvestmentPreview: () => null }));
 vi.mock("@/components/home/RankedSignals", () => ({ RankedSignals: () => null }));
-vi.mock("@/components/navigation/GlobalContextBar", () => ({ GlobalContextBar: () => null }));
+vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => null }));
 vi.mock("@/components/onboarding/SetupBanner", () => ({ SetupBanner: () => null }));
 
 async function renderCockpit() {
