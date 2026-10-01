@@ -45,6 +45,9 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
             p50Days: forecast.p50Days ?? 0,
             p85Days: forecast.p85Days ?? 0,
             p95Days: forecast.p95Days ?? 0,
+            p50Date: forecast.p50Date,
+            p85Date: forecast.p85Date,
+            p95Date: forecast.p95Date,
             throughputMean: forecast.throughputMean,
         };
     }, [forecast]);
@@ -76,14 +79,23 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                         Completion Projection
                     </h3>
                     {chartData ? (
-                        <ConfidenceBandChart
-                            backlogSize={chartData.backlogSize}
-                            p50Days={chartData.p50Days}
-                            p85Days={chartData.p85Days}
-                            p95Days={chartData.p95Days}
-                            throughputMean={chartData.throughputMean}
-                            height={320}
-                        />
+                        <>
+                            <ConfidenceBandChart
+                                backlogSize={chartData.backlogSize}
+                                p50Days={chartData.p50Days}
+                                p85Days={chartData.p85Days}
+                                p95Days={chartData.p95Days}
+                                p50Date={chartData.p50Date}
+                                p85Date={chartData.p85Date}
+                                p95Date={chartData.p95Date}
+                                throughputMean={chartData.throughputMean}
+                                height={320}
+                            />
+                            <p className="mt-2 text-xs text-(--ink-muted)">
+                                Line = backlog burned at the mean throughput; markers = the
+                                forecast&apos;s P50 / P85 / P95 days. No distribution is drawn.
+                            </p>
+                        </>
                     ) : isLoading ? (
                         <div className="flex h-80 items-center justify-center">
                             <div className="animate-pulse text-sm text-(--ink-muted)">
