@@ -92,8 +92,6 @@ const testOpsTabRoutes = [
 
 const knownPreexistingDualContextBarScopes = new Set([
     "src/app/(app)/ai/attribution/page.tsx",
-    "src/app/(app)/ai/automations/page.tsx",
-    "src/app/(app)/ai/automations/page.tsx",
     "src/app/(app)/ai/risk/page.tsx",
 ]);
 

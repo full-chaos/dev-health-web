@@ -196,16 +196,6 @@ describe("breadcrumbs — production page source guards (codex round 2: prior te
         },
     );
 
-    const directPassthroughPages = [{ path: "ai/automations/page.tsx", route: "/ai/automations" }];
-
-    it.each(directPassthroughPages)(
-        "$path: passes navTrailForPathname($route) straight through as breadcrumbs",
-        ({ path, route }) => {
-            const source = readPageSource(path);
-            expect(source).toContain(`breadcrumbs={navTrailForPathname("${route}")}`);
-        },
-    );
-
     // Pages in the shared app shell have no in-page trail. The top bar renders
     // the one trail from navTrailForPathname(pathname) itself (see
     // ShellTopBar.test.tsx and each page's shell.test.tsx), so a page cannot
@@ -215,6 +205,7 @@ describe("breadcrumbs — production page source guards (codex round 2: prior te
         "ai/impact/page.tsx",
         "ai/impact/evidence/page.tsx",
         "ai/review-load/page.tsx",
+        "ai/automations/page.tsx",
     ];
 
     it.each(pagesWithNoInPageTrail)("%s: has no in-page trail", (relativePath) => {
