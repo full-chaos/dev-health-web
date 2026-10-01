@@ -319,11 +319,12 @@ export function SankeyChart({
             series: [
                 {
                     type: "sankey" as const,
-                    emphasis: { focus: "adjacency" as const },
+                    // hover: the entity's flows stay strong, the rest dim (translucent links at rest)
+                    emphasis: { focus: "adjacency" as const, lineStyle: { opacity: 0.75 } },
                     data: chartNodes,
                     links: chartLinks,
                     roam: false,
-                    lineStyle: { color: "gradient", curveness: 0.5, opacity: 0.45 },
+                    lineStyle: { color: "gradient", curveness: 0.5, opacity: 0.3 },
                     label: {
                         color: chartTheme.text,
                         fontSize: 11,

@@ -140,7 +140,7 @@ export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps
                         <button
                             type="button"
                             onClick={() => onDeleteAction(identity.canonical_id)}
-                            className="text-red-500 hover:underline"
+                            className="text-(--negative) hover:underline"
                         >
                             {CTA_LABELS.delete}
                         </button>

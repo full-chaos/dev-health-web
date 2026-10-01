@@ -21,6 +21,13 @@ export type ShellRoute = {
      * URL has it.
      */
     defaultRole?: boolean;
+    /**
+     * `"page"`: the `f` param of this route is the page's own encoding, not a
+     * metric filter (the Security pages keep a Security filter there). The
+     * navigation links then carry the default metric filter, as the page's own
+     * `PrimaryNav` did, and never the page's `f`.
+     */
+    filterParam?: "page";
 };
 
 export const SHELL_ROUTES: readonly ShellRoute[] = [
@@ -43,8 +50,18 @@ export const SHELL_ROUTES: readonly ShellRoute[] = [
     { prefix: "/testops" },
     { prefix: "/incident-correlation" },
     { prefix: "/risk/compounding" },
-    { prefix: "/security" },
+    { prefix: "/security", filterParam: "page" },
     { prefix: "/feature-flags" },
+    // Plan
+    { prefix: "/plan", exact: true },
+    { prefix: "/plan/capacity" },
+    { prefix: "/plan/backlog-risk" },
+    { prefix: "/operating-review" },
+    // Improve
+    { prefix: "/improve", exact: true },
+    { prefix: "/opportunities" },
+    { prefix: "/improve/experiments" },
+    { prefix: "/improve/automations" },
 ];
 
 function matchesRoute(pathname: string, route: ShellRoute): boolean {

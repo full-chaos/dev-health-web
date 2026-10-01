@@ -30,7 +30,7 @@ export function InsufficientHistoryNotice({
             title="Limited history"
             titleAs="h2"
             action={
-                <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs uppercase tracking-[0.16em] text-(--caution)">
+                <span className="rounded-full bg-(--caution)/12 px-3 py-1 text-xs uppercase tracking-[0.16em] text-(--caution)">
                     Forecast provisional
                 </span>
             }
@@ -47,7 +47,7 @@ export function InsufficientHistoryNotice({
                         key={window.windowWeeks}
                         className={`flex items-center gap-2 rounded-full px-3 py-1 text-xs ${
                             window.insufficientHistory
-                                ? "bg-amber-500/15 text-(--caution)"
+                                ? "bg-(--caution)/12 text-(--caution)"
                                 : "bg-foreground/10 text-(--ink-muted)"
                         }`}
                     >

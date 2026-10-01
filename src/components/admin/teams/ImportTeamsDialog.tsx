@@ -304,7 +304,7 @@ export function ImportTeamsDialog() {
 
                     {step === "result" && importResult && (
                         <div className="space-y-6 text-center">
-                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-green-500/10 text-green-500">
+                            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-(--positive)/12 text-(--positive)">
                                 ✓
                             </div>
                             <div>

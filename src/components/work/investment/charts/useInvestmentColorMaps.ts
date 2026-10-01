@@ -10,6 +10,7 @@ import {
     adjustHex,
     buildOptionalTimeRangeLabel,
     formatSubcategoryLabel,
+    isUnassignedLabel,
     normalizeThemeKey,
     normalizeUnassignedLabel,
     stripSankeyPrefix,
@@ -126,9 +127,25 @@ export function useInvestmentColorMaps({
                     return { ...node, itemStyle: { ...node.itemStyle, color } };
                 }
             }
+            // Team and repo nodes are structure, not a theme: neutral ink; Unassigned is quieter.
+            if (node.group === "team" || node.group === "repo") {
+                return {
+                    ...node,
+                    itemStyle: {
+                        ...node.itemStyle,
+                        color: isUnassignedLabel(node.name) ? chartTheme.grid : chartTheme.muted,
+                    },
+                };
+            }
             return node;
         },
-        [categoryColorMap, resolveSubcategoryIdForColor, themeColorMap],
+        [
+            categoryColorMap,
+            chartTheme.grid,
+            chartTheme.muted,
+            resolveSubcategoryIdForColor,
+            themeColorMap,
+        ],
     );
 
     const prepareSankeyFlow = useCallback(

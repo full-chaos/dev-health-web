@@ -15,6 +15,7 @@ import {
     computeKpis,
     computeRisingAreas,
     buildTreemapData,
+    buildTrendOption,
     type ComplexityPoint,
     type HotspotRow,
 } from "./ComplexityDashboard";
@@ -362,6 +363,10 @@ describe("ComplexityDashboard", () => {
         render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="churn" />);
         expect(screen.getByTestId("churn-panel")).toBeInTheDocument();
         expect(screen.getAllByTestId("churn-row")).toHaveLength(2);
+        // Churn bars use the tide data token, not the accent (scarlet) color.
+        const bar = screen.getAllByTestId("churn-row")[0].querySelector("span[aria-hidden]");
+        expect(bar?.className).toContain("bg-(--chart-color-1)");
+        expect(bar?.className).not.toMatch(/accent/u);
     });
 
     it("shows a DataState on the churn tab when there is no churn", () => {
@@ -369,5 +374,84 @@ describe("ComplexityDashboard", () => {
         render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="churn" />);
         expect(screen.queryByTestId("churn-panel")).not.toBeInTheDocument();
         expect(screen.getByTestId("churn-panel-empty")).toBeInTheDocument();
+    });
+});
+
+describe("buildTrendOption conventions", () => {
+    const theme = {
+        background: "#fff",
+        stroke: "#eee",
+        text: "#000",
+        muted: "#888",
+        grid: "#ddd",
+    } as never;
+    const colors = ["#3b82f6", "#10b981", "#f59e0b"];
+    const pts = [
+        makePoint("r1", "2026-01-01", { cyclomaticPerKloc: 5 }),
+        makePoint("r1", "2026-01-03", { cyclomaticPerKloc: 6 }),
+        makePoint("r1", "2026-01-04", { cyclomaticPerKloc: 7 }),
+        makePoint("r2", "2026-01-01", { cyclomaticPerKloc: 2 }),
+        makePoint("r2", "2026-01-02", { cyclomaticPerKloc: 3 }),
+    ];
+    type S = {
+        name: string;
+        symbolSize: number;
+        showAllSymbol: boolean;
+        connectNulls: boolean;
+        smooth: boolean;
+        itemStyle: { color: string };
+        lineStyle: { width: number; cap: string; join: string; color: string };
+        data: Array<{
+            value: number | null;
+            symbolSize: number;
+            itemStyle?: { borderWidth: number };
+        }>;
+    };
+    const opt = () =>
+        buildTrendOption(pts, theme, colors) as unknown as {
+            tooltip: {
+                axisPointer: {
+                    type: string;
+                    lineStyle: { color: string; width: number; type: string };
+                };
+            };
+            legend: { show: boolean };
+            series: S[];
+        };
+
+    it("uses the shared tooltip with a muted 1px solid crosshair", () => {
+        expect(opt().tooltip.axisPointer).toEqual({
+            type: "line",
+            lineStyle: { color: "#888", width: 1, type: "solid" },
+        });
+    });
+
+    it("draws a dot only on the last value, bridging the gap (connectNulls)", () => {
+        const [r1, r2] = opt().series;
+        // r1 has a null on 01-02: dates are 01,02,03,04 -> values 5,null,6,7
+        expect(r1.data.map((d) => d.value)).toEqual([5, null, 6, 7]);
+        expect(r1.data.map((d) => d.symbolSize)).toEqual([0, 0, 0, 8]);
+        expect(r1.data[3].itemStyle?.borderWidth).toBe(2);
+        expect(r2.data.map((d) => d.symbolSize)).toEqual(
+            [0, 0, 0, 0].map((_, i) => (i === 1 ? 8 : 0)),
+        );
+    });
+
+    it("keeps the legend glyph, colors, smoothing and bridging as before", () => {
+        const o = opt();
+        expect(o.legend.show).toBe(true);
+        o.series.forEach((s, i) => {
+            expect(s.symbolSize).toBe(5);
+            expect(s.showAllSymbol).toBe(true);
+            expect(s.connectNulls).toBe(true);
+            expect(s.smooth).toBe(true);
+            expect(s.itemStyle.color).toBe(colors[i]);
+            expect(s.lineStyle).toEqual({
+                width: 2,
+                cap: "round",
+                join: "round",
+                color: colors[i],
+            });
+        });
     });
 });

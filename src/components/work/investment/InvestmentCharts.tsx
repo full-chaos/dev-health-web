@@ -8,9 +8,8 @@ import { formatEffortUnit, formatSankeyUnit } from "@/lib/investment";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyResponse, WorkUnitInvestment } from "@/lib/types";
 import { InvestmentMixSection } from "./charts/InvestmentMixSection";
-import { RepoTeamSankeySection } from "./charts/RepoTeamSankeySection";
+import { AllocationSankeySwitch } from "./charts/AllocationSankeySwitch";
 import { TeamExchangeChordSection } from "./charts/TeamExchangeChordSection";
-import { TeamCategorySankeySection } from "./charts/TeamCategorySankeySection";
 import { useInvestmentColorMaps } from "./charts/useInvestmentColorMaps";
 
 type InvestmentChartsProps = {
@@ -151,36 +150,35 @@ export function InvestmentCharts({
                     effortUnit={flowUnit}
                 />
             ) : (
-                <>
-                    <TeamCategorySankeySection
-                        filters={filters}
-                        focusedTeam={focusedTeam}
-                        setFocusedTeam={setFocusedTeam}
-                        selectedCategory={selectedCategory}
-                        setSelectedCategory={setSelectedCategory}
-                        setFocusSubcategory={setFocusSubcategory}
-                        showSubcategories={showSubcategories}
-                        effortUnit={flowUnit}
-                        teamCategoryFlow={teamCategoryFlow}
-                        baselineSankeyFlow={baselineSankeyFlow}
-                        isCategoryFlowLoading={isCategoryFlowLoading}
-                        prepareSankeyFlow={prepareSankeyFlow}
-                        buildSankeyTooltipFormatter={buildSankeyTooltipFormatter}
-                        resolveSubcategoryIdFromLabel={resolveSubcategoryIdFromLabel}
-                    />
-
-                    <RepoTeamSankeySection
-                        filters={filters}
-                        setFocusSubcategory={setFocusSubcategory}
-                        effortUnit={flowUnit}
-                        repoTeamFlow={repoTeamFlow}
-                        isRepoTeamLoading={isRepoTeamLoading}
-                        repoTeamFlowFailed={repoTeamFlowFailed}
-                        prepareSankeyFlow={prepareSankeyFlow}
-                        buildSankeyTooltipFormatter={buildSankeyTooltipFormatter}
-                        resolveSubcategoryIdFromLabel={resolveSubcategoryIdFromLabel}
-                    />
-                </>
+                <AllocationSankeySwitch
+                    teamCategory={{
+                        filters,
+                        focusedTeam,
+                        setFocusedTeam,
+                        selectedCategory,
+                        setSelectedCategory,
+                        setFocusSubcategory,
+                        showSubcategories,
+                        effortUnit: flowUnit,
+                        teamCategoryFlow,
+                        baselineSankeyFlow,
+                        isCategoryFlowLoading,
+                        prepareSankeyFlow,
+                        buildSankeyTooltipFormatter,
+                        resolveSubcategoryIdFromLabel,
+                    }}
+                    repoTeam={{
+                        filters,
+                        setFocusSubcategory,
+                        effortUnit: flowUnit,
+                        repoTeamFlow,
+                        isRepoTeamLoading,
+                        repoTeamFlowFailed,
+                        prepareSankeyFlow,
+                        buildSankeyTooltipFormatter,
+                        resolveSubcategoryIdFromLabel,
+                    }}
+                />
             )}
         </>
     );

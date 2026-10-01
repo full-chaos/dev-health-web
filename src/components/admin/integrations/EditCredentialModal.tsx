@@ -219,7 +219,7 @@ export function EditCredentialModal({
 
                     {testResult && (
                         <p
-                            className={`text-sm ${testResult.success ? "text-emerald-500" : "text-red-500"}`}
+                            className={`text-sm ${testResult.success ? "text-(--positive)" : "text-(--negative)"}`}
                         >
                             {testResult.success ? "✓" : "✕"} {testResult.message}
                         </p>
