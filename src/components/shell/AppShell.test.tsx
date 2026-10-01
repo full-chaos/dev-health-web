@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
@@ -23,10 +23,6 @@ vi.mock("next-auth/react", () => ({
         update: vi.fn(),
     }),
     signOut: vi.fn(),
-}));
-
-vi.mock("@/lib/apiClient", () => ({
-    apiClient: { getJson: vi.fn(() => new Promise(() => {})) },
 }));
 
 /** A page that is not migrated: it renders its own navigation and `<main>`. */
@@ -159,6 +155,95 @@ describe("AppShell — a route in the registry gets the shared shell", () => {
             "account-options",
             "account-options-sidebar",
         ]);
+    });
+});
+
+describe("AppShell — the status chip states what the organization card knows", () => {
+    function organizationsResponse(active: { has_data: boolean; last_metrics_at?: string | null }) {
+        return {
+            ok: true,
+            json: async () => ({
+                active_org_id: "org-1",
+                organizations: [
+                    { id: "org-1", slug: "test", name: "Test", role: "owner", ...active },
+                    { id: "org-2", slug: "other", name: "Other", role: "member", has_data: false },
+                ],
+            }),
+        };
+    }
+
+    function chip() {
+        return screen.getByTestId("shell-status-chip");
+    }
+
+    it("asks for the organizations once: the card and the chip share one request", async () => {
+        const fetchMock = vi
+            .fn()
+            .mockResolvedValue(
+                organizationsResponse({ has_data: true, last_metrics_at: "2026-09-30T10:00:00Z" }),
+            );
+        vi.stubGlobal("fetch", fetchMock);
+        renderFrame(<ShellPage />);
+
+        await waitFor(() => expect(chip()).toHaveAttribute("data-status", "synced"));
+        expect(chip()).toHaveTextContent(/^Data through /);
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+        expect(screen.getByRole("combobox", { name: /organization/i })).toBeInTheDocument();
+    });
+
+    it("shows 'No data yet' only when the active organization has no data", async () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn().mockResolvedValue(organizationsResponse({ has_data: false })),
+        );
+        renderFrame(<ShellPage />);
+
+        await waitFor(() => expect(chip()).toHaveAttribute("data-status", "empty"));
+        expect(chip()).toHaveTextContent("No data yet");
+    });
+
+    it.each([
+        ["the request is refused", () => vi.fn().mockResolvedValue({ ok: false })],
+        ["the request throws", () => vi.fn().mockRejectedValue(new Error("network"))],
+        [
+            "the active organization is not in the list",
+            () =>
+                vi.fn().mockResolvedValue({
+                    ok: true,
+                    json: async () => ({
+                        active_org_id: "org-9",
+                        organizations: [
+                            {
+                                id: "org-2",
+                                slug: "other",
+                                name: "Other",
+                                role: "member",
+                                has_data: true,
+                                last_metrics_at: "2026-09-30T10:00:00Z",
+                            },
+                        ],
+                    }),
+                }),
+        ],
+    ])("shows the neutral 'Status unavailable' state when %s", async (_label, makeFetch) => {
+        vi.stubGlobal("fetch", makeFetch());
+        renderFrame(<ShellPage />);
+
+        await waitFor(() => expect(chip()).toHaveAttribute("data-status", "unknown"));
+        expect(chip()).toHaveTextContent("Status unavailable");
+        expect(chip()).not.toHaveTextContent("Data through");
+        expect(chip()).not.toHaveTextContent("No data yet");
+    });
+
+    it("is neutral while the request is open", () => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(() => new Promise(() => {})),
+        );
+        renderFrame(<ShellPage />);
+
+        expect(chip()).toHaveAttribute("data-status", "loading");
+        expect(chip()).not.toHaveTextContent("Data through");
     });
 });
 

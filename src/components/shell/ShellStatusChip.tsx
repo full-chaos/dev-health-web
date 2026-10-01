@@ -1,58 +1,49 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import { ClientTimestamp } from "@/components/ClientTimestamp";
-import { getApiMeta } from "@/lib/api/system";
+import type { ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
 
 /**
  * Data-freshness chip of the shell top bar.
  *
- * It states a fact (when data was last synced) and never a health verdict. A
- * failed request, an empty answer or a value that is not a date is `unknown`,
- * shown as neutral: the chip must not look healthy when the state is not known.
+ * It states a fact about the active organization's data and never a health
+ * verdict. The source is the same answer the organization card shows, so the
+ * two cannot disagree. A failed request, an organization that is not in the
+ * list, or a value that is not understood is `unknown`, shown as neutral: the
+ * chip must not look healthy, or empty, when the state is not known.
  */
 export type ShellStatus =
-    { kind: "loading" } | { kind: "unknown" } | { kind: "empty" } | { kind: "synced"; at: string };
+    | { kind: "loading" }
+    | { kind: "unknown" }
+    | { kind: "empty" }
+    | { kind: "present" }
+    | { kind: "synced"; at: string };
 
-/** Map the meta answer to a chip state. Anything not understood is `unknown`. */
-export function shellStatusFromMeta(meta: unknown): ShellStatus {
-    if (typeof meta !== "object" || meta === null || !("last_ingest_at" in meta)) {
+/** Map the active organization's data state to a chip state. */
+export function shellStatusFromOrganization(organization: unknown): ShellStatus {
+    if (typeof organization !== "object" || organization === null) {
         return { kind: "unknown" };
     }
-    const lastIngestAt: unknown = (meta as Record<string, unknown>).last_ingest_at;
-    if (lastIngestAt === null) return { kind: "empty" };
-    if (typeof lastIngestAt !== "string" || Number.isNaN(Date.parse(lastIngestAt))) {
-        return { kind: "unknown" };
+    const { hasData, lastMetricsAt } = organization as Partial<
+        Record<keyof ActiveOrganizationData, unknown>
+    >;
+    if (typeof hasData !== "boolean") return { kind: "unknown" };
+    if (!hasData) return { kind: "empty" };
+    if (typeof lastMetricsAt !== "string" || Number.isNaN(Date.parse(lastMetricsAt))) {
+        return { kind: "present" };
     }
-    return { kind: "synced", at: lastIngestAt };
+    return { kind: "synced", at: lastMetricsAt };
 }
 
 const DOT_CLASS: Record<ShellStatus["kind"], string> = {
     loading: "bg-(--text-muted)",
     unknown: "bg-(--text-muted)",
     empty: "bg-(--caution)",
+    present: "bg-(--info)",
     synced: "bg-(--info)",
 };
 
-export function ShellStatusChip() {
-    const [status, setStatus] = useState<ShellStatus>({ kind: "loading" });
-
-    useEffect(() => {
-        let active = true;
-        // `getApiMeta` answers `null` when the request fails: that is `unknown`.
-        getApiMeta()
-            .then((meta) => {
-                if (active) setStatus(shellStatusFromMeta(meta));
-            })
-            .catch(() => {
-                if (active) setStatus({ kind: "unknown" });
-            });
-        return () => {
-            active = false;
-        };
-    }, []);
-
+export function ShellStatusChip({ status }: { status: ShellStatus }) {
     return (
         <p
             data-testid="shell-status-chip"
@@ -67,8 +58,9 @@ export function ShellStatusChip() {
             {status.kind === "loading" ? "Checking data status" : null}
             {status.kind === "unknown" ? "Status unavailable" : null}
             {status.kind === "empty" ? "No data yet" : null}
+            {status.kind === "present" ? "Has data" : null}
             {status.kind === "synced" ? (
-                <ClientTimestamp value={status.at} prefix="Synced " />
+                <ClientTimestamp value={status.at} prefix="Data through " />
             ) : null}
         </p>
     );

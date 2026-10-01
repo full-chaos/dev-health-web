@@ -7,7 +7,7 @@ import { Suspense, useRef, useState } from "react";
 import fcLogo from "@/assets/fc-logo.png";
 import { BetaBadge } from "@/components/BetaBadge";
 import { UserMenu } from "@/components/auth/UserMenu";
-import { OrgSwitcher } from "@/components/navigation/OrgSwitcher";
+import { OrgSwitcher, type ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 import { ShellNav } from "./ShellNav";
@@ -21,7 +21,12 @@ import { ShellNav } from "./ShellNav";
  * content (Escape closes it and returns focus to the control). Brand and account
  * are in the account bar at that size, so they are hidden here.
  */
-export function ShellSidebar() {
+type ShellSidebarProps = {
+    /** Receives the active organization's data state from the organization card. */
+    onActiveOrganizationChange?: (organization: ActiveOrganizationData | null) => void;
+};
+
+export function ShellSidebar({ onActiveOrganizationChange }: ShellSidebarProps) {
     const [mobileOpen, setMobileOpen] = useState(false);
     const mobileNavControlRef = useRef<HTMLButtonElement>(null);
 
@@ -82,7 +87,10 @@ export function ShellSidebar() {
                     <BetaBadge />
                 </div>
 
-                <OrgSwitcher variant="card" />
+                <OrgSwitcher
+                    variant="card"
+                    onActiveOrganizationChange={onActiveOrganizationChange}
+                />
 
                 <div className="min-h-0 md:flex-1 md:overflow-y-auto">
                     {/* The links read the live query string (filter, role, lens). */}

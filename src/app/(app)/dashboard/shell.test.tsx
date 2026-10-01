@@ -28,9 +28,6 @@ vi.mock("next-auth/react", () => ({
     }),
     signOut: vi.fn(),
 }));
-vi.mock("@/lib/apiClient", () => ({
-    apiClient: { getJson: vi.fn(() => new Promise(() => {})) },
-}));
 
 vi.mock("@/lib/graphql/homeFetchers", () => ({ getHomeDataViaGraphQL: vi.fn() }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn(), getApiMeta: vi.fn() }));

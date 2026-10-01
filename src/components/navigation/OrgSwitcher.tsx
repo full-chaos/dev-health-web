@@ -37,7 +37,19 @@ function dataLabel(org: OrganizationOption) {
     return `Data through ${new Date(org.last_metrics_at).toLocaleDateString()}`;
 }
 
+/** Data state of the active organization, as the switcher shows it. */
+export type ActiveOrganizationData = {
+    hasData: boolean;
+    lastMetricsAt: string | null;
+};
+
 type OrgSwitcherProps = {
+    /**
+     * Reports the active organization's data state after the list loads and
+     * after a switch. `null` means it is not known: the request failed, or the
+     * active organization is not in the list.
+     */
+    onActiveOrganizationChange?: (organization: ActiveOrganizationData | null) => void;
     /**
      * `panel` is the legacy look inside `PrimaryNav` / `AdminSidebar`. `card` is
      * the workspace card of the shared app shell. Behaviour is the same.
@@ -60,12 +72,16 @@ const VARIANT_CLASSES = {
     },
 } as const;
 
-export function OrgSwitcher({ variant = "panel" }: OrgSwitcherProps = {}) {
+export function OrgSwitcher({
+    variant = "panel",
+    onActiveOrganizationChange,
+}: OrgSwitcherProps = {}) {
     const classes = VARIANT_CLASSES[variant];
     const router = useRouter();
     const { data: session, update } = useSession();
     const [state, setState] = useState<OrganizationsResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [loadFailed, setLoadFailed] = useState(false);
     const [isPending, startTransition] = useTransition();
 
     useEffect(() => {
@@ -73,11 +89,17 @@ export function OrgSwitcher({ variant = "panel" }: OrgSwitcherProps = {}) {
         async function loadOrganizations() {
             try {
                 const response = await fetch("/api/auth/organizations", { cache: "no-store" });
-                if (!response.ok) return;
+                if (!response.ok) {
+                    if (!ignore) setLoadFailed(true);
+                    return;
+                }
                 const data = (await response.json()) as OrganizationsResponse;
                 if (!ignore) setState(data);
             } catch {
-                if (!ignore) setError("Could not load organizations");
+                if (!ignore) {
+                    setLoadFailed(true);
+                    setError("Could not load organizations");
+                }
             }
         }
         loadOrganizations();
@@ -91,6 +113,25 @@ export function OrgSwitcher({ variant = "panel" }: OrgSwitcherProps = {}) {
         () => state?.organizations.find((org) => org.id === activeOrgId),
         [activeOrgId, state?.organizations],
     );
+
+    // Tell the owner what this card shows, so a second surface (the shell's
+    // status chip) states the same thing and never a different one.
+    useEffect(() => {
+        if (!onActiveOrganizationChange) return;
+        if (loadFailed) {
+            onActiveOrganizationChange(null);
+            return;
+        }
+        if (!state) return;
+        onActiveOrganizationChange(
+            activeOrg
+                ? {
+                      hasData: activeOrg.has_data,
+                      lastMetricsAt: activeOrg.last_metrics_at ?? null,
+                  }
+                : null,
+        );
+    }, [activeOrg, loadFailed, onActiveOrganizationChange, state]);
 
     if (!state || state.organizations.length === 0) {
         return null;

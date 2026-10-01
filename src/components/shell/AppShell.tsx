@@ -1,13 +1,15 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
+import type { ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 import { LegacyAccountBar } from "./LegacyAccountBar";
 import { ShellProvider } from "./ShellContext";
 import { ShellSidebar } from "./ShellSidebar";
+import { shellStatusFromOrganization, type ShellStatus } from "./ShellStatusChip";
 import { ShellTopBar } from "./ShellTopBar";
 import { isShellRoute } from "./shellRoutes";
 
@@ -33,6 +35,14 @@ type AppShellProps = {
  */
 export function AppShell({ banners, themeToggle, children }: AppShellProps) {
     const pathname = usePathname();
+    // The organization card owns the request; the top bar chip shows its answer.
+    const [dataStatus, setDataStatus] = useState<ShellStatus>({ kind: "loading" });
+    const handleActiveOrganizationChange = useCallback(
+        (organization: ActiveOrganizationData | null) => {
+            setDataStatus(shellStatusFromOrganization(organization));
+        },
+        [],
+    );
 
     if (!isShellRoute(pathname)) {
         return (
@@ -57,9 +67,9 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
                 <LegacyAccountBar />
             </div>
             <div className="flex flex-col md:flex-row" data-testid="app-shell">
-                <ShellSidebar />
+                <ShellSidebar onActiveOrganizationChange={handleActiveOrganizationChange} />
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <ShellTopBar themeToggle={themeToggle} />
+                    <ShellTopBar status={dataStatus} themeToggle={themeToggle} />
                     <main
                         id="main-content"
                         tabIndex={-1}

@@ -6,9 +6,11 @@ import { usePathname } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { navTrailForPathname } from "@/lib/navigation/areas";
 
-import { ShellStatusChip } from "./ShellStatusChip";
+import { ShellStatusChip, type ShellStatus } from "./ShellStatusChip";
 
 type ShellTopBarProps = {
+    /** Data state of the active organization, from the organization card. */
+    status: ShellStatus;
     /** Slot for the light / dark toggle. Empty until the toggle is mounted. */
     themeToggle?: ReactNode;
 };
@@ -19,7 +21,7 @@ type ShellTopBarProps = {
  * theme toggle. Shown from the `md` breakpoint up; below it the legacy account
  * bar is the top chrome.
  */
-export function ShellTopBar({ themeToggle }: ShellTopBarProps) {
+export function ShellTopBar({ status, themeToggle }: ShellTopBarProps) {
     const pathname = usePathname() ?? "";
     const trail = navTrailForPathname(pathname);
 
@@ -32,7 +34,7 @@ export function ShellTopBar({ themeToggle }: ShellTopBarProps) {
                 <Breadcrumbs items={trail} />
             </div>
             <div className="flex shrink-0 items-center gap-3">
-                <ShellStatusChip />
+                <ShellStatusChip status={status} />
                 <div data-slot="theme-toggle" className="flex items-center empty:hidden">
                     {themeToggle}
                 </div>
