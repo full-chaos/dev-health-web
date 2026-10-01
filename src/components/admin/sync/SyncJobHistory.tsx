@@ -178,7 +178,7 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                                         <Link
                                             href={href}
                                             aria-label={`View run details for sync run started ${runStartedLabel}`}
-                                            className="text-(--accent) hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent)"
+                                            className="text-(--accent-2) hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent)"
                                         >
                                             {CTA_LABELS.viewRun}
                                         </Link>

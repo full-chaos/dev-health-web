@@ -42,7 +42,7 @@ function SignalCard({
             <p className="mt-2 min-h-11 text-sm text-(--ink-muted)">{description}</p>
             <Link
                 href={href}
-                className="mt-4 inline-flex text-sm font-medium text-(--accent) hover:underline"
+                className="mt-4 inline-flex text-sm font-medium text-(--accent-2) hover:underline"
             >
                 {action}
             </Link>
