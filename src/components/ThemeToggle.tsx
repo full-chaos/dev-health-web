@@ -69,7 +69,7 @@ export function ThemeToggle() {
         <button
             type="button"
             aria-pressed={isLight}
-            aria-label={CTA_LABELS.lightTheme}
+            aria-label={CTA_LABELS.themeSwitchLight}
             data-testid="theme-toggle"
             onClick={() => applyTheme(isLight ? "dark" : "light")}
             className="inline-flex h-8 items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-70) px-3 text-label-caps font-semibold uppercase tracking-[0.2em] text-foreground transition-colors hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
