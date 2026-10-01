@@ -69,4 +69,12 @@ describe("shell route registry", () => {
     it("keeps the Cockpit's default role injection", () => {
         expect(shellRouteForPathname("/dashboard")?.defaultRole).toBe(true);
     });
+
+    it("marks the Security routes as routes with their own `f` encoding, and no other route", () => {
+        expect(shellRouteForPathname("/security")?.filterParam).toBe("page");
+        expect(shellRouteForPathname("/security/repos/repo-1")?.filterParam).toBe("page");
+        expect(
+            SHELL_ROUTES.filter((route) => route.filterParam).map((route) => route.prefix),
+        ).toEqual(["/security"]);
+    });
 });
