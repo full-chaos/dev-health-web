@@ -107,9 +107,13 @@ describe("Compounding Risk in the shared app shell", () => {
         expect(screen.getAllByRole("main")).toHaveLength(1);
         const headings = screen.getAllByRole("heading", { level: 1 });
         expect(headings).toHaveLength(1);
-        expect(headings[0]).toHaveTextContent("Composite risk score");
+        expect(headings[0]).toHaveTextContent("Compounding Risk");
         expect(screen.getByTestId("compounding-risk-page")).toBeInTheDocument();
-        expect(screen.getByTestId("developer-scope-guardrail")).toBeInTheDocument();
+        const guardrail = screen.getByTestId("developer-scope-guardrail");
+        expect(guardrail).toHaveAttribute("data-notice-variant", "warn");
+        expect(guardrail).toHaveTextContent(
+            "this surface intentionally does not break down by person",
+        );
         expect(
             screen.getByRole("heading", { name: "Compounding Risk is a team and repo signal." }),
         ).toBeInTheDocument();

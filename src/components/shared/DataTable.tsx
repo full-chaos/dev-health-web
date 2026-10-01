@@ -28,7 +28,21 @@ type DataTableProps<T> = {
     columns: readonly DataTableColumn<T>[];
     data: readonly T[];
     rowKeyAction: (row: T) => string;
+    /** Renders the WHOLE `<tr>` for a row (the caller owns every cell). Not the same as `rowActions`. */
     renderRowAction?: (row: T) => ReactNode;
+    /**
+     * Content of one extra, always-visible trailing cell per row (for example an "Open evidence"
+     * button). DataTable adds the cell and a visually hidden "Actions" header; the caller supplies the
+     * control. Unlike `renderRowAction` it does not replace the row; it is ignored when
+     * `renderRowAction` is used.
+     */
+    rowActions?: (row: T) => ReactNode;
+    /**
+     * Provenance or data-source note shown in a footer strip under the table (for example
+     * "Last computed 12:03 from the daily rollups"). Separate from the pager: the page summary
+     * and Previous / Next keep their place and text.
+     */
+    footerNote?: ReactNode;
     emptyMessage: string;
     emptyColSpan?: number;
     pagination?: DataTablePagination;
@@ -47,6 +61,8 @@ export function DataTable<T>({
     data,
     rowKeyAction,
     renderRowAction,
+    rowActions,
+    footerNote,
     emptyMessage,
     emptyColSpan,
     pagination,
@@ -71,7 +87,7 @@ export function DataTable<T>({
         : 1;
 
     const showHeader = Boolean(search || pagination || toolbar);
-    const colSpan = emptyColSpan ?? columns.length;
+    const colSpan = emptyColSpan ?? columns.length + (rowActions ? 1 : 0);
 
     return (
         <>
@@ -130,6 +146,11 @@ export function DataTable<T>({
                                     {column.header}
                                 </th>
                             ))}
+                            {rowActions && (
+                                <th className="px-4 py-3 font-medium">
+                                    <span className="sr-only">Actions</span>
+                                </th>
+                            )}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-(--card-stroke)">
@@ -148,6 +169,11 @@ export function DataTable<T>({
                                             {column.render(row)}
                                         </td>
                                     ))}
+                                    {rowActions && (
+                                        <td className="whitespace-nowrap px-4 py-3 text-right">
+                                            {rowActions(row)}
+                                        </td>
+                                    )}
                                 </tr>
                             );
                         })}
@@ -164,6 +190,15 @@ export function DataTable<T>({
                     </tbody>
                 </table>
             </div>
+
+            {footerNote && (
+                <div
+                    data-table-footer
+                    className="mt-2 flex flex-wrap items-center gap-2 border-t border-(--card-stroke) pt-3 text-xs text-(--ink-muted)"
+                >
+                    {footerNote}
+                </div>
+            )}
 
             {pagination && onPageChangeAction && (
                 <div className="mt-4 flex justify-end gap-2">

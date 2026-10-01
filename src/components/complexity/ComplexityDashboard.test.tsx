@@ -363,6 +363,10 @@ describe("ComplexityDashboard", () => {
         render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="churn" />);
         expect(screen.getByTestId("churn-panel")).toBeInTheDocument();
         expect(screen.getAllByTestId("churn-row")).toHaveLength(2);
+        // Churn bars use the tide data token, not the accent (scarlet) color.
+        const bar = screen.getAllByTestId("churn-row")[0].querySelector("span[aria-hidden]");
+        expect(bar?.className).toContain("bg-(--chart-color-1)");
+        expect(bar?.className).not.toMatch(/accent/u);
     });
 
     it("shows a DataState on the churn tab when there is no churn", () => {
