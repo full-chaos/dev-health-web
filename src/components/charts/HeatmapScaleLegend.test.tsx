@@ -28,10 +28,15 @@ describe("HeatmapScaleLegend", () => {
         expect(screen.getByTestId("heatmap-scale-empty")).toHaveTextContent("No data");
     });
 
-    it("shows no middle tick when every value is the same", () => {
-        render(<HeatmapScaleLegend min={4} max={4} unit="items" />);
+    it("shows ONE swatch with the value, not a range, when every value is the same", () => {
+        render(<HeatmapScaleLegend min={7.41} max={7.41} unit="%" />);
 
+        expect(screen.getByTestId("heatmap-scale-value")).toHaveTextContent("7.41 %");
+        expect(screen.queryByTestId("heatmap-scale-min")).not.toBeInTheDocument();
         expect(screen.queryByTestId("heatmap-scale-mid")).not.toBeInTheDocument();
-        expect(screen.getByTestId("heatmap-scale-max")).toHaveTextContent("4 items");
+        expect(screen.queryByTestId("heatmap-scale-max")).not.toBeInTheDocument();
+        expect(screen.getByRole("img")).toHaveAttribute("aria-label", "Value 7.41 %");
+        // The "No data" swatch stays separate.
+        expect(screen.getByTestId("heatmap-scale-empty")).toBeInTheDocument();
     });
 });
