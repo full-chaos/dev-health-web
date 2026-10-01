@@ -207,6 +207,7 @@ describe("breadcrumbs — production page source guards (codex round 2: prior te
         "ai/review-load/page.tsx",
         "ai/automations/page.tsx",
         "ai/risk/page.tsx",
+        "ai/attribution/page.tsx",
     ];
 
     it.each(pagesWithNoInPageTrail)("%s: has no in-page trail", (relativePath) => {
@@ -235,8 +236,14 @@ describe("breadcrumbs — production page source guards (codex round 2: prior te
         expect(source).toContain('area: "Impact"');
     });
 
-    it("ai/attribution/page.tsx is deliberately NOT in the fixed-pages list (navVisible: false child, area-only trail)", () => {
+    it("ai/attribution/page.tsx: a hidden child returns to the AI overview by its back link, with the filter and the role", () => {
+        // Its trail is the area only (navVisible: false child), with no link. The
+        // in-page trail made the "AI" crumb a link with an href fallback; the
+        // page is in the shared app shell now and has "Back to AI" instead.
         const source = readPageSource("ai/attribution/page.tsx");
-        expect(source).toContain('c.href ?? "/');
+        expect(source).not.toContain('c.href ?? "/');
+        expect(source).toContain(
+            'back={{ href: withFilterParam("/ai", filters, role), area: "AI" }}',
+        );
     });
 });
