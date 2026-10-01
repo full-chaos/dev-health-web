@@ -166,7 +166,7 @@ test("full signup then explicit workspace creation reaches dashboard", async ({
     await page.getByRole("button", { name: "Create Workspace" }).click();
 
     await expect(page).toHaveURL(/\/dashboard/, { timeout: 15_000 });
-    await expect(page.getByRole("heading", { name: "Developer Health Ops Cockpit" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Home" })).toBeVisible({
         timeout: 10_000,
     });
 });

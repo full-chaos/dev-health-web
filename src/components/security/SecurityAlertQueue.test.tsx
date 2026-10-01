@@ -1,5 +1,6 @@
 /** SecurityAlertQueue component tests — CHAOS-1240. */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { within } from "@testing-library/react";
 import { render, screen, userEvent, cleanup } from "@/test/utils";
 
 const { mockUseSecurityAlerts } = vi.hoisted(() => ({
@@ -12,7 +13,9 @@ vi.mock("@/lib/graphql/hooks/useSecurity", () => ({
 
 vi.mock("./SecurityAlertRow", () => ({
     SecurityAlertRow: ({ alert }: { alert: { alertId: string; title?: string } }) => (
-        <div data-testid="alert-row">{alert.title ?? alert.alertId}</div>
+        <tr data-testid="alert-row">
+            <td>{alert.title ?? alert.alertId}</td>
+        </tr>
     ),
 }));
 
@@ -99,6 +102,50 @@ describe("SecurityAlertQueue", () => {
         expect(screen.getByText("Alert One")).toBeInTheDocument();
         expect(screen.getByText("Alert Two")).toBeInTheDocument();
         expect(screen.getByText(/2 total/)).toBeInTheDocument();
+    });
+
+    it("draws the queue as a table with column headers", () => {
+        mockUseSecurityAlerts.mockReturnValue({
+            ...defaultResult(),
+            data: {
+                securityAlerts: {
+                    pageInfo: { hasNextPage: false, endCursor: null },
+                    totalCount: 1,
+                },
+            },
+            allEdges: [{ cursor: "c1", node: { alertId: "a1", title: "Alert One" } }],
+        });
+
+        render(<SecurityAlertQueue filter={filter} />);
+
+        const table = screen.getByTestId("alert-queue-table");
+        expect(
+            within(table)
+                .getAllByRole("columnheader")
+                .map((cell) => cell.textContent),
+        ).toEqual(["Severity", "Source", "Alert", "Package / CVE", "Repository", "State", "Age"]);
+    });
+
+    it("shows the repository name in the locked pill when the rows carry it", () => {
+        mockUseSecurityAlerts.mockReturnValue({
+            ...defaultResult(),
+            data: {
+                securityAlerts: {
+                    pageInfo: { hasNextPage: false, endCursor: null },
+                    totalCount: 1,
+                },
+            },
+            allEdges: [
+                {
+                    cursor: "c1",
+                    node: { alertId: "a1", title: "A", repoId: "repo-1", repoName: "acme/billing" },
+                },
+            ],
+        });
+
+        render(<SecurityAlertQueue filter={filter} lockedRepoId="repo-1" />);
+
+        expect(screen.getByTestId("locked-repo-pill")).toHaveTextContent("acme/billing");
     });
 
     it("renders the locked-repo pill when lockedRepoId is provided", () => {

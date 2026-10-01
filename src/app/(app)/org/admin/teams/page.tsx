@@ -5,6 +5,7 @@ import { ImportTeamsDialog } from "@/components/admin/teams/ImportTeamsDialog";
 import { PendingChangesPanel } from "@/components/admin/teams/PendingChangesPanel";
 import { listTeams, getPendingTeamChanges } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { Notice } from "@/components/ui/Notice";
 
 export default async function TeamsPage() {
     const [result, pendingResult] = await Promise.all([listTeams(), getPendingTeamChanges()]);
@@ -35,9 +36,9 @@ export default async function TeamsPage() {
             <PendingChangesPanel />
 
             {result.error && (
-                <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false} className="mb-6">
                     Failed to load teams: {result.error}
-                </div>
+                </Notice>
             )}
             <TeamTable
                 teams={(result.data ?? []).map((t) => ({

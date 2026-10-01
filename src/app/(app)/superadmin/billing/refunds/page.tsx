@@ -2,6 +2,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { RefundList } from "@/components/admin/billing/RefundList";
 import { requireSuperuser } from "@/lib/auth";
 import { getRefunds } from "@/lib/billing/actions";
+import { Notice } from "@/components/ui/Notice";
 
 type RefundsPageSearchParams = Promise<{ org_id?: string | string[] }>;
 
@@ -32,9 +33,9 @@ export default async function SuperadminRefundsPage({
             />
 
             {result.error ? (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false}>
                     Failed to load refunds: {result.error}
-                </div>
+                </Notice>
             ) : (
                 <RefundList initialData={initialData} initialOrgFilter={orgId ?? ""} />
             )}

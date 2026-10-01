@@ -23,29 +23,29 @@ import { CockpitEmptyState } from "./CockpitEmptyState";
 type StatusMeta = {
     label: string;
     chip: string;
-    glow: string;
+    edge: string;
 };
 
 const STATUS_META: Record<CockpitHealthStatus, StatusMeta> = {
     healthy: {
         label: "Healthy",
         chip: "border-(--positive)/40 bg-(--positive)/12 text-(--positive)",
-        glow: "from-(--positive)/12",
+        edge: "border-l-(--positive)",
     },
     watch: {
         label: "Watch",
         chip: "border-(--info)/50 bg-(--info)/12 text-(--info)",
-        glow: "from-(--info)/12",
+        edge: "border-l-(--info)",
     },
     at_risk: {
         label: "At risk",
         chip: "border-(--caution)/50 bg-(--caution)/12 text-(--caution)",
-        glow: "from-(--caution)/12",
+        edge: "border-l-(--caution)",
     },
     critical: {
         label: "Critical",
         chip: "border-(--negative)/50 bg-(--negative)/12 text-(--negative)",
-        glow: "from-(--negative)/14",
+        edge: "border-l-(--negative)",
     },
 };
 
@@ -79,7 +79,9 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
         <section
             data-testid="cockpit-summary"
             data-status={status}
-            className={`relative overflow-hidden rounded-3xl border border-(--card-stroke) bg-gradient-to-br ${meta.glow} to-(--card-80) p-6 shadow-[0_28px_90px_-52px_rgba(0,0,0,0.6)] sm:p-8`}
+            // Concept `.hero-signal`: surface card, a 3px edge in the status color (the chip still says the
+            // state in words), no gradient and no heavy shadow.
+            className={`relative overflow-hidden rounded-(--radius-md) border border-l-3 border-(--card-stroke) bg-(--card) p-6 sm:p-8 ${meta.edge}`}
         >
             <EvidencePanel
                 isOpen={panel.isOpen}
@@ -106,7 +108,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
             {/* The page title is the one h1 (PageHeader); this is a section heading. */}
             <h2
                 data-testid="cockpit-headline"
-                className="mt-4 max-w-3xl font-(--font-display) text-3xl leading-tight sm:text-4xl"
+                className="mt-4 max-w-3xl font-(--font-display) text-h1 font-semibold"
             >
                 <EntityLabel
                     variant="text"
@@ -127,7 +129,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
             {topSignal ? (
                 <div
                     data-testid="cockpit-top-change"
-                    className="mt-6 rounded-3xl border border-(--accent)/25 bg-(--card)/70 p-5"
+                    className="mt-6 rounded-(--radius-md) border border-(--card-stroke) bg-background p-5"
                 >
                     <p className="text-label-caps font-semibold uppercase tracking-[0.28em] text-(--accent-text)">
                         Top change
@@ -160,7 +162,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                         <EntityLabel variant="text" id={topSignal.why_it_matters} />
                     </p>
 
-                    <div className="mt-4 rounded-2xl border border-(--accent)/20 bg-(--accent)/8 p-3">
+                    <div className="mt-4 rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface-raised) p-3">
                         <p className="text-label-caps font-semibold uppercase tracking-[0.2em] text-(--accent-text)">
                             Recommended action
                         </p>
@@ -178,7 +180,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                                 metric: topSignal.metric,
                             })
                         }
-                        className="mt-4 flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.18em] text-(--ink-muted) transition-colors hover:border-(--accent-2)/40 hover:bg-(--accent-2)/10 hover:text-(--accent-2)"
+                        className="mt-4 flex w-full items-center justify-between rounded-(--radius-sm) border border-(--card-stroke) bg-(--card-70) px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.18em] text-(--ink-muted) transition-colors hover:border-(--accent-2)/40 hover:bg-(--accent-2)/10 hover:text-(--accent-2)"
                     >
                         {CTA_LABELS.openEvidence}
                         <span aria-hidden>↗</span>

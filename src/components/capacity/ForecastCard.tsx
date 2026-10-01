@@ -1,6 +1,7 @@
 "use client";
 
 import type { CapacityForecast } from "@/lib/graphql/types";
+import { Notice } from "@/components/ui/Notice";
 
 type ForecastCardProps = {
     forecast: CapacityForecast | null;
@@ -34,10 +35,9 @@ function SkeletonCard() {
 
 function ErrorCard({ error }: { error: Error }) {
     return (
-        <div className="rounded-3xl border border-(--negative)/30 bg-(--negative)/12 p-6">
-            <h3 className="text-lg font-semibold text-(--negative) mb-2">Forecast Unavailable</h3>
-            <p className="text-sm text-(--negative)">{error.message}</p>
-        </div>
+        <Notice variant="danger" live={false} titleAs="h3" title="Forecast Unavailable">
+            {error.message}
+        </Notice>
     );
 }
 

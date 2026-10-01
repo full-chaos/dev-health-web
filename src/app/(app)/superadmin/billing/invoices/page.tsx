@@ -2,6 +2,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { InvoiceList } from "@/components/admin/billing/InvoiceList";
 import { requireSuperuser } from "@/lib/auth";
 import { getInvoices } from "@/lib/billing/actions";
+import { Notice } from "@/components/ui/Notice";
 
 type InvoicesPageSearchParams = Promise<{ org_id?: string | string[] }>;
 
@@ -32,9 +33,9 @@ export default async function AdminInvoicesPage({
             />
 
             {result.error ? (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false}>
                     Failed to load invoices: {result.error}
-                </div>
+                </Notice>
             ) : (
                 <InvoiceList
                     initialData={invoiceData}
