@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { SHELL_ROUTES, isShellRoute, shellRouteForPathname } from "./shellRoutes";
 
 describe("shell route registry", () => {
-    it("registers the Cockpit and the migrated Diagnose, Govern, Plan and Improve routes", () => {
+    it("registers the Home and the migrated Diagnose, Govern, Plan and Improve routes", () => {
         expect(SHELL_ROUTES.map((route) => route.prefix)).toEqual([
             "/dashboard",
             "/diagnose",
@@ -74,7 +74,7 @@ describe("shell route registry", () => {
         expect(shellRouteForPathname("/plan/backlog-risk", routes)).toEqual({ prefix: "/plan" });
     });
 
-    it("keeps the Cockpit's default role injection", () => {
+    it("keeps the Home's default role injection", () => {
         expect(shellRouteForPathname("/dashboard")?.defaultRole).toBe(true);
     });
 

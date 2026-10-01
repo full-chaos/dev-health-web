@@ -77,9 +77,7 @@ describe("ScopeBar markup — unchanged by the frame extraction", () => {
 
     it("a view with no page filter, no `f`, with the origin", () => {
         scopeBarUrl.reset("");
-        const { container } = render(
-            <ScopeBar view="complexity" origin="Cockpit" orgName="Test" />,
-        );
+        const { container } = render(<ScopeBar view="complexity" origin="Home" orgName="Test" />);
 
         expect(markup(container)).toMatchSnapshot();
     });
