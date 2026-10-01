@@ -165,10 +165,19 @@ describe("Plan overview — page pass", () => {
             within(card).getByRole("heading", { name: "Completion outlook" }),
         ).toBeInTheDocument();
         const text = card.textContent ?? "";
-        expect(text).toContain("51 open items appear to need about 1 weeks at the median pace");
+        expect(text).toContain("51 open items appear to need about 1 week at the median pace");
         expect(text).toContain("about 4 weeks at P90");
         expect(text).not.toMatch(/\bwill\b/i);
         expect(text).not.toContain("provisional");
+    });
+
+    it("agrees singular and plural in the outlook sentence", async () => {
+        mockForecast.mockResolvedValue(forecast({ backlogSize: 1, p50Weeks: 1, p90Weeks: 1 }));
+        await renderPage();
+
+        expect(screen.getByTestId("plan-completion-outlook").textContent).toContain(
+            "1 open item appears to need about 1 week at the median pace, and about 1 week at P90.",
+        );
     });
 
     it("says the outlook is provisional with limited history, and invents no number without throughput", async () => {

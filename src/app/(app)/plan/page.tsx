@@ -84,15 +84,18 @@ function outlookSentence(forecast: {
     p90Weeks?: number | null;
     insufficientHistory: boolean;
 }) {
-    const items = `${formatNumber(forecast.backlogSize)} open ${forecast.backlogSize === 1 ? "item" : "items"}`;
+    const one = forecast.backlogSize === 1;
+    const items = `${formatNumber(forecast.backlogSize)} open ${one ? "item" : "items"}`;
     const { p50Weeks, p90Weeks } = forecast;
     if (typeof p50Weeks !== "number" || typeof p90Weeks !== "number") {
         return `${items}. There is not enough throughput to suggest an outlook for this scope.`;
     }
+    const weeks = (value: number) =>
+        `${formatNumber(value, { maximumFractionDigits: 0 })} ${Math.round(value) === 1 ? "week" : "weeks"}`;
     const provisional = forecast.insufficientHistory
         ? " This is provisional: history is limited."
         : "";
-    return `${items} appear to need about ${formatNumber(p50Weeks, { maximumFractionDigits: 0 })} weeks at the median pace, and about ${formatNumber(p90Weeks, { maximumFractionDigits: 0 })} weeks at P90.${provisional}`;
+    return `${items} ${one ? "appears" : "appear"} to need about ${weeks(p50Weeks)} at the median pace, and about ${weeks(p90Weeks)} at P90.${provisional}`;
 }
 
 export default async function PlanPage({ searchParams }: PlanPageProps) {
