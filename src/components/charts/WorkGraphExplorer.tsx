@@ -1,6 +1,6 @@
 "use client";
 
-import { type CSSProperties, useCallback, useMemo, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { GraphChart } from "echarts/charts";
 
@@ -8,6 +8,15 @@ import { Chart } from "./Chart";
 import { type ChartTokens, useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { CTA_LABELS } from "@/lib/design/cta";
+import {
+    BOX_HEIGHT,
+    MARGIN_LEFT,
+    MARGIN_RIGHT,
+    MARGIN_Y,
+    defaultGraphMode,
+    layoutLayered,
+} from "@/lib/workGraphLayout";
+import { ChartTypeToggle } from "./ChartTypeToggle";
 import type { WorkGraphEdge, WorkGraphNodeType, WorkGraphEdgeType } from "@/lib/graphql/types";
 
 echarts.use([GraphChart]);
@@ -108,6 +117,13 @@ const ALL_NODE_TYPES: WorkGraphNodeType[] = [
     "REVIEW_OUTCOME",
     "DEPLOYMENT",
     "INCIDENT",
+];
+
+export type WorkGraphLayoutMode = "layered" | "network";
+
+const LAYOUT_MODE_OPTIONS: Array<{ id: WorkGraphLayoutMode; label: string }> = [
+    { id: "layered", label: "Layered" },
+    { id: "network", label: "Network" },
 ];
 
 const FILTERABLE_NODE_TYPES: WorkGraphNodeType[] = ["RELEASE", "FEATURE_FLAG"];
@@ -254,6 +270,11 @@ export function WorkGraphExplorer({
     const chartTheme = useChartTheme();
     const { nodeTypeColors, edgeTypeStyles } = useWorkGraphColors();
 
+    // Page state only: the connection slice select next to this chart is state-only too.
+    // `chosenMode` is the user's explicit pick; until then the default rule decides (below).
+    const [chosenMode, setChosenMode] = useState<WorkGraphLayoutMode | null>(null);
+    const scrollRef = useRef<HTMLDivElement | null>(null);
+    const [boxWidth, setBoxWidth] = useState(900);
     const [hiddenNodeTypes, setHiddenNodeTypes] = useState<Set<WorkGraphNodeType>>(() => new Set());
 
     const toggleNodeType = useCallback((nodeType: WorkGraphNodeType) => {
@@ -273,6 +294,28 @@ export function WorkGraphExplorer({
         [edges, hiddenNodeTypes],
     );
 
+    const layered = useMemo(
+        () => layoutLayered(nodes, links, { width: boxWidth }),
+        [nodes, links, boxWidth],
+    );
+    // One rule picks the opening mode (see defaultGraphMode); an explicit choice always wins.
+    const layoutMode: WorkGraphLayoutMode = chosenMode ?? defaultGraphMode(layered.columns);
+    const setLayoutMode = setChosenMode;
+    const layeredHeight =
+        layered.height + 2 * MARGIN_Y > BOX_HEIGHT ? layered.height + 2 * MARGIN_Y : BOX_HEIGHT;
+
+    // Horizontal fit to the card: the drawing width follows the scroll area's width.
+    useEffect(() => {
+        const element = scrollRef.current;
+        if (!element || typeof ResizeObserver === "undefined") return;
+        const observer = new ResizeObserver((entries) => {
+            const next = Math.round(entries[0]?.contentRect.width ?? 0);
+            if (next > 0) setBoxWidth(next);
+        });
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, [layoutMode]);
+
     const categories = useMemo(
         () =>
             ALL_NODE_TYPES.map((type) => ({
@@ -285,13 +328,30 @@ export function WorkGraphExplorer({
     const option: EChartsOption = useMemo(() => {
         const totalGraphics = nodes.length + links.length;
         const animateGraph = totalGraphics < 2000;
-        const useForceLayout = totalGraphics < 900;
+        const isLayered = layoutMode === "layered";
+        const useForceLayout = !isLayered && totalGraphics < 900;
         const showNodeLabels = nodes.length <= 120;
         const echartsNodes = nodes.map((node) => ({
             id: node.id,
             name: node.name,
             category: node.category,
-            symbolSize: selectedNodeId === node.id ? node.symbolSize * 1.5 : node.symbolSize,
+            // layered: coordinates go through explicit axes (below), so the drawing is placed
+            // exactly (no automatic fit); network: the layout algorithm places the node
+            ...(isLayered
+                ? {
+                      value: [
+                          layered.positions.get(node.id)?.x ?? 0,
+                          layered.positions.get(node.id)?.y ?? 0,
+                      ],
+                  }
+                : {}),
+            symbolSize: (() => {
+                // dense columns get smaller marks so rows do not overlap
+                const base = isLayered
+                    ? Math.min(node.symbolSize, Math.max(6, layered.rowPitch * 0.7))
+                    : node.symbolSize;
+                return selectedNodeId === node.id ? base * 1.5 : base;
+            })(),
             symbol: NODE_TYPE_SYMBOLS[node.type],
             itemStyle: {
                 color: nodeTypeColors[node.type],
@@ -299,13 +359,16 @@ export function WorkGraphExplorer({
                 borderWidth: selectedNodeId === node.id ? 2 : 0,
             },
             label: {
-                show: showNodeLabels && node.symbolSize > 25,
-                position: "bottom" as const,
+                // layered: every row is labelled (the canvas scrolls); network: production rule
+                show: isLayered ? true : showNodeLabels && node.symbolSize > 25,
+                ...(isLayered ? { width: MARGIN_RIGHT - 24, overflow: "truncate" as const } : {}),
+                position: isLayered ? ("right" as const) : ("bottom" as const),
                 fontSize: 10,
                 color: chartTheme.text,
             },
         }));
 
+        const nodeById = new Map(nodes.map((node) => [node.id, node]));
         const echartsLinks = links.map((link) => {
             const linkStyle = edgeTypeStyles[link.edgeType] ?? {
                 color: chartTheme.muted,
@@ -319,7 +382,12 @@ export function WorkGraphExplorer({
                     type: linkStyle.type,
                     width: link.lineStyle?.width ?? 1,
                     opacity: link.lineStyle?.opacity ?? 0.6,
-                    curveness: 0.1,
+                    // a link inside one column (same type) bows out so it stays readable
+                    curveness:
+                        isLayered &&
+                        nodeById.get(link.source)?.type === nodeById.get(link.target)?.type
+                            ? 0.45
+                            : 0.1,
                 },
             };
         });
@@ -348,20 +416,49 @@ export function WorkGraphExplorer({
                     return "";
                 },
             },
+            ...(isLayered
+                ? {
+                      grid: {
+                          left: MARGIN_LEFT,
+                          right: MARGIN_RIGHT,
+                          top: MARGIN_Y,
+                          bottom: MARGIN_Y,
+                      },
+                      xAxis: {
+                          type: "value" as const,
+                          show: false,
+                          min: 0,
+                          max: Math.max(1, boxWidth - MARGIN_LEFT - MARGIN_RIGHT),
+                      },
+                      yAxis: {
+                          type: "value" as const,
+                          show: false,
+                          inverse: true,
+                          min: 0,
+                          max: Math.max(1, layered.height),
+                      },
+                  }
+                : {}),
             series: [
                 {
                     type: "graph",
-                    layout: useForceLayout ? "force" : "circular",
+                    ...(isLayered ? { coordinateSystem: "cartesian2d" as const } : {}),
+                    layout: isLayered ? "none" : useForceLayout ? "force" : "circular",
                     animation: animateGraph,
                     data: echartsNodes,
                     links: echartsLinks,
                     categories,
-                    left: 56,
-                    right: 56,
-                    top: 48,
-                    bottom: 48,
-                    center: ["50%", "50%"],
-                    roam: true,
+                    ...(isLayered
+                        ? {}
+                        : {
+                              left: 56,
+                              right: 56,
+                              top: MARGIN_Y,
+                              bottom: MARGIN_Y,
+                              center: ["50%", "50%"],
+                          }),
+                    // layered: the area scrolls, so no wheel zoom / drag pan fights it
+                    roam: !isLayered,
                     draggable: useForceLayout,
                     force: useForceLayout
                         ? {
@@ -388,7 +485,18 @@ export function WorkGraphExplorer({
                 },
             ],
         };
-    }, [nodes, links, categories, chartTheme, selectedNodeId, nodeTypeColors, edgeTypeStyles]);
+    }, [
+        nodes,
+        links,
+        categories,
+        chartTheme,
+        selectedNodeId,
+        nodeTypeColors,
+        edgeTypeStyles,
+        layoutMode,
+        layered,
+        boxWidth,
+    ]);
 
     const handleEvents = useMemo(
         () => ({
@@ -420,6 +528,40 @@ export function WorkGraphExplorer({
 
     return (
         <div className={className} style={{ width, ...style }}>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1 text-xs">
+                <ChartTypeToggle
+                    options={LAYOUT_MODE_OPTIONS}
+                    value={layoutMode}
+                    onChangeAction={setLayoutMode}
+                />
+            </div>
+            {layoutMode === "layered" && (
+                // the column strip stays outside the scroll area, so it is always visible
+                <div
+                    className="relative mb-1 h-5 text-xs text-(--ink-muted)"
+                    data-testid="work-graph-columns"
+                >
+                    {layered.columns.map((column) => (
+                        <span
+                            key={column.type}
+                            className="absolute top-0 whitespace-nowrap"
+                            style={{ left: MARGIN_LEFT + column.x - 6 }}
+                        >
+                            {NODE_TYPE_LABELS[column.type]} · {column.count}
+                        </span>
+                    ))}
+                </div>
+            )}
+            {layoutMode === "layered" && layered.columns.length < 3 && (
+                <p
+                    className="mb-2 px-1 text-xs text-(--ink-muted)"
+                    data-testid="work-graph-columns-hint"
+                >
+                    This connection type shows{" "}
+                    {layered.columns.length === 1 ? "one column" : "two columns"}. Pick PRs →
+                    Commits → Files or All connections for more columns.
+                </p>
+            )}
             {FILTERABLE_NODE_TYPES.length > 0 && (
                 <div className="mb-2 flex flex-wrap items-center gap-2 px-1 text-xs">
                     <span className="mr-1 uppercase tracking-[0.16em] text-(--ink-muted)">
@@ -447,12 +589,28 @@ export function WorkGraphExplorer({
                     ))}
                 </div>
             )}
-            <Chart
-                option={option}
-                style={{ height, width: "100%" }}
-                onEvents={handleEvents}
-                chartTheme={chartTheme}
-            />
+            {layoutMode === "layered" ? (
+                <div
+                    ref={scrollRef}
+                    className="overflow-y-auto overflow-x-hidden"
+                    style={{ maxHeight: BOX_HEIGHT }}
+                    data-testid="work-graph-scroll"
+                >
+                    <Chart
+                        option={option}
+                        style={{ height: layeredHeight, width: "100%" }}
+                        onEvents={handleEvents}
+                        chartTheme={chartTheme}
+                    />
+                </div>
+            ) : (
+                <Chart
+                    option={option}
+                    style={{ height, width: "100%" }}
+                    onEvents={handleEvents}
+                    chartTheme={chartTheme}
+                />
+            )}
         </div>
     );
 }

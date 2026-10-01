@@ -1,7 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
-import { toast } from "sonner";
+import { useCallback } from "react";
 
 import type { FilterBarClientProps } from "@/components/filters/filterBarConfig";
 import { useFilterBarState } from "@/components/filters/useFilterBarState";
@@ -27,7 +26,6 @@ type ScopeBarStateProps = Pick<
 export function useScopeBarState(props: ScopeBarStateProps) {
     const state = useFilterBarState(props);
     const { filters, updateFilters } = state;
-    const [copyFallbackUrl, setCopyFallbackUrl] = useState<string | null>(null);
 
     const setScopeLevel = useCallback(
         (level: MetricFilter["scope"]["level"]) => {
@@ -63,34 +61,10 @@ export function useScopeBarState(props: ScopeBarStateProps) {
         [filters, updateFilters],
     );
 
-    /**
-     * Copy the page URL with its state (`f`, `role`, `lens`, …). When the
-     * clipboard is not available the URL is shown in a field instead: the action
-     * is never a silent no-op.
-     */
-    const copyLink = useCallback(async () => {
-        const url = window.location.href;
-        try {
-            if (!navigator.clipboard?.writeText) {
-                throw new Error("clipboard unavailable");
-            }
-            await navigator.clipboard.writeText(url);
-            setCopyFallbackUrl(null);
-            toast.success("Link copied");
-        } catch {
-            setCopyFallbackUrl(url);
-        }
-    }, []);
-
-    const dismissCopyFallback = useCallback(() => setCopyFallbackUrl(null), []);
-
     const teamIds = filters.scope.level === "team" ? filters.scope.ids : [];
 
     return {
         ...state,
-        copyFallbackUrl,
-        copyLink,
-        dismissCopyFallback,
         selectRepos,
         selectTeams,
         setScopeLevel,

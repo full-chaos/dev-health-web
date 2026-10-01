@@ -200,7 +200,6 @@ describe("breadcrumbs — production page source guards (codex round 2: prior te
         { path: "ai/automations/page.tsx", route: "/ai/automations" },
         { path: "ai/impact/page.tsx", route: "/ai/impact" },
         { path: "ai/review-load/page.tsx", route: "/ai/review-load" },
-        { path: "improve/automations/page.tsx", route: "/improve/automations" },
     ];
 
     it.each(directPassthroughPages)(
@@ -210,6 +209,16 @@ describe("breadcrumbs — production page source guards (codex round 2: prior te
             expect(source).toContain(`breadcrumbs={navTrailForPathname("${route}")}`);
         },
     );
+
+    it("improve/automations/page.tsx: has no in-page trail, so it cannot double-append a crumb", () => {
+        // The page is in the shared app shell. The top bar renders the one trail
+        // from navTrailForPathname(pathname) itself (see ShellTopBar.test.tsx and
+        // improve/automations/shell.test.tsx), so the page passes no breadcrumbs.
+        const source = readPageSource("improve/automations/page.tsx");
+        expect(source).not.toContain("breadcrumbs=");
+        expect(source).not.toContain("<Breadcrumbs");
+        expect(source).not.toContain("navTrailForPathname");
+    });
 
     it("ai/risk/page.tsx: sub-tab breadcrumb uses slice(0, -1) + withFilterParam for the parent link", () => {
         const source = readPageSource("ai/risk/page.tsx");
