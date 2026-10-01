@@ -778,7 +778,7 @@ export function GraphView({
             </div>
 
             <aside
-                className="rounded-2xl border border-(--card-stroke) bg-card p-4 xl:sticky xl:top-4"
+                className="order-2 rounded-2xl border border-(--card-stroke) bg-card p-4 xl:sticky xl:top-4"
                 aria-label="Graph context"
                 data-testid="graph-context"
             >
