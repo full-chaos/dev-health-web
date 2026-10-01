@@ -12,10 +12,11 @@ const ReactMarkdown = dynamic(() => import("react-markdown"), {
 });
 
 /**
- * The page has its own `h1` (the report name), so a report heading goes one level
- * down: `#` is an `h2`, `##` an `h3`, and so on (`######` stays `h6`).
+ * The page has its own `h1` (the report name) and the body sits under the card
+ * heading (`h2`), so a report heading goes two levels down: `#` is an `h3`, `##`
+ * an `h4`, and so on (`####` and below are `h6`).
  */
-const SHIFTED_HEADINGS: Components = { h1: "h2", h2: "h3", h3: "h4", h4: "h5", h5: "h6" };
+const SHIFTED_HEADINGS: Components = { h1: "h3", h2: "h4", h3: "h5", h4: "h6", h5: "h6" };
 
 function splitProvenance(md: string): {
     body: string;

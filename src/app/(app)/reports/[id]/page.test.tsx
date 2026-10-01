@@ -147,13 +147,16 @@ describe("SingleReportPage — one h1 with a rendered report (CHAOS-7788)", () =
         });
     });
 
-    it("keeps the report name as the only h1; the report title is an h2", async () => {
+    it("keeps the report name as the only h1; the report title is an h3 under the card h2", async () => {
         const { container } = render(<SingleReportPage />);
 
         expect(
-            await screen.findByRole("heading", { level: 2, name: "Weekly Health Report" }),
+            await screen.findByRole("heading", { level: 3, name: "Weekly Health Report" }),
         ).toBeInTheDocument();
-        expect(screen.getByRole("heading", { level: 3, name: "Summary" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 4, name: "Summary" })).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", { level: 2, name: "Latest Rendered Report" }),
+        ).toBeInTheDocument();
         const h1s = container.querySelectorAll("h1");
         expect(h1s).toHaveLength(1);
         expect(h1s[0]).toHaveTextContent("Weekly DORA");
