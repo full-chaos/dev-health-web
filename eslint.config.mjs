@@ -9,7 +9,7 @@ import designLint from "./eslint-plugin-design-lint/index.mjs";
 const enableDesignLint = process.env.DESIGN_LINT === "true";
 
 const eslintConfig = defineConfig([
-    // eslint-config-next 16.3.4 still brings React/import/a11y plugins whose
+    // eslint-config-next 16.3.6 still brings React/import/a11y plugins whose
     // latest releases call ESLint APIs removed in v10. Wrap their actual flat
     // config objects so the rules stay enabled while @eslint/compat supplies
     // the legacy rule-context methods.
