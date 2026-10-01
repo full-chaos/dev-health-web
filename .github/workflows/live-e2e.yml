@@ -491,6 +491,13 @@ jobs:
                     --data-binary @/tmp/gql-body.json)
                   echo "graphql status=${gql_status}"
                   head -c 300 /tmp/gql.json || true; echo
+                  # 200 alone is not proof: assert the answer is the Go query-api's own GraphQL answer for a
+                  # registered document: data, or the operation-switch refusal (CI has no routing rows, so data
+                  # operations answer OPERATION_NOT_ENABLED here). UNREGISTERED_DOCUMENT or a 401 is a failure.
+                  if ! jq -e '(.data != null) or (.errors[0].extensions.code == "OPERATION_NOT_ENABLED")' /tmp/gql.json >/dev/null; then
+                    echo "::error::/graphql on query-api answered, but not as the Go registered-document path."
+                    exit 1
+                  fi
                   if [ "${gql_status}" != "200" ]; then
                     echo "::error::/graphql on query-api did not answer 200 (Go query-api not serving the product path)."
                     exit 1
