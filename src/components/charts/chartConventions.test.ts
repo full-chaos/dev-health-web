@@ -75,12 +75,13 @@ describe("symbols on a line", () => {
     });
 
     it("sizes data items for charts with a legend, so the series size stays the legend glyph", () => {
-        expect(withPointSymbols([null, 5, null, 7, 8])).toEqual([
+        const ring = dotRing(theme);
+        expect(withPointSymbols([null, 5, null, 7, 8], theme)).toEqual([
             { value: null, symbolSize: 0 },
-            { value: 5, symbolSize: END_DOT_SIZE },
+            { value: 5, symbolSize: END_DOT_SIZE, itemStyle: ring },
             { value: null, symbolSize: 0 },
             { value: 7, symbolSize: 0 },
-            { value: 8, symbolSize: END_DOT_SIZE },
+            { value: 8, symbolSize: END_DOT_SIZE, itemStyle: ring },
         ]);
     });
 

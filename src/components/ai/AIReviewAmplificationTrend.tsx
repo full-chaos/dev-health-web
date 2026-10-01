@@ -3,12 +3,7 @@
 import { useMemo } from "react";
 import { Chart } from "@/components/charts/Chart";
 import { useChartTheme } from "@/components/charts/chartTheme";
-import {
-    buildTooltip,
-    dotRing,
-    lineMark,
-    withPointSymbols,
-} from "@/components/charts/chartConventions";
+import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/chartConventions";
 
 import type { AiReviewLoadRow } from "@/lib/graphql/__generated__/types";
 import { bucketLabel } from "./utils";
@@ -84,8 +79,7 @@ export function AIReviewAmplificationTrend({ daily, loading }: AIReviewAmplifica
                     showAllSymbol: true,
                     symbolSize: 4,
                     lineStyle: lineMark,
-                    itemStyle: dotRing(chartTheme),
-                    data: withPointSymbols(data),
+                    data: withPointSymbols(data, chartTheme),
                 };
             }),
         }),

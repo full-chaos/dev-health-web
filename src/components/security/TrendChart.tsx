@@ -10,12 +10,7 @@ import { useMemo } from "react";
 
 import { Chart } from "@/components/charts/Chart";
 import { useChartTheme, useChartTokens } from "@/components/charts/chartTheme";
-import {
-    buildTooltip,
-    dotRing,
-    lineMark,
-    withPointSymbols,
-} from "@/components/charts/chartConventions";
+import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/chartConventions";
 
 import { SkeletonLine } from "@/components/ui/Skeleton";
 import type { TrendPointData } from "./types";
@@ -76,9 +71,12 @@ export function TrendChart({ points, loading }: TrendChartProps) {
                     showAllSymbol: true,
                     symbolSize: 5,
                     lineStyle: { ...lineMark, color: OPENED_COLOR },
-                    itemStyle: { color: OPENED_COLOR, ...dotRing(chartTheme) },
+                    itemStyle: { color: OPENED_COLOR },
                     areaStyle: { opacity: 0.1, color: OPENED_COLOR },
-                    data: withPointSymbols(sorted.map((p) => p.opened)),
+                    data: withPointSymbols(
+                        sorted.map((p) => p.opened),
+                        chartTheme,
+                    ),
                 },
                 {
                     name: "Fixed",
@@ -89,9 +87,12 @@ export function TrendChart({ points, loading }: TrendChartProps) {
                     showAllSymbol: true,
                     symbolSize: 5,
                     lineStyle: { ...lineMark, color: FIXED_COLOR },
-                    itemStyle: { color: FIXED_COLOR, ...dotRing(chartTheme) },
+                    itemStyle: { color: FIXED_COLOR },
                     areaStyle: { opacity: 0.1, color: FIXED_COLOR },
-                    data: withPointSymbols(sorted.map((p) => p.fixed)),
+                    data: withPointSymbols(
+                        sorted.map((p) => p.fixed),
+                        chartTheme,
+                    ),
                 },
             ],
         }),

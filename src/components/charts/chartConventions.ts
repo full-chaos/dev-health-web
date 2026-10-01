@@ -84,15 +84,20 @@ export const pointSymbolSize = (values: ReadonlyArray<unknown>) => {
 };
 
 /**
- * Data items carrying the per-point symbol size, for charts with a legend: the series keeps its own
- * static `symbolSize` (so the legend glyph is unchanged) and only the points are sized 0 or `END_DOT_SIZE`.
+ * Data items carrying the per-point symbol size and ring, for charts with a legend: the series keeps its
+ * own static `symbolSize` and no ring (so the legend glyph is unchanged); only the points are sized 0 or
+ * `END_DOT_SIZE`, and a shown dot is ringed in the surface color.
  */
-export const withPointSymbols = <T extends number | null | undefined>(values: ReadonlyArray<T>) => {
+export const withPointSymbols = <T extends number | null | undefined>(
+    values: ReadonlyArray<T>,
+    theme: ChartTheme,
+) => {
     const shown = visibleSymbolIndexes(values);
-    return values.map((value, index) => ({
-        value,
-        symbolSize: shown.has(index) ? END_DOT_SIZE : 0,
-    }));
+    return values.map((value, index) =>
+        shown.has(index)
+            ? { value, symbolSize: END_DOT_SIZE, itemStyle: dotRing(theme) }
+            : { value, symbolSize: 0 },
+    );
 };
 
 /** A bottom legend in muted text for two or more series; none for one. */

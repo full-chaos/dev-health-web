@@ -103,6 +103,10 @@ describe("security trend chart conventions", () => {
         // The series keeps a static size: it is what the legend glyph is drawn with.
         expect(o.series[0].symbolSize).toBe(5);
         expect(o.series[0].lineStyle).toMatchObject({ width: 2, cap: "round", join: "round" });
+        // No series-level ring: it would show in the legend glyph (the ring is per point).
+        expect(
+            (o.series[0] as { itemStyle?: { borderWidth?: number } }).itemStyle?.borderWidth,
+        ).toBeUndefined();
         expect(o.yAxis?.splitLine?.lineStyle?.type).toBeUndefined();
         expect(o.legend?.data).toEqual(["Opened", "Fixed"]);
     });
