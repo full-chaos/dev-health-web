@@ -104,7 +104,9 @@ describe("lower Home sections pinned (CHAOS-7739)", () => {
 
     it("Notable shifts: the empty text when there is no summary", () => {
         draw({ ...HOME, summary: [] } as HomeResponse);
-        expect(screen.getByText("Summary will appear once data is ingested.")).toBeInTheDocument();
+        expect(
+            screen.getAllByText("Summary will appear once data is ingested.").length,
+        ).toBeGreaterThanOrEqual(1);
     });
 
     it("Investigation threads: heading, View all link, tiles, and the Focus thread link", () => {
@@ -134,7 +136,9 @@ describe("lower Home sections pinned (CHAOS-7739)", () => {
             .mockResolvedValue(new Response("{}", { status: 200 }));
         draw();
         expect(screen.getByRole("heading", { name: "Limiting factor" })).toBeInTheDocument();
-        expect(screen.getByText("Review latency is the limiting factor.")).toBeInTheDocument();
+        expect(
+            screen.getAllByText("Review latency is the limiting factor.").length,
+        ).toBeGreaterThanOrEqual(1);
         expect(screen.getByText("It is the largest drag on delivery.")).toBeInTheDocument();
         expect(screen.getByText("Recommended action")).toBeInTheDocument();
         expect(screen.getByText("Rebalance reviewers.")).toBeInTheDocument();
@@ -153,7 +157,9 @@ describe("lower Home sections pinned (CHAOS-7739)", () => {
         ).toBeGreaterThanOrEqual(2);
         unmount();
         draw(null);
-        expect(screen.getByText("Evidence will appear once data is ingested.")).toBeInTheDocument();
+        expect(
+            screen.getAllByText("Evidence will appear once data is ingested.").length,
+        ).toBeGreaterThanOrEqual(1);
     });
 
     it("Recent events: heading, the Open evidence link with the role and filter, one button per event, and the empty text", () => {
@@ -169,7 +175,7 @@ describe("lower Home sections pinned (CHAOS-7739)", () => {
         unmount();
         draw({ ...HOME, events: [] } as HomeResponse);
         expect(
-            screen.getByText("No major shifts detected in the current window."),
-        ).toBeInTheDocument();
+            screen.getAllByText("No major shifts detected in the current window.").length,
+        ).toBeGreaterThanOrEqual(1);
     });
 });

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getSetupStatus } from "@/lib/admin/server";
@@ -79,7 +79,12 @@ describe("Investment mix block and AI Workflow block pinned (CHAOS-7739)", () =>
         const evidence = screen.getByRole("link", { name: "Open evidence" });
         expect(evidence.getAttribute("href")).toContain("/explore?metric=throughput");
         expect(evidence.getAttribute("href")).toContain("role=em");
-        expect(screen.getByTestId("investment-preview-stub")).toBeInTheDocument();
+        // The preview mounts (and fetches) when the row is first opened.
+        expect(screen.queryByTestId("investment-preview-stub")).toBeNull();
+        const row = screen.getByTestId("thread-row-investment-mix") as HTMLDetailsElement;
+        row.open = true;
+        fireEvent(row, new Event("toggle"));
+        expect(await screen.findByTestId("investment-preview-stub")).toBeInTheDocument();
     });
 
     it("AI Workflow: one quiet secondary link when AI does not dominate", async () => {
@@ -97,5 +102,23 @@ describe("Investment mix block and AI Workflow block pinned (CHAOS-7739)", () =>
         render(await Home({ searchParams: Promise.resolve({}) }));
         expect(screen.getByTestId("ai-workflow-callout")).toBeInTheDocument();
         expect(screen.queryByTestId("ai-workflow-secondary-link")).toBeNull();
+    });
+
+    it("AI Workflow: the quiet link is the last row of the threads list; the full callout stays outside it", async () => {
+        vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(aiHome(false));
+        const quiet = render(await Home({ searchParams: Promise.resolve({}) }));
+        expect(
+            screen
+                .getByTestId("cockpit-client-stub")
+                .contains(screen.getByTestId("ai-workflow-secondary-link")),
+        ).toBe(true);
+        quiet.unmount();
+        vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(aiHome(true));
+        render(await Home({ searchParams: Promise.resolve({}) }));
+        expect(
+            screen
+                .getByTestId("cockpit-client-stub")
+                .contains(screen.getByTestId("ai-workflow-callout")),
+        ).toBe(false);
     });
 });
