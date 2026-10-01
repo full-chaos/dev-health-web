@@ -100,7 +100,7 @@ export default function ContextFabricMarketingPage() {
         <>
             <section className="mx-auto grid max-w-7xl gap-12 px-6 pb-20 pt-16 sm:pt-24 lg:grid-cols-[minmax(0,1fr)_minmax(22.5rem,0.8fr)] lg:items-center">
                 <div>
-                    <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">
+                    <p className="text-xs uppercase tracking-[0.2em] text-(--accent-text)">
                         Context Fabric
                     </p>
                     <h1 className="mt-6 max-w-4xl font-(--font-display) text-4xl leading-tight sm:text-5xl lg:text-6xl">
@@ -180,7 +180,7 @@ export default function ContextFabricMarketingPage() {
                             key={dimension.title}
                             className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6"
                         >
-                            <p className="text-xs uppercase tracking-[0.16em] text-(--accent)">
+                            <p className="text-xs uppercase tracking-[0.16em] text-(--accent-text)">
                                 {dimension.eyebrow}
                             </p>
                             <h3 className="mt-4 font-(--font-display) text-3xl">
@@ -197,7 +197,7 @@ export default function ContextFabricMarketingPage() {
             <section className="mx-auto max-w-7xl px-6 pb-24">
                 <div className="grid gap-10 rounded-[2rem] border border-(--card-stroke) bg-(--card-80) p-7 sm:p-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">
+                        <p className="text-xs uppercase tracking-[0.2em] text-(--accent-text)">
                             Beyond one status field
                         </p>
                         <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
@@ -240,7 +240,7 @@ export default function ContextFabricMarketingPage() {
                 </div>
                 <div className="mt-10 mx-auto max-w-2xl">
                     <article className="rounded-[2rem] border border-(--card-stroke) bg-(--card-80) p-7 sm:p-9">
-                        <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">
+                        <p className="text-xs uppercase tracking-[0.2em] text-(--accent-text)">
                             For developers and agents
                         </p>
                         <h3 className="mt-4 font-(--font-display) text-3xl">ACR and MCP</h3>
@@ -265,7 +265,7 @@ export default function ContextFabricMarketingPage() {
             <section className="mx-auto max-w-7xl px-6 pb-24">
                 <div className="grid gap-8 rounded-[2rem] border border-(--card-stroke) bg-(--card-80) p-7 sm:p-10 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">
+                        <p className="text-xs uppercase tracking-[0.2em] text-(--accent-text)">
                             Evidence before confidence
                         </p>
                         <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
