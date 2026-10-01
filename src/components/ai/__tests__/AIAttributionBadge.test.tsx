@@ -68,3 +68,25 @@ describe("attributionBucketForKind", () => {
         },
     );
 });
+
+describe("AIAttributionBadge pinned markup facts (CHAOS-7763, shared cards)", () => {
+    it("has its test id and a tooltip with the label, the tool and the confidence", () => {
+        render(<AIAttributionBadge bucket="AI_ASSISTED" tool="copilot" confidence={0.82} />);
+        const badge = screen.getByTestId("ai-attribution-badge");
+        expect(badge).toHaveAttribute("title", "AI-assisted · Tool: copilot · Confidence: 82%");
+    });
+
+    it("every bucket has its own label in the visible text", () => {
+        for (const [bucket, label] of [
+            ["ai_assisted", "AI-assisted"],
+            ["ai_review", "AI-reviewed"],
+            ["agent_created", "Agent-created"],
+            ["human", "Human"],
+            ["unknown", "Unknown attribution"],
+        ] as const) {
+            const { unmount } = render(<AIAttributionBadge bucket={bucket} />);
+            expect(screen.getByTestId("ai-attribution-badge")).toHaveTextContent(label);
+            unmount();
+        }
+    });
+});
