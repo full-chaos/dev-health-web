@@ -172,6 +172,7 @@ export function ConfidenceBandChart({
                 itemStyle: { color: tide, borderColor: chartTheme.background, borderWidth: 2 },
                 label: { show: false },
                 data: points.map((point) => ({
+                    name: point.name,
                     coord: [
                         dayLabels[Math.min(point.day, dayLabels.length - 1)],
                         projection[Math.min(point.day, projection.length - 1)] ?? 0,
