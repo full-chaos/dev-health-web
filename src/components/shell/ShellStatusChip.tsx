@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { ClientTimestamp } from "@/components/ClientTimestamp";
-import { apiClient } from "@/lib/apiClient";
-import type { MetaResponse } from "@/lib/types";
+import { getApiMeta } from "@/lib/api/system";
 
 /**
  * Data-freshness chip of the shell top bar.
@@ -41,8 +40,8 @@ export function ShellStatusChip() {
 
     useEffect(() => {
         let active = true;
-        apiClient
-            .getJson<MetaResponse>("/api/v1/meta")
+        // `getApiMeta` answers `null` when the request fails: that is `unknown`.
+        getApiMeta()
             .then((meta) => {
                 if (active) setStatus(shellStatusFromMeta(meta));
             })

@@ -5,14 +5,14 @@ import { ShellStatusChip, shellStatusFromMeta } from "./ShellStatusChip";
 import { ShellTopBar } from "./ShellTopBar";
 
 const navigationMock = vi.hoisted(() => ({ pathname: "/dashboard" }));
-const getJsonMock = vi.hoisted(() => vi.fn());
+const getApiMetaMock = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({
     usePathname: () => navigationMock.pathname,
 }));
 
-vi.mock("@/lib/apiClient", () => ({
-    apiClient: { getJson: getJsonMock },
+vi.mock("@/lib/api/system", () => ({
+    getApiMeta: getApiMetaMock,
 }));
 
 function chip() {
@@ -21,9 +21,9 @@ function chip() {
 
 beforeEach(() => {
     navigationMock.pathname = "/dashboard";
-    getJsonMock.mockReset();
+    getApiMetaMock.mockReset();
     // Never settles: the trail tests do not depend on the chip state.
-    getJsonMock.mockReturnValue(new Promise(() => {}));
+    getApiMetaMock.mockReturnValue(new Promise(() => {}));
 });
 
 describe("ShellTopBar — location trail from the nav config (A6)", () => {
@@ -109,18 +109,17 @@ describe("shellStatusFromMeta — unknown is its own state", () => {
 });
 
 describe("ShellStatusChip — never looks healthy when the state is not known", () => {
-    it("asks the meta endpoint once and is neutral while it waits", () => {
+    it("asks for the backend meta once and is neutral while it waits", () => {
         render(<ShellStatusChip />);
 
-        expect(getJsonMock).toHaveBeenCalledTimes(1);
-        expect(getJsonMock).toHaveBeenCalledWith("/api/v1/meta");
+        expect(getApiMetaMock).toHaveBeenCalledTimes(1);
         expect(chip()).toHaveAttribute("data-status", "loading");
         expect(chip()).toHaveTextContent("Checking data status");
         expect(chip()).not.toHaveTextContent("Synced");
     });
 
     it("shows the sync time when the backend returns one", async () => {
-        getJsonMock.mockResolvedValue({ last_ingest_at: "2026-09-30T10:00:00Z" });
+        getApiMetaMock.mockResolvedValue({ last_ingest_at: "2026-09-30T10:00:00Z" });
         render(<ShellStatusChip />);
 
         await waitFor(() => expect(chip()).toHaveAttribute("data-status", "synced"));
@@ -129,7 +128,7 @@ describe("ShellStatusChip — never looks healthy when the state is not known", 
     });
 
     it("shows 'No data yet' when nothing was ingested", async () => {
-        getJsonMock.mockResolvedValue({ last_ingest_at: null });
+        getApiMetaMock.mockResolvedValue({ last_ingest_at: null });
         render(<ShellStatusChip />);
 
         await waitFor(() => expect(chip()).toHaveAttribute("data-status", "empty"));
@@ -137,12 +136,15 @@ describe("ShellStatusChip — never looks healthy when the state is not known", 
     });
 
     it.each([
-        ["the request fails", () => getJsonMock.mockRejectedValue(new Error("503"))],
-        ["the answer is empty", () => getJsonMock.mockResolvedValue(null)],
-        ["the answer has no sync field", () => getJsonMock.mockResolvedValue({ version: "1" })],
+        [
+            "the request fails (the fetcher answers null)",
+            () => getApiMetaMock.mockResolvedValue(null),
+        ],
+        ["the fetcher rejects", () => getApiMetaMock.mockRejectedValue(new Error("503"))],
+        ["the answer has no sync field", () => getApiMetaMock.mockResolvedValue({ version: "1" })],
         [
             "the sync value is not a date",
-            () => getJsonMock.mockResolvedValue({ last_ingest_at: "soon" }),
+            () => getApiMetaMock.mockResolvedValue({ last_ingest_at: "soon" }),
         ],
     ])("shows the neutral 'Status unavailable' state when %s", async (_label, arrange) => {
         arrange();
