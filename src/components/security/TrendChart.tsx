@@ -9,7 +9,7 @@
 import { useMemo } from "react";
 
 import { Chart } from "@/components/charts/Chart";
-import { useChartTheme } from "@/components/charts/chartTheme";
+import { useChartTheme, useChartTokens } from "@/components/charts/chartTheme";
 import { SkeletonLine } from "@/components/ui/Skeleton";
 import type { TrendPointData } from "./types";
 
@@ -25,11 +25,11 @@ function formatDay(iso: string): string {
     return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-const OPENED_COLOR = "#ef4444"; // red-500
-const FIXED_COLOR = "#10b981"; // emerald-500
-
 export function TrendChart({ points, loading }: TrendChartProps) {
     const chartTheme = useChartTheme();
+    const tokens = useChartTokens();
+    const OPENED_COLOR = tokens.negative;
+    const FIXED_COLOR = tokens.positive;
 
     const sorted = useMemo(() => [...points].sort((a, b) => a.day.localeCompare(b.day)), [points]);
 
@@ -90,7 +90,7 @@ export function TrendChart({ points, loading }: TrendChartProps) {
                 },
             ],
         }),
-        [sorted, chartTheme],
+        [sorted, chartTheme, OPENED_COLOR, FIXED_COLOR],
     );
 
     if (loading) {

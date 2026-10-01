@@ -200,7 +200,7 @@ export const buildQuadrantOption = ({
 
     const showInterpretation = Boolean(showZoneOverlay);
     const activeZoneOverlay = showInterpretation ? zoneOverlay : null;
-    const annotationColor = "rgba(148, 163, 184, 0.2)";
+    const annotationColor = withAlpha(chartTheme.muted, 0.2);
     const annotationAreas: MarkAreaComponentOption["data"] = showInterpretation
         ? (data.annotations ?? []).map((annotation, index) => {
               const isActive = highlightOverlayKey === `annotation:${index}`;
@@ -349,7 +349,7 @@ export const buildQuadrantOption = ({
                           symbol: "circle",
                           symbolSize: 14,
                           itemStyle: {
-                              color: colors[0] ?? "#2563eb",
+                              color: colors[0] ?? chartTheme.accent2,
                           },
                           label: {
                               show: true,

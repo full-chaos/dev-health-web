@@ -5,7 +5,7 @@ import type { EChartsOption } from "echarts";
 import { GraphChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
-import { useChartTheme } from "./chartTheme";
+import { type ChartTokens, useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { WorkGraphEdge, WorkGraphNodeType, WorkGraphEdgeType } from "@/lib/graphql/types";
@@ -41,18 +41,31 @@ type WorkGraphExplorerProps = {
     selectedNodeId?: string;
 };
 
-const NODE_TYPE_COLORS: Record<WorkGraphNodeType, string> = {
-    ISSUE: "#f59e0b",
-    PR: "#10b981",
-    COMMIT: "#6366f1",
-    FILE: "#8b5cf6",
-    RELEASE: "#0d9488",
-    FEATURE_FLAG: "#d97706",
-    AI_WORKFLOW_RUN: "#14b8a6",
-    DIFF: "#ec4899",
-    REVIEW_OUTCOME: "#84cc16",
-    DEPLOYMENT: "#06b6d4",
-    INCIDENT: "#ef4444",
+// Node colors: an index into the theme series colors, or a status role.
+const NODE_TYPE_COLOR_SOURCE: Record<WorkGraphNodeType, number | "negative"> = {
+    ISSUE: 1,
+    PR: 0,
+    COMMIT: 5,
+    FILE: 8,
+    RELEASE: 3,
+    FEATURE_FLAG: 4,
+    AI_WORKFLOW_RUN: 9,
+    DIFF: 6,
+    REVIEW_OUTCOME: 7,
+    DEPLOYMENT: 2,
+    INCIDENT: "negative",
+};
+
+const buildNodeTypeColors = (
+    colors: readonly string[],
+    tokens: ChartTokens,
+): Record<WorkGraphNodeType, string> => {
+    const out = {} as Record<WorkGraphNodeType, string>;
+    for (const type of Object.keys(NODE_TYPE_COLOR_SOURCE) as WorkGraphNodeType[]) {
+        const source = NODE_TYPE_COLOR_SOURCE[type];
+        out[type] = source === "negative" ? tokens.negative : (colors[source] ?? tokens.info);
+    }
+    return out;
 };
 
 const NODE_TYPE_SYMBOLS: Record<WorkGraphNodeType, string> = {
@@ -99,28 +112,65 @@ const ALL_NODE_TYPES: WorkGraphNodeType[] = [
 
 const FILTERABLE_NODE_TYPES: WorkGraphNodeType[] = ["RELEASE", "FEATURE_FLAG"];
 
-const EDGE_TYPE_STYLES: Record<string, { color: string; type: "solid" | "dashed" | "dotted" }> = {
-    BLOCKS: { color: "#ef4444", type: "solid" },
-    IS_BLOCKED_BY: { color: "#ef4444", type: "dashed" },
-    FIXES: { color: "#22c55e", type: "solid" },
-    IMPLEMENTS: { color: "#3b82f6", type: "solid" },
-    REFERENCES: { color: "#a855f7", type: "dashed" },
-    RELATES: { color: "#6b7280", type: "dotted" },
-    CONTAINS: { color: "#06b6d4", type: "solid" },
-    TOUCHES: { color: "#f97316", type: "dotted" },
-    PARENT_OF: { color: "#14b8a6", type: "solid" },
-    CHILD_OF: { color: "#14b8a6", type: "dashed" },
-    DUPLICATES: { color: "#eab308", type: "dashed" },
-    INTRODUCED_BY: { color: "#0d9488", type: "dashed" },
-    CONFIG_CHANGED_BY: { color: "#d97706", type: "dashed" },
-    GUARDS: { color: "#d97706", type: "solid" },
-    IMPACTS: { color: "#9ca3af", type: "dotted" },
-    HAS_AI_WORKFLOW: { color: "#14b8a6", type: "solid" },
-    GENERATES: { color: "#ec4899", type: "solid" },
-    HAS_REVIEW_OUTCOME: { color: "#84cc16", type: "solid" },
-    DEPLOYS: { color: "#06b6d4", type: "solid" },
-    LINKED_INCIDENT: { color: "#ef4444", type: "dashed" },
+type EdgeColorSource = number | "negative" | "positive" | "info" | "caution" | "muted";
+type EdgeLineType = "solid" | "dashed" | "dotted";
+
+// Edge colors: an index into the theme series colors, or a status role.
+const EDGE_TYPE_STYLE_SOURCE: Record<string, { color: EdgeColorSource; type: EdgeLineType }> = {
+    BLOCKS: { color: "negative", type: "solid" },
+    IS_BLOCKED_BY: { color: "negative", type: "dashed" },
+    FIXES: { color: "positive", type: "solid" },
+    IMPLEMENTS: { color: "info", type: "solid" },
+    REFERENCES: { color: 5, type: "dashed" },
+    RELATES: { color: "muted", type: "dotted" },
+    CONTAINS: { color: 3, type: "solid" },
+    TOUCHES: { color: 4, type: "dotted" },
+    PARENT_OF: { color: 0, type: "solid" },
+    CHILD_OF: { color: 0, type: "dashed" },
+    DUPLICATES: { color: "caution", type: "dashed" },
+    INTRODUCED_BY: { color: 6, type: "dashed" },
+    CONFIG_CHANGED_BY: { color: "caution", type: "dashed" },
+    GUARDS: { color: "caution", type: "solid" },
+    IMPACTS: { color: "muted", type: "dotted" },
+    HAS_AI_WORKFLOW: { color: 9, type: "solid" },
+    GENERATES: { color: 7, type: "solid" },
+    HAS_REVIEW_OUTCOME: { color: 8, type: "solid" },
+    DEPLOYS: { color: 2, type: "solid" },
+    LINKED_INCIDENT: { color: "negative", type: "dashed" },
 };
+
+type EdgeStyle = { color: string; type: EdgeLineType };
+
+const buildEdgeTypeStyles = (
+    colors: readonly string[],
+    tokens: ChartTokens,
+    mutedColor: string,
+): Record<string, EdgeStyle> => {
+    const out: Record<string, EdgeStyle> = {};
+    for (const [edgeType, source] of Object.entries(EDGE_TYPE_STYLE_SOURCE)) {
+        const color =
+            typeof source.color === "number"
+                ? (colors[source.color] ?? mutedColor)
+                : source.color === "muted"
+                  ? mutedColor
+                  : tokens[source.color];
+        out[edgeType] = { color, type: source.type };
+    }
+    return out;
+};
+
+function useWorkGraphColors() {
+    const chartTheme = useChartTheme();
+    const seriesColors = useChartColors();
+    const tokens = useChartTokens();
+    return useMemo(
+        () => ({
+            nodeTypeColors: buildNodeTypeColors(seriesColors, tokens),
+            edgeTypeStyles: buildEdgeTypeStyles(seriesColors, tokens, chartTheme.muted),
+        }),
+        [seriesColors, tokens, chartTheme.muted],
+    );
+}
 
 const NODE_SIZE: Record<WorkGraphNodeType, number> = {
     ISSUE: 30,
@@ -202,6 +252,7 @@ export function WorkGraphExplorer({
     selectedNodeId,
 }: WorkGraphExplorerProps) {
     const chartTheme = useChartTheme();
+    const { nodeTypeColors, edgeTypeStyles } = useWorkGraphColors();
 
     const [hiddenNodeTypes, setHiddenNodeTypes] = useState<Set<WorkGraphNodeType>>(() => new Set());
 
@@ -226,9 +277,9 @@ export function WorkGraphExplorer({
         () =>
             ALL_NODE_TYPES.map((type) => ({
                 name: NODE_TYPE_LABELS[type],
-                itemStyle: { color: NODE_TYPE_COLORS[type] },
+                itemStyle: { color: nodeTypeColors[type] },
             })),
-        [],
+        [nodeTypeColors],
     );
 
     const option: EChartsOption = useMemo(() => {
@@ -243,8 +294,8 @@ export function WorkGraphExplorer({
             symbolSize: selectedNodeId === node.id ? node.symbolSize * 1.5 : node.symbolSize,
             symbol: NODE_TYPE_SYMBOLS[node.type],
             itemStyle: {
-                color: NODE_TYPE_COLORS[node.type],
-                borderColor: selectedNodeId === node.id ? "#fff" : undefined,
+                color: nodeTypeColors[node.type],
+                borderColor: selectedNodeId === node.id ? chartTheme.text : undefined,
                 borderWidth: selectedNodeId === node.id ? 2 : 0,
             },
             label: {
@@ -256,8 +307,8 @@ export function WorkGraphExplorer({
         }));
 
         const echartsLinks = links.map((link) => {
-            const linkStyle = EDGE_TYPE_STYLES[link.edgeType] ?? {
-                color: "#6b7280",
+            const linkStyle = edgeTypeStyles[link.edgeType] ?? {
+                color: chartTheme.muted,
                 type: "solid" as const,
             };
             return {
@@ -337,7 +388,7 @@ export function WorkGraphExplorer({
                 },
             ],
         };
-    }, [nodes, links, categories, chartTheme, selectedNodeId]);
+    }, [nodes, links, categories, chartTheme, selectedNodeId, nodeTypeColors, edgeTypeStyles]);
 
     const handleEvents = useMemo(
         () => ({
@@ -385,11 +436,11 @@ export function WorkGraphExplorer({
                                 checked={!hiddenNodeTypes.has(type)}
                                 onChange={() => toggleNodeType(type)}
                                 className="accent-current"
-                                style={{ accentColor: NODE_TYPE_COLORS[type] }}
+                                style={{ accentColor: nodeTypeColors[type] }}
                             />
                             <span
                                 className="inline-block h-2.5 w-2.5 rounded-sm"
-                                style={{ backgroundColor: NODE_TYPE_COLORS[type] }}
+                                style={{ backgroundColor: nodeTypeColors[type] }}
                             />
                             <span>{NODE_TYPE_LABELS[type]}</span>
                         </label>
@@ -450,6 +501,7 @@ type WorkGraphLegendProps = {
 };
 
 export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraphLegendProps) {
+    const { nodeTypeColors, edgeTypeStyles } = useWorkGraphColors();
     if (collapsed) {
         return (
             <div className="flex flex-col items-center gap-3 text-(--ink-muted)">
@@ -468,7 +520,7 @@ export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraph
                             key={type}
                             className="h-2.5 w-2.5 rounded-full"
                             title={NODE_TYPE_LABELS[type]}
-                            style={{ backgroundColor: NODE_TYPE_COLORS[type] }}
+                            style={{ backgroundColor: nodeTypeColors[type] }}
                         />
                     ))}
                 </div>
@@ -512,7 +564,7 @@ export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraph
                             >
                                 <span
                                     className="h-2.5 w-2.5 shrink-0 rounded-full"
-                                    style={{ backgroundColor: NODE_TYPE_COLORS[type] }}
+                                    style={{ backgroundColor: nodeTypeColors[type] }}
                                 />
                                 <span className="min-w-0 truncate leading-none text-foreground/85">
                                     {NODE_TYPE_LABELS[type]}
@@ -527,7 +579,7 @@ export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraph
                     </p>
                     <div className="grid gap-y-2">
                         {LEGEND_EDGE_TYPES.map((type) => {
-                            const edgeStyle = EDGE_TYPE_STYLES[type];
+                            const edgeStyle = edgeTypeStyles[type];
                             const label = LEGEND_EDGE_LABELS[type];
                             return (
                                 <div
@@ -538,7 +590,8 @@ export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraph
                                     <span
                                         className="h-0.5 w-5 shrink-0"
                                         style={{
-                                            backgroundColor: edgeStyle?.color ?? "#6b7280",
+                                            backgroundColor:
+                                                edgeStyle?.color ?? "var(--chart-muted)",
                                             borderBottom:
                                                 edgeStyle?.type === "dashed"
                                                     ? `2px dashed ${edgeStyle.color}`
