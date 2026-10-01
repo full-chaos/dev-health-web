@@ -49,3 +49,37 @@ describe("MetricCard tile layout (CHAOS-7597)", () => {
         expect(screen.getByRole("link")).toHaveAttribute("aria-label", "Coverage: Open evidence");
     });
 });
+
+describe("MetricCard meta line separators (CHAOS-7597)", () => {
+    const meta = (container: HTMLElement) =>
+        container.querySelector(".mt-2.text-xs") as HTMLElement;
+
+    it("delta and note share one line with the dot only between them", () => {
+        const { container } = render(
+            <MetricCard label="L" value={1} unit="%" delta={5} caption="the note" />,
+        );
+        expect(meta(container).textContent).toBe("↑ +5% · the note");
+    });
+
+    it("delta alone has no dot", () => {
+        const { container } = render(<MetricCard label="L" value={1} unit="%" delta={5} />);
+        expect(meta(container).textContent).toBe("↑ +5%");
+    });
+
+    it("an unavailable delta with a note has no leading dot, and without a note no dot at all", () => {
+        const { container, unmount } = render(
+            <MetricCard
+                label="L"
+                value={1}
+                caption="the note"
+                deltaUnavailableLabel="Insufficient history"
+            />,
+        );
+        expect(meta(container).textContent).toBe("Insufficient history · the note");
+        unmount();
+        const second = render(
+            <MetricCard label="L" value={1} deltaUnavailableLabel="Insufficient history" />,
+        );
+        expect(meta(second.container).textContent).toBe("Insufficient history");
+    });
+});

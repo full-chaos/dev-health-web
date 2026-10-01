@@ -68,23 +68,20 @@ export function MetricCard({
             >
                 {hasValue ? formatMetricValue(value, unit ?? "") : "--"}
             </p>
-            {/* Concept `.metric-meta`: delta, then the note. */}
-            <div
-                className={`mt-2 flex flex-wrap items-center gap-x-1.5 text-xs text-(--ink-muted) ${
-                    hasSpark ? "max-w-[55%]" : ""
-                }`}
-            >
+            {/* Concept `.metric-meta`: `delta · note` as running text; the dot sits only between the two. */}
+            <div className={`mt-2 text-xs text-(--ink-muted) ${hasSpark ? "max-w-[55%]" : ""}`}>
                 <MetricDelta
                     value={delta}
                     unavailableLabel={deltaUnavailableLabel}
                     inverseGood={inverseGood}
+                    leadingDot={false}
                 />
-                {captionText && (
+                {captionText ? (
                     <>
-                        <span aria-hidden="true">·</span>
+                        <span aria-hidden="true"> · </span>
                         <span>{captionText}</span>
                     </>
-                )}
+                ) : null}
             </div>
             {/* Concept `.metric .spark` (87x31, bottom-right). End dot, weight and tone: CHAOS-7602. */}
             <div className="absolute bottom-[26px] right-4 h-[31px] w-[87px]">

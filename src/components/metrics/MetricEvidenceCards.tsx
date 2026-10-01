@@ -79,7 +79,7 @@ export function MetricEvidenceCards({
                                     : formatMetricValue(data.value, data.unit ?? "")}
                             </p>
                             <div
-                                className={`mt-2 flex flex-wrap items-center gap-x-1.5 text-xs ${
+                                className={`mt-2 text-xs text-(--ink-muted) ${
                                     hasSpark ? "max-w-[55%]" : ""
                                 }`}
                             >
@@ -88,9 +88,7 @@ export function MetricEvidenceCards({
                                         ? "--"
                                         : formatDelta(data.delta_pct)}
                                 </span>
-                                <span aria-hidden="true" className="text-(--ink-muted)">
-                                    ·
-                                </span>
+                                <span> · </span>
                                 <button
                                     type="button"
                                     onClick={() =>
