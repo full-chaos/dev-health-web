@@ -67,6 +67,8 @@ export const CTA_LABELS = {
     clearTheme: "Clear theme",
     allThemes: "All themes",
     openWorkGraph: "Open Work Graph",
+    /** Open the Investment view (allocation tab from the Diagnose overview). */
+    openInvestment: "Open Investment",
     openMetrics: "Open metrics",
     openWorkView: "Open Work view",
     evidence: "Evidence",
