@@ -102,8 +102,6 @@ describe("status pill contrast (token text on its fill over the card)", () => {
         });
         it(`muted pill: ink-muted on card stroke (${theme})`, () => {
             const t = tokens(theme);
-            // Light is 4.05 until CHAOS-7690 (lane-wr-theme) changes the muted ink value; raise this floor then.
-            const floor = theme === "light" ? 4.0 : 4.5;
             expect(ratio(rgb(t["--ink-muted"]), rgb(t["--card-stroke"]))).toBeGreaterThanOrEqual(
                 floor,
             );
