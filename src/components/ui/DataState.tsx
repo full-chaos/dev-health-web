@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorCard } from "@/components/ui/ErrorCard";
+import { STATE_ICONS } from "@/components/ui/stateIcons";
 
 /**
  * Controlled "why is there nothing to show" taxonomy (CHAOS-2061 / Framework A11).
@@ -127,7 +128,7 @@ export function DataState({
             >
                 <span className="sr-only">{title ?? "Loading…"}</span>
                 <div
-                    className="h-24 w-full animate-pulse rounded-3xl bg-(--card-80)"
+                    className="h-24 w-full animate-pulse rounded-(--radius-md) bg-(--card-80) motion-reduce:animate-none"
                     aria-hidden="true"
                 />
             </div>
@@ -162,13 +163,13 @@ export function DataState({
             className={className}
         >
             <EmptyState
-                icon={icon}
+                icon={icon ?? STATE_ICONS[variant]}
                 title={title ?? copy.title}
                 description={description ?? copy.description}
                 action={action}
             />
             {detail && (
-                <p className="mt-3 rounded-2xl bg-background/60 px-3 py-2 text-center text-xs text-(--ink-muted)">
+                <p className="mt-3 rounded-(--radius-sm) bg-background/60 px-3 py-2 text-center text-xs text-(--ink-muted)">
                     Data source needed: {detail}
                 </p>
             )}
