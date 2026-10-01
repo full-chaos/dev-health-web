@@ -70,3 +70,14 @@ describe("Notice", () => {
         expect(container.firstChild).toHaveClass("bg-(--caution)");
     });
 });
+
+describe("Notice centered", () => {
+    it("pins the dismiss button to the far right", () => {
+        render(
+            <Notice centered onDismiss={() => {}}>
+                x
+            </Notice>,
+        );
+        expect(screen.getByRole("button", { name: "Dismiss" })).toHaveClass("absolute", "right-4");
+    });
+});

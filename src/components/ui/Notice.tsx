@@ -66,6 +66,8 @@ export type NoticeProps = Omit<ComponentPropsWithoutRef<"div">, "title" | "role"
     live?: boolean;
     /** `strong`: solid status fill for security-relevant strips (for example impersonation). */
     emphasis?: "default" | "strong";
+    /** Center title and action in the row; the dismiss button is pinned to the far right. */
+    centered?: boolean;
 };
 
 export function Notice({
@@ -77,6 +79,7 @@ export function Notice({
     dismissLabel = CTA_LABELS.dismiss,
     live = true,
     emphasis = "default",
+    centered = false,
     className = "",
     children,
     ...rest
@@ -90,11 +93,11 @@ export function Notice({
         <div
             {...(live ? { role: "status", "aria-live": "polite" as const } : {})}
             data-notice-variant={variant}
-            className={`flex items-start gap-3 rounded-md border px-4 py-3 text-sm ${strong ? "" : "text-foreground"} ${surface} ${className}`}
+            className={`${centered ? "relative justify-center pr-12 " : ""}flex items-start gap-3 rounded-md border px-4 py-3 text-sm ${strong ? "" : "text-foreground"} ${surface} ${className}`}
             {...rest}
         >
             <Icon aria-hidden="true" className={`mt-0.5 h-4 w-4 shrink-0 ${accent}`} />
-            <div className="min-w-0 flex-1">
+            <div className={`min-w-0 ${centered ? "" : "flex-1"}`}>
                 <span className="sr-only">{label}: </span>
                 {title ? <TitleTag className={`font-semibold ${accent}`}>{title}</TitleTag> : null}
                 {children ? (
@@ -109,7 +112,7 @@ export function Notice({
                     type="button"
                     onClick={onDismiss}
                     aria-label={dismissLabel}
-                    className="shrink-0 rounded-md p-1 opacity-70 transition-opacity hover:opacity-100"
+                    className={`${centered ? "absolute right-4 top-1/2 -translate-y-1/2 " : ""}shrink-0 rounded-md p-1 opacity-70 transition-opacity hover:opacity-100`}
                 >
                     <X aria-hidden="true" className="h-4 w-4" />
                 </button>

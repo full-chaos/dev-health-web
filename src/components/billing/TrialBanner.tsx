@@ -93,6 +93,7 @@ export function TrialBanner() {
         <Notice
             variant={isWarning ? "warn" : "info"}
             live={false}
+            centered
             className="relative z-[90] w-full rounded-none border-x-0 border-t-0"
             title={`Your Team trial ends in ${daysRemaining} ${daysRemaining === 1 ? "day" : "days"}.`}
             action={
