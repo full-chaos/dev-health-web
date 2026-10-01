@@ -320,7 +320,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                                     <span className="font-medium">
                                                         {repo.repoName}
                                                     </span>
-                                                    <span className="rounded-full bg-(--accent-soft) px-2 py-1 text-xs text-(--accent)">
+                                                    <span className="rounded-full bg-(--accent-soft) px-2 py-1 text-xs text-(--accent-text)">
                                                         BF {repo.value}
                                                     </span>
                                                 </div>

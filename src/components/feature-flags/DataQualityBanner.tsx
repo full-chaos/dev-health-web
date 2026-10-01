@@ -1,29 +1,10 @@
+import { Notice } from "@/components/ui/Notice";
 import { DATA_COMPLETENESS_THRESHOLD, GATE_COPY } from "@/lib/feature-flags/interpretation";
 
 interface DataQualityBannerProps {
     dataCompleteness?: number;
     cohortContamination?: number;
     concurrentDeployCount?: number;
-}
-
-function InfoIcon() {
-    return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            className="h-4 w-4 shrink-0"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-        >
-            <title>Information</title>
-            <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-            />
-        </svg>
-    );
 }
 
 export function DataQualityBanner({
@@ -41,27 +22,29 @@ export function DataQualityBanner({
     return (
         <div className="flex flex-col gap-2">
             {showCompleteness && (
-                <div className="flex items-center gap-2 rounded-2xl border border-blue-500/20 bg-blue-500/5 px-4 py-2.5 text-xs text-blue-400">
-                    <InfoIcon />
-                    <span>{GATE_COPY.dataArriving}</span>
-                    <span className="ml-auto rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-label-caps font-semibold uppercase tracking-[0.15em]">
-                        {Math.round(dataCompleteness * 100)}% complete
-                    </span>
-                </div>
+                <Notice
+                    variant="info"
+                    live={false}
+                    action={
+                        <span className="rounded-full border border-(--info)/30 bg-(--info)/10 px-2 py-0.5 text-label-caps font-semibold uppercase tracking-[0.15em] text-(--info)">
+                            {Math.round(dataCompleteness * 100)}% complete
+                        </span>
+                    }
+                >
+                    {GATE_COPY.dataArriving}
+                </Notice>
             )}
 
             {showContamination && (
-                <div className="flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-2.5 text-xs text-amber-400">
-                    <InfoIcon />
-                    <span>{GATE_COPY.contamination(cohortContamination)}</span>
-                </div>
+                <Notice variant="warn" live={false}>
+                    {GATE_COPY.contamination(cohortContamination)}
+                </Notice>
             )}
 
             {showConcurrent && (
-                <div className="flex items-center gap-2 rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-2.5 text-xs text-amber-400">
-                    <InfoIcon />
-                    <span>{GATE_COPY.concurrentDeploys(concurrentDeployCount)}</span>
-                </div>
+                <Notice variant="warn" live={false}>
+                    {GATE_COPY.concurrentDeploys(concurrentDeployCount)}
+                </Notice>
             )}
         </div>
     );

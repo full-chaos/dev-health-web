@@ -4,6 +4,7 @@ import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { TrialBanner } from "@/components/billing/TrialBanner";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { AppShell } from "@/components/shell/AppShell";
 import { TelemetryProvider } from "@/components/telemetry/TelemetryProvider";
 import { getOrgEntitlements } from "@/lib/admin/server/billing";
@@ -27,6 +28,7 @@ export default async function AppLayout({
     const authenticatedShell = (
         <div className="min-h-screen bg-[image:var(--app-gradient)] bg-fixed">
             <AppShell
+                themeToggle={<ThemeToggle />}
                 banners={
                     <>
                         <ImpersonationBanner />

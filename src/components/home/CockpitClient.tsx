@@ -272,7 +272,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                     ) : null}
                     {home?.limiting_factor?.recommended_action ? (
                         <div className="mt-3 rounded-2xl border border-(--accent)/20 bg-(--accent)/8 p-3">
-                            <p className="text-label-caps font-semibold uppercase tracking-[0.2em] text-(--accent)">
+                            <p className="text-label-caps font-semibold uppercase tracking-[0.2em] text-(--accent-text)">
                                 Recommended action
                             </p>
                             <p className="mt-1 text-sm leading-5 text-foreground">

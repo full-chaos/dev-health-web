@@ -44,7 +44,7 @@ export function EvidenceContext({ data }: EvidenceContextProps) {
 
             <div className="rounded-xl border border-(--card-stroke) bg-background/35 p-3">
                 <p className="text-sm leading-6 text-foreground">
-                    <span className="font-semibold text-(--accent)">{roleConfig.framing}</span>{" "}
+                    <span className="font-semibold text-(--accent-text)">{roleConfig.framing}</span>{" "}
                     {data.summary || "No summary available for this metric."}
                 </p>
             </div>

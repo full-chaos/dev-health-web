@@ -1,6 +1,7 @@
 "use client";
 
 import type { ImproveOpportunity } from "@/lib/graphql/__generated__/types";
+import { STATUS_PILL } from "@/lib/statusPill";
 
 const KIND_LABELS: Record<string, string> = {
     HIGH_REVIEW_LATENCY: "High review latency",
@@ -14,11 +15,11 @@ const KIND_LABELS: Record<string, string> = {
 
 function SeverityBadge({ severity }: { severity: string }) {
     const colorMap: Record<string, string> = {
-        high: "bg-red-100 text-red-800",
-        medium: "bg-amber-100 text-amber-800",
-        low: "bg-sky-100 text-sky-800",
+        high: STATUS_PILL.negative,
+        medium: STATUS_PILL.caution,
+        low: STATUS_PILL.info,
     };
-    const color = colorMap[severity] ?? "bg-gray-100 text-gray-700";
+    const color = colorMap[severity] ?? STATUS_PILL.muted;
     return (
         <span className={`rounded-full px-2 py-1 text-xs font-semibold ${color}`}>{severity}</span>
     );

@@ -1,4 +1,5 @@
 import React from "react";
+import { STATUS_PILL, STATUS_DOT } from "@/lib/statusPill";
 import { CREDENTIAL_STATUS_META } from "./credentialStatus";
 
 export type ConnectionStatusType =
@@ -10,23 +11,23 @@ type ConnectionStatusProps = {
 };
 
 const BADGE_CLASSES: Record<ConnectionStatusType, string> = {
-    connected: "bg-green-100 text-green-700 border-green-200",
-    error: "bg-red-100 text-red-700 border-red-200",
-    not_configured: "bg-gray-100 text-gray-600 border-gray-200",
-    connecting: "bg-blue-100 text-blue-700 border-blue-200",
-    failing: "bg-red-100 text-red-700 border-red-200",
-    untested: "bg-amber-100 text-amber-700 border-amber-200",
-    inactive: "bg-gray-100 text-gray-600 border-gray-200",
+    connected: STATUS_PILL.positive,
+    error: STATUS_PILL.negative,
+    not_configured: STATUS_PILL.muted,
+    connecting: STATUS_PILL.info,
+    failing: STATUS_PILL.negative,
+    untested: STATUS_PILL.caution,
+    inactive: STATUS_PILL.muted,
 };
 
 const DOT_CLASSES: Record<ConnectionStatusType, string> = {
-    connected: "bg-green-500",
-    error: "bg-red-500",
-    not_configured: "bg-gray-400",
-    connecting: "bg-blue-500 animate-pulse",
-    failing: "bg-red-500",
-    untested: "bg-amber-500",
-    inactive: "bg-gray-400",
+    connected: STATUS_DOT.positive,
+    error: STATUS_DOT.negative,
+    not_configured: STATUS_DOT.muted,
+    connecting: `${STATUS_DOT.info} animate-pulse`,
+    failing: STATUS_DOT.negative,
+    untested: STATUS_DOT.caution,
+    inactive: STATUS_DOT.muted,
 };
 
 // Labels for the credential-derived statuses come from the shared

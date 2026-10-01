@@ -1,3 +1,4 @@
+import { STATUS_PILL } from "@/lib/statusPill";
 import { SyncStatus } from "@/lib/sync-types";
 
 interface SyncStatusBadgeProps {
@@ -8,11 +9,11 @@ interface SyncStatusBadgeProps {
 
 export function SyncStatusBadge({ status, className = "", label }: SyncStatusBadgeProps) {
     const variants = {
-        success: "bg-green-100 text-green-700 border-green-200",
-        failed: "bg-red-100 text-red-700 border-red-200",
-        running: "bg-blue-100 text-blue-700 border-blue-200 animate-pulse",
-        idle: "bg-gray-100 text-gray-700 border-gray-200",
-        never: "bg-gray-50 text-gray-500 border-gray-200",
+        success: STATUS_PILL.positive,
+        failed: STATUS_PILL.negative,
+        running: `${STATUS_PILL.info} animate-pulse`,
+        idle: STATUS_PILL.muted,
+        never: STATUS_PILL.muted,
     };
 
     const labels = {
