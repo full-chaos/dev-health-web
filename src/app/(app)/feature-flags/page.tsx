@@ -1,4 +1,5 @@
 import { FeatureFlagTable } from "@/components/feature-flags/FeatureFlagTable";
+import { SeverityPill } from "@/components/feature-flags/SeverityPill";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -13,13 +14,6 @@ import { fetchOrNull } from "@/lib/fetchOrNull";
 
 type FeatureFlagsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
-};
-
-const SEVERITY_COLORS: Record<string, string> = {
-    low: "border-l-emerald-500",
-    moderate: "border-l-amber-500",
-    high: "border-l-orange-500",
-    critical: "border-l-red-500",
 };
 
 export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPageProps) {
@@ -71,23 +65,19 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
     }
 
     const { summary } = ffData;
-    const severityBorder = summary.releaseFrictionSeverity
-        ? (SEVERITY_COLORS[summary.releaseFrictionSeverity] ?? "")
-        : "";
 
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-8">
             <PageHeader
-                title="Overview"
+                title="Feature Flags"
                 subtitle="Flag activity, release friction, and telemetry coverage."
             />
 
             <section className="grid gap-4 lg:grid-cols-2">
                 <MetricCard
                     label={FF_MEASURES.ACTIVE_FLAGS.label}
-                    href="/feature-flags"
                     value={summary.activeFlags}
                     unit=""
                     delta={summary.activeFlagsDelta}
@@ -95,19 +85,22 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
                     caption={FF_MEASURES.ACTIVE_FLAGS.description}
                 />
 
-                <MetricCard
-                    label={FF_MEASURES.RELEASE_FRICTION_DELTA.label}
-                    href="/feature-flags"
-                    value={summary.releaseFrictionDelta ?? undefined}
-                    unit="%"
-                    spark={summary.releaseFrictionSpark}
-                    caption={`Severity: ${summary.releaseFrictionSeverity ?? "unavailable"}`}
-                    className={severityBorder ? `border-l-4 ${severityBorder}` : undefined}
-                />
+                <div className="relative">
+                    <MetricCard
+                        label={FF_MEASURES.RELEASE_FRICTION_DELTA.label}
+                        value={summary.releaseFrictionDelta ?? undefined}
+                        unit="%"
+                        spark={summary.releaseFrictionSpark}
+                        caption={`Severity: ${summary.releaseFrictionSeverity ?? "unavailable"}`}
+                    />
+                    <SeverityPill
+                        severity={summary.releaseFrictionSeverity}
+                        className="absolute right-4 top-4"
+                    />
+                </div>
 
                 <MetricCard
                     label={FF_MEASURES.RELEASE_ERROR_RATE_DELTA.label}
-                    href="/feature-flags"
                     value={summary.releaseErrorRateDelta ?? undefined}
                     unit="%"
                     spark={summary.releaseErrorRateSpark}
@@ -116,7 +109,6 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
 
                 <MetricCard
                     label={FF_MEASURES.COVERAGE_RATIO.label}
-                    href="/feature-flags"
                     value={summary.coverageRatio ?? undefined}
                     unit="%"
                     delta={summary.coverageRatioDelta}
