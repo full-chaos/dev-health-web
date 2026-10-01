@@ -243,6 +243,14 @@ describe("infinity palette", () => {
         },
     );
 
+    it("leaves the dark theme's colors unchanged: orange text resolves to --accent, muted ink as before", () => {
+        const dark = infinity("dark");
+        // Every `text-(--accent-text)` renders the same color as the `text-(--accent)` it replaced.
+        expect(dark["--accent-text"]).toBe(dark["--accent"]);
+        expect(dark["--ink-muted"]).toBe("#a7afb5");
+        expect(dark["--text-muted"]).toBe("#808990");
+    });
+
     it.each(THEMES)("keeps status pill text readable on its own tint (%s)", (theme) => {
         const t = infinity(theme);
         // Pills: status token as text on the same token at STATUS_PILL_ALPHA over the card.
