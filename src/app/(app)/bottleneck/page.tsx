@@ -172,8 +172,8 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
             <WipSaturationNotice />
 
             {/* Quadrant panels */}
-            {/* Side by side from 1280 px (ruling: the mapping said 1150), stacked below. */}
-            <section className="grid gap-6 xl:grid-cols-2" data-testid="bottleneck-quadrants">
+            {/* Side by side from 1536 px (the mapping said 1150; at 1280 the zone legend leaves a 90 px plot), stacked below. */}
+            <section className="grid gap-6 2xl:grid-cols-2" data-testid="bottleneck-quadrants">
                 <QuadrantPanel
                     title="WIP × Throughput"
                     description="Operating modes under work in flight and delivery pace."

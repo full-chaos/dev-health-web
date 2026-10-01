@@ -26,12 +26,13 @@ describe("Bottlenecks page pass (CHAOS-7749)", () => {
         expect(page).not.toContain("WIP Saturation is indexed to a baseline");
     });
 
-    it("the two quadrants sit side by side from 1280 px and stack below", () => {
+    it("the two quadrants sit side by side from 1536 px and stack below", () => {
         const section = page.match(
             /<section className="([^"]*)" data-testid="bottleneck-quadrants">/u,
         );
-        expect(section?.[1]).toContain("xl:grid-cols-2");
+        expect(section?.[1]).toContain("2xl:grid-cols-2");
         expect(section?.[1]).not.toContain("min-[1150px]");
+        expect(section?.[1]).not.toMatch(/(?:^| )xl:grid-cols-2/u);
         const body = page.slice(
             page.indexOf('data-testid="bottleneck-quadrants"'),
             page.indexOf("Review wait density"),
