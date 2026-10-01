@@ -44,6 +44,7 @@ export const SHELL_ROUTES: readonly ShellRoute[] = [
     { prefix: "/incident-correlation" },
     { prefix: "/risk/compounding" },
     { prefix: "/security" },
+    { prefix: "/feature-flags" },
 ];
 
 function matchesRoute(pathname: string, route: ShellRoute): boolean {

@@ -23,6 +23,7 @@ describe("shell route registry", () => {
             "/incident-correlation",
             "/risk/compounding",
             "/security",
+            "/feature-flags",
         ]);
     });
 
