@@ -89,7 +89,7 @@ function Palette({ onClose }: { onClose: () => void }) {
                         go(current.path);
                     }
                 }}
-                className="border-b border-(--card-stroke) bg-transparent px-5 py-3 text-sm text-foreground placeholder:text-(--ink-muted) focus:outline-none"
+                className="border-b border-(--card-stroke) bg-transparent px-5 py-3 text-sm text-foreground placeholder:text-(--ink-muted) rounded-none! focus-visible:outline-none! focus-visible:shadow-[inset_0_-2px_0_var(--accent-2)]"
             />
             <div className="min-h-0 flex-1 overflow-y-auto p-2">
                 {results.length === 0 ? (
