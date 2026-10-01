@@ -65,7 +65,26 @@ describe("ReworkThemeBars", () => {
         expect(barColor(risk)).toBe(probe.style.backgroundColor);
         probe.style.backgroundColor = fallbackTokens.themeQuality;
         expect(barColor(quality)).toBe(probe.style.backgroundColor);
-        // An unknown theme keeps the production color token, never an empty bar.
-        expect(barColor(other)).toBe("var(--accent-2)");
+        // An unknown theme gets the neutral muted token, never the action color.
+        expect(barColor(other)).toBe("var(--text-muted)");
+    });
+});
+
+describe("ReworkThemeBars small-bar recipe", () => {
+    it("draws no fill for a zero allocation and a 2 px minimum for a small one", () => {
+        render(
+            <ReworkThemeBars
+                rows={[
+                    row({ theme: "risk", allocation_pct: 0 }),
+                    row({ theme: "quality", allocation_pct: 0.2 }),
+                ]}
+            />,
+        );
+
+        const [zero, small] = screen.getAllByRole("listitem");
+        expect(within(zero).queryByTestId("rework-theme-bar")).toBeNull();
+        const fill = within(small).getByTestId("rework-theme-bar");
+        expect(fill.style.minWidth).toBe("2px");
+        expect(fill).toHaveAttribute("aria-hidden", "true");
     });
 });
