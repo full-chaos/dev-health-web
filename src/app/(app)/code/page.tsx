@@ -14,7 +14,7 @@ import { getHeatmap, getQuadrant } from "@/lib/api/visuals";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { formatMetricValue } from "@/lib/formatters";
+import { formatMetricValue, formatNumber } from "@/lib/formatters";
 import { resolveEntityLabel } from "@/lib/labels/entityLabel";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
@@ -243,7 +243,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                                     <td className="py-2">{repo.repoName}</td>
                                     <td className="py-2 text-right tabular-nums">{repo.value}</td>
                                     <td className="py-2 text-right tabular-nums">
-                                        {repo.evidenceSampleCount}
+                                        {formatNumber(repo.evidenceSampleCount)}
                                     </td>
                                 </tr>
                             ))}

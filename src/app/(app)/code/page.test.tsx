@@ -202,7 +202,7 @@ describe("CodePage", () => {
             // header + 2 rows, sorted by bus factor ascending
             expect(rows).toHaveLength(3);
             expect(rows[1]).toHaveTextContent("org/ops");
-            expect(rows[1]).toHaveTextContent("1947");
+            expect(rows[1]).toHaveTextContent("1,947");
             expect(rows[2]).toHaveTextContent("org/web");
             expect(screen.queryByText(/hotspot score/i)).toBeNull();
         });
