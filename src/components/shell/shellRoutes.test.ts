@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { SHELL_ROUTES, isShellRoute, shellRouteForPathname } from "./shellRoutes";
 
 describe("shell route registry", () => {
-    it("registers the Cockpit and the migrated Diagnose routes", () => {
+    it("registers the Cockpit and the migrated Diagnose and Govern routes", () => {
         expect(SHELL_ROUTES.map((route) => route.prefix)).toEqual([
             "/dashboard",
             "/diagnose",
@@ -17,6 +17,7 @@ describe("shell route registry", () => {
             "/bottleneck",
             "/cognitive-load",
             "/people",
+            "/govern",
         ]);
     });
 
