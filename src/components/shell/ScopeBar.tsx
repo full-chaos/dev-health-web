@@ -8,30 +8,29 @@
  */
 import { Suspense } from "react";
 
-import {
-    type FilterBarView,
-    resolveScopeLock,
-    resolveVisibility,
-} from "@/components/filters/filterBarConfig";
+import type { FilterBarView } from "@/components/filters/filterBarConfig";
 
 import { ScopeBarClient } from "./ScopeBarClient";
+import { resolveScopeBarConfig } from "./scopeBarConfig";
 
 type ScopeBarProps = {
     view?: FilterBarView;
     tab?: string;
     origin?: string | null;
     orgName?: string;
+    /**
+     * `false` for a page that had the global context bar alone: the scope row
+     * and the actions, with no filter drawer, no scope lock and no default `f`.
+     */
+    pageFilters?: boolean;
 };
 
-export function ScopeBar({ view, tab, origin, orgName }: ScopeBarProps) {
-    // Scope, dates and repositories are in the bar's row, as they were in the
-    // global context bar. The drawer holds the page filters only.
-    const resolvedVisibility = {
-        ...resolveVisibility(view, tab),
-        scope: false,
-        date: false,
-        repo: false,
-    };
+export function ScopeBar({ view, tab, origin, orgName, pageFilters }: ScopeBarProps) {
+    const { resolvedVisibility, resolvedScopeLock, writeDefaultFilter } = resolveScopeBarConfig(
+        view,
+        tab,
+        pageFilters,
+    );
 
     return (
         <Suspense
@@ -41,7 +40,8 @@ export function ScopeBar({ view, tab, origin, orgName }: ScopeBarProps) {
                 view={view}
                 tab={tab}
                 resolvedVisibility={resolvedVisibility}
-                resolvedScopeLock={resolveScopeLock(view)}
+                resolvedScopeLock={resolvedScopeLock}
+                writeDefaultFilter={writeDefaultFilter}
                 origin={origin}
                 orgName={orgName}
             />
