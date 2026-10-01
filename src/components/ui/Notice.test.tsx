@@ -8,6 +8,7 @@ describe("Notice", () => {
         ["info", "Information"],
         ["warn", "Warning"],
         ["good", "OK"],
+        ["danger", "Error"],
     ] as const)(
         "%s variant carries an icon and a text label, not color alone",
         (variant, label) => {
@@ -102,5 +103,66 @@ describe("Notice strong contrast", () => {
     });
     it("the light caution token as a fill under black ink fails, so it is not used", () => {
         expect(contrast("#000000", "#8a5700")).toBeLessThan(4.5);
+    });
+});
+
+describe("Notice danger", () => {
+    it("is an alert region by default, not a polite status", () => {
+        render(<Notice variant="danger">Could not save</Notice>);
+        expect(screen.getByRole("alert")).toBeInTheDocument();
+        expect(screen.queryByRole("status")).toBeNull();
+    });
+
+    it("has no live region when live is false", () => {
+        render(
+            <Notice variant="danger" live={false}>
+                x
+            </Notice>,
+        );
+        expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("differs from warn by icon, not only by color", () => {
+        const glyph = (el: HTMLElement) =>
+            (el.querySelector("svg")?.getAttribute("class") ?? "")
+                .split(" ")
+                .find((c) => c.startsWith("lucide-") && c !== "lucide");
+        const { container: a } = render(<Notice variant="warn">x</Notice>);
+        const { container: b } = render(<Notice variant="danger">x</Notice>);
+        expect(glyph(a)).toBeTruthy();
+        expect(glyph(a)).not.toBe(glyph(b));
+    });
+
+    it("keeps its icon visible next to the screen-reader label, and ignores strong emphasis", () => {
+        const { container } = render(
+            <Notice variant="danger" emphasis="strong">
+                x
+            </Notice>,
+        );
+        expect(container.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+        expect(container.firstChild).not.toHaveClass("bg-amber-500");
+    });
+
+    it("title and body ink pass 4.5:1 on the 8% negative tint (measured pairs)", () => {
+        const mix = (a: string, b: string, p: number) =>
+            "#" +
+            [1, 3, 5]
+                .map((i) =>
+                    Math.round(
+                        Number.parseInt(a.slice(i, i + 2), 16) * p +
+                            Number.parseInt(b.slice(i, i + 2), 16) * (1 - p),
+                    )
+                        .toString(16)
+                        .padStart(2, "0"),
+                )
+                .join("");
+        for (const [neg, card, ink] of [
+            ["#a61708", "#fdfdfc", "#656c73"],
+            ["#ff8266", "#161c20", "#a7afb5"],
+        ]) {
+            const fill = mix(neg, card, 0.08);
+            expect(contrast(neg, fill)).toBeGreaterThanOrEqual(4.5);
+            expect(contrast(ink, fill)).toBeGreaterThanOrEqual(4.5);
+        }
     });
 });
