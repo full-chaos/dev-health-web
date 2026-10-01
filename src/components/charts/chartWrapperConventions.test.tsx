@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@/test/utils";
+import type { EChartsOption } from "echarts";
+import { SVGRenderer } from "echarts/renderers";
+import { echarts } from "@/lib/echartsInit";
 
 import { HorizontalBarChart } from "./HorizontalBarChart";
 import { SparklineChart } from "./SparklineChart";
@@ -10,7 +13,7 @@ const chartTheme = {
     text: "#111111",
     grid: "#222222",
     muted: "#333333",
-    background: "#ffffff",
+    background: "#abcdef",
     stroke: "#444444",
     accent1: "#555555",
     accent2: "#666666",
@@ -106,6 +109,30 @@ describe("sparkline conventions", () => {
     it("draws a one-point sparkline as a dot", () => {
         render(<SparklineChart data={[4]} categories={["a"]} />);
         expect(sizes(1)).toEqual([8]);
+    });
+    it("draws the end dot on a dense line (ECharts hides symbols between label ticks unless showAllSymbol)", () => {
+        // 11 points in a narrow plot: ECharts' sampling lands on the last point, and without
+        // `showAllSymbol: true` it then draws symbols only at label ticks, so the dot vanished.
+        render(
+            <SparklineChart
+                data={Array.from({ length: 11 }, (_, i) => i + 1)}
+                categories={Array.from({ length: 11 }, (_, i) => `d${i}`)}
+            />,
+        );
+        const real = (chartSpy.mock.calls.at(-1)?.[0] as { option: EChartsOption }).option;
+        echarts.use([SVGRenderer]);
+        const chart = echarts.init(null, null, {
+            renderer: "svg",
+            ssr: true,
+            width: 100,
+            height: 64,
+        });
+        chart.setOption(real);
+        const svg = chart.renderToSVGString();
+        chart.dispose();
+        // The dot is ringed in the surface color: exactly one ringed symbol is drawn.
+        expect(svg.split(chartTheme.background).length - 1).toBeGreaterThanOrEqual(1);
+        expect((real.series as Array<{ showAllSymbol?: unknown }>)[0].showAllSymbol).toBe(true);
     });
 });
 

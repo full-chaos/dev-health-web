@@ -157,7 +157,7 @@ export function UserTable({ users }: UserTableProps) {
                             )}
                             <Link
                                 href={`/superadmin/users/${user.id}`}
-                                className="text-(--accent) hover:underline"
+                                className="text-(--accent-2) hover:underline"
                             >
                                 {CTA_LABELS.edit}
                             </Link>
