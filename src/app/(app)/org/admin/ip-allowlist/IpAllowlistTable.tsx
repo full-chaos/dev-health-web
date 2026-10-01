@@ -83,8 +83,8 @@ export function IpAllowlistTable({
                                     <span
                                         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                                             entry.is_active
-                                                ? "bg-green-500/10 text-green-500"
-                                                : "bg-red-500/10 text-red-500"
+                                                ? "bg-(--positive)/12 text-(--positive)"
+                                                : "bg-(--negative)/12 text-(--negative)"
                                         }`}
                                     >
                                         {entry.is_active ? "Active" : "Inactive"}
@@ -118,7 +118,7 @@ export function IpAllowlistTable({
                                         <button
                                             type="button"
                                             onClick={() => setConfirmDelete(entry)}
-                                            className="rounded-lg bg-red-500/10 px-3 py-1 text-xs font-medium text-red-500"
+                                            className="rounded-lg bg-(--negative)/12 px-3 py-1 text-xs font-medium text-(--negative)"
                                         >
                                             {CTA_LABELS.delete}
                                         </button>
