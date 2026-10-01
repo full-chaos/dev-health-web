@@ -25,6 +25,7 @@ describe("shell route registry", () => {
             "/security",
             "/feature-flags",
             "/plan",
+            "/plan/capacity",
         ]);
     });
 

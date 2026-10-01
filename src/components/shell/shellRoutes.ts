@@ -47,6 +47,7 @@ export const SHELL_ROUTES: readonly ShellRoute[] = [
     { prefix: "/feature-flags" },
     // Plan
     { prefix: "/plan", exact: true },
+    { prefix: "/plan/capacity" },
 ];
 
 function matchesRoute(pathname: string, route: ShellRoute): boolean {
