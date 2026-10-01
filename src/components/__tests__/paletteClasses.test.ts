@@ -13,7 +13,6 @@ const RAW =
     /\b(?:text|bg|border|ring|from|via|to|fill|stroke|divide|outline|shadow|accent|decoration)-(?:red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone)-\d{2,3}\b/gu;
 
 const ALLOWLIST: Record<string, number> = {
-    "app/(app)/cognitive-load/page.tsx": 14,
     "app/(app)/data-health/_components/AliasSuggestionRow.tsx": 2,
     "app/(app)/data-health/_components/CoverageBar.tsx": 3,
     "app/(app)/data-health/connectors/page.tsx": 3,
@@ -36,7 +35,6 @@ const ALLOWLIST: Record<string, number> = {
     "components/ai/AIRiskDashboard.tsx": 2,
     "components/evidence/EvidenceContext.tsx": 6,
     "components/evidence/EvidencePanel.tsx": 2,
-    "components/feature-flags/ConfidenceBadge.tsx": 9,
     "components/testops/PrTestOpsSummary.tsx": 19,
     "components/work/CapacityView.tsx": 6,
     "components/work/GraphView.tsx": 11,

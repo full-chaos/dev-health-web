@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@/test/utils";
+import { cleanup, fireEvent, render, screen, within } from "@/test/utils";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GraphView } from "@/components/work/GraphView";
@@ -46,6 +46,10 @@ const emptyAggregate = () => ({
 
 vi.mock("@/lib/graphql/provider", () => ({
     useOrgId: mockUseOrgId,
+}));
+
+vi.mock("@/components/charts/SparklineChart", () => ({
+    SparklineChart: () => <div data-testid="sparkline" />,
 }));
 
 vi.mock("@/components/charts/WorkGraphExplorer", () => ({
@@ -1552,6 +1556,120 @@ describe("GraphView", () => {
             expect(
                 panel.compareDocumentPosition(legend) & Node.DOCUMENT_POSITION_FOLLOWING,
             ).toBeTruthy();
+        });
+    });
+
+    // ── Review Network today (pinned before the CHAOS-7733 restyle) ──────────────
+    describe("Review Network tab today", () => {
+        const row = (
+            reviewer: string,
+            author: string,
+            reviewsCount: number,
+            day = "2026-09-01",
+        ) => ({
+            reviewer,
+            author,
+            reviewsCount,
+            day,
+            repoId: "repo-1",
+        });
+        const renderReview = (
+            edges: ReturnType<typeof row>[] | null,
+            extra: { loading?: boolean; error?: string | null } = {},
+        ) => {
+            mockUseWorkGraphEdges.mockReturnValue({
+                edges: [],
+                loading: false,
+                error: null,
+                totalCount: 0,
+                refetch: vi.fn(),
+            });
+            return render(
+                <GraphView
+                    filters={filters}
+                    activeTab="review-network"
+                    reviewEdges={edges}
+                    reviewEdgesLoading={extra.loading ?? false}
+                    reviewEdgesError={extra.error ?? null}
+                />,
+            );
+        };
+        const pairs = [
+            row("ana.fake@example.test", "bo.fake@example.test", 6, "2026-09-01"),
+            row("ana.fake@example.test", "bo.fake@example.test", 4, "2026-09-02"),
+            row("cy.fake@example.test", "bo.fake@example.test", 5),
+            row("ana.fake@example.test", "di.fake@example.test", 2),
+        ];
+
+        it("sums daily rows per reviewer to author pair and sorts by reviews, high to low", () => {
+            renderReview(pairs);
+            const rows = screen.getAllByTestId("review-network-row");
+            expect(rows).toHaveLength(3);
+            expect(rows[0]).toHaveTextContent("ana.fake");
+            expect(rows[0]).toHaveTextContent("bo.fake");
+            expect(rows[0]).toHaveTextContent("10");
+            expect(rows[1]).toHaveTextContent("cy.fake");
+            expect(rows[1]).toHaveTextContent("5");
+            expect(rows[2]).toHaveTextContent("di.fake");
+            expect(rows[2]).toHaveTextContent("2");
+        });
+
+        it("names both people in every row, with the full identity in the tooltip", () => {
+            renderReview(pairs);
+            const first = screen.getAllByTestId("review-network-row")[0];
+            expect(within(first).getByTitle("ana.fake@example.test")).toBeInTheDocument();
+            expect(within(first).getByTitle("bo.fake@example.test")).toBeInTheDocument();
+        });
+
+        it("three tiles: distinct reviewers, distinct authors, total reviews, with the singular form", () => {
+            const tiles = () =>
+                Array.from(screen.getByTestId("review-network-tiles").children).map((tile) => ({
+                    label: tile.querySelector("div")?.textContent,
+                    value: tile.querySelector("p")?.textContent,
+                }));
+            const { unmount } = renderReview(pairs);
+            expect(tiles()).toEqual([
+                { label: "Reviewers", value: "2" },
+                { label: "Authors", value: "2" },
+                { label: "Total reviews", value: "17" },
+            ]);
+            unmount();
+            renderReview([row("ana.fake@example.test", "bo.fake@example.test", 3)]);
+            expect(tiles()).toEqual([
+                { label: "Reviewer", value: "1" },
+                { label: "Author", value: "1" },
+                { label: "Total reviews", value: "3" },
+            ]);
+        });
+
+        it("share bar: the top pair is full width, the others are their share of the top pair", () => {
+            renderReview(pairs);
+            const widths = screen
+                .getAllByTestId("review-network-row")
+                .map((r) => (r.querySelector("[data-share-fill]") as HTMLElement).style.width);
+            expect(widths).toEqual(["100%", "50%", "20%"]);
+        });
+
+        it("card text, the three states and the test ids", () => {
+            const { unmount } = renderReview(pairs);
+            expect(screen.getByText("Review Network")).toBeInTheDocument();
+            expect(screen.getByTestId("review-network-table")).toBeInTheDocument();
+            expect(screen.getByTestId("review-network-panel")).toHaveTextContent(
+                "Reviewer→author collaboration pairs from code review activity, ranked by review count.",
+            );
+            unmount();
+            renderReview(null, { loading: true });
+            expect(screen.getByText("Loading…")).toBeInTheDocument();
+            cleanup();
+            renderReview(null, { error: "boom" });
+            expect(screen.getByText("Failed to load review network")).toBeInTheDocument();
+            expect(screen.getByText("boom")).toBeInTheDocument();
+            cleanup();
+            renderReview([]);
+            expect(screen.getByText("No review relationships to show")).toBeInTheDocument();
+            expect(
+                screen.getByText(/Widen the date range or remove repo filters to see data/),
+            ).toBeInTheDocument();
         });
     });
 });
