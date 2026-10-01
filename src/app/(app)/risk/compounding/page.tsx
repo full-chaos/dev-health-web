@@ -11,6 +11,7 @@
  */
 
 import Link from "next/link";
+import { Notice } from "@/components/ui/Notice";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import {
@@ -162,7 +163,7 @@ export default async function CompoundingRiskPage({ searchParams }: CompoundingR
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-8" data-testid="compounding-risk-page">
             <PageHeader
-                title="Composite risk score"
+                title="Compounding Risk"
                 subtitle="Where churn, complexity trend, ownership concentration, and review latency are compounding into structural risk."
             >
                 <p className="text-sm text-(--ink-muted)">
@@ -174,28 +175,30 @@ export default async function CompoundingRiskPage({ searchParams }: CompoundingR
             <ScopeBar view="risk-compounding" origin={activeOrigin} />
 
             {isDeveloperScope ? (
-                <section
-                    className="rounded-[1.75rem] border border-amber-400/40 bg-amber-50/80 p-6 text-amber-950 shadow-sm"
+                <Notice
+                    variant="warn"
+                    live={false}
+                    titleAs="h2"
+                    title="Compounding Risk is a team and repo signal."
                     data-testid="developer-scope-guardrail"
+                    action={
+                        <Link
+                            href="/risk/compounding"
+                            className="inline-flex rounded-full border border-(--border) px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-foreground"
+                        >
+                            Return to team/repo view
+                        </Link>
+                    }
                 >
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em]">
                         Scope guardrail
                     </p>
-                    <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-                        Compounding Risk is a team and repo signal.
-                    </h2>
-                    <p className="mt-3 max-w-3xl text-sm leading-6">
+                    <p className="mt-2 max-w-3xl leading-6">
                         Per the no-surveillance contract, this surface intentionally does not break
                         down by person. Use team or repo aggregation to see where change pressure is
                         compounding architectural and operational risk.
                     </p>
-                    <Link
-                        href="/risk/compounding"
-                        className="mt-5 inline-flex rounded-full bg-amber-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-amber-50"
-                    >
-                        Return to team/repo view
-                    </Link>
-                </section>
+                </Notice>
             ) : (
                 <CompoundingRiskDashboard {...dashboard} />
             )}

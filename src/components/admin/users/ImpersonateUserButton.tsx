@@ -69,7 +69,7 @@ export function ImpersonateUserButton({ user }: { user: User }) {
             type="button"
             onClick={handleImpersonate}
             disabled={loading}
-            className="block w-full rounded-lg border border-amber-500/20 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-500 hover:bg-amber-500/20 text-left transition-colors disabled:opacity-50"
+            className="block w-full rounded-lg border border-(--caution)/30 bg-(--caution)/12 px-4 py-2 text-sm font-medium text-(--caution) hover:bg-(--caution)/12 text-left transition-colors disabled:opacity-50"
         >
             {loading ? "Impersonating…" : "Impersonate User"}
         </button>

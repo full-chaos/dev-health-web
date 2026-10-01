@@ -64,12 +64,12 @@ function StateDiff({
                             >
                                 <td className="p-2 font-medium">{key}</td>
                                 <td
-                                    className={`p-2 ${matches ? "text-(--ink-muted)" : "text-red-300"}`}
+                                    className={`p-2 ${matches ? "text-(--ink-muted)" : "text-(--negative)"}`}
                                 >
                                     {localText}
                                 </td>
                                 <td
-                                    className={`p-2 ${matches ? "text-(--ink-muted)" : "text-green-300"}`}
+                                    className={`p-2 ${matches ? "text-(--ink-muted)" : "text-(--positive)"}`}
                                 >
                                     {stripeText}
                                 </td>
