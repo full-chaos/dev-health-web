@@ -28,7 +28,8 @@ describe("AIComparisonCard pinned (CHAOS-7763, shared cards)", () => {
             />,
         );
         expect(screen.getByText("Rework rate")).toBeInTheDocument();
-        expect(screen.getByText("12.0%")).toBeInTheDocument();
+        // The AI-side value is the big number and also the AI end of the mark (A4).
+        expect(screen.getAllByText("12.0%").length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText("+4.0 pts")).toBeInTheDocument();
     });
 
@@ -43,7 +44,7 @@ describe("AIComparisonCard pinned (CHAOS-7763, shared cards)", () => {
                 percent={false}
             />,
         );
-        expect(screen.getByText("2.50")).toBeInTheDocument();
+        expect(screen.getAllByText("2.50").length).toBeGreaterThanOrEqual(1);
         expect(screen.getByText("+1.0")).toBeInTheDocument();
     });
 
@@ -75,7 +76,7 @@ describe("AIComparisonCard pinned (CHAOS-7763, shared cards)", () => {
                 metric="reworkRate"
             />,
         );
-        expect(screen.getByText("+4.0 pts").className).toMatch(/amber/);
+        expect(screen.getByText("+4.0 pts").className).toMatch(/caution/);
         rerender(
             <AIComparisonCard
                 label="L"
@@ -85,7 +86,7 @@ describe("AIComparisonCard pinned (CHAOS-7763, shared cards)", () => {
                 metric="reworkRate"
             />,
         );
-        expect(screen.getByText("-3.0 pts").className).toMatch(/emerald/);
+        expect(screen.getByText("-3.0 pts").className).toMatch(/positive/);
     });
 
     it("a missing value renders an em dash, never a zero", () => {
@@ -100,5 +101,40 @@ describe("AIComparisonCard pinned (CHAOS-7763, shared cards)", () => {
         );
         expect(screen.getAllByText(/—/).length).toBeGreaterThan(0);
         expect(screen.queryByText("0.0%")).toBeNull();
+    });
+});
+
+describe("AIComparisonCard missing delta (CHAOS-7763, decision A3)", () => {
+    it.each([null, undefined, Number.NaN])(
+        "a missing delta (%s) is a dashed 'No baseline' pill, never a good-news pill",
+        (delta) => {
+            render(
+                <AIComparisonCard
+                    label="L"
+                    aiSide={ai}
+                    baselineSide={base}
+                    delta={delta}
+                    metric="reworkRate"
+                />,
+            );
+            const pill = screen.getByText("No baseline");
+            expect(pill.className).toContain("border-dashed");
+            expect(pill.className).not.toMatch(/emerald|positive|amber|caution/);
+            expect(screen.queryByText("—", { selector: "span" })).toBeNull();
+        },
+    );
+
+    it("a real zero delta is still the good tone, with its sign text", () => {
+        render(
+            <AIComparisonCard
+                label="L"
+                aiSide={ai}
+                baselineSide={base}
+                delta={0}
+                metric="reworkRate"
+            />,
+        );
+        const pill = screen.getByText("0.0 pts");
+        expect(pill.className).toMatch(/positive/);
     });
 });
