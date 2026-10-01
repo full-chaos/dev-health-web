@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { STATUS_PILL_ALPHA, ZONE_FILL_ALPHA } from "../themeTints";
+import { STATUS_PILL_ALPHA, ZONE_GRADIENT_ALPHA } from "../themeTints";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 const infinityCss = read("../../app/fc-infinity-themes.css");
@@ -162,20 +162,25 @@ describe("infinity palette", () => {
         },
     );
 
+    it("keeps production's zone gradient alphas (peak .20, mid .12, rim 0)", () => {
+        expect(ZONE_GRADIENT_ALPHA).toEqual({ peak: 0.2, mid: 0.12, edge: 0 });
+    });
+
     it.each(THEMES)(
         "draws each quadrant zone visibly and apart from its neighbours (%s)",
         (theme) => {
             const t = infinity(theme);
-            const rendered = [1, 2, 3, 4].map((n) =>
-                over(t[`--quadrant-zone-${n}`], t["--card"], ZONE_FILL_ALPHA),
-            );
-            rendered.forEach((fill, i) => {
+            const zoneAt = (alpha: number) =>
+                [1, 2, 3, 4].map((n) => over(t[`--quadrant-zone-${n}`], t["--card"], alpha));
+            // The gradient peak is the zone's strongest tint: it must read against the surface.
+            const peak = zoneAt(ZONE_GRADIENT_ALPHA.peak);
+            peak.forEach((fill, i) => {
                 expect(
                     deltaENormal(fill, t["--card"]),
-                    `zone ${i + 1} vs chart surface`,
+                    `zone ${i + 1} peak vs chart surface`,
                 ).toBeGreaterThanOrEqual(4);
             });
-            // Zones tile a 2 x 2 grid in the ring 1-2-3-4: each shares an edge with the next.
+            // Zones sit in a 2 x 2 grid in the ring 1-2-3-4: each neighbours the next.
             for (const [a, b] of [
                 [1, 2],
                 [2, 3],
@@ -183,15 +188,17 @@ describe("infinity palette", () => {
                 [4, 1],
             ]) {
                 expect(
-                    deltaENormal(rendered[a - 1], rendered[b - 1]),
-                    `zone ${a} vs ${b}`,
+                    deltaENormal(peak[a - 1], peak[b - 1]),
+                    `zone ${a} vs ${b} at the peak`,
                 ).toBeGreaterThanOrEqual(3);
             }
-            // Text and points drawn on a zone keep their contrast.
-            for (const fill of rendered) {
+            // Text drawn on a zone keeps its contrast at the strongest tint.
+            for (const fill of peak) {
                 expect(contrast(t["--chart-text"], fill)).toBeGreaterThanOrEqual(4.5);
                 expect(contrast(t["--chart-muted"], fill)).toBeGreaterThanOrEqual(3);
-                // The focused point is drawn in series 1.
+            }
+            // Most of a zone sits at the mid alpha; the focused point (series 1) must read there.
+            for (const fill of zoneAt(ZONE_GRADIENT_ALPHA.mid)) {
                 expect(
                     contrast(t["--chart-color-1"], fill),
                     "focus point on zone",
