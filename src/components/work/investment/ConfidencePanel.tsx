@@ -3,7 +3,9 @@
 import { useMemo } from "react";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { DataState } from "@/components/ui/DataState";
-import { buildExploreUrl } from "@/lib/filters/url";
+import { CTA_LABELS } from "@/lib/design/cta";
+import Link from "next/link";
+import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber } from "@/lib/formatters";
 import {
@@ -39,7 +41,7 @@ type ConfidencePanelProps = {
     reworkThemeAllocation?: ReworkThemeAllocation[];
 };
 
-const CONFIDENCE_TONE: Record<string, string> = {
+export const CONFIDENCE_TONE: Record<string, string> = {
     high: "bg-emerald-500/20 text-emerald-600",
     moderate: "bg-amber-500/20 text-amber-600",
     low: "bg-red-500/20 text-red-600",
@@ -187,6 +189,12 @@ export function ConfidencePanel({
                     How much to trust this investment picture: classification confidence, evidence
                     quality, attribution coverage, and rework.
                 </p>
+                <Link
+                    href={withFilterParam("/investment?tab=evidence", filters, activeRole)}
+                    className="mt-2 inline-block text-xs uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
+                >
+                    {CTA_LABELS.openEvidence}
+                </Link>
             </div>
 
             <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">

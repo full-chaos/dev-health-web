@@ -7,6 +7,8 @@ type InvestmentExplainerProps = {
     mixExplainKey: string;
     isExplainingMix: boolean;
     onRegenerate: () => void;
+    /** Inside the "Read this with context" card: no card chrome of its own. */
+    embedded?: boolean;
 };
 
 export function InvestmentExplainer({
@@ -14,11 +16,21 @@ export function InvestmentExplainer({
     mixExplainKey,
     isExplainingMix,
     onRegenerate,
+    embedded = false,
 }: InvestmentExplainerProps) {
     return (
-        <details open className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <details
+            open
+            className={embedded ? "" : "rounded-3xl border border-(--card-stroke) bg-card p-5"}
+        >
             <summary className="cursor-pointer list-none font-(--font-display) text-lg">
                 What this investment mix indicates
+                <span
+                    className="ml-2 rounded-full border border-(--card-stroke) px-2 py-0.5 align-middle font-sans text-xs uppercase tracking-[0.18em] text-(--ink-muted)"
+                    data-testid="ai-generated-label"
+                >
+                    AI-generated
+                </span>
             </summary>
             <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                 <div className="text-xs text-(--ink-muted)">

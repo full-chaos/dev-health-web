@@ -249,7 +249,7 @@ describe("InvestmentView overview today", () => {
         ).toBeInTheDocument();
         expect(screen.getByText("Findings")).toBeInTheDocument();
         expect(screen.getByText("Feature delivery leads the mix.")).toBeInTheDocument();
-        expect(screen.getByText("low")).toBeInTheDocument();
+        expect(screen.getAllByText("low").length).toBeGreaterThan(0);
         expect(screen.getByText(/Mean:\s*45%/)).toBeInTheDocument();
         expect(screen.getByText("What to check next")).toBeInTheDocument();
         expect(screen.getByText("What this does NOT say")).toBeInTheDocument();
