@@ -2,12 +2,13 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Suspense, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, type RefObject } from "react";
 
 import fcLogo from "@/assets/fc-logo.png";
 import { BetaBadge } from "@/components/BetaBadge";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { OrgSwitcher, type ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
+import { useModalFocus } from "@/lib/a11y/useModalFocus";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 import { ShellNav } from "./ShellNav";
@@ -16,49 +17,80 @@ import { ShellNav } from "./ShellNav";
  * Sidebar of the shared app shell: brand, organization card, navigation and the
  * account block.
  *
- * From `md` up it is a fixed-height column. Below `md` it keeps the behaviour
- * the page-level navigation had: an inline "Show navigation" panel above the
- * content (Escape closes it and returns focus to the control). Brand and account
- * are in the account bar at that size, so they are hidden here.
+ * From `md` up it is a fixed-height column. Below `md` it is a slide-over
+ * (concept `.app-sidebar.open`): off canvas until the menu button of the mobile
+ * bar opens it from the left, `w-60` wide (the desktop sidebar width, which is the
+ * concept's `--sidebarW`), over a backdrop. While open it is a modal dialog:
+ * focus moves in, Tab stays inside, Escape or a backdrop click closes it, focus
+ * returns to the menu button, a link click closes it and the page behind does
+ * not scroll. Brand and account are in the mobile bar at that size, so they are
+ * hidden here.
  */
 type ShellSidebarProps = {
     /** Receives the active organization's data state from the organization card. */
     onActiveOrganizationChange?: (organization: ActiveOrganizationData | null) => void;
+    /** Below `md`: the slide-over is open. The shell owns the state (the button is in the mobile bar). */
+    mobileOpen?: boolean;
+    onMobileClose?: () => void;
+    /** The menu button, for returning focus on close. */
+    mobileControlRef?: RefObject<HTMLButtonElement | null>;
 };
 
-export function ShellSidebar({ onActiveOrganizationChange }: ShellSidebarProps) {
-    const [mobileOpen, setMobileOpen] = useState(false);
-    const mobileNavControlRef = useRef<HTMLButtonElement>(null);
+export function ShellSidebar({
+    onActiveOrganizationChange,
+    mobileOpen = false,
+    onMobileClose,
+    mobileControlRef,
+}: ShellSidebarProps) {
+    const panelRef = useRef<HTMLDivElement>(null);
+    const close = () => onMobileClose?.();
 
-    const closeMobileNavigation = () => {
-        setMobileOpen(false);
-        mobileNavControlRef.current?.focus();
-    };
+    const onKeyDown = useModalFocus({
+        open: mobileOpen,
+        panelRef,
+        returnFocusRef: mobileControlRef,
+        onEscape: close,
+    });
+
+    // The page behind the slide-over does not scroll.
+    useEffect(() => {
+        if (!mobileOpen) return;
+        const previous = document.body.style.overflow;
+        document.body.style.overflow = "hidden";
+        return () => {
+            document.body.style.overflow = previous;
+        };
+    }, [mobileOpen]);
 
     return (
         <aside
             data-testid="shell-sidebar"
-            className="w-full px-4 pt-4 md:sticky md:top-0 md:h-dvh md:w-60 md:shrink-0 md:border-r md:border-(--border) md:bg-(--surface) md:p-0"
-            onKeyDown={(event) => {
-                if (event.key === "Escape" && mobileOpen) {
-                    event.preventDefault();
-                    closeMobileNavigation();
-                }
-            }}
+            className="md:sticky md:top-0 md:h-dvh md:w-60 md:shrink-0 md:border-r md:border-(--border) md:bg-(--surface)"
         >
-            <button
-                type="button"
-                ref={mobileNavControlRef}
-                aria-expanded={mobileOpen}
-                aria-controls="primary-navigation-panel"
-                onClick={() => setMobileOpen((open) => !open)}
-                className="w-full rounded-(--radius-sm) border border-(--card-stroke) bg-(--card-80) px-4 py-3 text-left text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50 md:hidden"
-            >
-                {mobileOpen ? "Hide navigation" : "Show navigation"}
-            </button>
+            {mobileOpen && (
+                <div
+                    aria-hidden="true"
+                    data-testid="shell-nav-backdrop"
+                    onClick={close}
+                    className="fixed inset-0 z-40 bg-black/50 md:hidden"
+                />
+            )}
             <div
                 id="primary-navigation-panel"
-                className={`${mobileOpen ? "mt-3 flex" : "hidden"} max-h-[calc(100dvh-2rem)] flex-col gap-4 overflow-y-auto rounded-(--radius-md) border border-(--border) bg-(--surface) p-4 md:mt-0 md:flex md:h-full md:max-h-none md:overflow-visible md:rounded-none md:border-0 md:px-3 md:py-5`}
+                ref={panelRef}
+                tabIndex={-1}
+                {...(mobileOpen
+                    ? { role: "dialog", "aria-modal": true, "aria-label": "Navigation" }
+                    : {})}
+                onKeyDown={onKeyDown}
+                onClick={(event) => {
+                    if ((event.target as HTMLElement).closest("a[href]")) close();
+                }}
+                className={`flex flex-col gap-4 overflow-y-auto border-r border-(--border) bg-(--surface) p-4 focus:outline-none max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:w-60 max-md:max-w-[86vw] max-md:shadow-xl max-md:transition-[transform,visibility] max-md:duration-200 motion-reduce:transition-none ${
+                    mobileOpen
+                        ? "max-md:visible max-md:translate-x-0"
+                        : "max-md:invisible max-md:-translate-x-full"
+                } md:flex md:h-full md:max-h-none md:overflow-visible md:border-0 md:px-3 md:py-5`}
             >
                 <div className="hidden items-center gap-2 px-2 md:flex">
                     <Link
