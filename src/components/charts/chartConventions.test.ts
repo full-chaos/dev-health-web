@@ -8,6 +8,7 @@ import {
     lineMark,
     pointSymbolSize,
     visibleSymbolIndexes,
+    withPointSymbols,
 } from "./chartConventions";
 
 const theme = {
@@ -32,6 +33,14 @@ describe("buildTooltip", () => {
             textStyle: { color: theme.text },
             formatter,
         });
+    });
+
+    it("supports item triggers, an unconfined tooltip and a font size, for charts that set them", () => {
+        expect(buildTooltip(theme, { trigger: "item" }).trigger).toBe("item");
+        const custom = buildTooltip(theme, { confine: false, fontSize: 11 });
+        expect(custom.confine).toBe(false);
+        expect(custom.textStyle).toEqual({ color: theme.text, fontSize: 11 });
+        expect(buildTooltip(theme).textStyle).toEqual({ color: theme.text });
     });
 
     it("draws a muted, 1px, solid crosshair only when asked", () => {
@@ -62,6 +71,17 @@ describe("symbols on a line", () => {
             0,
             0,
             END_DOT_SIZE,
+        ]);
+    });
+
+    it("sizes data items for charts with a legend, so the series size stays the legend glyph", () => {
+        const ring = dotRing(theme);
+        expect(withPointSymbols([null, 5, null, 7, 8], theme)).toEqual([
+            { value: null, symbolSize: 0 },
+            { value: 5, symbolSize: END_DOT_SIZE, itemStyle: ring },
+            { value: null, symbolSize: 0 },
+            { value: 7, symbolSize: 0 },
+            { value: 8, symbolSize: END_DOT_SIZE, itemStyle: ring },
         ]);
     });
 
