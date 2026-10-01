@@ -104,7 +104,13 @@ describe("shell pages bring no chrome of their own", () => {
 
 describe("Cognitive Load keeps its privacy framing in the shell", () => {
     const pagePath = join(appRoot, "cognitive-load/page.tsx");
-    const source = readFileSync(pagePath, "utf8").replace(/\s+/g, " ");
+    // The privacy header lives in `PrivacyHeader` (CognitiveLoadViews); the page renders it.
+    const pageSource = readFileSync(pagePath, "utf8").replace(/\s+/g, " ");
+    const viewsSource = readFileSync(
+        join(appRoot, "../../components/cognitive-load/CognitiveLoadViews.tsx"),
+        "utf8",
+    ).replace(/\s+/g, " ");
+    const source = viewsSource;
 
     it.each([
         "Privacy-first cognitive load",
@@ -117,7 +123,9 @@ describe("Cognitive Load keeps its privacy framing in the shell", () => {
     });
 
     it("has the page title as the one h1 and the privacy statement as a second-level heading", () => {
-        expect(source).toContain('<PageHeader title="Cognitive Load" />');
+        expect(pageSource).toContain('<PageHeader title="Cognitive Load" />');
+        expect(pageSource).toContain("<PrivacyHeader />");
+        expect(pageSource).not.toMatch(/<h1[\s>]/);
         expect(source).not.toMatch(/<h1[\s>]/);
         expect(source).toMatch(/<h2 [^>]*> Focus fragmentation, not surveillance\. <\/h2>/);
     });
