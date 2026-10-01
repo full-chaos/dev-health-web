@@ -26,9 +26,7 @@ const automationsTab = (page: Page) =>
     aiTabStrip(page).getByRole("link", { name: /^Automations$/ });
 
 test.describe("AI workflow primary navigation", () => {
-    test("Home exposes the AI entry path when the cockpit callout is secondary", async ({
-        page,
-    }) => {
+    test("Home exposes the AI entry path when the Home callout is secondary", async ({ page }) => {
         // clickUntilUrl retries can consume up to 30s under load; widen the budget so
         // the retry window doesn't collide with the default 30s test timeout.
         test.slow();

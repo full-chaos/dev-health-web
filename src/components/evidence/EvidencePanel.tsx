@@ -148,9 +148,9 @@ const normalizeHomeEvidence = (
         why_it_matters:
             thread === "measure"
                 ? result.data_confidence?.caveats.join(" ") ||
-                  "Coverage and freshness determine how much context the cockpit can safely explain."
+                  "Coverage and freshness determine how much context Home can safely explain."
                 : result.constraint.claim ||
-                  "This context comes from the same cockpit payload that ranks current operating signals.",
+                  "This context comes from the same Home payload that ranks current operating signals.",
         evidence,
         actions: result.constraint.experiments.map((experiment, index) => ({
             id: `experiment-${index}`,
