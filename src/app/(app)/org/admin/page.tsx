@@ -30,9 +30,9 @@ function SignalCard({
 }: SignalCardProps) {
     const toneClass =
         tone === "attention"
-            ? "border-amber-500/30 bg-amber-500/10"
+            ? "border-(--caution)/30 bg-(--caution)/12"
             : tone === "positive"
-              ? "border-green-500/25 bg-green-500/10"
+              ? "border-(--positive)/30 bg-(--positive)/12"
               : "border-(--card-stroke) bg-(--card-80)";
 
     return (
@@ -143,7 +143,7 @@ export default async function AdminDashboardPage() {
             />
 
             {hasPartialSignals && (
-                <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm text-amber-200">
+                <div className="rounded-2xl border border-(--caution)/30 bg-(--caution)/12 p-4 text-sm text-(--caution)">
                     Some admin signals could not load. The available signals below may be partial.
                 </div>
             )}

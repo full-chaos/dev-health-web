@@ -29,6 +29,11 @@ export type ScopeBarClientProps = Pick<
     origin?: string | null;
     /** Organization name. Defaults to the shell's active organization. */
     orgName?: string;
+    /**
+     * `false` for a bar with no page filters: no default `f` is written, and
+     * with no `f` in the URL the scope is the organization, as the page reads it.
+     */
+    writeDefaultFilter?: boolean;
 };
 
 const LABEL_CLASS = "text-label-caps font-semibold uppercase text-(--text-muted)";
@@ -71,6 +76,7 @@ export function ScopeBarClient({
     resolvedScopeLock,
     origin,
     orgName,
+    writeDefaultFilter,
 }: ScopeBarClientProps) {
     const {
         allowAdvanced,
@@ -99,7 +105,13 @@ export function ScopeBarClient({
         updatePeopleQuery,
         visibility,
         workCategory,
-    } = useScopeBarState({ view, tab, resolvedVisibility, resolvedScopeLock });
+    } = useScopeBarState({
+        view,
+        tab,
+        resolvedVisibility,
+        resolvedScopeLock,
+        writeDefaultFilter,
+    });
 
     const organization = useShellOrganization();
     const orgLabel = orgName ?? organization?.name ?? ORG_FALLBACK;

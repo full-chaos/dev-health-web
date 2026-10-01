@@ -122,7 +122,7 @@ export default async function IncidentCorrelationPage({ searchParams }: PageProp
                 </p>
             </PageHeader>
 
-            <ScopeBar origin={activeOrigin} />
+            <ScopeBar pageFilters={false} origin={activeOrigin} />
             <IncidentCorrelationDashboard
                 orgId={orgId}
                 deltas={home?.deltas ?? []}
