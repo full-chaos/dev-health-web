@@ -11,7 +11,7 @@ import type {
 import { ScatterChart } from "echarts/charts";
 
 import type { ZoneOverlay } from "@/lib/quadrantZones";
-import { ZONE_FILL_ALPHA } from "@/lib/themeTints";
+import { ZONE_GRADIENT_ALPHA } from "@/lib/themeTints";
 import { chartEntityLabel } from "@/lib/labels/entityLabel";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
@@ -82,25 +82,43 @@ const withAlpha = (color: string, alpha: number) => {
     return `rgba(${red}, ${green}, ${blue}, ${nextAlpha})`;
 };
 
-// A zone is one flat tint: its theme token at ZONE_FILL_ALPHA over the chart surface.
-// The alpha is applied here only, so the rendered color matches what the theme test checks.
+// Zone drawing is production's: a radial gradient of the zone hue, a dashed outline and a
+// glow. Only the hue comes from the theme (`--quadrant-zone-N`); the alphas are the ones the
+// theme test checks.
+const buildZoneGradient = (color: string) => ({
+    type: "radial" as const,
+    x: 0.45,
+    y: 0.4,
+    r: 0.95,
+    colorStops: [
+        { offset: 0, color: withAlpha(color, ZONE_GRADIENT_ALPHA.peak) },
+        { offset: 0.6, color: withAlpha(color, ZONE_GRADIENT_ALPHA.mid) },
+        { offset: 1, color: withAlpha(color, ZONE_GRADIENT_ALPHA.edge) },
+    ],
+});
+
 const buildZoneSurfaceStyle = (
     color: string,
     options?: {
         outlineAlpha?: number;
+        glowAlpha?: number;
         radius?: number;
         active?: boolean;
     },
 ) => {
-    const outlineAlpha = options?.outlineAlpha ?? 0.5;
-    const radius = options?.radius ?? 4;
+    const outlineAlpha = options?.outlineAlpha ?? 0.32;
+    const glowAlpha = options?.glowAlpha ?? 0.22;
+    const radius = options?.radius ?? 32;
     const isActive = options?.active ?? false;
     return {
-        color: withAlpha(color, ZONE_FILL_ALPHA),
+        color: buildZoneGradient(color),
+        opacity: isActive ? 1 : 0.92,
         borderWidth: isActive ? 2 : 1,
-        borderColor: withAlpha(color, isActive ? Math.min(1, outlineAlpha + 0.3) : outlineAlpha),
+        borderColor: withAlpha(color, isActive ? outlineAlpha + 0.14 : outlineAlpha),
         borderType: "dashed" as const,
         borderRadius: radius,
+        shadowBlur: isActive ? 24 : 20,
+        shadowColor: withAlpha(color, isActive ? glowAlpha + 0.12 : glowAlpha),
     };
 };
 
@@ -197,6 +215,8 @@ export const buildQuadrantOption = ({
                       yAxis: annotation.y_range[0],
                       itemStyle: buildZoneSurfaceStyle(annotationColor, {
                           outlineAlpha: 0.24,
+                          glowAlpha: 0.18,
+                          radius: 28,
                           active: isActive,
                       }),
                   },
