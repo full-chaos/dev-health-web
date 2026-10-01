@@ -51,8 +51,8 @@ the request-ordering checks.
 
 ## Navigation
 
-- **PrimaryNav**: `src/components/navigation/PrimaryNav.tsx`. Main sidebar with collapsible groups.
-- **ContextStrip**: Secondary navigation.
+- **Shared app shell**: `src/components/shell/AppShell.tsx`. Sidebar (`ShellSidebar`), top bar with the location trail, and the one `<main>`; the route registry `shellRoutes.ts` selects the routes it renders. The area tree is `src/lib/navigation/areas.ts`.
+- **Scope bar**: `src/components/shell/ScopeBar.tsx`. Organization, team, repository and window, with the page filters in a drawer.
 - **Settings Sidebars**: `AdminSidebar` and `SuperadminSidebar` for administrative contexts.
 
 ## Route Map
@@ -269,14 +269,14 @@ Sentry.setUser({ id: userId, email });
 
 ## Key Files Quick Reference
 
-| Path                                       | Description                                |
-| :----------------------------------------- | :----------------------------------------- |
-| `src/proxy.ts`                             | Central proxy and auth middleware          |
-| `src/app/layout.tsx`                       | Root layout (fonts, theme, runtime config) |
-| `src/app/(app)/layout.tsx`                 | Authenticated shell layout and providers   |
-| `src/lib/apiClient.ts`                     | REST fetch wrapper                         |
-| `src/lib/api.ts`                           | Domain API functions and fallbacks         |
-| `src/lib/graphql/urqlClient.ts`            | GraphQL client config                      |
-| `src/lib/rate-limit.ts`                    | Rate limiter (Redis + in-memory fallback)  |
-| `src/lib/redis.ts`                         | Lazy singleton Redis client                |
-| `src/components/navigation/PrimaryNav.tsx` | Main sidebar navigation                    |
+| Path                                | Description                                |
+| :---------------------------------- | :----------------------------------------- |
+| `src/proxy.ts`                      | Central proxy and auth middleware          |
+| `src/app/layout.tsx`                | Root layout (fonts, theme, runtime config) |
+| `src/app/(app)/layout.tsx`          | Authenticated shell layout and providers   |
+| `src/lib/apiClient.ts`              | REST fetch wrapper                         |
+| `src/lib/api.ts`                    | Domain API functions and fallbacks         |
+| `src/lib/graphql/urqlClient.ts`     | GraphQL client config                      |
+| `src/lib/rate-limit.ts`             | Rate limiter (Redis + in-memory fallback)  |
+| `src/lib/redis.ts`                  | Lazy singleton Redis client                |
+| `src/components/shell/AppShell.tsx` | Shared app shell: sidebar, top bar, main   |

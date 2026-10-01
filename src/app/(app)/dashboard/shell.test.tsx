@@ -13,8 +13,6 @@ import Home from "./page";
 // The Home inside the shared app shell: the layout owns the navigation and
 // the `<main>` landmark, so the page must bring neither.
 
-const pageLevelNavSpy = vi.hoisted(() => vi.fn());
-
 vi.mock("next/navigation", () => ({
     usePathname: () => "/dashboard",
     useSearchParams: () => new URLSearchParams(),
@@ -47,13 +45,6 @@ vi.mock("@/components/home/InvestmentPreview", () => ({ InvestmentPreview: () =>
 vi.mock("@/components/home/RankedSignals", () => ({ RankedSignals: () => null }));
 vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => null }));
 vi.mock("@/components/onboarding/SetupBanner", () => ({ SetupBanner: () => null }));
-// A stand-in that would be visible as a second navigation if the page rendered it.
-vi.mock("@/components/navigation/PrimaryNav", () => ({
-    PrimaryNav: () => {
-        pageLevelNavSpy();
-        return <nav aria-label="Primary areas" data-testid="page-level-nav" />;
-    },
-}));
 
 function renderInShell(page: React.ReactNode) {
     return render(
@@ -64,7 +55,6 @@ function renderInShell(page: React.ReactNode) {
 }
 
 beforeEach(() => {
-    pageLevelNavSpy.mockClear();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
     vi.mocked(checkApiHealth).mockResolvedValue({ ok: true, data: null });
     vi.mocked(getApiMeta).mockResolvedValue(null);
@@ -85,8 +75,6 @@ describe("Home in the shared app shell", () => {
     it("renders no page-level navigation: the shell's navigation is the only one", async () => {
         renderInShell(await Home({ searchParams: Promise.resolve({}) }));
 
-        expect(pageLevelNavSpy).not.toHaveBeenCalled();
-        expect(screen.queryByTestId("page-level-nav")).toBeNull();
         expect(screen.getAllByRole("navigation", { name: "Primary areas" })).toHaveLength(1);
         expect(document.querySelectorAll("aside")).toHaveLength(1);
     });

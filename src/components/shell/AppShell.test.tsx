@@ -3,8 +3,6 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
-import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { AppShell } from "./AppShell";
 
@@ -25,11 +23,11 @@ vi.mock("next-auth/react", () => ({
     signOut: vi.fn(),
 }));
 
-/** A page that is not migrated: it renders its own navigation and `<main>`. */
+/** A page outside the shell: it renders its own navigation and `<main>`, as the Admin layout does. */
 function LegacyPage() {
     return (
         <div>
-            <PrimaryNav filters={defaultMetricFilter} active="home" />
+            <nav aria-label="Admin navigation" />
             <main>
                 <h1>Legacy page</h1>
             </main>
@@ -107,18 +105,6 @@ describe("AppShell — a route in the registry gets the shared shell", () => {
         expect(screen.getAllByRole("navigation", { name: "Primary areas" })).toHaveLength(1);
         expect(screen.getByTestId("shell-top-bar")).toBeInTheDocument();
         expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toBeInTheDocument();
-    });
-
-    it("does not render a second navigation when the page still renders PrimaryNav", () => {
-        renderFrame(<LegacyPage />);
-
-        expect(document.querySelectorAll("aside")).toHaveLength(1);
-        expect(screen.getAllByRole("navigation", { name: "Primary areas" })).toHaveLength(1);
-        expect(screen.getAllByRole("button", { name: "Show navigation" })).toHaveLength(1);
-        expect(screen.getAllByRole("link", { name: /^Home$/ })).toHaveLength(1);
-        expect(document.querySelectorAll("#primary-navigation-panel")).toHaveLength(1);
-        // The page content is still there.
-        expect(screen.getByRole("heading", { name: "Legacy page" })).toBeInTheDocument();
     });
 
     it("puts the skip link first in the focus order, and its target exists", async () => {
@@ -265,7 +251,7 @@ describe("AppShell — a route outside the registry keeps today's chrome", () =>
     it("lets the page render its own navigation and its own main", () => {
         renderFrame(<LegacyPage />);
 
-        expect(screen.getAllByRole("navigation", { name: "Primary areas" })).toHaveLength(1);
+        expect(screen.getAllByRole("navigation", { name: "Admin navigation" })).toHaveLength(1);
         expect(screen.getAllByRole("main")).toHaveLength(1);
         expect(
             within(screen.getByRole("main")).getByRole("heading", { name: "Legacy page" }),
