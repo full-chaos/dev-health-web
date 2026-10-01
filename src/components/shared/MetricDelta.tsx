@@ -9,6 +9,8 @@ type MetricDeltaProps = {
     inverseGood?: boolean;
     precision?: number;
     className?: string;
+    /** Unavailable state only: `false` drops the leading "· " (the caller places its own separator). */
+    leadingDot?: boolean;
 };
 
 const BASE = "inline-flex items-center gap-1 text-[10px] normal-case tracking-normal";
@@ -55,6 +57,7 @@ export function MetricDelta({
     inverseGood = false,
     precision = 0,
     className,
+    leadingDot = true,
 }: MetricDeltaProps) {
     const safePrecision = clampPrecision(precision);
     const isUnavailable = value === null || value === undefined || !Number.isFinite(value);
@@ -65,7 +68,8 @@ export function MetricDelta({
                 title="No prior period available to compute a change"
                 className={`${BASE} ${MUTED_TONE} ${className ?? ""}`.trim()}
             >
-                · {unavailableLabel}
+                {leadingDot ? "· " : ""}
+                {unavailableLabel}
             </span>
         );
     }

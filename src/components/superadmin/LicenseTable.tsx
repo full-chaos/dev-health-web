@@ -65,7 +65,7 @@ export function LicenseTable({ orgs }: LicenseTableProps) {
                             <td className="px-6 py-4 text-right">
                                 <Link
                                     href={`/superadmin/licensing/${org.id}`}
-                                    className="text-(--accent) hover:underline"
+                                    className="text-(--accent-2) hover:underline"
                                 >
                                     {CTA_LABELS.manageEntitlements}
                                 </Link>

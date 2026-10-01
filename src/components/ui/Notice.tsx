@@ -96,7 +96,7 @@ export function Notice({
         <div
             {...(live ? { role: "status", "aria-live": "polite" as const } : {})}
             data-notice-variant={variant}
-            className={`${centered ? "relative justify-center pr-12 " : ""}flex items-start gap-3 rounded-md border px-4 py-3 text-sm ${strong ? "" : "text-foreground"} ${surface} ${className}`}
+            className={`${centered ? "relative justify-center pr-12 " : ""}flex items-start gap-3 rounded-(--radius-sm) border px-4 py-3 text-sm ${strong ? "" : "text-foreground"} ${surface} ${className}`}
             {...rest}
         >
             <Icon aria-hidden="true" className={`mt-0.5 h-4 w-4 shrink-0 ${accent}`} />
