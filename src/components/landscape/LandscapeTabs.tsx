@@ -29,9 +29,9 @@ export function LandscapeTable({
         );
     }
     return (
-        <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90) shadow-sm">
+        <div className="overflow-hidden rounded-(--radius-sm) border border-(--card-stroke) bg-(--card-90) shadow-sm">
             <table className="w-full text-sm" data-testid={testId}>
-                <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
+                <thead className="bg-(--card-60) text-label-caps font-semibold uppercase text-(--ink-muted)">
                     <tr>
                         {columns.map((col) => (
                             <th
@@ -62,7 +62,7 @@ export function TabPanel({
 }) {
     return (
         <section
-            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+            className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
             data-testid={testId}
         >
             <div className="mb-4">

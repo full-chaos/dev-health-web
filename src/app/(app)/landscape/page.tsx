@@ -8,6 +8,7 @@ import {
     ReposView,
     TeamsView,
 } from "@/components/landscape/LandscapeTabs";
+import { Notice } from "@/components/ui/Notice";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import type { HotspotRow } from "@/components/complexity/ComplexityDashboard";
 import { getQuadrant } from "@/lib/api/visuals";
@@ -174,17 +175,22 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
             />
 
             {!canQuery && (
-                <section className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
+                <Notice variant="info" live={false} data-testid="landscape-individual-notice">
                     Individual landscapes are available from the individual view.
-                </section>
+                </Notice>
             )}
 
             {activeTab === "overview" && (
                 <>
-                    <section className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                    <section
+                        role="group"
+                        aria-label="Bucket"
+                        className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
+                    >
                         <span>Bucket</span>
                         <Link
                             href={withFilterParam("/landscape?bucket=week", filters, activeRole)}
+                            aria-current={bucket === "week" ? "true" : undefined}
                             className={`rounded-full border px-3 py-1 ${
                                 bucket === "week"
                                     ? "border-(--accent) bg-(--accent)/15 text-foreground"
@@ -195,6 +201,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                         </Link>
                         <Link
                             href={withFilterParam("/landscape?bucket=month", filters, activeRole)}
+                            aria-current={bucket === "month" ? "true" : undefined}
                             className={`rounded-full border px-3 py-1 ${
                                 bucket === "month"
                                     ? "border-(--accent) bg-(--accent)/15 text-foreground"
@@ -205,8 +212,12 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
                         </Link>
                     </section>
 
-                    <section className="flex flex-col gap-10">
-                        <div className="rounded-3xl border border-(--accent-2)/30 bg-(--accent-2)/5 p-6 sm:p-8">
+                    <section className="flex flex-col gap-8">
+                        <div data-testid="landscape-primary-panel">
+                            {/* NEW from the approved concept: a caption replaces the tinted frame. */}
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
+                                Primary for this lens
+                            </p>
                             <QuadrantPanel
                                 key={primaryCard.type}
                                 title={primaryCard.title}
