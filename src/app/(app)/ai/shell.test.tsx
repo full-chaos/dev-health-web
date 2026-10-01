@@ -115,15 +115,22 @@ describe("AI overview in the shared app shell", () => {
         expect(links[0]).toHaveAttribute("aria-current", "page");
     });
 
-    it("has no in-page 'Back to Cockpit': the sidebar Cockpit entry is the return path, with the state", async () => {
+    it("has no in-page back link: the sidebar entry of the home page is the return path, with the state", async () => {
         await renderPage();
 
         expect(
             within(screen.getByRole("main")).queryByRole("link", { name: /Back to/ }),
         ).toBeNull();
-        const cockpit = screen.getByRole("link", { name: /^Cockpit$/ });
-        const url = new URL(cockpit.getAttribute("href") ?? "", "https://app.example");
-        expect(url.pathname).toBe("/dashboard");
+        // Found by its target, not by its label.
+        const home = within(screen.getByRole("navigation", { name: "Primary areas" }))
+            .getAllByRole("link")
+            .find(
+                (link) =>
+                    new URL(link.getAttribute("href") ?? "", "https://app.example").pathname ===
+                    "/dashboard",
+            );
+        expect(home).toBeDefined();
+        const url = new URL(home?.getAttribute("href") ?? "", "https://app.example");
         expect(decodeFilter(url.searchParams.get("f"))).toEqual(FILTERS);
         expect(url.searchParams.get("role")).toBe("em");
     });

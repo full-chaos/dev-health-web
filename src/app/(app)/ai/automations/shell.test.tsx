@@ -83,7 +83,7 @@ describe("AI / Automations in the shared app shell", () => {
         ).toBeInTheDocument();
     });
 
-    it("has no AI tab strip, no area header, no 'Back to Cockpit' and one trail", async () => {
+    it("has no AI tab strip, no area header, no in-page back link and one trail", async () => {
         await renderPage();
 
         expect(screen.queryByRole("navigation", { name: "AI views" })).toBeNull();
