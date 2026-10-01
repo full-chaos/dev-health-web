@@ -57,6 +57,7 @@ export const SHELL_ROUTES: readonly ShellRoute[] = [
     { prefix: "/improve/automations" },
     // AI
     { prefix: "/ai", exact: true },
+    { prefix: "/ai/impact", exact: true },
 ];
 
 function matchesRoute(pathname: string, route: ShellRoute): boolean {
