@@ -184,13 +184,13 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
             </section>
 
             <section className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
                     <h2 className="font-(--font-display) text-xl mb-4">Risk Trend</h2>
                     <div className="h-64">
                         <TimeseriesChart data={timeseriesData} valueFormat="percent" />
                     </div>
                 </div>
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
                     <h2 className="font-(--font-display) text-xl mb-4">Quality Drag Breakdown</h2>
                     <div className="h-64">
                         <HorizontalBarChart
@@ -202,8 +202,10 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
                 </div>
             </section>
 
-            <section className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                <h2 className="font-(--font-display) text-xl mb-4">Risk vs Throughput (by Repo)</h2>
+            <section className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
+                <h2 className="font-(--font-display) text-xl mb-4">
+                    Pipeline success × test pass rate (by repo)
+                </h2>
                 {quadrantPoints.length > 0 ? (
                     <div className="h-96" data-testid="risk-throughput-chart">
                         <QuadrantChart data={quadrantData} scopeType="repo" />

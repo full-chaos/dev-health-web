@@ -16,6 +16,7 @@ import { describe, expect, it } from "vitest";
 import { render, screen, within } from "@/test/utils";
 
 import { decodeFilter } from "@/lib/filters/encode";
+import { STATUS_PILL } from "@/lib/statusPill";
 
 import {
     CompoundingRiskDashboard,
@@ -241,5 +242,71 @@ describe("CompoundingRiskDashboard", () => {
         // The normal components shouldn't be there
         expect(screen.queryByTestId("headline-score")).not.toBeInTheDocument();
         expect(screen.queryByTestId("compounding-risk-table")).not.toBeInTheDocument();
+    });
+});
+
+describe("CompoundingRiskDashboard drawing", () => {
+    it.each([
+        ["high", "High", STATUS_PILL.negative],
+        ["elevated", "Elevated", STATUS_PILL.caution],
+        ["low", "Low", STATUS_PILL.positive],
+        ["unknown", "Unknown", STATUS_PILL.muted],
+    ] as const)(
+        "draws the %s severity as a labelled token pill with an icon",
+        (severity, label, tone) => {
+            renderDashboard({ rows: [makeRow({ severity })] });
+            const chip = screen.getAllByTestId("severity-chip")[0];
+            expect(chip).toHaveTextContent(label);
+            expect(chip.className).toContain(tone);
+            expect(chip.querySelector("svg")).not.toBeNull();
+        },
+    );
+
+    it("draws a day without a score as an empty tick, never a bar, and names it in a legend", () => {
+        renderDashboard({
+            trend: [
+                { day: "2026-05-18", score: 0.5, severity: "elevated" },
+                { day: "2026-05-19", score: null, severity: "unknown" },
+                { day: "2026-05-20", score: 0.72, severity: "high" },
+            ],
+        });
+        const spark = screen.getByTestId("trend-sparkline");
+        expect(spark.children).toHaveLength(3);
+        const missing = spark.querySelector('[data-missing="true"]') as HTMLElement;
+        expect(missing).not.toBeNull();
+        expect(missing.getAttribute("title")).toBe("2026-05-19: no score");
+        expect(missing.style.height).toBe("");
+        expect(spark.querySelectorAll("[data-missing]")).toHaveLength(1);
+        expect(screen.getByText("no score that day")).toBeInTheDocument();
+    });
+
+    it("shows no legend when every day has a score", () => {
+        renderDashboard();
+        expect(screen.queryByText("no score that day")).toBeNull();
+    });
+
+    it("draws component bars with the series token, a 2 px minimum, and no fill at zero", () => {
+        renderDashboard({
+            rows: [
+                makeRow({
+                    components: {
+                        ...makeRow().components,
+                        churnNorm: 0,
+                        complexityNorm: 0.001,
+                        ownershipNorm: null,
+                        reviewNorm: 1,
+                    },
+                }),
+            ],
+        });
+        const fillOf = (id: string) =>
+            within(screen.getByTestId(id)).queryByTestId("component-bar-fill");
+        expect(fillOf("component-churn")).toBeNull();
+        expect(fillOf("component-ownership")).toBeNull();
+        const small = fillOf("component-complexity") as HTMLElement;
+        expect(small.style.minWidth).toBe("2px");
+        expect(small.className).toContain("bg-(--chart-color-1)");
+        expect(small).toHaveAttribute("aria-hidden", "true");
+        expect((fillOf("component-review-latency") as HTMLElement).style.width).toBe("100%");
     });
 });

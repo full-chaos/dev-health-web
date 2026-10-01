@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { LineagePopover } from "@/app/(app)/data-health/_components/LineagePopover";
 
@@ -26,6 +27,23 @@ type MetricCardProps = {
     caption?: string;
     className?: string;
     lineageMetricId?: string;
+    /**
+     * Opt-in, for the evidence tiles of the Metrics page. Replaces the delta (`MetricDelta`) with
+     * the caller's own node, byte for byte: that page has no per-metric polarity, so it keeps its
+     * own sign and tone rule instead of `MetricDelta`'s good / bad coloring.
+     */
+    deltaSlot?: ReactNode;
+    /**
+     * Opt-in. Renders the "Open evidence" cue as a button that calls this (an evidence panel),
+     * in the note position after the delta. Independent of `href` (the whole-card link).
+     */
+    onOpenEvidence?: () => void;
+    /** Opt-in. A second "Open evidence" link in a footer line under the tile (Explore). */
+    evidenceHref?: string;
+    /** Text shown in the trend slot when there is nothing to plot. */
+    noTrendLabel?: string;
+    /** Root element; the Metrics page tiles are `article`s. */
+    as?: "div" | "article";
 };
 
 export function MetricCard({
@@ -40,6 +58,11 @@ export function MetricCard({
     caption,
     className,
     lineageMetricId,
+    deltaSlot,
+    onOpenEvidence,
+    evidenceHref,
+    noTrendLabel = "No trend yet",
+    as: Root = "div",
 }: MetricCardProps) {
     const sparkValues = spark?.map((point) => point.value) ?? [];
     const sparkLabels = spark?.map((point) => point.ts) ?? [];
@@ -50,7 +73,7 @@ export function MetricCard({
     // Concept `.metric` (theme.css min-height 124, style.css padding 18px 20px,
     // theme.css radius 10). Tiles stay in each page's grid.
     const cardClassName = `group relative min-h-31 min-w-0 rounded-(--radius-md) border border-(--card-stroke) bg-card px-5 py-4.5 ${
-        href ? "transition hover:-translate-y-1 hover:shadow-lg" : ""
+        href || onOpenEvidence ? "transition hover:-translate-y-1 hover:shadow-lg" : ""
     } ${className ?? ""}`;
 
     const body = (
@@ -70,13 +93,26 @@ export function MetricCard({
             </p>
             {/* Concept `.metric-meta`: `delta · note` as running text; the dot sits only between the two. */}
             <div className={`mt-2 text-xs text-(--ink-muted) ${hasSpark ? "max-w-[55%]" : ""}`}>
-                <MetricDelta
-                    value={delta}
-                    unavailableLabel={deltaUnavailableLabel}
-                    inverseGood={inverseGood}
-                    leadingDot={false}
-                />
-                {captionText ? (
+                {deltaSlot ?? (
+                    <MetricDelta
+                        value={delta}
+                        unavailableLabel={deltaUnavailableLabel}
+                        inverseGood={inverseGood}
+                        leadingDot={false}
+                    />
+                )}
+                {onOpenEvidence ? (
+                    <>
+                        <span aria-hidden="true"> · </span>
+                        <button
+                            type="button"
+                            onClick={onOpenEvidence}
+                            className="text-left text-(--accent-2) underline-offset-4 hover:underline"
+                        >
+                            {CTA_LABELS.openEvidence}
+                        </button>
+                    </>
+                ) : captionText ? (
                     <>
                         <span aria-hidden="true"> · </span>
                         <span>{captionText}</span>
@@ -84,7 +120,10 @@ export function MetricCard({
                 ) : null}
             </div>
             {/* Concept `.metric .spark` (87x31, bottom-right). End dot, weight and tone: CHAOS-7602. */}
-            <div className="absolute bottom-6.5 right-4 h-7.75 w-21.75">
+            {/* With a footer link the slot sits from the top, so the two never overlap. */}
+            <div
+                className={`absolute right-4 h-7.75 w-21.75 ${evidenceHref ? "top-15" : "bottom-6.5"}`}
+            >
                 {hasSpark ? (
                     <SparklineChart data={sparkValues} categories={sparkLabels} height={31} />
                 ) : (
@@ -92,19 +131,27 @@ export function MetricCard({
                         title="Not enough data points to plot a trend yet"
                         className="flex h-full items-center justify-end text-label-caps uppercase text-(--ink-muted)"
                     >
-                        No trend yet
+                        {noTrendLabel}
                     </span>
                 )}
             </div>
+            {evidenceHref && (
+                <a
+                    href={evidenceHref}
+                    className="mt-3 block text-label-caps uppercase text-(--ink-muted) hover:text-foreground"
+                >
+                    {CTA_LABELS.openEvidence}
+                </a>
+            )}
         </>
     );
 
     if (!href) {
-        return <div className={cardClassName}>{body}</div>;
+        return <Root className={cardClassName}>{body}</Root>;
     }
 
     return (
-        <div className={cardClassName}>
+        <Root className={cardClassName}>
             <Link
                 href={href}
                 className="absolute inset-0 z-10 rounded-(--radius-md)"
@@ -115,6 +162,6 @@ export function MetricCard({
                 </span>
             </Link>
             {body}
-        </div>
+        </Root>
     );
 }
