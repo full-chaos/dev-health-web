@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
+import { encodeSecurityFilter } from "@/lib/filters/security";
 import type { MetricFilter } from "@/lib/filters/types";
 import { withFilterParam } from "@/lib/filters/url";
 import type { NavArea } from "@/lib/navigation/areas";
@@ -348,5 +349,64 @@ describe("ShellSidebar — filter, role and lens stay in the links", () => {
         navigationMock.search = "role=em";
         renderSidebar();
         expect(linkParams(/^Diagnose$/).get("role")).toBe("em");
+    });
+});
+
+describe("ShellSidebar — a route with its own `f` encoding (Security)", () => {
+    // The Security pages keep a Security filter in `f`, not a metric filter.
+    const SECURITY_F = encodeSecurityFilter({
+        openOnly: false,
+        severities: ["critical"],
+        repoIds: ["repo-1"],
+    });
+    const DEFAULT_F = encodeFilterParam(defaultMetricFilter);
+
+    it.each(["/security", "/security/repos/repo-1"])(
+        "%s: every link carries the default metric filter, as the page-level navigation did",
+        (pathname) => {
+            navigationMock.pathname = pathname;
+            navigationMock.search = `f=${SECURITY_F}`;
+            renderSidebar();
+
+            const withFilter = within(sidebar())
+                .getAllByRole("link")
+                .filter((link) => (link.getAttribute("href") ?? "").includes("f="));
+            expect(withFilter.length).toBeGreaterThan(10);
+            for (const link of withFilter) {
+                const href = link.getAttribute("href") ?? "";
+                const params = new URL(href, "https://app.example").searchParams;
+                expect(params.get("f"), href).toBe(DEFAULT_F);
+            }
+        },
+    );
+
+    it("carries no Security key to another page", () => {
+        navigationMock.pathname = "/security";
+        navigationMock.search = `f=${SECURITY_F}`;
+        renderSidebar();
+
+        const carried = decodeFilter(linkParams(/^Cockpit$/).get("f")) as Record<string, unknown>;
+        expect(Object.keys(carried).sort()).toEqual(Object.keys(defaultMetricFilter).sort());
+    });
+
+    it("does not change a route with a metric filter: its links carry the filter of the URL", () => {
+        const filters: MetricFilter = {
+            ...defaultMetricFilter,
+            scope: { level: "team", ids: ["platform"] },
+        };
+        navigationMock.pathname = "/quality";
+        navigationMock.search = `f=${encodeFilterParam(filters)}`;
+        renderSidebar();
+
+        expect(decodeFilter(linkParams(/^Cockpit$/).get("f"))).toEqual(filters);
+    });
+
+    it("keeps role and lens from the URL", () => {
+        navigationMock.pathname = "/security";
+        navigationMock.search = `f=${SECURITY_F}&role=em&lens=pm`;
+        renderSidebar();
+
+        expect(linkParams(/^Cockpit$/).get("role")).toBe("em");
+        expect(linkParams(/^Cockpit$/).get("lens")).toBe("pm");
     });
 });

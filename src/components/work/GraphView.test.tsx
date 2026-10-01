@@ -742,6 +742,12 @@ describe("GraphView", () => {
         expect(screen.getByTestId("inflow-outflow-panel")).toBeInTheDocument();
         // Two aggregate rows → two table rows.
         expect(screen.getAllByTestId("inflow-outflow-row").length).toBe(2);
+        // Inflow = tide, outflow = amber: fixed by entity, never accent colors.
+        const [inflow, outflow] = Array.from(
+            screen.getAllByTestId("inflow-outflow-row")[0].querySelectorAll("span[aria-hidden]"),
+        );
+        expect(inflow.className).toContain("bg-(--chart-color-1)");
+        expect(outflow.className).toContain("bg-(--chart-color-2)");
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
     });
 
