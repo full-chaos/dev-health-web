@@ -298,21 +298,17 @@ jobs:
               # Python api any more; the catch-all ("/") is go-api, as on prod's api host, and /graphql
               # is query-api.
               #
-              # --query-api-only /api/v1/meta: query-api's OTHER ledger-listed paths (home,
-              # investment/flow, sankey, people/*, flame, ...) additionally require
-              # GO_API_ENVELOPE_*/GO_API_REGISTRY_POSTGRES_URI to actually mount (see
-              # internal/queryapi/server/server.go's buildHomeRoute gate) -- confirmed locally:
-              # without that provisioning they stay UNMOUNTED and 404, which is worse than
-              # leaving them on the still-real Python implementation the catch-all already
-              # reaches (measured: /api/v1/home passes today via Python, would regress to 404
-              # if routed to an unprovisioned query-api). go-api needs no equivalent narrowing --
-              # its ~100 ledger paths mount unconditionally.
+              # --query-api-only /api/v1/meta,/api/v1/home: query-api's other ledger-listed paths
+              # (investment/flow, sankey, people/*, flame, ...) are not exercised by the live suite;
+              # meta and home are, and home mounts now that the step above provisions /query
+              # (GO_API_ENVELOPE_*, GO_API_REGISTRY_POSTGRES_URI). Everything else falls to go-api,
+              # whose ~100 ledger paths mount unconditionally.
               run: |
                   mkdir -p /tmp/traefik-dynamic
                   node ci/generate-live-e2e-plane-router.mjs \
                     dev-health-ops/ci/go_served_paths.tsv \
                     --api-port 8001 --go-api-port 8001 --query-api-port 8090 \
-                    --query-api-only /api/v1/meta --query-api-extra /graphql \
+                    --query-api-only /api/v1/meta,/api/v1/home --query-api-extra /graphql \
                     > /tmp/traefik-dynamic/planes.yml
                   cat /tmp/traefik-dynamic/planes.yml
 
