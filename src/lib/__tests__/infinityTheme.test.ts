@@ -251,6 +251,18 @@ describe("infinity palette", () => {
     });
 
     it.each(THEMES)(
+        "keeps production's solid caution strip: amber fill, black ink (%s)",
+        (theme) => {
+            const t = infinity(theme);
+            expect(t["--caution-solid"]).toBe("#fe9a00");
+            expect(t["--on-caution-solid"]).toBe("#000000");
+            expect(contrast(t["--on-caution-solid"], t["--caution-solid"])).toBeGreaterThanOrEqual(
+                9.7,
+            );
+        },
+    );
+
+    it.each(THEMES)(
         "keeps action text readable on cards, the page and action tints (%s)",
         (theme) => {
             const t = infinity(theme);
@@ -295,6 +307,8 @@ describe("infinity palette", () => {
             "--accent",
             "--accent-foreground",
             "--accent-text",
+            "--caution-solid",
+            "--on-caution-solid",
             "--accent-1",
             "--accent-2",
             "--accent-3",
