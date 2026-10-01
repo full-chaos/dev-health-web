@@ -15,11 +15,15 @@
  */
 
 import Link from "next/link";
+import { CircleCheck, CircleHelp, OctagonAlert, TriangleAlert } from "lucide-react";
 
 import { CTA_LABELS } from "@/lib/design/cta";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import type { MetricFilter } from "@/lib/filters/types";
 import { withFilterParam } from "@/lib/filters/url";
+import { STATUS_PILL, type StatusPillTone } from "@/lib/statusPill";
+
+import { BreakoutSegment } from "./BreakoutSegment";
 
 // Builds a direct `/diagnose/work-graph?f=…` link (bypassing the lossy
 // `/work` legacy-redirect, which drops any query param outside `tab`/`view`)
@@ -95,23 +99,14 @@ export type CompoundingRiskDashboardProps = {
     generatedAt: string | null;
 };
 
-const SEVERITY_COPY: Record<CompoundingRiskSeverity, { label: string; tone: string }> = {
-    unknown: {
-        label: "Unknown",
-        tone: "border-slate-400/40 bg-slate-100/60 text-slate-700",
-    },
-    low: {
-        label: "Low",
-        tone: "border-emerald-400/40 bg-emerald-50/70 text-emerald-800",
-    },
-    elevated: {
-        label: "Elevated",
-        tone: "border-amber-400/40 bg-amber-50/70 text-amber-900",
-    },
-    high: {
-        label: "High",
-        tone: "border-rose-400/40 bg-rose-50/70 text-rose-900",
-    },
+const SEVERITY_COPY: Record<
+    CompoundingRiskSeverity,
+    { label: string; tone: StatusPillTone; Icon: typeof CircleCheck }
+> = {
+    unknown: { label: "Unknown", tone: "muted", Icon: CircleHelp },
+    low: { label: "Low", tone: "positive", Icon: CircleCheck },
+    elevated: { label: "Elevated", tone: "caution", Icon: TriangleAlert },
+    high: { label: "High", tone: "negative", Icon: OctagonAlert },
 };
 
 function fmtScore(value: number | null): string {
@@ -137,13 +132,14 @@ function selectHeadlineRow(rows: CompoundingRiskRowView[]): CompoundingRiskRowVi
 }
 
 function SeverityChip({ severity }: { severity: CompoundingRiskSeverity }) {
-    const { label, tone } = SEVERITY_COPY[severity];
+    const { label, tone, Icon } = SEVERITY_COPY[severity];
     return (
         <span
             data-testid="severity-chip"
             data-severity={severity}
-            className={`inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${tone}`}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${STATUS_PILL[tone]}`}
         >
+            <Icon aria-hidden="true" className="h-3.5 w-3.5" />
             {label}
         </span>
     );
@@ -158,23 +154,42 @@ function TrendSparkline({ trend }: { trend: CompoundingRiskTrendPointView[] }) {
         );
     }
     const max = Math.max(0.01, ...trend.map((p) => p.score ?? 0));
+    const hasMissingDay = trend.some((point) => point.score === null);
     return (
-        <div
-            aria-label="30-day compounding-risk trend"
-            className="mt-4 flex h-20 items-end gap-1"
-            data-testid="trend-sparkline"
-        >
-            {trend.map((point) => {
-                const height = point.score === null ? 4 : Math.max(4, (point.score / max) * 70);
-                return (
-                    <div
-                        key={point.day}
-                        className="flex-1 rounded-t-sm bg-(--accent)"
-                        style={{ height: `${height}px`, opacity: point.score === null ? 0.25 : 1 }}
-                        title={`${point.day}: ${fmtScore(point.score)}`}
+        <div className="mt-4">
+            <div
+                aria-label="30-day compounding-risk trend"
+                className="flex h-20 items-end gap-1"
+                data-testid="trend-sparkline"
+            >
+                {trend.map((point) =>
+                    point.score === null ? (
+                        // A day without a score is an empty tick, never a bar and never zero.
+                        <div
+                            key={point.day}
+                            data-missing="true"
+                            className="h-0.5 flex-1 bg-(--card-stroke)"
+                            title={`${point.day}: no score`}
+                        />
+                    ) : (
+                        <div
+                            key={point.day}
+                            className="flex-1 rounded-t-sm bg-(--chart-color-1)"
+                            style={{ height: `${Math.max(4, (point.score / max) * 70)}px` }}
+                            title={`${point.day}: ${fmtScore(point.score)}`}
+                        />
+                    ),
+                )}
+            </div>
+            {hasMissingDay ? (
+                <p className="mt-2 flex items-center gap-2 text-xs text-(--ink-muted)">
+                    <span
+                        aria-hidden="true"
+                        className="inline-block h-0.5 w-3 bg-(--card-stroke)"
                     />
-                );
-            })}
+                    no score that day
+                </p>
+            ) : null}
         </div>
     );
 }
@@ -216,11 +231,11 @@ function ComponentBars({ row }: { row: CompoundingRiskRowView }) {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {components.map((component) => {
                 const norm = row.components[component.key];
-                const width = norm === null ? 0 : Math.max(2, norm * 100);
+                const width = norm === null ? 0 : Math.min(100, norm * 100);
                 return (
                     <article
                         key={component.key}
-                        className="rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-sm"
+                        className="rounded-(--radius-md) border border-(--border) bg-(--surface-raised) p-4"
                         data-testid={`component-${component.label.toLowerCase().replace(/\s+/g, "-")}`}
                     >
                         <div className="flex items-center justify-between gap-3">
@@ -233,11 +248,15 @@ function ComponentBars({ row }: { row: CompoundingRiskRowView }) {
                         </div>
                         <p className="mt-3 text-3xl font-semibold tabular-nums">{fmtScore(norm)}</p>
                         <p className="mt-1 text-xs text-(--ink-muted)">{component.raw}</p>
-                        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-(--card-stroke)/40">
-                            <div
-                                className="h-full rounded-full bg-(--accent)"
-                                style={{ width: `${width}%` }}
-                            />
+                        <div className="mt-3 h-2 w-full overflow-hidden rounded-r-(--radius-sm) bg-(--card-stroke)">
+                            {width > 0 ? (
+                                <div
+                                    aria-hidden="true"
+                                    data-testid="component-bar-fill"
+                                    className="h-full rounded-r-(--radius-sm) bg-(--chart-color-1)"
+                                    style={{ width: `${width}%`, minWidth: 2 }}
+                                />
+                            ) : null}
                         </div>
                     </article>
                 );
@@ -256,7 +275,7 @@ function ScopeTable({
     if (rows.length === 0) {
         return (
             <p
-                className="rounded-2xl border border-(--card-stroke) bg-card p-6 text-sm text-(--ink-muted)"
+                className="rounded-(--radius-lg) border border-dashed border-(--border) bg-(--surface) p-6 text-sm text-(--ink-muted)"
                 data-testid="empty-state"
             >
                 Compounding Risk needs persisted churn, complexity, ownership, and review-latency
@@ -267,9 +286,9 @@ function ScopeTable({
     }
 
     return (
-        <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90) shadow-sm">
+        <div className="overflow-hidden rounded-(--radius-lg) border border-(--border) bg-(--surface)">
             <table className="w-full text-sm" data-testid="compounding-risk-table">
-                <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
+                <thead className="bg-(--surface-raised) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
                     <tr>
                         <th className="px-5 py-3 text-left">
                             {breakout === "team" ? "Team" : "Repo"}
@@ -298,7 +317,7 @@ function ScopeTable({
                                 data-testid="risk-row"
                                 data-scope-id={row.scopeId}
                                 data-severity={row.severity}
-                                className="border-t border-(--card-stroke)/60 hover:bg-(--card-60)/60"
+                                className="border-t border-(--border) hover:bg-(--surface-raised)"
                             >
                                 <td className="px-5 py-3 align-middle font-medium">
                                     {row.scopeLabel}
@@ -384,7 +403,7 @@ export function CompoundingRiskDashboard({
         return (
             <div className="flex flex-col gap-6" data-testid="compounding-risk-dashboard">
                 <section
-                    className="rounded-2xl border border-(--card-stroke) bg-card p-8 shadow-sm"
+                    className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-8"
                     data-testid="all-scores-null-state"
                 >
                     <h2 className="text-3xl font-semibold tracking-tight md:text-5xl">
@@ -404,7 +423,7 @@ export function CompoundingRiskDashboard({
                     </p>
 
                     {missingInputs.length > 0 && (
-                        <div className="mt-8 rounded-2xl border border-(--card-stroke) bg-(--card-60) p-6">
+                        <div className="mt-8 rounded-(--radius-md) border border-(--border) bg-(--surface-raised) p-6">
                             <h3 className="text-sm font-semibold tracking-tight">
                                 Missing inputs across all {breakout}s:
                             </h3>
@@ -433,7 +452,7 @@ export function CompoundingRiskDashboard({
 
     return (
         <div className="flex flex-col gap-6" data-testid="compounding-risk-dashboard">
-            <section className="overflow-hidden rounded-[2rem] border border-(--card-stroke) bg-(--card-80) shadow-sm">
+            <section className="overflow-hidden rounded-(--radius-lg) border border-(--border) bg-(--surface)">
                 <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
                     <div className="p-8">
                         <h2 className="text-3xl font-semibold tracking-tight md:text-5xl">
@@ -454,7 +473,7 @@ export function CompoundingRiskDashboard({
                             </p>
                         )}
                     </div>
-                    <div className="border-t border-(--card-stroke) bg-(--card-60) p-8 lg:border-l lg:border-t-0">
+                    <div className="border-t border-(--border) bg-(--surface-raised) p-8 lg:border-l lg:border-t-0">
                         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
                             Headline
                         </p>
@@ -483,7 +502,7 @@ export function CompoundingRiskDashboard({
 
             {headline && (
                 <section
-                    className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+                    className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6"
                     data-testid="component-breakdown"
                 >
                     <div className="flex items-center justify-between gap-3">
@@ -510,10 +529,13 @@ export function CompoundingRiskDashboard({
                     <h2 className="text-lg font-semibold tracking-tight">
                         {breakout === "team" ? "By team" : "By repo"}
                     </h2>
-                    <p className="text-xs text-(--ink-muted)">
-                        sorted by score · {rows.length} {breakout}
-                        {rows.length === 1 ? "" : "s"}
-                    </p>
+                    <div className="flex items-center gap-4">
+                        <p className="text-xs text-(--ink-muted)">
+                            sorted by score · {rows.length} {breakout}
+                            {rows.length === 1 ? "" : "s"}
+                        </p>
+                        <BreakoutSegment breakout={breakout} />
+                    </div>
                 </div>
                 <ScopeTable rows={rows} breakout={breakout} />
             </section>
