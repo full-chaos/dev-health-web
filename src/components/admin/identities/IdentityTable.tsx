@@ -90,7 +90,7 @@ export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps
                             <Link
                                 key={teamId}
                                 href={`/org/admin/teams/${teamId}/edit`}
-                                className="text-(--accent) hover:underline"
+                                className="text-(--accent-2) hover:underline"
                             >
                                 {teamId}
                             </Link>
@@ -132,7 +132,7 @@ export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps
                 <div className="flex justify-end gap-3">
                     <Link
                         href={`/org/admin/identities/${identity.canonical_id}/edit`}
-                        className="text-(--accent) hover:underline"
+                        className="text-(--accent-2) hover:underline"
                     >
                         {CTA_LABELS.edit}
                     </Link>
@@ -140,7 +140,7 @@ export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps
                         <button
                             type="button"
                             onClick={() => onDeleteAction(identity.canonical_id)}
-                            className="text-red-500 hover:underline"
+                            className="text-(--negative) hover:underline"
                         >
                             {CTA_LABELS.delete}
                         </button>

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { decodeFilter, encodeFilterParam, filterFromQueryParams } from "@/lib/filters/encode";
 
 import { complexityScopeInputFromFilter, complexityWindowFromFilter } from "../filters";
 
@@ -52,5 +53,24 @@ describe("complexity filter helpers", () => {
                 what: { ...defaultMetricFilter.what, repos: ["repo-from-what"] },
             }),
         ).toEqual({ repoIds: ["repo-from-what"], teamIds: null });
+    });
+
+    it("asks for the same scope with no `f` in the URL and with the default `f`", () => {
+        // No `f`: the page reads the query params (organization level). The scope
+        // bar then writes the default `f` (team level, no team). Both must give
+        // the same query input.
+        const withoutParam = filterFromQueryParams({});
+        const withDefaultParam = decodeFilter(encodeFilterParam(defaultMetricFilter));
+        expect(withoutParam.scope.level).toBe("org");
+        expect(withDefaultParam.scope.level).toBe("team");
+
+        expect(complexityScopeInputFromFilter(withDefaultParam)).toEqual(
+            complexityScopeInputFromFilter(withoutParam),
+        );
+        expect(complexityScopeInputFromFilter(withDefaultParam)).toEqual({
+            repoIds: null,
+            teamIds: null,
+        });
+        expect(withDefaultParam.time).toEqual(withoutParam.time);
     });
 });

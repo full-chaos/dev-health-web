@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ErrorCard } from "@/components/ui/ErrorCard";
+import { STATE_ICONS } from "@/components/ui/stateIcons";
 
 /**
  * Controlled "why is there nothing to show" taxonomy (CHAOS-2061 / Framework A11).
@@ -101,6 +102,8 @@ type DataStateProps = {
      * DataState adds the "Data source needed:" label automatically.
      */
     detail?: string;
+    /** Smaller box for use inside a card (concept `.empty.compact`); empty variants only. */
+    compact?: boolean;
     /** Test hook; defaults to a stable per-variant id. */
     "data-testid"?: string;
 };
@@ -114,6 +117,7 @@ export function DataState({
     action,
     className,
     detail,
+    compact,
     "data-testid": testId,
 }: DataStateProps) {
     if (variant === "loading") {
@@ -127,7 +131,7 @@ export function DataState({
             >
                 <span className="sr-only">{title ?? "Loading…"}</span>
                 <div
-                    className="h-24 w-full animate-pulse rounded-3xl bg-(--card-80)"
+                    className="h-24 w-full animate-pulse rounded-(--radius-md) bg-(--card-80) motion-reduce:animate-none"
                     aria-hidden="true"
                 />
             </div>
@@ -162,13 +166,14 @@ export function DataState({
             className={className}
         >
             <EmptyState
-                icon={icon}
+                icon={icon ?? STATE_ICONS[variant]}
                 title={title ?? copy.title}
                 description={description ?? copy.description}
                 action={action}
+                compact={compact}
             />
             {detail && (
-                <p className="mt-3 rounded-2xl bg-background/60 px-3 py-2 text-center text-xs text-(--ink-muted)">
+                <p className="mt-3 rounded-(--radius-sm) bg-background/60 px-3 py-2 text-center text-xs text-(--ink-muted)">
                     Data source needed: {detail}
                 </p>
             )}

@@ -18,10 +18,10 @@ type RefundListProps = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-    succeeded: "bg-emerald-500/15 text-emerald-400",
-    pending: "bg-blue-500/15 text-blue-400",
-    failed: "bg-red-500/15 text-red-400",
-    canceled: "bg-slate-500/15 text-slate-300",
+    succeeded: "bg-(--positive)/12 text-(--positive)",
+    pending: "bg-(--info)/12 text-(--info)",
+    failed: "bg-(--negative)/12 text-(--negative)",
+    canceled: "bg-(--card-stroke) text-(--ink-muted)",
 };
 
 function formatMoney(amount: number, currency: string): string {
@@ -85,7 +85,7 @@ export function RefundList({ initialData, initialOrgFilter = "" }: RefundListPro
                 className: "px-4 py-3",
                 render: (refund) => (
                     <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[refund.status] ?? "bg-slate-500/15 text-slate-300"}`}
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[refund.status] ?? "bg-(--card-stroke) text-(--ink-muted)"}`}
                     >
                         {refund.status}
                     </span>

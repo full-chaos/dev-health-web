@@ -1,14 +1,9 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 
-import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
-import { FilterBar } from "@/components/filters/FilterBar";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { BackLink } from "@/components/shared/BackLink";
 import { DataState } from "@/components/ui/DataState";
 import type { HotspotRow } from "@/components/complexity/ComplexityDashboard";
 import { getQuadrant } from "@/lib/api/visuals";
@@ -26,7 +21,8 @@ import type { BusFactor } from "@/lib/graphql/types";
 import type { QuadrantResponse } from "@/lib/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { LANDSCAPE_EVIDENCE_METRICS } from "@/lib/metrics/landscape";
-import { navTrailForPathname } from "@/lib/navigation/areas";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 
 const QUADRANT_CARDS = [
     {
@@ -436,7 +432,7 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
     ]);
 
     if (!health.ok) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     const primaryCardIndex = QUADRANT_CARDS.findIndex((card) => card.type === landscapePrimaryType);
@@ -459,148 +455,119 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
     }));
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="landscape" role={activeRole} />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-wrap items-start justify-between gap-4">
-                        <div>
-                            <Breadcrumbs items={navTrailForPathname("/landscape")} />
-                            <p className="mt-4 text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Diagnose
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">Landscape</h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Operating modes across paired pressures, teams, repos, ownership,
-                                and hotspots.
-                            </p>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            <PageHeader
+                title="Landscape"
+                subtitle="Operating modes across paired pressures, teams, repos, ownership, and hotspots."
+            />
+
+            <ScopeBar view="landscape" />
+
+            <ViewSet
+                orientation="tabs"
+                items={tabs}
+                activeId={activeTab}
+                overviewId="overview"
+                ariaLabel="Landscape views"
+            />
+
+            {!canQuery && (
+                <section className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
+                    Individual landscapes are available from the individual view.
+                </section>
+            )}
+
+            {activeTab === "overview" && (
+                <>
+                    <section className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                        <span>Bucket</span>
+                        <Link
+                            href={withFilterParam("/landscape?bucket=week", filters, activeRole)}
+                            className={`rounded-full border px-3 py-1 ${
+                                bucket === "week"
+                                    ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                                    : "border-(--card-stroke)"
+                            }`}
+                        >
+                            {CTA_LABELS.week}
+                        </Link>
+                        <Link
+                            href={withFilterParam("/landscape?bucket=month", filters, activeRole)}
+                            className={`rounded-full border px-3 py-1 ${
+                                bucket === "month"
+                                    ? "border-(--accent) bg-(--accent)/15 text-foreground"
+                                    : "border-(--card-stroke)"
+                            }`}
+                        >
+                            {CTA_LABELS.month}
+                        </Link>
+                    </section>
+
+                    <section className="flex flex-col gap-10">
+                        <div className="rounded-3xl border border-(--accent-2)/30 bg-(--accent-2)/5 p-6 sm:p-8">
+                            <QuadrantPanel
+                                key={primaryCard.type}
+                                title={primaryCard.title}
+                                description={primaryCard.description}
+                                data={primaryData}
+                                filters={filters}
+                                chartHeight={420}
+                                emptyState="Quadrant data unavailable for this scope."
+                                relatedLinks={[
+                                    {
+                                        label: CTA_LABELS.openEvidence,
+                                        href: buildExploreUrl({
+                                            metric: LANDSCAPE_EVIDENCE_METRICS[primaryCard.type],
+                                            filters,
+                                            role: activeRole,
+                                        }),
+                                    },
+                                ]}
+                            />
                         </div>
-                        <BackLink
-                            href={withFilterParam("/diagnose", filters, activeRole)}
-                            area="Diagnose"
-                        />
-                    </header>
-
-                    <GlobalContextBar filters={filters} />
-                    <FilterBar condensed view="landscape" />
-
-                    <ViewSet
-                        orientation="tabs"
-                        items={tabs}
-                        activeId={activeTab}
-                        overviewId="overview"
-                        ariaLabel="Landscape views"
-                    />
-
-                    {!canQuery && (
-                        <section className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
-                            Individual landscapes are available from the individual view.
-                        </section>
-                    )}
-
-                    {activeTab === "overview" && (
-                        <>
-                            <section className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                <span>Bucket</span>
-                                <Link
-                                    href={withFilterParam(
-                                        "/landscape?bucket=week",
-                                        filters,
-                                        activeRole,
-                                    )}
-                                    className={`rounded-full border px-3 py-1 ${
-                                        bucket === "week"
-                                            ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                                            : "border-(--card-stroke)"
-                                    }`}
-                                >
-                                    {CTA_LABELS.week}
-                                </Link>
-                                <Link
-                                    href={withFilterParam(
-                                        "/landscape?bucket=month",
-                                        filters,
-                                        activeRole,
-                                    )}
-                                    className={`rounded-full border px-3 py-1 ${
-                                        bucket === "month"
-                                            ? "border-(--accent) bg-(--accent)/15 text-foreground"
-                                            : "border-(--card-stroke)"
-                                    }`}
-                                >
-                                    {CTA_LABELS.month}
-                                </Link>
-                            </section>
-
-                            <section className="flex flex-col gap-10">
-                                <div className="rounded-3xl border border-(--accent-2)/30 bg-(--accent-2)/5 p-6 sm:p-8">
+                        <div className="flex flex-col gap-8">
+                            {otherCards.map((card) => {
+                                const cardIndex = QUADRANT_CARDS.findIndex(
+                                    (item) => item.type === card.type,
+                                );
+                                return (
                                     <QuadrantPanel
-                                        key={primaryCard.type}
-                                        title={primaryCard.title}
-                                        description={primaryCard.description}
-                                        data={primaryData}
+                                        key={card.type}
+                                        title={card.title}
+                                        description={card.description}
+                                        data={quadrantData[cardIndex]}
                                         filters={filters}
-                                        chartHeight={420}
+                                        chartHeight={320}
                                         emptyState="Quadrant data unavailable for this scope."
                                         relatedLinks={[
                                             {
                                                 label: CTA_LABELS.openEvidence,
                                                 href: buildExploreUrl({
-                                                    metric: LANDSCAPE_EVIDENCE_METRICS[
-                                                        primaryCard.type
-                                                    ],
+                                                    metric: LANDSCAPE_EVIDENCE_METRICS[card.type],
                                                     filters,
                                                     role: activeRole,
                                                 }),
                                             },
                                         ]}
                                     />
-                                </div>
-                                <div className="flex flex-col gap-8">
-                                    {otherCards.map((card) => {
-                                        const cardIndex = QUADRANT_CARDS.findIndex(
-                                            (item) => item.type === card.type,
-                                        );
-                                        return (
-                                            <QuadrantPanel
-                                                key={card.type}
-                                                title={card.title}
-                                                description={card.description}
-                                                data={quadrantData[cardIndex]}
-                                                filters={filters}
-                                                chartHeight={320}
-                                                emptyState="Quadrant data unavailable for this scope."
-                                                relatedLinks={[
-                                                    {
-                                                        label: CTA_LABELS.openEvidence,
-                                                        href: buildExploreUrl({
-                                                            metric: LANDSCAPE_EVIDENCE_METRICS[
-                                                                card.type
-                                                            ],
-                                                            filters,
-                                                            role: activeRole,
-                                                        }),
-                                                    },
-                                                ]}
-                                            />
-                                        );
-                                    })}
-                                </div>
-                            </section>
-                        </>
-                    )}
+                                );
+                            })}
+                        </div>
+                    </section>
+                </>
+            )}
 
-                    {activeTab === "teams" && (
-                        <TeamsView
-                            cycleData={cycleIndex >= 0 ? quadrantData[cycleIndex] : null}
-                            churnData={churnIndex >= 0 ? quadrantData[churnIndex] : null}
-                        />
-                    )}
-                    {activeTab === "repos" && <ReposView hotspots={hotspots} />}
-                    {activeTab === "ownership" && <OwnershipView busFactor={busFactor} />}
-                    {activeTab === "hotspots" && <HotspotsView hotspots={hotspots} />}
-                </main>
-            </div>
+            {activeTab === "teams" && (
+                <TeamsView
+                    cycleData={cycleIndex >= 0 ? quadrantData[cycleIndex] : null}
+                    churnData={churnIndex >= 0 ? quadrantData[churnIndex] : null}
+                />
+            )}
+            {activeTab === "repos" && <ReposView hotspots={hotspots} />}
+            {activeTab === "ownership" && <OwnershipView busFactor={busFactor} />}
+            {activeTab === "hotspots" && <HotspotsView hotspots={hotspots} />}
         </div>
     );
 }

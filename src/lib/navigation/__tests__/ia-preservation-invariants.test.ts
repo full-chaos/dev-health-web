@@ -17,11 +17,15 @@ import { iaPreservationBaseline } from "../__fixtures__/iaPreservationBaseline";
 import {
     basePath,
     navAreas,
+    navTrailForPathname,
     selectedAreaIdForPathname,
     type NavArea,
     type NavChildRoute,
 } from "../areas";
 import { LEGACY_WORK_TAB_REDIRECTS, resolveLegacyWorkRedirect } from "../workPageView";
+import { shellHref } from "@/components/shell/shellHref";
+import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { encodeFilterParam } from "@/lib/filters/encode";
 
 type VisibleChildDestination = {
     area: NavArea;
@@ -94,25 +98,10 @@ const knownPreexistingDualContextBarScopes = new Set([
     "src/app/(app)/ai/page.tsx",
     "src/app/(app)/ai/review-load/page.tsx",
     "src/app/(app)/ai/risk/page.tsx",
-    "src/app/(app)/code/page.tsx",
-    "src/app/(app)/diagnose/page.tsx",
-    "src/app/(app)/diagnose/work-graph/page.tsx",
-    "src/app/(app)/explore/page.tsx",
     "src/app/(app)/improve/automations/page.tsx",
-    "src/app/(app)/investment/page.tsx",
-    "src/app/(app)/landscape/page.tsx",
-    "src/app/(app)/metrics/page.tsx",
     "src/app/(app)/opportunities/page.tsx",
-    "src/app/(app)/people/page.tsx",
     "src/app/(app)/plan/capacity/page.tsx",
     "src/app/(app)/plan/page.tsx",
-    "src/app/(app)/quality/page.tsx",
-    "src/app/(app)/risk/compounding/page.tsx",
-    "src/app/(app)/testops/coverage/page.tsx",
-    "src/app/(app)/testops/page.tsx",
-    "src/app/(app)/testops/pipelines/page.tsx",
-    "src/app/(app)/testops/risk/page.tsx",
-    "src/app/(app)/testops/tests/page.tsx",
 ]);
 
 const routePageExists = (routePath: string) => {
@@ -356,15 +345,34 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
     it("preserves role context on standalone /investment and investment drill-down links", () => {
         expect(investmentPageSource).toContain("const roleParam");
         expect(investmentPageSource).toContain("const activeRole");
-        expect(investmentPageSource).toContain("role={activeRole}");
         expect(investmentPageSource).toContain("activeRole={activeRole}");
         expect(investmentPageSource).toContain("role: activeRole");
         expect(investmentPageSource).toContain("withFilterParam(");
-        // Investment's BackLink now points at its IA parent /diagnose (CHAOS-2079),
-        // still wrapped in withFilterParam so the user's filter/role/origin scope is
-        // preserved on the way back. Guarding the literal keeps that scope intact.
-        expect(investmentPageSource).toContain('"/diagnose",');
         expect(investmentPageSource).toContain("activeOrigin,");
+        // CHAOS-7588: the page is in the shared app shell. It no longer renders its own
+        // navigation (the literal `role={activeRole}` was the PrimaryNav prop) or its
+        // "Back to Diagnose" link (the literal `"/diagnose",`). The property those two
+        // literals stood for is now proven by behaviour: the way back to the IA parent
+        // /diagnose (CHAOS-2079) is the trail link, and it keeps the user's
+        // filter / role / origin scope. The rendered proof for the sidebar links, the
+        // crumb and the in-page links is in `investment/shell.test.tsx`.
+        expect(investmentPageSource).not.toContain("<PrimaryNav");
+        expect(navTrailForPathname("/investment")[0]).toEqual({
+            label: "Diagnose",
+            href: "/diagnose",
+        });
+        const wayBack = new URL(
+            shellHref(
+                "/diagnose",
+                { filters: defaultMetricFilter, role: "em", origin: "cockpit" },
+                { withOrigin: true },
+            ),
+            "https://app.example",
+        );
+        expect(wayBack.pathname).toBe("/diagnose");
+        expect(wayBack.searchParams.get("f")).toBe(encodeFilterParam(defaultMetricFilter));
+        expect(wayBack.searchParams.get("role")).toBe("em");
+        expect(wayBack.searchParams.get("origin")).toBe("cockpit");
     });
 
     it("splits landscape and bottleneck quadrant ownership without duplicated scatters", () => {

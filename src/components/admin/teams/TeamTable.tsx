@@ -104,7 +104,7 @@ export function TeamTable({ teams, onDeleteAction }: TeamTableProps) {
                 <div className="flex justify-end gap-3">
                     <Link
                         href={`/org/admin/teams/${team.team_id}/edit`}
-                        className="text-(--accent) hover:underline"
+                        className="text-(--accent-2) hover:underline"
                     >
                         {CTA_LABELS.edit}
                     </Link>
@@ -112,7 +112,7 @@ export function TeamTable({ teams, onDeleteAction }: TeamTableProps) {
                         <button
                             type="button"
                             onClick={() => onDeleteAction(team.team_id)}
-                            className="text-red-500 hover:underline"
+                            className="text-(--negative) hover:underline"
                         >
                             {CTA_LABELS.delete}
                         </button>

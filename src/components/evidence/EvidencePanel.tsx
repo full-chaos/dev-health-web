@@ -10,6 +10,7 @@ import { EvidenceContext } from "./EvidenceContext";
 import { EvidenceItems } from "./EvidenceItems";
 import { SuggestedActions } from "./SuggestedActions";
 import { ErrorCard } from "@/components/ui/ErrorCard";
+import { Drawer } from "@/components/ui/Drawer";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -334,14 +335,6 @@ export function EvidencePanel({
     const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
     useEffect(() => {
-        const handleEscape = (e: KeyboardEvent) => {
-            if (e.key === "Escape") onCloseAction();
-        };
-        window.addEventListener("keydown", handleEscape);
-        return () => window.removeEventListener("keydown", handleEscape);
-    }, [onCloseAction]);
-
-    useEffect(() => {
         if (isOpen && (apiUrl || metric)) {
             // eslint-disable-next-line react-hooks/set-state-in-effect -- opening the panel intentionally starts async evidence loading.
             setLoading(true);
@@ -464,84 +457,65 @@ export function EvidencePanel({
 
     const exploreUrl = evidenceDestination({ apiUrl, metric, filters });
 
+    // Escape contract: Drawer closes on Escape unless an inner control already handled it and
+    // called `preventDefault()`. Nothing inside this panel handles Escape today (links and
+    // buttons only); a future inner menu must call `preventDefault()` on its own Escape.
     return (
-        <div className="fixed inset-0 z-50 flex justify-end">
-            <button
-                type="button"
-                aria-label={CTA_LABELS.closeEvidencePanel}
-                className="absolute inset-0 bg-black/50 transition-opacity"
-                onClick={onCloseAction}
-            />
-
-            <div className="relative z-10 flex h-full w-full flex-col rounded-l-3xl border-l border-(--card-stroke) bg-card shadow-2xl animate-in fade-in slide-in-from-right-4 duration-300 md:max-w-lg">
-                <header className="flex items-center justify-between border-b border-(--card-stroke) bg-(--card-90) p-6">
-                    <div>
-                        <p className="text-xs uppercase tracking-widest text-(--ink-muted)">
-                            Evidence & Context
-                        </p>
-                        <h2 className="text-lg font-semibold text-foreground mt-1">{title}</h2>
+        <Drawer
+            open
+            onCloseAction={onCloseAction}
+            title={title}
+            eyebrow="Evidence & Context"
+            footer={
+                <Link
+                    href={exploreUrl}
+                    className="flex w-full items-center justify-center rounded-xl border border-(--accent-2)/20 bg-(--accent-2)/10 px-4 py-3 text-sm font-medium text-(--info) transition-colors hover:bg-(--accent-2)/20"
+                >
+                    {CTA_LABELS.openEvidence} ↗
+                </Link>
+            }
+        >
+            <div className="space-y-4">
+                {loading ? (
+                    <div className="space-y-4 animate-pulse">
+                        <div className="h-24 bg-(--card-70) rounded-2xl" />
+                        <div className="h-40 bg-(--card-70) rounded-2xl" />
+                        <div className="h-32 bg-(--card-70) rounded-2xl" />
                     </div>
-                    <button
-                        type="button"
-                        onClick={onCloseAction}
-                        className="rounded-full border border-(--card-stroke) p-2 text-xs uppercase tracking-widest text-(--ink-muted) transition-colors hover:bg-(--card-70) hover:text-foreground"
-                        title={CTA_LABELS.closePanel}
-                    >
-                        ✕
-                    </button>
-                </header>
-
-                <div className="flex-1 space-y-4 overflow-y-auto p-6">
-                    {loading ? (
-                        <div className="space-y-4 animate-pulse">
-                            <div className="h-24 bg-(--card-70) rounded-2xl" />
-                            <div className="h-40 bg-(--card-70) rounded-2xl" />
-                            <div className="h-32 bg-(--card-70) rounded-2xl" />
-                        </div>
-                    ) : error ? (
-                        <div className="space-y-3" data-testid="evidence-error-state">
-                            <ErrorCard title="Unable to load this view" message={error} />
-                            {showDevDiagnostics && errorDetail ? (
-                                <pre
-                                    data-testid="evidence-error-diagnostics"
-                                    className="overflow-x-auto whitespace-pre-wrap rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4 text-xs leading-5 text-(--ink-muted)"
-                                >
-                                    {errorDetail}
-                                </pre>
-                            ) : null}
-                        </div>
-                    ) : data ? (
-                        <>
-                            <EvidenceProvenanceStrip provenance={data.provenance} />
-                            <EvidenceContext data={data} />
-                            {data.evidence?.length ? (
-                                <EvidenceItems items={data.evidence} />
-                            ) : (
-                                <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-90) p-4 text-sm leading-6 text-(--ink-muted)">
-                                    No contributing artifacts were returned for this metric and
-                                    filter window. This is a partial-data state, not a zero signal.
-                                </div>
-                            )}
-                            <SuggestedActions actions={data.actions || []} />
-                        </>
-                    ) : (
-                        <EmptyState
-                            title="Nothing to show yet"
-                            description="There's no supporting detail to display for this selection right now. Try a different metric or widen the time window."
-                        />
-                    )}
-                </div>
-
-                <footer className="border-t border-(--card-stroke) bg-(--card-90) p-6">
-                    <Link
-                        href={exploreUrl}
-                        className="flex w-full items-center justify-center rounded-xl border border-(--accent)/20 bg-(--accent)/10 px-4 py-3 text-sm font-medium text-(--accent) transition-colors hover:bg-(--accent)/20"
-                    >
-                        {CTA_LABELS.openEvidence} ↗
-                    </Link>
-                </footer>
+                ) : error ? (
+                    <div className="space-y-3" data-testid="evidence-error-state">
+                        <ErrorCard title="Unable to load this view" message={error} />
+                        {showDevDiagnostics && errorDetail ? (
+                            <pre
+                                data-testid="evidence-error-diagnostics"
+                                className="overflow-x-auto whitespace-pre-wrap rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4 text-xs leading-5 text-(--ink-muted)"
+                            >
+                                {errorDetail}
+                            </pre>
+                        ) : null}
+                    </div>
+                ) : data ? (
+                    <>
+                        <EvidenceProvenanceStrip provenance={data.provenance} />
+                        <EvidenceContext data={data} />
+                        {data.evidence?.length ? (
+                            <EvidenceItems items={data.evidence} />
+                        ) : (
+                            <div className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-90) p-4 text-sm leading-6 text-(--ink-muted)">
+                                No contributing artifacts were returned for this metric and filter
+                                window. This is a partial-data state, not a zero signal.
+                            </div>
+                        )}
+                        <SuggestedActions actions={data.actions || []} />
+                    </>
+                ) : (
+                    <EmptyState
+                        title="Nothing to show yet"
+                        description="There's no supporting detail to display for this selection right now. Try a different metric or widen the time window."
+                    />
+                )}
             </div>
-        </div>
+        </Drawer>
     );
 }
 

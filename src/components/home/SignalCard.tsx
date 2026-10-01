@@ -158,7 +158,7 @@ export function SignalCard({ signal, emphasized = false, onOpenEvidence }: Signa
                 type="button"
                 data-testid="signal-open-evidence"
                 onClick={open}
-                className="mt-4 flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.18em] text-(--ink-muted) transition-colors hover:border-(--accent)/40 hover:bg-(--accent)/10 hover:text-(--accent)"
+                className="mt-4 flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2.5 text-left text-xs font-medium uppercase tracking-[0.18em] text-(--ink-muted) transition-colors hover:border-(--accent-2)/40 hover:bg-(--accent-2)/10 hover:text-(--accent-2)"
             >
                 {CTA_LABELS.openEvidence}
                 <span aria-hidden>↗</span>

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { STATUS_PILL } from "@/lib/statusPill";
 import { usePathname } from "next/navigation";
 
 const navItems = [
@@ -63,7 +64,9 @@ export function SuperadminSidebar({ canAccessOrgAdmin = false }: { canAccessOrgA
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
                     <div>
                         <p className="mt-3 font-(--font-display) text-lg">Superadmin</p>
-                        <span className="mt-1 inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-label-caps font-medium text-purple-500">
+                        <span
+                            className={`mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-label-caps font-medium ${STATUS_PILL.info}`}
+                        >
                             Platform Admin
                         </span>
                         <p className="mt-2 text-xs text-(--ink-muted)">
@@ -82,14 +85,14 @@ export function SuperadminSidebar({ canAccessOrgAdmin = false }: { canAccessOrgA
                                     aria-current={isActive ? "page" : undefined}
                                     className={`group flex items-center justify-between rounded-2xl border px-3 py-2 transition ${
                                         isActive
-                                            ? "border-purple-500 bg-purple-500/15 text-foreground"
+                                            ? "border-(--accent) bg-(--accent)/15 text-foreground"
                                             : "border-transparent bg-(--card-70) text-(--ink-muted) hover:border-(--card-stroke) hover:text-foreground"
                                     }`}
                                 >
                                     <span className="font-medium">{item.label}</span>
                                     <span
                                         className={`text-label-caps ${
-                                            isActive ? "text-purple-400" : "text-(--ink-muted)"
+                                            isActive ? "text-(--accent-text)" : "text-(--ink-muted)"
                                         }`}
                                     >
                                         {item.description}
