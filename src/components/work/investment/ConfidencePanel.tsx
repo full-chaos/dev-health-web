@@ -337,11 +337,11 @@ export function ConfidencePanel({
                                             %
                                         </span>
                                     </div>
-                                    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-r-[4px] bg-(--card-stroke)">
+                                    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-r-(--radius-sm) bg-(--card-stroke)">
                                         {row.allocation_pct > 0 && (
                                             <div
                                                 aria-hidden
-                                                className="h-full rounded-r-[4px] bg-(--theme-operational)"
+                                                className="h-full rounded-r-(--radius-sm) bg-(--theme-operational)"
                                                 style={{
                                                     width: `${Math.min(100, row.allocation_pct)}%`,
                                                     minWidth: 2,

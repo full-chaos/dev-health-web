@@ -72,7 +72,7 @@ export function EvidenceQualityBands({ evidenceQualityDistribution }: EvidenceQu
                         <div
                             key={segment.id}
                             data-band={segment.id}
-                            className={`h-full min-w-0.5 rounded-[4px] ${segment.swatchClass}`}
+                            className={`h-full min-w-0.5 rounded-(--radius-sm) ${segment.swatchClass}`}
                             style={{ flex: `${pct} 1 0%` }}
                             title={`${segment.label}: ${formatNumber(pct, { maximumFractionDigits: 0 })}%`}
                         />

@@ -738,7 +738,7 @@ function ChurnView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                                 <div className="flex items-center justify-end gap-3">
                                     <span
                                         aria-hidden
-                                        className="h-2 rounded-r-[4px] bg-(--theme-operational)"
+                                        className="h-2 rounded-r-(--radius-sm) bg-(--theme-operational)"
                                         style={{ width }}
                                     />
                                     <span className="tabular-nums">
