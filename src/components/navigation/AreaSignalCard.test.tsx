@@ -109,4 +109,29 @@ describe("AreaSignalCard pinned behaviour (before the CHAOS-7598 restyle)", () =
         });
         expect(html).toMatchSnapshot();
     });
+
+    it("unavailable card is full contrast: no opacity fade, its own neutral dashed look", () => {
+        draw({ ...base, value: "", state: "unavailable", direction: undefined });
+        const card = screen.getByTestId("area-signal-card");
+        expect(card.className).not.toMatch(/opacity-/);
+        expect(card.className).toContain("border-dashed");
+        // The state is named in words, not implied by dimming.
+        expect(screen.getByText("No data for this window")).toBeInTheDocument();
+    });
+
+    it("hero has a severity edge, no gradient and a plain-ink value", () => {
+        draw(base, true);
+        const card = screen.getByTestId("area-signal-card");
+        expect(card.className).toContain("border-l-(--accent-3)");
+        expect(card.className).not.toContain("gradient");
+        expect(screen.getByTestId("area-signal-value").className).not.toContain("metric-hero");
+    });
+
+    it("every severity state maps to a hero edge", () => {
+        for (const state of ["critical", "high", "medium", "low", "neutral"] as const) {
+            const { unmount } = draw({ ...base, state }, true);
+            expect(screen.getByTestId("area-signal-card").className).toMatch(/border-l-\(--/);
+            unmount();
+        }
+    });
 });
