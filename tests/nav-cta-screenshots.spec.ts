@@ -44,10 +44,6 @@ test.describe("CHAOS-2056/2058 nav + CTA surfaces", () => {
         await shoot(page, "/ai", "ai");
     });
 
-    test("capacity (BackLink)", async ({ page }) => {
-        await shoot(page, "/capacity", "capacity");
-    });
-
     test("investment (BackLink to landscape)", async ({ page }) => {
         await shoot(page, "/investment", "investment");
     });

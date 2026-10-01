@@ -284,7 +284,7 @@ export const navAreas: readonly NavArea[] = [
         label: "Plan",
         href: "/plan",
         placement: "main",
-        ownedPathPrefixes: ["/plan", "/capacity-planning", "/operating-review"],
+        ownedPathPrefixes: ["/plan", "/capacity", "/capacity-planning", "/operating-review"],
         legacyActiveIds: [
             "capacity-planning",
             "delivery-forecast",

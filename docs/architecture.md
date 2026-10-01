@@ -70,7 +70,7 @@ All routes below require an active session. The `(app)` layout wraps them in `Se
 | `/code`          | `code/page.tsx`          | Code churn, hotspot heatmaps, ownership concentration, and churn × throughput quadrant |
 | `/work`          | `work/page.tsx`          | Work-in-progress flow, cycle time, and throughput views                                |
 | `/quality`       | `quality/page.tsx`       | Quality signals and reliability metrics                                                |
-| `/capacity`      | `capacity/page.tsx`      | Team capacity and load analysis                                                        |
+| `/capacity`      | `capacity/page.tsx`      | Redirect to `/plan/capacity` (Completion Forecast), query string kept                  |
 | `/investment`    | `investment/page.tsx`    | Investment allocation view (GraphQL-backed)                                            |
 | `/opportunities` | `opportunities/page.tsx` | Improvement opportunities and recommendations                                          |
 | `/demo`          | `demo/page.tsx`          | Demo/sample-data showcase                                                              |
