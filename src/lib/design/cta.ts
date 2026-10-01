@@ -29,6 +29,10 @@ export const CTA_LABELS = {
     inspectConfidence: "Inspect confidence",
     /** Inspect the associations (edges) linked to an entity. */
     inspectAssociations: "Inspect associations",
+    /** Landscape investigation: the throughput flame breakdown (was a second "Inspect associations"). */
+    inspectThroughputBreakdown: "Inspect throughput breakdown",
+    /** Landscape investigation: the code-hotspots flame (was a second "Inspect associations"). */
+    inspectCodeHotspots: "Inspect code hotspots",
     /** Open the Work Graph Artifacts tab (the table form of the graph's entities). */
     browseArtifacts: "Browse artifacts",
     /** Open a single artifact (flame diagram, PR, deployment, …). */
