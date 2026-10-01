@@ -9,7 +9,13 @@ export type DataTableColumn<T> = {
     render: (row: T) => ReactNode;
     className?: string;
     headerClassName?: string;
+    /** Right-aligned tabular figures for this column (header and cells). Opt in per column. */
+    numeric?: boolean;
 };
+
+const NUMERIC_CLASSES = "text-right tabular-nums";
+const withNumeric = (base: string, numeric?: boolean) =>
+    numeric ? `${base} ${NUMERIC_CLASSES}` : base;
 
 type DataTablePagination = {
     limit: number;
@@ -133,15 +139,21 @@ export function DataTable<T>({
                 role="region"
                 aria-label={accessibleLabel}
                 tabIndex={0}
-                className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)"
+                className="overflow-x-auto rounded-(--radius-md) border border-(--card-stroke) bg-(--card-80)"
             >
                 <table className="w-full text-left text-sm">
-                    <thead className="border-b border-(--card-stroke) bg-(--card-70) text-(--ink-muted)">
+                    {/* Concept `th`: caps label on the page background. The type scale rules (label-caps 11/16,
+                        design-system C1), not the concept's 9px. Callers' own `headerClassName`
+                        only sets padding and weight, so this cascades to every column. */}
+                    <thead className="whitespace-nowrap border-b border-(--card-stroke) bg-background text-label-caps uppercase text-(--ink-muted)">
                         <tr>
                             {columns.map((column) => (
                                 <th
                                     key={column.key}
-                                    className={column.headerClassName ?? "px-4 py-3 font-medium"}
+                                    className={withNumeric(
+                                        column.headerClassName ?? "px-3 py-2.75 font-medium",
+                                        column.numeric,
+                                    )}
                                 >
                                     {column.header}
                                 </th>
@@ -160,11 +172,14 @@ export function DataTable<T>({
                                 return <Fragment key={key}>{renderRowAction(row)}</Fragment>;
                             }
                             return (
-                                <tr className="transition-colors hover:bg-(--card-70)" key={key}>
+                                <tr className="transition-colors hover:bg-background" key={key}>
                                     {columns.map((column) => (
                                         <td
                                             key={column.key}
-                                            className={column.className ?? "px-4 py-3"}
+                                            className={withNumeric(
+                                                column.className ?? "px-3 py-3.25",
+                                                column.numeric,
+                                            )}
                                         >
                                             {column.render(row)}
                                         </td>
