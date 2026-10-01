@@ -16,6 +16,7 @@ vi.mock("./actions", () => ({ fetchFlagPage: vi.fn() }));
 vi.mock("@/components/shell/PageHeader", () => ({
     PageHeader: ({ title }: { title: string }) => <h1>{title}</h1>,
 }));
+vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => <div data-testid="scope-bar" /> }));
 vi.mock("@/components/feature-flags/FeatureFlagTable", () => ({
     FeatureFlagTable: () => <div data-testid="flag-table" />,
 }));
