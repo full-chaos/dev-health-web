@@ -6,7 +6,9 @@ import { useCallback, useMemo } from "react";
 import { HeatmapChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
-import { useChartColors, useChartTheme } from "./chartTheme";
+import { HeatmapScaleLegend } from "./HeatmapScaleLegend";
+import { useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
+import { pickTextColor, rampColor, rampPosition } from "@/lib/heatmapRamp";
 import { echarts } from "@/lib/echartsInit";
 import { calcPercent } from "@/lib/chartUtils";
 import { formatNumber, formatPercent } from "@/lib/formatters";
@@ -71,6 +73,7 @@ export function TransitionHeatmapChart({
 }: TransitionHeatmapChartProps) {
     const chartTheme = useChartTheme();
     const chartColors = useChartColors();
+    const { seq } = useChartTokens();
     const mergedStyle: CSSProperties = { height, width, ...style };
 
     // Filter data based on threshold
@@ -102,28 +105,27 @@ export function TransitionHeatmapChart({
         return totals;
     }, [filteredData]);
 
-    // Build heatmap data: [xIndex, yIndex, value, rawValue, fromState, toState]
+    const maxValue = useMemo(() => {
+        return Math.max(...filteredData.map((d) => d.count), 1);
+    }, [filteredData]);
+    const minValue = useMemo(() => {
+        return Math.min(...filteredData.map((d) => d.count), maxValue);
+    }, [filteredData, maxValue]);
+
+    // Build heatmap data: [xIndex, yIndex, value, rawValue, fromState, toState].
+    // Each cell takes its step of the one-hue ramp, and a label color that reads on it.
     const heatmapData = useMemo(() => {
         return filteredData.map((d) => {
             const xIndex = toStates.indexOf(d.toStatus);
             const yIndex = fromStates.indexOf(d.fromStatus);
-            return [xIndex, yIndex, d.count, d.count, d.fromStatus, d.toStatus];
+            const fill = rampColor(rampPosition(d.count, minValue, maxValue), seq);
+            return {
+                value: [xIndex, yIndex, d.count, d.count, d.fromStatus, d.toStatus],
+                itemStyle: { color: fill },
+                label: { color: pickTextColor(fill, [chartTheme.text, chartTheme.background]) },
+            };
         });
-    }, [filteredData, fromStates, toStates]);
-
-    const maxValue = useMemo(() => {
-        return Math.max(...filteredData.map((d) => d.count), 1);
-    }, [filteredData]);
-
-    // Color ramp for heatmap
-    const colorRamp = useMemo(
-        () => [
-            chartColors[5] ?? "#e2e8f0",
-            chartColors[0] ?? "#60a5fa",
-            chartColors[8] ?? "#f97316",
-        ],
-        [chartColors],
-    );
+    }, [filteredData, fromStates, toStates, seq, minValue, maxValue, chartTheme]);
 
     const handleClick = useCallback(
         (params: unknown) => {
@@ -184,7 +186,7 @@ export function TransitionHeatmapChart({
                 left: 100,
                 right: 48,
                 top: 24,
-                bottom: 80,
+                bottom: 56,
                 containLabel: false,
             },
             xAxis: {
@@ -222,16 +224,6 @@ export function TransitionHeatmapChart({
                 axisLine: { lineStyle: { color: chartTheme.grid } },
                 axisLabel: { color: chartTheme.muted, fontSize: 10 },
             },
-            visualMap: {
-                min: 0,
-                max: maxValue,
-                calculable: false,
-                orient: "horizontal" as const,
-                left: "center",
-                bottom: 0,
-                textStyle: { color: chartTheme.muted },
-                inRange: { color: colorRamp },
-            },
             series: [
                 {
                     type: "heatmap" as const,
@@ -251,7 +243,7 @@ export function TransitionHeatmapChart({
                     emphasis: {
                         itemStyle: {
                             shadowBlur: 10,
-                            shadowColor: "rgba(0, 0, 0, 0.3)",
+                            shadowColor: chartTheme.muted,
                         },
                     },
                     itemStyle: {
@@ -261,17 +253,19 @@ export function TransitionHeatmapChart({
                 },
             ],
         }),
-        [fromStates, toStates, heatmapData, maxValue, colorRamp, unit, chartTheme, outgoingTotals],
+        [fromStates, toStates, heatmapData, unit, chartTheme, outgoingTotals],
     );
 
     return (
-        <Chart
-            option={option}
-            className={className}
-            style={mergedStyle}
-            onEvents={{ click: handleClick }}
-            chartTheme={chartTheme}
-            chartColors={chartColors}
-        />
+        <div className={className}>
+            <Chart
+                option={option}
+                style={mergedStyle}
+                onEvents={{ click: handleClick }}
+                chartTheme={chartTheme}
+                chartColors={chartColors}
+            />
+            <HeatmapScaleLegend min={minValue} max={maxValue} unit={unit} className="mt-2 px-12" />
+        </div>
     );
 }

@@ -9,7 +9,9 @@ import { HeatmapChart as EChartsHeatmapChart } from "echarts/charts";
 import type { HeatmapResponse } from "@/lib/types";
 
 import { Chart } from "./Chart";
-import { useChartColors, useChartTheme } from "./chartTheme";
+import { HeatmapScaleLegend } from "./HeatmapScaleLegend";
+import { useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
+import { rampColor, rampPosition } from "@/lib/heatmapRamp";
 import { echarts } from "@/lib/echartsInit";
 import { formatNumber } from "@/lib/formatters";
 
@@ -34,28 +36,34 @@ export function HeatmapChart({
 }: HeatmapChartProps) {
     const chartTheme = useChartTheme();
     const chartColors = useChartColors();
+    const { seq } = useChartTokens();
     const mergedStyle: CSSProperties = { height, width, ...style };
 
     const rawValues = data.cells.map((cell) => cell.value);
-    const valueForColor = (value: number) =>
-        data.legend.scale === "log" ? Math.log10(value + 1) : value;
+    const minValue = rawValues.length ? Math.min(...rawValues) : 0;
+    const maxValue = rawValues.length ? Math.max(...rawValues) : 0;
+    const scale = data.legend.scale;
 
-    const colorValues = rawValues.map(valueForColor);
-    const minValue = colorValues.length ? Math.min(...colorValues) : 0;
-    const maxValue = colorValues.length ? Math.max(...colorValues) : 1;
-
-    const colorRamp = [
-        chartColors[5] ?? "#e2e8f0",
-        chartColors[0] ?? "#60a5fa",
-        chartColors[8] ?? "#f97316",
-    ];
-
-    const seriesData = data.cells.map((cell) => [
-        cell.x,
-        cell.y,
-        valueForColor(cell.value),
-        cell.value,
-    ]);
+    // Cells with data get a step of the one-hue ramp. A cell with no data is a distinct
+    // neutral (the card surface), never the lightest step: missing is not zero.
+    const seen = new Set(data.cells.map((cell) => `${cell.x}\u0000${cell.y}`));
+    const seriesData: Array<{
+        value: [string, string, number | string, (number | string)?];
+        itemStyle: { color: string };
+    }> = data.cells.map((cell) => ({
+        value: [cell.x, cell.y, cell.value, cell.value],
+        itemStyle: { color: rampColor(rampPosition(cell.value, minValue, maxValue, scale), seq) },
+    }));
+    for (const x of data.axes.x) {
+        for (const y of data.axes.y) {
+            if (!seen.has(`${x}\u0000${y}`)) {
+                seriesData.push({
+                    value: [x, y, "-"],
+                    itemStyle: { color: chartTheme.background },
+                });
+            }
+        }
+    }
 
     const getValueArray = (params: unknown) => {
         const entry = Array.isArray(params) ? params[0] : params;
@@ -83,75 +91,77 @@ export function HeatmapChart({
     };
 
     return (
-        <Chart
-            option={{
-                tooltip: {
-                    confine: true,
-                    backgroundColor: chartTheme.background,
-                    borderColor: chartTheme.stroke,
-                    textStyle: {
-                        color: chartTheme.text,
-                    },
-                    formatter: (params: TooltipComponentFormatterCallbackParams) => {
-                        const values = getValueArray(params);
-                        if (!values) {
-                            return "No data for this cell";
-                        }
-                        const raw = values[3] ?? values[2];
-                        const xLabel = values[0];
-                        const yLabel = values[1];
-                        const formatted =
-                            typeof raw === "number"
-                                ? formatNumber(raw, { maximumFractionDigits: 2 })
-                                : raw;
-                        return [
-                            `<strong>${yLabel}</strong> · ${xLabel}`,
-                            `${formatted} ${data.legend.unit}`,
-                        ].join("<br/>");
-                    },
-                },
-                grid: { left: 32, right: 32, top: 24, bottom: 48, containLabel: true },
-                xAxis: {
-                    type: "category",
-                    data: data.axes.x,
-                    axisTick: { show: false },
-                    axisLine: { lineStyle: { color: chartTheme.grid } },
-                    axisLabel: { color: chartTheme.muted, interval: 0 },
-                },
-                yAxis: {
-                    type: "category",
-                    data: data.axes.y,
-                    axisTick: { show: false },
-                    axisLine: { lineStyle: { color: chartTheme.grid } },
-                    axisLabel: { color: chartTheme.muted },
-                },
-                visualMap: {
-                    min: minValue,
-                    max: maxValue,
-                    calculable: false,
-                    orient: "horizontal",
-                    left: "center",
-                    bottom: 0,
-                    textStyle: { color: chartTheme.muted },
-                    inRange: { color: colorRamp },
-                },
-                series: [
-                    {
-                        type: "heatmap",
-                        data: seriesData,
-                        encode: { value: 2 },
-                        emphasis: {
-                            itemStyle: { shadowBlur: 8, shadowColor: "rgba(0,0,0,0.2)" },
+        <div className={className}>
+            <Chart
+                option={{
+                    tooltip: {
+                        confine: true,
+                        backgroundColor: chartTheme.background,
+                        borderColor: chartTheme.stroke,
+                        textStyle: {
+                            color: chartTheme.text,
                         },
-                        itemStyle: { borderColor: chartTheme.grid, borderWidth: 1 },
+                        formatter: (params: TooltipComponentFormatterCallbackParams) => {
+                            const values = getValueArray(params);
+                            if (!values) {
+                                return "No data for this cell";
+                            }
+                            const raw = values[3] ?? values[2];
+                            const xLabel = values[0];
+                            const yLabel = values[1];
+                            if (raw === "-") {
+                                return [`<strong>${yLabel}</strong> · ${xLabel}`, "No data"].join(
+                                    "<br/>",
+                                );
+                            }
+                            const formatted =
+                                typeof raw === "number"
+                                    ? formatNumber(raw, { maximumFractionDigits: 2 })
+                                    : raw;
+                            return [
+                                `<strong>${yLabel}</strong> · ${xLabel}`,
+                                `${formatted} ${data.legend.unit}`,
+                            ].join("<br/>");
+                        },
                     },
-                ],
-            }}
-            className={className}
-            style={mergedStyle}
-            onEvents={{ click: handleClick }}
-            chartTheme={chartTheme}
-            chartColors={chartColors}
-        />
+                    grid: { left: 32, right: 32, top: 24, bottom: 24, containLabel: true },
+                    xAxis: {
+                        type: "category",
+                        data: data.axes.x,
+                        axisTick: { show: false },
+                        axisLine: { lineStyle: { color: chartTheme.grid } },
+                        axisLabel: { color: chartTheme.muted, interval: 0 },
+                    },
+                    yAxis: {
+                        type: "category",
+                        data: data.axes.y,
+                        axisTick: { show: false },
+                        axisLine: { lineStyle: { color: chartTheme.grid } },
+                        axisLabel: { color: chartTheme.muted },
+                    },
+                    series: [
+                        {
+                            type: "heatmap",
+                            data: seriesData,
+                            emphasis: {
+                                itemStyle: { shadowBlur: 8, shadowColor: chartTheme.muted },
+                            },
+                            itemStyle: { borderColor: chartTheme.grid, borderWidth: 1 },
+                        },
+                    ],
+                }}
+                style={mergedStyle}
+                onEvents={{ click: handleClick }}
+                chartTheme={chartTheme}
+                chartColors={chartColors}
+            />
+            <HeatmapScaleLegend
+                min={minValue}
+                max={maxValue}
+                unit={data.legend.unit}
+                scale={scale}
+                className="mt-2 px-8"
+            />
+        </div>
     );
 }

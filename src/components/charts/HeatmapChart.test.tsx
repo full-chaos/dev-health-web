@@ -31,10 +31,15 @@ const { chartSpy } = vi.hoisted(() => ({
     chartSpy: vi.fn(),
 }));
 
-vi.mock("./chartTheme", () => ({
-    useChartTheme: () => chartTheme,
-    useChartColors: () => chartColors,
-}));
+vi.mock("./chartTheme", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("./chartTheme")>();
+    return {
+        ...actual,
+        useChartTheme: () => chartTheme,
+        useChartColors: () => chartColors,
+        useChartTokens: () => actual.fallbackTokens,
+    };
+});
 
 vi.mock("./Chart", () => ({
     Chart: (props: unknown) => {
@@ -71,22 +76,26 @@ describe("HeatmapChart", () => {
     });
 
     it("renders with sample data and forwards props", () => {
-        render(<HeatmapChart data={sampleData} className="grid-heatmap" width={640} />);
+        const { container } = render(
+            <HeatmapChart data={sampleData} className="grid-heatmap" width={640} />,
+        );
 
         const props = chartSpy.mock.calls[0][0] as {
-            className: string;
             style: { width: number; height: number };
             option: {
-                series: Array<{ data: unknown[] }>;
-                visualMap: { min: number; max: number };
+                series: Array<{ data: Array<{ value: unknown[] }> }>;
             };
             onEvents: { click: (params: unknown) => void };
         };
 
-        expect(props.className).toBe("grid-heatmap");
+        expect(container.firstElementChild).toHaveClass("grid-heatmap");
         expect(props.style).toMatchObject({ width: 640, height: 320 });
-        expect(props.option.series[0]?.data).toHaveLength(2);
-        expect(props.option.visualMap).toMatchObject({ min: 3, max: 7 });
+        // 2 cells with data, plus the 2 grid positions with no data (drawn as a neutral, not 0).
+        const data = props.option.series[0]?.data ?? [];
+        expect(data).toHaveLength(4);
+        expect(data.filter((item) => item.value[2] === "-")).toHaveLength(2);
+        expect(screen.getByTestId("heatmap-scale-min")).toHaveTextContent("3");
+        expect(screen.getByTestId("heatmap-scale-max")).toHaveTextContent("7 hours");
         expect(typeof props.onEvents.click).toBe("function");
     });
 
@@ -104,13 +113,11 @@ describe("HeatmapChart", () => {
         const props = chartSpy.mock.calls[0][0] as {
             option: {
                 series: Array<{ data: unknown[] }>;
-                visualMap: { min: number; max: number };
             };
             onEvents: { click: (params: unknown) => void };
         };
 
         expect(props.option.series[0]?.data).toHaveLength(0);
-        expect(props.option.visualMap).toMatchObject({ min: 0, max: 1 });
         expect(() => props.onEvents.click(null)).not.toThrow();
     });
 });
