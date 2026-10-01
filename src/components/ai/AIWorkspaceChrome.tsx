@@ -5,11 +5,21 @@ import { useSearchParams } from "next/navigation";
 
 import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { BackLink } from "@/components/shared/BackLink";
+import { useInShell } from "@/components/shell/ShellContext";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { AITabNav } from "./AITabNav";
 
+/**
+ * Chrome of the AI area for the pages that are not in the shared app shell yet:
+ * navigation, `<main>`, the area header and the AI tab strip.
+ *
+ * On a route in the shared app shell the layout owns the navigation and
+ * `<main>`, and the page brings its own header: this renders the page only. It
+ * lets the AI pages move one at a time; it is deleted when the last has moved.
+ */
 export function AIWorkspaceChrome({ children }: { children: ReactNode }) {
+    const inShell = useInShell();
     const searchParams = useSearchParams();
 
     const { filters, role } = useMemo(() => {
@@ -26,6 +36,10 @@ export function AIWorkspaceChrome({ children }: { children: ReactNode }) {
         });
         return { filters: filterFromQueryParams(params), role: roleParam };
     }, [searchParams]);
+
+    if (inShell) {
+        return <>{children}</>;
+    }
 
     return (
         <div className="min-h-screen bg-background text-foreground">
