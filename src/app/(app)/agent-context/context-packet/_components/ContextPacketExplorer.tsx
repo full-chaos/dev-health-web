@@ -63,6 +63,7 @@ export function ContextPacketExplorer({
         live ? null : SAMPLE_CONTEXT_PACKET,
     );
     const goalRef = useRef<HTMLTextAreaElement>(null);
+    const formRef = useRef<HTMLFormElement>(null);
     const liveRequestGeneration = useRef(0);
     const activeState =
         controlledState === "sample" && submitted !== null ? submitted : controlledState;
@@ -72,6 +73,13 @@ export function ContextPacketExplorer({
         const frame = requestAnimationFrame(() => setSubmitted("sample"));
         return () => cancelAnimationFrame(frame);
     }, [live, submitted]);
+
+    // Signal for the browser tests: set once React has attached the form's handlers. A click on
+    // "Generate context" before this point is a native submit (the form has `noValidate` and no
+    // handler yet), so the goal error and its focus never appear.
+    useEffect(() => {
+        formRef.current?.setAttribute("data-hydrated", "true");
+    }, []);
 
     useEffect(() => {
         return () => {
@@ -160,6 +168,7 @@ export function ContextPacketExplorer({
                 </p>
             </header>
             <form
+                ref={formRef}
                 className="rounded-(--radius-lg) border border-(--card-stroke) bg-(--card-80) p-6"
                 data-testid="context-packet-form"
                 noValidate
