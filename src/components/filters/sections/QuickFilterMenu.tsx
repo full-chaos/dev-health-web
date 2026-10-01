@@ -13,6 +13,8 @@ type QuickFilterMenuProps = {
     variant?: "default" | "accent";
     /** Optional selection summary rendered in the trigger (e.g. "All", "org/api", "2 selected"). */
     value?: string;
+    /** The selection is fixed: the trigger does not open the menu. */
+    disabled?: boolean;
 };
 
 export function QuickFilterMenu({
@@ -27,6 +29,7 @@ export function QuickFilterMenu({
     toggleValue,
     variant = "accent",
     value,
+    disabled,
 }: QuickFilterMenuProps) {
     const isActive = active.length > 0;
 
@@ -34,6 +37,7 @@ export function QuickFilterMenu({
         <div className="relative">
             <button
                 type="button"
+                disabled={disabled}
                 onClick={() => setOpenMenu(openMenu === menuKey ? null : menuKey)}
                 className={`flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs ${
                     variant === "accent" && isActive ? "border-(--accent) text-(--accent-text)" : ""

@@ -17,7 +17,7 @@ export function TrialStatusBanner({
         <div
             className={`mt-4 max-w-sm rounded-lg border p-4 ${
                 isTrialWarning
-                    ? "border-amber-500/30 bg-amber-500/10"
+                    ? "border-(--caution)/30 bg-(--caution)/12"
                     : "border-(--card-stroke) bg-(--card-80)"
             }`}
         >
@@ -27,9 +27,7 @@ export function TrialStatusBanner({
                 </span>
                 <span
                     className={`text-xl font-bold ${
-                        isTrialWarning
-                            ? "text-amber-600 dark:text-amber-500"
-                            : "text-(--foreground)"
+                        isTrialWarning ? "text-(--caution)" : "text-(--foreground)"
                     }`}
                 >
                     {trialDaysRemaining} days left
@@ -39,7 +37,7 @@ export function TrialStatusBanner({
             <div className="h-2 w-full overflow-hidden rounded-full bg-black/10 dark:bg-white/10">
                 <div
                     className={`h-full rounded-full transition-all duration-500 ${
-                        isTrialWarning ? "bg-amber-500" : "bg-(--accent)"
+                        isTrialWarning ? "bg-(--caution)" : "bg-(--accent)"
                     }`}
                     style={{ width: `${trialProgress}%` }}
                 />

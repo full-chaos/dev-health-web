@@ -5,6 +5,7 @@ import { ShellStatusChip, shellStatusFromOrganization, type ShellStatus } from "
 import { ShellTopBar } from "./ShellTopBar";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
+import { encodeSecurityFilter } from "@/lib/filters/security";
 import type { MetricFilter } from "@/lib/filters/types";
 import { withFilterParam } from "@/lib/filters/url";
 
@@ -112,6 +113,34 @@ describe("ShellTopBar — a crumb link is the return path and keeps the user's s
         expect(url.searchParams.has("lens")).toBe(false);
         expect(url.searchParams.has("origin")).toBe(false);
     });
+});
+
+describe("ShellTopBar — a route with its own `f` encoding (Security)", () => {
+    const SECURITY_F = encodeSecurityFilter({
+        openOnly: false,
+        severities: ["critical"],
+        repoIds: ["repo-1"],
+    });
+    const DEFAULT_F = encodeFilterParam(defaultMetricFilter);
+
+    it.each(["/security", "/security/repos/repo-1"])(
+        "%s: the crumb links carry the default metric filter, not the Security filter",
+        (pathname) => {
+            navigationMock.pathname = pathname;
+            navigationMock.search = `f=${SECURITY_F}`;
+            render(<ShellTopBar status={LOADING} />);
+
+            const links = within(
+                screen.getByRole("navigation", { name: "Breadcrumb" }),
+            ).getAllByRole("link");
+            expect(links.length).toBeGreaterThan(0);
+            for (const link of links) {
+                const href = link.getAttribute("href") ?? "";
+                const params = new URL(href, "https://app.example").searchParams;
+                expect(params.get("f"), href).toBe(DEFAULT_F);
+            }
+        },
+    );
 });
 
 describe("ShellTopBar — theme toggle slot", () => {

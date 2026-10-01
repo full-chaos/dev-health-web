@@ -6,12 +6,15 @@ const checkApiHealthMock = vi.fn();
 const requireSessionMock = vi.fn();
 const getThroughputForecastViaGraphQLMock = vi.fn();
 
-vi.mock("@/components/navigation/GlobalContextBar", () => ({
-    GlobalContextBar: () => <div data-testid="global-context-bar" />,
-}));
+const scopeBarSpy = vi.fn();
 
-vi.mock("@/components/navigation/PrimaryNav", () => ({
-    PrimaryNav: () => <nav data-testid="primary-nav" />,
+// The page is in the shared app shell: the layout owns the navigation, and the
+// page has one scope bar.
+vi.mock("@/components/shell/ScopeBar", () => ({
+    ScopeBar: (props: Record<string, unknown>) => {
+        scopeBarSpy(props);
+        return <section data-testid="scope-bar" />;
+    },
 }));
 
 vi.mock("@/lib/api/system", () => ({
@@ -277,6 +280,30 @@ describe("ForecastContent", () => {
         // DataState detail copy must never expose implementation vocabulary
         expect(screen.queryByText(/wip_age_p90_hours/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/rollup/i)).not.toBeInTheDocument();
+    });
+});
+
+describe("BacklogRiskPage in the shared app shell", () => {
+    it("has the shared header: one h1 and the subtitle, and no in-page back link", async () => {
+        await renderPage({ origin: "cockpit" });
+
+        const headings = screen.getAllByRole("heading", { level: 1 });
+        expect(headings).toHaveLength(1);
+        expect(headings[0]).toHaveTextContent("Backlog Risk");
+        expect(
+            screen.getByText(
+                "WIP congestion, stale items, and unestimated debt — signals that reduce delivery predictability before they appear in cycle time.",
+            ),
+        ).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: /Back to/ })).toBeNull();
+        expect(screen.queryByRole("main")).toBeNull();
+    });
+
+    it("has one scope bar with no page filters and the origin: the page had the global context bar alone", async () => {
+        await renderPage({ origin: "cockpit" });
+
+        expect(scopeBarSpy).toHaveBeenCalledWith({ pageFilters: false, origin: "cockpit" });
+        expect(screen.getAllByTestId("scope-bar")).toHaveLength(1);
     });
 });
 

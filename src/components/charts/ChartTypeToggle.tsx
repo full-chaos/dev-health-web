@@ -13,6 +13,8 @@ type ChartTypeToggleProps<T extends string = string> = {
     value: T;
     onChangeAction: (value: T) => void;
     className?: string;
+    /** Accessible name of the radio group. */
+    ariaLabel?: string;
 };
 
 /**
@@ -24,12 +26,13 @@ export function ChartTypeToggle<T extends string = string>({
     value,
     onChangeAction,
     className = "",
+    ariaLabel = "Chart type",
 }: ChartTypeToggleProps<T>) {
     return (
         <div
             className={`inline-flex rounded-lg border border-(--card-stroke) bg-(--card-70) p-0.5 ${className}`}
             role="radiogroup"
-            aria-label="Chart type"
+            aria-label={ariaLabel}
         >
             {options.map((option) => {
                 const isActive = option.id === value;

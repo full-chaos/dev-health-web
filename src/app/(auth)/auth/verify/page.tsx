@@ -50,7 +50,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
                 <div className="mt-8 bg-[var(--card)] py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-[var(--card-stroke)]">
                     {success ? (
                         <div className="space-y-6">
-                            <div className="p-4 text-sm text-green-400 bg-green-950/50 rounded-md border border-green-800 text-center">
+                            <div className="p-4 text-sm text-(--positive) bg-(--positive)/12 rounded-md border border-(--positive)/30 text-center">
                                 {message}. You can now sign in.
                             </div>
                             <Link
