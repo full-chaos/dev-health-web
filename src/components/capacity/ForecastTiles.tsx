@@ -30,7 +30,7 @@ function Tile({
             data-testid={testId}
             className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6"
         >
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex min-h-6 items-center justify-between gap-2">
                 <p className="text-xs uppercase tracking-[0.18em] text-(--text-muted)">{label}</p>
                 {pill ? (
                     <span
@@ -47,7 +47,7 @@ function Tile({
 }
 
 const daysCaption = (days: number | undefined) =>
-    typeof days === "number" ? `${days} days` : undefined;
+    typeof days === "number" ? `${days} ${days === 1 ? "day" : "days"}` : undefined;
 
 /**
  * The forecast as tiles: remaining work and the three percentile dates. The

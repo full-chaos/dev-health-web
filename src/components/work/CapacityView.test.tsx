@@ -86,6 +86,14 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         });
     });
 
+    it("says 1 day, not 1 days, in a tile caption", () => {
+        hook.state.data = forecast({ p50Days: 1, p85Days: 2, p95Days: 3 });
+        render(<CapacityView filters={filters} />);
+
+        expect(within(screen.getByTestId("tile-p50")).getByText("1 day")).toBeInTheDocument();
+        expect(within(screen.getByTestId("tile-p85")).getByText("2 days")).toBeInTheDocument();
+    });
+
     it("shows the forecast inputs: mean and standard deviation per day, history, remaining items", () => {
         render(<CapacityView filters={filters} />);
 
