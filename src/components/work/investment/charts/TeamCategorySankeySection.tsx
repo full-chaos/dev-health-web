@@ -13,6 +13,7 @@ import { computeSankeyMetrics, filterSankeyToTeam } from "@/lib/sankey";
 import {
     computeSelectedPath,
     filterSankeyToEntity,
+    findClickedNode,
     type SelectedEntity,
 } from "@/lib/allocationSelection";
 import { SelectedPathPanel } from "./SelectedPathPanel";
@@ -449,7 +450,7 @@ export function TeamCategorySankeySection({
                             onItemClickAction={(item) => {
                                 if (!sankeyFlow) return;
                                 if (item.type === "node") {
-                                    const node = sankeyFlow.nodes.find((n) => n.name === item.name);
+                                    const node = findClickedNode(sankeyFlow.nodes, item.name);
                                     if (node?.group === "team") {
                                         handleTeamFocus(stripSankeyPrefix(node.name));
                                         return;

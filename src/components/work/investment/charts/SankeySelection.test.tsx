@@ -35,14 +35,14 @@ const teamFlow: SankeyResponse = {
         { name: "Beta", group: "team" },
         { name: "Risk", group: "category" },
         { name: "Quality", group: "category" },
-        { name: "repo-a", group: "repo" },
-        { name: "repo-b", group: "repo" },
+        { name: "acme/repo-a", group: "repo" },
+        { name: "acme/repo-b", group: "repo" },
     ],
     links: [
         { source: "Alpha", target: "Risk", value: 6 },
         { source: "Beta", target: "Quality", value: 4 },
-        { source: "Risk", target: "repo-a", value: 6 },
-        { source: "Quality", target: "repo-b", value: 4 },
+        { source: "Risk", target: "acme/repo-a", value: 6 },
+        { source: "Quality", target: "acme/repo-b", value: 4 },
     ],
     coverage: { team: 1, repo: 1 },
 };
@@ -51,8 +51,8 @@ const baseline: SankeyResponse = {
     links: [
         { source: "Alpha", target: "Risk", value: 5 },
         { source: "Beta", target: "Quality", value: 15 },
-        { source: "Risk", target: "repo-a", value: 5 },
-        { source: "Quality", target: "repo-b", value: 15 },
+        { source: "Risk", target: "acme/repo-a", value: 5 },
+        { source: "Quality", target: "acme/repo-b", value: 15 },
     ],
 };
 const destFlow: SankeyResponse = {
@@ -60,15 +60,15 @@ const destFlow: SankeyResponse = {
     nodes: [
         { name: "Bugfix", group: "subcategory" },
         { name: "Debt", group: "subcategory" },
-        { name: "repo-a", group: "repo" },
-        { name: "repo-b", group: "repo" },
+        { name: "acme/repo-a", group: "repo" },
+        { name: "acme/repo-b", group: "repo" },
         { name: "Platform", group: "team" },
     ],
     links: [
-        { source: "Bugfix", target: "repo-a", value: 3 },
-        { source: "Debt", target: "repo-b", value: 1 },
-        { source: "repo-a", target: "Platform", value: 3 },
-        { source: "repo-b", target: "Platform", value: 1 },
+        { source: "Bugfix", target: "acme/repo-a", value: 3 },
+        { source: "Debt", target: "acme/repo-b", value: 1 },
+        { source: "acme/repo-a", target: "Platform", value: 3 },
+        { source: "acme/repo-b", target: "Platform", value: 1 },
     ],
 };
 
@@ -135,17 +135,17 @@ describe("the allocation switch", () => {
 });
 
 describe("selecting a repo or subcategory filters the chart to that entity", () => {
-    it("repo in Team -> Theme -> Repo: only the repo and the flows touching it, chip + panel", () => {
+    it("repo in Team -> Theme -> Repo (found by the shortened name the chart reports): only the repo and the flows touching it, chip + panel", () => {
         renderSwitch();
         click({ type: "node", name: "repo-b" });
         expect(
             chart()
                 .nodes.map((n) => n.name)
                 .sort(),
-        ).toEqual(["Quality", "repo-b"]);
-        expect(chart().links).toEqual([{ source: "Quality", target: "repo-b", value: 4 }]);
-        expect(screen.getByText(/Selected: Repo = repo-b/)).toBeInTheDocument();
-        expect(screen.getByTestId("selected-path-title")).toHaveTextContent("repo-b");
+        ).toEqual(["Quality", "acme/repo-b"]);
+        expect(chart().links).toEqual([{ source: "Quality", target: "acme/repo-b", value: 4 }]);
+        expect(screen.getByText(/Selected: Repo = acme\/repo-b/)).toBeInTheDocument();
+        expect(screen.getByTestId("selected-path-title")).toHaveTextContent("acme/repo-b");
         expect(screen.getByTestId("selected-path-allocated")).toHaveTextContent("4 work units");
         expect(screen.getByTestId("selected-path-share")).toHaveTextContent("40%");
         expect(screen.getByTestId("selected-path-baseline")).toHaveTextContent("75%");
@@ -161,7 +161,7 @@ describe("selecting a repo or subcategory filters the chart to that entity", () 
         expect(screen.queryByText(/Selected: Repo/)).not.toBeInTheDocument();
         expect(chart().nodes).toHaveLength(6);
         click({ type: "node", name: "repo-a" });
-        fireEvent.click(screen.getByText(/Selected: Repo = repo-a/));
+        fireEvent.click(screen.getByText(/Selected: Repo = acme\/repo-a/));
         expect(chart().nodes).toHaveLength(6);
         expect(screen.getByTestId("selected-path-empty")).toBeInTheDocument();
     });
@@ -181,7 +181,7 @@ describe("selecting a repo or subcategory filters the chart to that entity", () 
             chart()
                 .nodes.map((n) => n.name)
                 .sort(),
-        ).toEqual(["Bugfix", "repo-a"]);
+        ).toEqual(["Bugfix", "acme/repo-a"]);
         expect(screen.getByText(/Selected: Subcategory = Bugfix/)).toBeInTheDocument();
         expect(screen.getByTestId("selected-path-share")).toHaveTextContent("75%");
     });
@@ -223,7 +223,7 @@ describe("team and theme keep production's drill; the panel is its side view", (
             chart()
                 .nodes.map((n) => n.name)
                 .sort(),
-        ).toEqual(["Alpha", "Risk", "repo-a"]);
+        ).toEqual(["Alpha", "Risk", "acme/repo-a"]);
         expect(screen.getByTestId("selected-path-title")).toHaveTextContent("Alpha");
         expect(screen.getByTestId("selected-path-allocated")).toHaveTextContent("6 work units");
         // 6 of 10 in the unfiltered flow, baseline 5 of 20

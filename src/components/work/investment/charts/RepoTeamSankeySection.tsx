@@ -6,6 +6,7 @@ import {
     computeSelectedPath,
     entityKindForGroup,
     filterSankeyToEntity,
+    findClickedNode,
     type SelectedEntity,
 } from "@/lib/allocationSelection";
 import { SelectedPathPanel } from "./SelectedPathPanel";
@@ -179,9 +180,10 @@ export function RepoTeamSankeySection({
                             onItemClickAction={(item) => {
                                 if (item.type === "node") {
                                     const normalized = stripSankeyPrefix(item.name ?? "");
-                                    const node = repoTeamNodes.find(
-                                        (entry) => stripSankeyPrefix(entry.name) === normalized,
-                                    );
+                                    const node =
+                                        repoTeamNodes.find(
+                                            (entry) => stripSankeyPrefix(entry.name) === normalized,
+                                        ) ?? findClickedNode(repoTeamNodes, item.name);
                                     if (node?.group === "subcategory") {
                                         const subId = resolveSubcategoryIdFromLabel(node.name);
                                         if (subId) setFocusSubcategory(subId);

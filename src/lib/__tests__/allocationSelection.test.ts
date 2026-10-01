@@ -5,6 +5,7 @@ import {
     computeSelectedPath,
     entityKindForGroup,
     filterSankeyToEntity,
+    findClickedNode,
 } from "../allocationSelection";
 
 const flow: SankeyResponse = {
@@ -108,5 +109,18 @@ describe("entityKindForGroup", () => {
         expect(entityKindForGroup("subcategory")).toBe("subcategory");
         expect(entityKindForGroup("repo")).toBe("repo");
         expect(entityKindForGroup(undefined)).toBeNull();
+    });
+});
+
+describe("findClickedNode", () => {
+    const nodes = [
+        { name: "full-chaos/dev-health-acr", group: "repo" },
+        { name: "Alpha", group: "team" },
+    ];
+    it("matches the exact name, then the displayed (shortened) name", () => {
+        expect(findClickedNode(nodes, "Alpha")?.group).toBe("team");
+        expect(findClickedNode(nodes, "dev-health-acr")?.name).toBe("full-chaos/dev-health-acr");
+        expect(findClickedNode(nodes, "nope")).toBeUndefined();
+        expect(findClickedNode(nodes, undefined)).toBeUndefined();
     });
 });

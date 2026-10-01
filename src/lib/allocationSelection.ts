@@ -1,3 +1,4 @@
+import { chartEntityLabel } from "@/lib/labels/entityLabel";
 import { computeSankeyMetrics } from "@/lib/sankey";
 import type { SankeyLink, SankeyNode } from "@/lib/types";
 
@@ -86,4 +87,17 @@ export const computeSelectedPath = ({
         baselineShare,
         changePp: share !== null && baselineShare !== null ? share - baselineShare : null,
     };
+};
+
+/**
+ * The node a chart click names. The chart reports the node's DISPLAY name (a path-like
+ * "owner/repo" is shortened to its last segment), so match the exact name first and the
+ * displayed name second.
+ */
+export const findClickedNode = (nodes: SankeyNode[], clickedName: string | undefined) => {
+    if (!clickedName) return undefined;
+    return (
+        nodes.find((node) => node.name === clickedName) ??
+        nodes.find((node) => chartEntityLabel(node.name) === clickedName)
+    );
 };
