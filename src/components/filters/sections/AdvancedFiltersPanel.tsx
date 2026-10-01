@@ -89,6 +89,7 @@ export function AdvancedFiltersPanel({
             )}
             {showWhy && (
                 <WhySection
+                    showIssueType={visibility.issueType !== false}
                     issueType={issueType}
                     toList={toList}
                     toValue={toValue}

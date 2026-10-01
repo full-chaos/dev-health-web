@@ -156,3 +156,20 @@ describe("resolveScopeBarConfig — pageFilters: false", () => {
         });
     });
 });
+
+describe("resolveScopeBarConfig — AI pages (CHAOS-7744)", () => {
+    it("does not offer the Issue type filter on an AI page: no AI query reads it", () => {
+        expect(resolveScopeBarConfig("ai").resolvedVisibility.issueType).toBe(false);
+        expect(resolveVisibility("ai").issueType).toBe(false);
+    });
+
+    it("keeps the Issue type filter wherever it is offered today", () => {
+        for (const view of ALL_VIEWS.filter((v) => v !== "ai")) {
+            expect(resolveVisibility(view).issueType, view).not.toBe(false);
+        }
+    });
+
+    it("keeps the Work control on an AI page: the AIScopeInput queries read it", () => {
+        expect(resolveScopeBarConfig("ai").resolvedVisibility.workType).toBe(true);
+    });
+});

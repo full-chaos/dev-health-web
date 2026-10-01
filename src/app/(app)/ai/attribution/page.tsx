@@ -38,7 +38,7 @@ export default async function AIAttributionPage({ searchParams }: AIAttributionP
                 back={{ href: withFilterParam("/ai", filters, role), area: "AI" }}
             />
 
-            <ScopeBar view="ai" />
+            <ScopeBar view="ai" pageFilters={false} />
             <AIAttributionDashboard filter={aiFilter} />
         </div>
     );

@@ -25,6 +25,8 @@ export type FilterVisibility = {
     repo?: boolean;
     developer?: boolean;
     workType?: boolean;
+    /** Issue type (Why section of the drawer). Default true; false where no query reads it. */
+    issueType?: boolean;
     flowStage?: boolean;
     date?: boolean;
 };
@@ -156,12 +158,14 @@ const RISK_COMPOUNDING_VISIBILITY: FilterVisibility = {
 };
 
 // AI workflow surfaces expose team / repo / work-type scoping but never
-// person-level breakdowns (aggregated reviewer distribution only).
+// person-level breakdowns (aggregated reviewer distribution only). No AI query
+// reads the issue type (CHAOS-7744), so it is not offered.
 const AI_VISIBILITY: FilterVisibility = {
     scope: true,
     repo: true,
     developer: false,
     workType: true,
+    issueType: false,
     flowStage: false,
     date: true,
 };
