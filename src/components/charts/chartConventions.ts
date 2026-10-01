@@ -83,6 +83,18 @@ export const pointSymbolSize = (values: ReadonlyArray<unknown>) => {
         shown.has(params.dataIndex) ? END_DOT_SIZE : 0;
 };
 
+/**
+ * Data items carrying the per-point symbol size, for charts with a legend: the series keeps its own
+ * static `symbolSize` (so the legend glyph is unchanged) and only the points are sized 0 or `END_DOT_SIZE`.
+ */
+export const withPointSymbols = <T extends number | null | undefined>(values: ReadonlyArray<T>) => {
+    const shown = visibleSymbolIndexes(values);
+    return values.map((value, index) => ({
+        value,
+        symbolSize: shown.has(index) ? END_DOT_SIZE : 0,
+    }));
+};
+
 /** A bottom legend in muted text for two or more series; none for one. */
 export const buildLegend = (names: string[], theme: ChartTheme, show = names.length >= 2) =>
     show

@@ -60,16 +60,15 @@ type Opt = {
     legend?: { data: string[] };
     yAxis?: { splitLine?: { lineStyle?: { type?: string } } };
     series: Array<{
-        symbolSize?: (v: unknown, p: { dataIndex: number }) => number;
+        data?: Array<{ symbolSize?: number }>;
+        symbolSize?: number;
         showAllSymbol?: boolean;
         lineStyle?: Record<string, unknown>;
     }>;
 };
 const option = () => (chartSpy.mock.calls.at(-1)?.[0] as { option: Opt }).option;
 const sizes = (series: number, n: number) =>
-    Array.from({ length: n }, (_, dataIndex) =>
-        option().series[series].symbolSize!(undefined, { dataIndex }),
-    );
+    Array.from({ length: n }, (_, i) => option().series[series].data![i].symbolSize);
 const todaysTooltip = (trigger: "axis" | "item") => ({
     trigger,
     confine: true,
@@ -101,6 +100,8 @@ describe("security trend chart conventions", () => {
         expect(sizes(0, 3)).toEqual([0, 0, 8]);
         expect(sizes(1, 3)).toEqual([0, 0, 8]);
         expect(o.series[0].showAllSymbol).toBe(true);
+        // The series keeps a static size: it is what the legend glyph is drawn with.
+        expect(o.series[0].symbolSize).toBe(5);
         expect(o.series[0].lineStyle).toMatchObject({ width: 2, cap: "round", join: "round" });
         expect(o.yAxis?.splitLine?.lineStyle?.type).toBeUndefined();
         expect(o.legend?.data).toEqual(["Opened", "Fixed"]);

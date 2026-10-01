@@ -14,7 +14,7 @@ import {
     buildTooltip,
     dotRing,
     lineMark,
-    pointSymbolSize,
+    withPointSymbols,
 } from "@/components/charts/chartConventions";
 
 import { SkeletonLine } from "@/components/ui/Skeleton";
@@ -72,26 +72,26 @@ export function TrendChart({ points, loading }: TrendChartProps) {
                     type: "line" as const,
                     smooth: true,
                     symbol: "circle",
-                    // A dot only on the last and isolated points (see chartConventions).
+                    // A dot only on the last and isolated points (per-point sizes; the series size is the legend glyph).
                     showAllSymbol: true,
-                    symbolSize: pointSymbolSize(sorted.map((p) => p.opened)),
+                    symbolSize: 5,
                     lineStyle: { ...lineMark, color: OPENED_COLOR },
                     itemStyle: { color: OPENED_COLOR, ...dotRing(chartTheme) },
                     areaStyle: { opacity: 0.1, color: OPENED_COLOR },
-                    data: sorted.map((p) => p.opened),
+                    data: withPointSymbols(sorted.map((p) => p.opened)),
                 },
                 {
                     name: "Fixed",
                     type: "line" as const,
                     smooth: true,
                     symbol: "circle",
-                    // A dot only on the last and isolated points (see chartConventions).
+                    // A dot only on the last and isolated points (per-point sizes; the series size is the legend glyph).
                     showAllSymbol: true,
-                    symbolSize: pointSymbolSize(sorted.map((p) => p.fixed)),
+                    symbolSize: 5,
                     lineStyle: { ...lineMark, color: FIXED_COLOR },
                     itemStyle: { color: FIXED_COLOR, ...dotRing(chartTheme) },
                     areaStyle: { opacity: 0.1, color: FIXED_COLOR },
-                    data: sorted.map((p) => p.fixed),
+                    data: withPointSymbols(sorted.map((p) => p.fixed)),
                 },
             ],
         }),

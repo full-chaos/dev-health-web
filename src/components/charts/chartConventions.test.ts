@@ -8,6 +8,7 @@ import {
     lineMark,
     pointSymbolSize,
     visibleSymbolIndexes,
+    withPointSymbols,
 } from "./chartConventions";
 
 const theme = {
@@ -70,6 +71,16 @@ describe("symbols on a line", () => {
             0,
             0,
             END_DOT_SIZE,
+        ]);
+    });
+
+    it("sizes data items for charts with a legend, so the series size stays the legend glyph", () => {
+        expect(withPointSymbols([null, 5, null, 7, 8])).toEqual([
+            { value: null, symbolSize: 0 },
+            { value: 5, symbolSize: END_DOT_SIZE },
+            { value: null, symbolSize: 0 },
+            { value: 7, symbolSize: 0 },
+            { value: 8, symbolSize: END_DOT_SIZE },
         ]);
     });
 

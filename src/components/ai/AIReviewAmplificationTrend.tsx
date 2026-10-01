@@ -7,7 +7,7 @@ import {
     buildTooltip,
     dotRing,
     lineMark,
-    pointSymbolSize,
+    withPointSymbols,
 } from "@/components/charts/chartConventions";
 
 import type { AiReviewLoadRow } from "@/lib/graphql/__generated__/types";
@@ -82,10 +82,10 @@ export function AIReviewAmplificationTrend({ daily, loading }: AIReviewAmplifica
                     symbol: "circle",
                     // A dot only on the last and isolated points; days with no data are gaps.
                     showAllSymbol: true,
-                    symbolSize: pointSymbolSize(data),
+                    symbolSize: 4,
                     lineStyle: lineMark,
                     itemStyle: dotRing(chartTheme),
-                    data,
+                    data: withPointSymbols(data),
                 };
             }),
         }),
