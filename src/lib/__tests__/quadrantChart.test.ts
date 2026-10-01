@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 import { buildQuadrantOption } from "@/components/charts/QuadrantChart";
 import type { ChartTheme } from "@/components/charts/chartTheme";
+import { getZoneOverlay } from "@/lib/quadrantZones";
+import { ZONE_FILL_ALPHA } from "@/lib/themeTints";
 
 const chartTheme: ChartTheme = {
     text: "#111111",
@@ -221,5 +223,49 @@ describe("buildQuadrantOption", () => {
         expect(ids).toEqual(["bravo"]);
         const serialized = JSON.stringify(option);
         expect(serialized).not.toMatch(/Alpha|Charlie/);
+    });
+
+    it("fills each zone with its theme color at ZONE_FILL_ALPHA, applied once", () => {
+        const points: QuadrantPoint[] = [1, 2, 3, 4, 5, 6].map((n) => ({
+            entity_id: `e${n}`,
+            entity_label: `E${n}`,
+            x: n * 10,
+            y: n * 5,
+            window_start: "2024-01-01",
+            window_end: "2024-01-14",
+            evidence_link: "/api/v1/explain?metric=throughput",
+        }));
+        const data = buildData(points);
+        const zoneColors = ["#0000ff", "#00ff00", "#ffff00", "#ff0000"];
+        const overlay = getZoneOverlay(data, zoneColors);
+        expect(overlay?.zones.map((zone) => zone.color).sort()).toEqual([...zoneColors].sort());
+
+        const option = buildQuadrantOption({
+            data,
+            chartTheme,
+            colors: chartColors,
+            scopeType: "org",
+            zoneOverlay: overlay,
+            showZoneOverlay: true,
+        });
+        const markArea = getScatterSeries(option)
+            .map((item) => (item as { markArea?: { data?: unknown[] } }).markArea)
+            .find(Boolean);
+        const fills = (markArea?.data ?? []).map(
+            (pair) =>
+                (pair as [{ itemStyle: { color: string; opacity?: number } }, unknown])[0]
+                    .itemStyle,
+        );
+        expect(fills).toHaveLength(4);
+        const expected = new Set(
+            zoneColors.map((hex) => {
+                const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+                return `rgba(${r}, ${g}, ${b}, ${ZONE_FILL_ALPHA})`;
+            }),
+        );
+        for (const fill of fills) {
+            expect(expected.has(fill.color)).toBe(true);
+            expect(fill.opacity).toBeUndefined();
+        }
     });
 });
