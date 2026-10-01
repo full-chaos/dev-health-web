@@ -3,6 +3,7 @@ import { render } from "@/test/utils";
 
 import { AIReviewAmplificationTrend } from "../ai/AIReviewAmplificationTrend";
 import { SeverityStackedBar } from "../security/SeverityStackedBar";
+import { TopReposChart } from "../security/TopReposChart";
 import { TrendChart } from "../security/TrendChart";
 import { DonutChart } from "./DonutChart";
 import { NestedPieChart2D } from "./NestedPieChart2D";
@@ -34,6 +35,11 @@ const tokens = {
 };
 
 const { chartSpy } = vi.hoisted(() => ({ chartSpy: vi.fn() }));
+
+vi.mock("next/navigation", () => ({
+    useRouter: () => ({ push: vi.fn() }),
+    useSearchParams: () => new URLSearchParams(),
+}));
 
 vi.mock("./chartTheme", () => ({
     useChartTheme: () => chartTheme,
@@ -109,6 +115,24 @@ describe("security trend chart conventions", () => {
         ).toBeUndefined();
         expect(o.yAxis?.splitLine?.lineStyle?.type).toBeUndefined();
         expect(o.legend?.data).toEqual(["Opened", "Fixed"]);
+    });
+});
+
+describe("top repos chart", () => {
+    beforeEach(() => chartSpy.mockClear());
+
+    it("keeps today's tooltip and its click and link behaviour", () => {
+        render(
+            <TopReposChart
+                repos={[
+                    { repoId: "r1", repoName: "alpha", count: 3 },
+                    { repoId: "r2", repoName: "beta", count: 7 },
+                ]}
+            />,
+        );
+        expect(option().tooltip).toEqual(todaysTooltip("axis"));
+        const props = chartSpy.mock.calls.at(-1)?.[0] as { onEvents: { click: unknown } };
+        expect(typeof props.onEvents.click).toBe("function");
     });
 });
 
