@@ -177,4 +177,25 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
         const { container } = renderFour();
         expect(container.innerHTML).toMatchSnapshot();
     });
+
+    it("sparkline threshold counts real points: two points with one gap shows 'Trend', not a chart (changed by CHAOS-7705)", () => {
+        // Before the merge this series (2 points, 1 null) drew a chart with a single dot.
+        const gap = {
+            ...row("g", "Gappy", 4, "", 1),
+            spark: [
+                { ts: "2026-06-01", value: 3 },
+                { ts: "2026-06-02", value: null },
+            ],
+        };
+        render(
+            <MetricEvidenceCards
+                metrics={["g"]}
+                deltas={[gap as never]}
+                filters={filters}
+                placeholderDeltas={false}
+            />,
+        );
+        expect(screen.queryByTestId("sparkline")).toBeNull();
+        expect(screen.getByText("Trend")).toBeInTheDocument();
+    });
 });
