@@ -213,7 +213,7 @@ export default function MarketingPage() {
                                 <div className="size-3 rounded-full bg-(--card-stroke)" />
                                 <div className="size-3 rounded-full bg-(--card-stroke)" />
                                 <span className="ml-3 text-xs text-(--ink-muted)">
-                                    Full Chaos Dev Health Ops Cockpit
+                                    Full Chaos Dev Health
                                 </span>
                             </div>
                         </div>
