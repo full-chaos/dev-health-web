@@ -171,3 +171,13 @@ describe("Key Shifts tiles pinned (CHAOS-7738)", () => {
         expect(grid.querySelectorAll("a").length).toBe(grid.querySelectorAll("*[href]").length);
     });
 });
+
+describe("Key Shifts markup (snapshot taken before the restyle)", () => {
+    it("markup of the section for the em role", () => {
+        const { container } = render(
+            <CockpitClient home={makeHome(DELTAS.slice(0, 4))} filters={filters} activeRole="em" />,
+        );
+        const row = container.querySelector('[data-testid="key-shifts-row"]') as HTMLElement;
+        expect(row.outerHTML).toMatchSnapshot();
+    });
+});

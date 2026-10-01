@@ -104,3 +104,10 @@ describe("Monitoring views card pinned (CHAOS-7738)", () => {
         expect(card).toBeInTheDocument();
     });
 });
+
+describe("Monitoring views markup (snapshot taken before the restyle)", () => {
+    it("markup of the card for the neutral lens", async () => {
+        const { card } = await renderHome();
+        expect(card.outerHTML.replace(/f=[A-Za-z0-9_-]+/g, "f=…")).toMatchSnapshot();
+    });
+});
