@@ -102,7 +102,6 @@ const knownPreexistingDualContextBarScopes = new Set([
     "src/app/(app)/opportunities/page.tsx",
     "src/app/(app)/plan/capacity/page.tsx",
     "src/app/(app)/plan/page.tsx",
-    "src/app/(app)/risk/compounding/page.tsx",
 ]);
 
 const routePageExists = (routePath: string) => {
