@@ -68,7 +68,7 @@ export function ImproveAutomationsDashboard({
                 <MetricCard
                     label="Detected signals"
                     value={ready ? result?.totalCount : undefined}
-                    caption="Flow opportunities in this window"
+                    caption="This window"
                 />
                 {ready
                     ? [...kindCounts.entries()].map(([kind, count]) => (
@@ -76,7 +76,7 @@ export function ImproveAutomationsDashboard({
                               key={kind}
                               label={kindLabel(kind)}
                               value={count}
-                              caption="Detections in the list below"
+                              caption="In the list"
                           />
                       ))
                     : null}

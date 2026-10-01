@@ -102,6 +102,7 @@ describe("ImproveAutomationsDashboard", () => {
         render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
 
         const rows = screen.getAllByTestId("improve-automations-row");
+        expect(rows[0]).toHaveTextContent("#3f2a9c1e · Unresolved");
         const raw = within(rows[0]).getByText(/Unresolved/);
         expect(raw).toHaveAttribute("title", "3f2a9c1e-1111-4222-8333-444455556666");
         expect(rows[0]).not.toHaveTextContent("3f2a9c1e-1111-4222-8333-444455556666");

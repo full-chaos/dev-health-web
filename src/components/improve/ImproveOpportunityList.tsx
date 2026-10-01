@@ -45,8 +45,7 @@ function EntityCell({ item }: { item: ImproveOpportunity }) {
     return (
         <span title={entity.title}>
             <span className="text-(--ink-muted)">{item.entityType} </span>
-            {entity.label}
-            {entity.resolved ? "" : " · Unresolved"}
+            {entity.resolved ? entity.label : `${entity.short ?? entity.label} · Unresolved`}
         </span>
     );
 }
