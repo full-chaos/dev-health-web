@@ -474,15 +474,18 @@ jobs:
                   fi
 
                   # CHAOS-7554: reach the Go /graphql on query-api itself (:8090, the router does not send /graphql
-                  # there yet) with the seeded user's token, so a query-api that starts but does not serve the
-                  # product path fails HERE and not as an opaque Playwright skip. The token is read into a variable and never printed.
+                  # there yet) with the seeded user's token and a REGISTERED document (query-api answers
+                  # UNREGISTERED_DOCUMENT for anything else), built the way the web client puts it on the wire
+                  # (ci/live-e2e-graphql-body.ts). The token is read into a variable and never printed.
                   token="$(jq -r '.access_token // .token // empty' /tmp/login.json)"
-                  test -n "${token}" || { echo "::error::login response carries no access token"; exit 1; }
+                  org_id="$(jq -r '.user.org_id // empty' /tmp/login.json)"
+                  test -n "${token}" && test -n "${org_id}" || { echo "::error::login response carries no access token or org id"; exit 1; }
+                  pnpm exec tsx ci/live-e2e-graphql-body.ts "${org_id}" > /tmp/gql-body.json
                   gql_status=$(curl -s -o /tmp/gql.json -w '%{http_code}' \
                     -X POST "http://127.0.0.1:8090/graphql" \
                     -H 'Content-Type: application/json' \
                     -H "Authorization: Bearer ${token}" \
-                    -d '{"query":"{ __typename }"}')
+                    --data-binary @/tmp/gql-body.json)
                   echo "graphql status=${gql_status}"
                   head -c 300 /tmp/gql.json || true; echo
                   if [ "${gql_status}" != "200" ]; then
