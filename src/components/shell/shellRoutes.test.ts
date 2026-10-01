@@ -31,6 +31,7 @@ describe("shell route registry", () => {
             "/improve",
             "/opportunities",
             "/improve/experiments",
+            "/improve/automations",
         ]);
     });
 
