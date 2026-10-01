@@ -28,7 +28,7 @@ type BackLinkProps = BackLinkBaseProps &
  * pill and NOT a primary button — so a return path is never confused with a
  * filter toggle ({@link FilterPills}) or a route tab ({@link ModeTabs}).
  *
- * Labels come from the CTA registry: defaults to `Back to Cockpit`, or pass
+ * Labels come from the CTA registry: defaults to `Back to Home`, or pass
  * `area` to render the canonical `Back to {area}` form.
  */
 export function BackLink({ href, label, area, className }: BackLinkProps) {

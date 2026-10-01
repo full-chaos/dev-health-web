@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { Notice, type NoticeVariant } from "@/components/ui/Notice";
+
 /**
  * Data confidence indicator (CHAOS-2052).
  *
@@ -31,24 +33,22 @@ type DataConfidenceIndicatorProps = {
 
 const LEVEL_META: Record<
     DataConfidenceLevel,
-    { label: string; dot: string; chip: string; blurb: string }
+    { label: string; variant: NoticeVariant; blurb: string }
 > = {
     high: {
         label: "High confidence",
-        dot: "bg-(--positive)",
-        chip: "border-(--positive)/40 text-(--positive)",
+        variant: "good",
         blurb: "Most sources this view relies on are connected and recent.",
     },
     medium: {
         label: "Medium confidence",
-        dot: "bg-(--caution)",
-        chip: "border-(--caution)/50 text-(--caution)",
+        variant: "warn",
         blurb: "Some sources are missing or sparse — read trends, not point values.",
     },
     low: {
         label: "Low confidence",
-        dot: "bg-(--negative)",
-        chip: "border-(--negative)/40 text-(--negative)",
+        // Limited coverage is a caution about reading the page, not an error.
+        variant: "warn",
         blurb: "Coverage is limited — this view may not reflect the full picture.",
     },
 };
@@ -82,46 +82,56 @@ export function DataConfidenceIndicator({ confidence, className }: DataConfidenc
         ? Math.max(0, Math.min(100, Math.round(coverage_pct as number)))
         : null;
 
+    const hasDetail =
+        connected_sources.length > 0 || missing_sources.length > 0 || caveats.length > 0;
+
     return (
         <section
             data-testid="data-confidence-indicator"
             data-level={level}
             aria-label={`Data confidence: ${meta.label}`}
-            className={`flex flex-col gap-3 rounded-3xl border border-(--card-stroke) bg-(--card-70) px-4 py-3 ${className ?? ""}`}
+            className={`flex flex-col gap-3 ${className ?? ""}`}
         >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                    <span className={`h-2.5 w-2.5 rounded-full ${meta.dot}`} aria-hidden="true" />
-                    <span
-                        className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${meta.chip}`}
+            <Notice
+                variant={meta.variant}
+                live={false}
+                title={meta.label}
+                action={
+                    coverageRounded !== null ? (
+                        <span className="text-xs" data-testid="data-confidence-coverage">
+                            {coverageRounded}% coverage
+                        </span>
+                    ) : undefined
+                }
+            >
+                {meta.blurb}
+            </Notice>
+
+            {hasDetail && (
+                <section
+                    aria-labelledby="evidence-context-title"
+                    className="flex flex-col gap-3 rounded-(--radius-md) border border-(--card-stroke) bg-(--card) p-4.75"
+                >
+                    <h2
+                        id="evidence-context-title"
+                        className="text-label-caps uppercase text-(--ink-muted)"
                     >
-                        {meta.label}
-                    </span>
-                </div>
-                {coverageRounded !== null && (
-                    <span
-                        className="text-xs text-(--ink-muted)"
-                        data-testid="data-confidence-coverage"
-                    >
-                        {coverageRounded}% coverage
-                    </span>
-                )}
-            </div>
+                        Evidence & context
+                    </h2>
+                    <SourceList heading="Connected" sources={connected_sources} />
+                    <SourceList heading="Missing" sources={missing_sources} />
 
-            <p className="text-sm text-(--ink-muted)">{meta.blurb}</p>
-
-            <SourceList heading="Connected" sources={connected_sources} />
-            <SourceList heading="Missing" sources={missing_sources} />
-
-            {caveats.length > 0 && (
-                <ul className="mt-1 space-y-1" data-testid="data-confidence-caveats">
-                    {caveats.map((caveat) => (
-                        <li key={caveat} className="flex gap-2 text-xs text-(--ink-muted)">
-                            <span aria-hidden="true">•</span>
-                            <span>{caveat}</span>
-                        </li>
-                    ))}
-                </ul>
+                    {caveats.length > 0 && (
+                        <ul className="mt-1 space-y-1" data-testid="data-confidence-caveats">
+                            {caveats.map((caveat) => (
+                                <li key={caveat} className="flex gap-2 text-xs text-(--ink-muted)">
+                                    <span aria-hidden="true">•</span>
+                                    <span>{caveat}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
             )}
         </section>
     );

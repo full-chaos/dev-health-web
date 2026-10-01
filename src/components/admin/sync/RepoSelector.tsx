@@ -5,6 +5,7 @@ import { SkeletonLine } from "@/components/ui/Skeleton";
 import { listReposForCredential } from "@/lib/admin/server";
 import type { DiscoveredRepo } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { Notice } from "@/components/ui/Notice";
 
 export type RepoSelectorProps = {
     credentialId: string;
@@ -127,11 +128,7 @@ export function RepoSelector({
     }
 
     if (error) {
-        return (
-            <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-500">
-                Failed to load repositories: {error}
-            </div>
-        );
+        return <Notice variant="danger">Failed to load repositories: {error}</Notice>;
     }
 
     if (repos.length === 0) {

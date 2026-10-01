@@ -254,3 +254,18 @@ describe("team and theme keep production's drill; the panel is its side view", (
         expect(screen.getByText("Share of Alpha's allocation")).toBeInTheDocument();
     });
 });
+
+describe("the panel's Open evidence link keeps the page filters", () => {
+    it("opens the Evidence tab with the filter param, in both views", () => {
+        renderSwitch();
+        click({ type: "node", name: "repo-b" });
+        expect(screen.getByRole("link", { name: /open evidence/i }).getAttribute("href")).toContain(
+            "/investment?tab=evidence&f=",
+        );
+        fireEvent.click(screen.getByRole("radio", { name: /theme.*repo.*team/i }));
+        click({ type: "node", name: "repo-a" });
+        expect(screen.getByRole("link", { name: /open evidence/i }).getAttribute("href")).toContain(
+            "/investment?tab=evidence&f=",
+        );
+    });
+});

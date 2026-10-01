@@ -206,9 +206,7 @@ test.describe("guided first-run journey (fresh signup)", () => {
         // 6. Continue into the product.
         await page.getByRole("link", { name: "Go to dashboard" }).click();
         await expect(page).toHaveURL(/\/dashboard/, { timeout: 30_000 });
-        await expect(
-            page.getByRole("heading", { name: "Developer Health Ops Cockpit" }),
-        ).toBeVisible({ timeout: 15_000 });
+        await expect(page.getByRole("heading", { name: "Home" })).toBeVisible({ timeout: 15_000 });
     });
 });
 

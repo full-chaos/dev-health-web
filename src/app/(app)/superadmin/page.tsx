@@ -1,5 +1,6 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { getPlatformStats } from "@/lib/admin/server";
+import { Notice } from "@/components/ui/Notice";
 
 export default async function SuperadminDashboard() {
     const { data: stats, error } = await getPlatformStats();
@@ -11,10 +12,15 @@ export default async function SuperadminDashboard() {
                     title="Platform Dashboard"
                     description="System overview and health metrics."
                 />
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-red-800">
-                    <h3 className="text-lg font-semibold">Error loading stats</h3>
-                    <p className="mt-2 text-sm">{error}</p>
-                </div>
+                <Notice
+                    variant="danger"
+                    live={false}
+                    centered
+                    titleAs="h3"
+                    title="Error loading stats"
+                >
+                    {error}
+                </Notice>
             </div>
         );
     }

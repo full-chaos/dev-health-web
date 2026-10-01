@@ -65,7 +65,7 @@ All routes below require an active session. The `(app)` layout wraps them in `Se
 
 | Route            | Page                     | Description                                                                            |
 | :--------------- | :----------------------- | :------------------------------------------------------------------------------------- |
-| `/dashboard`     | `dashboard/page.tsx`     | Main cockpit — summary metrics, deltas, and sparklines                                 |
+| `/dashboard`     | `dashboard/page.tsx`     | Home — summary metrics, deltas, and sparklines                                         |
 | `/metrics`       | `metrics/page.tsx`       | Detailed metrics explorer with filter bar                                              |
 | `/code`          | `code/page.tsx`          | Code churn, hotspot heatmaps, ownership concentration, and churn × throughput quadrant |
 | `/work`          | `work/page.tsx`          | Work-in-progress flow, cycle time, and throughput views                                |

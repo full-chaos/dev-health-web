@@ -118,7 +118,7 @@ export default async function Home({ searchParams }: HomePageProps) {
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-10 text-foreground">
             <PageHeader
-                title="Developer Health Ops Cockpit"
+                title="Home"
                 subtitle={<>System patterns over the last {filters.time.range_days} days.</>}
             >
                 {lensConfig.framing ? (

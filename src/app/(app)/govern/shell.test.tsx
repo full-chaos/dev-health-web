@@ -17,6 +17,7 @@ import RepoSecurityPage from "../security/repos/[repoId]/page";
 
 const nav = vi.hoisted(() => ({ pathname: "/govern" }));
 const scopeBarSpy = vi.hoisted(() => vi.fn());
+const securityAlerts = vi.hoisted(() => ({ edges: [] as Array<{ node: Record<string, string> }> }));
 
 vi.mock("next/navigation", () => ({
     usePathname: () => nav.pathname,
@@ -39,6 +40,9 @@ vi.mock("@/components/shell/ScopeBar", () => ({
 }));
 vi.mock("@/components/navigation/AreaOverview", () => ({
     AreaOverview: () => <div data-testid="area-overview" />,
+}));
+vi.mock("@/lib/graphql/hooks/useSecurity", () => ({
+    useSecurityAlerts: () => ({ allEdges: securityAlerts.edges }),
 }));
 vi.mock("@/components/security/SecurityAlertQueue", () => ({
     SecurityAlertQueue: () => <div data-testid="alert-queue" />,
@@ -138,8 +142,7 @@ describe("Compounding Risk in the shared app shell", () => {
 });
 
 describe("Security repository page in the shared app shell", () => {
-    it("has the repository id as the one h1, a way back to Security and the alert queue", async () => {
-        nav.pathname = "/security/repos/test-repo-id";
+    const renderRepoPage = async () =>
         inShell(
             await RepoSecurityPage({
                 params: Promise.resolve({ repoId: "test-repo-id" }),
@@ -147,13 +150,36 @@ describe("Security repository page in the shared app shell", () => {
             }),
         );
 
+    it("has the repository NAME as the one h1, a way back to Security and the alert queue", async () => {
+        nav.pathname = "/security/repos/test-repo-id";
+        securityAlerts.edges = [{ node: { repoId: "test-repo-id", repoName: "acme/billing" } }];
+        await renderRepoPage();
+
         const headings = screen.getAllByRole("heading", { level: 1 });
         expect(headings).toHaveLength(1);
-        expect(headings[0]).toHaveTextContent("test-repo-id");
+        expect(headings[0]).toHaveTextContent("acme/billing");
         expect(screen.getByText("Security alerts scoped to this repository.")).toBeInTheDocument();
         expect(
             within(screen.getByRole("main")).getByRole("link", { name: /Back to Security/ }),
         ).toHaveAttribute("href", "/security");
         expect(screen.getByTestId("alert-queue")).toBeInTheDocument();
+    });
+
+    it("falls back to the repository id, never blank, when no alert row carries the name", async () => {
+        nav.pathname = "/security/repos/test-repo-id";
+        securityAlerts.edges = [];
+        await renderRepoPage();
+
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("test-repo-id");
+    });
+
+    it("has a scope bar with the repository control locked to the route", async () => {
+        nav.pathname = "/security/repos/test-repo-id";
+        securityAlerts.edges = [{ node: { repoId: "test-repo-id", repoName: "acme/billing" } }];
+        await renderRepoPage();
+
+        const bar = screen.getByTestId("scope-bar");
+        expect(bar).toHaveAttribute("data-view", "security-repo");
+        expect(within(bar).getByRole("button", { name: /Repo/ })).toBeDisabled();
     });
 });

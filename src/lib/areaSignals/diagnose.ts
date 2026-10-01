@@ -20,12 +20,17 @@
 //
 // Backend gap (CHAOS-2077): People has no area-level aggregate metric yet, so it
 // is not surfaced on the Diagnose Overview (CHAOS-2158) and remains a sidebar-only
-// destination. Landscape (org-level bus factor via getBusFactorData) and Cognitive
+// destination. Investment is a calm "neutral" card (allocation is not a severity): the
+// leading theme and its share of the persisted mix, from the same `getInvestment` read as
+// the Investment page. Landscape (org-level bus factor via getBusFactorData) and Cognitive
 // Load (avg PR interruption load via the cognitiveLoad resolver) are now wired.
 
 import { auth } from "@/lib/auth";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { getBusFactorData } from "@/lib/api/code";
+import { getInvestment } from "@/lib/api/investment";
+import { getSortedThemes, normalizeInvestmentMix } from "@/lib/investmentMix";
+import { normalizeThemeKey, THEME_LABELS, titleCase } from "@/lib/investment/transforms";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { COMPLEXITY_TIMESERIES_QUERY } from "@/lib/graphql/queries";
 import type { ComplexityTimeseriesResult } from "@/lib/graphql/__generated__/types";
@@ -39,10 +44,11 @@ import {
     SAMPLE_DIAGNOSE_BUS_FACTOR,
     SAMPLE_DIAGNOSE_COGNITIVE_LOAD,
     SAMPLE_DIAGNOSE_COMPLEXITY,
+    SAMPLE_DIAGNOSE_INVESTMENT,
 } from "./diagnose-sample-data";
 import { getAreaById, type NavAreaHubItem } from "@/lib/navigation/areas";
 import type { MetricFilter } from "@/lib/filters/types";
-import { formatNumber } from "@/lib/formatters";
+import { formatNumber, formatPercent } from "@/lib/formatters";
 import { logger } from "@/lib/logger";
 
 import { deriveState } from "./deriveState";
@@ -248,7 +254,7 @@ export async function getDiagnoseSignals(
 
     // ── Fetch every source in parallel (no serial N+1) ───────────────────────
     // Metrics + Code + Bottlenecks all come from a single getHomeData call.
-    const [homeData, complexityData, busFactor, cognitiveLoad] = await Promise.all([
+    const [homeData, complexityData, busFactor, cognitiveLoad, investmentMix] = await Promise.all([
         safe(() => getHomeDataViaGraphQL(filters), "home"),
         safe(
             () =>
@@ -293,6 +299,12 @@ export async function getDiagnoseSignals(
                             teamId: cognitiveLoadTeamId,
                         }),
             "cognitive-load",
+        ),
+        // Same read as the Investment page, with the page filters (scope + window).
+        safe(
+            () =>
+                isTestMode ? Promise.resolve(SAMPLE_DIAGNOSE_INVESTMENT) : getInvestment(filters),
+            "investment",
         ),
     ]);
 
@@ -387,6 +399,28 @@ export async function getDiagnoseSignals(
                       direction: "lowerIsBetter",
                   }),
                   value: formatNumber(avgInterruption, { maximumFractionDigits: 0 }),
+              }
+            : UNAVAILABLE,
+    );
+
+    // ── Investment (/investment) ──────────────────────────────────────────────
+    // Leading theme (canonical label) and its share of the persisted mix. NEUTRAL: allocation is
+    // not a severity, so this card never takes the hero slot. A failed read, an empty response or
+    // an all-zero mix is UNAVAILABLE, never a "0%". A tie keeps `getSortedThemes` order.
+    const themes = investmentMix ? getSortedThemes(normalizeInvestmentMix(investmentMix)) : [];
+    const themeTotal = themes.reduce((sum, theme) => sum + theme.value, 0);
+    const leadingTheme = themes[0];
+    const leadingKey = leadingTheme
+        ? (normalizeThemeKey(leadingTheme.key) ?? leadingTheme.key)
+        : "";
+    push(
+        "investment",
+        leadingTheme && themeTotal > 0
+            ? {
+                  state: "neutral",
+                  value: `${THEME_LABELS[leadingKey] ?? titleCase(leadingKey)} ${formatPercent(
+                      (leadingTheme.value / themeTotal) * 100,
+                  )}`,
               }
             : UNAVAILABLE,
     );

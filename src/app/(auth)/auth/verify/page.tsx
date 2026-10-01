@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getBackendUrl } from "@/lib/origin";
 import { extractErrorMessage } from "@/lib/errorMessages";
 import { backToArea, CTA_LABELS } from "@/lib/design/cta";
+import { Notice } from "@/components/ui/Notice";
 
 type SearchParams = Promise<{ token?: string }>;
 
@@ -62,9 +63,9 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
                         </div>
                     ) : (
                         <div className="space-y-6">
-                            <div className="p-4 text-sm text-red-400 bg-red-950/50 rounded-md border border-red-800 text-center">
+                            <Notice variant="danger" live={false} centered>
                                 {message}
-                            </div>
+                            </Notice>
                             <Link
                                 href="/auth/signin"
                                 className="block w-full text-center rounded-md bg-[var(--accent)] px-4 py-2 text-sm font-medium text-white hover:opacity-90 transition-opacity"
