@@ -9,6 +9,7 @@ import { Chart } from "./Chart";
 import { investmentThemeColor, useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
+import { tileLabelColor } from "@/lib/chartLabelColor";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import { titleCase, formatSubcategoryLabel } from "@/lib/investmentMix";
 
@@ -93,6 +94,19 @@ export function InvestmentMixSunburst({
         return map;
     }, [sortedThemes, chartColors, tokens]);
 
+    const labelFor = useCallback(
+        (fill: string, opacity: unknown) => {
+            const ink = tileLabelColor(
+                fill,
+                typeof opacity === "number" ? opacity : undefined,
+                chartTheme.background,
+                [chartTheme.text, chartTheme.background],
+            );
+            return ink ? { color: ink } : { show: false };
+        },
+        [chartTheme.background, chartTheme.text],
+    );
+
     const data = useMemo(() => {
         const subEntries = Object.entries(subcategoryDistribution)
             .map(([key, value]) => ({
@@ -123,6 +137,10 @@ export function InvestmentMixSunburst({
                                               ? childOpacity
                                               : undefined,
                                   },
+                                  label: labelFor(
+                                      adjustHex(baseColor, 8 + (idx % 3) * 6),
+                                      childOpacity,
+                                  ),
                                   nodeType: "subcategory",
                                   themeKey: theme.key,
                                   subcategoryKey: entry.key,
@@ -132,6 +150,7 @@ export function InvestmentMixSunburst({
             return {
                 name: themeLabel,
                 value: theme.value,
+                label: labelFor(baseColor, themeOpacity),
                 itemStyle: {
                     color: baseColor,
                     opacity: typeof themeOpacity === "number" ? themeOpacity : undefined,
@@ -143,6 +162,7 @@ export function InvestmentMixSunburst({
         });
     }, [
         chartTheme.grid,
+        labelFor,
         evidenceQualityDistribution,
         focusedTheme,
         sortedThemes,
@@ -256,8 +276,7 @@ export function InvestmentMixSunburst({
                             return p.name ?? "";
                         },
                         color: chartTheme.text,
-                        textBorderColor: chartTheme.background,
-                        textBorderWidth: 2,
+                        textBorderWidth: 0,
                         fontSize: 11,
                         minAngle: 10,
                     },
@@ -273,8 +292,7 @@ export function InvestmentMixSunburst({
                             label: {
                                 fontSize: 12,
                                 fontWeight: 700,
-                                textBorderColor: chartTheme.background,
-                                textBorderWidth: 2,
+                                textBorderWidth: 0,
                             },
                             itemStyle: { borderWidth: 3 },
                         },
@@ -286,8 +304,7 @@ export function InvestmentMixSunburst({
                                 label: {
                                     show: true,
                                     color: chartTheme.text,
-                                    textBorderColor: chartTheme.background,
-                                    textBorderWidth: 2,
+                                    textBorderWidth: 0,
                                     fontSize: 11,
                                 },
                             },

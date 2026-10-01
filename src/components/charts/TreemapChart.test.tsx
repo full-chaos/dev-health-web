@@ -107,4 +107,83 @@ describe("TreemapChart", () => {
         expect(() => props.onEvents.click(null)).not.toThrow();
         expect(onNodeClick).not.toHaveBeenCalled();
     });
+
+    it("separates tiles with a 2px gap and no borders or text halo", () => {
+        render(<TreemapChart data={sampleData} />);
+        const props = chartSpy.mock.calls[0][0] as {
+            option: {
+                series: Array<{
+                    itemStyle: { borderWidth: number; gapWidth: number };
+                    label: { textBorderWidth: number };
+                    levels: Array<{ itemStyle: { borderWidth: number; gapWidth: number } }>;
+                }>;
+            };
+        };
+        const series = props.option.series[0];
+        expect(series.itemStyle).toMatchObject({ borderWidth: 0, gapWidth: 2 });
+        expect(series.label.textBorderWidth).toBe(0);
+        series.levels.forEach((level) =>
+            expect(level.itemStyle).toMatchObject({ borderWidth: 0, gapWidth: 2 }),
+        );
+    });
+
+    it("shows depth with opacity steps on the generic palette", () => {
+        render(
+            <TreemapChart
+                data={{
+                    name: "All",
+                    value: 10,
+                    children: [{ name: "A", value: 10, children: [{ name: "a1", value: 10 }] }],
+                }}
+            />,
+        );
+        const props = chartSpy.mock.calls[0][0] as {
+            option: { series: Array<{ data: Array<TreemapNode> }> };
+        };
+        const top = props.option.series[0].data[0];
+        expect(top.itemStyle?.opacity).toBe(1);
+        expect(top.children?.[0].itemStyle?.opacity).toBe(0.82);
+    });
+
+    it("keeps caller colors and evidence-quality opacity untouched", () => {
+        render(
+            <TreemapChart
+                useInputColors
+                data={{
+                    name: "All",
+                    value: 10,
+                    children: [
+                        { name: "A", value: 10, itemStyle: { color: "#e8650a", opacity: 0.4 } },
+                    ],
+                }}
+            />,
+        );
+        const props = chartSpy.mock.calls[0][0] as {
+            option: { series: Array<{ data: Array<TreemapNode> }> };
+        };
+        expect(props.option.series[0].data[0].itemStyle).toEqual({
+            color: "#e8650a",
+            opacity: 0.4,
+        });
+    });
+
+    it("hides a label when no ink reaches 4.5 on the tile", () => {
+        render(
+            <TreemapChart
+                useInputColors
+                data={{
+                    name: "All",
+                    value: 10,
+                    children: [{ name: "A", value: 10, itemStyle: { color: "#808080" } }],
+                }}
+            />,
+        );
+        const props = chartSpy.mock.calls[0][0] as {
+            option: {
+                series: Array<{ data: Array<{ label: { show?: boolean; color?: string } }> }>;
+            };
+        };
+        // chartTheme text #111827 on #808080 is under 4.5 and so is #ffffff
+        expect(props.option.series[0].data[0].label.show).toBe(false);
+    });
 });
