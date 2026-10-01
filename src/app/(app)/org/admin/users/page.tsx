@@ -3,6 +3,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { UserTable } from "@/components/admin/users/UserTable";
 import { listUsers } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { Notice } from "@/components/ui/Notice";
 
 export default async function UsersPage() {
     const result = await listUsers();
@@ -11,9 +12,9 @@ export default async function UsersPage() {
         return (
             <div>
                 <AdminHeader title="Users" description="Manage organization members." />
-                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false}>
                     Failed to load users: {result.error}
-                </div>
+                </Notice>
             </div>
         );
     }

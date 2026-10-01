@@ -4,6 +4,7 @@ import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { BackLink } from "@/components/shared/BackLink";
 import { CustomerPushTokenList } from "@/components/admin/integrations/customer-push/CustomerPushTokenList";
 import { CustomerPushLockedPreview } from "@/components/admin/integrations/customer-push/CustomerPushLockedPreview";
+import { Notice } from "@/components/ui/Notice";
 import {
     getCustomerPushIngestEntitlement,
     getCustomerPushSource,
@@ -55,9 +56,9 @@ export default async function CustomerPushCredentialsPage({
             <AdminHeader title="Credentials" description={`Ingest tokens for ${displayName}.`} />
 
             {tokensResult.error && (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500">
+                <Notice variant="danger" live={false}>
                     Failed to load credentials: {tokensResult.error}
-                </div>
+                </Notice>
             )}
 
             <CustomerPushTokenList

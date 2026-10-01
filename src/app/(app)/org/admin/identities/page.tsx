@@ -3,6 +3,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { IdentityTable } from "@/components/admin/identities/IdentityTable";
 import { listIdentities } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { Notice } from "@/components/ui/Notice";
 
 export default async function IdentitiesPage() {
     const result = await listIdentities();
@@ -22,9 +23,9 @@ export default async function IdentitiesPage() {
             </AdminHeader>
 
             {result.error && (
-                <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false} className="mb-6">
                     Failed to load identities: {result.error}
-                </div>
+                </Notice>
             )}
             <IdentityTable
                 identities={(result.data ?? []).map((i) => ({

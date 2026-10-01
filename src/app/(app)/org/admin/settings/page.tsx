@@ -4,6 +4,7 @@ import { BillingSettings } from "@/components/admin/settings/BillingSettings";
 import { SecuritySettings } from "@/components/admin/settings/SecuritySettings";
 import { DangerZone } from "@/components/admin/settings/DangerZone";
 import { getCurrentOrg } from "@/lib/admin/server";
+import { Notice } from "@/components/ui/Notice";
 
 export default async function OrganizationSettingsPage() {
     const result = await getCurrentOrg();
@@ -17,9 +18,9 @@ export default async function OrganizationSettingsPage() {
             />
 
             {result.error && (
-                <div className="mb-6 max-w-4xl rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false} className="mb-6 max-w-4xl">
                     Failed to load organization: {result.error}
-                </div>
+                </Notice>
             )}
 
             <div className="max-w-4xl">

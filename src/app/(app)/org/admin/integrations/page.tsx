@@ -13,6 +13,7 @@ import {
 import { getAuthMethodLabel } from "@/components/admin/integrations/authMethod";
 import type { ConnectionStatusType } from "@/components/admin/integrations/ConnectionStatus";
 import type { Provider } from "@/lib/admin/types";
+import { Notice } from "@/components/ui/Notice";
 
 const GitHubIcon = () => (
     <svg viewBox="0 0 24 24" className="h-8 w-8 fill-current text-gray-900 dark:text-gray-100">
@@ -151,9 +152,9 @@ export default async function IntegrationsPage() {
             />
 
             {credentialsResult.error && (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false}>
                     Failed to load credentials: {credentialsResult.error}
-                </div>
+                </Notice>
             )}
 
             <ProvidersPage
