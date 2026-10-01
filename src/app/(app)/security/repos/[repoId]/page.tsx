@@ -1,10 +1,9 @@
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { PageHeader } from "@/components/shell/PageHeader";
 import {
     decodeSecurityFilter,
     defaultSecurityFilter,
     applyLockedRepoId,
 } from "@/lib/filters/security";
-import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { SecurityAlertQueue } from "@/components/security/SecurityAlertQueue";
 
 type RepoSecurityPageProps = {
@@ -23,28 +22,17 @@ export default async function RepoSecurityPage({ params, searchParams }: RepoSec
 
     const lockedFilter = applyLockedRepoId(baseFilter, repoId);
 
-    const navFilters = defaultMetricFilter;
-
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={navFilters} active="security" />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-wrap items-start justify-between gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Security / Repo
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">{repoId}</h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Security alerts scoped to this repository.
-                            </p>
-                        </div>
-                    </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8">
+            <PageHeader
+                title={repoId}
+                subtitle="Security alerts scoped to this repository."
+                back={{ href: "/security", area: "Security" }}
+            />
 
-                    <SecurityAlertQueue filter={lockedFilter} lockedRepoId={repoId} />
-                </main>
-            </div>
+            <SecurityAlertQueue filter={lockedFilter} lockedRepoId={repoId} />
         </div>
     );
 }

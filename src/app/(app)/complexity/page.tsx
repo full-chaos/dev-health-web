@@ -9,11 +9,7 @@
  * 50 hotspot rows.
  */
 
-import { ContextStrip } from "@/components/navigation/ContextStrip";
-import { FilterBar } from "@/components/filters/FilterBar";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
-import { BackLink } from "@/components/shared/BackLink";
 import { ComplexityDashboard } from "@/components/complexity/ComplexityDashboard";
 import type {
     ComplexityPoint,
@@ -31,6 +27,8 @@ import {
     complexityWindowFromFilter,
     type ComplexityScopeInput,
 } from "@/lib/complexity/filters";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -177,54 +175,41 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
     ]);
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="complexity" role={activeRole} />
-                <main className="flex min-w-0 flex-1 flex-col gap-8" data-testid="complexity-page">
-                    <header className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Investigate
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">
-                                Complexity Trends
-                            </h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Code complexity over time, file hotspots, and high-risk areas.
-                            </p>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Every score traces to cyclomatic complexity and churn evidence.
-                            </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-3">
-                            <BackLink href={withFilterParam("/", filters, activeRole)} />
-                        </div>
-                    </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div
+            className="flex min-w-0 flex-1 flex-col gap-8 text-foreground"
+            data-testid="complexity-page"
+        >
+            <PageHeader
+                title="Complexity Trends"
+                subtitle="Code complexity over time, file hotspots, and high-risk areas."
+            >
+                <p className="text-sm text-(--ink-muted)">
+                    Every score traces to cyclomatic complexity and churn evidence.
+                </p>
+            </PageHeader>
 
-                    <FilterBar view="complexity" />
+            <ScopeBar view="complexity" origin={activeOrigin} />
 
-                    <ContextStrip filters={filters} origin={activeOrigin} />
+            <ViewSet
+                orientation="tabs"
+                items={tabs}
+                activeId={activeTab}
+                overviewId="overview"
+                ariaLabel="Complexity views"
+            />
 
-                    <ViewSet
-                        orientation="tabs"
-                        items={tabs}
-                        activeId={activeTab}
-                        overviewId="overview"
-                        ariaLabel="Complexity views"
-                    />
-
-                    {activeTab === "flame" ? (
-                        <FlameView filters={filters} />
-                    ) : (
-                        <ComplexityDashboard
-                            orgId={orgId}
-                            points={points}
-                            hotspotRows={hotspotRows}
-                            activeTab={activeTab as ComplexityTab}
-                        />
-                    )}
-                </main>
-            </div>
+            {activeTab === "flame" ? (
+                <FlameView filters={filters} />
+            ) : (
+                <ComplexityDashboard
+                    orgId={orgId}
+                    points={points}
+                    hotspotRows={hotspotRows}
+                    activeTab={activeTab as ComplexityTab}
+                />
+            )}
         </div>
     );
 }

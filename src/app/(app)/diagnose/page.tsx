@@ -1,14 +1,11 @@
-import { FilterBar } from "@/components/filters/FilterBar";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { AreaOverview } from "@/components/navigation/AreaOverview";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { BackLink } from "@/components/shared/BackLink";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 import { getDiagnoseSignals } from "@/lib/areaSignals/diagnose";
 import { checkApiHealth } from "@/lib/api/system";
 import { getServerEnv } from "@/lib/config";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { withFilterParam } from "@/lib/filters/url";
 
 type DiagnosePageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -32,43 +29,29 @@ export default async function DiagnosePage({ searchParams }: DiagnosePageProps) 
     ]);
 
     if (!health.ok && !isTestMode) {
-        return <ServiceUnavailable />;
+        // The shared app shell owns the `<main>` landmark for this route.
+        return <ServiceUnavailable landmark={false} />;
     }
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="diagnose" role={activeRole} />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-col gap-4">
-                        <BackLink href={withFilterParam("/", filters, activeRole)} />
-                        <div className="flex flex-wrap items-start justify-between gap-4">
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                    Overview
-                                </p>
-                                <h1 className="mt-2 font-(--font-display) text-3xl">Diagnose</h1>
-                                <p className="mt-2 text-sm text-(--ink-muted)">
-                                    Investigate flow, investment, landscape, work graph, complexity,
-                                    cognitive load, bottlenecks, and code from one durable area.
-                                </p>
-                            </div>
-                        </div>
-                    </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            <PageHeader
+                title="Diagnose"
+                subtitle="Investigate flow, investment, landscape, work graph, complexity, cognitive load, bottlenecks, and code from one durable area."
+            />
 
-                    <GlobalContextBar filters={filters} origin={activeOrigin} />
-                    <FilterBar view="work" />
+            <ScopeBar view="work" origin={activeOrigin} />
 
-                    <AreaOverview
-                        areaId="diagnose"
-                        signals={diagnoseSignals}
-                        filters={filters}
-                        role={activeRole}
-                        title="Related workflows"
-                        description="Diagnostic sub-areas, ordered by severity."
-                    />
-                </main>
-            </div>
+            <AreaOverview
+                areaId="diagnose"
+                signals={diagnoseSignals}
+                filters={filters}
+                role={activeRole}
+                title="Related workflows"
+                description="Diagnostic sub-areas, ordered by severity."
+            />
         </div>
     );
 }
