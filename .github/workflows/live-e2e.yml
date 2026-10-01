@@ -209,6 +209,10 @@ jobs:
                   # The fail-closed rate-limit posture
                   # otherwise refuses to start without a shared VALKEY_URI.
                   ENVIRONMENT: development
+                  # The suite registers a user per describe group from one IP; the default register throttle
+                  # (3/hour, ops internal/api/session AUTH_REGISTER_LIMIT) would throttle the rest of the run.
+                  # Raised HERE only (CHAOS-7523: go-api now serves register; the Python step that set it is gone).
+                  AUTH_REGISTER_LIMIT: 1000/hour
                   CORS_ALLOWED_ORIGINS: "http://127.0.0.1:3002,http://localhost:3002,http://127.0.0.1:8000,http://127.0.0.1:8099"
                   # query-api's per-route Go-plane switches -- plain in-memory flags flipped once
                   # at boot (never Postgres, never the routeswitch ledger). Copied verbatim from
