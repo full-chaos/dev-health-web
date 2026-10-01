@@ -1,3 +1,4 @@
+import { STATUS_PILL } from "@/lib/statusPill";
 import type { CustomerPushBatchStatus } from "@/lib/admin/types";
 
 interface CustomerPushStatusBadgeProps {
@@ -9,12 +10,12 @@ interface CustomerPushStatusBadgeProps {
 // pinned batch status vocabulary (CC12): accepted -> (stream_unavailable) ->
 // processing -> completed | partial | failed.
 const VARIANTS: Record<CustomerPushBatchStatus, string> = {
-    accepted: "bg-blue-100 text-blue-700 border-blue-200",
-    stream_unavailable: "bg-orange-100 text-orange-700 border-orange-200",
-    processing: "bg-blue-100 text-blue-700 border-blue-200 animate-pulse",
-    completed: "bg-green-100 text-green-700 border-green-200",
-    partial: "bg-yellow-100 text-yellow-700 border-yellow-200",
-    failed: "bg-red-100 text-red-700 border-red-200",
+    accepted: STATUS_PILL.info,
+    stream_unavailable: STATUS_PILL.caution,
+    processing: `${STATUS_PILL.info} animate-pulse`,
+    completed: STATUS_PILL.positive,
+    partial: STATUS_PILL.caution,
+    failed: STATUS_PILL.negative,
 };
 
 const LABELS: Record<CustomerPushBatchStatus, string> = {
