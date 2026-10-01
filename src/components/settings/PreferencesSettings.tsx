@@ -17,6 +17,7 @@ type Palette =
     | "fullchaos-infinity-knot-redux"
     | "fullchaos-infinity-ember"
     | "fullchaos-infinity-tide"
+    | "infinity"
     | "flat";
 type Listener = () => void;
 
@@ -50,6 +51,7 @@ const normalizePalette = (value: string | null): Palette | null => {
         "fullchaos-infinity-knot-redux",
         "fullchaos-infinity-ember",
         "fullchaos-infinity-tide",
+        "infinity",
         "flat",
     ];
     return valid.includes(value as Palette) ? (value as Palette) : null;
