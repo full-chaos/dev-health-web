@@ -1,5 +1,10 @@
 import { useCallback, useMemo } from "react";
-import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
+import {
+    investmentThemeColor,
+    useChartColors,
+    useChartTheme,
+    useChartTokens,
+} from "@/components/charts/chartTheme";
 import { formatNumber } from "@/lib/formatters";
 import {
     adjustHex,
@@ -35,6 +40,7 @@ export function useInvestmentColorMaps({
 }: UseInvestmentColorMapsArgs) {
     const chartTheme = useChartTheme();
     const chartColors = useChartColors();
+    const tokens = useChartTokens();
 
     const allSubcategoryIds = useMemo(() => {
         const ids = new Set<string>();
@@ -51,10 +57,13 @@ export function useInvestmentColorMaps({
         if (!investmentMix) return map;
         const themes = getSortedThemes(investmentMix);
         themes.forEach((theme, index) => {
-            map.set(theme.key, chartColors[index % chartColors.length]);
+            map.set(
+                theme.key,
+                investmentThemeColor(theme.key, tokens, chartColors[index % chartColors.length]),
+            );
         });
         return map;
-    }, [investmentMix, chartColors]);
+    }, [investmentMix, chartColors, tokens]);
 
     const categoryColorMap = useMemo(() => {
         const map = new Map<string, string>();
@@ -63,7 +72,11 @@ export function useInvestmentColorMaps({
         const subcategories = getSortedSubcategories(investmentMix);
 
         themes.forEach((theme, index) => {
-            const baseColor = chartColors[index % chartColors.length];
+            const baseColor = investmentThemeColor(
+                theme.key,
+                tokens,
+                chartColors[index % chartColors.length],
+            );
             map.set(theme.key, baseColor);
             const subs = subcategories.filter((s) => s.themeKey === theme.key);
             subs.forEach((sub, subIdx) => {
@@ -71,7 +84,7 @@ export function useInvestmentColorMaps({
             });
         });
         return map;
-    }, [investmentMix, chartColors]);
+    }, [investmentMix, chartColors, tokens]);
 
     const resolveSubcategoryIdForColor = useCallback(
         (label: string) => {

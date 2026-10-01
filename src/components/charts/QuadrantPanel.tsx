@@ -14,64 +14,21 @@ import Link from "next/link";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getQuadrantDefinition, getZoneOverlay } from "@/lib/quadrantZones";
+import { useChartTheme, useChartTokens } from "./chartTheme";
 import { trackTelemetryEvent } from "@/lib/telemetry";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
 import { QuadrantChart } from "./QuadrantChart";
 import { InvestigationPanel } from "./InvestigationPanel";
 
-const ANNOTATION_COLOR = "rgba(148, 163, 184, 0.2)";
 const overlayKeyFor = (type: "zone" | "annotation", id: string | number) => `${type}:${id}`;
-
-const rgbaPattern = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/i;
-const hexPattern = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i;
-
-const clampAlpha = (alpha: number) => Math.min(1, Math.max(0, alpha));
-
-const withAlpha = (color: string, alpha: number) => {
-    const nextAlpha = clampAlpha(alpha);
-    const trimmed = color.trim();
-    const match = trimmed.match(rgbaPattern);
-    if (match) {
-        const red = Number(match[1]);
-        const green = Number(match[2]);
-        const blue = Number(match[3]);
-        if ([red, green, blue].some((value) => Number.isNaN(value))) {
-            return color;
-        }
-        return `rgba(${red}, ${green}, ${blue}, ${nextAlpha})`;
-    }
-    const hexMatch = trimmed.match(hexPattern);
-    if (!hexMatch) {
-        return color;
-    }
-    const hex = hexMatch[1];
-    const normalized =
-        hex.length === 3
-            ? hex
-                  .split("")
-                  .map((item) => item + item)
-                  .join("")
-            : hex;
-    const value = Number.parseInt(normalized, 16);
-    if (Number.isNaN(value)) {
-        return color;
-    }
-    const red = (value >> 16) & 255;
-    const green = (value >> 8) & 255;
-    const blue = value & 255;
-    return `rgba(${red}, ${green}, ${blue}, ${nextAlpha})`;
-};
 
 const formatAnnotationType = (label: string) => label.replace(/_/g, " ").trim();
 
+// The swatch is the zone's own token color, solid, so it reads on any surface.
 const buildLegendSwatchStyle = (color: string): CSSProperties => ({
-    background: `radial-gradient(circle at 35% 35%, ${withAlpha(
-        color,
-        0.4,
-    )}, ${withAlpha(color, 0.14)} 60%, rgba(0, 0, 0, 0) 100%)`,
-    borderColor: withAlpha(color, 0.45),
-    boxShadow: `0 0 12px ${withAlpha(color, 0.3)}`,
+    background: color,
+    borderColor: color,
 });
 
 type QuadrantPanelProps = {
@@ -130,16 +87,18 @@ export function QuadrantPanel({
     const dialogRef = useRef<HTMLDivElement>(null);
     const closeBtnRef = useRef<HTMLButtonElement>(null);
     const hasOpenedRef = useRef(false);
+    const { zones: zoneColors } = useChartTokens();
+    const annotationSwatchColor = useChartTheme().muted;
     const zoneOverlay = useMemo(() => {
         if (!scopedData) {
             return null;
         }
-        const scopedOverlay = getZoneOverlay(scopedData);
+        const scopedOverlay = getZoneOverlay(scopedData, zoneColors);
         if (!scopedOverlay && isPersonScope && data) {
-            return getZoneOverlay(data);
+            return getZoneOverlay(data, zoneColors);
         }
         return scopedOverlay;
-    }, [data, isPersonScope, scopedData]);
+    }, [data, isPersonScope, scopedData, zoneColors]);
     const quadrantDefinition = useMemo(
         () => (scopedData ? getQuadrantDefinition(scopedData.axes) : null),
         [scopedData],
@@ -179,13 +138,13 @@ export function QuadrantPanel({
                     description: annotation.type
                         ? formatAnnotationType(annotation.type)
                         : "Annotation",
-                    color: ANNOTATION_COLOR,
+                    color: annotationSwatchColor,
                     overlayKey: overlayKeyFor("annotation", index),
                 })),
             );
         }
         return items;
-    }, [scopedData, showZoneOverlay, zoneOverlay]);
+    }, [scopedData, showZoneOverlay, zoneOverlay, annotationSwatchColor]);
     const selectablePoints = useMemo(() => {
         if (!scopedData?.points?.length) {
             return [];

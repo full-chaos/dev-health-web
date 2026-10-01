@@ -27,6 +27,66 @@ export const fallbackTheme = {
 
 export type ChartTheme = typeof fallbackTheme;
 
+/**
+ * Status, investment-theme and quadrant-zone roles of the `infinity` palette.
+ * Charts read these through `useChartTokens`; chart modules never hold a color
+ * literal. Fallbacks (server render, no stylesheet) are the infinity dark values.
+ */
+export const fallbackTokens = {
+    positive: "#63cfa6",
+    caution: "#f2b84b",
+    negative: "#ff8266",
+    info: "#4fd3df",
+    accentHighlight: "#ffab66",
+    themeFeature: "#e8650a",
+    themeQuality: "#02a2bc",
+    themeRisk: "#c98500",
+    themeMaintenance: "#da2100",
+    themeOperational: "#0b8fb0",
+    zones: ["#11333c", "#13322a", "#33290f", "#3b1b15"] as readonly string[],
+};
+
+export type ChartTokens = typeof fallbackTokens;
+
+/**
+ * Investment theme color, fixed by entity and never by rank:
+ * Feature = flame, Quality = aqua, Risk = amber, Maintenance = scarlet, Operational = tide.
+ * An unknown theme key returns `fallback`.
+ */
+export const investmentThemeColor = (
+    themeKey: string,
+    tokens: ChartTokens,
+    fallback: string,
+): string => {
+    switch (themeKey) {
+        case "feature_delivery":
+            return tokens.themeFeature;
+        case "quality":
+            return tokens.themeQuality;
+        case "risk":
+            return tokens.themeRisk;
+        case "maintenance":
+            return tokens.themeMaintenance;
+        case "operational":
+            return tokens.themeOperational;
+        default:
+            return fallback;
+    }
+};
+
+const TOKEN_VARS = {
+    positive: "--positive",
+    caution: "--caution",
+    negative: "--negative",
+    info: "--info",
+    accentHighlight: "--accent-highlight",
+    themeFeature: "--chart-color-5",
+    themeQuality: "--chart-color-4",
+    themeRisk: "--chart-color-2",
+    themeMaintenance: "--chart-color-3",
+    themeOperational: "--chart-color-1",
+} as const;
+
 const readTheme = (): ChartTheme => {
     if (isServer) {
         return fallbackTheme;
@@ -46,6 +106,24 @@ const readTheme = (): ChartTheme => {
     return { text, grid, muted, background, stroke, accent1, accent2, accent3 };
 };
 
+const readChartTokens = (): ChartTokens => {
+    if (isServer) {
+        return fallbackTokens;
+    }
+
+    const styles = getComputedStyle(document.documentElement);
+    const read = (name: string, fallback: string) =>
+        styles.getPropertyValue(name).trim() || fallback;
+    const tokens = { ...fallbackTokens };
+    for (const key of Object.keys(TOKEN_VARS) as (keyof typeof TOKEN_VARS)[]) {
+        tokens[key] = read(TOKEN_VARS[key], fallbackTokens[key]);
+    }
+    tokens.zones = fallbackTokens.zones.map((fallback, index) =>
+        read(`--quadrant-zone-${index + 1}`, fallback),
+    );
+    return tokens;
+};
+
 const readChartColors = (): string[] => {
     if (isServer) {
         return chartColors;
@@ -62,9 +140,14 @@ const readChartColors = (): string[] => {
 type ThemeStore = {
     theme: ChartTheme;
     colors: string[];
+    tokens: ChartTokens;
 };
 
-let themeStore: ThemeStore = { theme: fallbackTheme, colors: chartColors };
+let themeStore: ThemeStore = {
+    theme: fallbackTheme,
+    colors: chartColors,
+    tokens: fallbackTokens,
+};
 // Export for testing
 export const listeners = new Set<() => void>();
 let cleanupFn: (() => void) | null = null;
@@ -79,7 +162,7 @@ export const resetForTesting = () => {
         cleanupFn();
     }
     cleanupFn = null;
-    themeStore = { theme: fallbackTheme, colors: chartColors };
+    themeStore = { theme: fallbackTheme, colors: chartColors, tokens: fallbackTokens };
 };
 
 const notifyListeners = () => {
@@ -93,13 +176,21 @@ export const setupObservers = () => {
     }
 
     const updateStore = () => {
-        themeStore = { theme: readTheme(), colors: readChartColors() };
+        themeStore = {
+            theme: readTheme(),
+            colors: readChartColors(),
+            tokens: readChartTokens(),
+        };
         notifyListeners();
     };
 
     // Initial read — only update store, don't notify since useSyncExternalStore
     // already reads the snapshot; notifying here causes a double render.
-    themeStore = { theme: readTheme(), colors: readChartColors() };
+    themeStore = {
+        theme: readTheme(),
+        colors: readChartColors(),
+        tokens: readChartTokens(),
+    };
 
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const observer = new MutationObserver(updateStore);
@@ -141,9 +232,13 @@ export const getThemeSnapshot = () => themeStore.theme;
 // Export for testing
 export const getColorsSnapshot = () => themeStore.colors;
 // Export for testing
+export const getTokensSnapshot = () => themeStore.tokens;
+// Export for testing
 export const getServerTheme = () => fallbackTheme;
 // Export for testing
 export const getServerColors = () => chartColors;
+// Export for testing
+export const getServerTokens = () => fallbackTokens;
 
 export function useChartTheme() {
     return useSyncExternalStore(subscribeToTheme, getThemeSnapshot, getServerTheme);
@@ -151,4 +246,8 @@ export function useChartTheme() {
 
 export function useChartColors() {
     return useSyncExternalStore(subscribeToTheme, getColorsSnapshot, getServerColors);
+}
+
+export function useChartTokens() {
+    return useSyncExternalStore(subscribeToTheme, getTokensSnapshot, getServerTokens);
 }

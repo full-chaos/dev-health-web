@@ -43,6 +43,17 @@ type AxisBands = {
 
 type MetricLevel = "low" | "high";
 
+/** Quadrant zone role 1-4: index into the `--quadrant-zone-N` theme tokens. */
+export type ZoneTone = 1 | 2 | 3 | 4;
+
+/** Zone colors when the caller passes none: the theme tokens, resolved by CSS. */
+export const ZONE_TOKEN_COLORS: readonly string[] = [
+    "var(--quadrant-zone-1)",
+    "var(--quadrant-zone-2)",
+    "var(--quadrant-zone-3)",
+    "var(--quadrant-zone-4)",
+];
+
 type ZoneTemplate = {
     id: string;
     label: string;
@@ -50,7 +61,7 @@ type ZoneTemplate = {
     levels: Record<string, MetricLevel>;
     signals: string[];
     investigations: string[];
-    color: string;
+    tone: ZoneTone;
 };
 
 const SHARED_NOTES = [
@@ -92,7 +103,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "Is stability intentional or a pause in change?",
                     "Is architectural change accumulating?",
                 ],
-                color: "rgba(34, 197, 94, 0.12)",
+                tone: 2,
             },
             {
                 id: "expansion-pressure",
@@ -104,7 +115,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "Is churn planned or reactive rework?",
                     "Are dependencies discovered late in cycles?",
                 ],
-                color: "rgba(59, 130, 246, 0.12)",
+                tone: 1,
             },
             {
                 id: "coordination-pressure",
@@ -116,7 +127,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "Are reviews slowing down conversion?",
                     "Is rework discovered late in the window?",
                 ],
-                color: "rgba(244, 63, 94, 0.12)",
+                tone: 4,
             },
             {
                 id: "constrained-underutilized",
@@ -128,7 +139,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "Are external constraints limiting delivery?",
                     "Is demand muted or scope unclear?",
                 ],
-                color: "rgba(249, 115, 22, 0.12)",
+                tone: 3,
             },
         ],
     },
@@ -165,7 +176,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "Is flow stable across the window?",
                     "Are releases gated by manual policy?",
                 ],
-                color: "rgba(34, 197, 94, 0.12)",
+                tone: 2,
             },
             {
                 id: "batch-delivery",
@@ -177,7 +188,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "Is work waiting more than executing?",
                     "Are release gates driving long cycles?",
                 ],
-                color: "rgba(59, 130, 246, 0.12)",
+                tone: 1,
             },
             {
                 id: "friction-dominant",
@@ -189,7 +200,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "Are requirements elongating cycles?",
                     "Where is work consistently stalling?",
                 ],
-                color: "rgba(244, 63, 94, 0.12)",
+                tone: 4,
             },
             {
                 id: "quick-low-output",
@@ -201,7 +212,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "Is demand or intake limiting output?",
                     "Is capacity reserved for other work?",
                 ],
-                color: "rgba(249, 115, 22, 0.12)",
+                tone: 3,
             },
         ],
     },
@@ -238,7 +249,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "Is focus sustained across the window?",
                     "Are role boundaries stable under load?",
                 ],
-                color: "rgba(34, 197, 94, 0.12)",
+                tone: 2,
             },
             {
                 id: "high-load-converting",
@@ -250,7 +261,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "Is work starting faster than it finishes?",
                     "Is prototyping bleeding into delivery?",
                 ],
-                color: "rgba(59, 130, 246, 0.12)",
+                tone: 1,
             },
             {
                 id: "diffuse-effort",
@@ -262,7 +273,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "Are owners clear as load rises?",
                     "Is intake intentionally prioritized?",
                 ],
-                color: "rgba(244, 63, 94, 0.12)",
+                tone: 4,
             },
             {
                 id: "limited-intake",
@@ -274,7 +285,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "Is demand muted or undefined?",
                     "Are external dependencies gating flow?",
                 ],
-                color: "rgba(249, 115, 22, 0.12)",
+                tone: 3,
             },
         ],
     },
@@ -314,7 +325,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "Are review practices consistent?",
                     "Is ownership effectively distributed?",
                 ],
-                color: "rgba(34, 197, 94, 0.12)",
+                tone: 2,
             },
             {
                 id: "distributed-review",
@@ -323,7 +334,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                 levels: { review_load: "high", review_latency: "low" },
                 signals: ["Shared load", "Low latency", "High throughput"],
                 investigations: ["Is review load fairly distributed?", "Are SMEs scaling support?"],
-                color: "rgba(59, 130, 246, 0.12)",
+                tone: 1,
             },
             {
                 id: "bottlenecked-review",
@@ -335,7 +346,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "How is review load distributed?",
                     "Are changes sized for effective review?",
                 ],
-                color: "rgba(244, 63, 94, 0.12)",
+                tone: 4,
             },
             {
                 id: "deferred-review",
@@ -347,7 +358,7 @@ const QUADRANT_DEFINITIONS: QuadrantDefinition[] = [
                     "Are reviews blocked by commitments?",
                     "Are expectations explicit?",
                 ],
-                color: "rgba(249, 115, 22, 0.12)",
+                tone: 3,
             },
         ],
     },
@@ -415,7 +426,10 @@ const resolveQuadrantDefinition = (axes: QuadrantResponse["axes"]) => {
 export const getQuadrantDefinition = (axes: QuadrantResponse["axes"]) =>
     resolveQuadrantDefinition(axes)?.definition ?? null;
 
-export const getZoneOverlay = (data: QuadrantResponse | null | undefined): ZoneOverlay | null => {
+export const getZoneOverlay = (
+    data: QuadrantResponse | null | undefined,
+    zoneColors: readonly string[] = ZONE_TOKEN_COLORS,
+): ZoneOverlay | null => {
     if (!data?.points?.length) {
         return null;
     }
@@ -454,7 +468,7 @@ export const getZoneOverlay = (data: QuadrantResponse | null | undefined): ZoneO
                 description: zone.description,
                 signals: zone.signals,
                 investigations: zone.investigations,
-                color: zone.color,
+                color: zoneColors[zone.tone - 1] ?? ZONE_TOKEN_COLORS[zone.tone - 1],
                 xRange: rangesByMetric[xMetric][xLevel],
                 yRange: rangesByMetric[yMetric][yLevel],
             };

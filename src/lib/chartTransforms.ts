@@ -408,10 +408,11 @@ export const toStackedAreaData = (data: ExpenseTimePoint[]) => {
             },
         })),
         series: [
-            { name: "Planned", color: "#3b82f6" },
-            { name: "Unplanned", color: "#a855f7" },
-            { name: "Rework", color: "#f97316" },
-            { name: "Abandonment", color: "#ef4444" },
+            // No color: StackedAreaChart takes the theme series colors in order.
+            { name: "Planned" },
+            { name: "Unplanned" },
+            { name: "Rework" },
+            { name: "Abandonment" },
         ],
     };
 };

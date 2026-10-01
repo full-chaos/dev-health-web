@@ -29,23 +29,23 @@ type StatusMeta = {
 const STATUS_META: Record<CockpitHealthStatus, StatusMeta> = {
     healthy: {
         label: "Healthy",
-        chip: "border-(--accent-3)/40 bg-(--accent-3)/10 text-(--accent-3)",
-        glow: "from-(--accent-3)/12",
+        chip: "border-(--positive)/40 bg-(--positive)/12 text-(--positive)",
+        glow: "from-(--positive)/12",
     },
     watch: {
         label: "Watch",
-        chip: "border-amber-400/50 bg-amber-400/10 text-amber-300",
-        glow: "from-amber-400/12",
+        chip: "border-(--info)/50 bg-(--info)/12 text-(--info)",
+        glow: "from-(--info)/12",
     },
     at_risk: {
         label: "At risk",
-        chip: "border-orange-500/50 bg-orange-500/12 text-orange-300",
-        glow: "from-orange-500/12",
+        chip: "border-(--caution)/50 bg-(--caution)/12 text-(--caution)",
+        glow: "from-(--caution)/12",
     },
     critical: {
         label: "Critical",
-        chip: "border-red-500/50 bg-red-500/12 text-red-300",
-        glow: "from-red-500/14",
+        chip: "border-(--negative)/50 bg-(--negative)/12 text-(--negative)",
+        glow: "from-(--negative)/14",
     },
 };
 
