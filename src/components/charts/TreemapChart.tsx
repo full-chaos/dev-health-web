@@ -10,7 +10,7 @@ import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
-import { tileLabelColor } from "@/lib/chartLabelColor";
+import { tileLabelStyle } from "@/lib/chartLabelColor";
 import { formatPercent } from "@/lib/formatters";
 
 echarts.use([EChartsTreemapChart]);
@@ -98,21 +98,20 @@ export function TreemapChart({
 
     // Label ink per tile, chosen by contrast against the tile's blended fill; hidden if none passes.
     const labelledData = useMemo(() => {
-        const candidates = [chartTheme.text, chartTheme.background] as const;
         const walk = (
             node: TreemapNode,
             inherited?: { color: string; opacity?: number },
         ): TreemapNode => {
             const color = node.itemStyle?.color ?? inherited?.color;
             const opacity = node.itemStyle?.opacity ?? inherited?.opacity;
+            // A label is never hidden for contrast: ink is the better of a fixed pair, with a halo
+            // fallback. Only production's size thresholds hide a label.
             const ink = color
-                ? tileLabelColor(color, opacity, chartTheme.background, candidates)
-                : chartTheme.text;
+                ? tileLabelStyle(color, opacity, chartTheme.background)
+                : { color: chartTheme.text, textBorderWidth: 0 };
             return {
                 ...node,
-                label: ink
-                    ? { color: ink, ...(node.label as object | undefined) }
-                    : { show: false },
+                label: { show: true, ...ink, ...(node.label as object | undefined) },
                 children: node.children?.map((child) =>
                     walk(child, color ? { color, opacity } : undefined),
                 ),

@@ -9,7 +9,7 @@ import { Chart } from "./Chart";
 import { investmentThemeColor, useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
-import { tileLabelColor } from "@/lib/chartLabelColor";
+import { tileLabelStyle } from "@/lib/chartLabelColor";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 import { titleCase, formatSubcategoryLabel } from "@/lib/investmentMix";
 
@@ -96,15 +96,14 @@ export function InvestmentMixSunburst({
 
     const labelFor = useCallback(
         (fill: string, opacity: unknown) => {
-            const ink = tileLabelColor(
+            // A label is never hidden for contrast: better of a fixed ink pair, halo fallback.
+            return tileLabelStyle(
                 fill,
                 typeof opacity === "number" ? opacity : undefined,
                 chartTheme.background,
-                [chartTheme.text, chartTheme.background],
             );
-            return ink ? { color: ink } : { show: false };
         },
-        [chartTheme.background, chartTheme.text],
+        [chartTheme.background],
     );
 
     const data = useMemo(() => {
@@ -303,8 +302,6 @@ export function InvestmentMixSunburst({
                             emphasis: {
                                 label: {
                                     show: true,
-                                    color: chartTheme.text,
-                                    textBorderWidth: 0,
                                     fontSize: 11,
                                 },
                             },

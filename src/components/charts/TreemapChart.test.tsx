@@ -168,23 +168,45 @@ describe("TreemapChart", () => {
         });
     });
 
-    it("hides a label when no ink reaches 4.5 on the tile", () => {
+    it("never hides a label for contrast: low-contrast tiles get a halo instead", () => {
         render(
             <TreemapChart
                 useInputColors
                 data={{
                     name: "All",
                     value: 10,
-                    children: [{ name: "A", value: 10, itemStyle: { color: "#808080" } }],
+                    children: [{ name: "A", value: 10, itemStyle: { color: "#7a7a7a" } }],
                 }}
             />,
         );
         const props = chartSpy.mock.calls[0][0] as {
             option: {
-                series: Array<{ data: Array<{ label: { show?: boolean; color?: string } }> }>;
+                series: Array<{
+                    data: Array<{
+                        label: { show?: boolean; color?: string; textBorderWidth?: number };
+                    }>;
+                }>;
             };
         };
-        // chartTheme text #111827 on #808080 is under 4.5 and so is #ffffff
-        expect(props.option.series[0].data[0].label.show).toBe(false);
+        const label = props.option.series[0].data[0].label;
+        expect(label.show).toBe(true);
+        expect(label.textBorderWidth).toBe(2);
+    });
+
+    it("uses the fixed white / near-black ink pair, not the theme text color", () => {
+        render(
+            <TreemapChart
+                useInputColors
+                data={{
+                    name: "All",
+                    value: 10,
+                    children: [{ name: "A", value: 10, itemStyle: { color: "#da2100" } }],
+                }}
+            />,
+        );
+        const props = chartSpy.mock.calls[0][0] as {
+            option: { series: Array<{ data: Array<{ label: { color?: string } }> }> };
+        };
+        expect(props.option.series[0].data[0].label.color).toBe("#ffffff");
     });
 });

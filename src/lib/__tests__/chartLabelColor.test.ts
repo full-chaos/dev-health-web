@@ -4,10 +4,13 @@ import { describe, expect, it } from "vitest";
 
 import {
     DEPTH_OPACITY,
+    LABEL_INK_DARK,
+    LABEL_INK_LIGHT,
     MIN_LABEL_CONTRAST,
     blendOver,
     depthOpacity,
-    tileLabelColor,
+    tileLabel,
+    tileLabelStyle,
 } from "../chartLabelColor";
 import { contrastRatio } from "../heatmapRamp";
 
@@ -35,41 +38,59 @@ const THEME_VARS = [
     "--theme-operational",
 ];
 
-describe("tileLabelColor", () => {
+describe("tileLabel (theme color x opacity x light/dark)", () => {
+    let haloCases = 0;
+    let total = 0;
     for (const mode of ["light", "dark"] as const) {
         const vars = block(mode);
-        const ink = vars["--chart-text"];
         const card = vars["--card"];
         for (const name of THEME_VARS) {
-            for (const opacity of [undefined, ...DEPTH_OPACITY]) {
-                it(`${mode} ${name} opacity ${opacity ?? "none"}: picks a >=4.5 color or hides`, () => {
+            for (const opacity of [undefined, ...DEPTH_OPACITY, 0.4]) {
+                it(`${mode} ${name} opacity ${opacity ?? "none"}: never hidden, ink = higher contrast`, () => {
                     const fill = vars[name];
                     expect(fill).toMatch(/^#[0-9a-f]{6}$/iu);
-                    const pick = tileLabelColor(fill, opacity, card, [ink, card]);
+                    const label = tileLabel(fill, opacity, card);
                     const shown = blendOver(fill, opacity ?? 1, card);
-                    const best = Math.max(contrastRatio(ink, shown), contrastRatio(card, shown));
-                    if (pick === null) {
-                        expect(best).toBeLessThan(MIN_LABEL_CONTRAST);
+                    const white = contrastRatio(LABEL_INK_LIGHT, shown);
+                    const dark = contrastRatio(LABEL_INK_DARK, shown);
+                    total += 1;
+                    // a label is always produced, with an ink from the fixed pair
+                    expect([LABEL_INK_LIGHT, LABEL_INK_DARK]).toContain(label.color);
+                    expect(contrastRatio(label.color, shown)).toBe(Math.max(white, dark));
+                    if (Math.max(white, dark) >= MIN_LABEL_CONTRAST) {
+                        expect(label.haloColor).toBeUndefined();
                     } else {
-                        expect([ink, card]).toContain(pick);
-                        expect(contrastRatio(pick, shown)).toBeGreaterThanOrEqual(
-                            MIN_LABEL_CONTRAST,
-                        );
-                        expect(contrastRatio(pick, shown)).toBe(best);
+                        haloCases += 1;
+                        const opposite =
+                            label.color === LABEL_INK_LIGHT ? LABEL_INK_DARK : LABEL_INK_LIGHT;
+                        expect(label.haloColor).toBe(opposite);
                     }
                 });
             }
         }
     }
 
-    it("hides the label when neither candidate passes", () => {
-        expect(tileLabelColor("#808080", 1, "#808080", ["#8a8a8a", "#777777"])).toBeNull();
+    it("covers the whole matrix", () => {
+        expect(total).toBe(2 * THEME_VARS.length * (DEPTH_OPACITY.length + 2));
+        // informational: how many matrix cells use the halo fallback
+        expect(haloCases).toBeGreaterThanOrEqual(0);
+    });
+
+    it("scarlet on the card: white wins on a fully opaque dark Maintenance fill", () => {
+        const label = tileLabel("#da2100", 1, "#161c20");
+        expect(label.color).toBe(LABEL_INK_LIGHT);
     });
 
     it("blends a translucent fill over the backdrop before measuring", () => {
         expect(blendOver("#000000", 0.5, "#ffffff")).toBe("#808080");
-        // a dark fill at low opacity over white reads light: dark ink wins
-        expect(tileLabelColor("#000000", 0.1, "#ffffff", ["#ffffff", "#111111"])).toBe("#111111");
+        expect(tileLabel("#000000", 0.1, "#ffffff").color).toBe(LABEL_INK_DARK);
+    });
+
+    it("a mid fill nobody reaches 4.5 on keeps its label and gets a halo", () => {
+        const style = tileLabelStyle("#7a7a7a", 1, "#7a7a7a");
+        expect(style.textBorderWidth).toBe(2);
+        expect(style.textBorderColor).toBeDefined();
+        expect(style.color).not.toBe(style.textBorderColor);
     });
 });
 

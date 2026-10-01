@@ -9,7 +9,7 @@ import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
-import { depthOpacity, tileLabelColor } from "@/lib/chartLabelColor";
+import { depthOpacity, tileLabelStyle } from "@/lib/chartLabelColor";
 
 echarts.use([EChartsSunburstChart]);
 
@@ -93,19 +93,19 @@ export function SunburstChart({
 
     // Label ink per segment, chosen by contrast against its blended fill; hidden if none passes.
     const labelledData = useMemo(() => {
-        const candidates = [chartTheme.text, chartTheme.background] as const;
         const walk = (
             node: SunburstNode,
             inherited?: { color: string; opacity?: number },
         ): SunburstNode => {
             const color = node.itemStyle?.color ?? inherited?.color;
             const opacity = node.itemStyle?.opacity ?? inherited?.opacity;
+            // A label is never hidden for contrast (see TreemapChart).
             const ink = color
-                ? tileLabelColor(color, opacity, chartTheme.background, candidates)
-                : chartTheme.text;
+                ? tileLabelStyle(color, opacity, chartTheme.background)
+                : { color: chartTheme.text, textBorderWidth: 0 };
             return {
                 ...node,
-                label: ink ? { color: ink } : { show: false },
+                label: ink,
                 children: node.children?.map((child) =>
                     walk(child, color ? { color, opacity } : undefined),
                 ),
