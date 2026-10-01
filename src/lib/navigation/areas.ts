@@ -156,6 +156,7 @@ export const navAreas: readonly NavArea[] = [
             // Artifact detail pages opened from Explore, the heatmaps and the Work Graph.
             "/prs",
             "/issues",
+            "/deployments",
         ],
         legacyActiveIds: [
             "work",

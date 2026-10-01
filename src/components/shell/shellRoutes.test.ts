@@ -41,6 +41,7 @@ describe("shell route registry", () => {
             "/ai/attribution",
             "/prs",
             "/issues",
+            "/deployments",
         ]);
     });
 
@@ -103,6 +104,6 @@ describe("shell route registry", () => {
             SHELL_ROUTES.filter((route) => route.filterParam === "none").map(
                 (route) => route.prefix,
             ),
-        ).toEqual(["/prs", "/issues"]);
+        ).toEqual(["/prs", "/issues", "/deployments"]);
     });
 });

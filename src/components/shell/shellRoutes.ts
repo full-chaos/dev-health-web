@@ -74,6 +74,7 @@ export const SHELL_ROUTES: readonly ShellRoute[] = [
     // Artifact detail pages (Diagnose owns them; no filter state)
     { prefix: "/prs", filterParam: "none" },
     { prefix: "/issues", filterParam: "none" },
+    { prefix: "/deployments", filterParam: "none" },
 ];
 
 function matchesRoute(pathname: string, route: ShellRoute): boolean {
