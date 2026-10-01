@@ -832,7 +832,7 @@ export function GraphView({
                     )}
                     className="mt-4 inline-block text-xs uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
                 >
-                    Browse artifacts
+                    {CTA_LABELS.browseArtifacts}
                 </Link>
             </aside>
         </div>
