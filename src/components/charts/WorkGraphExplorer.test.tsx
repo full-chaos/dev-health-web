@@ -1,0 +1,115 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@/test/utils";
+
+import type { WorkGraphEdge } from "@/lib/graphql/types";
+import { WorkGraphExplorer } from "./WorkGraphExplorer";
+
+const chartTheme = {
+    text: "#111111",
+    grid: "#222222",
+    muted: "#333333",
+    background: "#ffffff",
+    stroke: "#444444",
+    accent1: "#555555",
+    accent2: "#666666",
+    accent3: "#777777",
+};
+const palette = Array.from({ length: 10 }, (_, i) => `#00000${i}`);
+const tokens = { negative: "#a00000", positive: "#00a000", info: "#0000a0", caution: "#a0a000" };
+
+const { chartSpy } = vi.hoisted(() => ({ chartSpy: vi.fn() }));
+vi.mock("./chartTheme", () => ({
+    useChartTheme: () => chartTheme,
+    useChartColors: () => palette,
+    useChartTokens: () => tokens,
+}));
+vi.mock("./Chart", () => ({
+    Chart: (props: unknown) => {
+        chartSpy(props);
+        return <div data-testid="chart" />;
+    },
+}));
+
+const edge = (
+    sourceType: WorkGraphEdge["sourceType"],
+    sourceId: string,
+    targetType: WorkGraphEdge["targetType"],
+    targetId: string,
+): WorkGraphEdge =>
+    ({
+        sourceType,
+        sourceId,
+        targetType,
+        targetId,
+        edgeType: "FIXES",
+        confidence: 0.8,
+    }) as WorkGraphEdge;
+
+const edges = [
+    edge("ISSUE", "I1", "PR", "P1"),
+    edge("ISSUE", "I2", "PR", "P1"),
+    edge("ISSUE", "I2", "PR", "P2"),
+];
+
+type Series = {
+    layout: string;
+    roam: boolean;
+    draggable: boolean;
+    data: Array<{ id: string; x?: number; y?: number; label: { position: string } }>;
+    links: Array<{ source: string; target: string }>;
+};
+const series = () =>
+    (chartSpy.mock.calls.at(-1)?.[0] as { option: { series: Series[] } }).option.series[0];
+
+describe("WorkGraphExplorer layout modes", () => {
+    beforeEach(() => chartSpy.mockClear());
+
+    it("defaults to the layered mode: fixed coordinates, every node placed, pan and zoom on", () => {
+        render(<WorkGraphExplorer edges={edges} />);
+        const s = series();
+        expect(s.layout).toBe("none");
+        expect(s.roam).toBe(true);
+        expect(s.data).toHaveLength(4);
+        for (const node of s.data) {
+            expect(typeof node.x).toBe("number");
+            expect(typeof node.y).toBe("number");
+        }
+        // two columns: issues at x=0, pull requests to the right
+        const x = (id: string) => s.data.find((d) => d.id === id)!.x!;
+        expect(x("ISSUE:I1")).toBe(0);
+        expect(x("PR:P1")).toBeGreaterThan(0);
+    });
+
+    it("shows the column strip with counts and a hint when fewer than three columns", () => {
+        render(<WorkGraphExplorer edges={edges} />);
+        expect(screen.getByTestId("work-graph-columns").textContent).toBe("Issue · 2  →  PR · 2");
+        expect(screen.getByTestId("work-graph-columns-hint").textContent).toContain("two columns");
+    });
+
+    it("no hint with three or more columns", () => {
+        render(<WorkGraphExplorer edges={[...edges, edge("PR", "P1", "COMMIT", "C1")]} />);
+        expect(screen.queryByTestId("work-graph-columns-hint")).toBeNull();
+    });
+
+    it("Network mode keeps production's force layout and drops coordinates", () => {
+        render(<WorkGraphExplorer edges={edges} />);
+        fireEvent.click(screen.getByRole("radio", { name: "Network" }));
+        const s = series();
+        expect(s.layout).toBe("force");
+        expect(s.draggable).toBe(true);
+        expect(s.data.every((d) => d.x === undefined && d.y === undefined)).toBe(true);
+        expect(screen.queryByTestId("work-graph-columns")).toBeNull();
+    });
+
+    it("node click still reports type and id in both modes", () => {
+        const onClick = vi.fn();
+        render(<WorkGraphExplorer edges={edges} onNodeClickAction={onClick} />);
+        const props = () =>
+            chartSpy.mock.calls.at(-1)![0] as { onEvents: { click: (p: unknown) => void } };
+        props().onEvents.click({ dataType: "node", data: { id: "PR:P1" } });
+        expect(onClick).toHaveBeenCalledWith("P1", "PR");
+        fireEvent.click(screen.getByRole("radio", { name: "Network" }));
+        props().onEvents.click({ dataType: "node", data: { id: "ISSUE:I2" } });
+        expect(onClick).toHaveBeenLastCalledWith("I2", "ISSUE");
+    });
+});

@@ -8,6 +8,8 @@ import { Chart } from "./Chart";
 import { type ChartTokens, useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { layoutLayered } from "@/lib/workGraphLayout";
+import { ChartTypeToggle } from "./ChartTypeToggle";
 import type { WorkGraphEdge, WorkGraphNodeType, WorkGraphEdgeType } from "@/lib/graphql/types";
 
 echarts.use([GraphChart]);
@@ -108,6 +110,13 @@ const ALL_NODE_TYPES: WorkGraphNodeType[] = [
     "REVIEW_OUTCOME",
     "DEPLOYMENT",
     "INCIDENT",
+];
+
+export type WorkGraphLayoutMode = "layered" | "network";
+
+const LAYOUT_MODE_OPTIONS: Array<{ id: WorkGraphLayoutMode; label: string }> = [
+    { id: "layered", label: "Layered" },
+    { id: "network", label: "Network" },
 ];
 
 const FILTERABLE_NODE_TYPES: WorkGraphNodeType[] = ["RELEASE", "FEATURE_FLAG"];
@@ -254,6 +263,8 @@ export function WorkGraphExplorer({
     const chartTheme = useChartTheme();
     const { nodeTypeColors, edgeTypeStyles } = useWorkGraphColors();
 
+    // Page state only: the connection slice select next to this chart is state-only too.
+    const [layoutMode, setLayoutMode] = useState<WorkGraphLayoutMode>("layered");
     const [hiddenNodeTypes, setHiddenNodeTypes] = useState<Set<WorkGraphNodeType>>(() => new Set());
 
     const toggleNodeType = useCallback((nodeType: WorkGraphNodeType) => {
@@ -273,6 +284,8 @@ export function WorkGraphExplorer({
         [edges, hiddenNodeTypes],
     );
 
+    const layered = useMemo(() => layoutLayered(nodes, links), [nodes, links]);
+
     const categories = useMemo(
         () =>
             ALL_NODE_TYPES.map((type) => ({
@@ -285,12 +298,16 @@ export function WorkGraphExplorer({
     const option: EChartsOption = useMemo(() => {
         const totalGraphics = nodes.length + links.length;
         const animateGraph = totalGraphics < 2000;
-        const useForceLayout = totalGraphics < 900;
+        const isLayered = layoutMode === "layered";
+        const useForceLayout = !isLayered && totalGraphics < 900;
         const showNodeLabels = nodes.length <= 120;
         const echartsNodes = nodes.map((node) => ({
             id: node.id,
             name: node.name,
             category: node.category,
+            ...(isLayered
+                ? { x: layered.positions.get(node.id)?.x, y: layered.positions.get(node.id)?.y }
+                : {}),
             symbolSize: selectedNodeId === node.id ? node.symbolSize * 1.5 : node.symbolSize,
             symbol: NODE_TYPE_SYMBOLS[node.type],
             itemStyle: {
@@ -300,12 +317,13 @@ export function WorkGraphExplorer({
             },
             label: {
                 show: showNodeLabels && node.symbolSize > 25,
-                position: "bottom" as const,
+                position: isLayered ? ("right" as const) : ("bottom" as const),
                 fontSize: 10,
                 color: chartTheme.text,
             },
         }));
 
+        const nodeById = new Map(nodes.map((node) => [node.id, node]));
         const echartsLinks = links.map((link) => {
             const linkStyle = edgeTypeStyles[link.edgeType] ?? {
                 color: chartTheme.muted,
@@ -319,7 +337,12 @@ export function WorkGraphExplorer({
                     type: linkStyle.type,
                     width: link.lineStyle?.width ?? 1,
                     opacity: link.lineStyle?.opacity ?? 0.6,
-                    curveness: 0.1,
+                    // a link inside one column (same type) bows out so it stays readable
+                    curveness:
+                        isLayered &&
+                        nodeById.get(link.source)?.type === nodeById.get(link.target)?.type
+                            ? 0.45
+                            : 0.1,
                 },
             };
         });
@@ -351,7 +374,7 @@ export function WorkGraphExplorer({
             series: [
                 {
                     type: "graph",
-                    layout: useForceLayout ? "force" : "circular",
+                    layout: isLayered ? "none" : useForceLayout ? "force" : "circular",
                     animation: animateGraph,
                     data: echartsNodes,
                     links: echartsLinks,
@@ -388,7 +411,17 @@ export function WorkGraphExplorer({
                 },
             ],
         };
-    }, [nodes, links, categories, chartTheme, selectedNodeId, nodeTypeColors, edgeTypeStyles]);
+    }, [
+        nodes,
+        links,
+        categories,
+        chartTheme,
+        selectedNodeId,
+        nodeTypeColors,
+        edgeTypeStyles,
+        layoutMode,
+        layered,
+    ]);
 
     const handleEvents = useMemo(
         () => ({
@@ -420,6 +453,30 @@ export function WorkGraphExplorer({
 
     return (
         <div className={className} style={{ width, ...style }}>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 px-1 text-xs">
+                <ChartTypeToggle
+                    options={LAYOUT_MODE_OPTIONS}
+                    value={layoutMode}
+                    onChangeAction={setLayoutMode}
+                />
+                {layoutMode === "layered" && (
+                    <span className="text-(--ink-muted)" data-testid="work-graph-columns">
+                        {layered.columns
+                            .map((column) => `${NODE_TYPE_LABELS[column.type]} · ${column.count}`)
+                            .join("  →  ")}
+                    </span>
+                )}
+            </div>
+            {layoutMode === "layered" && layered.columns.length < 3 && (
+                <p
+                    className="mb-2 px-1 text-xs text-(--ink-muted)"
+                    data-testid="work-graph-columns-hint"
+                >
+                    This connection type shows{" "}
+                    {layered.columns.length === 1 ? "one column" : "two columns"}. Pick PRs →
+                    Commits → Files or All connections for more columns.
+                </p>
+            )}
             {FILTERABLE_NODE_TYPES.length > 0 && (
                 <div className="mb-2 flex flex-wrap items-center gap-2 px-1 text-xs">
                     <span className="mr-1 uppercase tracking-[0.16em] text-(--ink-muted)">
