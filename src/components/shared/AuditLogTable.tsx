@@ -32,16 +32,16 @@ export type AuditEntry = {
 // ============================================================================
 
 const ACTION_BADGE_COLORS: Record<string, string> = {
-    plan: "bg-blue-500/15 text-blue-400",
-    subscription: "bg-green-500/15 text-green-400",
-    invoice: "bg-yellow-500/15 text-yellow-400",
-    refund: "bg-orange-500/15 text-orange-400",
-    reconciliation: "bg-purple-500/15 text-purple-400",
+    plan: "bg-(--card-stroke) text-(--ink-muted)",
+    subscription: "bg-(--card-stroke) text-(--ink-muted)",
+    invoice: "bg-(--card-stroke) text-(--ink-muted)",
+    refund: "bg-(--card-stroke) text-(--ink-muted)",
+    reconciliation: "bg-(--card-stroke) text-(--ink-muted)",
 };
 
 function actionBadgeClass(action: string): string {
     const group = action.split(".", 1)[0] ?? "";
-    return ACTION_BADGE_COLORS[group] ?? "bg-slate-500/15 text-slate-300";
+    return ACTION_BADGE_COLORS[group] ?? "bg-(--card-stroke) text-(--ink-muted)";
 }
 
 function BillingAuditLogTable({
@@ -142,8 +142,8 @@ function AdminAuditLogTable({ entries }: { entries: AuditEntry[] }) {
                                 <span
                                     className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                                         entry.status === "success"
-                                            ? "bg-green-500/10 text-green-500"
-                                            : "bg-red-500/10 text-red-500"
+                                            ? "bg-(--positive)/12 text-(--positive)"
+                                            : "bg-(--negative)/12 text-(--negative)"
                                     }`}
                                 >
                                     {entry.status ?? "-"}

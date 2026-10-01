@@ -185,7 +185,7 @@ export function ImportTeamsDialog() {
                                     <button
                                         type="button"
                                         onClick={toggleAll}
-                                        className="cursor-pointer text-sm text-(--accent) hover:underline"
+                                        className="cursor-pointer text-sm text-(--accent-2) hover:underline"
                                     >
                                         {selectedTeams.size === discoveredTeams.length
                                             ? CTA_LABELS.deselectAll

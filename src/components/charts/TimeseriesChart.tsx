@@ -115,6 +115,9 @@ export function TimeseriesChart({
                         smooth: true,
                         symbol: "circle",
                         // A dot only on the last point and on isolated points (see chartConventions).
+                        // ECharts' default `showAllSymbol: "auto"` hides symbols between label ticks on a dense
+                        // category axis, which can hide the end dot; `pointSymbolSize` already limits the dots.
+                        showAllSymbol: true,
                         symbolSize: pointSymbolSize(values),
                         itemStyle: dotRing(chartTheme),
                         lineStyle: lineMark,

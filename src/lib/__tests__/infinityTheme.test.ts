@@ -262,6 +262,34 @@ describe("infinity palette", () => {
         },
     );
 
+    it.each(THEMES)(
+        "keeps action text readable on cards, the page and action tints (%s)",
+        (theme) => {
+            const t = infinity(theme);
+            // Links and actions use --accent-2 (the action color) on cards and the page...
+            for (const [name, fill] of Object.entries({
+                card: t["--card"],
+                page: t["--background"],
+                "action 5 on card": over(t["--accent-2"], t["--card"], 0.05),
+            })) {
+                expect(
+                    contrast(t["--accent-2"], fill),
+                    `action text on ${name}`,
+                ).toBeGreaterThanOrEqual(4.5);
+            }
+            // ...and --info on the tinted action pills (--accent-2 at 5 to 20 percent).
+            for (const alpha of [0.05, 0.1, 0.2]) {
+                for (const base of [t["--card"], t["--background"]]) {
+                    const fill = over(t["--accent-2"], base, alpha);
+                    expect(
+                        contrast(t["--info"], fill),
+                        `info on action ${alpha}`,
+                    ).toBeGreaterThanOrEqual(4.5);
+                }
+            }
+        },
+    );
+
     it.each(THEMES)("keeps status pill text readable on its own tint (%s)", (theme) => {
         const t = infinity(theme);
         // Pills: status token as text on the same token at STATUS_PILL_ALPHA over the card.

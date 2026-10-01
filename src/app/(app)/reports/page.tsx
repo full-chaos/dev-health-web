@@ -74,7 +74,7 @@ export default async function ReportsPage({ searchParams }: ReportsPageProps) {
                                     >
                                         <div>
                                             <div className="flex items-start justify-between gap-2">
-                                                <h3 className="font-(--font-display) text-lg font-medium group-hover:text-(--accent) transition-colors">
+                                                <h3 className="font-(--font-display) text-lg font-medium group-hover:text-(--accent-2) transition-colors">
                                                     {report.name}
                                                 </h3>
                                                 <StatusBadge status={report.lastRunStatus} />

@@ -126,8 +126,8 @@ export function EntitlementsDetail({
                                             <span
                                                 className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                                                     enabled
-                                                        ? "bg-green-500/10 text-green-500"
-                                                        : "bg-red-500/10 text-red-500"
+                                                        ? "bg-(--positive)/12 text-(--positive)"
+                                                        : "bg-(--negative)/12 text-(--negative)"
                                                 }`}
                                             >
                                                 {enabled ? "Enabled" : "Disabled"}
@@ -135,7 +135,7 @@ export function EntitlementsDetail({
                                         </td>
                                         <td className="px-4 py-3 text-(--ink-muted)">
                                             {isOverridden ? (
-                                                <span className="text-purple-400">Override</span>
+                                                <span className="text-(--info)">Override</span>
                                             ) : (
                                                 "Tier Default"
                                             )}
@@ -272,8 +272,8 @@ export function EntitlementsDetail({
                                             <span
                                                 className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
                                                     override.is_enabled
-                                                        ? "bg-green-500/10 text-green-500"
-                                                        : "bg-red-500/10 text-red-500"
+                                                        ? "bg-(--positive)/12 text-(--positive)"
+                                                        : "bg-(--negative)/12 text-(--negative)"
                                                 }`}
                                             >
                                                 {override.is_enabled ? "Enabled" : "Disabled"}
@@ -289,7 +289,7 @@ export function EntitlementsDetail({
                                             <button
                                                 type="button"
                                                 onClick={() => handleDeleteOverride(override.id)}
-                                                className="text-red-500 hover:underline"
+                                                className="text-(--negative) hover:underline"
                                             >
                                                 {CTA_LABELS.delete}
                                             </button>
