@@ -55,7 +55,8 @@ type Series = {
     layout: string;
     roam: boolean;
     draggable: boolean;
-    data: Array<{ id: string; x?: number; y?: number; label: { position: string } }>;
+    data: Array<{ id: string; value?: number[]; label: { position: string } }>;
+    coordinateSystem?: string;
     links: Array<{ source: string; target: string }>;
 };
 const series = () =>
@@ -69,12 +70,12 @@ describe("WorkGraphExplorer layout modes", () => {
         const s = series();
         expect(s.layout).toBe("none");
         expect(s.data).toHaveLength(4);
+        expect(s.coordinateSystem).toBe("cartesian2d");
         for (const node of s.data) {
-            expect(typeof node.x).toBe("number");
-            expect(typeof node.y).toBe("number");
+            expect(node.value).toHaveLength(2);
         }
         // two columns: issues at x=0, pull requests to the right
-        const x = (id: string) => s.data.find((d) => d.id === id)!.x!;
+        const x = (id: string) => s.data.find((d) => d.id === id)!.value![0];
         expect(x("ISSUE:I1")).toBe(0);
         expect(x("PR:P1")).toBeGreaterThan(0);
     });
@@ -122,7 +123,8 @@ describe("WorkGraphExplorer layout modes", () => {
         const s = series();
         expect(s.layout).toBe("force");
         expect(s.draggable).toBe(true);
-        expect(s.data.every((d) => d.x === undefined && d.y === undefined)).toBe(true);
+        expect(s.data.every((d) => d.value === undefined)).toBe(true);
+        expect(s.coordinateSystem).toBeUndefined();
         expect(screen.queryByTestId("work-graph-columns")).toBeNull();
     });
 

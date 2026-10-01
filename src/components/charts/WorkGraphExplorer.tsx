@@ -335,8 +335,15 @@ export function WorkGraphExplorer({
             id: node.id,
             name: node.name,
             category: node.category,
+            // layered: coordinates go through explicit axes (below), so the drawing is placed
+            // exactly (no automatic fit); network: the layout algorithm places the node
             ...(isLayered
-                ? { x: layered.positions.get(node.id)?.x, y: layered.positions.get(node.id)?.y }
+                ? {
+                      value: [
+                          layered.positions.get(node.id)?.x ?? 0,
+                          layered.positions.get(node.id)?.y ?? 0,
+                      ],
+                  }
                 : {}),
             symbolSize: (() => {
                 // dense columns get smaller marks so rows do not overlap
@@ -409,19 +416,47 @@ export function WorkGraphExplorer({
                     return "";
                 },
             },
+            ...(isLayered
+                ? {
+                      grid: {
+                          left: MARGIN_LEFT,
+                          right: MARGIN_RIGHT,
+                          top: MARGIN_Y,
+                          bottom: MARGIN_Y,
+                      },
+                      xAxis: {
+                          type: "value" as const,
+                          show: false,
+                          min: 0,
+                          max: Math.max(1, boxWidth - MARGIN_LEFT - MARGIN_RIGHT),
+                      },
+                      yAxis: {
+                          type: "value" as const,
+                          show: false,
+                          inverse: true,
+                          min: 0,
+                          max: Math.max(1, layered.height),
+                      },
+                  }
+                : {}),
             series: [
                 {
                     type: "graph",
+                    ...(isLayered ? { coordinateSystem: "cartesian2d" as const } : {}),
                     layout: isLayered ? "none" : useForceLayout ? "force" : "circular",
                     animation: animateGraph,
                     data: echartsNodes,
                     links: echartsLinks,
                     categories,
-                    left: isLayered ? MARGIN_LEFT : 56,
-                    right: isLayered ? MARGIN_RIGHT : 56,
-                    top: MARGIN_Y,
-                    bottom: MARGIN_Y,
-                    center: ["50%", "50%"],
+                    ...(isLayered
+                        ? {}
+                        : {
+                              left: 56,
+                              right: 56,
+                              top: MARGIN_Y,
+                              bottom: MARGIN_Y,
+                              center: ["50%", "50%"],
+                          }),
                     // layered: the area scrolls, so no wheel zoom / drag pan fights it
                     roam: !isLayered,
                     draggable: useForceLayout,
@@ -460,6 +495,7 @@ export function WorkGraphExplorer({
         edgeTypeStyles,
         layoutMode,
         layered,
+        boxWidth,
     ]);
 
     const handleEvents = useMemo(
