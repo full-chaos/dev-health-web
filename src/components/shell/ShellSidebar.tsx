@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Suspense, useRef, useState } from "react";
 
 import fcLogo from "@/assets/fc-logo.png";
-import { BetaBadge } from "@/components/BetaBadge";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { OrgSwitcher, type ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -84,7 +83,6 @@ export function ShellSidebar({ onActiveOrganizationChange }: ShellSidebarProps) 
                             </span>
                         </span>
                     </Link>
-                    <BetaBadge />
                 </div>
 
                 <OrgSwitcher

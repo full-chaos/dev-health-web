@@ -26,7 +26,8 @@ test.describe("Plan area forecast pages", () => {
 
         // CHAOS-1783: sample data is gone. Without a reachable forecast the
         // page renders an honest empty state instead of placeholder numbers.
-        await expect(page.getByRole("heading", { name: /No forecast available/i })).toBeVisible();
+        // The shared empty state shows its title as text, not as a heading.
+        await expect(page.getByText(/No forecast available/i)).toBeVisible();
         await expect(page.getByText(/Scope:/i)).toBeVisible();
         await expect(page.getByText(/Showing sample data/i)).not.toBeVisible();
     });
