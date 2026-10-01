@@ -26,7 +26,7 @@ export function InvestmentExplainer({
             <summary className="cursor-pointer list-none font-(--font-display) text-lg">
                 What this investment mix indicates
                 <span
-                    className="ml-2 rounded-full border border-(--card-stroke) px-2 py-0.5 align-middle font-sans text-xs uppercase tracking-[0.18em] text-(--ink-muted)"
+                    className="ml-2 whitespace-nowrap rounded-full border border-(--card-stroke) px-2 py-0.5 align-middle font-sans text-xs uppercase tracking-[0.18em] text-(--ink-muted)"
                     data-testid="ai-generated-label"
                 >
                     AI-generated
