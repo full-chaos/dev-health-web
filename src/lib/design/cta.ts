@@ -15,6 +15,8 @@
 export const CTA_LABELS = {
     /** Return to the Dev Health cockpit from global brand navigation. */
     devHealthCockpit: "Full Chaos Dev Health home",
+    /** Cognitive Load overview: jump to the Load Drivers tab. */
+    exploreLoadDrivers: "Explore load drivers",
     /** Light / dark theme switch (pressed = light). */
     themeSwitchLight: "Light theme",
     /** Keyboard skip link: move focus past the app shell to the page content. */
@@ -87,6 +89,12 @@ export const CTA_LABELS = {
     /** Navigate to the AI Automations workflow from a cross-panel CTA. */
     seeAIAutomations: "See AI Automations",
     checkDataConnections: "Check data connections",
+    /** Open the Plan / Completion Forecast destination (Plan overview). */
+    completionForecast: "Completion Forecast",
+    /** Plan overview destination: the Completion Forecast page. */
+    forecastCompletion: "Forecast completion",
+    /** Plan overview destination: the Backlog Risk page. */
+    inspectBacklogRisk: "Inspect backlog risk",
     flameDiagram: "Flame Diagram",
     landscape: "Landscape",
     week: "Week",
