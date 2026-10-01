@@ -14,6 +14,8 @@ type TooltipOptions = {
     formatter?: TooltipComponentOption["formatter"];
     /** Draw the time-series crosshair (muted, 1px, solid). Bars keep ECharts' default pointer. */
     crosshair?: boolean;
+    /** `cross` keeps a chart's two-axis pointer (with value labels) and themes its lines. */
+    pointer?: "line" | "cross";
     /** `item` for pies and other charts without an axis; default `axis`. */
     trigger?: "axis" | "item";
     /** Keep the tooltip inside the chart box (default true; a chart that never confined passes false). */
@@ -29,14 +31,22 @@ export const buildTooltip = (theme: ChartTheme, options: TooltipOptions = {}) =>
     backgroundColor: theme.background,
     borderColor: theme.stroke,
     textStyle: { color: theme.text, ...(options.fontSize ? { fontSize: options.fontSize } : {}) },
-    ...(options.crosshair
+    ...(options.crosshair && options.pointer === "cross"
         ? {
               axisPointer: {
-                  type: "line" as const,
-                  lineStyle: { color: theme.muted, width: 1, type: "solid" as const },
+                  type: "cross" as const,
+                  crossStyle: { color: theme.muted, width: 1, type: "solid" as const },
+                  label: { backgroundColor: theme.muted },
               },
           }
-        : {}),
+        : options.crosshair
+          ? {
+                axisPointer: {
+                    type: "line" as const,
+                    lineStyle: { color: theme.muted, width: 1, type: "solid" as const },
+                },
+            }
+          : {}),
     ...(options.formatter ? { formatter: options.formatter } : {}),
 });
 
