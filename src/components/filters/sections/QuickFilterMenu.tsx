@@ -36,7 +36,7 @@ export function QuickFilterMenu({
                 type="button"
                 onClick={() => setOpenMenu(openMenu === menuKey ? null : menuKey)}
                 className={`flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs ${
-                    variant === "accent" && isActive ? "border-(--accent) text-(--accent)" : ""
+                    variant === "accent" && isActive ? "border-(--accent) text-(--accent-text)" : ""
                 }`}
                 aria-expanded={openMenu === menuKey}
             >

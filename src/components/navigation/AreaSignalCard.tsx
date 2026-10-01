@@ -114,7 +114,7 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
             }
         >
             {emphasized ? (
-                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-(--accent)">
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-(--accent-text)">
                     Top signal
                 </p>
             ) : null}

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { STATUS_PILL_ALPHA, ZONE_FILL_ALPHA } from "../themeTints";
+import { STATUS_PILL_ALPHA, ZONE_GRADIENT_ALPHA } from "../themeTints";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 const infinityCss = read("../../app/fc-infinity-themes.css");
@@ -162,20 +162,25 @@ describe("infinity palette", () => {
         },
     );
 
+    it("keeps production's zone gradient alphas (peak .20, mid .12, rim 0)", () => {
+        expect(ZONE_GRADIENT_ALPHA).toEqual({ peak: 0.2, mid: 0.12, edge: 0 });
+    });
+
     it.each(THEMES)(
         "draws each quadrant zone visibly and apart from its neighbours (%s)",
         (theme) => {
             const t = infinity(theme);
-            const rendered = [1, 2, 3, 4].map((n) =>
-                over(t[`--quadrant-zone-${n}`], t["--card"], ZONE_FILL_ALPHA),
-            );
-            rendered.forEach((fill, i) => {
+            const zoneAt = (alpha: number) =>
+                [1, 2, 3, 4].map((n) => over(t[`--quadrant-zone-${n}`], t["--card"], alpha));
+            // The gradient peak is the zone's strongest tint: it must read against the surface.
+            const peak = zoneAt(ZONE_GRADIENT_ALPHA.peak);
+            peak.forEach((fill, i) => {
                 expect(
                     deltaENormal(fill, t["--card"]),
-                    `zone ${i + 1} vs chart surface`,
+                    `zone ${i + 1} peak vs chart surface`,
                 ).toBeGreaterThanOrEqual(4);
             });
-            // Zones tile a 2 x 2 grid in the ring 1-2-3-4: each shares an edge with the next.
+            // Zones sit in a 2 x 2 grid in the ring 1-2-3-4: each neighbours the next.
             for (const [a, b] of [
                 [1, 2],
                 [2, 3],
@@ -183,15 +188,17 @@ describe("infinity palette", () => {
                 [4, 1],
             ]) {
                 expect(
-                    deltaENormal(rendered[a - 1], rendered[b - 1]),
-                    `zone ${a} vs ${b}`,
+                    deltaENormal(peak[a - 1], peak[b - 1]),
+                    `zone ${a} vs ${b} at the peak`,
                 ).toBeGreaterThanOrEqual(3);
             }
-            // Text and points drawn on a zone keep their contrast.
-            for (const fill of rendered) {
+            // Text drawn on a zone keeps its contrast at the strongest tint.
+            for (const fill of peak) {
                 expect(contrast(t["--chart-text"], fill)).toBeGreaterThanOrEqual(4.5);
                 expect(contrast(t["--chart-muted"], fill)).toBeGreaterThanOrEqual(3);
-                // The focused point is drawn in series 1.
+            }
+            // Most of a zone sits at the mid alpha; the focused point (series 1) must read there.
+            for (const fill of zoneAt(ZONE_GRADIENT_ALPHA.mid)) {
                 expect(
                     contrast(t["--chart-color-1"], fill),
                     "focus point on zone",
@@ -199,6 +206,50 @@ describe("infinity palette", () => {
             }
         },
     );
+
+    it.each(THEMES)(
+        "keeps orange text and muted ink readable on cards, the page and tints (%s)",
+        (theme) => {
+            const t = infinity(theme);
+            const surfaces: Record<string, string> = {
+                card: t["--card"],
+                page: t["--background"],
+            };
+            for (const alpha of [0.05, 0.1, 0.15]) {
+                surfaces[`accent ${alpha} on card`] = over(t["--accent"], t["--card"], alpha);
+                surfaces[`accent ${alpha} on page`] = over(t["--accent"], t["--background"], alpha);
+            }
+            // Warm cards (amber-50 "needs attention" tint) exist in the light theme.
+            if (theme === "light") {
+                surfaces["warm tint"] = "#f1e9db";
+            }
+            for (const [name, fill] of Object.entries(surfaces)) {
+                expect(
+                    contrast(t["--accent-text"], fill),
+                    `accent text on ${name}`,
+                ).toBeGreaterThanOrEqual(4.5);
+                expect(
+                    contrast(t["--ink-muted"], fill),
+                    `ink-muted on ${name}`,
+                ).toBeGreaterThanOrEqual(4.5);
+                // Dark text-muted is unchanged by the light ticket and sits under 4.5 on accent tints.
+                if (theme === "light" || name === "card" || name === "page") {
+                    expect(
+                        contrast(t["--text-muted"], fill),
+                        `text-muted on ${name}`,
+                    ).toBeGreaterThanOrEqual(4.5);
+                }
+            }
+        },
+    );
+
+    it("leaves the dark theme's colors unchanged: orange text resolves to --accent, muted ink as before", () => {
+        const dark = infinity("dark");
+        // Every `text-(--accent-text)` renders the same color as the `text-(--accent)` it replaced.
+        expect(dark["--accent-text"]).toBe(dark["--accent"]);
+        expect(dark["--ink-muted"]).toBe("#a7afb5");
+        expect(dark["--text-muted"]).toBe("#808990");
+    });
 
     it.each(THEMES)("keeps status pill text readable on its own tint (%s)", (theme) => {
         const t = infinity(theme);
@@ -216,6 +267,7 @@ describe("infinity palette", () => {
             "--ink-muted",
             "--accent",
             "--accent-foreground",
+            "--accent-text",
             "--accent-1",
             "--accent-2",
             "--accent-3",

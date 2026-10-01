@@ -52,7 +52,7 @@ export default async function OrgDetailPage({ params }: PageProps) {
                                             {member.user_id}
                                         </td>
                                         <td className="px-4 py-3">
-                                            <span className="inline-flex items-center rounded-full bg-(--accent)/10 px-2 py-0.5 text-xs font-medium text-(--accent)">
+                                            <span className="inline-flex items-center rounded-full bg-(--accent)/10 px-2 py-0.5 text-xs font-medium text-(--accent-text)">
                                                 {member.role}
                                             </span>
                                         </td>

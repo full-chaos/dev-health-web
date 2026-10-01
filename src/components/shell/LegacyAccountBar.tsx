@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import fcLogo from "@/assets/fc-logo.png";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -38,7 +39,10 @@ export function LegacyAccountBar() {
                         Full Chaos Dev Health
                     </span>
                 </Link>
-                <UserMenu />
+                <div className="flex items-center gap-3">
+                    <ThemeToggle />
+                    <UserMenu />
+                </div>
             </nav>
         </header>
     );

@@ -23,12 +23,55 @@ import { InvestigationPanel } from "./InvestigationPanel";
 
 const overlayKeyFor = (type: "zone" | "annotation", id: string | number) => `${type}:${id}`;
 
+const rgbaPattern = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/i;
+const hexPattern = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i;
+
+const clampAlpha = (alpha: number) => Math.min(1, Math.max(0, alpha));
+
+const withAlpha = (color: string, alpha: number) => {
+    const nextAlpha = clampAlpha(alpha);
+    const trimmed = color.trim();
+    const match = trimmed.match(rgbaPattern);
+    if (match) {
+        const red = Number(match[1]);
+        const green = Number(match[2]);
+        const blue = Number(match[3]);
+        if ([red, green, blue].some((value) => Number.isNaN(value))) {
+            return color;
+        }
+        return `rgba(${red}, ${green}, ${blue}, ${nextAlpha})`;
+    }
+    const hexMatch = trimmed.match(hexPattern);
+    if (!hexMatch) {
+        return color;
+    }
+    const hex = hexMatch[1];
+    const normalized =
+        hex.length === 3
+            ? hex
+                  .split("")
+                  .map((item) => item + item)
+                  .join("")
+            : hex;
+    const value = Number.parseInt(normalized, 16);
+    if (Number.isNaN(value)) {
+        return color;
+    }
+    const red = (value >> 16) & 255;
+    const green = (value >> 8) & 255;
+    const blue = value & 255;
+    return `rgba(${red}, ${green}, ${blue}, ${nextAlpha})`;
+};
+
 const formatAnnotationType = (label: string) => label.replace(/_/g, " ").trim();
 
-// The swatch is the zone's own token color, solid, so it reads on any surface.
 const buildLegendSwatchStyle = (color: string): CSSProperties => ({
-    background: color,
-    borderColor: color,
+    background: `radial-gradient(circle at 35% 35%, ${withAlpha(
+        color,
+        0.4,
+    )}, ${withAlpha(color, 0.14)} 60%, transparent 100%)`,
+    borderColor: withAlpha(color, 0.45),
+    boxShadow: `0 0 12px ${withAlpha(color, 0.3)}`,
 });
 
 type QuadrantPanelProps = {

@@ -17,6 +17,7 @@
     --foreground: #1c1b1f;
     --ink-muted: #49454f;
     --accent: #f89d28;
+    --accent-text: var(--accent);
     --accent-foreground: #0d1117;
     --accent-2: #625b71;
     --accent-3: #7d5260;
@@ -184,6 +185,7 @@
     --color-border-subtle: var(--border);
     --color-ink-secondary: var(--text-secondary);
     --color-accent: var(--accent);
+    --color-accent-text: var(--accent-text);
     --color-accent-2: var(--accent-2);
     --color-accent-3: var(--accent-3);
     --color-accent-ai: var(--accent-ai);
