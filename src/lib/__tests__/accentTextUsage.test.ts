@@ -5,38 +5,44 @@ import { describe, expect, it } from "vitest";
 // (darker in light, so it reads on cards and tints). `--accent` stays for fills, borders and
 // rings. This scan covers the files the ticket changed.
 const ACCENT_TEXT_FILES = [
-    "shared/FilterPills.tsx",
-    "filters/sections/ToolbarActions.tsx",
-    "filters/sections/QuickFilterMenu.tsx",
-    "admin/sync/config-form/StepProgress.tsx",
-    "admin/integrations/wizard/AddProviderStepProgress.tsx",
-    "admin/integrations/wizard/ProviderSelectStep.tsx",
-    "admin/sync/config-form/InitialDepthSection.tsx",
-    "settings/PreferencesSettings.tsx",
-    "cognitive-load/CognitiveLoadViews.tsx",
-    "admin/integrations/wizard/AuthMethodStep.tsx",
-    "admin/settings/billing/ChangePlanDialog.tsx",
-    "home/CockpitSummary.tsx",
-    "home/SignalCard.tsx",
-    "home/CockpitClient.tsx",
-    "billing/UpgradeGate.tsx",
-    "admin/llm/ByoLlmSpendSummary.tsx",
-    "admin/llm/ByoLlmSettings.tsx",
-    "navigation/AreaSignalCard.tsx",
+    "components/shared/FilterPills.tsx",
+    "components/filters/sections/ToolbarActions.tsx",
+    "components/filters/sections/QuickFilterMenu.tsx",
+    "components/admin/sync/config-form/StepProgress.tsx",
+    "components/admin/integrations/wizard/AddProviderStepProgress.tsx",
+    "components/admin/integrations/wizard/ProviderSelectStep.tsx",
+    "components/admin/sync/config-form/InitialDepthSection.tsx",
+    "components/settings/PreferencesSettings.tsx",
+    "components/cognitive-load/CognitiveLoadViews.tsx",
+    "components/admin/integrations/wizard/AuthMethodStep.tsx",
+    "components/admin/settings/billing/ChangePlanDialog.tsx",
+    "components/home/CockpitSummary.tsx",
+    "components/home/SignalCard.tsx",
+    "components/home/CockpitClient.tsx",
+    "components/billing/UpgradeGate.tsx",
+    "components/admin/llm/ByoLlmSpendSummary.tsx",
+    "components/admin/llm/ByoLlmSettings.tsx",
+    "components/navigation/AreaSignalCard.tsx",
+    // Text badges and emphasis: contrast is the reason, not meaning (ruling).
+    "components/admin/users/UserTable.tsx",
+    "components/evidence/EvidenceContext.tsx",
+    "app/(app)/superadmin/orgs/[id]/page.tsx",
+    "app/(app)/code/page.tsx",
+    "app/(app)/data-health/_components/AliasSuggestionRow.tsx",
 ];
 
 // `text-(--accent)` left on purpose in those files, with the reason. A new one fails the test.
 // (Hover colours such as `hover:text-(--accent)` on action buttons are ticket 1.7 and not matched.)
 const ALLOWED: Record<string, number> = {
-    "admin/sync/config-form/InitialDepthSection.tsx": 1, // a link: ticket 1.7 (action = teal)
-    "billing/UpgradeGate.tsx": 1, // tier-name emphasis, not clearly selection or eyebrow: asked
+    "components/admin/users/UserTable.tsx": 1, // a link: ticket 1.7 (action = teal)
+    "components/admin/sync/config-form/InitialDepthSection.tsx": 1, // a link: ticket 1.7 (action = teal)
 };
 
 const EXACT = /(?<![\w:-])text-\(--accent\)(?![\w-])/gu;
 
 describe("accent text usage", () => {
     it.each(ACCENT_TEXT_FILES)("%s uses --accent-text for selection and eyebrow text", (file) => {
-        const source = readFileSync(new URL(`../../components/${file}`, import.meta.url), "utf8");
+        const source = readFileSync(new URL(`../../${file}`, import.meta.url), "utf8");
         expect((source.match(EXACT) ?? []).length).toBe(ALLOWED[file] ?? 0);
     });
 

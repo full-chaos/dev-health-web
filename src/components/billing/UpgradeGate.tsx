@@ -77,7 +77,7 @@ export function UpgradeGate({
                             <div className="my-2 border-t border-(--card-stroke)" />
                             <div className="flex items-center justify-between gap-4">
                                 <span className="text-(--ink-muted)">Required Plan</span>
-                                <span className="font-medium text-(--accent)">
+                                <span className="font-medium text-(--accent-text)">
                                     {requiredTierLabel}
                                 </span>
                             </div>
