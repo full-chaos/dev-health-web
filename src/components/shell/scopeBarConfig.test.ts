@@ -158,14 +158,25 @@ describe("resolveScopeBarConfig — pageFilters: false", () => {
 });
 
 describe("resolveScopeBarConfig — AI pages (CHAOS-7744)", () => {
+    it("lists the URL filters no AI query reads: developers, roles, flow stage, blocked, artifacts and issue type", () => {
+        expect(resolveVisibility("ai").unreadFilters).toEqual([
+            "developers",
+            "roles",
+            "flowStage",
+            "blocked",
+            "artifacts",
+            "issueType",
+        ]);
+    });
+
     it("does not offer the Issue type filter on an AI page: no AI query reads it", () => {
-        expect(resolveScopeBarConfig("ai").resolvedVisibility.issueType).toBe(false);
-        expect(resolveVisibility("ai").issueType).toBe(false);
+        expect(resolveScopeBarConfig("ai").resolvedVisibility.unreadFilters).toContain("issueType");
+        expect(resolveVisibility("ai").unreadFilters).toContain("issueType");
     });
 
     it("keeps the Issue type filter wherever it is offered today", () => {
         for (const view of ALL_VIEWS.filter((v) => v !== "ai")) {
-            expect(resolveVisibility(view).issueType, view).not.toBe(false);
+            expect(resolveVisibility(view).unreadFilters, view).toBeUndefined();
         }
     });
 

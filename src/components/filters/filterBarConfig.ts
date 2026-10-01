@@ -20,13 +20,19 @@ export type FilterBarView =
     | "risk-compounding"
     | "ai";
 
+export type UnreadFilter =
+    "developers" | "roles" | "flowStage" | "blocked" | "artifacts" | "issueType";
+
 export type FilterVisibility = {
     scope?: boolean;
     repo?: boolean;
     developer?: boolean;
     workType?: boolean;
-    /** Issue type (Why section of the drawer). Default true; false where no query reads it. */
-    issueType?: boolean;
+    /**
+     * URL filters this view's queries do not read: the drawer does not offer them, and a value
+     * left in an old URL is neither shown as a pill nor counted as active. Unset = all are read.
+     */
+    unreadFilters?: UnreadFilter[];
     flowStage?: boolean;
     date?: boolean;
 };
@@ -158,14 +164,15 @@ const RISK_COMPOUNDING_VISIBILITY: FilterVisibility = {
 };
 
 // AI workflow surfaces expose team / repo / work-type scoping but never
-// person-level breakdowns (aggregated reviewer distribution only). No AI query
-// reads the issue type (CHAOS-7744), so it is not offered.
+// person-level breakdowns (aggregated reviewer distribution only). The AI queries
+// read team, repo, the date range and the work category only (CHAOS-7744): the
+// other filters are not offered and not shown or counted when an old URL has them.
 const AI_VISIBILITY: FilterVisibility = {
     scope: true,
     repo: true,
     developer: false,
     workType: true,
-    issueType: false,
+    unreadFilters: ["developers", "roles", "flowStage", "blocked", "artifacts", "issueType"],
     flowStage: false,
     date: true,
 };
@@ -242,3 +249,7 @@ export const resolveScopeLock = (view?: FilterBarView): MetricFilter["scope"]["l
 
     return view && lockedViews.includes(view) ? "team" : null;
 };
+
+/** True when the view's queries read this URL filter (so it is shown as a pill and counted). */
+export const isFilterRead = (visibility: FilterVisibility, filter: UnreadFilter): boolean =>
+    !visibility.unreadFilters?.includes(filter);

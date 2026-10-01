@@ -57,7 +57,7 @@ describe("AdvancedFiltersPanel — Issue type follows the view's visibility", ()
     );
 
     it("an AI view shows the Why section without Issue type", () => {
-        render(panel({ workType: true, issueType: false }));
+        render(panel({ workType: true, unreadFilters: ["issueType"] }));
         expect(screen.getByText("Work category")).toBeInTheDocument();
         expect(screen.queryByText("Issue type")).toBeNull();
     });
@@ -86,7 +86,7 @@ describe("ActiveFilterPills — Issue type pill follows the view's visibility (C
             onClearWorkCategory={vi.fn()}
             repos={[]}
             roles={[]}
-            showIssueType={showIssueType}
+            unread={showIssueType === false ? ["issueType"] : undefined}
             workCategory={["feature"]}
         />
     );
@@ -99,6 +99,36 @@ describe("ActiveFilterPills — Issue type pill follows the view's visibility (C
     it("hides the pill where no query reads the issue type, and keeps the others", () => {
         render(pills(false));
         expect(screen.queryByText("bug")).toBeNull();
+        expect(screen.getByText("feature")).toBeInTheDocument();
+    });
+
+    it("hides every pill of a filter the view does not read", () => {
+        render(
+            <ActiveFilterPills
+                artifacts={["pr"]}
+                blocked
+                developers={["ana@example.com"]}
+                flowStage={["review"]}
+                issueType={["bug"]}
+                onClearArtifact={vi.fn()}
+                onClearBlocked={vi.fn()}
+                onClearDeveloper={vi.fn()}
+                onClearFlowStage={vi.fn()}
+                onClearIssueType={vi.fn()}
+                onClearRepo={vi.fn()}
+                onClearRole={vi.fn()}
+                onClearWorkCategory={vi.fn()}
+                repos={["org/api"]}
+                roles={["reviewer"]}
+                unread={["developers", "roles", "flowStage", "blocked", "artifacts", "issueType"]}
+                workCategory={["feature"]}
+            />,
+        );
+        for (const hidden of ["ana@example.com", "reviewer", "review", "Blocked", "pr", "bug"]) {
+            expect(screen.queryByText(hidden), hidden).toBeNull();
+        }
+        // Repo and work category are read by the AI queries.
+        expect(screen.getByText("org/api")).toBeInTheDocument();
         expect(screen.getByText("feature")).toBeInTheDocument();
     });
 });

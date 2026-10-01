@@ -200,7 +200,7 @@ export function FilterBarClient({
                     developers={developers}
                     flowStage={flowStage}
                     issueType={issueType}
-                    showIssueType={visibility.issueType !== false}
+                    unread={visibility.unreadFilters}
                     onClearArtifact={(value) =>
                         updateFilters({
                             ...filters,
