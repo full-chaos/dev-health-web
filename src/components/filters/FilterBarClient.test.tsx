@@ -86,6 +86,9 @@ async function renderFB(ui: Parameters<typeof render>[0]) {
     return result;
 }
 
+// The generic bar behaviour (every control offered), independent of what a view reads (CHAOS-7796).
+const ALL_CONTROLS = { repo: true, developer: true, workType: true, flowStage: true } as const;
+
 describe("resolveVisibility (pure)", () => {
     it("returns DEFAULT visibility for unknown/undefined view", () => {
         const v = resolveVisibility(undefined);
@@ -96,7 +99,7 @@ describe("resolveVisibility (pure)", () => {
             workType: true,
             flowStage: false,
             date: true,
-            unreadFilters: ["artifacts"],
+            unreadFilters: ["artifacts", "roles", "flowStage", "blocked", "issueType"],
         });
     });
 
@@ -235,7 +238,7 @@ describe("Active filter pills", () => {
         };
         setSearchParams({ f: encodeFilterParam(filtersWithSelections) });
 
-        await renderFB(<FilterBarClient view="explore" />);
+        await renderFB(<FilterBarClient view="explore" resolvedVisibility={ALL_CONTROLS} />);
 
         expect(screen.getByText("org/api")).toBeInTheDocument();
         expect(screen.getByText("alice@example.com")).toBeInTheDocument();
@@ -249,7 +252,7 @@ describe("Active filter pills", () => {
     it("does not add non-email developer values from the advanced filter input", async () => {
         setSearchParams({ f: encodeFilterParam(defaultMetricFilter) });
 
-        await renderFB(<FilterBarClient view="explore" />);
+        await renderFB(<FilterBarClient view="explore" resolvedVisibility={ALL_CONTROLS} />);
 
         fireEvent.click(screen.getByRole("button", { name: /^filters$/i }));
         fireEvent.change(screen.getByPlaceholderText(/alice@example\.com/i), {
@@ -264,7 +267,7 @@ describe("Active filter pills", () => {
         setSearchParams({ f: encodeFilterParam(defaultMetricFilter) });
         const user = userEvent.setup();
 
-        await renderFB(<FilterBarClient view="explore" />);
+        await renderFB(<FilterBarClient view="explore" resolvedVisibility={ALL_CONTROLS} />);
 
         await user.click(screen.getByRole("button", { name: /^filters$/i }));
         const developerInput = screen.getByPlaceholderText(/alice@example\.com/i);
@@ -276,7 +279,7 @@ describe("Active filter pills", () => {
 
     it("renders no pills when filter is the default (no selections)", async () => {
         setSearchParams({ f: encodeFilterParam(defaultMetricFilter) });
-        await renderFB(<FilterBarClient view="explore" />);
+        await renderFB(<FilterBarClient view="explore" resolvedVisibility={ALL_CONTROLS} />);
 
         expect(screen.queryByRole("button", { name: /remove repo filter/i })).toBeNull();
         expect(screen.queryByRole("button", { name: /remove dev filter/i })).toBeNull();

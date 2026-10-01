@@ -12,6 +12,7 @@ import {
     type FilterBarClientProps,
     type FilterBarView,
     resolveScopeLock,
+    maskUnreadControls,
     resolveVisibility,
 } from "./filterBarConfig";
 
@@ -23,12 +24,12 @@ type FilterBarProps = {
 
 export function FilterBar({ condensed, view, tab }: FilterBarProps) {
     const baseVisibility = resolveVisibility(view, tab);
-    const resolvedVisibility = {
+    const resolvedVisibility = maskUnreadControls({
         ...baseVisibility,
         scope: false,
         date: false,
         repo: false,
-    };
+    });
     const resolvedScopeLock = resolveScopeLock(view);
     const hasPageFilters = Boolean(
         resolvedVisibility.developer || resolvedVisibility.workType || resolvedVisibility.flowStage,

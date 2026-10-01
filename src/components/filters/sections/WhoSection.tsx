@@ -8,6 +8,9 @@ type WhoSectionProps = {
     toValue: (value?: string[]) => string;
     updateDevelopers: (nextValues: string[]) => void;
     updateRoles: (nextValues: string[]) => void;
+    /** Default true. False where no reader uses the filter (see `filterBarConfig`). */
+    showDevelopers?: boolean;
+    showRoles?: boolean;
 };
 
 export function WhoSection({
@@ -18,6 +21,8 @@ export function WhoSection({
     toValue,
     updateDevelopers,
     updateRoles,
+    showDevelopers = true,
+    showRoles = true,
 }: WhoSectionProps) {
     const [developerDraft, setDeveloperDraft] = useState("");
     const [developerEditing, setDeveloperEditing] = useState(false);
@@ -29,36 +34,40 @@ export function WhoSection({
                 Who
             </summary>
             <div className="mt-3 space-y-3 text-sm">
-                <label className="flex flex-col gap-2">
-                    <span className="text-xs text-(--ink-muted)">Developers</span>
-                    <input
-                        className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2"
-                        placeholder="alice@example.com, bob@example.com"
-                        value={developerValue}
-                        onFocus={() => {
-                            setDeveloperDraft(toValue(developers));
-                            setDeveloperEditing(true);
-                        }}
-                        onChange={(event) => {
-                            const nextDraft = event.target.value;
-                            setDeveloperDraft(nextDraft);
-                            updateDevelopers(toDeveloperList(nextDraft));
-                        }}
-                        onBlur={() => {
-                            setDeveloperDraft(toValue(toDeveloperList(developerDraft)));
-                            setDeveloperEditing(false);
-                        }}
-                    />
-                </label>
-                <label className="flex flex-col gap-2">
-                    <span className="text-xs text-(--ink-muted)">Roles</span>
-                    <input
-                        className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2"
-                        placeholder="maintainer, reviewer"
-                        value={toValue(roles)}
-                        onChange={(event) => updateRoles(toList(event.target.value))}
-                    />
-                </label>
+                {showDevelopers && (
+                    <label className="flex flex-col gap-2">
+                        <span className="text-xs text-(--ink-muted)">Developers</span>
+                        <input
+                            className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2"
+                            placeholder="alice@example.com, bob@example.com"
+                            value={developerValue}
+                            onFocus={() => {
+                                setDeveloperDraft(toValue(developers));
+                                setDeveloperEditing(true);
+                            }}
+                            onChange={(event) => {
+                                const nextDraft = event.target.value;
+                                setDeveloperDraft(nextDraft);
+                                updateDevelopers(toDeveloperList(nextDraft));
+                            }}
+                            onBlur={() => {
+                                setDeveloperDraft(toValue(toDeveloperList(developerDraft)));
+                                setDeveloperEditing(false);
+                            }}
+                        />
+                    </label>
+                )}
+                {showRoles && (
+                    <label className="flex flex-col gap-2">
+                        <span className="text-xs text-(--ink-muted)">Roles</span>
+                        <input
+                            className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2"
+                            placeholder="maintainer, reviewer"
+                            value={toValue(roles)}
+                            onChange={(event) => updateRoles(toList(event.target.value))}
+                        />
+                    </label>
+                )}
             </div>
         </details>
     );

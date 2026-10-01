@@ -7,6 +7,8 @@ type WhySectionProps = {
     workCategory: string[];
     /** Default true. False on a view whose queries do not read the issue type (the AI pages). */
     showIssueType?: boolean;
+    /** Default true. False where no reader uses the work category. */
+    showWorkCategory?: boolean;
 };
 
 export function WhySection({
@@ -17,6 +19,7 @@ export function WhySection({
     updateWorkCategory,
     workCategory,
     showIssueType = true,
+    showWorkCategory = true,
 }: WhySectionProps) {
     return (
         <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
@@ -24,15 +27,17 @@ export function WhySection({
                 Why
             </summary>
             <div className="mt-3 space-y-3 text-sm">
-                <label className="flex flex-col gap-2">
-                    <span className="text-xs text-(--ink-muted)">Work category</span>
-                    <input
-                        className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
-                        placeholder="feature, maintenance"
-                        value={toValue(workCategory)}
-                        onChange={(event) => updateWorkCategory(toList(event.target.value))}
-                    />
-                </label>
+                {showWorkCategory && (
+                    <label className="flex flex-col gap-2">
+                        <span className="text-xs text-(--ink-muted)">Work category</span>
+                        <input
+                            className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                            placeholder="feature, maintenance"
+                            value={toValue(workCategory)}
+                            onChange={(event) => updateWorkCategory(toList(event.target.value))}
+                        />
+                    </label>
+                )}
                 {showIssueType && (
                     <label className="flex flex-col gap-2">
                         <span className="text-xs text-(--ink-muted)">Issue type</span>

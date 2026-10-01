@@ -1,6 +1,7 @@
 import {
     type FilterBarView,
     type FilterVisibility,
+    maskUnreadControls,
     resolveScopeLock,
     resolveVisibility,
 } from "@/components/filters/filterBarConfig";
@@ -41,13 +42,13 @@ export function resolveScopeBarConfig(
         pageFilters && Boolean(base.developer || base.workType || base.flowStage);
 
     return {
-        resolvedVisibility: {
+        resolvedVisibility: maskUnreadControls({
             ...base,
             scope: false,
             date: false,
             repo: false,
             ...(hasPageFilters ? {} : { developer: false, workType: false, flowStage: false }),
-        },
+        }),
         resolvedScopeLock: hasPageFilters ? resolveScopeLock(view) : null,
         writeDefaultFilter: hasPageFilters,
     };
