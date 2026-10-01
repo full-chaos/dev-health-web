@@ -40,27 +40,39 @@ export function HeatmapScaleLegend({
             data-testid="heatmap-scale-legend"
             className={`flex flex-wrap items-center gap-x-6 gap-y-2 text-xs text-(--ink-muted) ${className ?? ""}`}
         >
-            <div className="min-w-48 max-w-sm flex-1">
-                <div
-                    role="img"
-                    aria-label={label}
-                    className="h-2 w-full rounded-sm"
-                    style={{ background: `linear-gradient(to right, ${seq.join(", ")})` }}
-                />
-                <div className="mt-1 flex justify-between tabular-nums">
-                    <span data-testid="heatmap-scale-min">
-                        {Number.isFinite(min) ? format(min) : "–"}
-                    </span>
-                    {hasRange ? (
+            {hasRange ? (
+                <div className="min-w-48 max-w-sm flex-1">
+                    <div
+                        role="img"
+                        aria-label={label}
+                        className="h-2 w-full rounded-sm"
+                        style={{ background: `linear-gradient(to right, ${seq.join(", ")})` }}
+                    />
+                    <div className="mt-1 flex justify-between tabular-nums">
+                        <span data-testid="heatmap-scale-min">{format(min)}</span>
                         <span data-testid="heatmap-scale-mid">
                             {format(scaleMidpoint(min, max, scale))}
                         </span>
-                    ) : null}
-                    <span data-testid="heatmap-scale-max">
+                        <span data-testid="heatmap-scale-max">
+                            {format(max)} {unit}
+                        </span>
+                    </div>
+                </div>
+            ) : (
+                // Every value is the same, so there is no range to draw: one swatch (the step the
+                // cells use) with the value, not "7.41 ... 7.41".
+                <div className="flex items-center gap-2 tabular-nums">
+                    <span
+                        role="img"
+                        aria-label={label}
+                        className="inline-block h-3 w-4 rounded-sm"
+                        style={{ background: seq[seq.length - 1] }}
+                    />
+                    <span data-testid="heatmap-scale-value">
                         {Number.isFinite(max) ? format(max) : "–"} {unit}
                     </span>
                 </div>
-            </div>
+            )}
             <div className="flex items-center gap-2" data-testid="heatmap-scale-empty">
                 <span
                     aria-hidden="true"
