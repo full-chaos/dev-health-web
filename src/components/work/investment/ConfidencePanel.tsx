@@ -338,13 +338,17 @@ export function ConfidencePanel({
                                             %
                                         </span>
                                     </div>
-                                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-(--card-stroke)">
-                                        <div
-                                            className="h-full rounded-full bg-(--accent-2)"
-                                            style={{
-                                                width: `${Math.min(100, row.allocation_pct)}%`,
-                                            }}
-                                        />
+                                    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-r-(--radius-sm) bg-(--card-stroke)">
+                                        {row.allocation_pct > 0 && (
+                                            <div
+                                                aria-hidden
+                                                className="h-full rounded-r-(--radius-sm) bg-(--chart-color-1)"
+                                                style={{
+                                                    width: `${Math.min(100, row.allocation_pct)}%`,
+                                                    minWidth: 2,
+                                                }}
+                                            />
+                                        )}
                                     </div>
                                     <div className="mt-1 flex gap-3 text-xs text-(--ink-muted)">
                                         <span>
