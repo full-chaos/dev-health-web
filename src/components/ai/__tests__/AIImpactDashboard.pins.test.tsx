@@ -128,7 +128,7 @@ describe("AI Impact page pinned (CHAOS-7768)", () => {
         expect(root).toHaveTextContent("Kept visible so data coverage gaps stay inspectable.");
     });
 
-    it("has the panels in this order, each as an h2", () => {
+    it("has the panels in this order, each as an h2 (the automations card is a notice)", () => {
         setup();
         render(<AIImpactDashboard filter={filter} />);
         const titles = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
@@ -141,8 +141,9 @@ describe("AI Impact page pinned (CHAOS-7768)", () => {
             "Test gap rate",
             "Revert + incident drag",
             "Top affected repos and teams",
-            "Best-fit automation opportunities",
         ]);
+        // The automations panel is an info notice now (M12): same words, link and place at the end.
+        expect(screen.getByText("Best-fit automation opportunities")).toBeInTheDocument();
     });
 
     it("draws the donut from the bucket counts, the trend from the agent-created days, the six lift bars", () => {
