@@ -234,26 +234,41 @@ export function TreemapChart({
                             fontSize: 12,
                             fontWeight: 600,
                         },
-                        // Tiles are separated by a 2px surface gap, not by borders.
+                        // Layout-affecting widths (border + gap per level, upperLabel height) are
+                        // production's and must not change: they feed the squarify layout, so a
+                        // different width can reorder tiles. Only the color changes: separators are
+                        // painted in the surface color, so tiles read as gapped, not outlined.
                         itemStyle: {
                             borderColor: chartTheme.background,
-                            borderWidth: 0,
+                            borderWidth: 2,
                             gapWidth: 2,
                             borderRadius: 3,
                         },
                         levels: [
                             {
-                                itemStyle: { borderWidth: 0, gapWidth: 2 },
+                                itemStyle: {
+                                    borderColor: chartTheme.background,
+                                    borderWidth: 3,
+                                    gapWidth: 3,
+                                },
                                 upperLabel: { show: false },
                             },
                             {
-                                itemStyle: { borderWidth: 0, gapWidth: 2 },
+                                itemStyle: {
+                                    borderColor: chartTheme.background,
+                                    borderWidth: 2,
+                                    gapWidth: 2,
+                                },
                                 emphasis: {
-                                    itemStyle: { borderWidth: 2, borderColor: chartTheme.text },
+                                    itemStyle: { borderColor: chartTheme.accent2 },
                                 },
                             },
                             {
-                                itemStyle: { borderWidth: 0, gapWidth: 2 },
+                                itemStyle: {
+                                    borderColor: chartTheme.background,
+                                    borderWidth: 1,
+                                    gapWidth: 1,
+                                },
                                 label: { fontSize: 10, textBorderWidth: 0 },
                             },
                         ],

@@ -108,23 +108,33 @@ describe("TreemapChart", () => {
         expect(onNodeClick).not.toHaveBeenCalled();
     });
 
-    it("separates tiles with a 2px gap and no borders or text halo", () => {
+    it("keeps production's layout widths and paints separators in the surface color", () => {
         render(<TreemapChart data={sampleData} />);
         const props = chartSpy.mock.calls[0][0] as {
             option: {
                 series: Array<{
-                    itemStyle: { borderWidth: number; gapWidth: number };
+                    itemStyle: { borderColor: string; borderWidth: number; gapWidth: number };
                     label: { textBorderWidth: number };
-                    levels: Array<{ itemStyle: { borderWidth: number; gapWidth: number } }>;
+                    upperLabel: { height: number };
+                    levels: Array<{
+                        itemStyle: { borderColor: string; borderWidth: number; gapWidth: number };
+                    }>;
                 }>;
             };
         };
         const series = props.option.series[0];
-        expect(series.itemStyle).toMatchObject({ borderWidth: 0, gapWidth: 2 });
+        // layout-affecting widths: unchanged from production (a change can reorder tiles)
+        expect(series.itemStyle).toMatchObject({ borderWidth: 2, gapWidth: 2 });
+        expect(series.upperLabel.height).toBe(24);
+        expect(series.levels.map((l) => [l.itemStyle.borderWidth, l.itemStyle.gapWidth])).toEqual([
+            [3, 3],
+            [2, 2],
+            [1, 1],
+        ]);
+        // color: separators are the surface color, no stroke/grid outline
+        expect(series.itemStyle.borderColor).toBe(chartTheme.background);
+        series.levels.forEach((l) => expect(l.itemStyle.borderColor).toBe(chartTheme.background));
         expect(series.label.textBorderWidth).toBe(0);
-        series.levels.forEach((level) =>
-            expect(level.itemStyle).toMatchObject({ borderWidth: 0, gapWidth: 2 }),
-        );
     });
 
     it("colors only the top level on the generic palette; deeper tiles inherit", () => {
