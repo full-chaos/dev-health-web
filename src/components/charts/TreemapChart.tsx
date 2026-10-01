@@ -9,7 +9,8 @@ import { TreemapChart as EChartsTreemapChart } from "echarts/charts";
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
-import { buildTooltipHtml, calcPercent, lightenByDepth } from "@/lib/chartUtils";
+import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
+import { tileLabelStyle } from "@/lib/chartLabelColor";
 import { formatPercent } from "@/lib/formatters";
 
 echarts.use([EChartsTreemapChart]);
@@ -72,6 +73,7 @@ export function TreemapChart({
     const coloredData = useMemo(() => {
         if (useInputColors || !data.children?.length) return data;
 
+        // Generic palette path (hotspots, flow): same color rule as before; no depth shading added.
         const assignColors = (
             node: TreemapNode,
             depth: number,
@@ -80,8 +82,8 @@ export function TreemapChart({
             const baseColor = chartColors[colorIndex % chartColors.length];
             return {
                 ...node,
-                itemStyle:
-                    depth === 0 ? { color: lightenByDepth(baseColor, depth) } : node.itemStyle,
+                // Only the top level carries a color; deeper tiles inherit it (as before).
+                itemStyle: depth === 0 ? { color: baseColor } : node.itemStyle,
                 children: node.children?.map((child, idx) =>
                     assignColors(child, depth + 1, depth === 0 ? idx : colorIndex),
                 ),
@@ -93,6 +95,30 @@ export function TreemapChart({
             children: data.children.map((child, idx) => assignColors(child, 0, idx)),
         };
     }, [data, chartColors, useInputColors]);
+
+    // Label ink per tile, chosen by contrast against the tile's blended fill; hidden if none passes.
+    const labelledData = useMemo(() => {
+        const walk = (
+            node: TreemapNode,
+            inherited?: { color: string; opacity?: number },
+        ): TreemapNode => {
+            const color = node.itemStyle?.color ?? inherited?.color;
+            const opacity = node.itemStyle?.opacity ?? inherited?.opacity;
+            // A label is never hidden for contrast: ink is the better of a fixed pair, with a halo
+            // fallback. Only production's size thresholds hide a label.
+            const ink = color
+                ? tileLabelStyle(color, opacity, chartTheme.background)
+                : { color: chartTheme.text, textBorderWidth: 0 };
+            return {
+                ...node,
+                label: { show: true, ...ink, ...(node.label as object | undefined) },
+                children: node.children?.map((child) =>
+                    walk(child, color ? { color, opacity } : undefined),
+                ),
+            };
+        };
+        return (coloredData.children ?? []).map((child) => walk(child));
+    }, [coloredData, chartTheme.background, chartTheme.text]);
 
     const handleClick = useCallback(
         (params: unknown) => {
@@ -163,7 +189,7 @@ export function TreemapChart({
                 series: [
                     {
                         type: "treemap" as const,
-                        data: coloredData.children ?? [],
+                        data: labelledData,
                         top: 8,
                         left: 8,
                         right: 8,
@@ -196,8 +222,7 @@ export function TreemapChart({
                                 return `${name}\n${formatPercent(pct)}`;
                             },
                             color: chartTheme.text,
-                            textBorderColor: chartTheme.background,
-                            textBorderWidth: 2,
+                            textBorderWidth: 0,
                             fontSize: 11,
                             fontWeight: 500,
                         },
@@ -205,20 +230,24 @@ export function TreemapChart({
                             show: true,
                             height: 24,
                             color: chartTheme.text,
-                            textBorderColor: chartTheme.background,
-                            textBorderWidth: 2,
+                            textBorderWidth: 0,
                             fontSize: 12,
                             fontWeight: 600,
                         },
+                        // Layout-affecting widths (border + gap per level, upperLabel height) are
+                        // production's and must not change: they feed the squarify layout, so a
+                        // different width can reorder tiles. Only the color changes: separators are
+                        // painted in the surface color, so tiles read as gapped, not outlined.
                         itemStyle: {
                             borderColor: chartTheme.background,
                             borderWidth: 2,
                             gapWidth: 2,
+                            borderRadius: 3,
                         },
                         levels: [
                             {
                                 itemStyle: {
-                                    borderColor: chartTheme.stroke,
+                                    borderColor: chartTheme.background,
                                     borderWidth: 3,
                                     gapWidth: 3,
                                 },
@@ -226,7 +255,7 @@ export function TreemapChart({
                             },
                             {
                                 itemStyle: {
-                                    borderColor: chartTheme.stroke,
+                                    borderColor: chartTheme.background,
                                     borderWidth: 2,
                                     gapWidth: 2,
                                 },
@@ -236,22 +265,18 @@ export function TreemapChart({
                             },
                             {
                                 itemStyle: {
-                                    borderColor: chartTheme.grid,
+                                    borderColor: chartTheme.background,
                                     borderWidth: 1,
                                     gapWidth: 1,
                                 },
-                                label: {
-                                    fontSize: 10,
-                                    textBorderColor: chartTheme.background,
-                                    textBorderWidth: 2,
-                                },
+                                label: { fontSize: 10, textBorderWidth: 0 },
                             },
                         ],
                     },
                 ],
             }) as EChartsOption,
         [
-            coloredData,
+            labelledData,
             totalValue,
             unit,
             chartTheme,

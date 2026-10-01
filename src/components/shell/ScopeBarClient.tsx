@@ -33,7 +33,7 @@ export type ScopeBarClientProps = Pick<
 
 const LABEL_CLASS = "text-label-caps font-semibold uppercase text-(--text-muted)";
 const SEPARATOR = (
-    <span aria-hidden="true" className="text-(--text-muted)/60">
+    <span aria-hidden="true" className="text-(--text-muted)">
         ·
     </span>
 );

@@ -31,12 +31,8 @@ const ACCENT_TEXT_FILES = [
     "app/(app)/data-health/_components/AliasSuggestionRow.tsx",
 ];
 
-// `text-(--accent)` left on purpose in those files, with the reason. A new one fails the test.
-// (Hover colours such as `hover:text-(--accent)` on action buttons are ticket 1.7 and not matched.)
-const ALLOWED: Record<string, number> = {
-    "components/admin/users/UserTable.tsx": 1, // a link: ticket 1.7 (action = teal)
-    "components/admin/sync/config-form/InitialDepthSection.tsx": 1, // a link: ticket 1.7 (action = teal)
-};
+// No `text-(--accent)` is left on purpose in these files (links moved to the action color, ticket 1.7).
+const ALLOWED: Record<string, number> = {};
 
 const EXACT = /(?<![\w:-])text-\(--accent\)(?![\w-])/gu;
 
