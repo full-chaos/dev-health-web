@@ -60,6 +60,12 @@ describe("symbols on a line", () => {
         expect([...visibleSymbolIndexes([1, 2, null, 3])]).toEqual([3]);
         expect([...visibleSymbolIndexes([4, null])]).toEqual([0]);
         expect([...visibleSymbolIndexes([])]).toEqual([]);
+        // connectNulls bridges gaps: a point between gaps is not isolated, only the last shows
+        expect([...visibleSymbolIndexes([null, 5, null, 7, 8], { connectNulls: true })]).toEqual([
+            4,
+        ]);
+        expect([...visibleSymbolIndexes([null, 5, null], { connectNulls: true })]).toEqual([1]);
+        expect([...visibleSymbolIndexes([null], { connectNulls: true })]).toEqual([]);
         expect([...visibleSymbolIndexes([null, undefined])]).toEqual([]);
     });
 
