@@ -83,6 +83,10 @@ export const CTA_LABELS = {
     /** Navigate to the AI Automations workflow from a cross-panel CTA. */
     seeAIAutomations: "See AI Automations",
     checkDataConnections: "Check data connections",
+    /** Open the Plan / Completion Forecast destination (Plan overview). */
+    completionForecast: "Completion Forecast",
+    /** Open the Plan / Backlog Risk destination (Plan overview). */
+    backlogRisk: "Backlog Risk",
     flameDiagram: "Flame Diagram",
     landscape: "Landscape",
     week: "Week",

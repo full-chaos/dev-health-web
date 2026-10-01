@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
+import { STATUS_PILL } from "@/lib/statusPill";
+
 const { mockForecast } = vi.hoisted(() => ({ mockForecast: vi.fn() }));
 
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({ ok: true }) }));
@@ -142,11 +144,101 @@ describe("Plan overview — what the page shows (pins)", () => {
         mockForecast.mockResolvedValue(null);
         await renderPage();
 
-        expect(screen.getByRole("heading", { name: "No forecast available" })).toBeInTheDocument();
-        expect(screen.getByText("All teams")).toBeInTheDocument();
+        // The shared empty state (DataState) shows its title as text, not as a heading.
+        expect(screen.getByText("No forecast available")).toBeInTheDocument();
+        expect(screen.getByText(/Scope: All teams\./)).toBeInTheDocument();
         expect(
             screen.getByText(/Not enough throughput history to generate a forecast/),
         ).toBeInTheDocument();
+        expect(screen.getByTestId("plan-empty-forecast")).toBeInTheDocument();
         expect(screen.queryByText("Delivery confidence")).toBeNull();
+    });
+});
+
+describe("Plan overview — page pass", () => {
+    it("shows the Completion outlook card from values on the page, in tentative words", async () => {
+        mockForecast.mockResolvedValue(forecast());
+        await renderPage();
+
+        const card = screen.getByTestId("plan-completion-outlook");
+        expect(
+            within(card).getByRole("heading", { name: "Completion outlook" }),
+        ).toBeInTheDocument();
+        const text = card.textContent ?? "";
+        expect(text).toContain("51 open items appear to need about 1 weeks at the median pace");
+        expect(text).toContain("about 4 weeks at P90");
+        expect(text).not.toMatch(/\bwill\b/i);
+        expect(text).not.toContain("provisional");
+    });
+
+    it("says the outlook is provisional with limited history, and invents no number without throughput", async () => {
+        mockForecast.mockResolvedValue(forecast({ insufficientHistory: true }));
+        const first = await renderPage();
+        expect(screen.getByTestId("plan-completion-outlook")).toHaveTextContent("provisional");
+        first.unmount();
+
+        mockForecast.mockResolvedValue(forecast({ p50Weeks: null }));
+        await renderPage();
+        const text = screen.getByTestId("plan-completion-outlook").textContent ?? "";
+        expect(text).toContain("not enough throughput to suggest an outlook");
+        expect(text).not.toMatch(/about \d+ weeks/);
+    });
+
+    it("has no outlook card and no destinations when there is no forecast", async () => {
+        mockForecast.mockResolvedValue(null);
+        await renderPage();
+
+        expect(screen.queryByTestId("plan-completion-outlook")).toBeNull();
+        expect(screen.queryByTestId("plan-destinations")).toBeNull();
+    });
+
+    it("links to Completion Forecast and Backlog Risk, keeping f, role and origin", async () => {
+        mockForecast.mockResolvedValue(forecast());
+        await renderPage({ role: "em", origin: "cockpit" });
+
+        const destinations = screen.getByTestId("plan-destinations");
+        const forecastLink = within(destinations).getByRole("link", {
+            name: "Completion Forecast",
+        });
+        const backlogLink = within(destinations).getByRole("link", { name: "Backlog Risk" });
+        for (const [link, path] of [
+            [forecastLink, "/plan/capacity"],
+            [backlogLink, "/plan/backlog-risk"],
+        ] as const) {
+            const url = new URL(link.getAttribute("href") ?? "", "https://x.test");
+            expect(url.pathname).toBe(path);
+            expect(url.searchParams.has("f")).toBe(true);
+            expect(url.searchParams.get("role")).toBe("em");
+            expect(url.searchParams.get("origin")).toBe("cockpit");
+        }
+        // The outlook card has its own link to the forecast.
+        expect(
+            within(screen.getByTestId("plan-completion-outlook")).getByRole("link", {
+                name: "Completion Forecast",
+            }),
+        ).toHaveAttribute("href", forecastLink.getAttribute("href"));
+    });
+
+    it("draws Elevated and Normal as token pills with an icon and the word", async () => {
+        mockForecast.mockResolvedValue(
+            forecast({ wipCongestion: overlay("wip", "WIP congestion", 1.5, 1.25, true) }),
+        );
+        await renderPage();
+
+        const pills = screen.getAllByTestId("risk-status");
+        expect(pills.map((pill) => pill.textContent)).toEqual(["Elevated", "Normal", "Normal"]);
+        expect(pills[0].className).toContain(STATUS_PILL.caution);
+        expect(pills[1].className).toContain(STATUS_PILL.positive);
+        for (const pill of pills) expect(pill.querySelector("svg")).not.toBeNull();
+    });
+
+    it("keeps the callout last, after the destinations", async () => {
+        mockForecast.mockResolvedValue(forecast());
+        await renderPage();
+
+        const destinations = screen.getByTestId("plan-destinations");
+        const callout = screen.getByText("Primary risk callout").closest("section");
+        expect(destinations.nextElementSibling).toBe(callout);
+        expect(callout?.nextElementSibling).toBeNull();
     });
 });
