@@ -189,7 +189,7 @@ export function GlobalContextBarClient({ filters, origin, orgName }: GlobalConte
                     </button>
                 </div>
 
-                <span aria-hidden="true" className="text-(--ink-muted)/60">
+                <span aria-hidden="true" className="text-(--text-muted)">
                     ·
                 </span>
 
@@ -206,7 +206,7 @@ export function GlobalContextBarClient({ filters, origin, orgName }: GlobalConte
                     value={teamLabel}
                 />
 
-                <span aria-hidden="true" className="text-(--ink-muted)/60">
+                <span aria-hidden="true" className="text-(--text-muted)">
                     ·
                 </span>
 
@@ -235,7 +235,7 @@ export function GlobalContextBarClient({ filters, origin, orgName }: GlobalConte
                     </div>
                 </div>
 
-                <span aria-hidden="true" className="text-(--ink-muted)/60">
+                <span aria-hidden="true" className="text-(--text-muted)">
                     ·
                 </span>
 

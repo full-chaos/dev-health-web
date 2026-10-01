@@ -46,11 +46,11 @@ export function CustomerPushBatchList({
             <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-8 text-center">
                 <p className="text-sm text-(--ink-muted)">
                     No batches yet — push your first payload from{" "}
-                    <Link href={validateHref} className="text-(--accent) hover:underline">
+                    <Link href={validateHref} className="text-(--accent-2) hover:underline">
                         {CTA_LABELS.goToValidate}
                     </Link>{" "}
                     or a{" "}
-                    <Link href={examplesHref} className="text-(--accent) hover:underline">
+                    <Link href={examplesHref} className="text-(--accent-2) hover:underline">
                         {CTA_LABELS.goToCiJob}
                     </Link>
                     .
