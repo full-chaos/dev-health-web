@@ -29,7 +29,7 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 function formatWeeks(value: number | null | undefined) {
     return typeof value === "number"
         ? `${formatNumber(value, { maximumFractionDigits: 0 })} weeks`
-        : "Not enough throughput";
+        : "—";
 }
 
 function riskValue(risk: ThroughputRiskOverlay) {
@@ -41,12 +41,22 @@ function riskValue(risk: ThroughputRiskOverlay) {
     return "—";
 }
 
-function RiskCard({ risk }: { risk: ThroughputRiskOverlay }) {
+function RiskRow({ risk }: { risk: ThroughputRiskOverlay }) {
     const Icon = risk.active ? TriangleAlert : CircleCheck;
     return (
-        <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
-            <div className="flex items-center justify-between gap-3">
+        <div
+            data-testid="risk-row"
+            className="flex flex-wrap items-center justify-between gap-3 border-t border-(--border) py-4 first:border-t-0 first:pt-0"
+        >
+            <div className="min-w-0">
                 <h3 className="text-sm font-semibold">{risk.label}</h3>
+                <p className="mt-1 text-xs text-(--text-muted)">
+                    Threshold{" "}
+                    {risk.threshold > 0 ? riskValue({ ...risk, value: risk.threshold }) : "—"}
+                </p>
+            </div>
+            <div className="flex items-center gap-3">
+                <p className="text-2xl font-semibold">{riskValue(risk)}</p>
                 <span
                     data-testid="risk-status"
                     data-active={risk.active ? "true" : "false"}
@@ -58,44 +68,50 @@ function RiskCard({ risk }: { risk: ThroughputRiskOverlay }) {
                     {risk.active ? "Elevated" : "Normal"}
                 </span>
             </div>
-            <p className="mt-4 text-3xl font-semibold">{riskValue(risk)}</p>
-            <p className="mt-2 text-xs text-(--text-muted)">
-                Threshold {risk.threshold > 0 ? riskValue({ ...risk, value: risk.threshold }) : "—"}
-            </p>
         </div>
     );
 }
 
-function EmptyForecastState({ scopeLabel }: { scopeLabel: string }) {
+function EmptyForecastState({ scopeLabel }: { scopeLabel: string | null }) {
+    // A team scope has no label here: the scope bar already shows it, and a raw
+    // team id is not customer copy.
+    const scope = scopeLabel ? `Scope: ${scopeLabel}. ` : "";
     return (
         <DataState
             variant="insufficient-confidence"
             title="No forecast available"
-            description={`Scope: ${scopeLabel}. Not enough throughput history to generate a forecast for this scope. Try widening the date range, selecting a different team, or syncing more work-item history.`}
+            description={`${scope}Not enough throughput history to generate a forecast for this scope. Try widening the date range, selecting a different team, or syncing more work-item history.`}
             data-testid="plan-empty-forecast"
         />
     );
 }
 
-/** The sentence of the outlook card, from values already on the page. Never a promise. */
-function outlookSentence(forecast: {
+type OutlookForecast = {
     backlogSize: number;
     p50Weeks?: number | null;
-    p90Weeks?: number | null;
     insufficientHistory: boolean;
-}) {
-    const one = forecast.backlogSize === 1;
-    const items = `${formatNumber(forecast.backlogSize)} open ${one ? "item" : "items"}`;
-    const { p50Weeks, p90Weeks } = forecast;
-    if (typeof p50Weeks !== "number" || typeof p90Weeks !== "number") {
-        return `${items}. There is not enough throughput to suggest an outlook for this scope.`;
+};
+
+const weeksLabel = (value: number) =>
+    `${formatNumber(value, { maximumFractionDigits: 0 })} ${Math.round(value) === 1 ? "week" : "weeks"}`;
+
+/** Headline of the outlook card, from values already on the page. */
+function outlookHeadline(forecast: OutlookForecast) {
+    const items = `${formatNumber(forecast.backlogSize)} ${forecast.backlogSize === 1 ? "item" : "items"}`;
+    return typeof forecast.p50Weeks === "number"
+        ? `${items} · about ${weeksLabel(forecast.p50Weeks)} at P50`
+        : items;
+}
+
+/** The sentence of the outlook card. Never a promise; no number without throughput. */
+function outlookSentence(forecast: OutlookForecast) {
+    if (typeof forecast.p50Weeks !== "number") {
+        return "Not enough throughput history to suggest a completion range.";
     }
-    const weeks = (value: number) =>
-        `${formatNumber(value, { maximumFractionDigits: 0 })} ${Math.round(value) === 1 ? "week" : "weeks"}`;
     const provisional = forecast.insufficientHistory
         ? " This is provisional: history is limited."
         : "";
-    return `${items} ${one ? "appears" : "appear"} to need about ${weeks(p50Weeks)} at the median pace, and about ${weeks(p90Weeks)} at P90.${provisional}`;
+    return `At recent throughput, the open items appear to take about ${weeksLabel(forecast.p50Weeks)} (P50).${provisional}`;
 }
 
 export default async function PlanPage({ searchParams }: PlanPageProps) {
@@ -124,12 +140,7 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
     const completionHref = withFilterParam("/plan/capacity", filters, roleParam, originParam);
     const backlogHref = withFilterParam("/plan/backlog-risk", filters, roleParam, originParam);
 
-    const scopeLabel =
-        teamIds === null
-            ? "All teams"
-            : teamIds.length === 1
-              ? `Team ${teamIds[0]}`
-              : `Teams ${teamIds.join(", ")}`;
+    const scopeLabel = teamIds === null ? "All teams" : null;
 
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
@@ -152,13 +163,10 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                         <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6">
                             <p className="text-xs uppercase tracking-[0.18em] text-(--text-muted)">
-                                Delivery confidence
+                                Open items
                             </p>
                             <p className="mt-3 text-3xl font-semibold">
-                                {formatNumber(forecast.backlogSize)}{" "}
-                                <span className="text-base font-normal text-(--text-muted)">
-                                    open items
-                                </span>
+                                {formatNumber(forecast.backlogSize)}
                             </p>
                             <p className="mt-2 text-xs text-(--text-muted)">
                                 Backlog and scope count are derived from current filters — adjust
@@ -172,9 +180,8 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                         ].map(([label, weeks]) => (
                             <div
                                 key={label as string}
-                                className={`rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6 ${
-                                    forecast.insufficientHistory ? "opacity-60" : ""
-                                }`}
+                                data-testid="percentile-tile"
+                                className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6"
                             >
                                 <div className="flex items-center justify-between gap-2">
                                     <p className="text-xs uppercase tracking-[0.18em] text-(--text-muted)">
@@ -182,8 +189,10 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                                     </p>
                                     {forecast.insufficientHistory ? (
                                         <span
-                                            className={`rounded-full border px-2 py-0.5 text-xs uppercase tracking-[0.16em] ${STATUS_PILL.caution}`}
+                                            data-testid="limited-history-pill"
+                                            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs uppercase tracking-[0.16em] ${STATUS_PILL.caution}`}
                                         >
+                                            <TriangleAlert aria-hidden="true" className="h-3 w-3" />
                                             Limited history
                                         </span>
                                     ) : null}
@@ -192,7 +201,9 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                                     {formatWeeks(weeks as number | null)}
                                 </p>
                                 <p className="mt-2 text-xs text-(--text-muted)">
-                                    Weeks to complete backlog
+                                    {typeof weeks === "number"
+                                        ? "Weeks to complete backlog"
+                                        : "Not enough throughput"}
                                 </p>
                             </div>
                         ))}
@@ -204,12 +215,21 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                     >
                         <div className="flex flex-wrap items-start justify-between gap-4">
                             <div className="min-w-0">
-                                <p className="text-xs uppercase tracking-[0.18em] text-(--text-muted)">
+                                <h2 className="text-xl font-semibold">Completion outlook</h2>
+                                <p className="mt-3 text-xs uppercase tracking-[0.18em] text-(--text-muted)">
                                     Current snapshot
                                 </p>
-                                <h2 className="mt-2 text-xl font-semibold">Completion outlook</h2>
+                                <p
+                                    data-testid="outlook-headline"
+                                    className="mt-1 text-2xl font-semibold"
+                                >
+                                    {outlookHeadline(forecast)}
+                                </p>
                                 <p className="mt-2 text-sm text-(--text-muted)">
                                     {outlookSentence(forecast)}
+                                </p>
+                                <p className="mt-1 text-sm text-(--text-muted)">
+                                    P50, P75 and P90 as shown in the tiles.
                                 </p>
                             </div>
                             <Link
@@ -219,41 +239,37 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                                 {CTA_LABELS.completionForecast}
                             </Link>
                         </div>
-                    </section>
-
-                    <section className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                                <h2 className="text-xl font-semibold">Rolling throughput</h2>
-                                <p className="mt-1 text-sm text-(--text-muted)">
-                                    Mean weekly completed items by historical window.
-                                </p>
-                            </div>
-                            <span className="rounded-full bg-foreground/10 px-3 py-1 text-xs">
-                                Backlog {formatNumber(forecast.backlogSize)}
-                            </span>
+                        <div className="mt-6">
+                            <h3 className="text-sm font-semibold">Rolling throughput</h3>
+                            <p className="mt-1 text-sm text-(--text-muted)">
+                                Mean weekly completed items by historical window.
+                            </p>
+                            <VerticalBarChart
+                                categories={forecast.rollingWindows.map(
+                                    (window) => `${window.windowWeeks}w`,
+                                )}
+                                series={[
+                                    {
+                                        name: "Items/week",
+                                        data: forecast.rollingWindows.map(
+                                            (window) => window.meanWeeklyThroughput,
+                                        ),
+                                    },
+                                ]}
+                                valueFormat="number"
+                                height={300}
+                            />
                         </div>
-                        <VerticalBarChart
-                            categories={forecast.rollingWindows.map(
-                                (window) => `${window.windowWeeks}w`,
-                            )}
-                            series={[
-                                {
-                                    name: "Items/week",
-                                    data: forecast.rollingWindows.map(
-                                        (window) => window.meanWeeklyThroughput,
-                                    ),
-                                },
-                            ]}
-                            valueFormat="number"
-                            height={300}
-                        />
                     </section>
 
-                    <section className="grid gap-4 md:grid-cols-3">
-                        <RiskCard risk={forecast.wipCongestion} />
-                        <RiskCard risk={forecast.reviewBottleneck} />
-                        <RiskCard risk={forecast.incidentLoad} />
+                    <section
+                        data-testid="plan-risk-checks"
+                        className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6"
+                    >
+                        <h2 className="mb-4 text-xl font-semibold">Risk checks</h2>
+                        <RiskRow risk={forecast.wipCongestion} />
+                        <RiskRow risk={forecast.reviewBottleneck} />
+                        <RiskRow risk={forecast.incidentLoad} />
                     </section>
 
                     <section
@@ -269,13 +285,13 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                                 href={completionHref}
                                 className="rounded-full border border-(--border) px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent-2) hover:bg-(--surface-raised)"
                             >
-                                {CTA_LABELS.completionForecast}
+                                {CTA_LABELS.forecastCompletion}
                             </Link>
                             <Link
                                 href={backlogHref}
                                 className="rounded-full border border-(--border) px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent-2) hover:bg-(--surface-raised)"
                             >
-                                {CTA_LABELS.backlogRisk}
+                                {CTA_LABELS.inspectBacklogRisk}
                             </Link>
                         </div>
                     </section>

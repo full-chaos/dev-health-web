@@ -72,8 +72,9 @@ describe("Plan overview — what the page shows (pins)", () => {
         mockForecast.mockResolvedValue(forecast());
         await renderPage();
 
-        expect(screen.getByText("Delivery confidence")).toBeInTheDocument();
-        expect(screen.getByText("open items")).toBeInTheDocument();
+        // The first tile is "Open items" (the concept's name; production said "Delivery confidence").
+        expect(screen.getByText("Open items")).toBeInTheDocument();
+        expect(screen.queryByText("Delivery confidence")).toBeNull();
         expect(screen.getAllByText("51").length).toBeGreaterThan(0);
         expect(screen.getByText("1 weeks")).toBeInTheDocument();
         expect(screen.getByText("2 weeks")).toBeInTheDocument();
@@ -84,11 +85,15 @@ describe("Plan overview — what the page shows (pins)", () => {
         ).toBeInTheDocument();
     });
 
-    it("shows a missing percentile as text, never a number", async () => {
+    it("shows a missing percentile as a dash with its reason, never a number", async () => {
         mockForecast.mockResolvedValue(forecast({ p75Weeks: null }));
         await renderPage();
 
-        expect(screen.getByText("Not enough throughput")).toBeInTheDocument();
+        // The value is a dash (missing is not zero) and the caption says why.
+        const tiles = screen.getAllByTestId("percentile-tile");
+        expect(within(tiles[1]).getByText("—")).toBeInTheDocument();
+        expect(within(tiles[1]).getByText("Not enough throughput")).toBeInTheDocument();
+        expect(within(tiles[1]).queryByText(/weeks/)).toBeNull();
     });
 
     it("marks the percentiles with a Limited history chip when history is short", async () => {
@@ -96,6 +101,13 @@ describe("Plan overview — what the page shows (pins)", () => {
         await renderPage();
 
         expect(screen.getAllByText("Limited history").length).toBeGreaterThanOrEqual(3);
+        const pills = screen.getAllByTestId("limited-history-pill");
+        expect(pills).toHaveLength(3);
+        for (const pill of pills) expect(pill.className).toContain(STATUS_PILL.caution);
+        // The production 60 % fade is gone: it lowered the contrast of the text.
+        for (const tile of screen.getAllByTestId("percentile-tile")) {
+            expect(tile.className).not.toContain("opacity");
+        }
     });
 
     it("shows the rolling throughput windows 4w / 8w / 12w", async () => {
@@ -164,19 +176,32 @@ describe("Plan overview — page pass", () => {
         expect(
             within(card).getByRole("heading", { name: "Completion outlook" }),
         ).toBeInTheDocument();
+        expect(within(card).getByTestId("outlook-headline")).toHaveTextContent(
+            "51 items · about 1 week at P50",
+        );
         const text = card.textContent ?? "";
-        expect(text).toContain("51 open items appear to need about 1 week at the median pace");
-        expect(text).toContain("about 4 weeks at P90");
+        expect(text).toContain(
+            "At recent throughput, the open items appear to take about 1 week (P50).",
+        );
+        expect(text).toContain("P50, P75 and P90 as shown in the tiles.");
         expect(text).not.toMatch(/\bwill\b/i);
         expect(text).not.toContain("provisional");
+        // The rolling throughput chart lives in this card.
+        expect(
+            within(card).getByRole("heading", { name: "Rolling throughput" }),
+        ).toBeInTheDocument();
+        expect(within(card).getByTestId("throughput-bars")).toHaveTextContent("4w,8w,12w");
     });
 
-    it("agrees singular and plural in the outlook sentence", async () => {
-        mockForecast.mockResolvedValue(forecast({ backlogSize: 1, p50Weeks: 1, p90Weeks: 1 }));
+    it("agrees singular and plural in the outlook", async () => {
+        mockForecast.mockResolvedValue(forecast({ backlogSize: 1, p50Weeks: 3 }));
         await renderPage();
 
+        expect(screen.getByTestId("outlook-headline")).toHaveTextContent(
+            "1 item · about 3 weeks at P50",
+        );
         expect(screen.getByTestId("plan-completion-outlook").textContent).toContain(
-            "1 open item appears to need about 1 week at the median pace, and about 1 week at P90.",
+            "about 3 weeks (P50)",
         );
     });
 
@@ -188,9 +213,12 @@ describe("Plan overview — page pass", () => {
 
         mockForecast.mockResolvedValue(forecast({ p50Weeks: null }));
         await renderPage();
-        const text = screen.getByTestId("plan-completion-outlook").textContent ?? "";
-        expect(text).toContain("not enough throughput to suggest an outlook");
-        expect(text).not.toMatch(/about \d+ weeks/);
+        const card = screen.getByTestId("plan-completion-outlook");
+        expect(within(card).getByTestId("outlook-headline")).toHaveTextContent(/^51 items$/);
+        expect(card.textContent).toContain(
+            "Not enough throughput history to suggest a completion range.",
+        );
+        expect(card.textContent).not.toMatch(/about \d+ weeks?/);
     });
 
     it("has no outlook card and no destinations when there is no forecast", async () => {
@@ -201,15 +229,17 @@ describe("Plan overview — page pass", () => {
         expect(screen.queryByTestId("plan-destinations")).toBeNull();
     });
 
-    it("links to Completion Forecast and Backlog Risk, keeping f, role and origin", async () => {
+    it("links to the forecast and the backlog risk page, keeping f, role and origin", async () => {
         mockForecast.mockResolvedValue(forecast());
         await renderPage({ role: "em", origin: "cockpit" });
 
         const destinations = screen.getByTestId("plan-destinations");
         const forecastLink = within(destinations).getByRole("link", {
-            name: "Completion Forecast",
+            name: "Forecast completion",
         });
-        const backlogLink = within(destinations).getByRole("link", { name: "Backlog Risk" });
+        const backlogLink = within(destinations).getByRole("link", {
+            name: "Inspect backlog risk",
+        });
         for (const [link, path] of [
             [forecastLink, "/plan/capacity"],
             [backlogLink, "/plan/backlog-risk"],
@@ -226,6 +256,17 @@ describe("Plan overview — page pass", () => {
                 name: "Completion Forecast",
             }),
         ).toHaveAttribute("href", forecastLink.getAttribute("href"));
+    });
+
+    it("shows the three risk checks as rows of one Risk checks card", async () => {
+        mockForecast.mockResolvedValue(forecast());
+        await renderPage();
+
+        const card = screen.getByTestId("plan-risk-checks");
+        expect(
+            within(card).getByRole("heading", { level: 2, name: "Risk checks" }),
+        ).toBeInTheDocument();
+        expect(within(card).getAllByTestId("risk-row")).toHaveLength(3);
     });
 
     it("draws Elevated and Normal as token pills with an icon and the word", async () => {
