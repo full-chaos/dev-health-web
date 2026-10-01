@@ -98,10 +98,6 @@ const knownPreexistingDualContextBarScopes = new Set([
     "src/app/(app)/ai/page.tsx",
     "src/app/(app)/ai/review-load/page.tsx",
     "src/app/(app)/ai/risk/page.tsx",
-    "src/app/(app)/improve/automations/page.tsx",
-    "src/app/(app)/opportunities/page.tsx",
-    "src/app/(app)/plan/capacity/page.tsx",
-    "src/app/(app)/plan/page.tsx",
 ]);
 
 const routePageExists = (routePath: string) => {
@@ -306,11 +302,18 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
         expect(investmentViewSource).toContain("<InvestmentCharts");
         for (const chart of [
             "InvestmentMixSection",
-            "TeamCategorySankeySection",
-            "RepoTeamSankeySection",
+            "AllocationSankeySwitch",
             "TeamExchangeChordSection",
         ]) {
             expect(investmentChartsSource).toContain(chart);
+        }
+        // Both allocation Sankeys stay reachable: the switch mounts them (one at a time).
+        const allocationSwitchSource = readFileSync(
+            join(process.cwd(), "src/components/work/investment/charts/AllocationSankeySwitch.tsx"),
+            "utf8",
+        );
+        for (const chart of ["TeamCategorySankeySection", "RepoTeamSankeySection"]) {
+            expect(allocationSwitchSource).toContain(chart);
         }
         expect(investmentViewSource).toContain("InvestmentEvidenceTable");
         expect(investmentViewSource).toContain("How this was calculated");

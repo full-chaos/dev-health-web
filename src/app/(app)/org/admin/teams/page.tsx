@@ -18,7 +18,7 @@ export default async function TeamsPage() {
             >
                 <div className="flex items-center gap-2">
                     {pendingCount > 0 && (
-                        <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">
+                        <span className="rounded-full bg-(--caution)/12 px-2 py-0.5 text-xs font-medium text-(--caution)">
                             {pendingCount} pending
                         </span>
                     )}

@@ -139,7 +139,7 @@ export function CustomerPushBatchDetailLive({
                     role="alert"
                     className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6"
                 >
-                    <h3 className="text-sm font-medium text-red-500 uppercase tracking-wider">
+                    <h3 className="text-sm font-medium text-(--negative) uppercase tracking-wider">
                         Live updates unavailable
                     </h3>
                     <p className="mt-2 text-sm text-(--ink-muted)">{pollError}</p>

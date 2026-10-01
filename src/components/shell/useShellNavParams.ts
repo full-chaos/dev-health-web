@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import type { MetricFilter } from "@/lib/filters/types";
 import { DEFAULT_ROLE, getLensFromSearchParams } from "@/lib/lensContext";
@@ -18,6 +19,9 @@ import { shellRouteForPathname } from "./shellRoutes";
  * step with `router.replace` (a filter change on the page).
  *
  * - `filters`: the `f` param, else the legacy query params (as the pages do).
+ *   A route registered with `filterParam: "page"` keeps its own encoding in
+ *   `f`: its links carry the default metric filter, as its page-level
+ *   navigation did.
  * - `lens`, `origin`: carried verbatim when the URL has them.
  * - `role`: carried verbatim when the URL has it. A route registered with
  *   `defaultRole` always gets the resolved role instead (lens first, then
@@ -32,16 +36,22 @@ export function useShellNavParams(pathname: string): ShellNavParams {
         searchParams.forEach((value, key) => {
             legacyParams[key] = value;
         });
-        const filters: MetricFilter = encoded
-            ? decodeFilter(encoded)
-            : filterFromQueryParams(legacyParams);
+        const route = shellRouteForPathname(pathname);
+        let filters: MetricFilter;
+        if (route?.filterParam === "page") {
+            filters = defaultMetricFilter;
+        } else if (encoded) {
+            filters = decodeFilter(encoded);
+        } else {
+            filters = filterFromQueryParams(legacyParams);
+        }
 
         const lens = searchParams.get("lens") || undefined;
         const urlRole = searchParams.get("role") || undefined;
         const origin = searchParams.get("origin") || undefined;
 
         let role = urlRole;
-        if (shellRouteForPathname(pathname)?.defaultRole) {
+        if (route?.defaultRole) {
             const activeLens = getLensFromSearchParams(searchParams) ?? "neutral";
             role = activeLens === "neutral" ? DEFAULT_ROLE : activeLens;
         }
