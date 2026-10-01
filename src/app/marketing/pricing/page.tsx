@@ -89,7 +89,7 @@ const CHECK = (
         strokeLinecap="round"
         strokeLinejoin="round"
         aria-hidden="true"
-        className="text-(--accent)"
+        className="text-(--accent-text)"
     >
         <path d="M20 6 9 17l-5-5" />
     </svg>
@@ -277,7 +277,7 @@ export default async function PricingPage() {
             {/* Tier Cards */}
             <section className="mx-auto max-w-7xl px-6 pb-24">
                 {trialNotice && (
-                    <div className="mx-auto mb-8 max-w-3xl rounded-xl border border-(--accent)/20 bg-(--accent)/10 p-4 text-center text-sm font-medium text-(--accent)">
+                    <div className="mx-auto mb-8 max-w-3xl rounded-xl border border-(--accent)/20 bg-(--accent)/10 p-4 text-center text-sm font-medium text-(--accent-text)">
                         {trialNotice}
                     </div>
                 )}
@@ -315,7 +315,7 @@ export default async function PricingPage() {
                             <ul className="mt-6 space-y-3">
                                 {tier.features.map((feature) => (
                                     <li key={feature} className="flex items-center gap-3 text-sm">
-                                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-(--accent)/10 text-(--accent)">
+                                        <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-(--accent)/10 text-(--accent-text)">
                                             <svg
                                                 xmlns="http://www.w3.org/2000/svg"
                                                 width="12"
@@ -386,7 +386,7 @@ export default async function PricingPage() {
                                     <th className="pb-4 px-4 text-center text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                                         Community
                                     </th>
-                                    <th className="pb-4 px-4 text-center text-xs uppercase tracking-[0.15em] text-(--accent)">
+                                    <th className="pb-4 px-4 text-center text-xs uppercase tracking-[0.15em] text-(--accent-text)">
                                         Team
                                     </th>
                                     <th className="pb-4 pl-4 text-center text-xs uppercase tracking-[0.15em] text-(--ink-muted)">

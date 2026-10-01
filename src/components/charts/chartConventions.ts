@@ -14,23 +14,40 @@ type TooltipOptions = {
     formatter?: TooltipComponentOption["formatter"];
     /** Draw the time-series crosshair (muted, 1px, solid). Bars keep ECharts' default pointer. */
     crosshair?: boolean;
+    /** `cross` keeps a chart's two-axis pointer (with value labels) and themes its lines. */
+    pointer?: "line" | "cross";
+    /** `item` for pies and other charts without an axis; default `axis`. */
+    trigger?: "axis" | "item";
+    /** Keep the tooltip inside the chart box (default true; a chart that never confined passes false). */
+    confine?: boolean;
+    /** Tooltip text size when the chart sets one; otherwise ECharts' default. */
+    fontSize?: number;
 };
 
 /** The one tooltip: surface background, hairline border, text token. Identity is the marker swatch. */
 export const buildTooltip = (theme: ChartTheme, options: TooltipOptions = {}) => ({
-    trigger: "axis" as const,
-    confine: true,
+    trigger: options.trigger ?? ("axis" as const),
+    confine: options.confine ?? true,
     backgroundColor: theme.background,
     borderColor: theme.stroke,
-    textStyle: { color: theme.text },
-    ...(options.crosshair
+    textStyle: { color: theme.text, ...(options.fontSize ? { fontSize: options.fontSize } : {}) },
+    ...(options.crosshair && options.pointer === "cross"
         ? {
               axisPointer: {
-                  type: "line" as const,
+                  type: "cross" as const,
                   lineStyle: { color: theme.muted, width: 1, type: "solid" as const },
+                  crossStyle: { color: theme.muted, width: 1, type: "solid" as const },
+                  label: { backgroundColor: theme.muted },
               },
           }
-        : {}),
+        : options.crosshair
+          ? {
+                axisPointer: {
+                    type: "line" as const,
+                    lineStyle: { color: theme.muted, width: 1, type: "solid" as const },
+                },
+            }
+          : {}),
     ...(options.formatter ? { formatter: options.formatter } : {}),
 });
 
@@ -50,7 +67,10 @@ const hasValue = (value: unknown) => value !== null && value !== undefined;
  * which a line could not show. Every other point has no symbol; hover still reads it through
  * the crosshair and tooltip.
  */
-export const visibleSymbolIndexes = (values: ReadonlyArray<unknown>): Set<number> => {
+export const visibleSymbolIndexes = (
+    values: ReadonlyArray<unknown>,
+    options: { connectNulls?: boolean } = {},
+): Set<number> => {
     const shown = new Set<number>();
     let last = -1;
     values.forEach((value, index) => {
@@ -58,6 +78,10 @@ export const visibleSymbolIndexes = (values: ReadonlyArray<unknown>): Set<number
             return;
         }
         last = index;
+        // With `connectNulls` the line bridges a gap, so a point between gaps is not isolated.
+        if (options.connectNulls) {
+            return;
+        }
         const before = index > 0 && hasValue(values[index - 1]);
         const after = index < values.length - 1 && hasValue(values[index + 1]);
         if (!before && !after) {
@@ -75,6 +99,24 @@ export const pointSymbolSize = (values: ReadonlyArray<unknown>) => {
     const shown = visibleSymbolIndexes(values);
     return (_value: unknown, params: { dataIndex: number }): number =>
         shown.has(params.dataIndex) ? END_DOT_SIZE : 0;
+};
+
+/**
+ * Data items carrying the per-point symbol size and ring, for charts with a legend: the series keeps its
+ * own static `symbolSize` and no ring (so the legend glyph is unchanged); only the points are sized 0 or
+ * `END_DOT_SIZE`, and a shown dot is ringed in the surface color.
+ */
+export const withPointSymbols = <T extends number | null | undefined>(
+    values: ReadonlyArray<T>,
+    theme: ChartTheme,
+    options: { connectNulls?: boolean } = {},
+) => {
+    const shown = visibleSymbolIndexes(values, options);
+    return values.map((value, index) =>
+        shown.has(index)
+            ? { value, symbolSize: END_DOT_SIZE, itemStyle: dotRing(theme) }
+            : { value, symbolSize: 0 },
+    );
 };
 
 /** A bottom legend in muted text for two or more series; none for one. */

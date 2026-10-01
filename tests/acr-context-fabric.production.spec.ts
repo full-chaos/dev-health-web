@@ -365,9 +365,10 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await gotoWithSessionReady(page, "/diagnose");
         const accountControl = page.getByRole("button", { name: "Account options" });
         await accountControl.click();
-        const globalContextBar = page.getByTestId("global-context-bar");
+        // `/diagnose` is in the shared app shell: its one context bar is the scope bar.
+        const scopeBar = page.getByTestId("scope-bar");
         const signOut = page.getByRole("button", { name: "Sign out" });
-        await expect(globalContextBar).toBeVisible();
+        await expect(scopeBar).toBeVisible();
         await expect(signOut).toBeVisible();
         expect(
             await signOut.evaluate((element) => {

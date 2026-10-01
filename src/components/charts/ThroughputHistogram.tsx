@@ -7,6 +7,7 @@ import { BarChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
+import { buildTooltip } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
 import { formatNumber } from "@/lib/formatters";
 
@@ -83,18 +84,17 @@ export function ThroughputHistogram({
 
     const option = useMemo(
         () => ({
-            tooltip: {
-                trigger: "axis" as const,
-                backgroundColor: chartTheme.background,
-                borderColor: chartTheme.stroke,
-                textStyle: { color: chartTheme.text, fontSize: 11 },
+            // This tooltip never confined itself to the chart box and reads at 11px: kept.
+            tooltip: buildTooltip(chartTheme, {
+                confine: false,
+                fontSize: 11,
                 formatter: (params: unknown) => {
                     const arr = params as Array<{ name?: string; value?: number }>;
                     const p = arr[0];
                     if (!p) return "";
                     return `<strong>${p.name ?? ""} items/day</strong><br/>Frequency: ${formatNumber(p.value ?? 0)}`;
                 },
-            },
+            }),
             grid: {
                 left: 40,
                 right: 20,
@@ -121,7 +121,7 @@ export function ThroughputHistogram({
                 axisLine: { show: false },
                 axisLabel: { color: chartTheme.muted, fontSize: 9 },
                 splitLine: {
-                    lineStyle: { color: chartTheme.grid, type: "dashed" as const },
+                    lineStyle: { color: chartTheme.grid },
                 },
             },
             series: [

@@ -10,6 +10,8 @@ import { useMemo } from "react";
 
 import { Chart } from "@/components/charts/Chart";
 import { useChartTheme, useChartTokens } from "@/components/charts/chartTheme";
+import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/chartConventions";
+
 import { SkeletonLine } from "@/components/ui/Skeleton";
 import type { TrendPointData } from "./types";
 
@@ -35,13 +37,7 @@ export function TrendChart({ points, loading }: TrendChartProps) {
 
     const option = useMemo(
         () => ({
-            tooltip: {
-                trigger: "axis" as const,
-                confine: true,
-                backgroundColor: chartTheme.background,
-                borderColor: chartTheme.stroke,
-                textStyle: { color: chartTheme.text },
-            },
+            tooltip: buildTooltip(chartTheme, { crosshair: true }),
             legend: {
                 data: ["Opened", "Fixed"],
                 bottom: 0,
@@ -62,7 +58,7 @@ export function TrendChart({ points, loading }: TrendChartProps) {
             yAxis: {
                 type: "value" as const,
                 minInterval: 1,
-                splitLine: { lineStyle: { color: chartTheme.grid, type: "dashed" as const } },
+                splitLine: { lineStyle: { color: chartTheme.grid } },
                 axisLabel: { color: chartTheme.muted, fontSize: 10 },
             },
             series: [
@@ -71,22 +67,32 @@ export function TrendChart({ points, loading }: TrendChartProps) {
                     type: "line" as const,
                     smooth: true,
                     symbol: "circle",
+                    // A dot only on the last and isolated points (per-point sizes; the series size is the legend glyph).
+                    showAllSymbol: true,
                     symbolSize: 5,
-                    lineStyle: { width: 2, color: OPENED_COLOR },
+                    lineStyle: { ...lineMark, color: OPENED_COLOR },
                     itemStyle: { color: OPENED_COLOR },
                     areaStyle: { opacity: 0.1, color: OPENED_COLOR },
-                    data: sorted.map((p) => p.opened),
+                    data: withPointSymbols(
+                        sorted.map((p) => p.opened),
+                        chartTheme,
+                    ),
                 },
                 {
                     name: "Fixed",
                     type: "line" as const,
                     smooth: true,
                     symbol: "circle",
+                    // A dot only on the last and isolated points (per-point sizes; the series size is the legend glyph).
+                    showAllSymbol: true,
                     symbolSize: 5,
-                    lineStyle: { width: 2, color: FIXED_COLOR },
+                    lineStyle: { ...lineMark, color: FIXED_COLOR },
                     itemStyle: { color: FIXED_COLOR },
                     areaStyle: { opacity: 0.1, color: FIXED_COLOR },
-                    data: sorted.map((p) => p.fixed),
+                    data: withPointSymbols(
+                        sorted.map((p) => p.fixed),
+                        chartTheme,
+                    ),
                 },
             ],
         }),

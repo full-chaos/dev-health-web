@@ -6,6 +6,7 @@ import { PieChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
+import { buildTooltip } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
 import { formatNumber, formatPercent } from "@/lib/formatters";
 
@@ -80,14 +81,8 @@ export function NestedPieChart2D({
     return (
         <Chart
             option={{
-                tooltip: {
+                tooltip: buildTooltip(chartTheme, {
                     trigger: "item",
-                    confine: true,
-                    backgroundColor: chartTheme.background,
-                    borderColor: chartTheme.stroke,
-                    textStyle: {
-                        color: chartTheme.text,
-                    },
                     formatter: (params: unknown) => {
                         const p = params as {
                             seriesName: string;
@@ -104,7 +99,7 @@ export function NestedPieChart2D({
               </div>
             `;
                     },
-                },
+                }),
                 legend: {
                     data: categories.map((category) => category.name),
                     type: "scroll",

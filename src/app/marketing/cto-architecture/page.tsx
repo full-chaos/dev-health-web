@@ -147,7 +147,7 @@ export default function CTOArchitecturePage() {
                     </p>
                     <h1 className="mt-6 font-(--font-display) text-4xl leading-tight sm:text-5xl lg:text-6xl">
                         See where change pressure is compounding{" "}
-                        <span className="text-(--accent)">architectural risk</span>
+                        <span className="text-(--accent-text)">architectural risk</span>
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-(--ink-muted)">
                         Align engineering effort with architectural reality. Identify systemic
@@ -187,7 +187,7 @@ export default function CTOArchitecturePage() {
                         const cardInner = (
                             <>
                                 <div className="flex items-center justify-between gap-3">
-                                    <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
+                                    <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent-text)">
                                         {surface.icon}
                                     </div>
                                     {surface.comingSoon && (
@@ -196,7 +196,7 @@ export default function CTOArchitecturePage() {
                                         </span>
                                     )}
                                 </div>
-                                <h3 className="mt-4 font-(--font-display) text-lg group-hover:text-(--accent) transition-colors">
+                                <h3 className="mt-4 font-(--font-display) text-lg group-hover:text-(--accent-text) transition-colors">
                                     {surface.title}
                                 </h3>
                                 <p className="mt-2 text-sm leading-relaxed text-(--ink-muted)">
@@ -285,7 +285,7 @@ export default function CTOArchitecturePage() {
                         ))}
                     </ul>
 
-                    <p className="mx-auto mt-10 max-w-2xl text-center text-xs uppercase tracking-[0.2em] text-(--accent)">
+                    <p className="mx-auto mt-10 max-w-2xl text-center text-xs uppercase tracking-[0.2em] text-(--accent-text)">
                         Learning, not judgment.
                     </p>
                 </div>
