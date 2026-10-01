@@ -13,7 +13,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { getHeatmap, getQuadrant } from "@/lib/api/visuals";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { buildExploreUrl } from "@/lib/filters/url";
+import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatMetricValue } from "@/lib/formatters";
 import { resolveEntityLabel } from "@/lib/labels/entityLabel";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
@@ -115,19 +115,35 @@ export default async function CodePage({ searchParams }: CodePageProps) {
             <ScopeBar view="code" />
 
             <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-                <MetricCard
-                    label={churnMetric?.label ?? "Code Churn"}
-                    href={buildExploreUrl({
-                        metric: "churn",
-                        filters,
-                        role: activeRole,
-                    })}
-                    value={placeholderDeltas ? undefined : churnMetric?.value}
-                    unit={churnMetric?.unit}
-                    delta={placeholderDeltas ? undefined : churnMetric?.delta_pct}
-                    spark={churnMetric?.spark}
-                    caption="Churn over the active window"
-                />
+                <div className="flex flex-col gap-4">
+                    <MetricCard
+                        label={churnMetric?.label ?? "Code Churn"}
+                        href={buildExploreUrl({
+                            metric: "churn",
+                            filters,
+                            role: activeRole,
+                        })}
+                        value={placeholderDeltas ? undefined : churnMetric?.value}
+                        unit={churnMetric?.unit}
+                        delta={placeholderDeltas ? undefined : churnMetric?.delta_pct}
+                        spark={churnMetric?.spark}
+                        caption="Churn over the active window"
+                    />
+                    <div className="grid gap-4 sm:grid-cols-2" data-testid="code-ownership-tiles">
+                        {/* No data is "--", never 0: samples need a bus-factor result; the bus
+                            factor itself needs blame evidence (a value without samples is not a result). */}
+                        <MetricCard
+                            label="File-change samples"
+                            value={busFactor ? busFactor.evidenceSampleCount : undefined}
+                            caption="Git blame aggregation"
+                        />
+                        <MetricCard
+                            label="Bus factor"
+                            value={hasBusFactorEvidence ? busFactor?.value : undefined}
+                            caption="Scope-wide summary"
+                        />
+                    </div>
+                </div>
                 <div
                     className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5"
                     data-testid="ownership-patterns-card"
@@ -202,6 +218,61 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                     filters={filters}
                     emptyState="Quadrant data unavailable for this scope."
                 />
+            </section>
+
+            <section
+                className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5"
+                data-testid="code-repo-bus-factor"
+            >
+                <h2 className="font-(--font-display) text-xl">Bus factor by repository</h2>
+                <p className="mt-2 text-sm text-(--ink-muted)">
+                    Repositories with the fewest people behind recent change, from git blame.
+                </p>
+                {riskyRepos.length ? (
+                    <table className="mt-4 w-full text-sm" data-testid="code-repo-bus-factor-table">
+                        <thead className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                            <tr>
+                                <th className="py-2 text-left font-medium">Repository</th>
+                                <th className="py-2 text-right font-medium">Bus factor</th>
+                                <th className="py-2 text-right font-medium">File-change samples</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {riskyRepos.map((repo) => (
+                                <tr key={repo.repoId} className="border-t border-(--card-stroke)">
+                                    <td className="py-2">{repo.repoName}</td>
+                                    <td className="py-2 text-right tabular-nums">{repo.value}</td>
+                                    <td className="py-2 text-right tabular-nums">
+                                        {repo.evidenceSampleCount}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : (
+                    <p className="mt-4 text-sm text-(--ink-muted)">
+                        Connect a Git provider with commit history to surface bus-factor risk for
+                        this view.
+                    </p>
+                )}
+                <div
+                    className="mt-4 flex flex-wrap gap-3 text-sm"
+                    data-testid="code-complexity-links"
+                >
+                    {[
+                        { label: "File-level hotspots", path: "/complexity?tab=hotspots" },
+                        { label: "Ownership risk", path: "/complexity?tab=ownership-risk" },
+                        { label: "30-day file churn", path: "/complexity?tab=churn" },
+                    ].map((link) => (
+                        <Link
+                            key={link.path}
+                            href={withFilterParam(link.path, filters, activeRole)}
+                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-(--accent-2) hover:underline"
+                        >
+                            {link.label}
+                        </Link>
+                    ))}
+                </div>
             </section>
 
             <section className="grid gap-6 lg:grid-cols-2">
