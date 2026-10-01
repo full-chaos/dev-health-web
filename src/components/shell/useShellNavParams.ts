@@ -18,7 +18,7 @@ import { shellRouteForPathname } from "./shellRoutes";
  * step with `router.replace` (a filter change on the page).
  *
  * - `filters`: the `f` param, else the legacy query params (as the pages do).
- * - `lens`: carried verbatim when the URL has it.
+ * - `lens`, `origin`: carried verbatim when the URL has them.
  * - `role`: carried verbatim when the URL has it. A route registered with
  *   `defaultRole` always gets the resolved role instead (lens first, then
  *   `role`, then the default role), which is what its page-level navigation did.
@@ -38,6 +38,7 @@ export function useShellNavParams(pathname: string): ShellNavParams {
 
         const lens = searchParams.get("lens") || undefined;
         const urlRole = searchParams.get("role") || undefined;
+        const origin = searchParams.get("origin") || undefined;
 
         let role = urlRole;
         if (shellRouteForPathname(pathname)?.defaultRole) {
@@ -45,6 +46,6 @@ export function useShellNavParams(pathname: string): ShellNavParams {
             role = activeLens === "neutral" ? DEFAULT_ROLE : activeLens;
         }
 
-        return { filters, role, lens };
+        return { filters, role, lens, origin };
     }, [pathname, searchParams]);
 }

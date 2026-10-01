@@ -1,3 +1,5 @@
+import type { TooltipComponentOption } from "echarts";
+
 import type { ChartTheme } from "./chartTheme";
 
 /**
@@ -8,7 +10,8 @@ import type { ChartTheme } from "./chartTheme";
  */
 
 type TooltipOptions = {
-    formatter?: (params: never) => string;
+    /** ECharts' own tooltip formatter type, so the option stays assignable to `TooltipComponentOption`. */
+    formatter?: TooltipComponentOption["formatter"];
     /** Draw the time-series crosshair (muted, 1px, solid). Bars keep ECharts' default pointer. */
     crosshair?: boolean;
 };

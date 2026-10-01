@@ -1,9 +1,6 @@
 import Link from "next/link";
-import { BackLink } from "@/components/shared/BackLink";
 
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
-import { FilterBar } from "@/components/filters/FilterBar";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
@@ -12,12 +9,13 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { InvestmentGatedBody } from "./_components/InvestmentGatedBody";
 import { INVESTMENT_TABS, type InvestmentTab } from "@/components/work/investment/types";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 
 const getMetric = (deltas: MetricDelta[], metric: string) =>
     deltas.find((item) => item.metric === metric) ??
@@ -55,7 +53,7 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
     ]);
 
     if (!health.ok) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     const org = orgResult.data;
@@ -83,79 +81,57 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
     }));
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="investment" role={activeRole} />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <UpgradeGate feature="investment_view" requiredTier="team" features={features}>
-                        <header className="flex flex-wrap items-center justify-between gap-4">
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                    Diagnose
-                                </p>
-                                <h1 className="mt-2 font-(--font-display) text-3xl">Investment</h1>
-                                <p className="mt-2 text-sm text-(--ink-muted)">
-                                    Effort and attention allocation over the selected window.
-                                </p>
-                                <p className="mt-2 text-sm text-(--ink-muted)">
-                                    Select a segment to investigate.
-                                </p>
-                            </div>
-                            <div className="flex flex-wrap gap-2 text-xs uppercase tracking-[0.2em]">
-                                <Link
-                                    href={buildExploreUrl({
-                                        metric: "throughput",
-                                        filters,
-                                        role: activeRole,
-                                        origin: activeOrigin,
-                                    })}
-                                    className="rounded-full border border-(--card-stroke) px-4 py-2"
-                                >
-                                    {CTA_LABELS.inspectAssociations}
-                                </Link>
-                                <BackLink
-                                    href={withFilterParam(
-                                        "/diagnose",
-                                        filters,
-                                        activeRole,
-                                        activeOrigin,
-                                    )}
-                                    area="Diagnose"
-                                />
-                            </div>
-                        </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            <UpgradeGate feature="investment_view" requiredTier="team" features={features}>
+                <PageHeader
+                    title="Investment"
+                    subtitle="Effort and attention allocation over the selected window."
+                    actions={
+                        <Link
+                            href={buildExploreUrl({
+                                metric: "throughput",
+                                filters,
+                                role: activeRole,
+                                origin: activeOrigin,
+                            })}
+                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+                        >
+                            {CTA_LABELS.inspectAssociations}
+                        </Link>
+                    }
+                >
+                    <p className="text-sm text-(--ink-muted)">Select a segment to investigate.</p>
+                </PageHeader>
 
-                        <FilterBar view="investment" />
+                <ScopeBar view="investment" origin={activeOrigin} />
 
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-3 text-xs leading-relaxed text-(--ink-muted)">
-                            <span className="text-foreground font-semibold uppercase tracking-wider">
-                                Perspective:
-                            </span>{" "}
-                            Investment reflects effort and attention (not spend). Allocation paths
-                            move left-to-right (Allocation &rarr; Streams &rarr; Items).
-                        </div>
+                <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-3 text-xs leading-relaxed text-(--ink-muted)">
+                    <span className="text-foreground font-semibold uppercase tracking-wider">
+                        Perspective:
+                    </span>{" "}
+                    Investment reflects effort and attention (not spend). Allocation paths move
+                    left-to-right (Allocation &rarr; Streams &rarr; Items).
+                </div>
 
-                        <GlobalContextBar filters={filters} origin={activeOrigin} />
+                <ViewSet
+                    orientation="tabs"
+                    items={tabs}
+                    activeId={activeTab}
+                    overviewId="overview"
+                    ariaLabel="Investment views"
+                />
 
-                        <ViewSet
-                            orientation="tabs"
-                            items={tabs}
-                            activeId={activeTab}
-                            overviewId="overview"
-                            ariaLabel="Investment views"
-                        />
-
-                        <InvestmentGatedBody
-                            enabled={investmentEnabled}
-                            filters={filters}
-                            activeRole={activeRole}
-                            activeTab={activeTab}
-                            reworkMetric={reworkMetric}
-                            reworkThemeAllocation={reworkThemeAllocation}
-                        />
-                    </UpgradeGate>
-                </main>
-            </div>
+                <InvestmentGatedBody
+                    enabled={investmentEnabled}
+                    filters={filters}
+                    activeRole={activeRole}
+                    activeTab={activeTab}
+                    reworkMetric={reworkMetric}
+                    reworkThemeAllocation={reworkThemeAllocation}
+                />
+            </UpgradeGate>
         </div>
     );
 }

@@ -4,54 +4,56 @@ import { render, screen } from "@/test/utils";
 import { ConnectionStatus } from "./ConnectionStatus";
 
 describe("ConnectionStatus", () => {
-    it('renders "Connected" status with green styling', () => {
+    it('renders "Connected" status with positive styling', () => {
         const { container } = render(<ConnectionStatus status="connected" />);
 
         expect(screen.getByText("Connected")).toBeInTheDocument();
-        expect(container.querySelector("span.bg-green-500")).toBeInTheDocument();
+        expect(container.querySelector("span[class~=\'bg-(--positive)\']")).toBeInTheDocument();
     });
 
-    it('renders "Connection Error" status with red styling', () => {
+    it('renders "Connection Error" status with negative styling', () => {
         const { container } = render(<ConnectionStatus status="error" />);
 
         expect(screen.getByText("Connection Error")).toBeInTheDocument();
-        expect(container.querySelector("span.bg-red-500")).toBeInTheDocument();
+        expect(container.querySelector("span[class~=\'bg-(--negative)\']")).toBeInTheDocument();
     });
 
-    it('renders "Not Configured" status with gray styling', () => {
+    it('renders "Not Configured" status with muted styling', () => {
         const { container } = render(<ConnectionStatus status="not_configured" />);
 
         expect(screen.getByText("Not Configured")).toBeInTheDocument();
-        expect(container.querySelector("span.bg-gray-400")).toBeInTheDocument();
+        expect(container.querySelector("span[class~=\'bg-(--ink-muted)\']")).toBeInTheDocument();
     });
 
-    it('renders "Connecting..." with blue pulsing dot', () => {
+    it('renders "Connecting..." with info pulsing dot', () => {
         const { container } = render(<ConnectionStatus status="connecting" />);
 
         expect(screen.getByText("Connecting...")).toBeInTheDocument();
-        expect(container.querySelector("span.bg-blue-500.animate-pulse")).toBeInTheDocument();
+        expect(
+            container.querySelector("span[class~=\'bg-(--info)\'].animate-pulse"),
+        ).toBeInTheDocument();
     });
 
-    it('renders "Connection failing" status with red styling', () => {
+    it('renders "Connection failing" status with negative styling', () => {
         const { container } = render(<ConnectionStatus status="failing" />);
 
         expect(screen.getByText("Connection failing")).toBeInTheDocument();
-        expect(container.querySelector("span.bg-red-500")).toBeInTheDocument();
+        expect(container.querySelector("span[class~=\'bg-(--negative)\']")).toBeInTheDocument();
     });
 
-    it('renders "Needs verification" status with amber styling, never "Connected"', () => {
+    it('renders "Needs verification" status with caution styling, never "Connected"', () => {
         const { container } = render(<ConnectionStatus status="untested" />);
 
         expect(screen.getByText("Needs verification")).toBeInTheDocument();
-        expect(container.querySelector("span.bg-amber-500")).toBeInTheDocument();
+        expect(container.querySelector("span[class~=\'bg-(--caution)\']")).toBeInTheDocument();
         expect(screen.queryByText("Connected")).not.toBeInTheDocument();
     });
 
-    it('renders "Inactive" status with gray styling', () => {
+    it('renders "Inactive" status with muted styling', () => {
         const { container } = render(<ConnectionStatus status="inactive" />);
 
         expect(screen.getByText("Inactive")).toBeInTheDocument();
-        expect(container.querySelector("span.bg-gray-400")).toBeInTheDocument();
+        expect(container.querySelector("span[class~=\'bg-(--ink-muted)\']")).toBeInTheDocument();
     });
 
     it("applies custom className", () => {

@@ -1,6 +1,3 @@
-import { ContextStrip } from "@/components/navigation/ContextStrip";
-import { FilterBar } from "@/components/filters/FilterBar";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { HeatmapView } from "@/components/work/HeatmapView";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -20,6 +17,8 @@ import {
 } from "@/components/cognitive-load/CognitiveLoadViews";
 import type { HeatmapResponse } from "@/lib/types";
 import Link from "next/link";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 
 type CognitiveLoadPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -287,135 +286,128 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
     const windowLabel = { sinceDate, untilDate };
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="cognitive-load" role={activeRole} />
-                <main
-                    className="flex min-w-0 flex-1 flex-col gap-6"
-                    data-testid="cognitive-load-dashboard"
-                >
-                    <section className="overflow-hidden rounded-[2rem] border border-(--card-stroke) bg-(--card-80) shadow-sm">
-                        <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
-                            <div className="p-8">
-                                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-(--ink-muted)">
-                                    Privacy-first cognitive load
-                                </p>
-                                <h1 className="mt-3 text-3xl font-semibold tracking-tight md:text-5xl">
-                                    Focus fragmentation, not surveillance.
-                                </h1>
-                                <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
-                                    This surface uses existing PR, review, work-item, and
-                                    commit-time rollups to show where attention is being split. It
-                                    does not collect IDE, keystroke, prompt, or session telemetry.
-                                </p>
-                            </div>
-                            <div className="border-t border-(--card-stroke) bg-(--card-60) p-8 lg:border-l lg:border-t-0">
-                                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
-                                    Guardrail
-                                </p>
-                                <div className="mt-4 space-y-3 text-sm text-(--ink-muted)">
-                                    <p>
-                                        No leaderboards. No peer rankings. Team and repo aggregation
-                                        comes first.
-                                    </p>
-                                    <p>
-                                        Single-person views are limited to explicit self-reflection
-                                        or coaching context.
-                                    </p>
-                                </div>
-                            </div>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div
+            className="flex min-w-0 flex-1 flex-col gap-6 text-foreground"
+            data-testid="cognitive-load-dashboard"
+        >
+            <PageHeader title="Cognitive Load" />
+
+            {/* The privacy framing of this page. The page title above is the one
+                h1, so this statement is a second-level heading; its text and look
+                are not changed. */}
+            <section className="overflow-hidden rounded-[2rem] border border-(--card-stroke) bg-(--card-80) shadow-sm">
+                <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
+                    <div className="p-8">
+                        <p className="text-xs font-semibold uppercase tracking-[0.28em] text-(--ink-muted)">
+                            Privacy-first cognitive load
+                        </p>
+                        <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-5xl">
+                            Focus fragmentation, not surveillance.
+                        </h2>
+                        <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
+                            This surface uses existing PR, review, work-item, and commit-time
+                            rollups to show where attention is being split. It does not collect IDE,
+                            keystroke, prompt, or session telemetry.
+                        </p>
+                    </div>
+                    <div className="border-t border-(--card-stroke) bg-(--card-60) p-8 lg:border-l lg:border-t-0">
+                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
+                            Guardrail
+                        </p>
+                        <div className="mt-4 space-y-3 text-sm text-(--ink-muted)">
+                            <p>
+                                No leaderboards. No peer rankings. Team and repo aggregation comes
+                                first.
+                            </p>
+                            <p>
+                                Single-person views are limited to explicit self-reflection or
+                                coaching context.
+                            </p>
                         </div>
-                    </section>
+                    </div>
+                </div>
+            </section>
 
-                    <FilterBar view="cognitive-load" />
+            <ScopeBar view="cognitive-load" origin={activeOrigin} />
 
-                    <ContextStrip filters={filters} origin={activeOrigin} />
+            <ViewSet
+                orientation="tabs"
+                items={tabs}
+                activeId={activeTab}
+                overviewId="overview"
+                ariaLabel="Cognitive Load views"
+            />
 
-                    <ViewSet
-                        orientation="tabs"
-                        items={tabs}
-                        activeId={activeTab}
-                        overviewId="overview"
-                        ariaLabel="Cognitive Load views"
-                    />
-
-                    {activeTab === "heatmap" && canShowSelectedScope ? (
-                        <HeatmapView
-                            filters={filters}
-                            scopeId={scopeId}
-                            reviewHeatmap={reviewHeatmap}
-                        />
-                    ) : !canShowSelectedScope ? (
-                        <section className="rounded-[1.75rem] border border-amber-400/40 bg-amber-50/80 p-6 text-amber-950 shadow-sm">
-                            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
-                                Individual guardrail
+            {activeTab === "heatmap" && canShowSelectedScope ? (
+                <HeatmapView filters={filters} scopeId={scopeId} reviewHeatmap={reviewHeatmap} />
+            ) : !canShowSelectedScope ? (
+                <section className="rounded-[1.75rem] border border-amber-400/40 bg-amber-50/80 p-6 text-amber-950 shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
+                        Individual guardrail
+                    </p>
+                    <h2 className="mt-2 text-2xl font-semibold tracking-tight">
+                        Individual cognitive load is self-only.
+                    </h2>
+                    <p className="mt-3 max-w-3xl text-sm leading-6">
+                        Person-scoped cognitive-load signals are available only when the selected
+                        identity matches the current session. Use team or repo aggregation for
+                        coaching, planning, and operational review.
+                    </p>
+                    <Link
+                        href="/cognitive-load"
+                        className="mt-5 inline-flex rounded-full bg-amber-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-amber-50"
+                    >
+                        Return to team/repo view
+                    </Link>
+                </section>
+            ) : (
+                <>
+                    {isIndividualScope && (
+                        <section className="rounded-[1.75rem] border border-(--accent)/30 bg-(--accent)/10 p-5 shadow-sm">
+                            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
+                                Self-reflection mode
                             </p>
-                            <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-                                Individual cognitive load is self-only.
-                            </h2>
-                            <p className="mt-3 max-w-3xl text-sm leading-6">
-                                Person-scoped cognitive-load signals are available only when the
-                                selected identity matches the current session. Use team or repo
-                                aggregation for coaching, planning, and operational review.
+                            <p className="mt-2 text-sm leading-6 text-(--ink-muted)">
+                                Only you can open this individual cognitive-load view. These signals
+                                are for reflection on focus pressure, not manager review or peer
+                                comparison.
                             </p>
-                            <Link
-                                href="/cognitive-load"
-                                className="mt-5 inline-flex rounded-full bg-amber-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-amber-50"
-                            >
-                                Return to team/repo view
-                            </Link>
                         </section>
-                    ) : (
-                        <>
-                            {isIndividualScope && (
-                                <section className="rounded-[1.75rem] border border-(--accent)/30 bg-(--accent)/10 p-5 shadow-sm">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
-                                        Self-reflection mode
-                                    </p>
-                                    <p className="mt-2 text-sm leading-6 text-(--ink-muted)">
-                                        Only you can open this individual cognitive-load view. These
-                                        signals are for reflection on focus pressure, not manager
-                                        review or peer comparison.
-                                    </p>
-                                </section>
-                            )}
-
-                            {fetchError ? (
-                                <section className="rounded-[1.75rem] border border-rose-200 bg-rose-50 p-6 text-rose-800 shadow-sm">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.2em]">
-                                        Data unavailable
-                                    </p>
-                                    <p className="mt-2 text-sm leading-6">{fetchError}</p>
-                                </section>
-                            ) : activeTab === "context-switching" ? (
-                                <ContextSwitchingView
-                                    trend={contextSpreadTrend}
-                                    window={windowLabel}
-                                />
-                            ) : activeTab === "focus-pressure" ? (
-                                <FocusPressureView
-                                    interruption={interruptionTrend}
-                                    reviewRequest={reviewRequestTrend}
-                                    window={windowLabel}
-                                />
-                            ) : activeTab === "load-drivers" ? (
-                                <LoadDriversView
-                                    drivers={loadDrivers}
-                                    hasData={hasData}
-                                    window={windowLabel}
-                                />
-                            ) : (
-                                <OverviewView
-                                    signals={signals}
-                                    window={windowLabel}
-                                    filters={filters}
-                                    activeRole={activeRole}
-                                />
-                            )}
-                        </>
                     )}
-                </main>
-            </div>
+
+                    {fetchError ? (
+                        <section className="rounded-[1.75rem] border border-rose-200 bg-rose-50 p-6 text-rose-800 shadow-sm">
+                            <p className="text-xs font-semibold uppercase tracking-[0.2em]">
+                                Data unavailable
+                            </p>
+                            <p className="mt-2 text-sm leading-6">{fetchError}</p>
+                        </section>
+                    ) : activeTab === "context-switching" ? (
+                        <ContextSwitchingView trend={contextSpreadTrend} window={windowLabel} />
+                    ) : activeTab === "focus-pressure" ? (
+                        <FocusPressureView
+                            interruption={interruptionTrend}
+                            reviewRequest={reviewRequestTrend}
+                            window={windowLabel}
+                        />
+                    ) : activeTab === "load-drivers" ? (
+                        <LoadDriversView
+                            drivers={loadDrivers}
+                            hasData={hasData}
+                            window={windowLabel}
+                        />
+                    ) : (
+                        <OverviewView
+                            signals={signals}
+                            window={windowLabel}
+                            filters={filters}
+                            activeRole={activeRole}
+                        />
+                    )}
+                </>
+            )}
         </div>
     );
 }

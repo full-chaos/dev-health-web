@@ -47,7 +47,7 @@ export function AIViolationsList({ violations, loading }: AIViolationsListProps)
                             className="py-3"
                         >
                             <div className="flex flex-wrap items-center gap-2 text-sm">
-                                <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-semibold uppercase text-red-600">
+                                <span className="rounded-full bg-(--negative)/12 px-2 py-0.5 text-xs font-semibold uppercase text-(--negative)">
                                     {violation.severity}
                                 </span>
                                 <span className="font-medium">{violation.ruleId}</span>

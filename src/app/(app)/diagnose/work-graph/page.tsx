@@ -1,20 +1,17 @@
-import { FilterBar } from "@/components/filters/FilterBar";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ViewSet } from "@/components/navigation/ViewSet";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { BackLink } from "@/components/shared/BackLink";
 import { GraphView, type WorkGraphTab } from "@/components/work/GraphView";
 import { buildWorkGraphTabs } from "./buildTabs";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
 import { getServerEnv } from "@/lib/config";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { withFilterParam } from "@/lib/filters/url";
 import {
     getReviewEdgesViaGraphQL,
     type ReviewEdgesResult,
 } from "@/lib/graphql/reviewEdgesFetchers";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 
 type WorkGraphPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -72,7 +69,7 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
     const health = await checkApiHealth();
 
     if (!health.ok && !isTestMode) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     // ── Server-side review edges fetch (CHAOS-2077) ──────────────────────────
@@ -102,46 +99,30 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
     }
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="diagnose" role={activeRole} />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-col gap-4">
-                        <BackLink
-                            href={withFilterParam("/diagnose", filters, activeRole)}
-                            area="Diagnose"
-                        />
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Diagnose
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">Work Graph</h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Relationship topology across work, pull requests, code, releases,
-                                incidents, and evidence-bearing artifacts.
-                            </p>
-                        </div>
-                    </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            <PageHeader
+                title="Work Graph"
+                subtitle="Relationship topology across work, pull requests, code, releases, incidents, and evidence-bearing artifacts."
+            />
 
-                    <GlobalContextBar filters={filters} origin={activeOrigin} />
-                    <FilterBar view="work" />
-                    <ViewSet
-                        orientation="tabs"
-                        items={tabs}
-                        activeId={activeTab}
-                        overviewId="overview"
-                        ariaLabel="Work Graph views"
-                    />
-                    <GraphView
-                        filters={filters}
-                        activeRole={activeRole}
-                        activeTab={activeTab as WorkGraphTab}
-                        reviewEdges={reviewEdgesData?.edges ?? null}
-                        reviewEdgesLoading={false}
-                        reviewEdgesError={reviewEdgesError}
-                    />
-                </main>
-            </div>
+            <ScopeBar view="work" origin={activeOrigin} />
+            <ViewSet
+                orientation="tabs"
+                items={tabs}
+                activeId={activeTab}
+                overviewId="overview"
+                ariaLabel="Work Graph views"
+            />
+            <GraphView
+                filters={filters}
+                activeRole={activeRole}
+                activeTab={activeTab as WorkGraphTab}
+                reviewEdges={reviewEdgesData?.edges ?? null}
+                reviewEdgesLoading={false}
+                reviewEdgesError={reviewEdgesError}
+            />
         </div>
     );
 }

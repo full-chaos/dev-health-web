@@ -34,7 +34,7 @@ export function EvidenceItems({ items }: EvidenceItemsProps) {
                         href={item.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="group block rounded-xl border border-(--card-stroke) bg-background/35 p-3 transition-all hover:border-(--accent)/40 hover:bg-(--accent)/5"
+                        className="group block rounded-xl border border-(--card-stroke) bg-background/35 p-3 transition-all hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5"
                     >
                         <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0 space-y-1.5">
@@ -43,11 +43,11 @@ export function EvidenceItems({ items }: EvidenceItemsProps) {
                                         {item.type}
                                     </span>
                                 </div>
-                                <p className="line-clamp-2 text-sm font-medium leading-5 text-foreground group-hover:text-(--accent)">
+                                <p className="line-clamp-2 text-sm font-medium leading-5 text-foreground group-hover:text-(--accent-2)">
                                     {item.title}
                                 </p>
                             </div>
-                            <span className="text-(--ink-muted) opacity-0 transition-opacity group-hover:text-(--accent) group-hover:opacity-100">
+                            <span className="text-(--ink-muted) opacity-0 transition-opacity group-hover:text-(--accent-2) group-hover:opacity-100">
                                 ↗
                             </span>
                         </div>

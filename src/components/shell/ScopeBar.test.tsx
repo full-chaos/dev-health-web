@@ -322,3 +322,73 @@ describe("ScopeBar — Copy link", () => {
         },
     );
 });
+
+describe("ScopeBar — People view", () => {
+    const PEOPLE: ScopeBarClientProps = {
+        view: "people",
+        resolvedVisibility: { developer: true, workType: false, flowStage: false },
+        resolvedScopeLock: "team",
+    };
+
+    it("has the person search in the row and no filter drawer", () => {
+        render(<ScopeBarClient {...PEOPLE} />);
+
+        expect(within(row()).getByRole("textbox", { name: "Search" })).toHaveAttribute(
+            "placeholder",
+            "Name or handle",
+        );
+        expect(screen.queryByRole("button", { name: /^Filters/ })).toBeNull();
+        expect(within(row()).getByRole("button", { name: /^Team/ })).toBeInTheDocument();
+    });
+
+    it("writes the search to `q` and keeps `f`", async () => {
+        const user = userEvent.setup();
+        scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}&role=em`);
+        render(<ScopeBarClient {...PEOPLE} />);
+
+        await user.type(screen.getByRole("textbox", { name: "Search" }), "an");
+
+        const params = scopeBarUrl.lastParams();
+        expect(params.get("q")).toBe("an");
+        expect(params.get("f")).toBe(ALL_DIMENSIONS_F);
+        expect(params.get("role")).toBe("em");
+    });
+
+    it("shows the search from the URL, and Reset clears it with the filters", async () => {
+        const user = userEvent.setup();
+        scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}&q=ana`);
+        render(<ScopeBarClient {...PEOPLE} />);
+        expect(screen.getByRole("textbox", { name: "Search" })).toHaveValue("ana");
+
+        await user.click(screen.getByRole("button", { name: "Reset filters" }));
+
+        expect(scopeBarUrl.lastParams().has("q")).toBe(false);
+        expect(scopeBarUrl.lastParams().get("f")).toBe(DEFAULT_F);
+    });
+
+    it("keeps the Developer menu in the row, where the People filter bar had it", async () => {
+        const user = userEvent.setup();
+        render(<ScopeBarClient {...PEOPLE} />);
+
+        await user.click(within(row()).getByRole("button", { name: /^Developer/ }));
+        await user.click(screen.getByRole("checkbox", { name: "ana@example.com" }));
+
+        expect(scopeBarUrl.lastFilter().who.developers).toEqual(["ana@example.com"]);
+        // The choice is visible as a pill, and it can be cleared there.
+        await user.click(screen.getByRole("button", { name: "Remove Dev filter" }));
+        expect(scopeBarUrl.lastFilter().who.developers).toEqual([]);
+    });
+
+    it("keeps the page filter menus out of the row on a view that has the drawer", () => {
+        renderBar();
+
+        expect(within(row()).queryByRole("button", { name: /^Developer/ })).toBeNull();
+        expect(within(row()).queryByRole("button", { name: /^Work/ })).toBeNull();
+    });
+
+    it("has no person search on another view", () => {
+        renderBar();
+
+        expect(screen.queryByRole("textbox", { name: "Search" })).toBeNull();
+    });
+});

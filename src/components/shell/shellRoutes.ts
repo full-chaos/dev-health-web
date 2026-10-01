@@ -12,6 +12,8 @@
 export type ShellRoute = {
     /** Route prefix. Matches the exact path and its descendants. */
     prefix: string;
+    /** Match the exact path only: its descendants are registered on their own. */
+    exact?: boolean;
     /**
      * Keeps a page's production link behaviour: navigation links always carry a
      * resolved `role` (lens first, then `role`, then the default role), as the
@@ -21,10 +23,33 @@ export type ShellRoute = {
     defaultRole?: boolean;
 };
 
-export const SHELL_ROUTES: readonly ShellRoute[] = [{ prefix: "/dashboard", defaultRole: true }];
+export const SHELL_ROUTES: readonly ShellRoute[] = [
+    { prefix: "/dashboard", defaultRole: true },
+    // Diagnose
+    { prefix: "/diagnose", exact: true },
+    { prefix: "/diagnose/work-graph" },
+    { prefix: "/metrics" },
+    { prefix: "/explore" },
+    { prefix: "/investment" },
+    { prefix: "/landscape" },
+    { prefix: "/code" },
+    { prefix: "/complexity" },
+    { prefix: "/bottleneck" },
+    { prefix: "/cognitive-load" },
+    { prefix: "/people" },
+    // Govern
+    { prefix: "/govern", exact: true },
+    { prefix: "/quality" },
+    { prefix: "/testops" },
+    { prefix: "/incident-correlation" },
+    { prefix: "/risk/compounding" },
+    { prefix: "/security" },
+    { prefix: "/feature-flags" },
+];
 
-function matchesPrefix(pathname: string, prefix: string): boolean {
-    return pathname === prefix || pathname.startsWith(`${prefix}/`);
+function matchesRoute(pathname: string, route: ShellRoute): boolean {
+    if (pathname === route.prefix) return true;
+    return !route.exact && pathname.startsWith(`${route.prefix}/`);
 }
 
 /** The registry entry that owns `pathname` (longest prefix wins), if any. */
@@ -36,7 +61,7 @@ export function shellRouteForPathname(
     let selected: ShellRoute | undefined;
     for (const route of routes) {
         if (
-            matchesPrefix(pathname, route.prefix) &&
+            matchesRoute(pathname, route) &&
             route.prefix.length > (selected?.prefix.length ?? -1)
         ) {
             selected = route;
