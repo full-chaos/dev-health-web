@@ -1,11 +1,6 @@
 import Link from "next/link";
 
-import { Breadcrumbs } from "@/components/Breadcrumbs";
-import { FilterBar } from "@/components/filters/FilterBar";
-import { ContextStrip } from "@/components/navigation/ContextStrip";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { BackLink } from "@/components/shared/BackLink";
 import { DataState } from "@/components/ui/DataState";
 import { checkApiHealth } from "@/lib/api/system";
 import { auth } from "@/lib/auth";
@@ -18,7 +13,8 @@ import { getOperatingReviewViaGraphQL } from "@/lib/graphql/operatingReviewFetch
 import type { OperatingReview, OperatingReviewMetric } from "@/lib/graphql/types";
 import { aggregateOperatingReviews } from "@/lib/operatingReviewAggregate";
 import { selectedOperatingReviewTeamIds } from "@/lib/operatingReviewScope";
-import { navTrailForPathname } from "@/lib/navigation/areas";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 
 /** Discriminated fetch result: distinguishes a real error from a genuine empty payload. */
 type ReviewResult =
@@ -53,7 +49,7 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
     const [health, session] = await Promise.all([checkApiHealth(), auth()]);
 
     if (!health.ok) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     // CHAOS-1751: read orgId from the NextAuth session JWT directly. The
@@ -80,68 +76,49 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
     const isMultiTeam = selectedTeamIds.length > 1;
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="operating-review" />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <div className="mb-3">
-                                <Breadcrumbs items={navTrailForPathname("/operating-review")} />
-                            </div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Weekly mode
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">
-                                Engineering Operating Review
-                            </h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                A Monday-ready agenda for delivery movement, bottlenecks, risk,
-                                reliability, investment, and recommendations.
-                            </p>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Each callout compares the selected week against the prior week.
-                            </p>
-                        </div>
-                        <BackLink
-                            href={withFilterParam("/plan", filters, undefined, activeOrigin)}
-                            area="Plan"
-                        />
-                    </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            <PageHeader
+                title="Engineering Operating Review"
+                subtitle="A Monday-ready agenda for delivery movement, bottlenecks, risk, reliability, investment, and recommendations."
+                back={{
+                    href: withFilterParam("/plan", filters, undefined, activeOrigin),
+                    area: "Plan",
+                }}
+            >
+                <p className="text-sm text-(--ink-muted)">
+                    Each callout compares the selected week against the prior week.
+                </p>
+            </PageHeader>
 
-                    <ContextStrip filters={filters} origin={activeOrigin} />
+            <ScopeBar view="capacity-planning" origin={activeOrigin} />
 
-                    <FilterBar view="capacity-planning" />
-
-                    {isAllTeams ? <AllTeamsBadge /> : null}
-                    {isMultiTeam ? <SelectedTeamsBadge teamIds={selectedTeamIds} /> : null}
-                    {result.status === "error" ? (
-                        <DataState
-                            variant="error"
-                            title="Could not load operating review"
-                            message="The request failed. Check your data connections and retry."
-                            action={
-                                <Link className="text-sm font-medium text-primary" href="/settings">
-                                    {CTA_LABELS.checkDataConnections}
-                                </Link>
-                            }
-                        />
-                    ) : null}
-                    {result.status === "empty" ? (
-                        <EmptyReviewState
-                            teamId={
-                                selectedTeamIds.length > 0
-                                    ? `${selectedTeamIds.length} selected teams`
-                                    : undefined
-                            }
-                            weekStart={weekStart}
-                        />
-                    ) : null}
-                    {result.status === "ok" ? (
-                        <OperatingReviewAgenda review={result.review} />
-                    ) : null}
-                </main>
-            </div>
+            {isAllTeams ? <AllTeamsBadge /> : null}
+            {isMultiTeam ? <SelectedTeamsBadge teamIds={selectedTeamIds} /> : null}
+            {result.status === "error" ? (
+                <DataState
+                    variant="error"
+                    title="Could not load operating review"
+                    message="The request failed. Check your data connections and retry."
+                    action={
+                        <Link className="text-sm font-medium text-primary" href="/settings">
+                            {CTA_LABELS.checkDataConnections}
+                        </Link>
+                    }
+                />
+            ) : null}
+            {result.status === "empty" ? (
+                <EmptyReviewState
+                    teamId={
+                        selectedTeamIds.length > 0
+                            ? `${selectedTeamIds.length} selected teams`
+                            : undefined
+                    }
+                    weekStart={weekStart}
+                />
+            ) : null}
+            {result.status === "ok" ? <OperatingReviewAgenda review={result.review} /> : null}
         </div>
     );
 }

@@ -177,7 +177,7 @@ export default function PlatformDevexPage() {
                             <>
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
+                                        <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent-text)">
                                             {surface.icon}
                                         </div>
                                         <p className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -279,7 +279,7 @@ export default function PlatformDevexPage() {
                         ))}
                     </ul>
 
-                    <p className="mx-auto mt-10 max-w-2xl text-center text-xs uppercase tracking-[0.2em] text-(--accent)">
+                    <p className="mx-auto mt-10 max-w-2xl text-center text-xs uppercase tracking-[0.2em] text-(--accent-text)">
                         Learning, not judgment.
                     </p>
                 </div>

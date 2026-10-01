@@ -6,7 +6,7 @@
  * `view` on the server and gives it to the interactive client part. The client
  * part reads `useSearchParams()`, so it sits inside a Suspense boundary.
  */
-import { Suspense } from "react";
+import { type ReactNode, Suspense } from "react";
 
 import type { FilterBarView } from "@/components/filters/filterBarConfig";
 
@@ -23,9 +23,14 @@ type ScopeBarProps = {
      * and the actions, with no filter drawer, no scope lock and no default `f`.
      */
     pageFilters?: boolean;
+    /**
+     * Page-control rows (the page's own filter pills, for example). They render
+     * inside the scope bar card, below the scope row.
+     */
+    children?: ReactNode;
 };
 
-export function ScopeBar({ view, tab, origin, orgName, pageFilters }: ScopeBarProps) {
+export function ScopeBar({ view, tab, origin, orgName, pageFilters, children }: ScopeBarProps) {
     const { resolvedVisibility, resolvedScopeLock, writeDefaultFilter } = resolveScopeBarConfig(
         view,
         tab,
@@ -44,7 +49,9 @@ export function ScopeBar({ view, tab, origin, orgName, pageFilters }: ScopeBarPr
                 writeDefaultFilter={writeDefaultFilter}
                 origin={origin}
                 orgName={orgName}
-            />
+            >
+                {children}
+            </ScopeBarClient>
         </Suspense>
     );
 }
