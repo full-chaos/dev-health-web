@@ -1,4 +1,5 @@
 import { render, screen, waitFor, userEvent, fireEvent } from "@/test/utils";
+import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 import { EvidencePanel } from "./EvidencePanel";
@@ -65,19 +66,67 @@ describe("EvidencePanel shell (what callers rely on)", () => {
 
     it("closes from the header close button", async () => {
         const onClose = open();
-        await userEvent.click(screen.getByTitle("Close panel"));
+        await userEvent.click(screen.getByRole("button", { name: "Close" }));
         expect(onClose).toHaveBeenCalledTimes(1);
     });
 
-    it("closes from the backdrop button", async () => {
+    it("closes from the backdrop, which is no longer a focusable button", async () => {
         const onClose = open();
-        await userEvent.click(screen.getByRole("button", { name: "Close evidence panel" }));
+        expect(screen.queryByRole("button", { name: "Close evidence panel" })).toBeNull();
+        await userEvent.click(screen.getByTestId("drawer-backdrop"));
         expect(onClose).toHaveBeenCalledTimes(1);
     });
 
-    it("TODAY (removed by the Drawer change): Escape while closed still calls onCloseAction", () => {
+    it("Escape while closed does not call onCloseAction (the old window listener was always on)", () => {
         const onClose = open(vi.fn(), false);
         fireEvent.keyDown(window, { key: "Escape" });
-        expect(onClose).toHaveBeenCalled();
+        fireEvent.keyDown(document, { key: "Escape" });
+        expect(onClose).not.toHaveBeenCalled();
+    });
+
+    it("is a modal dialog named by the title", () => {
+        open();
+        const dialog = screen.getByRole("dialog", { name: "Cycle Time" });
+        expect(dialog).toHaveAttribute("aria-modal", "true");
+    });
+
+    it("keeps the Open evidence link, in the dialog, by the same name", async () => {
+        open();
+        const link = await screen.findByRole("link", { name: /Open evidence/i });
+        expect(screen.getByRole("dialog")).toContainElement(link);
+    });
+
+    it("moves focus to Close on open and back to the opener on close", async () => {
+        function Host() {
+            const [isOpen, setOpen] = useState(false);
+            return (
+                <div>
+                    <button type="button" onClick={() => setOpen(true)}>
+                        Opener
+                    </button>
+                    <EvidencePanel
+                        isOpen={isOpen}
+                        onCloseAction={() => setOpen(false)}
+                        title="Cycle Time"
+                        metric="cycle_time"
+                        filters={filters}
+                    />
+                </div>
+            );
+        }
+        mockGetExplainData.mockResolvedValue(DATA);
+        render(<Host />);
+        const opener = screen.getByRole("button", { name: "Opener" });
+        await userEvent.click(opener);
+        expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+        await userEvent.keyboard("{Escape}");
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(opener).toHaveFocus();
+    });
+
+    it("locks page scroll while open", () => {
+        document.body.style.overflow = "auto";
+        open();
+        expect(document.body.style.overflow).toBe("hidden");
     });
 });
