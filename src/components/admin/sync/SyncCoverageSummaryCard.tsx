@@ -62,7 +62,7 @@ export function SyncCoverageSummaryCard({
                             <button
                                 type="button"
                                 onClick={onBackfillAction}
-                                className="rounded-md border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:border-(--accent) hover:text-(--accent)"
+                                className="rounded-md border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:border-(--accent-2) hover:text-(--accent-2)"
                             >
                                 {CTA_LABELS.backfill}
                             </button>
@@ -159,13 +159,13 @@ export function SyncCoverageSummaryCard({
                     <button
                         type="button"
                         onClick={onBackfillAction}
-                        className="rounded-md border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:border-(--accent) hover:text-(--accent)"
+                        className="rounded-md border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:border-(--accent-2) hover:text-(--accent-2)"
                     >
                         {CTA_LABELS.backfill}
                     </button>
                     <Link
                         href={editHref}
-                        className="rounded-md border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:border-(--accent) hover:text-(--accent)"
+                        className="rounded-md border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:border-(--accent-2) hover:text-(--accent-2)"
                     >
                         {CTA_LABELS.editConfig}
                     </Link>

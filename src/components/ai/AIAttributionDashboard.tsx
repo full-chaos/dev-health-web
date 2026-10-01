@@ -114,7 +114,7 @@ export function AIAttributionDashboard({ filter }: AIAttributionDashboardProps) 
                 </p>
                 {mix.length === 0 ? (
                     <div className="mt-4">
-                        <DataState variant="detector-enabled-no-findings" />
+                        <DataState variant="detector-enabled-no-findings" compact />
                     </div>
                 ) : (
                     <ul className="mt-4 flex flex-col gap-3" data-testid="ai-attribution-mix-rows">
@@ -161,6 +161,7 @@ export function AIAttributionDashboard({ filter }: AIAttributionDashboardProps) 
                     <div className="mt-4">
                         <DataState
                             variant="detector-enabled-no-findings"
+                            compact
                             title="No evidence rows on this page"
                             description="Attribution is connected, but this page of the selected window returned no evidence."
                         />
