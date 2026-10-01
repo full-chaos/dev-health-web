@@ -157,12 +157,14 @@ export function InvoiceList({
             {
                 key: "amount_due",
                 header: "Amount Due",
+                numeric: true,
                 className: "px-4 py-3 text-foreground",
                 render: (invoice) => formatMoney(invoice.amount_due, invoice.currency),
             },
             {
                 key: "amount_paid",
                 header: "Amount Paid",
+                numeric: true,
                 className: "px-4 py-3 text-foreground",
                 render: (invoice) => formatMoney(invoice.amount_paid, invoice.currency),
             },

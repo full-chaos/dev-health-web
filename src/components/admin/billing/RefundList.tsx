@@ -76,6 +76,7 @@ export function RefundList({ initialData, initialOrgFilter = "" }: RefundListPro
             {
                 key: "amount",
                 header: "Amount",
+                numeric: true,
                 className: "px-4 py-3 text-foreground",
                 render: (refund) => formatMoney(refund.amount, refund.currency),
             },

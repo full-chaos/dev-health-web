@@ -210,3 +210,71 @@ describe("DataTable rowActions and footerNote (CHAOS-7599)", () => {
         expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
     });
 });
+
+describe("DataTable concept shell (CHAOS-7725)", () => {
+    it("uses the radius token and the caps header on the page background", () => {
+        const { container } = render(<DataTable {...base} />);
+        expect(screen.getByRole("region", { name: "Things" }).className).toContain(
+            "rounded-(--radius-md)",
+        );
+        const thead = container.querySelector("thead") as HTMLElement;
+        expect(thead.className).toContain("text-label-caps");
+        expect(thead.className).toContain("uppercase");
+        expect(thead.className).toContain("bg-background");
+    });
+
+    it("rows hover to the page background, with hairlines between rows only", () => {
+        const { container } = render(<DataTable {...base} />);
+        expect(container.querySelector("tbody")?.className).toContain("divide-y");
+        expect(container.querySelector("tbody tr")?.className).toContain("hover:bg-background");
+    });
+
+    it("default cell padding is the concept's; a caller's own className still replaces it", () => {
+        const cols: DataTableColumn<Row>[] = [
+            { key: "name", header: "Name", render: (r) => r.name },
+            {
+                key: "size",
+                header: "Size",
+                render: (r) => String(r.size),
+                className: "px-6 py-4",
+                headerClassName: "px-6 py-4 font-medium",
+            },
+        ];
+        const { container } = render(<DataTable {...base} columns={cols} />);
+        const tds = container.querySelectorAll("tbody tr:first-child td");
+        expect(tds[0].className).toContain("px-3");
+        expect(tds[1].className).toContain("px-6");
+        expect(tds[1].className).not.toContain("px-3");
+    });
+
+    it("numeric right-aligns tabular figures in the header and the cells, and is off by default", () => {
+        const cols: DataTableColumn<Row>[] = [
+            { key: "name", header: "Name", render: (r) => r.name },
+            { key: "size", header: "Size", render: (r) => String(r.size), numeric: true },
+        ];
+        const { container } = render(<DataTable {...base} columns={cols} />);
+        const ths = container.querySelectorAll("th");
+        expect(ths[0].className).not.toContain("text-right");
+        expect(ths[1].className).toContain("text-right");
+        expect(ths[1].className).toContain("tabular-nums");
+        const tds = container.querySelectorAll("tbody tr:first-child td");
+        expect(tds[0].className).not.toContain("tabular-nums");
+        expect(tds[1].className).toContain("text-right");
+    });
+
+    it("numeric keeps a caller's own cell classes and adds the alignment", () => {
+        const cols: DataTableColumn<Row>[] = [
+            {
+                key: "size",
+                header: "Size",
+                render: (r) => String(r.size),
+                className: "px-4 py-3 text-foreground",
+                numeric: true,
+            },
+        ];
+        const { container } = render(<DataTable {...base} columns={cols} />);
+        const td = container.querySelector("tbody td") as HTMLElement;
+        expect(td.className).toContain("text-foreground");
+        expect(td.className).toContain("text-right");
+    });
+});

@@ -33,4 +33,13 @@ describe("Diagnose Ask Dev entry point", () => {
             screen.queryByRole("button", { name: "Ask Dev about this" }),
         ).not.toBeInTheDocument();
     });
+
+    it("renders the follow-a-question links after the area overview", async () => {
+        const ui = await DiagnosePage({ searchParams: Promise.resolve({ role: "manager" }) });
+        render(ui);
+        const section = screen.getByTestId("diagnose-questions");
+        expect(section).toBeInTheDocument();
+        expect(section.querySelectorAll("a")).toHaveLength(3);
+        expect(section.querySelector("a")?.getAttribute("href")).toContain("role=manager");
+    });
 });

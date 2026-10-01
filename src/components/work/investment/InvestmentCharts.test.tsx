@@ -8,7 +8,7 @@
  * never runs in jsdom.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, cleanup } from "@/test/utils";
+import { fireEvent, render, screen, cleanup } from "@/test/utils";
 import { InvestmentCharts } from "./InvestmentCharts";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyResponse, WorkUnitInvestment } from "@/lib/types";
@@ -130,6 +130,10 @@ function baseProps(overrides: Partial<Props> = {}): Props {
     };
 }
 
+// The allocation view switch shows ONE Sankey at a time; the destination view is behind it.
+const showDestinationView = () =>
+    fireEvent.click(screen.getByRole("radio", { name: /theme.*repo.*team/i }));
+
 describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
     beforeEach(() => {
         treemapSpy.mockClear();
@@ -151,6 +155,11 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             expect(
                 screen.getByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
             ).toBeInTheDocument();
+            // one Sankey at a time: the destination heading appears after the switch
+            expect(
+                screen.queryByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
+            ).not.toBeInTheDocument();
+            showDestinationView();
             expect(
                 screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
             ).toBeInTheDocument();
@@ -182,6 +191,7 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
                     {...baseProps({ isRepoTeamLoading: true, repoTeamFlow: null })}
                 />,
             );
+            showDestinationView();
             expect(screen.getByText(/loading destination view/i)).toBeInTheDocument();
         });
     });
@@ -292,6 +302,7 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
                     })}
                 />,
             );
+            showDestinationView();
             expect(
                 screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
             ).toBeInTheDocument();
@@ -306,6 +317,7 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
                     })}
                 />,
             );
+            showDestinationView();
             // Honest-empty: DataState replaces the Sankey when flow endpoint fails.
             expect(screen.getByText(/repo-to-team allocation unavailable/i)).toBeInTheDocument();
         });
@@ -321,12 +333,9 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
                     name: /treemap|investment mix/i,
                 }),
             ).toBeInTheDocument();
-            // flows headings
+            // flows heading (the first view; the other is behind the switch)
             expect(
                 screen.getByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
-            ).toBeInTheDocument();
-            expect(
-                screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
             ).toBeInTheDocument();
         });
 
@@ -357,10 +366,11 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
                     name: /treemap|investment mix/i,
                 }),
             ).not.toBeInTheDocument();
-            // flows headings ARE present
+            // the flows section IS present: its first view, and the second behind the switch
             expect(
                 screen.getByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
             ).toBeInTheDocument();
+            showDestinationView();
             expect(
                 screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
             ).toBeInTheDocument();

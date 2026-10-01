@@ -72,13 +72,13 @@ test.describe("Plan area forecast pages", () => {
         await expect(page.getByRole("navigation", { name: "Plan forecast views" })).toHaveCount(0);
     });
 
-    test("renders the unified global context bar above the forecast (CHAOS-2081)", async ({
-        page,
-    }) => {
+    test("renders one scope bar above the forecast (CHAOS-2081)", async ({ page }) => {
         await page.goto("/plan");
 
-        const contextBar = page.getByTestId("global-context-bar");
-        await expect(contextBar).toBeVisible();
-        await expect(contextBar).toHaveAttribute("aria-label", "Global context");
+        // The page is in the shared app shell: the scope bar is its one context bar.
+        const scopeBar = page.getByTestId("scope-bar");
+        await expect(scopeBar).toBeVisible();
+        await expect(scopeBar).toHaveAttribute("aria-label", "Scope");
+        await expect(page.getByTestId("global-context-bar")).toHaveCount(0);
     });
 });
