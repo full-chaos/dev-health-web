@@ -30,7 +30,7 @@ export function ProviderIdentitySection({
                 <button
                     type="button"
                     onClick={onAddAction}
-                    className="text-xs font-medium text-(--accent) hover:underline"
+                    className="text-xs font-medium text-(--accent-2) hover:underline"
                 >
                     {CTA_LABELS.addProviderIdentity}
                 </button>

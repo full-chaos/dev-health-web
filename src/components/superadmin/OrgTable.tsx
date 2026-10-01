@@ -85,7 +85,7 @@ export function OrgTable({ orgs }: OrgTableProps) {
             render: (org) => (
                 <Link
                     href={`/superadmin/orgs/${org.id}`}
-                    className="text-(--accent) hover:underline"
+                    className="text-(--accent-2) hover:underline"
                 >
                     {CTA_LABELS.edit}
                 </Link>
