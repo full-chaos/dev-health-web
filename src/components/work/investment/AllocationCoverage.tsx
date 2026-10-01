@@ -154,8 +154,26 @@ export function readCoverage(flow: SankeyResponse | null | undefined): CoverageR
     return { teamCoverage, repoCoverage, unassignedShare: computeUnassignedShare(flow) };
 }
 
-const asPct = (value: number) =>
+export const asPct = (value: number) =>
     formatNumber(value <= 1 ? value * 100 : value, { maximumFractionDigits: 0 });
+
+/**
+ * The coverage reading the Allocation strip shows: the team-category flow first, the repo-team
+ * flow as the fallback for a missing leaf. Shared so every surface that prints coverage uses
+ * the same function (null stays "unavailable", never 0).
+ */
+export function combineCoverage(
+    primaryFlow: SankeyResponse | null | undefined,
+    secondaryFlow: SankeyResponse | null | undefined,
+): CoverageReading {
+    const primary = readCoverage(primaryFlow);
+    const secondary = readCoverage(secondaryFlow);
+    return {
+        teamCoverage: primary.teamCoverage ?? secondary.teamCoverage,
+        repoCoverage: primary.repoCoverage ?? secondary.repoCoverage,
+        unassignedShare: primary.unassignedShare ?? secondary.unassignedShare ?? null,
+    };
+}
 
 /**
  * Coverage gaps + unassigned ownership, shown beside the Allocation visuals.
@@ -172,15 +190,10 @@ export function AllocationCoverage({
     repoTeamFlow,
     isLoading,
 }: AllocationCoverageProps) {
-    const reading = useMemo(() => {
-        const primary = readCoverage(teamCategoryFlow);
-        const secondary = readCoverage(repoTeamFlow);
-        return {
-            teamCoverage: primary.teamCoverage ?? secondary.teamCoverage,
-            repoCoverage: primary.repoCoverage ?? secondary.repoCoverage,
-            unassignedShare: primary.unassignedShare ?? secondary.unassignedShare ?? null,
-        };
-    }, [teamCategoryFlow, repoTeamFlow]);
+    const reading = useMemo(
+        () => combineCoverage(teamCategoryFlow, repoTeamFlow),
+        [teamCategoryFlow, repoTeamFlow],
+    );
 
     if (isLoading) {
         return <DataState variant="loading" />;

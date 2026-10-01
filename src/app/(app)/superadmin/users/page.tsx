@@ -3,6 +3,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { UserTable } from "@/components/superadmin/UserTable";
 import { listPlatformUsers } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { Notice } from "@/components/ui/Notice";
 
 type UsersPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -18,9 +19,9 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
         return (
             <div>
                 <AdminHeader title="Users" description="Manage all users across the platform." />
-                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false}>
                     Error loading users: {error}
-                </div>
+                </Notice>
             </div>
         );
     }

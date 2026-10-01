@@ -126,7 +126,7 @@ export const navAreas: readonly NavArea[] = [
     // ── Main spine ──────────────────────────────────────────────────────────────
     {
         id: "cockpit",
-        label: "Cockpit",
+        label: "Home",
         href: "/dashboard",
         placement: "main",
         ownedPathPrefixes: ["/dashboard"],

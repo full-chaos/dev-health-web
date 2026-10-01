@@ -2,6 +2,7 @@
 
 import { CTA_LABELS } from "@/lib/design/cta";
 import { connectGitHubHref } from "@/lib/onboarding/setupSurface";
+import { Notice } from "@/components/ui/Notice";
 
 export type GitHubAppConnectResult = "connected" | "error";
 
@@ -76,13 +77,10 @@ export function GitHubAppConnect({
                 </div>
             )}
             {result === "error" && (
-                <div
-                    role="alert"
-                    className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-700"
-                >
+                <Notice variant="danger">
                     We couldn&apos;t connect the GitHub App. Please try again, or use a personal
                     access token below.
-                </div>
+                </Notice>
             )}
 
             {showCta && (

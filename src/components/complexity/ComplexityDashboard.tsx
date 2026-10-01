@@ -29,6 +29,7 @@ import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/ch
 import { TreemapChart } from "@/components/charts/TreemapChart";
 import type { TreemapNode } from "@/components/charts/TreemapChart";
 import { DataState } from "@/components/ui/DataState";
+import { Notice } from "@/components/ui/Notice";
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { formatNumber } from "@/lib/formatters";
@@ -75,6 +76,8 @@ export type ComplexityDashboardProps = {
     hotspotRows: HotspotRow[];
     /** Active in-page tab. Defaults to "overview". */
     activeTab?: ComplexityTab;
+    /** Days in the selected window; the Churn tab says so when it differs from its fixed 30 days. */
+    windowDays?: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -677,6 +680,20 @@ function OwnershipRiskView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
     );
 }
 
+const CHURN_WINDOW_DAYS = 30;
+
+/** The churn and commit counts come from a fixed 30-day field, not from the page window. */
+function ChurnWindowNotice({ windowDays }: { windowDays?: number }) {
+    const differs = windowDays !== undefined && windowDays !== CHURN_WINDOW_DAYS;
+    return (
+        <Notice variant="info" live={false} data-testid="churn-window-notice">
+            <strong>Panel window: {CHURN_WINDOW_DAYS} days.</strong> Churn and commit counts use the
+            panel&apos;s source window
+            {differs ? `, even though the selected window is ${windowDays} days` : ""}.
+        </Notice>
+    );
+}
+
 function ChurnView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
     const ranked = useMemo(
         () => [...hotspotRows].sort((a, b) => b.churnLoc30d - a.churnLoc30d).slice(0, 20),
@@ -770,6 +787,7 @@ export function ComplexityDashboard({
     points,
     hotspotRows,
     activeTab = "overview",
+    windowDays,
 }: ComplexityDashboardProps) {
     const chartTheme = useChartTheme();
     const chartColors = useChartColors();
@@ -805,7 +823,10 @@ export function ComplexityDashboard({
             ) : activeTab === "ownership-risk" ? (
                 <OwnershipRiskView hotspotRows={hotspotRows} />
             ) : activeTab === "churn" ? (
-                <ChurnView hotspotRows={hotspotRows} />
+                <>
+                    <ChurnWindowNotice windowDays={windowDays} />
+                    <ChurnView hotspotRows={hotspotRows} />
+                </>
             ) : (
                 <OverviewView
                     points={points}

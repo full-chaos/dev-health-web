@@ -65,7 +65,7 @@ export default async function OnboardCompletePage({
             <div className="space-y-6 text-center">
                 <div
                     role="status"
-                    className="rounded-lg border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-700"
+                    className="rounded-lg border border-(--positive)/30 bg-(--positive)/12 p-4 text-sm text-(--positive)"
                 >
                     Onboarding complete. As your integrations sync, your dashboard will fill in with
                     delivery, review, and engineering-health signals.

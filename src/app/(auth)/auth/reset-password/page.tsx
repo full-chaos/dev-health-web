@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ResetPasswordForm } from "@/components/auth/ResetPasswordForm";
 import { backToArea } from "@/lib/design/cta";
+import { Notice } from "@/components/ui/Notice";
 
 type SearchParams = Promise<{ token?: string }>;
 
@@ -25,9 +26,9 @@ export default async function ResetPasswordPage({ searchParams }: { searchParams
                 <div className="mt-8 bg-[var(--card)] py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-[var(--card-stroke)]">
                     {!token ? (
                         <div className="space-y-6">
-                            <div className="p-4 text-sm text-red-400 bg-red-950/50 rounded-md border border-red-800 text-center">
+                            <Notice variant="danger" live={false} centered>
                                 Missing reset token
-                            </div>
+                            </Notice>
                             <div className="text-center">
                                 <Link
                                     href="/auth/signin"

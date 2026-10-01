@@ -52,7 +52,7 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
 
         expect(screen.queryByText("Full Chaos Dev Health Ops")).not.toBeInTheDocument();
         for (const name of [
-            /^Cockpit$/i,
+            /^Home$/i,
             /^Diagnose$/i,
             /^Plan$/i,
             /^Improve$/i,
@@ -65,8 +65,8 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
         }
     });
 
-    it("on a childless area (Cockpit) renders only the eight area rows", () => {
-        // Cockpit has no expandable children, so the sidebar shows exactly the areas.
+    it("on a childless area (Home) renders only the eight area rows", () => {
+        // Home has no expandable children, so the sidebar shows exactly the areas.
         navigationMock.pathname = "/dashboard";
         render(<PrimaryNav filters={makeFilter()} active="home" />);
 
@@ -75,7 +75,7 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
             .map((link) => (link.textContent ?? "").replace(/\s+/g, " ").trim());
 
         expect(linkNames).toEqual([
-            "Cockpit",
+            "Home",
             "Diagnose",
             "Plan",
             "Improve",
@@ -177,7 +177,7 @@ describe("PrimaryNav — two-level decision-area surface (CHAOS-2079)", () => {
         render(<PrimaryNav filters={makeFilter()} active="home" />);
 
         const expectations: Array<[RegExp, string]> = [
-            [/^Cockpit$/i, "/dashboard"],
+            [/^Home$/i, "/dashboard"],
             [/^Diagnose$/i, "/diagnose"],
             [/^Plan$/i, "/plan"],
             [/^Improve$/i, "/improve"],
@@ -218,11 +218,11 @@ describe("PrimaryNav — active child highlight (A10: one selected, distinct hov
     });
 
     it("highlights the area row (not a child) on the area landing route", () => {
-        // /dashboard → Cockpit (no children); the area row itself is current.
+        // /dashboard → Home (no children); the area row itself is current.
         navigationMock.pathname = "/dashboard";
         render(<PrimaryNav filters={makeFilter()} active="home" />);
 
-        expect(screen.getByRole("link", { name: /^Cockpit$/i })).toHaveAttribute(
+        expect(screen.getByRole("link", { name: /^Home$/i })).toHaveAttribute(
             "aria-current",
             "page",
         );
@@ -266,7 +266,7 @@ describe("PrimaryNav — active-area resolution (A10: one selected at a time)", 
         {
             pathname: "/dashboard",
             active: "home",
-            area: /^Cockpit$/i,
+            area: /^Home$/i,
             landing: true,
         },
         {

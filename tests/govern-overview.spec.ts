@@ -17,7 +17,9 @@ test.describe("Govern Overview hub cards (CHAOS-2223)", () => {
         const card = (id: string) => page.locator(`[data-signal-id="${id}"]`);
 
         await expect(card("security")).toHaveAttribute("data-state", "high");
-        await expect(card("security").getByTestId("area-signal-value")).toHaveText("9");
+        // The sample has 0 critical, 2 high, 9 open: the value is the high count.
+        await expect(card("security").getByTestId("area-signal-value")).toHaveText("2");
+        await expect(card("security")).toContainText("High");
 
         await expect(card("risk-compounding")).toHaveAttribute("data-state", "medium");
 

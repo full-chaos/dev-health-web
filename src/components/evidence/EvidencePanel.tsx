@@ -116,7 +116,7 @@ const normalizeHomeEvidence = (
             title: sentence.text,
             url: sentence.evidence_link,
             type: "other" as const,
-            meta: "Cockpit summary",
+            meta: "Home summary",
         })),
         ...result.constraint.evidence.map((item, index) => ({
             id: `constraint-${index}`,

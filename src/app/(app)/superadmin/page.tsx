@@ -1,5 +1,6 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { getPlatformStats } from "@/lib/admin/server";
+import { Notice } from "@/components/ui/Notice";
 
 export default async function SuperadminDashboard() {
     const { data: stats, error } = await getPlatformStats();
@@ -11,10 +12,15 @@ export default async function SuperadminDashboard() {
                     title="Platform Dashboard"
                     description="System overview and health metrics."
                 />
-                <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center text-red-800">
-                    <h3 className="text-lg font-semibold">Error loading stats</h3>
-                    <p className="mt-2 text-sm">{error}</p>
-                </div>
+                <Notice
+                    variant="danger"
+                    live={false}
+                    centered
+                    titleAs="h3"
+                    title="Error loading stats"
+                >
+                    {error}
+                </Notice>
             </div>
         );
     }
@@ -59,7 +65,7 @@ export default async function SuperadminDashboard() {
                 {/* Superusers */}
                 <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
                     <div className="text-sm font-medium text-(--ink-muted)">Superusers</div>
-                    <div className="mt-2 text-3xl font-bold text-purple-500">
+                    <div className="mt-2 text-3xl font-bold text-(--info)">
                         {stats.superuser_count}
                     </div>
                     <div className="mt-1 text-xs text-(--ink-muted)">System administrators</div>
@@ -85,7 +91,7 @@ export default async function SuperadminDashboard() {
                         {Object.entries(stats.tier_distribution).map(([tier, count]) => (
                             <div key={tier} className="flex items-center justify-between">
                                 <div className="flex items-center gap-2">
-                                    <div className="h-2 w-2 rounded-full bg-purple-500" />
+                                    <div className="h-2 w-2 rounded-full bg-(--info)" />
                                     <span className="text-sm font-medium capitalize text-foreground">
                                         {tier}
                                     </span>
@@ -121,13 +127,13 @@ export default async function SuperadminDashboard() {
                                 Last 24h Syncs
                             </div>
                             <div className="mt-1 flex items-baseline gap-3">
-                                <div className="text-2xl font-bold text-green-600">
+                                <div className="text-2xl font-bold text-(--positive)">
                                     {stats.recent_syncs_success}
                                     <span className="ml-1 text-xs font-normal text-(--ink-muted)">
                                         success
                                     </span>
                                 </div>
-                                <div className="text-2xl font-bold text-red-600">
+                                <div className="text-2xl font-bold text-(--negative)">
                                     {stats.recent_syncs_failed}
                                     <span className="ml-1 text-xs font-normal text-(--ink-muted)">
                                         failed
