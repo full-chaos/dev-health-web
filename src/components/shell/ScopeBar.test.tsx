@@ -586,3 +586,48 @@ describe("ScopeBar — pageFilters={false}", () => {
         expect(scopeBarUrl.replace).not.toHaveBeenCalled();
     });
 });
+
+describe("ScopeBar — page-control rows", () => {
+    it("renders the rows inside the scope bar card, below the scope row and above the active filters", () => {
+        scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}`);
+        render(
+            <ScopeBar view="home">
+                <div data-testid="page-row">Page controls</div>
+            </ScopeBar>,
+        );
+
+        const rows = screen.getByTestId("scope-bar-rows");
+        expect(screen.getByTestId("scope-bar")).toContainElement(rows);
+        expect(rows).toContainElement(screen.getByTestId("page-row"));
+        expect(row()).not.toContainElement(rows);
+        expect(row().compareDocumentPosition(rows) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        // The active filter pills come after the rows.
+        const pill = screen
+            .getAllByRole("button", { name: /org\/api/ })
+            .find((button) => !row().contains(button));
+        expect(pill).toBeDefined();
+        expect(
+            rows.compareDocumentPosition(pill as HTMLElement) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
+    it("has no rows container when the page gives no row", () => {
+        render(<ScopeBar view="home" />);
+
+        expect(screen.queryByTestId("scope-bar-rows")).toBeNull();
+    });
+
+    it("keeps one writer of `f` with rows: the rows do not change what the bar writes", async () => {
+        const user = userEvent.setup();
+        render(
+            <ScopeBar view="home">
+                <div>Page controls</div>
+            </ScopeBar>,
+        );
+
+        await user.click(screen.getByRole("button", { name: "90d" }));
+
+        expect(scopeBarUrl.replace).toHaveBeenCalledTimes(1);
+        expect(scopeBarUrl.lastFilter().time).toEqual({ range_days: 90, compare_days: 90 });
+    });
+});
