@@ -369,7 +369,7 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(trail[trail.length - 1]?.label).toBe(child?.label);
     });
 
-    it.each(["/prs/repo-1:42"])(
+    it.each(["/prs/repo-1:42", "/issues/x-1"])(
         "%s: an artifact detail route belongs to Diagnose, with no destination and a trail that is the area only",
         (pathname) => {
             expect(selectedAreaIdForPathname(navAreas, pathname)).toBe("diagnose");
