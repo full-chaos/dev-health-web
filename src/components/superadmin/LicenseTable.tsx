@@ -9,11 +9,11 @@ type LicenseTableProps = {
 function getTierBadge(tier: string) {
     switch (tier) {
         case "enterprise":
-            return "bg-purple-500/10 text-purple-500";
+            return "bg-(--info)/12 text-(--info)";
         case "team":
-            return "bg-blue-500/10 text-blue-500";
+            return "bg-(--info)/12 text-(--info)";
         default:
-            return "bg-green-500/10 text-green-500";
+            return "bg-(--positive)/12 text-(--positive)";
     }
 }
 
@@ -55,8 +55,8 @@ export function LicenseTable({ orgs }: LicenseTableProps) {
                                 <span
                                     className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                                         org.is_active
-                                            ? "bg-green-500/10 text-green-500"
-                                            : "bg-red-500/10 text-red-500"
+                                            ? "bg-(--positive)/12 text-(--positive)"
+                                            : "bg-(--negative)/12 text-(--negative)"
                                     }`}
                                 >
                                     {org.is_active ? "active" : "inactive"}

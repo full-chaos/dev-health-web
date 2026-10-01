@@ -2,13 +2,8 @@ import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const getDiagnoseSignalsMock = vi.fn();
-vi.mock("@/components/filters/FilterBar", () => ({ FilterBar: () => null }));
-vi.mock("@/components/navigation/GlobalContextBar", () => ({
-    GlobalContextBar: () => null,
-}));
+vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => null }));
 vi.mock("@/components/navigation/AreaOverview", () => ({ AreaOverview: () => null }));
-vi.mock("@/components/navigation/PrimaryNav", () => ({ PrimaryNav: () => null }));
-vi.mock("@/components/shared/BackLink", () => ({ BackLink: () => null }));
 vi.mock("@/lib/areaSignals/diagnose", () => ({
     getDiagnoseSignals: (...args: unknown[]) => getDiagnoseSignalsMock(...args),
 }));

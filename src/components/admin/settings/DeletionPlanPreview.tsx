@@ -27,11 +27,9 @@ export function DeletionPlanPreview({
 
     return (
         <div className="space-y-6">
-            <div className="rounded-md bg-red-50 p-4 dark:bg-red-900/20">
-                <h3 className="text-sm font-medium text-red-800 dark:text-red-200">
-                    Deletion Plan Preview
-                </h3>
-                <div className="mt-2 text-sm text-red-700 dark:text-red-300">
+            <div className="rounded-md bg-(--negative)/12 p-4">
+                <h3 className="text-sm font-medium text-(--negative)">Deletion Plan Preview</h3>
+                <div className="mt-2 text-sm text-(--negative)">
                     <p>
                         The following data will be permanently deleted. This action cannot be
                         undone.
@@ -93,11 +91,9 @@ export function DeletionPlanPreview({
             </div>
 
             {plan.warnings && plan.warnings.length > 0 && (
-                <div className="rounded-md bg-yellow-50 p-4 dark:bg-yellow-900/20">
-                    <h3 className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                        Warnings
-                    </h3>
-                    <ul className="mt-2 list-disc pl-5 text-sm text-yellow-700 dark:text-yellow-300">
+                <div className="rounded-md bg-(--caution)/12 p-4">
+                    <h3 className="text-sm font-medium text-(--caution)">Warnings</h3>
+                    <ul className="mt-2 list-disc pl-5 text-sm text-(--caution)">
                         {plan.warnings.map((warning, i) => (
                             <li key={i}>{warning}</li>
                         ))}
@@ -115,7 +111,7 @@ export function DeletionPlanPreview({
                     onChange={(e) => setConfirmText(e.target.value)}
                     placeholder={expectedConfirmText}
                     disabled={isPending}
-                    className="block w-full rounded-md border border-red-300 px-3 py-2 text-sm focus:border-red-500 focus:outline-none focus:ring-1 focus:ring-red-500 disabled:opacity-50"
+                    className="block w-full rounded-md border border-(--negative)/30 px-3 py-2 text-sm focus:border-(--negative) focus:outline-none focus:ring-1 focus:ring-(--negative) disabled:opacity-50"
                 />
                 <div className="flex gap-3">
                     <button
@@ -130,7 +126,7 @@ export function DeletionPlanPreview({
                         type="button"
                         onClick={onConfirm}
                         disabled={confirmText !== expectedConfirmText || isPending}
-                        className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 disabled:opacity-50"
+                        className="rounded-md bg-(--negative) px-4 py-2 text-sm font-medium text-(--accent-foreground) hover:bg-(--negative)/90 focus:outline-none focus:ring-2 focus:ring-(--negative) focus:ring-offset-2 disabled:opacity-50"
                     >
                         {isPending ? "Deleting..." : "Delete Forever"}
                     </button>

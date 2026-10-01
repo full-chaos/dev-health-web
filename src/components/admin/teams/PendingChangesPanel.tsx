@@ -114,7 +114,7 @@ export function PendingChangesPanel() {
             >
                 <div className="flex items-center gap-2">
                     <h3 className="font-medium text-foreground">Pending Changes</h3>
-                    <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">
+                    <span className="rounded-full bg-(--caution)/12 px-2 py-0.5 text-xs font-medium text-(--caution)">
                         {changes.length}
                     </span>
                 </div>
@@ -128,7 +128,7 @@ export function PendingChangesPanel() {
                             type="button"
                             onClick={() => handleBulkAction("approve")}
                             disabled={isPending}
-                            className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-green-600 hover:bg-green-500/10 disabled:opacity-50"
+                            className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-(--positive) hover:bg-(--positive)/12 disabled:opacity-50"
                         >
                             {CTA_LABELS.approveAll}
                         </button>
@@ -136,7 +136,7 @@ export function PendingChangesPanel() {
                             type="button"
                             onClick={() => handleBulkAction("dismiss")}
                             disabled={isPending}
-                            className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-500/10 disabled:opacity-50"
+                            className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-(--negative) hover:bg-(--negative)/12 disabled:opacity-50"
                         >
                             {CTA_LABELS.dismissAll}
                         </button>
@@ -153,17 +153,17 @@ export function PendingChangesPanel() {
                                         {change.team_name}
                                     </span>
                                     {change.change_type === "field_changed" && (
-                                        <span className="rounded bg-yellow-500/10 px-1.5 py-0.5 text-xs font-medium text-yellow-600">
+                                        <span className="rounded bg-(--caution)/12 px-1.5 py-0.5 text-xs font-medium text-(--caution)">
                                             Field Changed
                                         </span>
                                     )}
                                     {change.change_type === "provider_removed" && (
-                                        <span className="rounded bg-red-500/10 px-1.5 py-0.5 text-xs font-medium text-red-600">
+                                        <span className="rounded bg-(--negative)/12 px-1.5 py-0.5 text-xs font-medium text-(--negative)">
                                             Provider Removed
                                         </span>
                                     )}
                                     {change.change_type === "new_team_available" && (
-                                        <span className="rounded bg-blue-500/10 px-1.5 py-0.5 text-xs font-medium text-blue-600">
+                                        <span className="rounded bg-(--info)/12 px-1.5 py-0.5 text-xs font-medium text-(--info)">
                                             New Team
                                         </span>
                                     )}
@@ -199,7 +199,7 @@ export function PendingChangesPanel() {
                                     type="button"
                                     onClick={() => handleApprove(change.team_id, change.change_id)}
                                     disabled={isPending}
-                                    className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-green-600 hover:bg-green-500/10 disabled:opacity-50"
+                                    className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-(--positive) hover:bg-(--positive)/12 disabled:opacity-50"
                                 >
                                     {CTA_LABELS.approve}
                                 </button>
@@ -207,7 +207,7 @@ export function PendingChangesPanel() {
                                     type="button"
                                     onClick={() => handleDismiss(change.team_id, change.change_id)}
                                     disabled={isPending}
-                                    className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-500/10 disabled:opacity-50"
+                                    className="cursor-pointer rounded px-2 py-1 text-xs font-medium text-(--negative) hover:bg-(--negative)/12 disabled:opacity-50"
                                 >
                                     {CTA_LABELS.dismiss}
                                 </button>
