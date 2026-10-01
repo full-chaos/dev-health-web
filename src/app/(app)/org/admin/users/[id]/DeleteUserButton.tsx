@@ -34,13 +34,13 @@ export function DeleteUserButton({ userId, userEmail }: DeleteUserButtonProps) {
     if (isConfirming) {
         return (
             <div className="space-y-2">
-                <p className="text-sm text-red-500">Delete {userEmail}?</p>
+                <p className="text-sm text-(--negative)">Delete {userEmail}?</p>
                 <div className="flex gap-2">
                     <button
                         type="button"
                         onClick={handleDelete}
                         disabled={isDeleting}
-                        className="flex-1 rounded-lg bg-red-500 px-3 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50"
+                        className="flex-1 rounded-lg bg-(--negative) px-3 py-2 text-sm font-medium text-(--accent-foreground) hover:bg-(--negative)/90 disabled:opacity-50"
                     >
                         {isDeleting ? "Deleting..." : CTA_LABELS.confirm}
                     </button>
@@ -61,7 +61,7 @@ export function DeleteUserButton({ userId, userEmail }: DeleteUserButtonProps) {
         <button
             type="button"
             onClick={() => setIsConfirming(true)}
-            className="w-full rounded-lg border border-red-500/20 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-500/10 text-left"
+            className="w-full rounded-lg border border-(--negative)/30 px-4 py-2 text-sm font-medium text-(--negative) hover:bg-(--negative)/12 text-left"
         >
             {CTA_LABELS.deleteUser}
         </button>

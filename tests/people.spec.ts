@@ -21,7 +21,12 @@ test("people search opens individual and metric evidence", async ({ page }) => {
     await expect(page).toHaveURL(/\/people\/person-123(?:\?|$)/);
 
     const main = page.getByRole("main");
-    await expect(main.getByText("Individual view")).toBeVisible({ timeout: 10000 });
+    // The person page: the shell trail replaced the "Individual view" eyebrow; the
+    // single-person framing text and the return link are the page's markers.
+    await expect(main.getByText("This view is scoped to one person.")).toBeVisible({
+        timeout: 10000,
+    });
+    await expect(main.getByRole("link", { name: "Back to People" })).toBeVisible();
 
     const cycleTimeLink = main.locator('a[href*="/people/person-123/metrics/cycle_time"]');
     await expect(cycleTimeLink.first()).toBeVisible({ timeout: 10000 });
