@@ -9,7 +9,6 @@ import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 import type { MetricFilter } from "@/lib/filters/types";
 import { toAIQueryInputs } from "@/lib/graphql/hooks/useAIReviewRisk";
 
-import AILayout from "../../layout";
 import AIImpactEvidencePage from "./page";
 
 // AI / Impact / PR Evidence inside the shared app shell: a detail page of
@@ -61,11 +60,9 @@ async function renderPage() {
     return render(
         <AdminTierProvider tier="community" features={{}}>
             <AppShell>
-                <AILayout>
-                    {await AIImpactEvidencePage({
-                        searchParams: Promise.resolve({ f: F, role: "em" }),
-                    })}
-                </AILayout>
+                {await AIImpactEvidencePage({
+                    searchParams: Promise.resolve({ f: F, role: "em" }),
+                })}
             </AppShell>
         </AdminTierProvider>,
     );

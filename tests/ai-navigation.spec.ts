@@ -79,9 +79,12 @@ test.describe("AI workflow primary navigation", () => {
         await expect(impactLink(page)).not.toHaveAttribute("aria-current", "page");
     });
 
-    test("FilterBar is the canonical chrome on every AI route (CHAOS-1773)", async ({ page }) => {
-        // CHAOS-1773: all AI surfaces now render the canonical FilterBar instead
-        // of the bespoke AIFilterBar that used native date inputs and selects.
+    test("the scope bar is the one context bar on every AI route (CHAOS-1773)", async ({
+        page,
+    }) => {
+        // CHAOS-1773: all AI surfaces render the shared filter chrome instead of
+        // the bespoke AIFilterBar that used native date inputs and selects. In
+        // the shared app shell that chrome is the scope bar for the AI view.
         for (const route of [
             "/ai",
             "/ai/impact",
@@ -90,9 +93,10 @@ test.describe("AI workflow primary navigation", () => {
             "/ai/risk",
         ]) {
             await page.goto(`${route}?f=${defaultFilter}`);
-            const filterBar = page.getByTestId("filter-bar");
-            await expect(filterBar).toBeVisible();
-            await expect(filterBar).toHaveAttribute("data-view", "ai");
+            const scopeBar = page.getByTestId("scope-bar");
+            await expect(scopeBar).toBeVisible();
+            await expect(scopeBar).toHaveAttribute("data-view", "ai");
+            await expect(page.getByTestId("filter-bar")).toHaveCount(0);
         }
     });
 
@@ -103,7 +107,7 @@ test.describe("AI workflow primary navigation", () => {
         });
 
         await page.goto(`/ai/impact?f=${customFilter}`);
-        await expect(page.getByTestId("filter-bar")).toBeVisible();
+        await expect(page.getByTestId("scope-bar")).toBeVisible();
 
         await clickUntilHeading(
             page,
@@ -111,6 +115,6 @@ test.describe("AI workflow primary navigation", () => {
             page.getByRole("heading", { name: "Review Load", exact: true }),
         );
         await expect(page).toHaveURL(/\/ai\/review-load/);
-        await expect(page.getByTestId("filter-bar")).toBeVisible();
+        await expect(page.getByTestId("scope-bar")).toBeVisible();
     });
 });

@@ -7,7 +7,6 @@ import { metricFilterToAIFilter } from "@/lib/filters/ai";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 
-import AILayout from "../layout";
 import AIAttributionPage from "./page";
 
 // AI / Attribution inside the shared app shell. It is a hidden child of AI
@@ -50,11 +49,9 @@ async function renderPage() {
     return render(
         <AdminTierProvider tier="community" features={{}}>
             <AppShell>
-                <AILayout>
-                    {await AIAttributionPage({
-                        searchParams: Promise.resolve({ f: F, role: "em" }),
-                    })}
-                </AILayout>
+                {await AIAttributionPage({
+                    searchParams: Promise.resolve({ f: F, role: "em" }),
+                })}
             </AppShell>
         </AdminTierProvider>,
     );

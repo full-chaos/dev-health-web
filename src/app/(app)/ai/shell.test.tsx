@@ -6,11 +6,9 @@ import { AppShell } from "@/components/shell/AppShell";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 
-import AILayout from "./layout";
 import AIWorkflowsPage from "./page";
 
-// The AI overview inside the shared app shell, under the AI layout as the
-// router renders it. The area header (title "AI" and its lede) is on this page
+// The AI overview inside the shared app shell. The area header (title "AI" and its lede) is on this page
 // only; the five AI destinations are the sidebar children, not a tab strip.
 
 const scopeBarSpy = vi.hoisted(() => vi.fn());
@@ -54,11 +52,9 @@ async function renderPage() {
     return render(
         <AdminTierProvider tier="community" features={{}}>
             <AppShell>
-                <AILayout>
-                    {await AIWorkflowsPage({
-                        searchParams: Promise.resolve({ f: F, role: "em" }),
-                    })}
-                </AILayout>
+                {await AIWorkflowsPage({
+                    searchParams: Promise.resolve({ f: F, role: "em" }),
+                })}
             </AppShell>
         </AdminTierProvider>,
     );
@@ -71,7 +67,7 @@ beforeEach(() => {
 });
 
 describe("AI overview in the shared app shell", () => {
-    it("has one main, one h1 and one sidebar: the AI layout adds no second chrome", async () => {
+    it("has one main, one h1 and one sidebar: no second chrome", async () => {
         await renderPage();
 
         expect(screen.getAllByRole("main")).toHaveLength(1);

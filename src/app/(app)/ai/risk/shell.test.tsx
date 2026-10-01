@@ -6,11 +6,9 @@ import { AppShell } from "@/components/shell/AppShell";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 
-import AILayout from "../layout";
 import AIRiskPage from "./page";
 
-// AI / Governance Risk inside the shared app shell, under the AI layout as the
-// router renders it. The page keeps its one tab row (Overview, Test Gaps,
+// AI / Governance Risk inside the shared app shell. The page keeps its one tab row (Overview, Test Gaps,
 // Evidence); the area tab strip above it is gone.
 
 const scopeBarSpy = vi.hoisted(() => vi.fn());
@@ -53,15 +51,13 @@ async function renderPage(view?: string) {
     return render(
         <AdminTierProvider tier="community" features={{}}>
             <AppShell>
-                <AILayout>
-                    {await AIRiskPage({
-                        searchParams: Promise.resolve({
-                            f: F,
-                            role: "em",
-                            ...(view ? { view } : {}),
-                        }),
-                    })}
-                </AILayout>
+                {await AIRiskPage({
+                    searchParams: Promise.resolve({
+                        f: F,
+                        role: "em",
+                        ...(view ? { view } : {}),
+                    }),
+                })}
             </AppShell>
         </AdminTierProvider>,
     );

@@ -24,14 +24,17 @@ test.describe("AI views", () => {
         );
     });
 
-    test("each visible AI tab renders a distinct heading and distinct content", async ({
+    test("each AI destination renders a distinct heading and distinct content", async ({
         page,
     }) => {
         const rendered = new Map<string, string>();
 
         for (const tab of aiTabs) {
             await page.goto(tab.path);
-            await expect(page.getByRole("heading", { level: 2, name: tab.name })).toBeVisible();
+            // The destination title is the page's h1 (it was an h2 under the area
+            // title "AI").
+            await expect(page.getByRole("heading", { level: 1, name: tab.name })).toBeVisible();
+            await expect(page.getByRole("heading", { level: 1 })).toHaveCount(1);
             const mainText = await page.locator("main").innerText();
             expect(mainText, `${tab.name} should include its heading`).toContain(tab.name);
             rendered.set(tab.name, mainText.replace(/\s+/g, " ").trim());

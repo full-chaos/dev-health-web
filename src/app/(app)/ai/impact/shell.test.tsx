@@ -6,11 +6,9 @@ import { AppShell } from "@/components/shell/AppShell";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 
-import AILayout from "../layout";
 import AIImpactPage from "./page";
 
-// AI / Impact inside the shared app shell, under the AI layout as the router
-// renders it. The destination title is the page's h1 (it was an h2 under the
+// AI / Impact inside the shared app shell. The destination title is the page's h1 (it was an h2 under the
 // area title "AI").
 
 const scopeBarSpy = vi.hoisted(() => vi.fn());
@@ -49,9 +47,7 @@ async function renderPage() {
     return render(
         <AdminTierProvider tier="community" features={{}}>
             <AppShell>
-                <AILayout>
-                    {await AIImpactPage({ searchParams: Promise.resolve({ f: F, role: "em" }) })}
-                </AILayout>
+                {await AIImpactPage({ searchParams: Promise.resolve({ f: F, role: "em" }) })}
             </AppShell>
         </AdminTierProvider>,
     );
