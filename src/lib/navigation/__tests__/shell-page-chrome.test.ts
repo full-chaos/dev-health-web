@@ -101,3 +101,24 @@ describe("shell pages bring no chrome of their own", () => {
         expect(offenders).toEqual([]);
     });
 });
+
+describe("Cognitive Load keeps its privacy framing in the shell", () => {
+    const pagePath = join(appRoot, "cognitive-load/page.tsx");
+    const source = readFileSync(pagePath, "utf8").replace(/\s+/g, " ");
+
+    it.each([
+        "Privacy-first cognitive load",
+        "Focus fragmentation, not surveillance.",
+        "This surface uses existing PR, review, work-item, and commit-time rollups to show where attention is being split. It does not collect IDE, keystroke, prompt, or session telemetry.",
+        "No leaderboards. No peer rankings. Team and repo aggregation comes first.",
+        "Single-person views are limited to explicit self-reflection or coaching context.",
+    ])("keeps the sentence: %s", (sentence) => {
+        expect(source).toContain(sentence);
+    });
+
+    it("has the page title as the one h1 and the privacy statement as a second-level heading", () => {
+        expect(source).toContain('<PageHeader title="Cognitive Load" />');
+        expect(source).not.toMatch(/<h1[\s>]/);
+        expect(source).toMatch(/<h2 [^>]*> Focus fragmentation, not surveillance\. <\/h2>/);
+    });
+});
