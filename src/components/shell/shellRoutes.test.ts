@@ -27,6 +27,7 @@ describe("shell route registry", () => {
             "/plan",
             "/plan/capacity",
             "/plan/backlog-risk",
+            "/operating-review",
         ]);
     });
 
