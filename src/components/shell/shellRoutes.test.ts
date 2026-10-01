@@ -35,6 +35,7 @@ describe("shell route registry", () => {
             "/ai",
             "/ai/impact",
             "/ai/impact/evidence",
+            "/ai/review-load",
         ]);
     });
 

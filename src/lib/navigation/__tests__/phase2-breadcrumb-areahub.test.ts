@@ -196,10 +196,7 @@ describe("breadcrumbs — production page source guards (codex round 2: prior te
         },
     );
 
-    const directPassthroughPages = [
-        { path: "ai/automations/page.tsx", route: "/ai/automations" },
-        { path: "ai/review-load/page.tsx", route: "/ai/review-load" },
-    ];
+    const directPassthroughPages = [{ path: "ai/automations/page.tsx", route: "/ai/automations" }];
 
     it.each(directPassthroughPages)(
         "$path: passes navTrailForPathname($route) straight through as breadcrumbs",
@@ -217,6 +214,7 @@ describe("breadcrumbs — production page source guards (codex round 2: prior te
         "improve/automations/page.tsx",
         "ai/impact/page.tsx",
         "ai/impact/evidence/page.tsx",
+        "ai/review-load/page.tsx",
     ];
 
     it.each(pagesWithNoInPageTrail)("%s: has no in-page trail", (relativePath) => {
