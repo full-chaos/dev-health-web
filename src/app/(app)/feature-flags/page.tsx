@@ -1,17 +1,15 @@
-import Link from "next/link";
-
 import { FeatureFlagTable } from "@/components/feature-flags/FeatureFlagTable";
+import { SeverityPill } from "@/components/feature-flags/SeverityPill";
 import { MetricCard } from "@/components/metrics/MetricCard";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { DataState } from "@/components/ui/DataState";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { withFilterParam } from "@/lib/filters/url";
 import { fetchFeatureFlagsData, fetchFeatureFlagList } from "@/lib/feature-flags/fetchers";
 import { FF_MEASURES } from "@/lib/feature-flags/constants";
 import { getServerEnv } from "@/lib/config";
-import { CTA_LABELS } from "@/lib/design/cta";
 import { fetchFlagPage } from "./actions";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 
@@ -19,18 +17,9 @@ type FeatureFlagsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-const SEVERITY_COLORS: Record<string, string> = {
-    low: "border-l-emerald-500",
-    moderate: "border-l-amber-500",
-    high: "border-l-orange-500",
-    critical: "border-l-red-500",
-};
-
 export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPageProps) {
     const params = (await searchParams) ?? {};
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-    const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
-    const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
@@ -59,103 +48,84 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
     ]);
 
     if (!health.ok && !isTestMode) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     if (!ffData) {
         return (
-            <div className="min-h-screen bg-background text-foreground">
-                <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                    <PrimaryNav filters={filters} active="feature-flags" role={activeRole} />
-                    <main className="flex min-w-0 flex-1 flex-col gap-8">
-                        <DataState
-                            variant="error"
-                            title="Feature flags unavailable"
-                            message="Unable to load feature flag metrics. Try refreshing the page."
-                        />
-                    </main>
-                </div>
+            // Rendered inside the shared app shell: the layout owns the navigation, the
+            // page padding and the `<main>` landmark.
+            <div className="flex min-w-0 flex-1 flex-col gap-8">
+                <DataState
+                    variant="error"
+                    title="Feature flags unavailable"
+                    message="Unable to load feature flag metrics. Try refreshing the page."
+                />
             </div>
         );
     }
 
     const { summary } = ffData;
-    const severityBorder = summary.releaseFrictionSeverity
-        ? (SEVERITY_COLORS[summary.releaseFrictionSeverity] ?? "")
-        : "";
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="feature-flags" role={activeRole} />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Feature Flags
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">Overview</h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Flag activity, release friction, and telemetry coverage.
-                            </p>
-                        </div>
-                        <Link
-                            href={withFilterParam("/", filters, activeRole)}
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-                        >
-                            {CTA_LABELS.backToCockpit}
-                        </Link>
-                    </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8">
+            <PageHeader
+                title="Feature Flags"
+                subtitle="Flag activity, release friction, and telemetry coverage."
+            />
 
-                    <section className="grid gap-4 lg:grid-cols-2">
-                        <MetricCard
-                            label={FF_MEASURES.ACTIVE_FLAGS.label}
-                            href="/feature-flags"
-                            value={summary.activeFlags}
-                            unit=""
-                            delta={summary.activeFlagsDelta}
-                            spark={summary.activeFlagsSpark}
-                            caption={FF_MEASURES.ACTIVE_FLAGS.description}
-                        />
+            <ScopeBar view="feature-flags" pageFilters={false} />
 
-                        <MetricCard
-                            label={FF_MEASURES.RELEASE_FRICTION_DELTA.label}
-                            href="/feature-flags"
-                            value={summary.releaseFrictionDelta ?? undefined}
-                            unit="%"
-                            spark={summary.releaseFrictionSpark}
-                            caption={`Severity: ${summary.releaseFrictionSeverity ?? "unavailable"}`}
-                            className={severityBorder ? `border-l-4 ${severityBorder}` : undefined}
-                        />
+            <section className="grid gap-4 lg:grid-cols-2">
+                <MetricCard
+                    label={FF_MEASURES.ACTIVE_FLAGS.label}
+                    value={summary.activeFlags}
+                    unit=""
+                    delta={summary.activeFlagsDelta}
+                    spark={summary.activeFlagsSpark}
+                    caption={FF_MEASURES.ACTIVE_FLAGS.description}
+                />
 
-                        <MetricCard
-                            label={FF_MEASURES.RELEASE_ERROR_RATE_DELTA.label}
-                            href="/feature-flags"
-                            value={summary.releaseErrorRateDelta ?? undefined}
-                            unit="%"
-                            spark={summary.releaseErrorRateSpark}
-                            caption={FF_MEASURES.RELEASE_ERROR_RATE_DELTA.description}
-                        />
+                <div className="relative">
+                    <MetricCard
+                        label={FF_MEASURES.RELEASE_FRICTION_DELTA.label}
+                        value={summary.releaseFrictionDelta ?? undefined}
+                        unit="%"
+                        spark={summary.releaseFrictionSpark}
+                        caption={`Severity: ${summary.releaseFrictionSeverity ?? "unavailable"}`}
+                    />
+                    <SeverityPill
+                        severity={summary.releaseFrictionSeverity}
+                        className="absolute right-4 top-4"
+                    />
+                </div>
 
-                        <MetricCard
-                            label={FF_MEASURES.COVERAGE_RATIO.label}
-                            href="/feature-flags"
-                            value={summary.coverageRatio ?? undefined}
-                            unit="%"
-                            delta={summary.coverageRatioDelta}
-                            spark={summary.coverageRatioSpark}
-                            caption={FF_MEASURES.COVERAGE_RATIO.description}
-                        />
-                    </section>
+                <MetricCard
+                    label={FF_MEASURES.RELEASE_ERROR_RATE_DELTA.label}
+                    value={summary.releaseErrorRateDelta ?? undefined}
+                    unit="%"
+                    spark={summary.releaseErrorRateSpark}
+                    caption={FF_MEASURES.RELEASE_ERROR_RATE_DELTA.description}
+                />
 
-                    <section>
-                        <h2 className="mb-4 text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                            Flag Registry
-                        </h2>
-                        <FeatureFlagTable initialData={flagList} fetchAction={fetchFlagPage} />
-                    </section>
-                </main>
-            </div>
+                <MetricCard
+                    label={FF_MEASURES.COVERAGE_RATIO.label}
+                    value={summary.coverageRatio ?? undefined}
+                    unit="%"
+                    delta={summary.coverageRatioDelta}
+                    spark={summary.coverageRatioSpark}
+                    caption={FF_MEASURES.COVERAGE_RATIO.description}
+                />
+            </section>
+
+            <section>
+                <h2 className="mb-4 text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                    Flag Registry
+                </h2>
+                <FeatureFlagTable initialData={flagList} fetchAction={fetchFlagPage} />
+            </section>
         </div>
     );
 }

@@ -23,20 +23,8 @@ vi.mock("@/lib/labels/entityLabel", () => ({
     resolveEntityLabels: (ids: string[]) => ({ labels: ids, titles: ids }),
 }));
 
-vi.mock("@/components/navigation/PrimaryNav", () => ({
-    PrimaryNav: () => <nav data-testid="primary-nav" />,
-}));
-
-vi.mock("@/components/navigation/GlobalContextBar", () => ({
-    GlobalContextBar: () => <div data-testid="global-context" />,
-}));
-
-vi.mock("@/components/filters/FilterBar", () => ({
-    FilterBar: () => <div data-testid="filter-bar" />,
-}));
-
-vi.mock("@/components/shared/BackLink", () => ({
-    BackLink: () => <button type="button">Back</button>,
+vi.mock("@/components/shell/ScopeBar", () => ({
+    ScopeBar: () => <div data-testid="scope-bar" />,
 }));
 
 vi.mock("../TestOpsTabs", () => ({

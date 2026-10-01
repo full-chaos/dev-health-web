@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
-import { CircleCheck, Info, TriangleAlert, X } from "lucide-react";
+import { CircleCheck, Info, OctagonAlert, TriangleAlert, X } from "lucide-react";
 
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -9,15 +9,17 @@ import { CTA_LABELS } from "@/lib/design/cta";
  * - `info`: neutral context ("data arriving", "setup pending").
  * - `warn`: reads as provisional or needs care ("limited history", "trial ends").
  * - `good`: a confirmed healthy or complete state.
+ * - `danger`: something failed or was refused ("could not save", "request failed").
  *
  * Status color is never the only signal: each variant has its own icon and a
- * screen-reader label ("Information", "Warning", "OK") ahead of the content.
+ * screen-reader label ("Information", "Warning", "OK", "Error") ahead of the content.
  *
  * Live region: by default a notice is `role="status"` / `aria-live="polite"`,
- * so a notice that appears after load is announced. Pass `live={false}` for a
- * notice that is part of the initial page (no role, not announced).
+ * so a notice that appears after load is announced. `danger` is `role="alert"`
+ * (assertive). Pass `live={false}` for a notice that is part of the initial page
+ * (no role, not announced).
  */
-export type NoticeVariant = "info" | "warn" | "good";
+export type NoticeVariant = "info" | "warn" | "good" | "danger";
 
 const VARIANTS: Record<
     NoticeVariant,
@@ -44,16 +46,24 @@ const VARIANTS: Record<
             "border-[color-mix(in_srgb,var(--positive)_28%,var(--card-stroke))] bg-[color-mix(in_srgb,var(--positive)_8%,var(--card))]",
         accent: "text-(--positive)",
     },
+    // 8% tint, not 10%: body ink on a 10% negative tint is 4.38:1 in light, under 4.5.
+    danger: {
+        label: "Error",
+        Icon: OctagonAlert,
+        surface:
+            "border-[color-mix(in_srgb,var(--negative)_32%,var(--card-stroke))] bg-[color-mix(in_srgb,var(--negative)_8%,var(--card))]",
+        accent: "text-(--negative)",
+    },
 };
 
 /**
  * Solid fill for security-relevant strips. Warn only (an info or good notice
- * keeps its tinted surface). Production's impersonation strip drew
- * `bg-amber-500` with black ink in both themes: the same pair is kept here
- * (black on amber-500 = 9.78:1), because the theme `--caution` token is a dark
- * text color in light and fails as a fill.
+ * keeps its tinted surface). Production's impersonation strip drew a bright
+ * amber fill with black ink in both themes; the theme tokens `--caution-solid` and
+ * `--on-caution-solid` hold that same pair (black on the fill = 9.84:1; `#fe9a00` is what Tailwind 4 renders for amber-500), because
+ * the theme `--caution` token is a dark text color in light and fails as a fill.
  */
-const STRONG_WARN = "border-transparent bg-amber-500 text-black";
+const STRONG_WARN = "border-transparent bg-(--caution-solid) text-(--on-caution-solid)";
 
 export type NoticeProps = Omit<ComponentPropsWithoutRef<"div">, "title" | "role"> & {
     variant?: NoticeVariant;
@@ -65,7 +75,7 @@ export type NoticeProps = Omit<ComponentPropsWithoutRef<"div">, "title" | "role"
     /** When set, renders a dismiss button that calls it. */
     onDismiss?: () => void;
     dismissLabel?: string;
-    /** `true` (default): `role="status"` + `aria-live="polite"`. `false`: no live region. */
+    /** `true` (default): `role="status"` + `aria-live="polite"` (`danger`: `role="alert"`). `false`: no live region. */
     live?: boolean;
     /** `strong`: solid amber fill with black ink; applies to `warn` only (for example impersonation). */
     emphasis?: "default" | "strong";
@@ -94,9 +104,13 @@ export function Notice({
     const accent = strong ? "text-current" : base.accent;
     return (
         <div
-            {...(live ? { role: "status", "aria-live": "polite" as const } : {})}
+            {...(live
+                ? variant === "danger"
+                    ? { role: "alert" }
+                    : { role: "status", "aria-live": "polite" as const }
+                : {})}
             data-notice-variant={variant}
-            className={`${centered ? "relative justify-center pr-12 " : ""}flex items-start gap-3 rounded-md border px-4 py-3 text-sm ${strong ? "" : "text-foreground"} ${surface} ${className}`}
+            className={`${centered ? "relative justify-center pr-12 " : ""}flex items-start gap-3 rounded-(--radius-sm) border px-4 py-3 text-sm ${strong ? "" : "text-foreground"} ${surface} ${className}`}
             {...rest}
         >
             <Icon aria-hidden="true" className={`mt-0.5 h-4 w-4 shrink-0 ${accent}`} />

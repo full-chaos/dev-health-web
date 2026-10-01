@@ -19,8 +19,9 @@ test.describe("Improve Overview landing", () => {
             page.getByText(/each producing actions,\s*not dashboards/i).first(),
         ).toBeVisible();
         await expect(page.getByTestId("area-overview")).toBeVisible();
-        // Exactly one context bar (no GlobalContextBar + FilterBar duplication).
-        await expect(page.getByRole("region", { name: "Global context" })).toHaveCount(1);
+        // Exactly one context bar: the scope bar of the shared app shell.
+        await expect(page.getByRole("region", { name: "Scope" })).toHaveCount(1);
+        await expect(page.getByRole("region", { name: "Global context" })).toHaveCount(0);
     });
 
     test("promotes the worst metric to the TOP SIGNAL hero (not a self-referential Opportunities hero)", async ({

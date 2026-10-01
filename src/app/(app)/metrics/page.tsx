@@ -2,11 +2,7 @@ import Link from "next/link";
 
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
-import { FilterBar } from "@/components/filters/FilterBar";
 import { MetricEvidenceCards } from "@/components/metrics/MetricEvidenceCards";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
-import { BackLink } from "@/components/shared/BackLink";
 import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
@@ -22,6 +18,8 @@ import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 
 type MetricsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -126,7 +124,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
     ]);
 
     if (!health.ok) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
@@ -148,292 +146,252 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
     );
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="metrics" role={activeRole} />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Metrics
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">Monitoring view</h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Trends over the selected window.
-                            </p>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Open a metric to investigate.
-                            </p>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-3">
-                            <BackLink href={withFilterParam("/", filters, activeRole)} />
-                        </div>
-                    </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            <PageHeader title="Monitoring view" subtitle="Trends over the selected window.">
+                <p className="text-sm text-(--ink-muted)">Open a metric to investigate.</p>
+            </PageHeader>
 
-                    <GlobalContextBar filters={filters} />
-                    <FilterBar view="metrics" tab={activeTab.id} />
+            <ScopeBar view="metrics" tab={activeTab.id} />
 
-                    <ModeTabs
-                        ariaLabel="Metrics views"
-                        activeId={activeTab.id}
-                        items={METRIC_TABS.map((tab): ModeTabItem => ({
-                            id: tab.id,
-                            label: tab.label,
-                            href: withFilterParam(`/metrics?tab=${tab.id}`, filters, activeRole),
-                        }))}
-                    />
+            <ModeTabs
+                ariaLabel="Metrics views"
+                activeId={activeTab.id}
+                items={METRIC_TABS.map((tab): ModeTabItem => ({
+                    id: tab.id,
+                    label: tab.label,
+                    href: withFilterParam(`/metrics?tab=${tab.id}`, filters, activeRole),
+                }))}
+            />
 
-                    <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                    {activeTab.label} monitoring
-                                </p>
-                                <p className="mt-1 text-sm text-(--ink-muted)">
-                                    {activeTab.description}
-                                </p>
-                            </div>
+            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                            {activeTab.label} monitoring
+                        </p>
+                        <p className="mt-1 text-sm text-(--ink-muted)">{activeTab.description}</p>
+                    </div>
+                    <Link
+                        href={buildExploreUrl({
+                            metric: activeTab.highlight,
+                            filters,
+                            role: activeRole,
+                        })}
+                        className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                        title={`Open evidence for ${highlightLabel}`}
+                    >
+                        {CTA_LABELS.openEvidence}
+                    </Link>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2 text-xs">
+                    {activeTab.metrics.map((metric) => {
+                        const data = getMetric(deltas, metric);
+                        return (
                             <Link
+                                key={`chip-${metric}`}
                                 href={buildExploreUrl({
-                                    metric: activeTab.highlight,
+                                    metric,
                                     filters,
                                     role: activeRole,
                                 })}
-                                className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                                title={`Open evidence for ${highlightLabel}`}
+                                className="rounded-full border border-(--card-stroke) bg-(--card) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted) transition hover:text-foreground"
                             >
-                                {CTA_LABELS.openEvidence}
+                                {data?.label ?? metric}
                             </Link>
-                        </div>
-                        <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                            {activeTab.metrics.map((metric) => {
-                                const data = getMetric(deltas, metric);
-                                return (
+                        );
+                    })}
+                </div>
+            </section>
+
+            <MetricEvidenceCards
+                metrics={activeTab.metrics}
+                deltas={deltas}
+                filters={filters}
+                activeRole={activeRole}
+                placeholderDeltas={placeholderDeltas}
+            />
+
+            <section>
+                <QuadrantPanel
+                    title={activeTab.quadrant.title}
+                    description={activeTab.quadrant.description}
+                    data={quadrant}
+                    filters={filters}
+                    emptyState="Quadrant data unavailable for this scope."
+                />
+            </section>
+
+            <section className="grid gap-6 lg:grid-cols-2">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-(--font-display) text-xl">Likely associations</h2>
+                        <Link
+                            href={buildExploreUrl({
+                                metric: activeTab.highlight,
+                                filters,
+                                role: activeRole,
+                            })}
+                            className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                        >
+                            {CTA_LABELS.openEvidence}
+                        </Link>
+                    </div>
+                    <p className="mt-2 text-xs text-(--ink-muted)">
+                        Preview of the selected window. Select a data point for detail.
+                    </p>
+                    {drivers.length ? (
+                        <div className="mt-4 space-y-4">
+                            <HorizontalBarChart
+                                categories={driverChartLabels.labels}
+                                values={drivers.map((driver) => Math.abs(driver.delta_pct))}
+                                categoryTitles={driverChartLabels.titles}
+                            />
+                            <div className="space-y-2 text-sm">
+                                {drivers.map((driver) => (
                                     <Link
-                                        key={`chip-${metric}`}
+                                        key={driver.id}
                                         href={buildExploreUrl({
-                                            metric,
+                                            api: driver.evidence_link,
                                             filters,
                                             role: activeRole,
                                         })}
-                                        className="rounded-full border border-(--card-stroke) bg-(--card) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted) transition hover:text-foreground"
+                                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
                                     >
-                                        {data?.label ?? metric}
+                                        <EntityLabel id={driver.label} />
+                                        <span className="text-xs text-(--ink-muted)">
+                                            {formatDelta(driver.delta_pct)}
+                                        </span>
                                     </Link>
-                                );
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <p className="mt-4 text-sm text-(--ink-muted)">
+                            Association detail will appear once data is ingested.
+                        </p>
+                    )}
+                </div>
+
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
+                    <div className="flex items-center justify-between">
+                        <h2 className="font-(--font-display) text-xl">Primary contributors</h2>
+                        <Link
+                            href={buildExploreUrl({
+                                metric: activeTab.highlight,
+                                filters,
+                                role: activeRole,
                             })}
-                        </div>
-                    </section>
-
-                    <MetricEvidenceCards
-                        metrics={activeTab.metrics}
-                        deltas={deltas}
-                        filters={filters}
-                        activeRole={activeRole}
-                        placeholderDeltas={placeholderDeltas}
-                    />
-
-                    <section>
-                        <QuadrantPanel
-                            title={activeTab.quadrant.title}
-                            description={activeTab.quadrant.description}
-                            data={quadrant}
-                            filters={filters}
-                            emptyState="Quadrant data unavailable for this scope."
-                        />
-                    </section>
-
-                    <section className="grid gap-6 lg:grid-cols-2">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
-                            <div className="flex items-center justify-between">
-                                <h2 className="font-(--font-display) text-xl">
-                                    Likely associations
-                                </h2>
-                                <Link
-                                    href={buildExploreUrl({
-                                        metric: activeTab.highlight,
-                                        filters,
-                                        role: activeRole,
-                                    })}
-                                    className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                                >
-                                    {CTA_LABELS.openEvidence}
-                                </Link>
-                            </div>
-                            <p className="mt-2 text-xs text-(--ink-muted)">
-                                Preview of the selected window. Select a data point for detail.
-                            </p>
-                            {drivers.length ? (
-                                <div className="mt-4 space-y-4">
-                                    <HorizontalBarChart
-                                        categories={driverChartLabels.labels}
-                                        values={drivers.map((driver) => Math.abs(driver.delta_pct))}
-                                        categoryTitles={driverChartLabels.titles}
-                                    />
-                                    <div className="space-y-2 text-sm">
-                                        {drivers.map((driver) => (
-                                            <Link
-                                                key={driver.id}
-                                                href={buildExploreUrl({
-                                                    api: driver.evidence_link,
-                                                    filters,
-                                                    role: activeRole,
-                                                })}
-                                                className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
-                                            >
-                                                <EntityLabel id={driver.label} />
-                                                <span className="text-xs text-(--ink-muted)">
-                                                    {formatDelta(driver.delta_pct)}
-                                                </span>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="mt-4 text-sm text-(--ink-muted)">
-                                    Association detail will appear once data is ingested.
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
-                            <div className="flex items-center justify-between">
-                                <h2 className="font-(--font-display) text-xl">
-                                    Primary contributors
-                                </h2>
-                                <Link
-                                    href={buildExploreUrl({
-                                        metric: activeTab.highlight,
-                                        filters,
-                                        role: activeRole,
-                                    })}
-                                    className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                                >
-                                    {CTA_LABELS.openEvidence}
-                                </Link>
-                            </div>
-                            <p className="mt-2 text-xs text-(--ink-muted)">
-                                Where the impact concentrates in this window.
-                            </p>
-                            {contributors.length ? (
-                                <div className="mt-4 space-y-4">
-                                    <HorizontalBarChart
-                                        categories={contributorChartLabels.labels}
-                                        values={contributors.map(
-                                            (contributor) => contributor.value,
-                                        )}
-                                        categoryTitles={contributorChartLabels.titles}
-                                    />
-                                    <div className="space-y-2 text-sm">
-                                        {contributors.map((contributor) => (
-                                            <Link
-                                                key={contributor.id}
-                                                href={buildExploreUrl({
-                                                    api: contributor.evidence_link,
-                                                    filters,
-                                                    role: activeRole,
-                                                })}
-                                                className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
-                                            >
-                                                <EntityLabel id={contributor.label} />
-                                                <span className="text-xs text-(--ink-muted)">
-                                                    {highlight
-                                                        ? formatMetricValue(
-                                                              contributor.value,
-                                                              highlight.unit,
-                                                          )
-                                                        : "--"}
-                                                </span>
-                                            </Link>
-                                        ))}
-                                    </div>
-                                </div>
-                            ) : (
-                                <p className="mt-4 text-sm text-(--ink-muted)">
-                                    Contributor detail will appear once data is ingested.
-                                </p>
-                            )}
-                        </div>
-                    </section>
-
-                    <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-                        <div className="flex items-center justify-between">
-                            <h2 className="font-(--font-display) text-xl">Summary</h2>
-                            <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                Active window
-                            </span>
-                        </div>
-                        <div className="mt-4 overflow-auto">
-                            <table className="min-w-full border-collapse text-sm">
-                                <thead className="text-left text-(--ink-muted)">
-                                    <tr>
-                                        <th className="border-b border-(--card-stroke) pb-2">
-                                            Metric
-                                        </th>
-                                        <th className="border-b border-(--card-stroke) pb-2">
-                                            Current
-                                        </th>
-                                        <th className="border-b border-(--card-stroke) pb-2">
-                                            Delta
-                                        </th>
-                                        <th className="border-b border-(--card-stroke) pb-2">
-                                            Explore
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {activeTab.metrics.map((metric) => {
-                                        const data = getMetric(deltas, metric);
-                                        const href = buildExploreUrl({
-                                            metric,
+                            className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                        >
+                            {CTA_LABELS.openEvidence}
+                        </Link>
+                    </div>
+                    <p className="mt-2 text-xs text-(--ink-muted)">
+                        Where the impact concentrates in this window.
+                    </p>
+                    {contributors.length ? (
+                        <div className="mt-4 space-y-4">
+                            <HorizontalBarChart
+                                categories={contributorChartLabels.labels}
+                                values={contributors.map((contributor) => contributor.value)}
+                                categoryTitles={contributorChartLabels.titles}
+                            />
+                            <div className="space-y-2 text-sm">
+                                {contributors.map((contributor) => (
+                                    <Link
+                                        key={contributor.id}
+                                        href={buildExploreUrl({
+                                            api: contributor.evidence_link,
                                             filters,
                                             role: activeRole,
-                                        });
-                                        return (
-                                            <tr
-                                                key={metric}
-                                                className="border-b border-(--card-stroke)"
-                                            >
-                                                <td className="py-3 pr-4 font-medium">
-                                                    <Link href={href} className="block">
-                                                        {data?.label ?? metric}
-                                                    </Link>
-                                                </td>
-                                                <td className="py-3 pr-4 text-(--ink-muted)">
-                                                    <Link href={href} className="block">
-                                                        {placeholderDeltas || !data
-                                                            ? "--"
-                                                            : formatMetricValue(
-                                                                  data.value,
-                                                                  data.unit,
-                                                              )}
-                                                    </Link>
-                                                </td>
-                                                <td className="py-3 pr-4 text-(--ink-muted)">
-                                                    <Link href={href} className="block">
-                                                        {placeholderDeltas || !data ? (
-                                                            <span title="No prior period available to compute a change">
-                                                                No prior period
-                                                            </span>
-                                                        ) : (
-                                                            formatDelta(data.delta_pct)
-                                                        )}
-                                                    </Link>
-                                                </td>
-                                                <td className="py-3 text-xs uppercase tracking-[0.2em] text-(--accent-2)">
-                                                    <Link href={href} className="block">
-                                                        {CTA_LABELS.openEvidence}
-                                                    </Link>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                                        })}
+                                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                                    >
+                                        <EntityLabel id={contributor.label} />
+                                        <span className="text-xs text-(--ink-muted)">
+                                            {highlight
+                                                ? formatMetricValue(
+                                                      contributor.value,
+                                                      highlight.unit,
+                                                  )
+                                                : "--"}
+                                        </span>
+                                    </Link>
+                                ))}
+                            </div>
                         </div>
-                    </section>
-                </main>
-            </div>
+                    ) : (
+                        <p className="mt-4 text-sm text-(--ink-muted)">
+                            Contributor detail will appear once data is ingested.
+                        </p>
+                    )}
+                </div>
+            </section>
+
+            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                <div className="flex items-center justify-between">
+                    <h2 className="font-(--font-display) text-xl">Summary</h2>
+                    <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                        Active window
+                    </span>
+                </div>
+                <div className="mt-4 overflow-auto">
+                    <table className="min-w-full border-collapse text-sm">
+                        <thead className="text-left text-(--ink-muted)">
+                            <tr>
+                                <th className="border-b border-(--card-stroke) pb-2">Metric</th>
+                                <th className="border-b border-(--card-stroke) pb-2">Current</th>
+                                <th className="border-b border-(--card-stroke) pb-2">Delta</th>
+                                <th className="border-b border-(--card-stroke) pb-2">Explore</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {activeTab.metrics.map((metric) => {
+                                const data = getMetric(deltas, metric);
+                                const href = buildExploreUrl({
+                                    metric,
+                                    filters,
+                                    role: activeRole,
+                                });
+                                return (
+                                    <tr key={metric} className="border-b border-(--card-stroke)">
+                                        <td className="py-3 pr-4 font-medium">
+                                            <Link href={href} className="block">
+                                                {data?.label ?? metric}
+                                            </Link>
+                                        </td>
+                                        <td className="py-3 pr-4 text-(--ink-muted)">
+                                            <Link href={href} className="block">
+                                                {placeholderDeltas || !data
+                                                    ? "--"
+                                                    : formatMetricValue(data.value, data.unit)}
+                                            </Link>
+                                        </td>
+                                        <td className="py-3 pr-4 text-(--ink-muted)">
+                                            <Link href={href} className="block">
+                                                {placeholderDeltas || !data ? (
+                                                    <span title="No prior period available to compute a change">
+                                                        No prior period
+                                                    </span>
+                                                ) : (
+                                                    formatDelta(data.delta_pct)
+                                                )}
+                                            </Link>
+                                        </td>
+                                        <td className="py-3 text-xs uppercase tracking-[0.2em] text-(--accent-2)">
+                                            <Link href={href} className="block">
+                                                {CTA_LABELS.openEvidence}
+                                            </Link>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
         </div>
     );
 }

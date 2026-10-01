@@ -87,7 +87,7 @@ export function AreaOverview({
             {gridSignals.length > 0 || unavailable.length > 0 ? (
                 <div
                     data-testid="area-overview-grid"
-                    className="grid gap-3 md:grid-cols-2 lg:grid-cols-3"
+                    className="grid gap-3.5 md:grid-cols-2 lg:grid-cols-3"
                 >
                     {gridSignals.map((signal) => (
                         <AreaSignalCard

@@ -9,8 +9,8 @@ const COLUMNS = ["Index", "Kind", "External ID", "Code", "Path", "Message"];
 export function RejectedRecordsTable({ records }: RejectedRecordsTableProps) {
     if (records.length === 0) {
         return (
-            <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-6 text-center">
-                <p className="text-sm text-green-600">No rejected records.</p>
+            <div className="rounded-xl border border-(--positive)/30 bg-(--positive)/12 p-6 text-center">
+                <p className="text-sm text-(--positive)">No rejected records.</p>
             </div>
         );
     }
@@ -45,7 +45,9 @@ export function RejectedRecordsTable({ records }: RejectedRecordsTableProps) {
                             <td className="px-4 py-3 font-mono text-xs text-(--ink-muted)">
                                 {record.path ?? "—"}
                             </td>
-                            <td className="px-4 py-3 text-sm text-red-500">{record.message}</td>
+                            <td className="px-4 py-3 text-sm text-(--negative)">
+                                {record.message}
+                            </td>
                         </tr>
                     ))}
                 </tbody>

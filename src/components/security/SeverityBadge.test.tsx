@@ -21,19 +21,19 @@ describe("SeverityBadge", () => {
     it("applies the critical color class", () => {
         render(<SeverityBadge severity="critical" />);
         const badge = screen.getByText("Critical");
-        expect(badge.className).toContain("bg-red-600");
-        expect(badge.className).toContain("text-white");
+        expect(badge.className).toContain("bg-(--negative)/12");
+        expect(badge.className).toContain("text-(--negative)");
     });
 
     it("applies the low color class", () => {
         render(<SeverityBadge severity="low" />);
         const badge = screen.getByText("Low");
-        expect(badge.className).toContain("bg-slate-400");
+        expect(badge.className).toContain("bg-(--card-stroke)");
     });
 
     it("falls back to the unknown palette for an unrecognized value", () => {
         render(<SeverityBadge severity={"exotic" as SecuritySeverity} />);
         const badge = screen.getByText("exotic");
-        expect(badge.className).toContain("bg-slate-300");
+        expect(badge.className).toContain("bg-(--card-stroke)");
     });
 });

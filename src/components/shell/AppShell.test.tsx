@@ -249,7 +249,7 @@ describe("AppShell — the status chip states what the organization card knows",
 
 describe("AppShell — a route outside the registry keeps today's chrome", () => {
     beforeEach(() => {
-        navigationMock.pathname = "/diagnose";
+        navigationMock.pathname = "/reports";
     });
 
     it("renders no shell part: no sidebar, no top bar, no skip link, no shell main", () => {
@@ -291,11 +291,17 @@ describe("AppShell — a route outside the registry keeps today's chrome", () =>
             '    a aria-label="Full Chaos Dev Health cockpit" href="/dashboard"',
             '      img alt="Full Chaos Dev Health logo"',
             '      span "Full Chaos Dev Health"',
+            // The light / dark toggle was mounted next to the account menu after
+            // the shell was built; it is part of the legacy bar now.
             "    div",
-            '      button aria-label="Account options" aria-controls="account-options" aria-expanded="false" type="button"',
-            '        div "A"',
-            '        span "Account"',
-            '        span "admin"',
+            '      button aria-label="Light theme" type="button"',
+            "        span",
+            '        span "Dark"',
+            "      div",
+            '        button aria-label="Account options" aria-controls="account-options" aria-expanded="false" type="button"',
+            '          div "A"',
+            '          span "Account"',
+            '          span "admin"',
         ]);
     });
 

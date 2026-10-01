@@ -1,16 +1,13 @@
-import { FilterBar } from "@/components/filters/FilterBar";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { MetricCard } from "@/components/metrics/MetricCard";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { DataState } from "@/components/ui/DataState";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { ChartFrame } from "@/components/charts/ChartFrame";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { HeatmapChart } from "@/components/charts/HeatmapChart";
 import { checkApiHealth } from "@/lib/api/system";
-import { BackLink } from "@/components/shared/BackLink";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { withFilterParam } from "@/lib/filters/url";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
 import { TESTOPS_MEASURES } from "@/lib/testops/constants";
 import { buildFailurePatternsModel, UNATTRIBUTED_LABEL } from "@/lib/testops/failure-patterns";
@@ -99,7 +96,7 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
     ]);
 
     if (!health.ok && !isTestMode) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     const pipelineTimeseries = testOpsData.pipelines.timeseries || [];
@@ -128,110 +125,92 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
     const failurePatterns = buildFailurePatternsModel(failureBreakdown, "%");
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="testops" role={activeRole} />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-col gap-4">
-                        <BackLink href={withFilterParam("/", filters, activeRole)} />
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                TestOps
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">TestOps</h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                CI/CD pipeline health and performance.
-                            </p>
-                        </div>
-                    </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8">
+            <PageHeader
+                title="TestOps"
+                subtitle="CI/CD pipeline health and performance."
+            ></PageHeader>
 
-                    <TestOpsTabs activeId="pipelines" filters={filters} role={activeRole} />
+            <TestOpsTabs activeId="pipelines" filters={filters} role={activeRole} />
 
-                    <GlobalContextBar filters={filters} />
-                    <FilterBar view="testops" />
+            <ScopeBar view="testops" />
+            <section className="grid gap-4 lg:grid-cols-3">
+                {measures.map(({ id, ts }) => {
+                    const def = TESTOPS_MEASURES[id];
+                    if (!def) return null;
 
-                    <section className="grid gap-4 lg:grid-cols-3">
-                        {measures.map(({ id, ts }) => {
-                            const def = TESTOPS_MEASURES[id];
-                            if (!def) return null;
+                    const value = getLatestValue(ts, id);
+                    const spark = getSparkline(ts, id);
+                    const delta = getDelta(ts, id);
 
-                            const value = getLatestValue(ts, id);
-                            const spark = getSparkline(ts, id);
-                            const delta = getDelta(ts, id);
+                    return (
+                        <MetricCard
+                            key={id}
+                            label={def.label}
+                            value={value}
+                            unit={
+                                def.unit === "percentage" ? "%" : def.unit === "duration" ? "m" : ""
+                            }
+                            delta={delta}
+                            deltaUnavailableLabel="Insufficient history"
+                            inverseGood={def.goodDirection === "down"}
+                            spark={spark}
+                            caption={def.description}
+                        />
+                    );
+                })}
+            </section>
 
-                            return (
-                                <MetricCard
-                                    key={id}
-                                    label={def.label}
-                                    value={value}
-                                    unit={
-                                        def.unit === "percentage"
-                                            ? "%"
-                                            : def.unit === "duration"
-                                              ? "m"
-                                              : ""
-                                    }
-                                    delta={delta}
-                                    deltaUnavailableLabel="Insufficient history"
-                                    inverseGood={def.goodDirection === "down"}
-                                    spark={spark}
-                                    caption={def.description}
-                                />
-                            );
-                        })}
-                    </section>
+            <p className="-mt-4 text-xs text-(--ink-muted)">
+                Success Rate and Failure Rate are shares of <em>completed</em> pipeline runs and
+                need not sum to 100% — runs can be cancelled or skipped. Failure Patterns below
+                shows the failure rate <em>within each group</em>, a different denominator from the
+                headline Failure Rate, so the figures are not directly comparable.
+            </p>
 
-                    <p className="-mt-4 text-xs text-(--ink-muted)">
-                        Success Rate and Failure Rate are shares of <em>completed</em> pipeline runs
-                        and need not sum to 100% — runs can be cancelled or skipped. Failure
-                        Patterns below shows the failure rate <em>within each group</em>, a
-                        different denominator from the headline Failure Rate, so the figures are not
-                        directly comparable.
-                    </p>
-
-                    <section className="grid gap-6 lg:grid-cols-2">
-                        <ChartFrame
-                            title="Success Rate Trend"
-                            headingLevel="h2"
-                            interpretation="Share of completed pipeline runs that succeed, day by day — a sustained dip flags CI instability before it blocks delivery."
-                            direction={TESTOPS_MEASURES.PIPELINE_SUCCESS_RATE.goodDirection}
-                            isError={Boolean(testOpsData.fetchFailed)}
-                            stateMessage="Pipeline analytics could not be loaded. The trend will reappear once the data service recovers."
-                            isEmpty={timeseriesData.length === 0}
-                            stateTitle="Pipeline trend not populated"
-                            stateDescription="Success-rate history appears here once pipeline runs are ingested for this scope."
-                        >
+            <section className="grid gap-6 lg:grid-cols-2">
+                <ChartFrame
+                    title="Success Rate Trend"
+                    headingLevel="h2"
+                    interpretation="Share of completed pipeline runs that succeed, day by day — a sustained dip flags CI instability before it blocks delivery."
+                    direction={TESTOPS_MEASURES.PIPELINE_SUCCESS_RATE.goodDirection}
+                    isError={Boolean(testOpsData.fetchFailed)}
+                    stateMessage="Pipeline analytics could not be loaded. The trend will reappear once the data service recovers."
+                    isEmpty={timeseriesData.length === 0}
+                    stateTitle="Pipeline trend not populated"
+                    stateDescription="Success-rate history appears here once pipeline runs are ingested for this scope."
+                >
+                    <div className="h-64">
+                        <TimeseriesChart data={timeseriesData} valueFormat="percent" />
+                    </div>
+                </ChartFrame>
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                    <h2 className="font-(--font-display) text-xl mb-4">Failure Patterns</h2>
+                    {failurePatterns.isEmpty ? (
+                        <DataState
+                            variant="detector-enabled-no-findings"
+                            title="No failure patterns"
+                            description="No failure data surfaced for this window or scope."
+                            className="flex h-64 items-center justify-center"
+                        />
+                    ) : (
+                        <>
                             <div className="h-64">
-                                <TimeseriesChart data={timeseriesData} valueFormat="percent" />
+                                <HeatmapChart data={failurePatterns.heatmap} />
                             </div>
-                        </ChartFrame>
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                            <h2 className="font-(--font-display) text-xl mb-4">Failure Patterns</h2>
-                            {failurePatterns.isEmpty ? (
-                                <DataState
-                                    variant="detector-enabled-no-findings"
-                                    title="No failure patterns"
-                                    description="No failure data surfaced for this window or scope."
-                                    className="flex h-64 items-center justify-center"
-                                />
-                            ) : (
-                                <>
-                                    <div className="h-64">
-                                        <HeatmapChart data={failurePatterns.heatmap} />
-                                    </div>
-                                    {failurePatterns.hasUnattributed ? (
-                                        <p className="mt-3 text-xs text-(--ink-muted)">
-                                            &ldquo;{UNATTRIBUTED_LABEL}&rdquo; groups failures with
-                                            no attribution in the source data &mdash; read its share
-                                            as a data-quality caveat, not a real category.
-                                        </p>
-                                    ) : null}
-                                </>
-                            )}
-                        </div>
-                    </section>
-                </main>
-            </div>
+                            {failurePatterns.hasUnattributed ? (
+                                <p className="mt-3 text-xs text-(--ink-muted)">
+                                    &ldquo;{UNATTRIBUTED_LABEL}&rdquo; groups failures with no
+                                    attribution in the source data &mdash; read its share as a
+                                    data-quality caveat, not a real category.
+                                </p>
+                            ) : null}
+                        </>
+                    )}
+                </div>
+            </section>
         </div>
     );
 }

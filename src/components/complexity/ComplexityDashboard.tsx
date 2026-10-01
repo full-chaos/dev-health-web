@@ -25,6 +25,7 @@ import type { EChartsOption } from "echarts";
 import { LineChart } from "echarts/charts";
 
 import { Chart } from "@/components/charts/Chart";
+import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/chartConventions";
 import { TreemapChart } from "@/components/charts/TreemapChart";
 import type { TreemapNode } from "@/components/charts/TreemapChart";
 import { DataState } from "@/components/ui/DataState";
@@ -197,7 +198,7 @@ export function buildTreemapData(hotspotRows: HotspotRow[]): TreemapNode | null 
 
 type ChartTheme = ReturnType<typeof useChartTheme>;
 
-function buildTrendOption(
+export function buildTrendOption(
     points: ComplexityPoint[],
     chartTheme: ChartTheme,
     chartColors: string[],
@@ -233,24 +234,24 @@ function buildTrendOption(
         return {
             type: "line" as const,
             name: scopeName,
-            data: allDates.map((d) => dataByDate.get(d) ?? null),
+            // Per-item size and ring keep the legend glyph as it was (static series size, no series ring).
+            data: withPointSymbols(
+                allDates.map((d) => dataByDate.get(d) ?? null),
+                chartTheme,
+                { connectNulls: true },
+            ),
             smooth: true,
             symbol: "circle",
             symbolSize: 5,
-            lineStyle: { width: 2, color: chartColors[idx % chartColors.length] },
+            showAllSymbol: true,
+            lineStyle: { ...lineMark, color: chartColors[idx % chartColors.length] },
             itemStyle: { color: chartColors[idx % chartColors.length] },
             connectNulls: true,
         };
     });
 
     return {
-        tooltip: {
-            trigger: "axis",
-            confine: true,
-            backgroundColor: chartTheme.background,
-            borderColor: chartTheme.stroke,
-            textStyle: { color: chartTheme.text },
-        },
+        tooltip: buildTooltip(chartTheme, { crosshair: true }),
         legend: {
             show: true,
             bottom: 0,
@@ -355,7 +356,7 @@ function EvidenceCell({ url }: { url: string | null }) {
         return (
             <Link
                 href={url}
-                className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent) hover:underline"
+                className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
                 data-testid="evidence-link"
             >
                 Open evidence →

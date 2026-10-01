@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { STATUS_PILL } from "@/lib/statusPill";
 import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
 import { OrgSwitcher } from "@/components/navigation/OrgSwitcher";
@@ -135,7 +136,9 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                     <div>
                         <p className="mt-3 font-(--font-display) text-lg">Admin</p>
                         {isSuperuser && (
-                            <span className="mt-1 inline-flex items-center rounded-full bg-purple-500/10 px-2 py-0.5 text-label-caps font-medium uppercase text-purple-500">
+                            <span
+                                className={`mt-1 inline-flex items-center rounded-full px-2 py-0.5 text-label-caps font-medium uppercase ${STATUS_PILL.info}`}
+                            >
                                 Platform Admin
                             </span>
                         )}
@@ -168,7 +171,7 @@ export function AdminSidebar({ isSuperuser, features }: AdminSidebarProps) {
                             <Link
                                 href="/superadmin"
                                 prefetch={false}
-                                className="group flex items-center rounded-2xl border border-purple-500/20 bg-purple-500/10 px-3 py-2 text-purple-400 hover:bg-purple-500/20 transition"
+                                className="group flex items-center rounded-2xl border border-transparent bg-(--card-70) px-3 py-2 text-(--ink-muted) transition hover:border-(--card-stroke) hover:text-foreground"
                             >
                                 <span className="font-medium">Platform Admin</span>
                             </Link>
