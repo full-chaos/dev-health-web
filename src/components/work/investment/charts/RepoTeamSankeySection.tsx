@@ -9,6 +9,7 @@ import {
     findClickedNode,
     type SelectedEntity,
 } from "@/lib/allocationSelection";
+import { withFilterParam } from "@/lib/filters/url";
 import { SelectedPathPanel } from "./SelectedPathPanel";
 import { computeSankeyMetrics } from "@/lib/sankey";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -209,6 +210,7 @@ export function RepoTeamSankeySection({
                             }}
                         />
                         <SelectedPathPanel
+                            evidenceHref={withFilterParam("/investment?tab=evidence", filters)}
                             selection={
                                 selectedEntity
                                     ? {

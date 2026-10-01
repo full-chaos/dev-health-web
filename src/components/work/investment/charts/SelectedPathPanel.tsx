@@ -21,6 +21,8 @@ type SelectedPathPanelProps = {
     shareUnavailableReason?: string;
     /** False for a view that has no baseline flow at all. */
     hasBaseline: boolean;
+    /** Href of the Evidence tab; carries the page's filters. */
+    evidenceHref: string;
 };
 
 const pct = (value: number) => `${formatNumber(value, { maximumFractionDigits: 1 })}%`;
@@ -47,6 +49,7 @@ export function SelectedPathPanel({
     shareBase,
     shareUnavailableReason,
     hasBaseline,
+    evidenceHref,
 }: SelectedPathPanelProps) {
     return (
         <aside
@@ -112,7 +115,7 @@ export function SelectedPathPanel({
                         impact or a technical dependency.
                     </div>
                     <Link
-                        href="/investment?tab=evidence"
+                        href={evidenceHref}
                         className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
                     >
                         {CTA_LABELS.openEvidence}
