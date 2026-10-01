@@ -8,7 +8,8 @@ import { SunburstChart as EChartsSunburstChart } from "echarts/charts";
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
-import { buildTooltipHtml, calcPercent, lightenByDepth } from "@/lib/chartUtils";
+import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
+import { depthOpacity, tileLabelStyle } from "@/lib/chartLabelColor";
 
 echarts.use([EChartsSunburstChart]);
 
@@ -76,7 +77,8 @@ export function SunburstChart({
 
             return {
                 ...node,
-                itemStyle: { color: lightenByDepth(baseColor, depth) },
+                // No evidence-quality opacity in this chart: depth is shown by opacity steps.
+                itemStyle: { color: baseColor, opacity: depthOpacity(depth), ...node.itemStyle },
                 children: node.children?.map((child, idx) =>
                     assignColors(child, depth + 1, depth === 0 ? idx : colorIndex),
                 ),
@@ -88,6 +90,29 @@ export function SunburstChart({
             children: data.children.map((child, idx) => assignColors(child, 0, idx)),
         };
     }, [data, chartColors, useInputColors]);
+
+    // Label ink per segment, chosen by contrast against its blended fill; hidden if none passes.
+    const labelledData = useMemo(() => {
+        const walk = (
+            node: SunburstNode,
+            inherited?: { color: string; opacity?: number },
+        ): SunburstNode => {
+            const color = node.itemStyle?.color ?? inherited?.color;
+            const opacity = node.itemStyle?.opacity ?? inherited?.opacity;
+            // A label is never hidden for contrast (see TreemapChart).
+            const ink = color
+                ? tileLabelStyle(color, opacity, chartTheme.background)
+                : { color: chartTheme.text, textBorderWidth: 0 };
+            return {
+                ...node,
+                label: ink,
+                children: node.children?.map((child) =>
+                    walk(child, color ? { color, opacity } : undefined),
+                ),
+            };
+        };
+        return (coloredData.children ?? []).map((child) => walk(child));
+    }, [coloredData, chartTheme.background, chartTheme.text]);
 
     const handleClick = useCallback(
         (params: unknown) => {
@@ -148,7 +173,7 @@ export function SunburstChart({
             series: [
                 {
                     type: "sunburst" as const,
-                    data: coloredData.children ?? [],
+                    data: labelledData,
                     radius: ["15%", "90%"],
                     center: ["50%", "50%"],
                     sort: "desc" as const,
@@ -166,8 +191,7 @@ export function SunburstChart({
                             return p.name ?? "";
                         },
                         color: chartTheme.text,
-                        textBorderColor: chartTheme.background,
-                        textBorderWidth: 2,
+                        textBorderWidth: 0,
                         fontSize: 10,
                         minAngle: 10,
                     },
@@ -184,8 +208,7 @@ export function SunburstChart({
                                 fontSize: 12,
                                 fontWeight: 600,
                                 rotate: 0,
-                                textBorderColor: chartTheme.background,
-                                textBorderWidth: 2,
+                                textBorderWidth: 0,
                             },
                             itemStyle: {
                                 borderWidth: 3,
@@ -196,8 +219,7 @@ export function SunburstChart({
                             r: "65%",
                             label: {
                                 fontSize: 10,
-                                textBorderColor: chartTheme.background,
-                                textBorderWidth: 2,
+                                textBorderWidth: 0,
                             },
                             itemStyle: {
                                 borderWidth: 2,
@@ -209,8 +231,7 @@ export function SunburstChart({
                             label: {
                                 fontSize: 9,
                                 position: "outside" as const,
-                                textBorderColor: chartTheme.background,
-                                textBorderWidth: 2,
+                                textBorderWidth: 0,
                             },
                             itemStyle: {
                                 borderWidth: 1,
@@ -220,7 +241,7 @@ export function SunburstChart({
                 },
             ],
         }),
-        [coloredData, totalValue, unit, chartTheme, tooltipFormatterAction],
+        [labelledData, totalValue, unit, chartTheme, tooltipFormatterAction],
     );
 
     return (

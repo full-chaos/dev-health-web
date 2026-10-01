@@ -52,7 +52,7 @@ export function InitialDepthSection({ value, onChange, currentTier }: InitialDep
             {hasLockedOption && (
                 <p className="text-xs text-(--ink-muted)">
                     Locked ranges show the plan tier required to unlock them.{" "}
-                    <Link href="/org/admin/settings" className="text-(--accent) underline">
+                    <Link href="/org/admin/settings" className="text-(--accent-2) underline">
                         {CTA_LABELS.upgradePlan}
                     </Link>
                 </p>
