@@ -76,7 +76,7 @@ export function OverviewView({
                         >
                             {CTA_LABELS.openEvidence}
                         </Link>
-                        <span className="rounded-full border border-(--accent)/30 bg-(--accent)/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent)">
+                        <span className="rounded-full border border-(--accent)/30 bg-(--accent)/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent-text)">
                             Team signal
                         </span>
                     </div>

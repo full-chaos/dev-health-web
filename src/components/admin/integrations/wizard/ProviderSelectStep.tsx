@@ -33,7 +33,7 @@ export function ProviderSelectStep({
                             key={p}
                             className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
                                 provider === p
-                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
                                     : "border-(--card-stroke) text-foreground hover:bg-(--card-70)"
                             }`}
                         >
