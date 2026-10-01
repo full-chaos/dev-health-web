@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { Chart } from "@/components/charts/Chart";
 import { useChartTheme } from "@/components/charts/chartTheme";
+import { buildTooltip } from "@/components/charts/chartConventions";
 import { SkeletonLine } from "@/components/ui/Skeleton";
 import type { RepoAlertCountData } from "./types";
 import { buildRepoHref } from "./repoLink";
@@ -26,13 +27,7 @@ export function TopReposChart({ repos, loading }: TopReposChartProps) {
 
     const option = useMemo(
         () => ({
-            tooltip: {
-                trigger: "axis" as const,
-                confine: true,
-                backgroundColor: chartTheme.background,
-                borderColor: chartTheme.stroke,
-                textStyle: { color: chartTheme.text },
-            },
+            tooltip: buildTooltip(chartTheme),
             grid: { left: 120, right: 24, top: 20, bottom: 20 },
             xAxis: {
                 type: "value" as const,

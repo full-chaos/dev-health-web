@@ -166,6 +166,7 @@ export function RepoTeamSankeySection({
                 ) : repoTeamFlowFailed || !repoTeamFlow ? (
                     <DataState
                         variant="detector-unavailable"
+                        compact
                         title="Repo-to-team allocation unavailable"
                         description="The repo-to-team flow could not be loaded for this scope and window."
                     />

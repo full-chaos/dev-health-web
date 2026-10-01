@@ -74,8 +74,8 @@ export function RetentionPolicyTable({
                                     <span
                                         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                                             policy.is_active
-                                                ? "bg-green-500/10 text-green-500"
-                                                : "bg-red-500/10 text-red-500"
+                                                ? "bg-(--positive)/12 text-(--positive)"
+                                                : "bg-(--negative)/12 text-(--negative)"
                                         }`}
                                     >
                                         {policy.is_active ? "Active" : "Inactive"}
@@ -119,7 +119,7 @@ export function RetentionPolicyTable({
                                         <button
                                             type="button"
                                             onClick={() => setConfirmDelete(policy)}
-                                            className="rounded-lg bg-red-500/10 px-3 py-1 text-xs font-medium text-red-500"
+                                            className="rounded-lg bg-(--negative)/12 px-3 py-1 text-xs font-medium text-(--negative)"
                                         >
                                             {CTA_LABELS.delete}
                                         </button>

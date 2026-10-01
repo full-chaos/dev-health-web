@@ -4,14 +4,16 @@ import { useCallback, useState, useTransition } from "react";
 
 import { DataTable } from "@/components/shared/DataTable";
 import type { DataTableColumn } from "@/components/shared/DataTable";
+import { STATUS_PILL } from "@/lib/statusPill";
 import type { FeatureFlagListItem, FeatureFlagListResult } from "@/lib/feature-flags/types";
 
 const PAGE_SIZE = 20;
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-    on: { label: "ON", className: "bg-emerald-500/20 text-emerald-400" },
-    off: { label: "OFF", className: "bg-red-500/20 text-red-400" },
-    unknown: { label: "--", className: "bg-(--card-70) text-(--ink-muted)" },
+    on: { label: "ON", className: STATUS_PILL.positive },
+    off: { label: "OFF", className: STATUS_PILL.negative },
+    // Unknown is its own state with its own label: never the OFF pill.
+    unknown: { label: "Unknown", className: STATUS_PILL.muted },
 };
 
 function formatDate(iso: string | null): string {
@@ -56,7 +58,9 @@ const columns: DataTableColumn<FeatureFlagListItem>[] = [
             const badge = STATUS_BADGE[key];
             return (
                 <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${badge.className}`}
+                    data-testid="flag-status"
+                    data-status={key}
+                    className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${badge.className}`}
                 >
                     {badge.label}
                 </span>

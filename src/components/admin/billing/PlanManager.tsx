@@ -351,7 +351,7 @@ export function PlanManager({ initialPlans }: PlanManagerProps) {
                                         <button
                                             type="button"
                                             onClick={() => onDelete(plan.id)}
-                                            className="rounded-lg border border-red-500/40 px-3 py-1.5 text-xs uppercase tracking-widest text-red-500"
+                                            className="rounded-lg border border-(--negative)/30 px-3 py-1.5 text-xs uppercase tracking-widest text-(--negative)"
                                         >
                                             {CTA_LABELS.archive}
                                         </button>

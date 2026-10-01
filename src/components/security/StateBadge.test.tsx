@@ -23,7 +23,7 @@ describe("StateBadge", () => {
         for (const state of ["open", "detected", "confirmed"] as const) {
             const { unmount } = render(<StateBadge state={state} />);
             const badge = screen.getByText(new RegExp(state, "i"));
-            expect(badge.className).toContain("bg-amber-100");
+            expect(badge.className).toContain("bg-(--caution)/12");
             unmount();
         }
     });
@@ -32,7 +32,7 @@ describe("StateBadge", () => {
         for (const state of ["fixed", "resolved"] as const) {
             const { unmount } = render(<StateBadge state={state} />);
             const badge = screen.getByText(new RegExp(state, "i"));
-            expect(badge.className).toContain("bg-emerald-100");
+            expect(badge.className).toContain("bg-(--positive)/12");
             unmount();
         }
     });
@@ -40,6 +40,6 @@ describe("StateBadge", () => {
     it("uses the muted tone for dismissed and unrecognized values", () => {
         render(<StateBadge state="dismissed" />);
         const badge = screen.getByText("Dismissed");
-        expect(badge.className).toContain("bg-slate-100");
+        expect(badge.className).toContain("bg-(--card-stroke)");
     });
 });

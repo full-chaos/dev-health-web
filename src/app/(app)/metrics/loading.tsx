@@ -1,132 +1,110 @@
 import { SkeletonChart, SkeletonTable } from "@/components/ui/Skeleton";
 
-function NavSkeleton() {
-    return (
-        <aside className="w-full md:max-w-56 md:shrink-0 animate-pulse">
-            <div className="sticky top-10 space-y-2">
-                {Array.from({ length: 8 }, (_, index) => `nav-skeleton-${index}`).map((key) => (
-                    <div key={key} className="h-10 bg-(--card-70) rounded-2xl" />
-                ))}
-            </div>
-        </aside>
-    );
-}
-
 export default function Loading() {
     return (
-        <div className="min-h-screen text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <NavSkeleton />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    {/* Header */}
-                    <div className="flex flex-wrap items-center justify-between gap-4 animate-pulse">
-                        <div className="space-y-2">
-                            <div className="h-3 bg-(--card-70) rounded w-16" />
-                            <div className="h-8 bg-(--card-70) rounded w-52" />
-                            <div className="h-4 bg-(--card-70) rounded w-48" />
-                            <div className="h-4 bg-(--card-70) rounded w-40" />
-                        </div>
-                        <div className="h-8 bg-(--card-70) rounded-full w-32" />
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            {/* Header */}
+            <div className="flex flex-wrap items-center justify-between gap-4 animate-pulse">
+                <div className="space-y-2">
+                    <div className="h-3 bg-(--card-70) rounded w-16" />
+                    <div className="h-8 bg-(--card-70) rounded w-52" />
+                    <div className="h-4 bg-(--card-70) rounded w-48" />
+                    <div className="h-4 bg-(--card-70) rounded w-40" />
+                </div>
+                <div className="h-8 bg-(--card-70) rounded-full w-32" />
+            </div>
+
+            {/* Filter bar */}
+            <div className="h-10 bg-(--card-70) rounded-full animate-pulse" />
+
+            {/* Tab nav: DORA / Flow / Quality / Throughput */}
+            <div className="flex flex-wrap gap-2 animate-pulse">
+                {Array.from({ length: 4 }, (_, index) => `tab-skeleton-${index}`).map((key) => (
+                    <div key={key} className="h-8 bg-(--card-70) rounded-full w-24" />
+                ))}
+            </div>
+
+            {/* Active tab section header + metric chips */}
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 animate-pulse">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="space-y-2">
+                        <div className="h-3 bg-(--card-70) rounded w-28" />
+                        <div className="h-4 bg-(--card-70) rounded w-48" />
                     </div>
+                    <div className="h-3 bg-(--card-70) rounded w-24" />
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                    {Array.from({ length: 4 }, (_, index) => `chip-skeleton-${index}`).map(
+                        (key) => (
+                            <div key={key} className="h-6 bg-(--card-70) rounded-full w-28" />
+                        ),
+                    )}
+                </div>
+            </div>
 
-                    {/* Filter bar */}
-                    <div className="h-10 bg-(--card-70) rounded-full animate-pulse" />
-
-                    {/* Tab nav: DORA / Flow / Quality / Throughput */}
-                    <div className="flex flex-wrap gap-2 animate-pulse">
-                        {Array.from({ length: 4 }, (_, index) => `tab-skeleton-${index}`).map(
-                            (key) => (
-                                <div key={key} className="h-8 bg-(--card-70) rounded-full w-24" />
-                            ),
-                        )}
+            {/* Metric cards grid (2 cols mobile, 4 cols desktop) */}
+            <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 animate-pulse">
+                {Array.from({ length: 4 }, (_, index) => `metric-skeleton-${index}`).map((key) => (
+                    <div
+                        key={key}
+                        className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 space-y-3"
+                    >
+                        <div className="h-3 bg-(--card-70) rounded w-24" />
+                        <div className="h-8 bg-(--card-70) rounded w-16" />
+                        <div className="h-3 bg-(--card-70) rounded w-12" />
+                        <div className="h-12 bg-(--card-70) rounded" />
                     </div>
+                ))}
+            </div>
 
-                    {/* Active tab section header + metric chips */}
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 animate-pulse">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="space-y-2">
-                                <div className="h-3 bg-(--card-70) rounded w-28" />
-                                <div className="h-4 bg-(--card-70) rounded w-48" />
-                            </div>
-                            <div className="h-3 bg-(--card-70) rounded w-24" />
-                        </div>
-                        <div className="mt-4 flex flex-wrap gap-2">
-                            {Array.from({ length: 4 }, (_, index) => `chip-skeleton-${index}`).map(
-                                (key) => (
-                                    <div
-                                        key={key}
-                                        className="h-6 bg-(--card-70) rounded-full w-28"
-                                    />
-                                ),
-                            )}
-                        </div>
+            {/* Quadrant chart */}
+            <SkeletonChart height="h-72" />
+
+            {/* Associations + Contributors side by side */}
+            <div className="grid gap-6 lg:grid-cols-2">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 animate-pulse space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="h-6 bg-(--card-70) rounded w-40" />
+                        <div className="h-3 bg-(--card-70) rounded w-24" />
                     </div>
-
-                    {/* Metric cards grid (2 cols mobile, 4 cols desktop) */}
-                    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4 animate-pulse">
-                        {Array.from({ length: 4 }, (_, index) => `metric-skeleton-${index}`).map(
-                            (key) => (
-                                <div
-                                    key={key}
-                                    className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 space-y-3"
-                                >
-                                    <div className="h-3 bg-(--card-70) rounded w-24" />
-                                    <div className="h-8 bg-(--card-70) rounded w-16" />
-                                    <div className="h-3 bg-(--card-70) rounded w-12" />
-                                    <div className="h-12 bg-(--card-70) rounded" />
-                                </div>
-                            ),
-                        )}
+                    <div className="h-4 bg-(--card-70) rounded w-56" />
+                    <div className="h-32 bg-(--card-70) rounded-2xl" />
+                    <div className="space-y-2">
+                        {Array.from(
+                            { length: 4 },
+                            (_, index) => `association-skeleton-${index}`,
+                        ).map((key) => (
+                            <div key={key} className="h-9 bg-(--card-70) rounded-2xl" />
+                        ))}
                     </div>
-
-                    {/* Quadrant chart */}
-                    <SkeletonChart height="h-72" />
-
-                    {/* Associations + Contributors side by side */}
-                    <div className="grid gap-6 lg:grid-cols-2">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 animate-pulse space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="h-6 bg-(--card-70) rounded w-40" />
-                                <div className="h-3 bg-(--card-70) rounded w-24" />
-                            </div>
-                            <div className="h-4 bg-(--card-70) rounded w-56" />
-                            <div className="h-32 bg-(--card-70) rounded-2xl" />
-                            <div className="space-y-2">
-                                {Array.from(
-                                    { length: 4 },
-                                    (_, index) => `association-skeleton-${index}`,
-                                ).map((key) => (
-                                    <div key={key} className="h-9 bg-(--card-70) rounded-2xl" />
-                                ))}
-                            </div>
-                        </div>
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 animate-pulse space-y-4">
-                            <div className="flex items-center justify-between">
-                                <div className="h-6 bg-(--card-70) rounded w-44" />
-                                <div className="h-3 bg-(--card-70) rounded w-24" />
-                            </div>
-                            <div className="h-4 bg-(--card-70) rounded w-56" />
-                            <div className="h-32 bg-(--card-70) rounded-2xl" />
-                            <div className="space-y-2">
-                                {Array.from(
-                                    { length: 4 },
-                                    (_, index) => `contributor-skeleton-${index}`,
-                                ).map((key) => (
-                                    <div key={key} className="h-9 bg-(--card-70) rounded-2xl" />
-                                ))}
-                            </div>
-                        </div>
+                </div>
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5 animate-pulse space-y-4">
+                    <div className="flex items-center justify-between">
+                        <div className="h-6 bg-(--card-70) rounded w-44" />
+                        <div className="h-3 bg-(--card-70) rounded w-24" />
                     </div>
-
-                    {/* Summary table */}
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 animate-pulse">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="h-6 bg-(--card-70) rounded w-24" />
-                            <div className="h-3 bg-(--card-70) rounded w-28" />
-                        </div>
-                        <SkeletonTable rows={4} cols={4} />
+                    <div className="h-4 bg-(--card-70) rounded w-56" />
+                    <div className="h-32 bg-(--card-70) rounded-2xl" />
+                    <div className="space-y-2">
+                        {Array.from(
+                            { length: 4 },
+                            (_, index) => `contributor-skeleton-${index}`,
+                        ).map((key) => (
+                            <div key={key} className="h-9 bg-(--card-70) rounded-2xl" />
+                        ))}
                     </div>
-                </main>
+                </div>
+            </div>
+
+            {/* Summary table */}
+            <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 animate-pulse">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="h-6 bg-(--card-70) rounded w-24" />
+                    <div className="h-3 bg-(--card-70) rounded w-28" />
+                </div>
+                <SkeletonTable rows={4} cols={4} />
             </div>
         </div>
     );
