@@ -28,6 +28,7 @@ describe("shell route registry", () => {
             "/plan/capacity",
             "/plan/backlog-risk",
             "/operating-review",
+            "/improve",
         ]);
     });
 
@@ -48,7 +49,7 @@ describe("shell route registry", () => {
         expect(isShellRoute("/dashboard-old")).toBe(false);
     });
 
-    it.each(["/capacity", "/improve", "/org/admin", "/superadmin", "/settings", "/ai/impact", "/"])(
+    it.each(["/capacity", "/reports", "/org/admin", "/superadmin", "/settings", "/ai/impact", "/"])(
         "keeps %s outside the shell",
         (pathname) => {
             expect(isShellRoute(pathname)).toBe(false);
