@@ -355,6 +355,62 @@ describe("ComplexityDashboard", () => {
     });
 
     // --- Churn tab ---
+    it("tells the churn window is 30 days and names the selected window when it differs", () => {
+        const hotspots = [makeHotspot("a.py", 0.8, { churnLoc30d: 500 })];
+        render(
+            <ComplexityDashboard
+                {...baseProps}
+                hotspotRows={hotspots}
+                activeTab="churn"
+                windowDays={14}
+            />,
+        );
+        const notice = screen.getByTestId("churn-window-notice");
+        expect(notice).toHaveTextContent("Panel window: 30 days.");
+        expect(notice).toHaveTextContent("even though the selected window is 14 days");
+    });
+
+    it("says only the 30-day window when the selected window is also 30 days or unknown", () => {
+        const hotspots = [makeHotspot("a.py", 0.8, { churnLoc30d: 500 })];
+        const { unmount } = render(
+            <ComplexityDashboard
+                {...baseProps}
+                hotspotRows={hotspots}
+                activeTab="churn"
+                windowDays={30}
+            />,
+        );
+        expect(screen.getByTestId("churn-window-notice")).not.toHaveTextContent("even though");
+        unmount();
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="churn" />);
+        expect(screen.getByTestId("churn-window-notice")).not.toHaveTextContent("even though");
+    });
+
+    it("shows the notice with the empty churn state too, and on no other tab", () => {
+        const { unmount } = render(
+            <ComplexityDashboard
+                {...baseProps}
+                points={[makePoint("r1", "2026-01-08")]}
+                activeTab="churn"
+                windowDays={7}
+            />,
+        );
+        expect(screen.getByTestId("churn-window-notice")).toBeInTheDocument();
+        unmount();
+        for (const tab of ["overview", "hotspots", "ownership-risk"] as const) {
+            const r = render(
+                <ComplexityDashboard
+                    {...baseProps}
+                    hotspotRows={[makeHotspot("a.py", 0.8)]}
+                    activeTab={tab}
+                    windowDays={14}
+                />,
+            );
+            expect(screen.queryByTestId("churn-window-notice")).toBeNull();
+            r.unmount();
+        }
+    });
+
     it("ranks files by churn on the churn tab", () => {
         const hotspots = [
             makeHotspot("a.py", 0.8, { churnLoc30d: 500 }),

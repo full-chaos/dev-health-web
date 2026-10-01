@@ -101,7 +101,7 @@ export function UserMenu({ placement = "bar" }: UserMenuProps = {}) {
                         {session.user?.is_superuser && (
                             <Link
                                 href="/superadmin"
-                                className="flex items-center gap-2 px-4 py-2 text-sm text-purple-400 hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                                className="flex items-center gap-2 px-4 py-2 text-sm text-(--info) hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
                                 onClick={() => setIsOpen(false)}
                             >
                                 <ShieldCheck

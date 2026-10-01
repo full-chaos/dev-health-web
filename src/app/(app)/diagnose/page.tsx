@@ -1,4 +1,5 @@
 import { AreaOverview } from "@/components/navigation/AreaOverview";
+import { DiagnoseQuestions } from "./DiagnoseQuestions";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
@@ -52,6 +53,8 @@ export default async function DiagnosePage({ searchParams }: DiagnosePageProps) 
                 title="Related workflows"
                 description="Diagnostic sub-areas, ordered by severity."
             />
+
+            <DiagnoseQuestions filters={filters} role={activeRole} />
         </div>
     );
 }

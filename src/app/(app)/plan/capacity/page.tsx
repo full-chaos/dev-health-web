@@ -1,18 +1,15 @@
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
-import { FilterBar } from "@/components/filters/FilterBar";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { BackLink } from "@/components/shared/BackLink";
 import { CapacityView } from "@/components/work/CapacityView";
 import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
 import { checkApiHealth } from "@/lib/api/system";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { withFilterParam } from "@/lib/filters/url";
 import { getCapacityForecastForHydration } from "@/lib/graphql/capacityHydration";
 import { HydrateUrqlResults } from "@/lib/graphql/HydrateUrqlResults";
 import { runtimeConfig } from "@/lib/runtimeConfig";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 
 type PlanCapacityPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -33,7 +30,7 @@ export default async function PlanCapacityPage({ searchParams }: PlanCapacityPag
     ]);
 
     if (!health.ok) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     const features = entitlements?.data?.features ?? {};
@@ -41,9 +38,7 @@ export default async function PlanCapacityPage({ searchParams }: PlanCapacityPag
 
     const params = (await searchParams) ?? {};
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-    const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
-    const activeRole = typeof roleParam === "string" ? roleParam : undefined;
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
 
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
@@ -67,41 +62,25 @@ export default async function PlanCapacityPage({ searchParams }: PlanCapacityPag
     const capacityHydrationPayload = capacityResult?.hydrationPayload ?? null;
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="capacity" role={activeRole} />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Completion Forecast
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">
-                                Completion Forecast
-                            </h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Monte Carlo is the method behind this completion projection,
-                                throughput distribution, and confidence bands. Adjust the date range
-                                to control how much history informs the forecast.
-                            </p>
-                        </div>
-                        <BackLink href={withFilterParam("/plan", filters, activeRole)} />
-                    </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            <PageHeader
+                title="Completion Forecast"
+                subtitle="Monte Carlo is the method behind this completion projection, throughput distribution, and confidence bands. Adjust the date range to control how much history informs the forecast."
+            />
 
-                    <GlobalContextBar filters={filters} origin={activeOrigin} />
-                    <FilterBar view="capacity-planning" />
+            <ScopeBar view="capacity-planning" origin={activeOrigin} />
 
-                    <UpgradeGate
-                        feature="capacity_forecast"
-                        requiredTier="team"
-                        currentTier={currentTier}
-                        features={features}
-                    >
-                        <HydrateUrqlResults payload={capacityHydrationPayload} />
-                        <CapacityView filters={filters} orgId={hydrationOrgId} />
-                    </UpgradeGate>
-                </main>
-            </div>
+            <UpgradeGate
+                feature="capacity_forecast"
+                requiredTier="team"
+                currentTier={currentTier}
+                features={features}
+            >
+                <HydrateUrqlResults payload={capacityHydrationPayload} />
+                <CapacityView filters={filters} orgId={hydrationOrgId} />
+            </UpgradeGate>
         </div>
     );
 }

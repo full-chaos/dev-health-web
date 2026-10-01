@@ -91,9 +91,9 @@ export function LoginForm({ plan, trialIntent = false, callbackUrl }: LoginFormP
     return (
         <>
             {verifyEmail && (
-                <div className="mb-4 p-3 text-sm text-amber-400 bg-amber-950/50 rounded-md border border-amber-800">
+                <div className="mb-4 p-3 text-sm text-(--caution) bg-(--caution)/12 rounded-md border border-(--caution)/30">
                     <p className="font-medium">Please verify your email</p>
-                    <p className="mt-1 text-amber-400/80">
+                    <p className="mt-1 text-(--caution)">
                         Check your inbox for a verification link before signing in.
                     </p>
                 </div>
