@@ -835,14 +835,14 @@ function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowVi
                                         <div className="flex items-center gap-2">
                                             <span
                                                 aria-hidden
-                                                className="h-2 rounded-full bg-(--accent)/70"
+                                                className="h-2 rounded-r-[4px] bg-(--theme-operational)"
                                                 style={{
                                                     width: `${Math.round((row.inflow / max) * 50)}%`,
                                                 }}
                                             />
                                             <span
                                                 aria-hidden
-                                                className="h-2 rounded-full bg-(--accent-2)/60"
+                                                className="h-2 rounded-r-[4px] bg-(--theme-risk)"
                                                 style={{
                                                     width: `${Math.round((row.outflow / max) * 50)}%`,
                                                 }}

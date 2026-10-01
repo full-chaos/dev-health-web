@@ -219,6 +219,11 @@ describe("InvestmentView — Confidence tab", () => {
         // Bar div has width: 25%, not width: 2500%
         const bar = container.querySelector('[style*="width: 25%"]');
         expect(bar).not.toBeNull();
+        // Small-bar recipe: tide fill (never the action/accent colors), 2px minimum, on a track.
+        expect(bar?.className).toContain("bg-(--theme-operational)");
+        expect(bar?.className).not.toMatch(/accent/u);
+        expect((bar as HTMLElement).style.minWidth).toBe("2px");
+        expect(bar?.parentElement?.className).toContain("bg-(--card-stroke)");
     });
 
     it("hides the rework theme breakdown section when allocation is empty", () => {

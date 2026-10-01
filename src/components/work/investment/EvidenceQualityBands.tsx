@@ -42,32 +42,38 @@ export function EvidenceQualityBands({ evidenceQualityDistribution }: EvidenceQu
         );
     }
 
+    // Four ordinal bands: one hue (tide), strength = opacity (unchanged). Unknown is NOT a step of
+    // that ramp: neutral ink with a dashed outline, so missing evidence never reads as "low".
+    const BAND_FILL = "bg-(--theme-operational)";
+    const UNKNOWN_FILL = "bg-(--ink-muted)/35 border border-dashed border-(--ink-muted)";
     const segments = [
         ...EVIDENCE_QUALITY_BANDS.map((band) => ({
             id: band.id,
             label: band.label,
-            opacityClass: band.opacityClass,
+            swatchClass: `${BAND_FILL} ${band.opacityClass}`,
             share: (evidenceQualityDistribution[band.id] ?? 0) / total,
         })),
         {
             id: "unknown" as const,
             label: "Unknown (no evidence)",
-            opacityClass: "opacity-20",
+            swatchClass: UNKNOWN_FILL,
             share: (evidenceQualityDistribution["unknown"] ?? 0) / total,
         },
     ];
 
     return (
         <div className="space-y-3">
-            <div className="flex h-3 w-full overflow-hidden rounded-full border border-(--card-stroke) bg-(--card-70)">
+            {/* 2px gaps between segments (surface shows through); width = share */}
+            <div className="flex h-3 w-full gap-0.5">
                 {segments.map((segment) => {
                     const pct = segment.share * 100;
                     if (pct <= 0) return null;
                     return (
                         <div
                             key={segment.id}
-                            className={`h-full bg-(--accent-2) ${segment.opacityClass}`}
-                            style={{ width: `${pct}%` }}
+                            data-band={segment.id}
+                            className={`h-full min-w-0.5 rounded-[4px] ${segment.swatchClass}`}
+                            style={{ flex: `${pct} 1 0%` }}
                             title={`${segment.label}: ${formatNumber(pct, { maximumFractionDigits: 0 })}%`}
                         />
                     );
@@ -82,7 +88,8 @@ export function EvidenceQualityBands({ evidenceQualityDistribution }: EvidenceQu
                             className="flex items-center gap-2 text-xs text-(--ink-muted)"
                         >
                             <span
-                                className={`h-2.5 w-2.5 shrink-0 rounded-full bg-(--accent-2) ${segment.opacityClass}`}
+                                data-swatch={segment.id}
+                                className={`h-2.5 w-2.5 shrink-0 rounded-full ${segment.swatchClass}`}
                             />
                             <dt className="min-w-0 truncate">{segment.label}</dt>
                             <dd className="ml-auto font-mono text-(--ink)">
