@@ -129,7 +129,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                     data-testid="cockpit-top-change"
                     className="mt-6 rounded-3xl border border-(--accent)/25 bg-(--card)/70 p-5"
                 >
-                    <p className="text-label-caps font-semibold uppercase tracking-[0.28em] text-(--accent)">
+                    <p className="text-label-caps font-semibold uppercase tracking-[0.28em] text-(--accent-text)">
                         Top change
                     </p>
                     <div className="mt-2 flex flex-wrap items-start justify-between gap-3">
@@ -161,7 +161,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                     </p>
 
                     <div className="mt-4 rounded-2xl border border-(--accent)/20 bg-(--accent)/8 p-3">
-                        <p className="text-label-caps font-semibold uppercase tracking-[0.2em] text-(--accent)">
+                        <p className="text-label-caps font-semibold uppercase tracking-[0.2em] text-(--accent-text)">
                             Recommended action
                         </p>
                         <p className="mt-1 text-sm leading-5 text-foreground">

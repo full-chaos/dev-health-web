@@ -21,7 +21,7 @@ type FilterPillsProps<TId extends string = string> = {
     testId?: string;
 };
 
-const ACTIVE = "border-(--accent) bg-(--accent)/15 text-(--accent)";
+const ACTIVE = "border-(--accent) bg-(--accent)/15 text-(--accent-text)";
 const INACTIVE =
     "border-(--card-stroke) bg-(--card-80) text-(--ink-muted) hover:border-(--accent)/40 hover:text-foreground";
 

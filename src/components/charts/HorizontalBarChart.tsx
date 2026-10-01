@@ -8,6 +8,7 @@ import { BarChart } from "echarts/charts";
 import { Chart } from "./Chart";
 import { formatChartValue, type ChartValueFormat } from "./chartValueFormat";
 import { useChartTheme } from "./chartTheme";
+import { buildTooltip } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
 
 echarts.use([BarChart]);
@@ -88,16 +89,7 @@ export function HorizontalBarChart({
     return (
         <Chart
             option={{
-                tooltip: {
-                    trigger: "axis",
-                    confine: true,
-                    backgroundColor: chartTheme.background,
-                    borderColor: chartTheme.stroke,
-                    textStyle: {
-                        color: chartTheme.text,
-                    },
-                    formatter: tooltipFormatter,
-                },
+                tooltip: buildTooltip(chartTheme, { formatter: tooltipFormatter }),
                 grid: { left: 80, right: 24, top: 20, bottom: 20 },
                 xAxis: {
                     type: "value",

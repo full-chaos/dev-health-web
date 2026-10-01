@@ -1,11 +1,12 @@
+import { STATUS_PILL } from "@/lib/statusPill";
 import type { SecuritySeverity } from "@/lib/filters/security";
 
 const SEVERITY_CLASSES: Record<SecuritySeverity, string> = {
-    critical: "bg-red-600 text-white",
-    high: "bg-orange-500 text-white",
-    medium: "bg-amber-400 text-gray-900",
-    low: "bg-slate-400 text-white",
-    unknown: "bg-slate-300 text-gray-900",
+    critical: STATUS_PILL.negative,
+    high: STATUS_PILL.caution,
+    medium: STATUS_PILL.caution,
+    low: STATUS_PILL.muted,
+    unknown: STATUS_PILL.muted,
 };
 
 const SEVERITY_LABELS: Record<SecuritySeverity, string> = {
