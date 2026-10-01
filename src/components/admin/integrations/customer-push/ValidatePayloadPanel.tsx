@@ -6,6 +6,7 @@ import { buildSamplePayload } from "@/lib/customer-push/sample-payload";
 import { RejectedRecordsTable } from "./RejectedRecordsTable";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { CustomerPushSystem, CustomerPushValidateResponse } from "@/lib/admin/types";
+import { Notice } from "@/components/ui/Notice";
 
 type ValidatePayloadPanelProps = {
     sourceId: string;
@@ -172,14 +173,7 @@ export function ValidatePayloadPanel({
                 </button>
             </div>
 
-            {apiError && (
-                <div
-                    role="alert"
-                    className="rounded-lg border border-(--negative)/30 bg-(--negative)/12 p-4 text-sm text-(--negative)"
-                >
-                    Validation request failed: {apiError}
-                </div>
-            )}
+            {apiError && <Notice variant="danger">Validation request failed: {apiError}</Notice>}
 
             {result && (
                 <div className="space-y-4">

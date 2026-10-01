@@ -46,17 +46,36 @@ describe("KpiTile", () => {
         expect(screen.queryByText(/\+3/)).not.toBeInTheDocument();
     });
 
-    it("applies the danger tone border when tone='danger'", () => {
-        const { container } = render(<KpiTile label="Critical" value={2} tone="danger" />);
+    it("draws no colored edge and no pill by default", () => {
+        const { container } = render(<KpiTile label="Open" value={5} />);
 
-        const root = container.querySelector("div");
-        expect(root?.className).toContain("border-l-red-600");
+        expect(container.firstElementChild?.className).not.toMatch(/border-l-/);
+        expect(screen.queryByTestId("kpi-pill")).toBeNull();
     });
 
-    it("applies the warn tone border when tone='warn'", () => {
-        const { container } = render(<KpiTile label="Open" value={5} tone="warn" />);
+    it("shows the Critical pill with its word and icon, not a colored edge", () => {
+        const { container } = render(
+            <KpiTile label="Critical" value={2} pill={{ label: "Critical", tone: "negative" }} />,
+        );
 
-        const root = container.querySelector("div");
-        expect(root?.className).toContain("border-l-amber-400");
+        const pill = screen.getByTestId("kpi-pill");
+        expect(pill).toHaveTextContent("Critical");
+        expect(pill).toHaveAttribute("data-tone", "negative");
+        expect(pill.querySelector("svg")).not.toBeNull();
+        expect(container.firstElementChild?.className).not.toMatch(/border-l-/);
+    });
+
+    it("shows the High pill with the caution tone", () => {
+        render(<KpiTile label="High" value={5} pill={{ label: "High", tone: "caution" }} />);
+
+        expect(screen.getByTestId("kpi-pill")).toHaveAttribute("data-tone", "caution");
+    });
+
+    it("hides the pill while loading", () => {
+        render(
+            <KpiTile label="High" value={5} loading pill={{ label: "High", tone: "caution" }} />,
+        );
+
+        expect(screen.queryByTestId("kpi-pill")).toBeNull();
     });
 });

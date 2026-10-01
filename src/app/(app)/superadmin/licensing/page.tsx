@@ -1,6 +1,7 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { LicenseTable } from "@/components/superadmin/LicenseTable";
 import { listOrganizations } from "@/lib/admin/server";
+import { Notice } from "@/components/ui/Notice";
 
 export default async function LicensingPage() {
     const { data: orgs, error } = await listOrganizations();
@@ -9,9 +10,9 @@ export default async function LicensingPage() {
         return (
             <div>
                 <AdminHeader title="Licensing" description="Organization tiers and entitlements." />
-                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false}>
                     Error loading organizations: {error}
-                </div>
+                </Notice>
             </div>
         );
     }

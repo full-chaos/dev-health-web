@@ -6,7 +6,7 @@ import {
 } from "@/lib/filters/security";
 import { SecurityDashboard } from "@/components/security/SecurityDashboard";
 import { SecurityAlertQueue } from "@/components/security/SecurityAlertQueue";
-import { SecurityFilterBarWrapper } from "@/components/security/SecurityFilterBarWrapper";
+import { SecurityScopeBar } from "@/components/security/SecurityScopeBar";
 
 type SecurityPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -23,13 +23,11 @@ export default async function SecurityPage({ searchParams }: SecurityPageProps) 
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-8">
             <PageHeader
-                title="Security Alerts"
+                title="Security"
                 subtitle="Org-wide vulnerability posture — Dependabot, code scanning, and more."
             />
 
-            <SecurityFilterBarWrapper
-                encodedFilter={encodedFilter ?? encodeSecurityFilter(filter)}
-            />
+            <SecurityScopeBar encodedFilter={encodedFilter ?? encodeSecurityFilter(filter)} />
             <SecurityDashboard filter={filter} />
             <SecurityAlertQueue filter={filter} />
         </div>

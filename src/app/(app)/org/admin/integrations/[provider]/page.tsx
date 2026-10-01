@@ -21,6 +21,7 @@ import {
     CUSTOMER_PUSH_INGEST_REQUIRED_TIER,
 } from "@/lib/billing/features";
 import type { Provider } from "@/lib/admin/types";
+import { Notice } from "@/components/ui/Notice";
 
 // Intentionally drifted from `types.ts`'s `PROVIDERS`/`PROVIDER_LABELS` (see
 // docs/providers-integration.md) — this page-local map also carries the
@@ -97,9 +98,9 @@ export default async function IntegrationPage({
             />
 
             {credentialsResult.error && !isCustomProvider && (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false}>
                     Failed to load credentials: {credentialsResult.error}
-                </div>
+                </Notice>
             )}
 
             {/* CHAOS-2837: never a standalone install-card CTA on this page —
@@ -112,9 +113,9 @@ export default async function IntegrationPage({
             )}
 
             {customerPushEnabled && customerPushSourcesResult?.error && (
-                <div className="mb-6 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false} className="mb-6">
                     Failed to load customer-push sources: {customerPushSourcesResult.error}
-                </div>
+                </Notice>
             )}
 
             {supportsCustomerPush && (!isCustomProvider || customerPushEnabled) && (

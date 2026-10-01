@@ -15,6 +15,7 @@ import {
     CUSTOMER_PUSH_INGEST_REQUIRED_TIER,
 } from "@/lib/billing/features";
 import type { CustomerPushBatchStatus } from "@/lib/admin/types";
+import { Notice } from "@/components/ui/Notice";
 
 const STATUSES: CustomerPushBatchStatus[] = [
     "accepted",
@@ -81,9 +82,9 @@ export default async function CustomerPushBatchesPage({
             <AdminHeader title="Ingest status" description={`Batches pushed for ${displayName}.`} />
 
             {batchesResult.error && (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500">
+                <Notice variant="danger" live={false}>
                     Failed to load batches: {batchesResult.error}
-                </div>
+                </Notice>
             )}
 
             <form method="GET" className="flex flex-wrap items-end gap-3">
