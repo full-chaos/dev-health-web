@@ -1,3 +1,4 @@
+import { Notice } from "@/components/ui/Notice";
 import type { ThroughputRollingWindow } from "@/lib/graphql/types";
 
 type InsufficientHistoryNoticeProps = {
@@ -24,18 +25,17 @@ export function InsufficientHistoryNotice({
     if (!insufficientHistory) return null;
 
     return (
-        <section
-            role="status"
-            aria-live="polite"
-            className="rounded-3xl border border-amber-500/30 bg-amber-500/10 p-6"
-        >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-base font-semibold text-amber-200">Limited history</h2>
-                <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs uppercase tracking-[0.16em] text-amber-200">
+        <Notice
+            variant="warn"
+            title="Limited history"
+            titleAs="h2"
+            action={
+                <span className="rounded-full bg-amber-500/15 px-3 py-1 text-xs uppercase tracking-[0.16em] text-(--caution)">
                     Forecast provisional
                 </span>
-            </div>
-            <p className="mt-3 text-sm text-amber-100/80">
+            }
+        >
+            <p>
                 There isn&apos;t enough throughput history to compute reliable 4/8/12-week rolling
                 estimates for this scope. The weeks-to-complete figures below may be unavailable or
                 provisional — widen the date range, pick a different team, or sync more work-item
@@ -47,7 +47,7 @@ export function InsufficientHistoryNotice({
                         key={window.windowWeeks}
                         className={`flex items-center gap-2 rounded-full px-3 py-1 text-xs ${
                             window.insufficientHistory
-                                ? "bg-amber-500/15 text-amber-200"
+                                ? "bg-amber-500/15 text-(--caution)"
                                 : "bg-foreground/10 text-(--ink-muted)"
                         }`}
                     >
@@ -59,6 +59,6 @@ export function InsufficientHistoryNotice({
                     </div>
                 ))}
             </dl>
-        </section>
+        </Notice>
     );
 }
