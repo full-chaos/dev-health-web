@@ -67,7 +67,7 @@ describe("MetricEvidenceCards tile (CHAOS-7597)", () => {
         expect(screen.getByTestId("sparkline")).toBeInTheDocument();
     });
 
-    it("shows a missing value as a muted em dash, not as zero or '--'", () => {
+    it("shows a missing value as muted '--' (MetricCard's contract), not as zero", () => {
         render(
             <MetricEvidenceCards
                 metrics={["cycle_time"]}
@@ -76,8 +76,7 @@ describe("MetricEvidenceCards tile (CHAOS-7597)", () => {
                 placeholderDeltas
             />,
         );
-        expect(screen.getAllByText("—")[0]).toHaveClass("text-(--ink-muted)");
-        expect(screen.queryByText("--")).toBeNull();
+        expect(screen.getAllByText("--")[0]).toHaveClass("text-(--ink-muted)");
         expect(screen.queryByText("0")).not.toBeInTheDocument();
     });
 });
@@ -148,16 +147,15 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
         expect(screen.getByText("3h")).toBeInTheDocument();
     });
 
-    it("shows a muted em dash for the value and 'No prior period' for the delta when deltas are placeholders", () => {
+    it("shows a muted '--' for the value and 'No prior period' for the delta when deltas are placeholders", () => {
         renderFour(true);
-        expect(screen.getAllByText("—")).toHaveLength(4);
+        expect(screen.getAllByText("--")).toHaveLength(4);
         expect(screen.getAllByText("No prior period")).toHaveLength(4);
-        expect(screen.queryByText("--")).toBeNull();
         expect(screen.queryByText(/0%/)).toBeNull();
         expect(screen.queryByText("10%")).toBeNull();
     });
 
-    it("shows an em dash value and 'No prior period' (not 0) for a metric that has no data row", () => {
+    it("shows '--' as the value and 'No prior period' (not 0) for a metric that has no data row", () => {
         render(
             <MetricEvidenceCards
                 metrics={["ghost"]}
@@ -167,9 +165,8 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
             />,
         );
         expect(screen.getByText("ghost")).toBeInTheDocument();
-        expect(screen.getAllByText("—")).toHaveLength(1);
+        expect(screen.getAllByText("--")).toHaveLength(1);
         expect(screen.getByText("No prior period")).toBeInTheDocument();
-        expect(screen.queryByText("--")).toBeNull();
         expect(screen.queryByText(/0%/)).toBeNull();
     });
 

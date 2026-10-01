@@ -57,7 +57,6 @@ export function MetricEvidenceCards({
                             // A missing delta (placeholder rows, or no data row) is "No prior period", never 0.
                             delta={placeholderDeltas ? undefined : data?.delta_pct}
                             inverseGood={metricInverseGood(metric)}
-                            valueUnavailableLabel="—"
                             onOpenEvidence={() =>
                                 setActiveMetric(
                                     data ?? {

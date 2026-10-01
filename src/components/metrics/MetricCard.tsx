@@ -21,8 +21,6 @@ type MetricCardProps = {
     delta?: number;
     /** Label shown in the delta slot when no delta is available (never a bare "--"). */
     deltaUnavailableLabel?: string;
-    /** Shown in place of the value when there is none (default "--"). */
-    valueUnavailableLabel?: string;
     /** Lower-is-better metric: an increase is colored as negative (forwarded to MetricDelta). */
     inverseGood?: boolean;
     spark?: SparkPoint[];
@@ -55,7 +53,6 @@ export function MetricCard({
     unit,
     delta,
     deltaUnavailableLabel = "No prior period",
-    valueUnavailableLabel = "--",
     inverseGood,
     spark,
     caption,
@@ -92,7 +89,7 @@ export function MetricCard({
                     hasValue ? "text-foreground" : "text-(--ink-muted)"
                 }`}
             >
-                {hasValue ? formatMetricValue(value, unit ?? "") : valueUnavailableLabel}
+                {hasValue ? formatMetricValue(value, unit ?? "") : "--"}
             </p>
             {/* Concept `.metric-meta`: `delta · note` as running text; the dot sits only between the two. */}
             <div className={`mt-2 text-xs text-(--ink-muted) ${hasSpark ? "max-w-[55%]" : ""}`}>
