@@ -254,7 +254,7 @@ describe("infinity palette", () => {
         "keeps production's solid caution strip: amber fill, black ink (%s)",
         (theme) => {
             const t = infinity(theme);
-            expect(t["--caution-solid"]).toBe("#f59e0b");
+            expect(t["--caution-solid"]).toBe("#fe9a00");
             expect(t["--on-caution-solid"]).toBe("#000000");
             expect(contrast(t["--on-caution-solid"], t["--caution-solid"])).toBeGreaterThanOrEqual(
                 9.7,

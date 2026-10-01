@@ -63,8 +63,8 @@
     --quadrant-zone-2: #188810;
     --quadrant-zone-3: #c88600;
     --quadrant-zone-4: #a30a06;
-    /* Solid caution strip: production's amber-500 with black ink in both themes (9.78:1). */
-    --caution-solid: #f59e0b;
+    /* Solid caution strip: production's amber-500 (Tailwind 4: #fe9a00) with black ink in both themes. */
+    --caution-solid: #fe9a00;
     --on-caution-solid: #000000;
     --positive: #1c785a;
     --caution: #8a5700;
@@ -124,8 +124,8 @@
     --quadrant-zone-2: #63cfa6;
     --quadrant-zone-3: #c98500;
     --quadrant-zone-4: #da2100;
-    /* Solid caution strip: production's amber-500 with black ink in both themes (9.78:1). */
-    --caution-solid: #f59e0b;
+    /* Solid caution strip: production's amber-500 (Tailwind 4: #fe9a00) with black ink in both themes. */
+    --caution-solid: #fe9a00;
     --on-caution-solid: #000000;
     --positive: #63cfa6;
     --caution: #f2b84b;
