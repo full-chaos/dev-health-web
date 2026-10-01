@@ -36,7 +36,7 @@ export const SHELL_ROUTES: readonly ShellRoute[] = [
     { prefix: "/complexity" },
     { prefix: "/bottleneck" },
     { prefix: "/cognitive-load" },
-    { prefix: "/people", exact: true },
+    { prefix: "/people" },
 ];
 
 function matchesRoute(pathname: string, route: ShellRoute): boolean {
