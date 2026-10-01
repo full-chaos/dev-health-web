@@ -12,11 +12,12 @@ import { SHELL_ROUTES } from "@/components/shell/shellRoutes";
 
 const appRoot = join(process.cwd(), "src/app/(app)");
 
-function listFiles(directory: string): string[] {
+function listFiles(directory: string, recursive: boolean): string[] {
     if (!existsSync(directory)) return [];
     return readdirSync(directory).flatMap((entry) => {
         const fullPath = join(directory, entry);
-        return statSync(fullPath).isDirectory() ? listFiles(fullPath) : [fullPath];
+        if (!statSync(fullPath).isDirectory()) return [fullPath];
+        return recursive ? listFiles(fullPath, true) : [];
     });
 }
 
@@ -24,9 +25,12 @@ function listFiles(directory: string): string[] {
 const stripComments = (source: string) =>
     source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
-const filesUnderShellPrefixes = SHELL_ROUTES.flatMap((route) =>
-    listFiles(join(appRoot, route.prefix)),
-);
+// An exact route covers the files in its own directory only.
+const filesUnderShellPrefixes = [
+    ...new Set(
+        SHELL_ROUTES.flatMap((route) => listFiles(join(appRoot, route.prefix), !route.exact)),
+    ),
+];
 const sources = filesUnderShellPrefixes.map((filePath) => ({
     file: relative(process.cwd(), filePath),
     name: filePath.slice(filePath.lastIndexOf("/") + 1),

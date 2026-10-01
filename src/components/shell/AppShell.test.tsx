@@ -249,7 +249,7 @@ describe("AppShell — the status chip states what the organization card knows",
 
 describe("AppShell — a route outside the registry keeps today's chrome", () => {
     beforeEach(() => {
-        navigationMock.pathname = "/diagnose";
+        navigationMock.pathname = "/plan";
     });
 
     it("renders no shell part: no sidebar, no top bar, no skip link, no shell main", () => {
