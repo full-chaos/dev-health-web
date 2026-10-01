@@ -105,7 +105,7 @@ export function CreateCustomerPushSourceForm({
             {conflictError && (
                 <div
                     role="alert"
-                    className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500"
+                    className="rounded-lg border border-(--negative)/30 bg-(--negative)/12 p-4 text-sm text-(--negative)"
                 >
                     <p className="font-medium">One-active-owner conflict</p>
                     <p className="mt-1">{conflictError}</p>
@@ -114,7 +114,7 @@ export function CreateCustomerPushSourceForm({
             {genericError && (
                 <div
                     role="alert"
-                    className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500"
+                    className="rounded-lg border border-(--negative)/30 bg-(--negative)/12 p-4 text-sm text-(--negative)"
                 >
                     {genericError}
                 </div>
@@ -152,7 +152,9 @@ export function CreateCustomerPushSourceForm({
                     placeholder={instancePlaceholder}
                     className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base) focus:border-(--accent) focus:outline-none"
                 />
-                {instanceError && <p className="mt-1.5 text-sm text-red-500">{instanceError}</p>}
+                {instanceError && (
+                    <p className="mt-1.5 text-sm text-(--negative)">{instanceError}</p>
+                )}
             </div>
 
             <div className="rounded-lg border border-(--border-subtle) bg-(--surface-base) p-4 text-sm text-(--ink-muted)">
