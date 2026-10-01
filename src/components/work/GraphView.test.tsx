@@ -48,6 +48,10 @@ vi.mock("@/lib/graphql/provider", () => ({
     useOrgId: mockUseOrgId,
 }));
 
+vi.mock("@/components/charts/SparklineChart", () => ({
+    SparklineChart: () => <div data-testid="sparkline" />,
+}));
+
 vi.mock("@/components/charts/WorkGraphExplorer", () => ({
     WorkGraphExplorer: ({ hiddenNodeTypes }: { hiddenNodeTypes?: ReadonlySet<string> }) => (
         <div
@@ -1617,25 +1621,32 @@ describe("GraphView", () => {
             expect(within(first).getByTitle("bo.fake@example.test")).toBeInTheDocument();
         });
 
-        it("summary: distinct reviewers, distinct authors, total reviews, with the singular form", () => {
+        it("three tiles: distinct reviewers, distinct authors, total reviews, with the singular form", () => {
+            const tiles = () =>
+                Array.from(screen.getByTestId("review-network-tiles").children).map((tile) => ({
+                    label: tile.querySelector("div")?.textContent,
+                    value: tile.querySelector("p")?.textContent,
+                }));
             const { unmount } = renderReview(pairs);
-            const panel = screen.getByTestId("review-network-panel");
-            expect(panel).toHaveTextContent("2 reviewers");
-            expect(panel).toHaveTextContent("2 authors");
-            expect(panel).toHaveTextContent("17 total reviews");
+            expect(tiles()).toEqual([
+                { label: "Reviewers", value: "2" },
+                { label: "Authors", value: "2" },
+                { label: "Total reviews", value: "17" },
+            ]);
             unmount();
             renderReview([row("ana.fake@example.test", "bo.fake@example.test", 3)]);
-            const one = screen.getByTestId("review-network-panel");
-            expect(one).toHaveTextContent("1 reviewer");
-            expect(one).not.toHaveTextContent("1 reviewers");
-            expect(one).toHaveTextContent("1 author");
+            expect(tiles()).toEqual([
+                { label: "Reviewer", value: "1" },
+                { label: "Author", value: "1" },
+                { label: "Total reviews", value: "3" },
+            ]);
         });
 
         it("share bar: the top pair is full width, the others are their share of the top pair", () => {
             renderReview(pairs);
             const widths = screen
                 .getAllByTestId("review-network-row")
-                .map((r) => (r.querySelector("[aria-hidden]") as HTMLElement).style.width);
+                .map((r) => (r.querySelector("[data-share-fill]") as HTMLElement).style.width);
             expect(widths).toEqual(["100%", "50%", "20%"]);
         });
 
