@@ -81,6 +81,7 @@ describe("StackedAreaChart conventions", () => {
         });
         expect(tooltip.axisPointer).toEqual({
             type: "cross",
+            lineStyle: { color: chartTheme.muted, width: 1, type: "solid" },
             crossStyle: { color: chartTheme.muted, width: 1, type: "solid" },
             label: { backgroundColor: chartTheme.muted },
         });

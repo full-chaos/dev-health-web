@@ -35,6 +35,7 @@ export const buildTooltip = (theme: ChartTheme, options: TooltipOptions = {}) =>
         ? {
               axisPointer: {
                   type: "cross" as const,
+                  lineStyle: { color: theme.muted, width: 1, type: "solid" as const },
                   crossStyle: { color: theme.muted, width: 1, type: "solid" as const },
                   label: { backgroundColor: theme.muted },
               },
