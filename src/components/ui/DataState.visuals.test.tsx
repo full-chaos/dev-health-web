@@ -52,3 +52,34 @@ describe("DataState empty / unavailable visuals (CHAOS-7601)", () => {
         expect(container.innerHTML).toContain("motion-reduce:animate-none");
     });
 });
+
+describe("DataState error and compact (CHAOS-7601)", () => {
+    it("error keeps a solid negative-tinted border, a warning icon, and no dashed box", () => {
+        const { container } = render(
+            <DataState
+                variant="error"
+                title="Boom"
+                message="It broke."
+                action={<a href="#r">Retry</a>}
+            />,
+        );
+        expect(container.querySelector(".border-dashed")).toBeNull();
+        const card = container.querySelector(".border-\\(--accent-negative\\)\\/30") as HTMLElement;
+        expect(card.className).toContain("rounded-(--radius-sm)");
+        expect(card.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+        expect(screen.getByRole("heading", { level: 2, name: "Boom" })).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Retry" })).toBeInTheDocument();
+    });
+
+    it("error adds no role (production has none)", () => {
+        render(<DataState variant="error" />);
+        expect(screen.queryByRole("alert")).toBeNull();
+    });
+
+    it("compact shrinks the empty box", () => {
+        const { container } = render(<DataState variant="no-data-connected" compact />);
+        const box = container.querySelector(".border-dashed") as HTMLElement;
+        expect(box.className).toContain("min-h-30");
+        expect(box.className).not.toContain("min-h-50");
+    });
+});

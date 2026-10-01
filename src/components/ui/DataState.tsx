@@ -102,6 +102,8 @@ type DataStateProps = {
      * DataState adds the "Data source needed:" label automatically.
      */
     detail?: string;
+    /** Smaller box for use inside a card (concept `.empty.compact`); empty variants only. */
+    compact?: boolean;
     /** Test hook; defaults to a stable per-variant id. */
     "data-testid"?: string;
 };
@@ -115,6 +117,7 @@ export function DataState({
     action,
     className,
     detail,
+    compact,
     "data-testid": testId,
 }: DataStateProps) {
     if (variant === "loading") {
@@ -167,6 +170,7 @@ export function DataState({
                 title={title ?? copy.title}
                 description={description ?? copy.description}
                 action={action}
+                compact={compact}
             />
             {detail && (
                 <p className="mt-3 rounded-(--radius-sm) bg-background/60 px-3 py-2 text-center text-xs text-(--ink-muted)">

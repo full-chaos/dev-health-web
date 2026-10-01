@@ -315,6 +315,7 @@ export function ConfidencePanel({
                     <div className="mt-4">
                         <DataState
                             variant="detector-unavailable"
+                            compact
                             title="Rework signal not available yet"
                             description="A dedicated rework breakdown isn't wired for this scope yet."
                         />
