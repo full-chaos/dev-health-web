@@ -3,6 +3,7 @@
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
 
+import type { LineSeriesOption } from "echarts";
 import { LineChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
@@ -129,7 +130,7 @@ export function ConfidenceBandChart({
 
     // The percentile markers: dashed vertical lines with a label (percentile, date, days) and a
     // dot on the burn line. They belong INSIDE a series: ECharts ignores a top-level markLine.
-    const marks = useMemo(() => {
+    const marks = useMemo((): Pick<LineSeriesOption, "markLine" | "markPoint"> => {
         const points = lowVariance
             ? [{ name: "Low variance", day: p50Days, date: p50Date }]
             : [
@@ -171,6 +172,7 @@ export function ConfidenceBandChart({
                 itemStyle: { color: tide, borderColor: chartTheme.background, borderWidth: 2 },
                 label: { show: false },
                 data: points.map((point) => ({
+                    name: point.name,
                     coord: [
                         dayLabels[Math.min(point.day, dayLabels.length - 1)],
                         projection[Math.min(point.day, projection.length - 1)] ?? 0,

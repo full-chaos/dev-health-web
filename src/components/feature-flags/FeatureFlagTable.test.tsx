@@ -23,6 +23,7 @@ describe("FeatureFlagTable status", () => {
                 initialData={{
                     items: [flag("a", true), flag("b", false), flag("c", null)],
                     totalCount: 3,
+                    hasNextPage: false,
                 }}
                 fetchAction={vi.fn()}
             />,
