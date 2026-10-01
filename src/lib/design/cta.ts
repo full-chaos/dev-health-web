@@ -25,6 +25,8 @@ export const CTA_LABELS = {
     markContextIncorrect: "Mark context as incorrect",
     markContextStale: "Mark context as stale",
     markContextIrrelevant: "Mark context as irrelevant",
+    /** Open the Investment Confidence tab (classification confidence, evidence quality, coverage). */
+    inspectConfidence: "Inspect confidence",
     /** Inspect the associations (edges) linked to an entity. */
     inspectAssociations: "Inspect associations",
     /** Open a single artifact (flame diagram, PR, deployment, …). */
@@ -67,6 +69,8 @@ export const CTA_LABELS = {
     clearTheme: "Clear theme",
     allThemes: "All themes",
     openWorkGraph: "Open Work Graph",
+    /** Open the Investment view (allocation tab from the Diagnose overview). */
+    openInvestment: "Open Investment",
     openMetrics: "Open metrics",
     openWorkView: "Open Work view",
     evidence: "Evidence",

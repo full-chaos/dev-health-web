@@ -1,16 +1,14 @@
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { BackLink } from "@/components/shared/BackLink";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { withFilterParam } from "@/lib/filters/url";
 import { getThroughputForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
 import type { ThroughputForecast } from "@/lib/graphql/types";
 import { logger } from "@/lib/logger";
 
 import { ForecastContent, ForecastErrorState, NoForecastState } from "./_components";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 
 type BacklogRiskPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -23,16 +21,14 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 export default async function BacklogRiskPage({ searchParams }: BacklogRiskPageProps) {
     const params = (await searchParams) ?? {};
     const encodedFilter = firstParam(params.f);
-    const roleParam = firstParam(params.role);
     const originParam = firstParam(params.origin);
     const workScopeId = firstParam(params.scope);
-    const activeRole = typeof roleParam === "string" ? roleParam : undefined;
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
     const teamIds =
         filters.scope.level === "team" && filters.scope.ids.length > 0 ? filters.scope.ids : null;
 
     const [health, session] = await Promise.all([checkApiHealth(), requireSession()]);
-    if (!health.ok) return <ServiceUnavailable />;
+    if (!health.ok) return <ServiceUnavailable landmark={false} />;
 
     const orgId = session.user.org_id ?? "default-org";
     let forecast: ThroughputForecast | null = null;
@@ -52,35 +48,23 @@ export default async function BacklogRiskPage({ searchParams }: BacklogRiskPageP
     }
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="backlog-risk" role={activeRole} />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <header className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Backlog Risk
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">Backlog Risk</h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                WIP congestion, stale items, and unestimated debt — signals that
-                                reduce delivery predictability before they appear in cycle time.
-                            </p>
-                        </div>
-                        <BackLink href={withFilterParam("/plan", filters, activeRole)} />
-                    </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            <PageHeader
+                title="Backlog Risk"
+                subtitle="WIP congestion, stale items, and unestimated debt — signals that reduce delivery predictability before they appear in cycle time."
+            />
 
-                    <GlobalContextBar filters={filters} origin={originParam} />
+            <ScopeBar pageFilters={false} origin={originParam} />
 
-                    {forecastFetchFailed ? (
-                        <ForecastErrorState />
-                    ) : forecast ? (
-                        <ForecastContent forecast={forecast} />
-                    ) : (
-                        <NoForecastState />
-                    )}
-                </main>
-            </div>
+            {forecastFetchFailed ? (
+                <ForecastErrorState />
+            ) : forecast ? (
+                <ForecastContent forecast={forecast} />
+            ) : (
+                <NoForecastState />
+            )}
         </div>
     );
 }

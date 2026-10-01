@@ -7,6 +7,7 @@
 //   complexity     → "medium" (mean cyclomaticPerKloc 22 → >=15, <25)
 //   landscape      → "high"   (bus factor 1.8 → >=1.5, <2, higherIsBetter)
 //   cognitive-load → "low"    (avg interruption load 6 → <8)
+//   investment     → "neutral" (leading theme Feature Delivery, 42% of the mix)
 //
 // Bus factor previously short-circuited to `null` in test mode (CHAOS-2035: a
 // shared MSW `BusFactor` mock, reused by the /code ownership card, leaked an
@@ -19,6 +20,7 @@
 import type { ComplexityTimeseriesResult } from "@/lib/graphql/__generated__/types";
 import type { BusFactor } from "@/lib/graphql/types";
 import type { CognitiveLoadResult } from "@/lib/graphql/cognitiveLoadFetchers";
+import type { InvestmentResponse } from "@/lib/types";
 
 const SAMPLE_ORG_ID = "default-org";
 const SAMPLE_DATE = "2026-06-09";
@@ -101,4 +103,17 @@ export const SAMPLE_DIAGNOSE_COGNITIVE_LOAD: CognitiveLoadResult = {
             weekendCommitRatio: 0.04,
         },
     ],
+};
+
+/** Persisted theme mix for the Investment card in test mode (leading theme: Feature Delivery, 42%). */
+export const SAMPLE_DIAGNOSE_INVESTMENT: InvestmentResponse = {
+    theme_distribution: {
+        feature_delivery: 42,
+        maintenance: 24,
+        operational: 18,
+        quality: 10,
+        risk: 6,
+    },
+    subcategory_distribution: {},
+    unit: "units",
 };

@@ -25,9 +25,11 @@ import type { EChartsOption } from "echarts";
 import { LineChart } from "echarts/charts";
 
 import { Chart } from "@/components/charts/Chart";
+import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/chartConventions";
 import { TreemapChart } from "@/components/charts/TreemapChart";
 import type { TreemapNode } from "@/components/charts/TreemapChart";
 import { DataState } from "@/components/ui/DataState";
+import { Notice } from "@/components/ui/Notice";
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { formatNumber } from "@/lib/formatters";
@@ -74,6 +76,8 @@ export type ComplexityDashboardProps = {
     hotspotRows: HotspotRow[];
     /** Active in-page tab. Defaults to "overview". */
     activeTab?: ComplexityTab;
+    /** Days in the selected window; the Churn tab says so when it differs from its fixed 30 days. */
+    windowDays?: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -197,7 +201,7 @@ export function buildTreemapData(hotspotRows: HotspotRow[]): TreemapNode | null 
 
 type ChartTheme = ReturnType<typeof useChartTheme>;
 
-function buildTrendOption(
+export function buildTrendOption(
     points: ComplexityPoint[],
     chartTheme: ChartTheme,
     chartColors: string[],
@@ -233,24 +237,24 @@ function buildTrendOption(
         return {
             type: "line" as const,
             name: scopeName,
-            data: allDates.map((d) => dataByDate.get(d) ?? null),
+            // Per-item size and ring keep the legend glyph as it was (static series size, no series ring).
+            data: withPointSymbols(
+                allDates.map((d) => dataByDate.get(d) ?? null),
+                chartTheme,
+                { connectNulls: true },
+            ),
             smooth: true,
             symbol: "circle",
             symbolSize: 5,
-            lineStyle: { width: 2, color: chartColors[idx % chartColors.length] },
+            showAllSymbol: true,
+            lineStyle: { ...lineMark, color: chartColors[idx % chartColors.length] },
             itemStyle: { color: chartColors[idx % chartColors.length] },
             connectNulls: true,
         };
     });
 
     return {
-        tooltip: {
-            trigger: "axis",
-            confine: true,
-            backgroundColor: chartTheme.background,
-            borderColor: chartTheme.stroke,
-            textStyle: { color: chartTheme.text },
-        },
+        tooltip: buildTooltip(chartTheme, { crosshair: true }),
         legend: {
             show: true,
             bottom: 0,
@@ -676,6 +680,20 @@ function OwnershipRiskView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
     );
 }
 
+const CHURN_WINDOW_DAYS = 30;
+
+/** The churn and commit counts come from a fixed 30-day field, not from the page window. */
+function ChurnWindowNotice({ windowDays }: { windowDays?: number }) {
+    const differs = windowDays !== undefined && windowDays !== CHURN_WINDOW_DAYS;
+    return (
+        <Notice variant="info" live={false} data-testid="churn-window-notice">
+            <strong>Panel window: {CHURN_WINDOW_DAYS} days.</strong> Churn and commit counts use the
+            panel&apos;s source window
+            {differs ? `, even though the selected window is ${windowDays} days` : ""}.
+        </Notice>
+    );
+}
+
 function ChurnView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
     const ranked = useMemo(
         () => [...hotspotRows].sort((a, b) => b.churnLoc30d - a.churnLoc30d).slice(0, 20),
@@ -769,6 +787,7 @@ export function ComplexityDashboard({
     points,
     hotspotRows,
     activeTab = "overview",
+    windowDays,
 }: ComplexityDashboardProps) {
     const chartTheme = useChartTheme();
     const chartColors = useChartColors();
@@ -804,7 +823,10 @@ export function ComplexityDashboard({
             ) : activeTab === "ownership-risk" ? (
                 <OwnershipRiskView hotspotRows={hotspotRows} />
             ) : activeTab === "churn" ? (
-                <ChurnView hotspotRows={hotspotRows} />
+                <>
+                    <ChurnWindowNotice windowDays={windowDays} />
+                    <ChurnView hotspotRows={hotspotRows} />
+                </>
             ) : (
                 <OverviewView
                     points={points}

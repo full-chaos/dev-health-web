@@ -60,7 +60,7 @@ export default function MarketingHubPage() {
                     </p>
                     <h1 className="mt-6 font-(--font-display) text-4xl leading-tight sm:text-5xl">
                         Engineering intelligence,{" "}
-                        <span className="text-(--accent)">framed by your role</span>
+                        <span className="text-(--accent-text)">framed by your role</span>
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-(--ink-muted)">
                         Start with Context Fabric, then explore the operating questions and product
@@ -75,10 +75,10 @@ export default function MarketingHubPage() {
                     className="group grid gap-8 rounded-[2rem] border border-(--accent)/35 bg-(--accent)/10 p-8 transition hover:-translate-y-1 hover:border-(--accent)/60 sm:p-10 lg:grid-cols-[1fr_0.8fr] lg:items-center"
                 >
                     <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">
+                        <p className="text-xs uppercase tracking-[0.2em] text-(--accent-text)">
                             Product capability
                         </p>
-                        <h2 className="mt-4 font-(--font-display) text-3xl transition-colors group-hover:text-(--accent) sm:text-4xl">
+                        <h2 className="mt-4 font-(--font-display) text-3xl transition-colors group-hover:text-(--accent-text) sm:text-4xl">
                             Context Fabric
                         </h2>
                         <p className="mt-4 max-w-2xl text-sm leading-relaxed text-(--ink-muted)">
@@ -86,7 +86,7 @@ export default function MarketingHubPage() {
                             evidence so people and agents can understand what is actually
                             happening—not just what one tracker says.
                         </p>
-                        <p className="mt-6 inline-flex items-center gap-1 text-sm font-medium text-(--accent)">
+                        <p className="mt-6 inline-flex items-center gap-1 text-sm font-medium text-(--accent-text)">
                             {CTA_LABELS.viewAskDevDocs}
                             <span aria-hidden="true">→</span>
                         </p>
@@ -117,10 +117,10 @@ export default function MarketingHubPage() {
                             href={`/marketing/${buyer.slug}`}
                             className="group block rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 transition hover:-translate-y-1 hover:border-(--accent)/50"
                         >
-                            <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">
+                            <p className="text-xs uppercase tracking-[0.2em] text-(--accent-text)">
                                 {buyer.eyebrow}
                             </p>
-                            <h2 className="mt-4 font-(--font-display) text-2xl transition-colors group-hover:text-(--accent)">
+                            <h2 className="mt-4 font-(--font-display) text-2xl transition-colors group-hover:text-(--accent-text)">
                                 {buyer.title}
                             </h2>
                             <p className="mt-4 text-sm leading-relaxed text-(--ink-muted)">
@@ -129,7 +129,7 @@ export default function MarketingHubPage() {
                             <p className="mt-6 text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                                 {buyer.surfaces}
                             </p>
-                            <p className="mt-6 inline-flex items-center gap-1 text-sm font-medium text-(--accent)">
+                            <p className="mt-6 inline-flex items-center gap-1 text-sm font-medium text-(--accent-text)">
                                 Read the narrative
                                 <span aria-hidden="true">→</span>
                             </p>
@@ -150,7 +150,7 @@ export default function MarketingHubPage() {
                         No per-person scoring. No leaderboards. Individual views are for
                         self-reflection only. Every metric traces to evidence you can inspect.
                     </p>
-                    <p className="mx-auto mt-8 max-w-2xl text-center text-xs uppercase tracking-[0.2em] text-(--accent)">
+                    <p className="mx-auto mt-8 max-w-2xl text-center text-xs uppercase tracking-[0.2em] text-(--accent-text)">
                         Learning, not judgment.
                     </p>
                 </div>

@@ -34,7 +34,7 @@ export default async function OrgDetailPage({ params }: PageProps) {
                 description="Users who are members of this organization."
             >
                 {membersError ? (
-                    <div className="text-red-500">Error loading members: {membersError}</div>
+                    <div className="text-(--negative)">Error loading members: {membersError}</div>
                 ) : (
                     <div className="overflow-x-auto rounded-lg border border-(--card-stroke)">
                         <table className="w-full text-left text-sm">

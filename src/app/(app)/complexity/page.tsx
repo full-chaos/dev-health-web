@@ -208,6 +208,7 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
                     points={points}
                     hotspotRows={hotspotRows}
                     activeTab={activeTab as ComplexityTab}
+                    windowDays={filters.time.range_days}
                 />
             )}
         </div>

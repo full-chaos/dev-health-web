@@ -15,7 +15,10 @@ import type { MetricDelta, ReworkThemeAllocation } from "@/lib/types";
 import { useWorkUnitTeamAttributions } from "@/lib/graphql/hooks";
 import { type InvestmentTab } from "./investment/types";
 import { useInvestmentData } from "./investment/useInvestmentData";
+import { ClassificationTable } from "./investment/ClassificationTable";
 import { InvestmentExplainer } from "./investment/InvestmentExplainer";
+import { ReadWithContextCard } from "./investment/ReadWithContextCard";
+import { withFilterParam } from "@/lib/filters/url";
 import { InvestmentCharts } from "./investment/InvestmentCharts";
 import { InvestmentEvidenceTable } from "./investment/InvestmentEvidenceTable";
 import { AllocationCoverage } from "./investment/AllocationCoverage";
@@ -36,66 +39,79 @@ type InvestmentViewProps = {
 
 // ── Sub-sections (render helpers) ────────────────────────────────────────────
 
-/** The two <details> explainer cards. */
+/**
+ * One "How to read this" disclosure holding the two guidance texts (kept word for word):
+ * what the view represents, and how to read the visuals.
+ */
 function ExplainerCards() {
     return (
-        <div className="grid gap-4 lg:grid-cols-2">
-            <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4">
-                <summary className="cursor-pointer list-none font-(--font-display) text-base">
-                    What this investment view represents
-                </summary>
-                <div className="mt-2">
-                    <p className="text-sm text-(--ink-muted)">
-                        These views show investment intent inferred from connected work activity
-                        across issues, pull requests, commits, and files.
-                    </p>
-                    <p className="mt-2 text-sm text-(--ink-muted)">
-                        Investment reflects how work appears to be aimed, based on text-first intent
-                        plus structural and contextual corroboration. It is not a label, a verdict,
-                        or an assessment of people.
-                    </p>
-                    <p className="mt-2 text-sm text-(--ink-muted)">
-                        Because real work is messy, investment views are shown with evidence quality
-                        and uncertainty rather than as fixed categories.
-                    </p>
-                    <ul className="mt-3 space-y-2 text-sm text-(--ink-muted)">
-                        <li>Investment describes effort allocation, not individual performance.</li>
-                        <li>
-                            Categories are probabilistic, not exclusive. Work can span multiple
-                            categories at once.
-                        </li>
-                        <li>Evidence quality reflects corroboration strength, not correctness.</li>
-                        <li>
-                            Low evidence quality indicates mixed or incomplete evidence, not bad
-                            data.
-                        </li>
-                    </ul>
-                    <p className="mt-3 text-xs text-(--ink-muted)">
-                        These views do not assign intent, measure productivity, or evaluate
-                        individuals.
-                    </p>
+        <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4">
+            <summary className="cursor-pointer list-none font-(--font-display) text-base">
+                How to read this
+            </summary>
+            <div className="mt-3 grid gap-6 lg:grid-cols-2">
+                <div>
+                    <h4 className="font-(--font-display) text-base">
+                        What this investment view represents
+                    </h4>
+                    <div className="mt-2">
+                        <p className="text-sm text-(--ink-muted)">
+                            These views show investment intent inferred from connected work activity
+                            across issues, pull requests, commits, and files.
+                        </p>
+                        <p className="mt-2 text-sm text-(--ink-muted)">
+                            Investment reflects how work appears to be aimed, based on text-first
+                            intent plus structural and contextual corroboration. It is not a label,
+                            a verdict, or an assessment of people.
+                        </p>
+                        <p className="mt-2 text-sm text-(--ink-muted)">
+                            Because real work is messy, investment views are shown with evidence
+                            quality and uncertainty rather than as fixed categories.
+                        </p>
+                        <ul className="mt-3 space-y-2 text-sm text-(--ink-muted)">
+                            <li>
+                                Investment describes effort allocation, not individual performance.
+                            </li>
+                            <li>
+                                Categories are probabilistic, not exclusive. Work can span multiple
+                                categories at once.
+                            </li>
+                            <li>
+                                Evidence quality reflects corroboration strength, not correctness.
+                            </li>
+                            <li>
+                                Low evidence quality indicates mixed or incomplete evidence, not bad
+                                data.
+                            </li>
+                        </ul>
+                        <p className="mt-3 text-xs text-(--ink-muted)">
+                            These views do not assign intent, measure productivity, or evaluate
+                            individuals.
+                        </p>
+                    </div>
                 </div>
-            </details>
-            <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-4">
-                <summary className="cursor-pointer list-none font-(--font-display) text-base">
-                    How to read the visuals
-                </summary>
-                <div className="mt-2">
-                    <ul className="space-y-2 text-sm text-(--ink-muted)">
-                        <li>Size represents effort associated with a theme or subcategory.</li>
-                        <li>Color indicates which theme or subcategory the work leans toward.</li>
-                        <li>Opacity represents evidence quality for the interpretation.</li>
-                        <li>
-                            Flows show how effort appears to move from teams into themes and repos.
-                        </li>
-                        <li>
-                            Use the investment mix chart to drill from themes into subcategories and
-                            evidence.
-                        </li>
-                    </ul>
+                <div>
+                    <h4 className="font-(--font-display) text-base">How to read the visuals</h4>
+                    <div className="mt-2">
+                        <ul className="space-y-2 text-sm text-(--ink-muted)">
+                            <li>Size represents effort associated with a theme or subcategory.</li>
+                            <li>
+                                Color indicates which theme or subcategory the work leans toward.
+                            </li>
+                            <li>Opacity represents evidence quality for the interpretation.</li>
+                            <li>
+                                Flows show how effort appears to move from teams into themes and
+                                repos.
+                            </li>
+                            <li>
+                                Use the investment mix chart to drill from themes into subcategories
+                                and evidence.
+                            </li>
+                        </ul>
+                    </div>
                 </div>
-            </details>
-        </div>
+            </div>
+        </details>
     );
 }
 
@@ -488,13 +504,37 @@ export function InvestmentView({
     return (
         <section className="flex flex-col gap-6">
             <ExplainerCards />
-            <InvestmentExplainer
-                mixExplanation={data.mixExplanation}
-                mixExplainKey={data.mixExplainKey}
-                isExplainingMix={data.isExplainingMix}
-                onRegenerate={data.regenerateMixExplanation}
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(18rem,1fr)] xl:items-start">
+                <InvestmentCharts {...sharedChartProps} section="mix" />
+                <ReadWithContextCard
+                    mixExplanation={data.mixExplanation}
+                    mixExplainKey={data.mixExplainKey}
+                    teamCategoryFlow={data.teamCategoryFlow}
+                    repoTeamFlow={data.repoTeamFlow}
+                    isCoverageLoading={data.isCategoryFlowLoading}
+                    confidenceHref={withFilterParam(
+                        "/investment?tab=confidence",
+                        filters,
+                        activeRole,
+                    )}
+                >
+                    <InvestmentExplainer
+                        embedded
+                        mixExplanation={data.mixExplanation}
+                        mixExplainKey={data.mixExplainKey}
+                        isExplainingMix={data.isExplainingMix}
+                        onRegenerate={data.regenerateMixExplanation}
+                    />
+                </ReadWithContextCard>
+            </div>
+            <ClassificationTable
+                investmentMix={data.investmentMix}
+                focusTheme={data.focusTheme}
+                onThemeClickAction={(themeKey) =>
+                    data.setFocusTheme(data.focusTheme === themeKey ? null : themeKey)
+                }
+                evidenceHref={withFilterParam("/investment?tab=evidence", filters, activeRole)}
             />
-            <InvestmentCharts {...sharedChartProps} section="mix" />
         </section>
     );
 }

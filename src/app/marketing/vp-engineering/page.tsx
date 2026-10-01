@@ -152,7 +152,7 @@ export default function VPEngineeringPage() {
                         For VP Engineering
                     </p>
                     <h1 className="mt-6 font-(--font-display) text-4xl leading-tight sm:text-5xl lg:text-6xl">
-                        Where is delivery <span className="text-(--accent)">constrained</span>?
+                        Where is delivery <span className="text-(--accent-text)">constrained</span>?
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-(--ink-muted)">
                         Know where delivery is constrained before it becomes a miss.
@@ -190,7 +190,7 @@ export default function VPEngineeringPage() {
                             <>
                                 <div className="flex items-center justify-between gap-3">
                                     <div className="flex items-center gap-3">
-                                        <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
+                                        <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent-text)">
                                             {surface.icon}
                                         </div>
                                         <p className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -292,7 +292,7 @@ export default function VPEngineeringPage() {
                         ))}
                     </ul>
 
-                    <p className="mx-auto mt-10 max-w-2xl text-center text-xs uppercase tracking-[0.2em] text-(--accent)">
+                    <p className="mx-auto mt-10 max-w-2xl text-center text-xs uppercase tracking-[0.2em] text-(--accent-text)">
                         Learning, not judgment.
                     </p>
                 </div>

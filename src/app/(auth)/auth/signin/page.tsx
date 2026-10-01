@@ -39,7 +39,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Searc
     return (
         <div className="flex min-h-screen flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8 bg-[var(--background)]">
             {justRegistered && (
-                <div className="mb-4 w-full max-w-md p-3 text-sm text-green-400 bg-green-950/50 rounded-md border border-green-800 text-center">
+                <div className="mb-4 w-full max-w-md p-3 text-sm text-(--positive) bg-(--positive)/12 rounded-md border border-(--positive)/30 text-center">
                     Account created successfully. Please sign in.
                 </div>
             )}

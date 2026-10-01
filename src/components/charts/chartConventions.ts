@@ -67,7 +67,10 @@ const hasValue = (value: unknown) => value !== null && value !== undefined;
  * which a line could not show. Every other point has no symbol; hover still reads it through
  * the crosshair and tooltip.
  */
-export const visibleSymbolIndexes = (values: ReadonlyArray<unknown>): Set<number> => {
+export const visibleSymbolIndexes = (
+    values: ReadonlyArray<unknown>,
+    options: { connectNulls?: boolean } = {},
+): Set<number> => {
     const shown = new Set<number>();
     let last = -1;
     values.forEach((value, index) => {
@@ -75,6 +78,10 @@ export const visibleSymbolIndexes = (values: ReadonlyArray<unknown>): Set<number
             return;
         }
         last = index;
+        // With `connectNulls` the line bridges a gap, so a point between gaps is not isolated.
+        if (options.connectNulls) {
+            return;
+        }
         const before = index > 0 && hasValue(values[index - 1]);
         const after = index < values.length - 1 && hasValue(values[index + 1]);
         if (!before && !after) {
@@ -102,8 +109,9 @@ export const pointSymbolSize = (values: ReadonlyArray<unknown>) => {
 export const withPointSymbols = <T extends number | null | undefined>(
     values: ReadonlyArray<T>,
     theme: ChartTheme,
+    options: { connectNulls?: boolean } = {},
 ) => {
-    const shown = visibleSymbolIndexes(values);
+    const shown = visibleSymbolIndexes(values, options);
     return values.map((value, index) =>
         shown.has(index)
             ? { value, symbolSize: END_DOT_SIZE, itemStyle: dotRing(theme) }

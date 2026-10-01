@@ -15,6 +15,7 @@ import {
     computeKpis,
     computeRisingAreas,
     buildTreemapData,
+    buildTrendOption,
     type ComplexityPoint,
     type HotspotRow,
 } from "./ComplexityDashboard";
@@ -354,6 +355,62 @@ describe("ComplexityDashboard", () => {
     });
 
     // --- Churn tab ---
+    it("tells the churn window is 30 days and names the selected window when it differs", () => {
+        const hotspots = [makeHotspot("a.py", 0.8, { churnLoc30d: 500 })];
+        render(
+            <ComplexityDashboard
+                {...baseProps}
+                hotspotRows={hotspots}
+                activeTab="churn"
+                windowDays={14}
+            />,
+        );
+        const notice = screen.getByTestId("churn-window-notice");
+        expect(notice).toHaveTextContent("Panel window: 30 days.");
+        expect(notice).toHaveTextContent("even though the selected window is 14 days");
+    });
+
+    it("says only the 30-day window when the selected window is also 30 days or unknown", () => {
+        const hotspots = [makeHotspot("a.py", 0.8, { churnLoc30d: 500 })];
+        const { unmount } = render(
+            <ComplexityDashboard
+                {...baseProps}
+                hotspotRows={hotspots}
+                activeTab="churn"
+                windowDays={30}
+            />,
+        );
+        expect(screen.getByTestId("churn-window-notice")).not.toHaveTextContent("even though");
+        unmount();
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="churn" />);
+        expect(screen.getByTestId("churn-window-notice")).not.toHaveTextContent("even though");
+    });
+
+    it("shows the notice with the empty churn state too, and on no other tab", () => {
+        const { unmount } = render(
+            <ComplexityDashboard
+                {...baseProps}
+                points={[makePoint("r1", "2026-01-08")]}
+                activeTab="churn"
+                windowDays={7}
+            />,
+        );
+        expect(screen.getByTestId("churn-window-notice")).toBeInTheDocument();
+        unmount();
+        for (const tab of ["overview", "hotspots", "ownership-risk"] as const) {
+            const r = render(
+                <ComplexityDashboard
+                    {...baseProps}
+                    hotspotRows={[makeHotspot("a.py", 0.8)]}
+                    activeTab={tab}
+                    windowDays={14}
+                />,
+            );
+            expect(screen.queryByTestId("churn-window-notice")).toBeNull();
+            r.unmount();
+        }
+    });
+
     it("ranks files by churn on the churn tab", () => {
         const hotspots = [
             makeHotspot("a.py", 0.8, { churnLoc30d: 500 }),
@@ -373,5 +430,84 @@ describe("ComplexityDashboard", () => {
         render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="churn" />);
         expect(screen.queryByTestId("churn-panel")).not.toBeInTheDocument();
         expect(screen.getByTestId("churn-panel-empty")).toBeInTheDocument();
+    });
+});
+
+describe("buildTrendOption conventions", () => {
+    const theme = {
+        background: "#fff",
+        stroke: "#eee",
+        text: "#000",
+        muted: "#888",
+        grid: "#ddd",
+    } as never;
+    const colors = ["#3b82f6", "#10b981", "#f59e0b"];
+    const pts = [
+        makePoint("r1", "2026-01-01", { cyclomaticPerKloc: 5 }),
+        makePoint("r1", "2026-01-03", { cyclomaticPerKloc: 6 }),
+        makePoint("r1", "2026-01-04", { cyclomaticPerKloc: 7 }),
+        makePoint("r2", "2026-01-01", { cyclomaticPerKloc: 2 }),
+        makePoint("r2", "2026-01-02", { cyclomaticPerKloc: 3 }),
+    ];
+    type S = {
+        name: string;
+        symbolSize: number;
+        showAllSymbol: boolean;
+        connectNulls: boolean;
+        smooth: boolean;
+        itemStyle: { color: string };
+        lineStyle: { width: number; cap: string; join: string; color: string };
+        data: Array<{
+            value: number | null;
+            symbolSize: number;
+            itemStyle?: { borderWidth: number };
+        }>;
+    };
+    const opt = () =>
+        buildTrendOption(pts, theme, colors) as unknown as {
+            tooltip: {
+                axisPointer: {
+                    type: string;
+                    lineStyle: { color: string; width: number; type: string };
+                };
+            };
+            legend: { show: boolean };
+            series: S[];
+        };
+
+    it("uses the shared tooltip with a muted 1px solid crosshair", () => {
+        expect(opt().tooltip.axisPointer).toEqual({
+            type: "line",
+            lineStyle: { color: "#888", width: 1, type: "solid" },
+        });
+    });
+
+    it("draws a dot only on the last value, bridging the gap (connectNulls)", () => {
+        const [r1, r2] = opt().series;
+        // r1 has a null on 01-02: dates are 01,02,03,04 -> values 5,null,6,7
+        expect(r1.data.map((d) => d.value)).toEqual([5, null, 6, 7]);
+        expect(r1.data.map((d) => d.symbolSize)).toEqual([0, 0, 0, 8]);
+        expect(r1.data[3].itemStyle?.borderWidth).toBe(2);
+        expect(r2.data.map((d) => d.symbolSize)).toEqual(
+            [0, 0, 0, 0].map((_, i) => (i === 1 ? 8 : 0)),
+        );
+    });
+
+    it("keeps the legend glyph, colors, smoothing and bridging as before", () => {
+        const o = opt();
+        expect(o.legend.show).toBe(true);
+        o.series.forEach((s, i) => {
+            expect(s.symbolSize).toBe(5);
+            expect(s.showAllSymbol).toBe(true);
+            expect(s.connectNulls).toBe(true);
+            expect(s.smooth).toBe(true);
+            expect(s.itemStyle.color).toBe(colors[i]);
+            expect(s.lineStyle).toEqual({
+                width: 2,
+                cap: "round",
+                join: "round",
+                color: colors[i],
+            });
+        });
     });
 });
