@@ -150,9 +150,9 @@ describe("/metrics today", () => {
         barSpy.mockClear();
     });
 
-    it("header: title, subtitle and the investigate line", async () => {
+    it("header: title Flow, subtitle and the investigate line", async () => {
         await renderTab("flow");
-        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Monitoring view");
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Flow");
         expect(screen.getByText("Trends over the selected window.")).toBeInTheDocument();
         expect(screen.getByText("Open a metric to investigate.")).toBeInTheDocument();
     });
@@ -199,18 +199,31 @@ describe("/metrics today", () => {
         }
     });
 
-    it("monitoring strip: eyebrow, tab description, Open evidence for the highlight metric, one chip per metric", async () => {
+    it("tab description under the tabs; Open evidence (highlight metric) above the tiles; no chip row, no strip eyebrow", async () => {
         await renderTab("flow");
-        expect(screen.getByText("Flow monitoring")).toBeInTheDocument();
         expect(screen.getByText("From idea to merge.")).toBeInTheDocument();
+        expect(screen.queryByText("Flow monitoring")).toBeNull();
         const open = screen.getAllByRole("link", { name: "Open evidence" })[0];
         expect(open.getAttribute("href")).toContain("metric=cycle_time");
-        for (const label of ["Cycle Time", "Review Latency", "Throughput", "WIP Saturation"]) {
-            const chip = screen
-                .getAllByRole("link", { name: label })
-                .find((l) => l.className.includes("rounded-full"));
-            expect(chip).toBeDefined();
-        }
+        expect(open.getAttribute("title")).toBe("Open evidence for Cycle Time");
+        // the chips were links with these labels in a rounded-full pill: none is left
+        const pills = screen
+            .queryAllByRole("link")
+            .filter((l) => l.className.includes("rounded-full"));
+        expect(pills).toHaveLength(0);
+    });
+
+    it("description sits after the tab row and before the tiles", async () => {
+        await renderTab("flow");
+        const tabs = screen.getByRole("navigation", { name: "Metrics views" });
+        const description = screen.getByText("From idea to merge.");
+        const tiles = screen.getByTestId("metric-tiles");
+        expect(
+            tabs.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(
+            description.compareDocumentPosition(tiles) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
     });
 
     it("Likely associations and Primary contributors: bars of |delta|, link rows, signed delta", async () => {
@@ -233,6 +246,11 @@ describe("/metrics today", () => {
         const rows = within(table).getAllByRole("row").slice(1);
         expect(rows).toHaveLength(4);
         expect(rows[0]).toHaveTextContent("Cycle Time");
+        expect(rows[0]).toHaveTextContent("4.2d");
+        expect(rows[0]).toHaveTextContent("-12%");
         expect(rows[0]).toHaveTextContent("Open evidence");
+        for (const link of within(rows[0]).getAllByRole("link")) {
+            expect(link.getAttribute("href")).toContain("metric=cycle_time");
+        }
     });
 });

@@ -86,11 +86,11 @@ describe("/explore today", () => {
         expect(screen.getByText(/^Range: \d+d$/)).toBeInTheDocument();
     });
 
-    it("has the Debug filters block today (the page pass removes it)", async () => {
+    it("the Debug filters block is gone", async () => {
         const { container } = await renderExplore();
-        const summary = screen.getByText("Debug filters");
-        expect(summary.closest("details")).not.toBeNull();
-        expect(container.querySelector("pre")?.textContent).toContain('"scope"');
+        expect(screen.queryByText("Debug filters")).toBeNull();
+        expect(container.querySelector("details")).toBeNull();
+        expect(container.querySelector("pre")).toBeNull();
     });
 
     it("Snapshot card: value, delta against the previous window and the scope note", async () => {
@@ -130,5 +130,22 @@ describe("/explore today", () => {
             contributors: [],
             drilldown_links: {},
         };
+    });
+
+    it("Read the signal sits before the Context card on the explain view", async () => {
+        await renderExplore();
+        const signal = screen.getByTestId("read-the-signal");
+        expect(signal).toHaveTextContent("Cycle Time appears down");
+        expect(signal).toHaveTextContent("shows 4.2d and a -12% change over the selected window");
+        const context = screen.getByText("Context").closest("section")!;
+        expect(
+            signal.compareDocumentPosition(context) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
+    it("no Read the signal card on the drilldown view (no metric snapshot there)", async () => {
+        await renderExplore({ api: "/api/v1/drilldown/prs" });
+        expect(screen.queryByTestId("read-the-signal")).toBeNull();
+        expect(screen.getByText("Context")).toBeInTheDocument();
     });
 });
