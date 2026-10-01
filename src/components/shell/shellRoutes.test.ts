@@ -4,7 +4,11 @@ import { SHELL_ROUTES, isShellRoute, shellRouteForPathname } from "./shellRoutes
 
 describe("shell route registry", () => {
     it("registers the Cockpit and the migrated Diagnose routes", () => {
-        expect(SHELL_ROUTES.map((route) => route.prefix)).toEqual(["/dashboard", "/diagnose"]);
+        expect(SHELL_ROUTES.map((route) => route.prefix)).toEqual([
+            "/dashboard",
+            "/diagnose",
+            "/diagnose/work-graph",
+        ]);
     });
 
     it("matches an exact route only on its own path", () => {
