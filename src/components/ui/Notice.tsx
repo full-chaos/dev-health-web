@@ -46,6 +46,12 @@ const VARIANTS: Record<
     },
 };
 
+const STRONG: Record<NoticeVariant, string> = {
+    info: "border-transparent bg-(--info) text-black",
+    warn: "border-transparent bg-(--caution) text-black",
+    good: "border-transparent bg-(--positive) text-black",
+};
+
 export type NoticeProps = Omit<ComponentPropsWithoutRef<"div">, "title" | "role"> & {
     variant?: NoticeVariant;
     title?: ReactNode;
@@ -58,6 +64,8 @@ export type NoticeProps = Omit<ComponentPropsWithoutRef<"div">, "title" | "role"
     dismissLabel?: string;
     /** `true` (default): `role="status"` + `aria-live="polite"`. `false`: no live region. */
     live?: boolean;
+    /** `strong`: solid status fill for security-relevant strips (for example impersonation). */
+    emphasis?: "default" | "strong";
 };
 
 export function Notice({
@@ -68,16 +76,21 @@ export function Notice({
     onDismiss,
     dismissLabel = CTA_LABELS.dismiss,
     live = true,
+    emphasis = "default",
     className = "",
     children,
     ...rest
 }: NoticeProps) {
-    const { label, Icon, surface, accent } = VARIANTS[variant];
+    const base = VARIANTS[variant];
+    const { label, Icon } = base;
+    const strong = emphasis === "strong";
+    const surface = strong ? STRONG[variant] : base.surface;
+    const accent = strong ? "text-current" : base.accent;
     return (
         <div
             {...(live ? { role: "status", "aria-live": "polite" as const } : {})}
             data-notice-variant={variant}
-            className={`flex items-start gap-3 rounded-md border px-4 py-3 text-sm text-foreground ${surface} ${className}`}
+            className={`flex items-start gap-3 rounded-md border px-4 py-3 text-sm ${strong ? "" : "text-foreground"} ${surface} ${className}`}
             {...rest}
         >
             <Icon aria-hidden="true" className={`mt-0.5 h-4 w-4 shrink-0 ${accent}`} />
@@ -85,7 +98,7 @@ export function Notice({
                 <span className="sr-only">{label}: </span>
                 {title ? <TitleTag className={`font-semibold ${accent}`}>{title}</TitleTag> : null}
                 {children ? (
-                    <div className={title ? "mt-1 text-(--ink-muted)" : "text-(--ink-muted)"}>
+                    <div className={`${title ? "mt-1 " : ""}${strong ? "" : "text-(--ink-muted)"}`}>
                         {children}
                     </div>
                 ) : null}

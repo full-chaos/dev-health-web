@@ -60,4 +60,13 @@ describe("Notice", () => {
         );
         expect(screen.getByRole("heading", { level: 2, name: "T" })).toBeInTheDocument();
     });
+
+    it("strong emphasis fills solid with the variant color", () => {
+        const { container } = render(
+            <Notice variant="warn" emphasis="strong" live={false}>
+                x
+            </Notice>,
+        );
+        expect(container.firstChild).toHaveClass("bg-(--caution)");
+    });
 });

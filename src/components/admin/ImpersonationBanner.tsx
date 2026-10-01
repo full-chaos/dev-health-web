@@ -79,13 +79,14 @@ export function ImpersonationBanner() {
         <Notice
             variant="warn"
             live={false}
+            emphasis="strong"
             className="relative z-[100] w-full rounded-none border-x-0 border-t-0"
             title={`Viewing as ${session.user.impersonated_email || session.user.impersonated_user_id}`}
             action={
                 <button
                     type="button"
                     onClick={handleStopImpersonation}
-                    className="rounded border border-(--card-stroke) bg-(--card) px-3 py-1 text-sm font-semibold text-foreground transition-colors hover:bg-(--surface-raised)"
+                    className="rounded bg-black/10 px-3 py-1 text-sm font-semibold text-black transition-colors hover:bg-black/20"
                 >
                     {CTA_LABELS.stopImpersonating}
                 </button>
