@@ -366,6 +366,26 @@ describe("ScopeBar — People view", () => {
         expect(scopeBarUrl.lastParams().get("f")).toBe(DEFAULT_F);
     });
 
+    it("keeps the Developer menu in the row, where the People filter bar had it", async () => {
+        const user = userEvent.setup();
+        render(<ScopeBarClient {...PEOPLE} />);
+
+        await user.click(within(row()).getByRole("button", { name: /^Developer/ }));
+        await user.click(screen.getByRole("checkbox", { name: "ana@example.com" }));
+
+        expect(scopeBarUrl.lastFilter().who.developers).toEqual(["ana@example.com"]);
+        // The choice is visible as a pill, and it can be cleared there.
+        await user.click(screen.getByRole("button", { name: "Remove Dev filter" }));
+        expect(scopeBarUrl.lastFilter().who.developers).toEqual([]);
+    });
+
+    it("keeps the page filter menus out of the row on a view that has the drawer", () => {
+        renderBar();
+
+        expect(within(row()).queryByRole("button", { name: /^Developer/ })).toBeNull();
+        expect(within(row()).queryByRole("button", { name: /^Work/ })).toBeNull();
+    });
+
     it("has no person search on another view", () => {
         renderBar();
 
