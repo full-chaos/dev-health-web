@@ -369,6 +369,14 @@ describe("PopulationNotice", () => {
         );
     });
 
+    it("says '1 open item' in the singular", () => {
+        render(<PopulationNotice wipCount={1} estimateCoverage={coverage(2)} />);
+
+        expect(screen.getByTestId("population-notice")).toHaveTextContent(
+            "The WIP panel counts 1 open item and the estimate panel counts 2.",
+        );
+    });
+
     it("shows nothing when the two counts are equal, or when there is no estimate coverage", () => {
         const first = render(<PopulationNotice wipCount={51} estimateCoverage={coverage(51)} />);
         expect(screen.queryByTestId("population-notice")).toBeNull();

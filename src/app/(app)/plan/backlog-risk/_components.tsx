@@ -58,6 +58,9 @@ function formatCongestion(value: number) {
     return `${formatNumber(value, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}×`;
 }
 
+const openItems = (count: number) =>
+    `${formatNumber(count)} open ${count === 1 ? "item" : "items"}`;
+
 type EstimateCoverage = ThroughputForecast["estimateCoverage"];
 type StaleWip = ThroughputForecast["staleWip"];
 
@@ -291,7 +294,7 @@ export function PopulationNotice({
 
     return (
         <Notice variant="info" live={false} data-testid="population-notice">
-            The WIP panel counts {formatNumber(wipCount)} open items and the estimate panel counts{" "}
+            The WIP panel counts {openItems(wipCount)} and the estimate panel counts{" "}
             {formatNumber(estimateCoverage.backlogSize)}. The two populations are not reconciled.
         </Notice>
     );
