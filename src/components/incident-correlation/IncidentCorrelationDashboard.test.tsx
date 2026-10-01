@@ -15,6 +15,7 @@ import { describe, expect, it, vi } from "vitest";
 import { screen } from "@testing-library/react";
 
 import { render } from "@/test/utils";
+import { ShellOrganizationProvider } from "@/components/shell/ShellContext";
 import {
     buildSankeyData,
     IncidentCorrelationDashboard,
@@ -59,7 +60,11 @@ vi.mock("@/components/charts/TimeseriesChart", () => ({
 }));
 
 vi.mock("@/components/metrics/MetricCard", () => ({
-    MetricCard: ({ label }: { label: string }) => <div data-testid="metric-card">{label}</div>,
+    MetricCard: ({ label, caption }: { label: string; caption?: string }) => (
+        <div data-testid="metric-card" data-caption={caption ?? ""}>
+            {label}
+        </div>
+    ),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -621,6 +626,30 @@ describe("IncidentCorrelationDashboard", () => {
         expect(screen.getByText(/org-sentinel/)).toBeInTheDocument();
     });
 
+    it("shows the organization name, not the raw id, when the shell knows it", () => {
+        render(
+            <ShellOrganizationProvider
+                value={{ name: "Acme Corp", hasData: false, lastMetricsAt: null }}
+            >
+                <IncidentCorrelationDashboard {...baseProps} orgId="org-sentinel" />
+            </ShellOrganizationProvider>,
+        );
+        expect(screen.getByText("Acme Corp")).toBeInTheDocument();
+        expect(screen.queryByText(/org-sentinel/)).toBeNull();
+    });
+
+    it("keeps the sync command reachable behind How to connect, with the Connections link", () => {
+        render(<IncidentCorrelationDashboard {...baseProps} />);
+        const details = screen.getByText("How to connect").closest("details");
+        expect(details).not.toBeNull();
+        expect(details).toHaveTextContent("dev-hops sync git");
+        expect(details).toHaveTextContent("ensure incidents are linked in your provider");
+        expect(screen.getByRole("link", { name: "Check data connections" })).toHaveAttribute(
+            "href",
+            "/org/admin/sync",
+        );
+    });
+
     it("renders incident linkage table when edge data is present", () => {
         // LINKED_INCIDENT: dep-1 → inc-1 gives one incident row
         const incidents = [makeEdge("l1", "dep-1", "inc-1", "LINKED_INCIDENT")];
@@ -665,7 +694,24 @@ describe("IncidentCorrelationDashboard", () => {
                 incidentEdges={[]}
             />,
         );
-        expect(screen.getByTestId("empty-edges-state")).toBeInTheDocument();
+        const notice = screen.getByTestId("empty-edges-state");
+        expect(notice).toHaveAttribute("data-notice-variant", "info");
+        expect(notice).toHaveTextContent("No deployment-incident linkage found yet.");
+        expect(notice).toHaveTextContent("appear here after your connected provider sends");
+    });
+
+    it("does not repeat the metric label as the tile caption", () => {
+        const deltas = [
+            { metric: "change_failure_rate", label: "Change Failure Rate" },
+            { metric: "deployment_frequency", label: "Deployment Frequency" },
+            { metric: "mttr", label: "MTTR" },
+        ].map((m) => ({ ...m, value: 1, unit: "", delta_pct: 0, spark: [] }));
+        render(<IncidentCorrelationDashboard {...baseProps} deltas={deltas} />);
+        const cards = screen.getAllByTestId("metric-card");
+        expect(cards).toHaveLength(3);
+        for (const card of cards) {
+            expect(card).toHaveAttribute("data-caption", "");
+        }
     });
 
     it("renders MetricCard only for metrics present in deltas (no placeholders)", () => {

@@ -112,7 +112,7 @@ export function TeamTable({ teams, onDeleteAction }: TeamTableProps) {
                         <button
                             type="button"
                             onClick={() => onDeleteAction(team.team_id)}
-                            className="text-red-500 hover:underline"
+                            className="text-(--negative) hover:underline"
                         >
                             {CTA_LABELS.delete}
                         </button>

@@ -69,7 +69,7 @@ export function GitHubAppConnect({
             {result === "connected" && (
                 <div
                     role="status"
-                    className="rounded-lg border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-700"
+                    className="rounded-lg border border-(--positive)/30 bg-(--positive)/12 p-4 text-sm text-(--positive)"
                 >
                     GitHub App connected. Repositories will sync using the installation
                     automatically.
