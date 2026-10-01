@@ -44,26 +44,13 @@ export function HeatmapChart({
     const maxValue = rawValues.length ? Math.max(...rawValues) : 0;
     const scale = data.legend.scale;
 
-    // Cells with data get a step of the one-hue ramp. A cell with no data is a distinct
-    // neutral (the card surface), never the lightest step: missing is not zero.
-    const seen = new Set(data.cells.map((cell) => `${cell.x}\u0000${cell.y}`));
-    const seriesData: Array<{
-        value: [string, string, number | string, (number | string)?];
-        itemStyle: { color: string };
-    }> = data.cells.map((cell) => ({
+    // Cells with data get a step of the one-hue ramp. A position with no data is left
+    // unfilled (the card surface, shown as "No data" in the legend), never the lightest
+    // step: missing is not zero.
+    const seriesData = data.cells.map((cell) => ({
         value: [cell.x, cell.y, cell.value, cell.value],
         itemStyle: { color: rampColor(rampPosition(cell.value, minValue, maxValue, scale), seq) },
     }));
-    for (const x of data.axes.x) {
-        for (const y of data.axes.y) {
-            if (!seen.has(`${x}\u0000${y}`)) {
-                seriesData.push({
-                    value: [x, y, "-"],
-                    itemStyle: { color: chartTheme.background },
-                });
-            }
-        }
-    }
 
     const getValueArray = (params: unknown) => {
         const entry = Array.isArray(params) ? params[0] : params;
@@ -138,6 +125,14 @@ export function HeatmapChart({
                         axisTick: { show: false },
                         axisLine: { lineStyle: { color: chartTheme.grid } },
                         axisLabel: { color: chartTheme.muted },
+                    },
+                    // ECharts requires a visualMap for a heatmap. It is hidden: each cell's color is
+                    // set per item from the theme ramp, and the legend is HeatmapScaleLegend.
+                    visualMap: {
+                        show: false,
+                        min: minValue,
+                        max: maxValue,
+                        inRange: { color: [...seq] },
                     },
                     series: [
                         {

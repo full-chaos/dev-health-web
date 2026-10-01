@@ -224,6 +224,14 @@ export function TransitionHeatmapChart({
                 axisLine: { lineStyle: { color: chartTheme.grid } },
                 axisLabel: { color: chartTheme.muted, fontSize: 10 },
             },
+            // ECharts requires a visualMap for a heatmap. It is hidden: each cell's color is
+            // set per item from the theme ramp, and the legend is HeatmapScaleLegend.
+            visualMap: {
+                show: false,
+                min: minValue,
+                max: maxValue,
+                inRange: { color: [...seq] },
+            },
             series: [
                 {
                     type: "heatmap" as const,
@@ -253,7 +261,17 @@ export function TransitionHeatmapChart({
                 },
             ],
         }),
-        [fromStates, toStates, heatmapData, unit, chartTheme, outgoingTotals],
+        [
+            fromStates,
+            toStates,
+            heatmapData,
+            unit,
+            chartTheme,
+            outgoingTotals,
+            minValue,
+            maxValue,
+            seq,
+        ],
     );
 
     return (
