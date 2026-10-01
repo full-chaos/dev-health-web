@@ -1,4 +1,5 @@
-import { render, screen } from "@/test/utils";
+import { render, screen, within } from "@/test/utils";
+import { STATUS_PILL } from "@/lib/statusPill";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Session } from "next-auth";
 
@@ -35,13 +36,14 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import {
+    BacklogConditionCard,
+    BacklogTiles,
+    EstimateCoverageCard,
     ForecastContent,
     ForecastErrorState,
     NoForecastState,
-    StaleWipCard,
+    PopulationNotice,
     StatusBadge,
-    UnestimatedDebtCard,
-    WipCongestionCard,
 } from "./_components";
 import type { ThroughputForecast, ThroughputRiskOverlay } from "@/lib/graphql/types";
 import BacklogRiskPage from "./page";
@@ -115,86 +117,178 @@ beforeEach(() => {
 // ── StatusBadge ───────────────────────────────────────────────────────────────
 
 describe("StatusBadge", () => {
-    it("renders 'Elevated' when active", () => {
+    it("renders 'Elevated' as a caution pill with an icon when active", () => {
         render(<StatusBadge active={true} />);
-        expect(screen.getByText("Elevated")).toBeInTheDocument();
+        const pill = screen.getByText("Elevated").closest("span") as HTMLElement;
+        expect(pill.className).toContain(STATUS_PILL.caution);
+        expect(pill.querySelector("svg")).not.toBeNull();
     });
 
-    it("renders 'Normal' when not active", () => {
+    it("renders 'Normal' as a positive pill with an icon when not active", () => {
         render(<StatusBadge active={false} />);
-        expect(screen.getByText("Normal")).toBeInTheDocument();
+        const pill = screen.getByText("Normal").closest("span") as HTMLElement;
+        expect(pill.className).toContain(STATUS_PILL.positive);
+        expect(pill.querySelector("svg")).not.toBeNull();
     });
 });
 
-// ── WipCongestionCard ─────────────────────────────────────────────────────────
+// ── Tiles ─────────────────────────────────────────────────────────────────────
 
-describe("WipCongestionCard — ratio semantics", () => {
-    it("renders the congestion ratio as '×N.NN vs typical', never as a raw count", () => {
-        render(<WipCongestionCard overlay={makeWipOverlay({ value: 1.25 })} backlogSize={100} />);
-        expect(screen.getByText(/×1\.25 vs typical/i)).toBeInTheDocument();
+const tiles = (over: Partial<ThroughputForecast> = {}) => {
+    const f = makeForecast(over);
+    return render(
+        <BacklogTiles
+            overlay={f.wipCongestion}
+            staleWip={f.staleWip}
+            estimateCoverage={f.estimateCoverage}
+        />,
+    );
+};
+
+const tile = (id: string) => within(screen.getByTestId(id));
+
+describe("BacklogTiles", () => {
+    it("writes the congestion ratio as 'N.NN×' like /plan, with 'vs typical' and the threshold, never a raw count", () => {
+        tiles({ wipCongestion: makeWipOverlay({ value: 1.25, threshold: 1.25 }) });
+
+        expect(tile("tile-wip-congestion").getByText("1.25×")).toBeInTheDocument();
+        expect(
+            tile("tile-wip-congestion").getByText("vs typical · threshold 1.25×"),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/×1\.25/)).toBeNull();
     });
 
-    it("shows Elevated badge when overlay is active", () => {
-        render(<WipCongestionCard overlay={makeWipOverlay({ active: true })} backlogSize={100} />);
-        expect(screen.getByText("Elevated")).toBeInTheDocument();
-    });
+    it("shows Elevated or Normal as a pill in the congestion tile", () => {
+        const first = tiles({ wipCongestion: makeWipOverlay({ active: true }) });
+        expect(tile("tile-wip-congestion").getByText("Elevated")).toBeInTheDocument();
+        first.unmount();
 
-    it("shows Normal badge when overlay is not active", () => {
-        render(
-            <WipCongestionCard
-                overlay={makeWipOverlay({ value: 0.9, active: false })}
-                backlogSize={100}
-            />,
-        );
-        expect(screen.getByText("Normal")).toBeInTheDocument();
-    });
-
-    it("shows the real backlog count as 'Open Items'", () => {
-        render(<WipCongestionCard overlay={makeWipOverlay()} backlogSize={200} />);
-        expect(screen.getByText("200")).toBeInTheDocument();
-        expect(screen.getByText("Open Items")).toBeInTheDocument();
+        tiles({ wipCongestion: makeWipOverlay({ value: 0.9, active: false }) });
+        expect(tile("tile-wip-congestion").getByText("Normal")).toBeInTheDocument();
     });
 
     it("does not fabricate a WIP-vs-backlog percentage", () => {
-        render(<WipCongestionCard overlay={makeWipOverlay({ value: 1.25 })} backlogSize={100} />);
-        // The ratio 1.25 / 100 = 1.25% would be false — assert it is absent
+        tiles({ wipCongestion: makeWipOverlay({ value: 1.25 }) });
         expect(screen.queryByText(/1\.25%/)).not.toBeInTheDocument();
     });
 
-    it("handles backlogSize=0 without NaN or crash", () => {
-        expect(() =>
-            render(<WipCongestionCard overlay={makeWipOverlay()} backlogSize={0} />),
-        ).not.toThrow();
-        expect(screen.getByText("0")).toBeInTheDocument();
-    });
-});
+    it("renders WIP ages as ages, not counts: P90 and median", () => {
+        tiles({ staleWip: { p50AgeHours: 24, p90AgeHours: 96 } });
 
-describe("StaleWipCard", () => {
-    it("renders p90 WIP age as an age signal, not a count", () => {
-        render(<StaleWipCard staleWip={{ p50AgeHours: 24, p90AgeHours: 96 }} />);
-        expect(screen.getByText("4 days")).toBeInTheDocument();
-        expect(screen.getByText("90th percentile age of in-progress items")).toBeInTheDocument();
-        expect(screen.getByText("Median in-progress age: 1 day")).toBeInTheDocument();
+        expect(tile("tile-stale-wip").getByText("4 days")).toBeInTheDocument();
+        expect(
+            tile("tile-stale-wip").getByText("90th percentile age of in-progress items"),
+        ).toBeInTheDocument();
+        expect(tile("tile-median-wip-age").getByText("1 day")).toBeInTheDocument();
         expect(screen.queryByText(/items stuck/i)).not.toBeInTheDocument();
     });
 
     it("pluralizes rounded day labels from the displayed value", () => {
-        render(<StaleWipCard staleWip={{ p50AgeHours: null, p90AgeHours: 24.1 }} />);
+        tiles({ staleWip: { p50AgeHours: null, p90AgeHours: 24.1 } });
         expect(screen.getByText("1 day")).toBeInTheDocument();
         expect(screen.queryByText("1 days")).not.toBeInTheDocument();
     });
 
-    it("renders a genuine no-data state when WIP age is missing", () => {
-        render(<StaleWipCard staleWip={null} />);
+    it("shows a dash and 'No data' (never 0) when WIP age is missing", () => {
+        tiles({ staleWip: null });
+
+        for (const id of ["tile-stale-wip", "tile-median-wip-age"]) {
+            expect(tile(id).getByText("—")).toBeInTheDocument();
+            expect(tile(id).getByText("No data")).toBeInTheDocument();
+        }
+    });
+
+    it("shows the unestimated count and the coverage in the fourth tile", () => {
+        tiles();
+
+        expect(tile("tile-unestimated").getByText("28 items")).toBeInTheDocument();
+        expect(tile("tile-unestimated").getByText("72% estimate coverage")).toBeInTheDocument();
+    });
+
+    it("shows a real 0 and 'No open backlog' for a connected, empty backlog, without 0%", () => {
+        tiles({
+            estimateCoverage: {
+                ratio: null,
+                estimatedCount: 0,
+                unestimatedCount: 0,
+                backlogSize: 0,
+            },
+        });
+
+        expect(tile("tile-unestimated").getByText("0")).toBeInTheDocument();
+        expect(tile("tile-unestimated").getByText("No open backlog")).toBeInTheDocument();
+        expect(screen.queryByText(/0%/)).toBeNull();
+    });
+
+    it("shows a dash and 'No data' when estimate coverage is missing or not computed", () => {
+        const first = tiles({ estimateCoverage: null });
+        expect(tile("tile-unestimated").getByText("—")).toBeInTheDocument();
+        expect(tile("tile-unestimated").getByText("No data")).toBeInTheDocument();
+        first.unmount();
+
+        tiles({
+            estimateCoverage: {
+                ratio: null,
+                estimatedCount: 0,
+                unestimatedCount: 5,
+                backlogSize: 5,
+            },
+        });
+        expect(tile("tile-unestimated").getByText("—")).toBeInTheDocument();
+        expect(tile("tile-unestimated").getByText("No data")).toBeInTheDocument();
+    });
+});
+
+// ── Backlog condition ─────────────────────────────────────────────────────────
+
+describe("BacklogConditionCard", () => {
+    it("shows the real backlog count as 'Open items · WIP panel', and handles 0 without NaN", () => {
+        const first = render(
+            <BacklogConditionCard overlay={makeWipOverlay()} backlogSize={200} staleWip={null} />,
+        );
+        expect(screen.getByText("Open items · WIP panel")).toBeInTheDocument();
+        expect(screen.getByText("200")).toBeInTheDocument();
+        first.unmount();
+
+        render(<BacklogConditionCard overlay={makeWipOverlay()} backlogSize={0} staleWip={null} />);
+        expect(screen.getByText("0")).toBeInTheDocument();
+        expect(screen.queryByText(/NaN/)).toBeNull();
+    });
+
+    it("keeps the threshold sentence and the note that panels are not one status", () => {
+        render(
+            <BacklogConditionCard
+                overlay={makeWipOverlay({ threshold: 1.25 })}
+                backlogSize={10}
+                staleWip={{ p50AgeHours: 24, p90AgeHours: 96 }}
+            />,
+        );
+
+        expect(
+            screen.getByText(/Threshold 1\.25× — ratio of current WIP to recent average/),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/do not flatten the panels into one status/)).toBeInTheDocument();
+        expect(screen.getByText("P90 work age")).toBeInTheDocument();
+        expect(screen.getByText("Median work age")).toBeInTheDocument();
+    });
+
+    it("renders a genuine no-data state when WIP age is missing, and no age rows", () => {
+        render(
+            <BacklogConditionCard overlay={makeWipOverlay()} backlogSize={10} staleWip={null} />,
+        );
+
         expect(screen.getByText("WIP age unavailable")).toBeInTheDocument();
+        expect(screen.queryByText("P90 work age")).toBeNull();
         expect(screen.queryByText("WIP age not yet connected")).not.toBeInTheDocument();
     });
 });
 
-describe("UnestimatedDebtCard", () => {
+// ── Estimate coverage ─────────────────────────────────────────────────────────
+
+describe("EstimateCoverageCard", () => {
     it("renders populated estimate coverage from the frozen GraphQL response", () => {
         render(
-            <UnestimatedDebtCard
+            <EstimateCoverageCard
                 estimateCoverage={{
                     ratio: 0.72,
                     estimatedCount: 72,
@@ -204,16 +298,21 @@ describe("UnestimatedDebtCard", () => {
             />,
         );
 
-        expect(screen.getByTestId("unestimated-debt-count")).toHaveTextContent("28 unestimated");
-        expect(screen.getByText("72% estimate coverage")).toBeInTheDocument();
-        expect(screen.getByText("Estimated")).toBeInTheDocument();
-        expect(screen.getByText("Unestimated")).toBeInTheDocument();
-        expect(screen.getByText("Open backlog")).toBeInTheDocument();
+        const card = within(screen.getByTestId("unestimated-debt-card"));
+        expect(card.getByText("Coverage")).toBeInTheDocument();
+        expect(card.getByText("72%")).toBeInTheDocument();
+        expect(card.getByText("Estimated")).toBeInTheDocument();
+        expect(card.getByText("72")).toBeInTheDocument();
+        expect(card.getByText("Unestimated")).toBeInTheDocument();
+        expect(card.getByText("28")).toBeInTheDocument();
+        expect(card.getByText("Open backlog · estimates panel")).toBeInTheDocument();
+        expect(card.getByText("100")).toBeInTheDocument();
+        expect(card.getByText("Missing estimates remain explicit.")).toBeInTheDocument();
     });
 
     it("renders connected-but-zero backlog copy without showing 0%", () => {
         render(
-            <UnestimatedDebtCard
+            <EstimateCoverageCard
                 estimateCoverage={{
                     ratio: null,
                     estimatedCount: 0,
@@ -229,10 +328,54 @@ describe("UnestimatedDebtCard", () => {
     });
 
     it("renders unavailable copy when estimate coverage is missing", () => {
-        render(<UnestimatedDebtCard estimateCoverage={null} />);
+        render(<EstimateCoverageCard estimateCoverage={null} />);
 
         expect(screen.getByText("Estimate coverage unavailable")).toBeInTheDocument();
         expect(screen.queryByText("Estimate coverage not yet connected")).not.toBeInTheDocument();
+    });
+
+    it("renders the not-computed copy when the backlog exists but the ratio is missing", () => {
+        render(
+            <EstimateCoverageCard
+                estimateCoverage={{
+                    ratio: null,
+                    estimatedCount: 0,
+                    unestimatedCount: 5,
+                    backlogSize: 5,
+                }}
+            />,
+        );
+
+        expect(screen.getByTestId("unestimated-debt-ratio-unavailable")).toBeInTheDocument();
+    });
+});
+
+// ── Population notice ─────────────────────────────────────────────────────────
+
+describe("PopulationNotice", () => {
+    const coverage = (backlogSize: number) => ({
+        ratio: 0.5,
+        estimatedCount: 1,
+        unestimatedCount: 1,
+        backlogSize,
+    });
+
+    it("names both counts when the WIP panel and the estimate panel differ", () => {
+        render(<PopulationNotice wipCount={51} estimateCoverage={coverage(59)} />);
+
+        const notice = screen.getByTestId("population-notice");
+        expect(notice).toHaveTextContent(
+            "The WIP panel counts 51 open items and the estimate panel counts 59. The two populations are not reconciled.",
+        );
+    });
+
+    it("shows nothing when the two counts are equal, or when there is no estimate coverage", () => {
+        const first = render(<PopulationNotice wipCount={51} estimateCoverage={coverage(51)} />);
+        expect(screen.queryByTestId("population-notice")).toBeNull();
+        first.unmount();
+
+        render(<PopulationNotice wipCount={51} estimateCoverage={null} />);
+        expect(screen.queryByTestId("population-notice")).toBeNull();
     });
 });
 
@@ -246,17 +389,23 @@ describe("NoForecastState", () => {
 });
 
 describe("ForecastErrorState", () => {
-    it("renders a visually distinct fetch-failure state", () => {
+    it("renders a visually distinct fetch-failure state: the danger notice, with the same words", () => {
         render(<ForecastErrorState />);
-        expect(screen.getByTestId("backlog-risk-fetch-error")).toBeInTheDocument();
-        expect(screen.getByText("Backlog risk could not load")).toBeInTheDocument();
+        const notice = screen.getByTestId("backlog-risk-fetch-error");
+        expect(notice).toHaveAttribute("data-notice-variant", "danger");
+        expect(within(notice).getByText("Backlog risk could not load")).toBeInTheDocument();
+        expect(
+            within(notice).getByText(
+                /The forecast request failed\. Retry after the data service recovers/,
+            ),
+        ).toBeInTheDocument();
     });
 });
 
 // ── ForecastContent ───────────────────────────────────────────────────────────
 
 describe("ForecastContent", () => {
-    it("renders WIP congestion section with ratio from fixture", () => {
+    it("renders the congestion tile with the ratio from the fixture", () => {
         render(
             <ForecastContent
                 forecast={makeForecast({
@@ -264,20 +413,52 @@ describe("ForecastContent", () => {
                 })}
             />,
         );
-        expect(screen.getByText(/×1\.50 vs typical/i)).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId("tile-wip-congestion")).getByText("1.50×"),
+        ).toBeInTheDocument();
         expect(screen.getByText("Elevated")).toBeInTheDocument();
     });
 
-    it("renders live Stale WIP and live Unestimated Debt", () => {
+    it("renders live stale WIP and live unestimated work", () => {
         render(<ForecastContent forecast={makeForecast()} />);
-        expect(screen.getByText("4 days")).toBeInTheDocument();
-        expect(screen.getByText("28 unestimated")).toBeInTheDocument();
+        expect(screen.getAllByText("4 days").length).toBeGreaterThan(0);
+        expect(screen.getByText("28 items")).toBeInTheDocument();
         expect(screen.getByText("72% estimate coverage")).toBeInTheDocument();
+    });
+
+    it("shows the two cards: Backlog condition and Estimate coverage", () => {
+        render(<ForecastContent forecast={makeForecast()} />);
+        expect(
+            within(screen.getByTestId("backlog-condition")).getByRole("heading", {
+                name: "Backlog condition",
+            }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Estimate coverage" })).toBeInTheDocument();
+    });
+
+    it("shows the population notice only when the two counts differ", () => {
+        const first = render(
+            <ForecastContent
+                forecast={makeForecast({
+                    backlogSize: 51,
+                    estimateCoverage: {
+                        ratio: 0,
+                        estimatedCount: 0,
+                        unestimatedCount: 59,
+                        backlogSize: 59,
+                    },
+                })}
+            />,
+        );
+        expect(screen.getByTestId("population-notice")).toBeInTheDocument();
+        first.unmount();
+
+        render(<ForecastContent forecast={makeForecast()} />);
+        expect(screen.queryByTestId("population-notice")).toBeNull();
     });
 
     it("does not leak internal metric field names in empty-state copy", () => {
         render(<ForecastContent forecast={makeForecast()} />);
-        // DataState detail copy must never expose implementation vocabulary
         expect(screen.queryByText(/wip_age_p90_hours/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/rollup/i)).not.toBeInTheDocument();
     });
@@ -327,7 +508,7 @@ describe("BacklogRiskPage GraphQL states", () => {
             workScopeId: null,
             historyWeeks: 12,
         });
-        expect(screen.getByText("20 unestimated")).toBeInTheDocument();
+        expect(screen.getByText("20 items")).toBeInTheDocument();
         expect(screen.getByText("60% estimate coverage")).toBeInTheDocument();
     });
 
@@ -346,7 +527,7 @@ describe("BacklogRiskPage GraphQL states", () => {
 
         await renderPage();
 
-        expect(screen.getByText("No open backlog")).toBeInTheDocument();
+        expect(screen.getAllByText("No open backlog").length).toBeGreaterThan(0);
         expect(screen.queryByText(/0%/)).not.toBeInTheDocument();
     });
 
