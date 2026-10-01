@@ -73,7 +73,7 @@ export function ReadWithContextCard({
                         <span
                             className={`rounded-full px-2 py-0.5 text-xs uppercase ${
                                 CONFIDENCE_TONE[confidence.level ?? ""] ??
-                                "bg-gray-500/20 text-gray-500"
+                                "bg-(--card-stroke) text-(--ink-muted)"
                             }`}
                         >
                             {confidence.level ?? "unknown"}
