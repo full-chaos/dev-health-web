@@ -125,6 +125,7 @@ export function FlameView({ filters }: FlameViewProps) {
                             root={flameData.root}
                             unit={flameData.unit}
                             height={600}
+                            colorBy={mode === "cycle_breakdown" ? "branch" : "single"}
                         />
                     ) : (
                         !loading && (

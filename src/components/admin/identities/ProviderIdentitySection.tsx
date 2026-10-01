@@ -76,7 +76,7 @@ export function ProviderIdentitySection({
                                     ? `Remove ${entry.provider} identity ${entry.username}`
                                     : `Remove ${entry.provider} identity`
                             }
-                            className="shrink-0 rounded-lg border border-(--card-stroke) px-3 py-2 text-xs font-medium text-red-500 hover:bg-red-500/10"
+                            className="shrink-0 rounded-lg border border-(--card-stroke) px-3 py-2 text-xs font-medium text-(--negative) hover:bg-(--negative)/12"
                         >
                             {CTA_LABELS.remove}
                         </button>

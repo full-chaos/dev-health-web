@@ -146,7 +146,7 @@ export function ValidatePayloadPanel({
                 className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) p-3 font-mono text-xs text-(--ink-base) focus:border-(--accent) focus:outline-none"
             />
 
-            {parseError && <p className="text-sm text-red-500">{parseError}</p>}
+            {parseError && <p className="text-sm text-(--negative)">{parseError}</p>}
 
             {!validateProxyAvailable && (
                 <div
@@ -175,7 +175,7 @@ export function ValidatePayloadPanel({
             {apiError && (
                 <div
                     role="alert"
-                    className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500"
+                    className="rounded-lg border border-(--negative)/30 bg-(--negative)/12 p-4 text-sm text-(--negative)"
                 >
                     Validation request failed: {apiError}
                 </div>
@@ -184,15 +184,15 @@ export function ValidatePayloadPanel({
             {result && (
                 <div className="space-y-4">
                     {result.valid ? (
-                        <div className="rounded-xl border border-green-500/20 bg-green-500/5 p-6">
-                            <p className="text-sm font-medium text-green-600">
+                        <div className="rounded-xl border border-(--positive)/30 bg-(--positive)/12 p-6">
+                            <p className="text-sm font-medium text-(--positive)">
                                 Payload is valid — {result.items_accepted} record
                                 {result.items_accepted === 1 ? "" : "s"} would be accepted.
                             </p>
                         </div>
                     ) : (
-                        <div className="rounded-xl border border-red-500/20 bg-red-500/5 p-6">
-                            <p className="text-sm font-medium text-red-600">
+                        <div className="rounded-xl border border-(--negative)/30 bg-(--negative)/12 p-6">
+                            <p className="text-sm font-medium text-(--negative)">
                                 {result.items_rejected} record
                                 {result.items_rejected === 1 ? "" : "s"} rejected,{" "}
                                 {result.items_accepted} would be accepted.

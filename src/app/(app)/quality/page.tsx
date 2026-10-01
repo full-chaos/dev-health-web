@@ -4,6 +4,7 @@ import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { ReworkThemeBars } from "@/components/quality/ReworkThemeBars";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
@@ -12,7 +13,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl } from "@/lib/filters/url";
-import { formatDelta, formatMetricValue, formatNumber } from "@/lib/formatters";
+import { formatDelta, formatMetricValue } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 import { EntityLabel } from "@/components/labels/EntityLabel";
@@ -124,52 +125,18 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
             </section>
 
             {reworkThemeAllocation.length > 0 && (
-                <section className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                <section className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
                     <h2 className="font-(--font-display) text-xl">Rework by Theme</h2>
                     <p className="mt-1 text-sm text-(--ink-muted)">
                         Distribution of rework pressure across investment themes in the selected
                         window.
                     </p>
-                    <ul className="mt-4 space-y-4">
-                        {reworkThemeAllocation.map((row) => (
-                            <li key={row.theme}>
-                                <div className="flex items-center justify-between text-sm">
-                                    <span className="font-medium">{row.label}</span>
-                                    <span className="text-xs text-(--ink-muted)">
-                                        {formatNumber(row.allocation_pct, {
-                                            maximumFractionDigits: 1,
-                                        })}
-                                        %
-                                    </span>
-                                </div>
-                                <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-(--card-stroke)">
-                                    <div
-                                        className="h-full rounded-full bg-(--accent-2)"
-                                        style={{
-                                            width: `${Math.min(100, row.allocation_pct)}%`,
-                                        }}
-                                    />
-                                </div>
-                                <div className="mt-1 flex gap-3 text-xs text-(--ink-muted)">
-                                    <span>
-                                        {row.prs_merged.toLocaleString()} PR
-                                        {row.prs_merged !== 1 ? "s" : ""}
-                                    </span>
-                                    <span>
-                                        {formatNumber(row.churn_loc / 1000, {
-                                            maximumFractionDigits: 1,
-                                        })}
-                                        k churn LOC
-                                    </span>
-                                </div>
-                            </li>
-                        ))}
-                    </ul>
+                    <ReworkThemeBars rows={reworkThemeAllocation} />
                 </section>
             )}
 
             <section className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
                     <div className="flex items-center justify-between">
                         <h2 className="font-(--font-display) text-xl">
                             Change Failure Associations
@@ -201,7 +168,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                                             filters,
                                             role: activeRole,
                                         })}
-                                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                                        className="flex items-center justify-between rounded-(--radius-md) border border-(--border) bg-(--surface-raised) px-4 py-2"
                                     >
                                         <EntityLabel
                                             id={driver.id}
@@ -221,7 +188,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                     )}
                 </div>
 
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
                     <div className="flex items-center justify-between">
                         <h2 className="font-(--font-display) text-xl">Contributors</h2>
                         <Link
@@ -245,7 +212,7 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                                         filters,
                                         role: activeRole,
                                     })}
-                                    className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                                    className="flex items-center justify-between rounded-(--radius-md) border border-(--border) bg-(--surface-raised) px-4 py-2"
                                 >
                                     <EntityLabel
                                         id={contributor.id}

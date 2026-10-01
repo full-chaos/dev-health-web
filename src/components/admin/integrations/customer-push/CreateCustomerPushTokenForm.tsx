@@ -87,7 +87,7 @@ export function CreateCustomerPushTokenForm({
             {error && (
                 <div
                     role="alert"
-                    className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-500"
+                    className="rounded-lg border border-(--negative)/30 bg-(--negative)/12 p-4 text-sm text-(--negative)"
                 >
                     {error}
                 </div>

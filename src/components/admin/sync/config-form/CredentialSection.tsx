@@ -65,7 +65,7 @@ export function CredentialSection({
                         ))}
                     </select>
                     {filteredCredentials.length === 0 && (
-                        <div className="mt-1 flex items-center gap-1 text-xs text-amber-500">
+                        <div className="mt-1 flex items-center gap-1 text-xs text-(--caution)">
                             <span>No credentials found for this provider.</span>
                             <Link href="/org/admin/integrations" className="underline">
                                 {CTA_LABELS.addOneFirst}

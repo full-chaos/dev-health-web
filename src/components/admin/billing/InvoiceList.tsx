@@ -21,12 +21,12 @@ type InvoiceListProps = {
 };
 
 const STATUS_STYLES: Record<string, string> = {
-    draft: "bg-slate-500/15 text-slate-400",
-    open: "bg-blue-500/15 text-blue-400",
-    paid: "bg-emerald-500/15 text-emerald-400",
-    payment_failed: "bg-red-500/15 text-red-400",
-    void: "bg-slate-500/15 text-slate-400 line-through",
-    voided: "bg-slate-500/15 text-slate-400 line-through",
+    draft: "bg-(--card-stroke) text-(--ink-muted)",
+    open: "bg-(--info)/12 text-(--info)",
+    paid: "bg-(--positive)/12 text-(--positive)",
+    payment_failed: "bg-(--negative)/12 text-(--negative)",
+    void: "bg-(--card-stroke) text-(--ink-muted) line-through",
+    voided: "bg-(--card-stroke) text-(--ink-muted) line-through",
 };
 
 function formatMoney(amount: number, currency: string): string {
@@ -148,7 +148,7 @@ export function InvoiceList({
                 className: "px-4 py-3",
                 render: (invoice) => (
                     <span
-                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[invoice.status] ?? "bg-slate-500/15 text-slate-300"}`}
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[invoice.status] ?? "bg-(--card-stroke) text-(--ink-muted)"}`}
                     >
                         {invoice.status}
                     </span>
@@ -193,7 +193,7 @@ export function InvoiceList({
                                 <button
                                     type="button"
                                     onClick={() => setVoidingInvoice(invoice)}
-                                    className="rounded-md border border-red-500/40 px-2.5 py-1 text-xs font-medium text-red-400 hover:bg-red-500/10"
+                                    className="rounded-md border border-(--negative)/30 px-2.5 py-1 text-xs font-medium text-(--negative) hover:bg-(--negative)/12"
                                 >
                                     {CTA_LABELS.voidInvoice}
                                 </button>
