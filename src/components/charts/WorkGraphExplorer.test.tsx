@@ -64,11 +64,10 @@ const series = () =>
 describe("WorkGraphExplorer layout modes", () => {
     beforeEach(() => chartSpy.mockClear());
 
-    it("defaults to the layered mode: fixed coordinates, every node placed, pan and zoom on", () => {
+    it("defaults to the layered mode for a small graph: fixed coordinates, every node placed", () => {
         render(<WorkGraphExplorer edges={edges} />);
         const s = series();
         expect(s.layout).toBe("none");
-        expect(s.roam).toBe(true);
         expect(s.data).toHaveLength(4);
         for (const node of s.data) {
             expect(typeof node.x).toBe("number");
@@ -82,13 +81,39 @@ describe("WorkGraphExplorer layout modes", () => {
 
     it("shows the column strip with counts and a hint when fewer than three columns", () => {
         render(<WorkGraphExplorer edges={edges} />);
-        expect(screen.getByTestId("work-graph-columns").textContent).toBe("Issue · 2  →  PR · 2");
+        expect(screen.getByTestId("work-graph-columns").textContent).toBe("Issue · 2PR · 2");
         expect(screen.getByTestId("work-graph-columns-hint").textContent).toContain("two columns");
     });
 
     it("no hint with three or more columns", () => {
         render(<WorkGraphExplorer edges={[...edges, edge("PR", "P1", "COMMIT", "C1")]} />);
         expect(screen.queryByTestId("work-graph-columns-hint")).toBeNull();
+    });
+
+    it("layered mode scrolls inside its own area and turns off roam so nothing fights the scroll", () => {
+        render(<WorkGraphExplorer edges={edges} />);
+        expect(screen.getByTestId("work-graph-scroll")).toBeTruthy();
+        expect(series().roam).toBe(false);
+    });
+
+    it("a tall graph opens in Network by default; the switch still reaches Layered and the canvas grows without hiding a node", () => {
+        const many = Array.from({ length: 60 }, (_, i) => edge("ISSUE", `I${i}`, "PR", `P${i}`));
+        render(<WorkGraphExplorer edges={many} />);
+        expect(series().layout).not.toBe("none");
+        expect(screen.queryByTestId("work-graph-scroll")).toBeNull();
+        fireEvent.click(screen.getByRole("radio", { name: "Layered" }));
+        expect(series().layout).toBe("none");
+        expect(series().data).toHaveLength(120);
+        const props = chartSpy.mock.calls.at(-1)![0] as { style: { height: number } };
+        expect(props.style.height).toBe(60 * 14 + 96);
+    });
+
+    it("an explicit choice survives data changes", () => {
+        const many = Array.from({ length: 60 }, (_, i) => edge("ISSUE", `I${i}`, "PR", `P${i}`));
+        const { rerender } = render(<WorkGraphExplorer edges={many} />);
+        fireEvent.click(screen.getByRole("radio", { name: "Layered" }));
+        rerender(<WorkGraphExplorer edges={edges} />);
+        expect(series().layout).toBe("none");
     });
 
     it("Network mode keeps production's force layout and drops coordinates", () => {

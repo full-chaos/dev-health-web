@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import {
+    BOX_HEIGHT,
     COLUMN_GAP,
+    FIT_ROWS,
+    MARGIN_LEFT,
+    MARGIN_RIGHT,
+    MARGIN_Y,
     LAYERED_TYPE_ORDER,
     MIN_ROW_GAP,
     countCrossings,
+    defaultGraphMode,
     layoutLayered,
     type LayoutLink,
     type LayoutNode,
@@ -80,5 +86,47 @@ describe("layoutLayered", () => {
             [{ source: "ISSUE:1", target: "PR:missing" }],
         );
         expect(layout.positions.size).toBe(2);
+    });
+});
+
+describe("layered canvas size", () => {
+    const tall = (rows: number) =>
+        Array.from({ length: rows }, (_, i) => n("COMMIT", String(i).padStart(4, "0")));
+
+    it("fit rows = the rows of the box at the 14px pitch (34)", () => {
+        expect(FIT_ROWS).toBe(Math.floor((BOX_HEIGHT - 2 * MARGIN_Y) / MIN_ROW_GAP));
+        expect(FIT_ROWS).toBe(34);
+    });
+
+    it("a column that fits is spread over the box; a taller one grows at the minimum pitch", () => {
+        const fitting = layoutLayered(tall(FIT_ROWS), []);
+        expect(fitting.height).toBe(BOX_HEIGHT - 2 * MARGIN_Y);
+        const taller = layoutLayered(tall(FIT_ROWS + 1), []);
+        expect(taller.rowPitch).toBe(MIN_ROW_GAP);
+        expect(taller.height).toBe((FIT_ROWS + 1) * MIN_ROW_GAP);
+        const big = layoutLayered(tall(674), []);
+        expect(big.height).toBe(674 * MIN_ROW_GAP);
+        expect(big.positions.size).toBe(674);
+    });
+
+    it("columns span the card width when a width is given", () => {
+        const layout = layoutLayered([issues[0], prs[0], n("COMMIT", "c")], [], { width: 1000 });
+        const xs = layout.columns.map((c) => c.x);
+        expect(xs[0]).toBe(0);
+        expect(xs[2]).toBe(1000 - MARGIN_LEFT - MARGIN_RIGHT);
+        expect(xs[1]).toBe(xs[2] / 2);
+    });
+});
+
+describe("defaultGraphMode", () => {
+    it("opens Layered while the tallest column fits, Network when it does not", () => {
+        expect(defaultGraphMode([{ count: 3 }, { count: FIT_ROWS }])).toBe("layered");
+        expect(defaultGraphMode([{ count: 3 }, { count: FIT_ROWS + 1 }])).toBe("network");
+        expect(defaultGraphMode([])).toBe("layered");
+    });
+
+    it("the limit is the only knob: a limit of 0 always opens Network, Infinity always Layered", () => {
+        expect(defaultGraphMode([{ count: 1 }], 0)).toBe("network");
+        expect(defaultGraphMode([{ count: 9999 }], Infinity)).toBe("layered");
     });
 });
