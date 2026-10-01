@@ -3,6 +3,9 @@ import { render, screen } from "@/test/utils";
 
 import { HeatmapChart } from "./HeatmapChart";
 import type { HeatmapResponse } from "@/lib/types";
+import type { EChartsOption } from "echarts";
+import { echarts } from "@/lib/echartsInit";
+import { SVGRenderer } from "echarts/renderers";
 
 const chartTheme = {
     text: "#111827",
@@ -31,10 +34,15 @@ const { chartSpy } = vi.hoisted(() => ({
     chartSpy: vi.fn(),
 }));
 
-vi.mock("./chartTheme", () => ({
-    useChartTheme: () => chartTheme,
-    useChartColors: () => chartColors,
-}));
+vi.mock("./chartTheme", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("./chartTheme")>();
+    return {
+        ...actual,
+        useChartTheme: () => chartTheme,
+        useChartColors: () => chartColors,
+        useChartTokens: () => actual.fallbackTokens,
+    };
+});
 
 vi.mock("./Chart", () => ({
     Chart: (props: unknown) => {
@@ -71,22 +79,25 @@ describe("HeatmapChart", () => {
     });
 
     it("renders with sample data and forwards props", () => {
-        render(<HeatmapChart data={sampleData} className="grid-heatmap" width={640} />);
+        const { container } = render(
+            <HeatmapChart data={sampleData} className="grid-heatmap" width={640} />,
+        );
 
         const props = chartSpy.mock.calls[0][0] as {
-            className: string;
             style: { width: number; height: number };
             option: {
-                series: Array<{ data: unknown[] }>;
-                visualMap: { min: number; max: number };
+                series: Array<{ data: Array<{ value: unknown[] }> }>;
             };
             onEvents: { click: (params: unknown) => void };
         };
 
-        expect(props.className).toBe("grid-heatmap");
+        expect(container.firstElementChild).toHaveClass("grid-heatmap");
         expect(props.style).toMatchObject({ width: 640, height: 320 });
-        expect(props.option.series[0]?.data).toHaveLength(2);
-        expect(props.option.visualMap).toMatchObject({ min: 3, max: 7 });
+        // Only cells with data are drawn; a position with no data stays unfilled, not 0.
+        const data = props.option.series[0]?.data ?? [];
+        expect(data).toHaveLength(2);
+        expect(screen.getByTestId("heatmap-scale-min")).toHaveTextContent("3");
+        expect(screen.getByTestId("heatmap-scale-max")).toHaveTextContent("7 hours");
         expect(typeof props.onEvents.click).toBe("function");
     });
 
@@ -104,13 +115,35 @@ describe("HeatmapChart", () => {
         const props = chartSpy.mock.calls[0][0] as {
             option: {
                 series: Array<{ data: unknown[] }>;
-                visualMap: { min: number; max: number };
             };
             onEvents: { click: (params: unknown) => void };
         };
 
         expect(props.option.series[0]?.data).toHaveLength(0);
-        expect(props.option.visualMap).toMatchObject({ min: 0, max: 1 });
         expect(() => props.onEvents.click(null)).not.toThrow();
+    });
+
+    it("renders every cell in its ramp color through a real chart (heatmaps need a visualMap)", () => {
+        render(<HeatmapChart data={sampleData} />);
+        const props = chartSpy.mock.calls[0][0] as { option: EChartsOption };
+
+        expect(props.option.visualMap).toMatchObject({ show: false });
+        echarts.use([SVGRenderer]);
+        const chart = echarts.init(null, null, {
+            renderer: "svg",
+            ssr: true,
+            width: 400,
+            height: 200,
+        });
+        chart.setOption(props.option);
+        const svg = chart.renderToSVGString();
+        chart.dispose();
+
+        const series = props.option.series as Array<{
+            data: Array<{ itemStyle: { color: string } }>;
+        }>;
+        for (const item of series[0].data) {
+            expect(svg).toContain(item.itemStyle.color);
+        }
     });
 });

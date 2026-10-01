@@ -44,6 +44,8 @@ export const fallbackTokens = {
     themeMaintenance: "#da2100",
     themeOperational: "#0b8fb0",
     zones: ["#11333c", "#13322a", "#33290f", "#3b1b15"] as readonly string[],
+    /** One-hue sequential ramp, `--seq-0..5`, lightest-in-value first. */
+    seq: ["#162d36", "#17566a", "#0b7691", "#0b97b6", "#22b9cd", "#8fe6ea"] as readonly string[],
 };
 
 export type ChartTokens = typeof fallbackTokens;
@@ -121,6 +123,7 @@ const readChartTokens = (): ChartTokens => {
     tokens.zones = fallbackTokens.zones.map((fallback, index) =>
         read(`--quadrant-zone-${index + 1}`, fallback),
     );
+    tokens.seq = fallbackTokens.seq.map((fallback, index) => read(`--seq-${index}`, fallback));
     return tokens;
 };
 
