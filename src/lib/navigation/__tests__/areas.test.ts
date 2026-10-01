@@ -170,13 +170,13 @@ describe("selectedAreaIdForPathname", () => {
     });
 
     it("falls back to the area owning the active id when no path matches", () => {
-        expect(selectedAreaIdForPathname(navAreas, "/prs/123", "people")).toBe("diagnose");
-        expect(selectedAreaIdForPathname(navAreas, "/issues/9", "security")).toBe("govern");
+        expect(selectedAreaIdForPathname(navAreas, "/demo", "people")).toBe("diagnose");
+        expect(selectedAreaIdForPathname(navAreas, "/demo", "security")).toBe("govern");
     });
 
     it("returns undefined when neither path nor fallback resolves", () => {
-        expect(selectedAreaIdForPathname(navAreas, "/prs/123")).toBeUndefined();
-        expect(selectedAreaIdForPathname(navAreas, "/prs/123", "nonexistent")).toBeUndefined();
+        expect(selectedAreaIdForPathname(navAreas, "/demo")).toBeUndefined();
+        expect(selectedAreaIdForPathname(navAreas, "/demo", "nonexistent")).toBeUndefined();
     });
 
     it("does not match a sibling prefix by string-prefix accident", () => {
@@ -369,9 +369,18 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(trail[trail.length - 1]?.label).toBe(child?.label);
     });
 
+    it.each(["/prs/repo-1:42"])(
+        "%s: an artifact detail route belongs to Diagnose, with no destination and a trail that is the area only",
+        (pathname) => {
+            expect(selectedAreaIdForPathname(navAreas, pathname)).toBe("diagnose");
+            expect(selectedChildForPathname(areaById("diagnose"), pathname)).toBeUndefined();
+            expect(navTrailForPathname(pathname)).toEqual([{ label: "Diagnose" }]);
+        },
+    );
+
     it("returns an empty trail/title for routes no area owns", () => {
-        expect(navTrailForPathname("/prs/123")).toEqual([]);
-        expect(navTitleForPathname("/prs/123")).toBe("");
+        expect(navTrailForPathname("/demo")).toEqual([]);
+        expect(navTitleForPathname("/demo")).toBe("");
     });
 });
 

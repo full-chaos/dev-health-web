@@ -153,6 +153,8 @@ export const navAreas: readonly NavArea[] = [
             "/bottleneck",
             "/explore",
             "/agent-context",
+            // Artifact detail pages opened from Explore, the heatmaps and the Work Graph.
+            "/prs",
         ],
         legacyActiveIds: [
             "work",

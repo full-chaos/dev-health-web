@@ -23,11 +23,12 @@ export type ShellRoute = {
     defaultRole?: boolean;
     /**
      * `"page"`: the `f` param of this route is the page's own encoding, not a
-     * metric filter (the Security pages keep a Security filter there). The
-     * navigation links then carry the default metric filter, as the page's own
-     * `PrimaryNav` did, and never the page's `f`.
+     * metric filter (the Security pages keep a Security filter there).
+     * `"none"`: the route has no filter state (an artifact detail page reads no
+     * query param). On both the navigation links carry the default metric
+     * filter, as the page's own `PrimaryNav` did, and never a filter from the URL.
      */
-    filterParam?: "page";
+    filterParam?: "page" | "none";
 };
 
 export const SHELL_ROUTES: readonly ShellRoute[] = [
@@ -70,6 +71,8 @@ export const SHELL_ROUTES: readonly ShellRoute[] = [
     { prefix: "/ai/automations" },
     { prefix: "/ai/risk" },
     { prefix: "/ai/attribution" },
+    // Artifact detail pages (Diagnose owns them; no filter state)
+    { prefix: "/prs", filterParam: "none" },
 ];
 
 function matchesRoute(pathname: string, route: ShellRoute): boolean {

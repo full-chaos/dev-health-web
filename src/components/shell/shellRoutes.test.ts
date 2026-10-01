@@ -39,6 +39,7 @@ describe("shell route registry", () => {
             "/ai/automations",
             "/ai/risk",
             "/ai/attribution",
+            "/prs",
         ]);
     });
 
@@ -59,7 +60,7 @@ describe("shell route registry", () => {
         expect(isShellRoute("/dashboard-old")).toBe(false);
     });
 
-    it.each(["/capacity", "/reports", "/org/admin", "/superadmin", "/settings", "/prs/1", "/"])(
+    it.each(["/capacity", "/reports", "/org/admin", "/superadmin", "/settings", "/reports/1", "/"])(
         "keeps %s outside the shell",
         (pathname) => {
             expect(isShellRoute(pathname)).toBe(false);
@@ -89,7 +90,18 @@ describe("shell route registry", () => {
         expect(shellRouteForPathname("/security")?.filterParam).toBe("page");
         expect(shellRouteForPathname("/security/repos/repo-1")?.filterParam).toBe("page");
         expect(
-            SHELL_ROUTES.filter((route) => route.filterParam).map((route) => route.prefix),
+            SHELL_ROUTES.filter((route) => route.filterParam === "page").map(
+                (route) => route.prefix,
+            ),
         ).toEqual(["/security"]);
+    });
+
+    it("marks the artifact detail routes as routes with no filter state, and no other route", () => {
+        expect(shellRouteForPathname("/prs/repo-1:42")?.filterParam).toBe("none");
+        expect(
+            SHELL_ROUTES.filter((route) => route.filterParam === "none").map(
+                (route) => route.prefix,
+            ),
+        ).toEqual(["/prs"]);
     });
 });
