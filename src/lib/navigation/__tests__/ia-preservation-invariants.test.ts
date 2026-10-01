@@ -90,10 +90,7 @@ const testOpsTabRoutes = [
     },
 ] as const;
 
-const knownPreexistingDualContextBarScopes = new Set([
-    "src/app/(app)/ai/attribution/page.tsx",
-    "src/app/(app)/ai/risk/page.tsx",
-]);
+const knownPreexistingDualContextBarScopes = new Set(["src/app/(app)/ai/attribution/page.tsx"]);
 
 const routePageExists = (routePath: string) => {
     const segments = basePath(routePath).split("/").filter(Boolean);

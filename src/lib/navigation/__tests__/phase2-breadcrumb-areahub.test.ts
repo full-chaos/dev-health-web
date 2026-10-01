@@ -206,6 +206,7 @@ describe("breadcrumbs — production page source guards (codex round 2: prior te
         "ai/impact/evidence/page.tsx",
         "ai/review-load/page.tsx",
         "ai/automations/page.tsx",
+        "ai/risk/page.tsx",
     ];
 
     it.each(pagesWithNoInPageTrail)("%s: has no in-page trail", (relativePath) => {
@@ -216,10 +217,14 @@ describe("breadcrumbs — production page source guards (codex round 2: prior te
         expect(source).not.toContain("AIPageHeader");
     });
 
-    it("ai/risk/page.tsx: sub-tab breadcrumb uses slice(0, -1) + withFilterParam for the parent link", () => {
+    it("ai/risk/page.tsx: the view tabs keep the filter and the role on the way back to the overview", () => {
+        // The in-page trail had a filter-preserving "Governance Risk" crumb on a
+        // sub-view. The page is in the shared app shell now: the tab row is the
+        // way between the views, and it gets the filter and the role.
         const source = readPageSource("ai/risk/page.tsx");
-        expect(source).toContain('navTrailForPathname("/ai/risk").slice(0, -1)');
-        expect(source).toContain('withFilterParam("/ai/risk", filters, activeRole)');
+        expect(source).toContain(
+            "<AIGovernanceRiskTabs view={view} filters={filters} role={activeRole} />",
+        );
     });
 
     it("ai/impact/evidence/page.tsx: the return link to Impact keeps the filter and the role", () => {
