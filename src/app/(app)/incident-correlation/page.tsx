@@ -16,21 +16,17 @@
  *   3. No automatic edge refresh — edge data is as fresh as the last sync run.
  */
 
-import Link from "next/link";
-
-import { ContextStrip } from "@/components/navigation/ContextStrip";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { IncidentCorrelationDashboard } from "@/components/incident-correlation/IncidentCorrelationDashboard";
 import type { WorkGraphEdge } from "@/components/incident-correlation/IncidentCorrelationDashboard";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { requireSession } from "@/lib/auth";
-import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { withFilterParam } from "@/lib/filters/url";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { WORK_GRAPH_EDGES_QUERY } from "@/lib/graphql/queries";
 
@@ -110,56 +106,34 @@ export default async function IncidentCorrelationPage({ searchParams }: PageProp
     ]);
 
     if (!health.ok) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={filters} active="incident-correlation" role={activeRole} />
-                <main
-                    className="flex min-w-0 flex-1 flex-col gap-8"
-                    data-testid="incident-correlation-page"
-                >
-                    <header className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Investigate
-                            </p>
-                            <h1 className="mt-2 font-(--font-display) text-3xl">
-                                Incident Correlation
-                            </h1>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Connect DORA change-failure signals to PR, deployment, and incident
-                                evidence.
-                            </p>
-                            <p className="mt-2 text-sm text-(--ink-muted)">
-                                Open a metric or incident row to investigate.
-                            </p>
-                        </div>
-                        <Link
-                            href={withFilterParam("/", filters, activeRole)}
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-                        >
-                            {CTA_LABELS.backToCockpit}
-                        </Link>
-                    </header>
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8" data-testid="incident-correlation-page">
+            <PageHeader
+                title="Incident Correlation"
+                subtitle="Connect DORA change-failure signals to PR, deployment, and incident evidence."
+            >
+                <p className="text-sm text-(--ink-muted)">
+                    Open a metric or incident row to investigate.
+                </p>
+            </PageHeader>
 
-                    <ContextStrip filters={filters} origin={activeOrigin} />
-
-                    <IncidentCorrelationDashboard
-                        orgId={orgId}
-                        deltas={home?.deltas ?? []}
-                        drivers={explain?.drivers ?? []}
-                        contributors={explain?.contributors ?? []}
-                        explainUnit={explain?.unit}
-                        deploysEdges={deploysEdges}
-                        incidentEdges={incidentEdges}
-                        filters={filters}
-                        role={activeRole}
-                    />
-                </main>
-            </div>
+            <ScopeBar origin={activeOrigin} />
+            <IncidentCorrelationDashboard
+                orgId={orgId}
+                deltas={home?.deltas ?? []}
+                drivers={explain?.drivers ?? []}
+                contributors={explain?.contributors ?? []}
+                explainUnit={explain?.unit}
+                deploysEdges={deploysEdges}
+                incidentEdges={incidentEdges}
+                filters={filters}
+                role={activeRole}
+            />
         </div>
     );
 }
