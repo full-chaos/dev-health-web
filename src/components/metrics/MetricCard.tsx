@@ -49,7 +49,7 @@ export function MetricCard({
     const hasValue = value !== undefined && value !== null;
     // Concept `.metric` (theme.css min-height 124, style.css padding 18px 20px,
     // theme.css radius 10). Tiles stay in each page's grid.
-    const cardClassName = `group relative min-h-[124px] min-w-0 rounded-[10px] border border-(--card-stroke) bg-card px-5 py-[18px] ${
+    const cardClassName = `group relative min-h-31 min-w-0 rounded-(--radius-md) border border-(--card-stroke) bg-card px-5 py-4.5 ${
         href ? "transition hover:-translate-y-1 hover:shadow-lg" : ""
     } ${className ?? ""}`;
 
@@ -62,7 +62,7 @@ export function MetricCard({
             </div>
             {/* Concept `.metric-value` (theme.css 28px, tabular figures, no gradient). */}
             <p
-                className={`mt-2.5 text-[28px] font-semibold leading-tight tabular-nums ${
+                className={`mt-2.5 text-[1.75rem] font-semibold leading-tight tabular-nums ${
                     hasValue ? "text-foreground" : "text-(--ink-muted)"
                 }`}
             >
@@ -84,7 +84,7 @@ export function MetricCard({
                 ) : null}
             </div>
             {/* Concept `.metric .spark` (87x31, bottom-right). End dot, weight and tone: CHAOS-7602. */}
-            <div className="absolute bottom-[26px] right-4 h-[31px] w-[87px]">
+            <div className="absolute bottom-6.5 right-4 h-7.75 w-21.75">
                 {hasSpark ? (
                     <SparklineChart data={sparkValues} categories={sparkLabels} height={31} />
                 ) : (
@@ -107,7 +107,7 @@ export function MetricCard({
         <div className={cardClassName}>
             <Link
                 href={href}
-                className="absolute inset-0 z-10 rounded-[10px]"
+                className="absolute inset-0 z-10 rounded-(--radius-md)"
                 aria-label={`${label}: ${captionText}`}
             >
                 <span className="sr-only" aria-hidden="true">

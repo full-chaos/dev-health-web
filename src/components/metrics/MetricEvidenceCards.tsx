@@ -64,13 +64,13 @@ export function MetricEvidenceCards({
                         // `.metric-title`, `.metric-value`, `.metric-meta`, `.metric .spark`.
                         <article
                             key={metric}
-                            className="group relative min-h-[124px] min-w-0 rounded-[10px] border border-(--card-stroke) bg-card px-5 py-[18px] transition hover:-translate-y-1 hover:shadow-lg"
+                            className="group relative min-h-31 min-w-0 rounded-(--radius-md) border border-(--card-stroke) bg-card px-5 py-4.5 transition hover:-translate-y-1 hover:shadow-lg"
                         >
                             <div className="text-label-caps uppercase text-(--ink-muted)">
                                 <span>{label}</span>
                             </div>
                             <p
-                                className={`mt-2.5 text-[28px] font-semibold leading-tight tabular-nums ${
+                                className={`mt-2.5 text-[1.75rem] font-semibold leading-tight tabular-nums ${
                                     missing ? "text-(--ink-muted)" : "text-foreground"
                                 }`}
                             >
@@ -108,7 +108,7 @@ export function MetricEvidenceCards({
                                     {CTA_LABELS.openEvidence}
                                 </button>
                             </div>
-                            <div className="absolute right-4 top-[60px] h-[31px] w-[87px]">
+                            <div className="absolute right-4 top-15 h-7.75 w-21.75">
                                 {hasSpark ? (
                                     <SparklineChart
                                         data={sparkValues}
