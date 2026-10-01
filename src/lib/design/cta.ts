@@ -15,6 +15,8 @@
 export const CTA_LABELS = {
     /** Return to the Dev Health cockpit from global brand navigation. */
     devHealthCockpit: "Full Chaos Dev Health cockpit",
+    /** Light / dark theme switch (pressed = light). */
+    lightTheme: "Light theme",
     /** Keyboard skip link: move focus past the app shell to the page content. */
     skipToMainContent: "Skip to main content",
     /** Open the evidence trail behind a signal / metric / work unit. */
