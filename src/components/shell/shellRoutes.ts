@@ -75,6 +75,8 @@ export const SHELL_ROUTES: readonly ShellRoute[] = [
     { prefix: "/prs", filterParam: "none" },
     { prefix: "/issues", filterParam: "none" },
     { prefix: "/deployments", filterParam: "none" },
+    // Reports (Report Center: links carry the filter of the URL)
+    { prefix: "/reports", exact: true },
 ];
 
 function matchesRoute(pathname: string, route: ShellRoute): boolean {

@@ -42,6 +42,7 @@ describe("shell route registry", () => {
             "/prs",
             "/issues",
             "/deployments",
+            "/reports",
         ]);
     });
 
@@ -62,12 +63,17 @@ describe("shell route registry", () => {
         expect(isShellRoute("/dashboard-old")).toBe(false);
     });
 
-    it.each(["/demo", "/reports", "/org/admin", "/superadmin", "/settings", "/reports/1", "/"])(
-        "keeps %s outside the shell",
-        (pathname) => {
-            expect(isShellRoute(pathname)).toBe(false);
-        },
-    );
+    it.each([
+        "/demo",
+        "/data-health",
+        "/org/admin",
+        "/superadmin",
+        "/settings",
+        "/org/admin/users",
+        "/",
+    ])("keeps %s outside the shell", (pathname) => {
+        expect(isShellRoute(pathname)).toBe(false);
+    });
 
     it("treats a missing pathname as outside the shell", () => {
         expect(isShellRoute(null)).toBe(false);
