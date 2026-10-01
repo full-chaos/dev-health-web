@@ -180,7 +180,7 @@ const AI_VISIBILITY: FilterVisibility = {
     date: true,
 };
 
-export const resolveVisibility = (view?: FilterBarView, tab?: string): FilterVisibility => {
+const resolveViewVisibility = (view?: FilterBarView, tab?: string): FilterVisibility => {
     if (view === "metrics") {
         if (tab === "flow") {
             return METRICS_FLOW_VISIBILITY;
@@ -231,6 +231,21 @@ export const resolveVisibility = (view?: FilterBarView, tab?: string): FilterVis
         return AI_VISIBILITY;
     }
     return DEFAULT_VISIBILITY;
+};
+
+/**
+ * Filters no view's queries read (CHAOS-7795): `what.artifacts` is only printed as a chip on the
+ * explore page; every query reads `what.repos`. So no view shows or counts an artifacts value left
+ * in the URL, and none offers the input. A view's own list (the AI pages) is added to.
+ */
+const NEVER_READ: UnreadFilter[] = ["artifacts"];
+
+export const resolveVisibility = (view?: FilterBarView, tab?: string): FilterVisibility => {
+    const visibility = resolveViewVisibility(view, tab);
+    return {
+        ...visibility,
+        unreadFilters: Array.from(new Set([...(visibility.unreadFilters ?? []), ...NEVER_READ])),
+    };
 };
 
 export const resolveScopeLock = (view?: FilterBarView): MetricFilter["scope"]["level"] | null => {

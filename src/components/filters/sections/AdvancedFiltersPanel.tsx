@@ -66,6 +66,7 @@ export function AdvancedFiltersPanel({
             )}
             {showWhat && (
                 <WhatSection
+                    showArtifacts={isFilterRead(visibility, "artifacts")}
                     artifacts={artifacts}
                     repos={repos}
                     toList={toList}

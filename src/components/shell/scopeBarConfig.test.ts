@@ -176,7 +176,7 @@ describe("resolveScopeBarConfig — AI pages (CHAOS-7744)", () => {
 
     it("keeps the Issue type filter wherever it is offered today", () => {
         for (const view of ALL_VIEWS.filter((v) => v !== "ai")) {
-            expect(resolveVisibility(view).unreadFilters, view).toBeUndefined();
+            expect(resolveVisibility(view).unreadFilters, view).toEqual(["artifacts"]);
         }
     });
 
@@ -194,5 +194,23 @@ describe("resolveScopeBarConfig — Work is single-select on AI pages (CHAOS-778
         for (const view of ALL_VIEWS.filter((v) => v !== "ai")) {
             expect(resolveVisibility(view).workTypeSingle, view).toBeUndefined();
         }
+    });
+});
+
+describe("resolveVisibility — artifacts are read by no view (CHAOS-7795)", () => {
+    it("lists artifacts as unread on every view, with and without a tab", () => {
+        for (const view of ALL_VIEWS) {
+            expect(resolveVisibility(view).unreadFilters, view).toContain("artifacts");
+            expect(resolveScopeBarConfig(view).resolvedVisibility.unreadFilters, view).toContain(
+                "artifacts",
+            );
+        }
+        expect(resolveVisibility(undefined).unreadFilters).toContain("artifacts");
+        expect(resolveVisibility("metrics", "flow").unreadFilters).toContain("artifacts");
+    });
+
+    it("lists artifacts once, also on the AI view", () => {
+        const ai = resolveVisibility("ai").unreadFilters ?? [];
+        expect(ai.filter((f) => f === "artifacts")).toHaveLength(1);
     });
 });

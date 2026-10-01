@@ -32,7 +32,12 @@ const ALL_DIMENSIONS_F =
 
 const HOME: ScopeBarClientProps = {
     view: "home",
-    resolvedVisibility: { developer: true, workType: true, flowStage: false },
+    resolvedVisibility: {
+        developer: true,
+        workType: true,
+        flowStage: false,
+        unreadFilters: ["artifacts"],
+    },
     resolvedScopeLock: "team",
 };
 
@@ -222,11 +227,12 @@ describe("ScopeBar — Filters button and active filters", () => {
         scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}`);
         renderBar();
 
-        // 2 developers + 1 role + 1 work category + 1 issue type + 1 flow stage + 2 artifacts + blocked.
-        const button = screen.getByRole("button", { name: "Filters, 9 active" });
+        // 2 developers + 1 role + 1 work category + 1 issue type + 1 flow stage + blocked.
+        // The 2 artifacts are not counted: no query reads them and the drawer does not offer them.
+        const button = screen.getByRole("button", { name: "Filters, 7 active" });
         const badge = screen.getByTestId("scope-bar-filter-count");
         expect(button).toContainElement(badge);
-        expect(badge).toHaveTextContent("9");
+        expect(badge).toHaveTextContent("7");
         expect(badge).toHaveAttribute("aria-hidden", "true");
     });
 
@@ -254,7 +260,17 @@ describe("ScopeBar — Filters button and active filters", () => {
         await user.click(bar.getAllByRole("button", { name: "Remove Dev filter" })[0]);
 
         expect(scopeBarUrl.lastFilter().who.developers).toEqual(["bo@example.com"]);
-        expect(screen.getByRole("button", { name: "Filters, 8 active" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Filters, 6 active" })).toBeInTheDocument();
+    });
+
+    it("shows no pill for artifacts left in the URL (CHAOS-7795)", () => {
+        scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}`);
+        renderBar();
+
+        const bar = within(screen.getByTestId("scope-bar"));
+        expect(bar.queryByText("pr")).toBeNull();
+        expect(bar.queryByText("issue")).toBeNull();
+        expect(bar.getByText("ana@example.com")).toBeInTheDocument();
     });
 });
 
@@ -682,7 +698,7 @@ describe("ScopeBar — the AI view: first load as the two old bars had it", () =
         renderBar();
 
         expect(within(screen.getByTestId("scope-bar")).getByText("bug")).toBeInTheDocument();
-        expect(screen.getByRole("button", { name: "Filters, 9 active" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Filters, 7 active" })).toBeInTheDocument();
     });
 
     // `{"why":{"work_category":["feature","maintenance"]}}` on the default team / 14d filter.

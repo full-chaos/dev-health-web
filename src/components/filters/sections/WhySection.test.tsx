@@ -132,3 +132,41 @@ describe("ActiveFilterPills — Issue type pill follows the view's visibility (C
         expect(screen.getByText("feature")).toBeInTheDocument();
     });
 });
+
+describe("AdvancedFiltersPanel — Artifacts input follows the view's visibility (CHAOS-7795)", () => {
+    const panel = (visibility: FilterVisibility) => (
+        <AdvancedFiltersPanel
+            artifacts={[]}
+            blocked={false}
+            developers={[]}
+            filters={
+                {
+                    scope: { level: "org", ids: [] },
+                    time: { range_days: 30 },
+                    who: {},
+                    what: {},
+                    why: {},
+                    how: {},
+                } as never
+            }
+            flowStage={[]}
+            issueType={[]}
+            repos={[]}
+            roles={[]}
+            updateFilters={vi.fn()}
+            visibility={visibility}
+            workCategory={[]}
+        />
+    );
+
+    it("hides Artifacts where no query reads it and keeps Repos", () => {
+        render(panel({ repo: true, unreadFilters: ["artifacts"] }));
+        expect(screen.getByText("Repos")).toBeInTheDocument();
+        expect(screen.queryByText("Artifacts")).toBeNull();
+    });
+
+    it("keeps Artifacts when the list does not say so", () => {
+        render(panel({ repo: true }));
+        expect(screen.getByText("Artifacts")).toBeInTheDocument();
+    });
+});
