@@ -42,6 +42,15 @@ describe("ThemeToggle", () => {
         expect(toggle).toHaveTextContent("Dark");
     });
 
+    it("falls back to dark, not the system theme, when nothing is stored or set", () => {
+        delete document.documentElement.dataset.theme;
+        render(<ThemeToggle />);
+        expect(screen.getByRole("button", { name: /light theme/i })).toHaveAttribute(
+            "aria-pressed",
+            "false",
+        );
+    });
+
     it("toggles to light, persists, and keeps the palette on infinity", async () => {
         const user = userEvent.setup();
         render(<ThemeToggle />);
@@ -82,12 +91,12 @@ describe("ThemeToggle", () => {
     it("theme-init.js sets the stored theme before paint and leaves dark otherwise", () => {
         const src = readFileSync(join(process.cwd(), "public/theme-init.js"), "utf8");
         document.documentElement.dataset.theme = "dark";
-         
+
         new Function(src)();
         expect(document.documentElement.dataset.theme).toBe("dark");
 
         localStorage.setItem("theme", "light");
-         
+
         new Function(src)();
         expect(document.documentElement.dataset.theme).toBe("light");
         expect(document.documentElement.style.colorScheme).toBe("light");
