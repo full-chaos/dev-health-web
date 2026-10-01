@@ -24,7 +24,6 @@ const publicEnvSchema = z.object({
     NEXT_PUBLIC_DOCS_URL: z.string().default("/docs"),
     NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: z.string().optional(),
     NEXT_PUBLIC_DEMO_MODE: z.string().optional(),
-    NEXT_PUBLIC_BETA: z.string().optional(),
     NEXT_PUBLIC_GUIDED_ONBOARDING: z.string().optional(),
     NEXT_PUBLIC_RUM_ENDPOINT: z.string().optional(),
     NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
@@ -39,7 +38,6 @@ function parsePublicEnv(): PublicEnv {
         NEXT_PUBLIC_DOCS_URL: process.env.NEXT_PUBLIC_DOCS_URL,
         NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: process.env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE,
         NEXT_PUBLIC_DEMO_MODE: process.env.NEXT_PUBLIC_DEMO_MODE,
-        NEXT_PUBLIC_BETA: process.env.NEXT_PUBLIC_BETA,
         NEXT_PUBLIC_GUIDED_ONBOARDING: process.env.NEXT_PUBLIC_GUIDED_ONBOARDING,
         NEXT_PUBLIC_RUM_ENDPOINT: process.env.NEXT_PUBLIC_RUM_ENDPOINT,
         NEXT_PUBLIC_SENTRY_DSN: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -114,7 +112,6 @@ const serverEnvSchema = z.object({
     NEXT_PUBLIC_DOCS_URL: z.string().optional(),
     NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: z.string().optional(),
     NEXT_PUBLIC_DEMO_MODE: z.string().optional(),
-    NEXT_PUBLIC_BETA: z.string().optional(),
     NEXT_PUBLIC_RUM_ENDPOINT: z.string().optional(),
     NEXT_PUBLIC_SENTRY_DSN: z.string().optional(),
 });

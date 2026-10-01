@@ -40,7 +40,7 @@ test.describe("CHAOS-2056/2058 nav + CTA surfaces", () => {
         await shoot(page, "/metrics", "metrics");
     });
 
-    test("ai workflows (AITabNav ModeTabs)", async ({ page }) => {
+    test("ai overview (shell page header + scope bar)", async ({ page }) => {
         await shoot(page, "/ai", "ai");
     });
 

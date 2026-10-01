@@ -13,7 +13,7 @@ Primary test file
 
 Routes
 
-- `/` with heading `Developer Health Ops Cockpit`
+- `/` with heading `Home`
 - `/explore?metric=...&f=...`
 - `/opportunities` with heading `Focus Cards`
 
@@ -34,7 +34,7 @@ sequenceDiagram
     participant EX as Explore UI
     participant OP as Opportunities UI
     U->>D: Open /
-    D-->>U: Show Developer Health Ops Cockpit
+    D-->>U: Show Home
     U->>D: Click delta tile
     D->>EP: Open evidence panel
     EP-->>U: Show evidence details

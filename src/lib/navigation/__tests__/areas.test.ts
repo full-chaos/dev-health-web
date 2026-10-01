@@ -65,7 +65,7 @@ describe("navArea.children — locked child navigation", () => {
                 navAreas.map((area) => [area.label, area.children.map((child) => child.label)]),
             ),
         ).toEqual({
-            Cockpit: [],
+            Home: [],
             Diagnose: [
                 "Overview",
                 "Flow",
@@ -290,6 +290,36 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
         }
     });
 
+    it("selects NO child on the route of a preview (navVisible:false) child: a visible sibling with a shorter prefix does not claim it", () => {
+        // The case that was wrong: the AI Overview child (`/ai`) claimed
+        // `/ai/attribution`, so the sidebar and the trail said "Overview" there.
+        expect(selectedChildForPathname(areaById("ai"), "/ai/attribution")).toBeUndefined();
+        expect(navTrailForPathname("/ai/attribution")).toEqual([{ label: "AI" }]);
+        expect(navTitleForPathname("/ai/attribution")).toBe("AI");
+
+        const previewPaths = navAreas.flatMap((area) =>
+            area.children
+                .filter((child) => !child.navVisible)
+                .map((child) => [area.id, child.path] as const),
+        );
+        expect(previewPaths.length).toBeGreaterThan(0);
+        for (const [areaId, path] of previewPaths) {
+            expect(selectedChildForPathname(areaById(areaId), path), path).toBeUndefined();
+        }
+    });
+
+    it("still selects the visible child with the longest prefix, and the area Overview on its own route", () => {
+        expect(selectedChildForPathname(areaById("ai"), "/ai")?.id).toBe("ai-overview");
+        expect(selectedChildForPathname(areaById("ai"), "/ai/impact")?.id).toBe("ai-impact");
+        expect(selectedChildForPathname(areaById("ai"), "/ai/impact/evidence")?.id).toBe(
+            "ai-impact",
+        );
+        expect(navTrailForPathname("/ai/impact/evidence")).toEqual([
+            { label: "AI", href: "/ai" },
+            { label: "Impact" },
+        ]);
+    });
+
     it("links Flow sidebar rows to the Flow metrics tab while keeping /metrics active", () => {
         const flowChild = areaById("diagnose").children.find((child) => child.id === "flow");
         expect(flowChild?.path).toBe("/metrics?tab=flow");
@@ -325,9 +355,9 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/settings")).toBe("Settings");
     });
 
-    it("keeps Cockpit as a single area crumb because it has no children", () => {
-        expect(navTrailForPathname("/dashboard")).toEqual([{ label: "Cockpit" }]);
-        expect(navTitleForPathname("/dashboard")).toBe("Cockpit");
+    it("keeps Home as a single area crumb because it has no children", () => {
+        expect(navTrailForPathname("/dashboard")).toEqual([{ label: "Home" }]);
+        expect(navTitleForPathname("/dashboard")).toBe("Home");
     });
 
     it("builds an Area → Child trail whose last crumb label === the child label", () => {
