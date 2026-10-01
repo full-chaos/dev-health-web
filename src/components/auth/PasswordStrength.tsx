@@ -44,7 +44,7 @@ export function PasswordStrength({ password }: PasswordStrengthProps) {
                         <div key={check.label} className="flex items-center gap-2 text-sm">
                             {passed ? (
                                 <svg
-                                    className="h-4 w-4 text-green-500 shrink-0"
+                                    className="h-4 w-4 text-(--positive) shrink-0"
                                     fill="none"
                                     viewBox="0 0 24 24"
                                     stroke="currentColor"

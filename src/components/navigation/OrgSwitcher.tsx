@@ -186,7 +186,7 @@ export function OrgSwitcher({
                 {activeOrg ? dataLabel(activeOrg) : "Choose the organization used for dashboards."}
                 {!canSwitchOrganizations ? " · Only organization on this account" : null}
             </p>
-            {error ? <p className="mt-2 text-xs text-red-400">{error}</p> : null}
+            {error ? <p className="mt-2 text-xs text-(--negative)">{error}</p> : null}
         </div>
     );
 }
