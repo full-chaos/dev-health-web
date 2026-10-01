@@ -86,13 +86,13 @@ describe("Improve overview in the shared app shell", () => {
         ).toBeInTheDocument();
     });
 
-    it("has no in-page 'Back to Cockpit': the sidebar Cockpit entry is the return path, with the state", async () => {
+    it("has no in-page 'Back to Home': the sidebar Home entry is the return path, with the state", async () => {
         await renderPage();
 
         expect(
             within(screen.getByRole("main")).queryByRole("link", { name: /Back to/ }),
         ).toBeNull();
-        const cockpit = screen.getByRole("link", { name: /^Cockpit$/ });
+        const cockpit = screen.getByRole("link", { name: /^Home$/ });
         const url = new URL(cockpit.getAttribute("href") ?? "", "https://app.example");
         expect(url.pathname).toBe("/dashboard");
         expect(decodeFilter(url.searchParams.get("f"))).toEqual(FILTERS);

@@ -118,7 +118,7 @@ export default async function Home({ searchParams }: HomePageProps) {
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-10 text-foreground">
             <PageHeader
-                title="Developer Health Ops Cockpit"
+                title="Home"
                 subtitle={<>System patterns over the last {filters.time.range_days} days.</>}
             >
                 {lensConfig.framing ? (
@@ -148,10 +148,10 @@ export default async function Home({ searchParams }: HomePageProps) {
 
             <AiWorkflowCallout filters={filters} activeRole={activeRole} prominent={aiDominant} />
 
-            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+            <section className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card) p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                        <p className="text-label-caps uppercase text-(--ink-muted)">
                             Monitoring views
                         </p>
                         <p className="mt-1 text-sm text-(--ink-muted)">
@@ -165,14 +165,14 @@ export default async function Home({ searchParams }: HomePageProps) {
                         {CTA_LABELS.openMetrics}
                     </Link>
                 </div>
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div className="mt-4 grid gap-3.5 md:grid-cols-3">
                     {prioritizedViews.map((view) => (
                         <Link
                             key={view.id}
                             href={withFilterParam(view.href, filters, activeRole)}
-                            className="group rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
+                            className="group rounded-(--radius-md) border border-(--card-stroke) bg-background px-5 py-4.5 transition hover:-translate-y-0.5 hover:border-(--accent)"
                         >
-                            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                            <div className="flex items-center justify-between text-label-caps uppercase text-(--ink-muted)">
                                 <span>{view.label}</span>
                                 <span className="text-(--accent-2)">Open</span>
                             </div>

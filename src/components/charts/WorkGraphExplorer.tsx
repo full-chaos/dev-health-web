@@ -47,6 +47,12 @@ type WorkGraphExplorerProps = {
     className?: string;
     style?: CSSProperties;
     onNodeClickAction?: (nodeId: string, nodeType: WorkGraphNodeType) => void;
+    /**
+     * Layer visibility owned by the page ("Graph context" card). When both are given the
+     * explorer shows no checkbox row of its own and obeys these; without them it keeps its own.
+     */
+    hiddenNodeTypes?: ReadonlySet<WorkGraphNodeType>;
+    onToggleNodeTypeAction?: (nodeType: WorkGraphNodeType) => void;
     selectedNodeId?: string;
 };
 
@@ -126,7 +132,9 @@ const LAYOUT_MODE_OPTIONS: Array<{ id: WorkGraphLayoutMode; label: string }> = [
     { id: "network", label: "Network" },
 ];
 
-const FILTERABLE_NODE_TYPES: WorkGraphNodeType[] = ["RELEASE", "FEATURE_FLAG"];
+/** The node types a viewer can hide (layer visibility). */
+export const LAYER_NODE_TYPES: WorkGraphNodeType[] = ["RELEASE", "FEATURE_FLAG"];
+const FILTERABLE_NODE_TYPES = LAYER_NODE_TYPES;
 
 type EdgeColorSource = number | "negative" | "positive" | "info" | "caution" | "muted";
 type EdgeLineType = "solid" | "dashed" | "dotted";
@@ -204,7 +212,7 @@ const NODE_SIZE: Record<WorkGraphNodeType, number> = {
 
 function edgesToGraph(
     edges: WorkGraphEdge[],
-    hiddenNodeTypes: Set<WorkGraphNodeType>,
+    hiddenNodeTypes: ReadonlySet<WorkGraphNodeType>,
 ): {
     nodes: WorkGraphNode[];
     links: WorkGraphLink[];
@@ -266,6 +274,8 @@ export function WorkGraphExplorer({
     style,
     onNodeClickAction,
     selectedNodeId,
+    hiddenNodeTypes: controlledHidden,
+    onToggleNodeTypeAction,
 }: WorkGraphExplorerProps) {
     const chartTheme = useChartTheme();
     const { nodeTypeColors, edgeTypeStyles } = useWorkGraphColors();
@@ -275,7 +285,14 @@ export function WorkGraphExplorer({
     const [chosenMode, setChosenMode] = useState<WorkGraphLayoutMode | null>(null);
     const scrollRef = useRef<HTMLDivElement | null>(null);
     const [boxWidth, setBoxWidth] = useState(900);
-    const [hiddenNodeTypes, setHiddenNodeTypes] = useState<Set<WorkGraphNodeType>>(() => new Set());
+    const [ownHiddenNodeTypes, setHiddenNodeTypes] = useState<Set<WorkGraphNodeType>>(
+        () => new Set(),
+    );
+    const isLayerControlled =
+        controlledHidden !== undefined && onToggleNodeTypeAction !== undefined;
+    const hiddenNodeTypes: ReadonlySet<WorkGraphNodeType> = isLayerControlled
+        ? controlledHidden
+        : ownHiddenNodeTypes;
 
     const toggleNodeType = useCallback((nodeType: WorkGraphNodeType) => {
         setHiddenNodeTypes((prev) => {
@@ -562,7 +579,7 @@ export function WorkGraphExplorer({
                     Commits → Files or All connections for more columns.
                 </p>
             )}
-            {FILTERABLE_NODE_TYPES.length > 0 && (
+            {!isLayerControlled && FILTERABLE_NODE_TYPES.length > 0 && (
                 <div className="mb-2 flex flex-wrap items-center gap-2 px-1 text-xs">
                     <span className="mr-1 uppercase tracking-[0.16em] text-(--ink-muted)">
                         Show
@@ -654,15 +671,62 @@ const LEGEND_EDGE_LABELS: Record<WorkGraphEdgeType, string> = {
 };
 
 type WorkGraphLegendProps = {
+    /** "rail" (default): the narrow vertical strip; "row": a horizontal strip for under the graph. */
+    orientation?: "rail" | "row";
     collapsed?: boolean;
     onToggleAction?: () => void;
 };
 
-export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraphLegendProps) {
+type WorkGraphLayerTogglesProps = {
+    hiddenNodeTypes: ReadonlySet<WorkGraphNodeType>;
+    onToggleAction: (nodeType: WorkGraphNodeType) => void;
+};
+
+/** "Layer visibility": one checkbox per hideable node type (the same ones the explorer used to hold). */
+export function WorkGraphLayerToggles({
+    hiddenNodeTypes,
+    onToggleAction,
+}: WorkGraphLayerTogglesProps) {
+    const { nodeTypeColors } = useWorkGraphColors();
+    return (
+        <div className="flex flex-col gap-2 text-sm" data-testid="layer-toggles">
+            {LAYER_NODE_TYPES.map((type) => (
+                <label
+                    key={type}
+                    title={NODE_TYPE_LABELS[type]}
+                    className="flex cursor-pointer items-center justify-between gap-3 border-b border-(--card-stroke) py-2"
+                >
+                    <span className="flex items-center gap-2">
+                        <span
+                            className="inline-block h-2.5 w-2.5 rounded-sm"
+                            style={{ backgroundColor: nodeTypeColors[type] }}
+                        />
+                        {NODE_TYPE_LABELS[type]}
+                    </span>
+                    <input
+                        type="checkbox"
+                        checked={!hiddenNodeTypes.has(type)}
+                        onChange={() => onToggleAction(type)}
+                        className="accent-current"
+                        style={{ accentColor: nodeTypeColors[type] }}
+                    />
+                </label>
+            ))}
+        </div>
+    );
+}
+
+export function WorkGraphLegend({
+    collapsed = false,
+    onToggleAction,
+    orientation = "rail",
+}: WorkGraphLegendProps) {
     const { nodeTypeColors, edgeTypeStyles } = useWorkGraphColors();
     if (collapsed) {
         return (
-            <div className="flex flex-col items-center gap-3 text-(--ink-muted)">
+            <div
+                className={`flex items-center gap-3 text-(--ink-muted) ${orientation === "row" ? "flex-row" : "flex-col"}`}
+            >
                 <button
                     type="button"
                     onClick={onToggleAction}
@@ -672,7 +736,9 @@ export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraph
                 >
                     ◀
                 </button>
-                <div className="flex flex-col items-center gap-1.5">
+                <div
+                    className={`flex items-center gap-1.5 ${orientation === "row" ? "flex-row" : "flex-col"}`}
+                >
                     {ALL_NODE_TYPES.slice(0, 7).map((type) => (
                         <span
                             key={type}
@@ -682,7 +748,9 @@ export function WorkGraphLegend({ collapsed = false, onToggleAction }: WorkGraph
                         />
                     ))}
                 </div>
-                <span className="[writing-mode:vertical-rl] rotate-180 text-label-caps uppercase tracking-[0.2em]">
+                <span
+                    className={`text-label-caps uppercase tracking-[0.2em] ${orientation === "row" ? "" : "[writing-mode:vertical-rl] rotate-180"}`}
+                >
                     Legend
                 </span>
             </div>

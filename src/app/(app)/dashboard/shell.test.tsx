@@ -10,7 +10,7 @@ import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import Loading from "./loading";
 import Home from "./page";
 
-// The Cockpit inside the shared app shell: the layout owns the navigation and
+// The Home inside the shared app shell: the layout owns the navigation and
 // the `<main>` landmark, so the page must bring neither.
 
 const pageLevelNavSpy = vi.hoisted(() => vi.fn());
@@ -72,16 +72,14 @@ beforeEach(() => {
     vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(null as never);
 });
 
-describe("Cockpit in the shared app shell", () => {
+describe("Home in the shared app shell", () => {
     it("has exactly one main landmark, and the page heading is inside it", async () => {
         renderInShell(await Home({ searchParams: Promise.resolve({}) }));
 
         const mains = screen.getAllByRole("main");
         expect(mains).toHaveLength(1);
         expect(mains[0]).toHaveAttribute("id", "main-content");
-        expect(
-            within(mains[0]).getByRole("heading", { name: "Developer Health Ops Cockpit" }),
-        ).toBeInTheDocument();
+        expect(within(mains[0]).getByRole("heading", { name: "Home" })).toBeInTheDocument();
     });
 
     it("renders no page-level navigation: the shell's navigation is the only one", async () => {

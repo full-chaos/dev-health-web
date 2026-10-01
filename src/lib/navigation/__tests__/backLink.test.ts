@@ -8,7 +8,7 @@ describe("lastBreadcrumbHref", () => {
         expect(lastBreadcrumbHref("/plan/capacity")).toBe("/plan");
     });
 
-    it("is undefined when the trail has no link: an area landing, the Cockpit, an unowned route", () => {
+    it("is undefined when the trail has no link: an area landing, the Home, an unowned route", () => {
         expect(lastBreadcrumbHref("/operating-review")).toBeUndefined();
         expect(lastBreadcrumbHref("/dashboard")).toBeUndefined();
         expect(lastBreadcrumbHref("/prs/repo:1")).toBeUndefined();

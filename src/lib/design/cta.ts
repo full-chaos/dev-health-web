@@ -14,7 +14,7 @@
  */
 export const CTA_LABELS = {
     /** Return to the Dev Health cockpit from global brand navigation. */
-    devHealthCockpit: "Full Chaos Dev Health cockpit",
+    devHealthCockpit: "Full Chaos Dev Health home",
     /** Cognitive Load overview: jump to the Load Drivers tab. */
     exploreLoadDrivers: "Explore load drivers",
     /** Light / dark theme switch (pressed = light). */
@@ -31,6 +31,8 @@ export const CTA_LABELS = {
     inspectConfidence: "Inspect confidence",
     /** Inspect the associations (edges) linked to an entity. */
     inspectAssociations: "Inspect associations",
+    /** Open the Work Graph Artifacts tab (the table form of the graph's entities). */
+    browseArtifacts: "Browse artifacts",
     /** Open a single artifact (flame diagram, PR, deployment, …). */
     openArtifact: "Open artifact",
     /** Open the server-approved provenance URI for a sanitized evidence record. */
@@ -98,7 +100,7 @@ export const CTA_LABELS = {
     /** Dismiss a generic panel. */
     closePanel: "Close panel",
     /** Return to the cockpit (home) — the canonical single return path. */
-    backToCockpit: "Back to Cockpit",
+    backToCockpit: "Back to Home",
     /** Start the frictionless one-click GitHub App install (CHAOS-2235). */
     connectGitHubApp: "Connect GitHub App",
     connectPagerDuty: "Connect PagerDuty",
