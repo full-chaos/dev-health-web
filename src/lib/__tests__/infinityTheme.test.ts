@@ -232,23 +232,22 @@ describe("infinity palette", () => {
                     contrast(t["--ink-muted"], fill),
                     `ink-muted on ${name}`,
                 ).toBeGreaterThanOrEqual(4.5);
-                // Dark text-muted is unchanged by the light ticket and sits under 4.5 on accent tints.
-                if (theme === "light" || name === "card" || name === "page") {
-                    expect(
-                        contrast(t["--text-muted"], fill),
-                        `text-muted on ${name}`,
-                    ).toBeGreaterThanOrEqual(4.5);
-                }
+                expect(
+                    contrast(t["--text-muted"], fill),
+                    `text-muted on ${name}`,
+                ).toBeGreaterThanOrEqual(4.5);
             }
         },
     );
 
-    it("leaves the dark theme's colors unchanged: orange text resolves to --accent, muted ink as before", () => {
+    it("pins the muted ink values: light as before, dark one notch lighter", () => {
+        expect(infinity("light")["--text-muted"]).toBe("#5c6269");
+        expect(infinity("light")["--ink-muted"]).toBe("#5c6269");
         const dark = infinity("dark");
         // Every `text-(--accent-text)` renders the same color as the `text-(--accent)` it replaced.
         expect(dark["--accent-text"]).toBe(dark["--accent"]);
         expect(dark["--ink-muted"]).toBe("#a7afb5");
-        expect(dark["--text-muted"]).toBe("#808990");
+        expect(dark["--text-muted"]).toBe("#8b959c");
     });
 
     it.each(THEMES)("keeps status pill text readable on its own tint (%s)", (theme) => {
