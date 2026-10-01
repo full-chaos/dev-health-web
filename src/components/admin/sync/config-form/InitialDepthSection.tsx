@@ -33,7 +33,7 @@ export function InitialDepthSection({ value, onChange, currentTier }: InitialDep
                             onClick={() => onChange(opt.value)}
                             className={`rounded-md border px-3 py-2 text-sm transition-colors ${
                                 isSelected
-                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
                                     : isGated
                                       ? "cursor-not-allowed border-(--card-stroke) bg-(--card-70) text-(--ink-muted) opacity-50"
                                       : "border-(--card-stroke) hover:border-(--accent)/50"

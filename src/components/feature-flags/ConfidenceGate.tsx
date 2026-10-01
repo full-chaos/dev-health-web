@@ -5,6 +5,7 @@ import {
     CONFIDENCE_WARN_THRESHOLD,
     GATE_COPY,
 } from "@/lib/feature-flags/interpretation";
+import { STATUS_PILL } from "@/lib/statusPill";
 
 type GateLevel = "show" | "warn" | "suppress";
 
@@ -52,7 +53,9 @@ export function ConfidenceGate({
                 <p className="max-w-sm text-sm text-(--ink-muted)">
                     {suppressedMessage ?? GATE_COPY.suppressedDefault}
                 </p>
-                <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-label-caps font-semibold uppercase tracking-[0.15em] text-red-400">
+                <span
+                    className={`rounded-full border px-2 py-0.5 text-label-caps font-semibold uppercase tracking-[0.15em] ${STATUS_PILL.negative}`}
+                >
                     Coverage {Math.round(coverage * 100)}%
                 </span>
             </div>
@@ -61,15 +64,15 @@ export function ConfidenceGate({
 
     if (level === "warn") {
         return (
-            <div className="relative rounded-3xl border border-amber-500/30 p-px">
+            <div className="relative rounded-3xl border border-(--caution)/30 p-px">
                 <div
-                    className="absolute -top-3 left-4 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-label-caps font-semibold uppercase tracking-[0.15em] text-amber-400"
+                    className={`absolute -top-3 left-4 rounded-full border px-2 py-0.5 text-label-caps font-semibold uppercase tracking-[0.15em] ${STATUS_PILL.caution}`}
                     title={GATE_COPY.warnTooltip}
                 >
                     Reduced confidence
                 </div>
                 <div className="rounded-3xl bg-(--card-80) p-4">{children}</div>
-                <p className="px-4 pb-3 text-xs text-amber-400/80">{GATE_COPY.warnTooltip}</p>
+                <p className="px-4 pb-3 text-xs text-(--caution)">{GATE_COPY.warnTooltip}</p>
             </div>
         );
     }

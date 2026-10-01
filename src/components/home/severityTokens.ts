@@ -10,8 +10,8 @@ import type { AreaSignalState } from "@/lib/areaSignals/types";
 
 /** Severity badge chip classes (border + bg + text). */
 export const SEVERITY_BADGE: Record<SignalSeverity, string> = {
-    critical: "border-red-500/30 bg-red-500/15 text-red-300",
-    high: "border-amber-500/30 bg-amber-500/15 text-amber-300",
+    critical: "border-(--accent-negative)/30 bg-(--accent-negative)/12 text-(--accent-negative)",
+    high: "border-(--accent-3)/30 bg-(--accent-3)/12 text-(--accent-3)",
     medium: "border-(--accent-2)/30 bg-(--accent-2)/12 text-(--accent-2)",
     low: "border-(--card-stroke) bg-(--card-70) text-(--ink-muted)",
 };
@@ -26,13 +26,13 @@ export const SEVERITY_LABEL: Record<SignalSeverity, string> = {
 
 export const CONFIDENCE_DOT: Record<ConfidenceLevel, string> = {
     high: "bg-(--accent-3)",
-    medium: "bg-amber-400",
+    medium: "bg-(--accent-3)",
     low: "bg-(--ink-muted)",
 };
 
 export const CONFIDENCE_TEXT: Record<ConfidenceLevel, string> = {
     high: "text-(--accent-3)",
-    medium: "text-amber-300",
+    medium: "text-(--accent-3)",
     low: "text-(--ink-muted)",
 };
 

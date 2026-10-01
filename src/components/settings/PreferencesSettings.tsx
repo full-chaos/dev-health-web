@@ -80,7 +80,7 @@ export function PreferencesSettings() {
                             onClick={() => applyTheme("light")}
                             className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
                                 theme === "light"
-                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
                                     : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
                             }`}
                         >
@@ -92,7 +92,7 @@ export function PreferencesSettings() {
                             onClick={() => applyTheme("dark")}
                             className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
                                 theme === "dark"
-                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
                                     : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
                             }`}
                         >
@@ -119,7 +119,7 @@ export function PreferencesSettings() {
                             onClick={() => applyTelemetryOptOut(false)}
                             className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
                                 !telemetryOptedOut
-                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
                                     : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
                             }`}
                         >
@@ -131,7 +131,7 @@ export function PreferencesSettings() {
                             onClick={() => applyTelemetryOptOut(true)}
                             className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
                                 telemetryOptedOut
-                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
                                     : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
                             }`}
                         >

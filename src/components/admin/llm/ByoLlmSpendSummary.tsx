@@ -105,7 +105,7 @@ export function ByoLlmSpendSummary({ loadSpendAction }: ByoLlmSpendSummaryProps)
                 className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-6 text-center"
                 data-testid="byo-llm-spend-locked"
             >
-                <p className="text-xs font-semibold uppercase tracking-wider text-(--accent)">
+                <p className="text-xs font-semibold uppercase tracking-wider text-(--accent-text)">
                     {locked.reason === "not_licensed" ? "Team Plan Feature" : "Feature Disabled"}
                 </p>
                 <p className="mt-2 text-sm text-(--ink-muted)">{locked.message}</p>

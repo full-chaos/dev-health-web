@@ -1,19 +1,14 @@
 import React from "react";
+import { STATUS_PILL } from "@/lib/statusPill";
 
 type ProviderBadgeProps = {
     provider: string;
     username: string;
 };
 
-const PROVIDER_COLORS: Record<string, string> = {
-    github: "bg-gray-800 text-white",
-    gitlab: "bg-orange-600 text-white",
-    jira: "bg-blue-600 text-white",
-    email: "bg-green-600 text-white",
-};
-
 export function ProviderBadge({ provider, username }: ProviderBadgeProps) {
-    const colorClass = PROVIDER_COLORS[provider.toLowerCase()] || "bg-gray-500 text-white";
+    // A provider is an identity, not a status: one plain pill for all of them.
+    const colorClass = STATUS_PILL.muted;
 
     return (
         <span

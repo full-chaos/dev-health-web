@@ -56,7 +56,9 @@ export function AliasSuggestionRow({ suggestion }: { suggestion: AliasSuggestion
                     <div className="text-xs text-(--ink-muted) mb-1 uppercase tracking-wider">
                         Suggested Canonical
                     </div>
-                    <div className="font-mono text-sm text-(--accent)">{suggestedCanonicalId}</div>
+                    <div className="font-mono text-sm text-(--accent-text)">
+                        {suggestedCanonicalId}
+                    </div>
                 </div>
             </div>
 
