@@ -54,11 +54,10 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
     // sub-area stays a link so it remains reachable; a preview sub-area renders as
     // a plain <div> (same visual) so the dead route is never linked.
     if (signal.state === "unavailable") {
-        // Base dashed treatment; only ROUTED (clickable) cards get the hover
+        // The dashed box is the DataState inside (3.6); only ROUTED (clickable) cards get the hover
         // affordance — a preview card must not look interactive.
-        const unavailableBaseClassName =
-            "group block min-h-30 rounded-(--radius-md) border border-dashed border-(--card-stroke) bg-background p-4.75 transition";
-        const unavailableClassName = `${unavailableBaseClassName} hover:border-(--accent)`;
+        const unavailableBaseClassName = "group block rounded-(--radius-md)";
+        const unavailableClassName = `${unavailableBaseClassName} transition hover:[&_.border-dashed]:border-(--accent)`;
         const body = (
             <>
                 <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
@@ -69,6 +68,7 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                     title={AREA_UNAVAILABLE_EMPTY_STATE.title}
                     description={AREA_UNAVAILABLE_EMPTY_STATE.description}
                     className="mt-3"
+                    compact
                     data-testid="area-signal-unavailable"
                 />
             </>

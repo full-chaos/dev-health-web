@@ -114,7 +114,8 @@ describe("AreaSignalCard pinned behaviour (before the CHAOS-7598 restyle)", () =
         draw({ ...base, value: "", state: "unavailable", direction: undefined });
         const card = screen.getByTestId("area-signal-card");
         expect(card.className).not.toMatch(/opacity-/);
-        expect(card.className).toContain("border-dashed");
+        expect(card.innerHTML).not.toMatch(/opacity-/);
+        expect(card.querySelector(".border-dashed")).not.toBeNull();
         // The state is named in words, not implied by dimming.
         expect(screen.getByText("No data for this window")).toBeInTheDocument();
     });
