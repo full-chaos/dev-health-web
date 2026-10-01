@@ -43,7 +43,7 @@ describe("shell route registry", () => {
             "/issues",
             "/deployments",
             "/reports",
-            "/reports/new",
+            "/reports",
         ]);
     });
 
@@ -111,11 +111,12 @@ describe("shell route registry", () => {
             SHELL_ROUTES.filter((route) => route.filterParam === "none").map(
                 (route) => route.prefix,
             ),
-        ).toEqual(["/prs", "/issues", "/deployments", "/reports/new"]);
+        ).toEqual(["/prs", "/issues", "/deployments", "/reports"]);
     });
 
-    it("gives Report Center its own entry and Create Report the no-filter entry", () => {
+    it("gives Report Center its own entry and its descendants the no-filter entry: the first equal-length match wins", () => {
         expect(shellRouteForPathname("/reports")).toEqual({ prefix: "/reports", exact: true });
         expect(shellRouteForPathname("/reports/new")?.filterParam).toBe("none");
+        expect(shellRouteForPathname("/reports/abc-123")?.filterParam).toBe("none");
     });
 });
