@@ -58,7 +58,6 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                             label="Open Alerts"
                             value={kpis?.openTotal ?? 0}
                             delta={fetching ? undefined : kpis?.openDelta30d}
-                            tone={kpis && kpis.openTotal > 0 ? "warn" : "default"}
                             loading={fetching}
                         />
                     )}
@@ -70,7 +69,11 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                         <KpiTile
                             label="Critical"
                             value={kpis?.critical ?? 0}
-                            tone={kpis && kpis.critical > 0 ? "danger" : "default"}
+                            pill={
+                                kpis && kpis.critical > 0
+                                    ? { label: "Critical", tone: "negative" }
+                                    : undefined
+                            }
                             loading={fetching}
                         />
                     )}
@@ -82,7 +85,11 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                         <KpiTile
                             label="High"
                             value={kpis?.high ?? 0}
-                            tone={kpis && kpis.high > 0 ? "warn" : "default"}
+                            pill={
+                                kpis && kpis.high > 0
+                                    ? { label: "High", tone: "caution" }
+                                    : undefined
+                            }
                             loading={fetching}
                         />
                     )}
@@ -94,7 +101,6 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                         <KpiTile
                             label="Mean Days to Fix (30d)"
                             value={mttfValue}
-                            tone="default"
                             loading={fetching}
                         />
                     )}
