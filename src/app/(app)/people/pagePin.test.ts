@@ -107,15 +107,3 @@ describe("People search component strings (pin)", () => {
         expect(search).toContain(text);
     });
 });
-
-describe("Production shapes that decisions P2, P3 change (pin; flipped in pagePass.test)", () => {
-    it("the person page lists the six metrics again under 'View metric'", () => {
-        expect(PERSON).toContain("View metric");
-        expect(PERSON).toContain("Individual detail");
-        expect(PERSON).toContain("PERSON_METRIC_KEYS.map");
-    });
-    it("the evidence table prints the raw record in Details", () => {
-        expect(METRIC).toContain("JSON.stringify(item)");
-        expect(METRIC).toMatch(/Item <\/th> <th[^>]*> Details/u);
-    });
-});
