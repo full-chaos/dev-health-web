@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { addDays, formatDateInput, parseDateInput, toLocalDate } from "@/lib/dateUtils";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
-import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
+import { decodeFilter, encodeFilterParam, filterFromQueryParams } from "@/lib/filters/encode";
 import type { MetricFilter } from "@/lib/filters/types";
 import { type FilterBarClientProps, resolveScopeLock, resolveVisibility } from "./filterBarConfig";
 import { DATE_PRESETS, formatSelection, scopeLabelMap } from "./filterBarUtils";
@@ -20,12 +20,29 @@ const subscribe = () => () => {};
 const getIsClientSnapshot = () => true;
 const getServerSnapshot = () => false;
 
+type FilterBarStateProps = Pick<
+    FilterBarClientProps,
+    "view" | "tab" | "resolvedVisibility" | "resolvedScopeLock"
+> & {
+    /**
+     * `false`: the bar does not write a default `f`. With no `f` in the URL the
+     * filter comes from the query params, as the pages read it (organization
+     * level), and the URL is not changed. The global context bar worked this
+     * way on a page that had no page filter bar.
+     */
+    writeDefaultFilter?: boolean;
+};
+
+const filterFromQuery = (query: string) =>
+    filterFromQueryParams(Object.fromEntries(new URLSearchParams(query)));
+
 export function useFilterBarState({
     view,
     tab,
     resolvedVisibility,
     resolvedScopeLock,
-}: Pick<FilterBarClientProps, "view" | "tab" | "resolvedVisibility" | "resolvedScopeLock">) {
+    writeDefaultFilter = true,
+}: FilterBarStateProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -33,7 +50,15 @@ export function useFilterBarState({
     const isClient = useSyncExternalStore(subscribe, getIsClientSnapshot, getServerSnapshot);
 
     const encoded = searchParams.get("f");
-    const initialFilters = useMemo(() => decodeFilter(encoded), [encoded]);
+    // Only the mode with no default `f` reads the other query params.
+    const queryWithoutFilter = !encoded && !writeDefaultFilter ? searchParams.toString() : null;
+    const initialFilters = useMemo(
+        () =>
+            queryWithoutFilter === null
+                ? decodeFilter(encoded)
+                : filterFromQuery(queryWithoutFilter),
+        [encoded, queryWithoutFilter],
+    );
     const [filters, setFilters] = useState<MetricFilter>(initialFilters);
     const [showAdvanced, setShowAdvanced] = useState(false);
     const [openMenu, setOpenMenu] = useState<string | null>(null);
@@ -49,13 +74,13 @@ export function useFilterBarState({
     }, [initialFilters]);
 
     useEffect(() => {
-        if (!encoded && !didSetDefaultRef.current) {
+        if (writeDefaultFilter && !encoded && !didSetDefaultRef.current) {
             didSetDefaultRef.current = true;
             const params = new URLSearchParams(searchParams.toString());
             params.set("f", encodeFilterParam(defaultMetricFilter));
             router.replace(`${pathname}?${params.toString()}`, { scroll: false });
         }
-    }, [encoded, pathname, router, searchParams]);
+    }, [encoded, pathname, router, searchParams, writeDefaultFilter]);
 
     useEffect(() => {
         if (view !== "people") {
@@ -116,6 +141,16 @@ export function useFilterBarState({
     );
 
     const resetFilters = useCallback(() => {
+        if (!writeDefaultFilter) {
+            // Back to the first-load state of this mode: no `f` in the URL.
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete("f");
+            const query = params.toString();
+            setFilters(filterFromQuery(query));
+            router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+            return;
+        }
+
         if (view === "people") {
             const params = new URLSearchParams(searchParams.toString());
             params.delete("q");
@@ -127,7 +162,7 @@ export function useFilterBarState({
         }
 
         updateFilters(defaultMetricFilter);
-    }, [pathname, router, searchParams, updateFilters, view]);
+    }, [pathname, router, searchParams, updateFilters, view, writeDefaultFilter]);
 
     const copyFilters = useCallback(async () => {
         const payload = JSON.stringify(filters, null, 2);
