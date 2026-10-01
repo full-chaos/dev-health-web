@@ -4,7 +4,12 @@ import { render, screen } from "@/test/utils";
 import { SelectedPathPanel } from "./SelectedPathPanel";
 
 const numbers = { allocated: 12.34, share: 25, baselineShare: 20, changePp: 5 };
-const base = { unit: "work units", shareBase: "all allocation", hasBaseline: true };
+const base = {
+    unit: "work units",
+    shareBase: "all allocation",
+    hasBaseline: true,
+    evidenceHref: "/investment?tab=evidence&f=abc",
+};
 
 describe("SelectedPathPanel", () => {
     it("shows the empty-state text when nothing is selected", () => {
@@ -92,7 +97,7 @@ describe("SelectedPathPanel", () => {
         expect(screen.getByText(/Attribution, not dependency/)).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /open evidence/i })).toHaveAttribute(
             "href",
-            "/investment?tab=evidence",
+            "/investment?tab=evidence&f=abc",
         );
     });
 });
