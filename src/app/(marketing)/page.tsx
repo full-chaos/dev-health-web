@@ -135,7 +135,7 @@ const STEPS = [
         number: "03",
         title: "Explore patterns, not dashboards",
         description:
-            "Heatmaps reveal cyclical patterns. Quadrants surface systemic issues. The cockpit frames everything through your role — IC, EM, PM, or Leadership.",
+            "Heatmaps reveal cyclical patterns. Quadrants surface systemic issues. Home frames everything through your role — IC, EM, PM, or Leadership.",
     },
 ];
 
@@ -328,8 +328,8 @@ export default function MarketingPage() {
                         One platform, four perspectives
                     </h2>
                     <p className="mx-auto mt-4 max-w-2xl text-sm text-(--ink-muted)">
-                        The cockpit adapts to your role — surfacing the metrics and investigation
-                        paths that matter most to you.
+                        Home adapts to your role — surfacing the metrics and investigation paths
+                        that matter most to you.
                     </p>
                 </div>
 
