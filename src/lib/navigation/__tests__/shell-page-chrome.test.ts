@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { dirname, join, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
@@ -46,6 +46,44 @@ const routeStates = sources.filter(
     (entry) => entry.name === "loading.tsx" || entry.name === "error.tsx",
 );
 
+const PAGE_HEADER = /<PageHeader[\s/>]/;
+
+/**
+ * A page renders the shared page header itself, or it gives its header to one
+ * component that renders it (the Security repository page: its title is the
+ * repository name, which a client hook reads). The component must be rendered
+ * by the page, and its own source must render `PageHeader`.
+ */
+function rendersSharedPageHeader(entry: { file: string; source: string }): boolean {
+    if (PAGE_HEADER.test(entry.source)) return true;
+
+    const imports = entry.source.matchAll(/import\s+\{([^}]+)\}\s+from\s+"(@\/[^"]+|\.[^"]+)";/g);
+    for (const [, names, specifier] of imports) {
+        const rendered = names
+            .split(",")
+            .map(
+                (name) =>
+                    name
+                        .trim()
+                        .split(/\s+as\s+/)
+                        .pop() ?? "",
+            )
+            .some((name) => name !== "" && new RegExp(`<${name}[\\s/>]`).test(entry.source));
+        if (!rendered) continue;
+
+        const base = specifier.startsWith("@/")
+            ? join(process.cwd(), "src", specifier.slice(2))
+            : join(process.cwd(), dirname(entry.file), specifier);
+        const componentFile = [`${base}.tsx`, join(base, "index.tsx")].find((candidate) =>
+            existsSync(candidate),
+        );
+        if (componentFile && PAGE_HEADER.test(stripComments(readFileSync(componentFile, "utf8")))) {
+            return true;
+        }
+    }
+    return false;
+}
+
 const FORBIDDEN_IN_PAGE: Array<[string, RegExp]> = [
     ["its own PrimaryNav", /<PrimaryNav[\s/>]/],
     ["its own <main>", /<main[\s>]/],
@@ -77,11 +115,40 @@ describe("shell pages bring no chrome of their own", () => {
         expect(offenders).toEqual([]);
     });
 
-    it("every shell page uses the shared PageHeader", () => {
+    it("every shell page uses the shared PageHeader, itself or through one header component", () => {
         const offenders = pages
-            .filter((entry) => !/<PageHeader[\s/>]/.test(entry.source))
+            .filter((entry) => !rendersSharedPageHeader(entry))
             .map((entry) => entry.file);
         expect(offenders).toEqual([]);
+    });
+
+    it("accepts a header component only when that component renders PageHeader", () => {
+        const page = (source: string) => ({ file: "src/app/(app)/security/x/page.tsx", source });
+
+        // Renders a component that renders PageHeader.
+        expect(
+            rendersSharedPageHeader(
+                page(
+                    'import { SecurityRepoHeader } from "@/components/security/SecurityRepoHeader";\nexport default function P() { return <SecurityRepoHeader repoId="r" />; }',
+                ),
+            ),
+        ).toBe(true);
+        // Imports it, but does not render it.
+        expect(
+            rendersSharedPageHeader(
+                page(
+                    'import { SecurityRepoHeader } from "@/components/security/SecurityRepoHeader";\nexport default function P() { return <div />; }',
+                ),
+            ),
+        ).toBe(false);
+        // Renders a component that has no PageHeader.
+        expect(
+            rendersSharedPageHeader(
+                page(
+                    'import { SecurityAlertQueue } from "@/components/security/SecurityAlertQueue";\nexport default function P() { return <SecurityAlertQueue />; }',
+                ),
+            ),
+        ).toBe(false);
     });
 
     it("a shell page that shows ServiceUnavailable does not let it bring a second <main>", () => {
