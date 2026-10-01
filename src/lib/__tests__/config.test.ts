@@ -8,7 +8,6 @@ const KEYS = [
     "NEXT_PUBLIC_USE_GRAPHQL_ANALYTICS",
     "NEXT_PUBLIC_DEV_HEALTH_TEST_MODE",
     "NEXT_PUBLIC_DEMO_MODE",
-    "NEXT_PUBLIC_BETA",
     "NEXT_PUBLIC_RUM_ENDPOINT",
     "NEXT_PUBLIC_SENTRY_DSN",
     "BACKEND_URL",
@@ -28,6 +27,12 @@ const restore = (snap: Snapshot) => {
 };
 
 describe("config.publicEnv", () => {
+    it("no longer carries the retired NEXT_PUBLIC_BETA key", () => {
+        process.env.NEXT_PUBLIC_BETA = "true";
+        expect(publicEnv).not.toHaveProperty("NEXT_PUBLIC_BETA");
+        delete process.env.NEXT_PUBLIC_BETA;
+    });
+
     let snap: Snapshot;
     beforeEach(() => {
         snap = snapshot();
