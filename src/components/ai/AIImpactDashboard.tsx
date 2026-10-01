@@ -116,7 +116,7 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
                     {donutRows.length ? (
                         <DonutChart data={donutRows} height={260} />
                     ) : (
-                        <DataState variant="detector-enabled-no-findings" />
+                        <DataState variant="detector-enabled-no-findings" compact />
                     )}
                 </AIPanelCard>
 
@@ -136,7 +136,7 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
                     {trend.length ? (
                         <TimeseriesChart data={trend} height={180} />
                     ) : (
-                        <DataState variant="detector-enabled-no-findings" />
+                        <DataState variant="detector-enabled-no-findings" compact />
                     )}
                 </AIPanelCard>
 

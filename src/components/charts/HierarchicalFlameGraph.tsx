@@ -5,6 +5,8 @@ import { useCallback, useMemo, useState, type CSSProperties } from "react";
 import type { AggregatedFlameNode } from "@/lib/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
+import { blendOver, depthOpacity, tileLabel } from "@/lib/chartLabelColor";
+import { useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
 
 const formatValue = (value: number, unit: string) => {
     if (unit === "hours") {
@@ -42,23 +44,16 @@ type HierarchicalFlameGraphProps = {
     width?: number | string;
     className?: string;
     style?: CSSProperties;
+    /**
+     * How rows are colored. "branch": each top-level branch takes the series token at its
+     * position in the data (use only where the top level has at most 5 branches by contract).
+     * "single": one hue for every row. Depth is shown by opacity steps in both. Default "single".
+     */
+    colorBy?: "branch" | "single";
 };
 
-const COLORS = [
-    "hsl(220, 70%, 50%)",
-    "hsl(200, 70%, 45%)",
-    "hsl(180, 60%, 45%)",
-    "hsl(160, 55%, 45%)",
-    "hsl(140, 50%, 45%)",
-    "hsl(260, 60%, 55%)",
-    "hsl(280, 55%, 50%)",
-    "hsl(300, 50%, 50%)",
-];
-
-const getColor = (depth: number, index: number) => {
-    const baseColor = COLORS[(depth + index) % COLORS.length];
-    return baseColor;
-};
+/** Most branches that get their own series token (the series palette is not cycled). */
+export const MAX_CATEGORICAL_BRANCHES = 5;
 
 export function HierarchicalFlameGraph({
     root,
@@ -67,7 +62,11 @@ export function HierarchicalFlameGraph({
     width = "100%",
     className,
     style,
+    colorBy = "single",
 }: HierarchicalFlameGraphProps) {
+    const chartTheme = useChartTheme();
+    const chartColors = useChartColors();
+    const tokens = useChartTokens();
     const [zoomStack, setZoomStack] = useState<StackFrame[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [hoveredNode, setHoveredNode] = useState<AggregatedFlameNode | null>(null);
@@ -102,6 +101,12 @@ export function HierarchicalFlameGraph({
         return (currentRoot.children ?? []).filter(matchesQuery);
     }, [currentRoot, searchQuery]);
 
+    // After zooming, rows keep the color of the top-level branch they came from.
+    const zoomedBranchIndex =
+        zoomStack.length > 0
+            ? (root.children ?? []).findIndex((child) => child === zoomStack[0].node)
+            : undefined;
+
     const handleZoomIn = useCallback((node: AggregatedFlameNode) => {
         if (!node.children?.length) return;
         setZoomStack((prev) => [...prev, { node, label: node.name }]);
@@ -125,11 +130,24 @@ export function HierarchicalFlameGraph({
         depth: number,
         index: number,
         parentValue: number,
+        branchIndex: number = index,
     ): React.ReactNode => {
         const widthPercent = parentValue > 0 ? (node.value / parentValue) * 100 : 0;
         if (widthPercent < 0.5) return null;
 
         const hasChildren = (node.children?.length ?? 0) > 0;
+        // Color follows the top-level branch (or one hue); depth is an opacity step.
+        const baseColor =
+            colorBy === "branch" && branchIndex < MAX_CATEGORICAL_BRANCHES
+                ? (chartColors[branchIndex] ?? tokens.themeOperational)
+                : tokens.themeOperational;
+        // Depth counts from the real root, so a zoomed row keeps the shade it had before zooming.
+        const fill = blendOver(
+            baseColor,
+            depthOpacity(depth + zoomStack.length),
+            chartTheme.background,
+        );
+        const ink = tileLabel(fill, undefined, chartTheme.background);
         const isSearchMatch =
             searchQuery.trim() && node.name.toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -148,13 +166,21 @@ export function HierarchicalFlameGraph({
                     disabled={!hasChildren}
                     className={`
             flex items-center w-full text-left px-2 text-xs truncate
-            border border-(--card-stroke) rounded-sm mb-0.5
-            transition-all duration-150 text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.3)]
+            rounded-[3px] mb-0.5
+            transition-all duration-150
             ${hasChildren ? "cursor-pointer hover:brightness-110" : "cursor-default"}
-            ${isSearchMatch ? "ring-2 ring-(--accent-2)" : ""}
           `}
                     style={{
-                        backgroundColor: getColor(depth, index),
+                        backgroundColor: fill,
+                        color: ink.color,
+                        textShadow: ink.haloColor
+                            ? `0 0 2px ${ink.haloColor}, 0 0 2px ${ink.haloColor}`
+                            : "none",
+                        // 1px inset in the surface color: tiles read as gapped (2px between
+                        // neighbours) without changing any width.
+                        boxShadow: isSearchMatch
+                            ? `inset 0 0 0 1px ${chartTheme.background}, 0 0 0 2px ${tokens.accentHighlight}`
+                            : `inset 0 0 0 1px ${chartTheme.background}`,
                         height: rowHeight,
                         minHeight: rowHeight,
                     }}
@@ -165,7 +191,7 @@ export function HierarchicalFlameGraph({
                 {hasChildren && (
                     <div className="flex">
                         {(node.children ?? []).map((child, childIndex) =>
-                            renderNode(child, depth + 1, childIndex, node.value),
+                            renderNode(child, depth + 1, childIndex, node.value, branchIndex),
                         )}
                     </div>
                 )}
@@ -258,7 +284,13 @@ export function HierarchicalFlameGraph({
                 ) : (
                     <div className="flex">
                         {filteredChildren.map((child, index) => {
-                            return renderNode(child, 0, index, currentRoot.value);
+                            return renderNode(
+                                child,
+                                0,
+                                index,
+                                currentRoot.value,
+                                zoomedBranchIndex ?? index,
+                            );
                         })}
                     </div>
                 )}

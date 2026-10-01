@@ -108,7 +108,7 @@ export function OnboardIntegrationStep({
             <div ref={stepRef} className="space-y-6">
                 <div
                     role="status"
-                    className="rounded-lg border border-green-500/20 bg-green-500/10 p-4 text-sm text-green-700"
+                    className="rounded-lg border border-(--positive)/30 bg-(--positive)/12 p-4 text-sm text-(--positive)"
                 >
                     Your first integration is connected. Dev Health will start mapping pull
                     requests, reviews, and delivery signals from it.
@@ -173,7 +173,7 @@ export function OnboardIntegrationStep({
             </section>
 
             {skipError ? (
-                <p role="alert" className="text-sm text-red-600">
+                <p role="alert" className="text-sm text-(--negative)">
                     {skipError}
                 </p>
             ) : null}

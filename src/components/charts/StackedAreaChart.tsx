@@ -7,6 +7,7 @@ import { LineChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
+import { buildTooltip } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
 import { calcPercent, createAreaGradient } from "@/lib/chartUtils";
 import { formatNumber, formatPercent } from "@/lib/formatters";
@@ -178,20 +179,9 @@ export function StackedAreaChart({
 
     const option = useMemo(
         () => ({
-            tooltip: {
-                trigger: "axis" as const,
-                axisPointer: {
-                    type: "cross" as const,
-                    label: {
-                        backgroundColor: chartTheme.muted,
-                    },
-                },
-                confine: true,
-                backgroundColor: chartTheme.background,
-                borderColor: chartTheme.stroke,
-                textStyle: {
-                    color: chartTheme.text,
-                },
+            tooltip: buildTooltip(chartTheme, {
+                crosshair: true,
+                pointer: "cross",
                 formatter: (params: unknown) => {
                     if (!Array.isArray(params) || params.length === 0) return "";
 
@@ -215,7 +205,7 @@ export function StackedAreaChart({
               <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
                 <span style="display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: ${entry.color}"></span>
                 <span>${entry.seriesName}: <strong>${formatNumber(value)}</strong> ${unit}</span>
-                <span style="color: ${chartTheme.accent2}">(${formatPercent(pct)})</span>
+                <span style="color: ${chartTheme.muted}">(${formatPercent(pct)})</span>
               </div>
             `;
                     });
@@ -226,7 +216,7 @@ export function StackedAreaChart({
             ${lines.join("")}
           `;
                 },
-            },
+            }),
             legend: {
                 data: series.map((s) => s.name),
                 bottom: 0,
@@ -253,7 +243,7 @@ export function StackedAreaChart({
                 axisLine: { show: false },
                 axisTick: { show: false },
                 splitLine: {
-                    lineStyle: { color: chartTheme.grid, type: "dashed" as const },
+                    lineStyle: { color: chartTheme.grid },
                 },
                 axisLabel: { color: chartTheme.muted, fontSize: 10 },
             },

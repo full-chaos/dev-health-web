@@ -34,9 +34,9 @@ function SkeletonCard() {
 
 function ErrorCard({ error }: { error: Error }) {
     return (
-        <div className="rounded-3xl border border-red-500/20 bg-red-500/10 p-6">
-            <h3 className="text-lg font-semibold text-red-400 mb-2">Forecast Unavailable</h3>
-            <p className="text-sm text-red-400/80">{error.message}</p>
+        <div className="rounded-3xl border border-(--negative)/30 bg-(--negative)/12 p-6">
+            <h3 className="text-lg font-semibold text-(--negative) mb-2">Forecast Unavailable</h3>
+            <p className="text-sm text-(--negative)">{error.message}</p>
         </div>
     );
 }
@@ -106,7 +106,7 @@ export function ForecastCard({ forecast, loading, error }: ForecastCardProps) {
                         <div className="flex items-center justify-between py-2 border-b border-(--card-stroke)">
                             <span className="text-sm text-(--ink-muted)">50% chance</span>
                             <div className="text-right">
-                                <span className="font-medium text-green-500">
+                                <span className="font-medium text-(--positive)">
                                     {formatDate(forecast.p50Date)}
                                 </span>
                                 {forecast.p50Days && (
@@ -117,18 +117,18 @@ export function ForecastCard({ forecast, loading, error }: ForecastCardProps) {
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between py-2 border-b border-(--card-stroke) bg-amber-500/10 -mx-2 px-2 rounded">
-                            <span className="text-sm font-medium text-amber-400">85% chance</span>
+                        <div className="flex items-center justify-between py-2 border-b border-(--card-stroke) bg-(--caution)/12 -mx-2 px-2 rounded">
+                            <span className="text-sm font-medium text-(--caution)">85% chance</span>
                             <div className="text-right flex items-center">
-                                <span className="font-bold text-amber-400">
+                                <span className="font-bold text-(--caution)">
                                     {formatDate(forecast.p85Date)}
                                 </span>
                                 {forecast.p85Days && (
-                                    <span className="text-xs text-amber-400/70 ml-2">
+                                    <span className="text-xs text-(--caution) ml-2">
                                         ({forecast.p85Days} days)
                                     </span>
                                 )}
-                                <span className="ml-2 text-xs bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded">
+                                <span className="ml-2 text-xs bg-(--caution)/12 text-(--caution) px-1.5 py-0.5 rounded">
                                     Target
                                 </span>
                             </div>
@@ -137,7 +137,7 @@ export function ForecastCard({ forecast, loading, error }: ForecastCardProps) {
                         <div className="flex items-center justify-between py-2">
                             <span className="text-sm text-(--ink-muted)">95% chance</span>
                             <div className="text-right">
-                                <span className="font-medium text-red-400">
+                                <span className="font-medium text-(--negative)">
                                     {formatDate(forecast.p95Date)}
                                 </span>
                                 {forecast.p95Days && (
@@ -169,13 +169,13 @@ export function ForecastCard({ forecast, loading, error }: ForecastCardProps) {
             {(insufficientHistory || highVariance) && (
                 <div className="mt-4 space-y-2">
                     {insufficientHistory && (
-                        <div className="flex items-start gap-2 text-sm text-amber-400 bg-amber-500/10 p-2 rounded">
+                        <div className="flex items-start gap-2 text-sm text-(--caution) bg-(--caution)/12 p-2 rounded">
                             <span className="shrink-0">⚠️</span>
                             <span>Limited history available. Forecast may be less reliable.</span>
                         </div>
                     )}
                     {highVariance && (
-                        <div className="flex items-start gap-2 text-sm text-amber-400 bg-amber-500/10 p-2 rounded">
+                        <div className="flex items-start gap-2 text-sm text-(--caution) bg-(--caution)/12 p-2 rounded">
                             <span className="shrink-0">⚠️</span>
                             <span>
                                 High throughput variance detected. Consider using more history days.

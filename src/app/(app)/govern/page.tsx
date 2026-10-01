@@ -78,7 +78,7 @@ export default async function GovernPage({ searchParams }: GovernPageProps) {
                 subtitle="Quality and risk across delivery, incidents, security, flags, and TestOps."
             />
 
-            <ScopeBar />
+            <ScopeBar pageFilters={false} />
             <AreaOverview
                 areaId="govern"
                 signals={governSignals}

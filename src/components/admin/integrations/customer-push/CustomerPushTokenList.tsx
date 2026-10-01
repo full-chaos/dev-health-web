@@ -21,10 +21,10 @@ type CustomerPushTokenListProps = {
 };
 
 const STATUS_STYLES: Record<CustomerPushTokenStatus, string> = {
-    active: "bg-green-100 text-green-700 border-green-200",
-    revoked: "bg-red-100 text-red-700 border-red-200",
-    expired: "bg-gray-100 text-gray-600 border-gray-200",
-    never_used: "bg-blue-100 text-blue-700 border-blue-200",
+    active: "bg-(--positive)/12 text-(--positive) border-(--positive)/30",
+    revoked: "bg-(--negative)/12 text-(--negative) border-(--negative)/30",
+    expired: "bg-(--card-stroke) text-(--ink-muted) border-(--card-stroke)",
+    never_used: "bg-(--info)/12 text-(--info) border-(--info)/30",
 };
 
 function TokenStatusBadge({ status }: { status: CustomerPushTokenStatus }) {
@@ -130,7 +130,7 @@ function TokenRow({ token, examplesHref }: { token: CustomerPushToken; examplesH
                     type="button"
                     onClick={() => setShowRevokeConfirm(true)}
                     disabled={isBusy || status === "revoked"}
-                    className="inline-flex items-center justify-center rounded-md border border-red-500/20 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-500/20 disabled:opacity-50"
+                    className="inline-flex items-center justify-center rounded-md border border-(--negative)/30 bg-(--negative)/12 px-3 py-1.5 text-sm font-medium text-(--negative) hover:bg-(--negative)/12 disabled:opacity-50"
                 >
                     {CTA_LABELS.revoke}
                 </button>
@@ -159,7 +159,7 @@ function TokenRow({ token, examplesHref }: { token: CustomerPushToken; examplesH
                                 type="button"
                                 onClick={handleRevoke}
                                 disabled={isRevoking}
-                                className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                                className="rounded-md bg-(--negative) px-4 py-2 text-sm font-medium text-(--accent-foreground) hover:bg-(--negative)/90 disabled:opacity-50"
                             >
                                 {isRevoking ? "Revoking..." : CTA_LABELS.revoke}
                             </button>

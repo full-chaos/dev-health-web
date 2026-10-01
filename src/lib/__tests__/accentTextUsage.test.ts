@@ -29,12 +29,24 @@ const ACCENT_TEXT_FILES = [
     "app/(app)/superadmin/orgs/[id]/page.tsx",
     "app/(app)/code/page.tsx",
     "app/(app)/data-health/_components/AliasSuggestionRow.tsx",
+    // Marketing pages (CHAOS-7711): same defect, 38 usages, hover forms included.
+    "app/marketing/page.tsx",
+    "app/marketing/context-fabric/page.tsx",
+    "app/marketing/context-fabric/use-cases/page.tsx",
+    "app/marketing/pricing/page.tsx",
+    "app/marketing/cto-architecture/page.tsx",
+    "app/marketing/vp-engineering/page.tsx",
+    "app/marketing/engineering-manager/page.tsx",
+    "app/marketing/platform-devex/page.tsx",
+    "app/(marketing)/page.tsx",
 ];
 
 // No `text-(--accent)` is left on purpose in these files (links moved to the action color, ticket 1.7).
-const ALLOWED: Record<string, number> = {};
+// One is left on purpose: the 30% alpha step numeral on the marketing home is decoration, not read text.
+const ALLOWED: Record<string, number> = { "app/(marketing)/page.tsx": 1 };
 
-const EXACT = /(?<![\w:-])text-\(--accent\)(?![\w-])/gu;
+// Also matches variant forms such as `group-hover:text-(--accent)`.
+const EXACT = /(?<![\w-])text-\(--accent\)(?![\w-])/gu;
 
 describe("accent text usage", () => {
     it.each(ACCENT_TEXT_FILES)("%s uses --accent-text for selection and eyebrow text", (file) => {

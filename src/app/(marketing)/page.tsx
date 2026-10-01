@@ -181,7 +181,7 @@ export default function MarketingPage() {
                     </p>
                     <h1 className="mt-6 font-(--font-display) text-4xl leading-tight sm:text-5xl lg:text-6xl">
                         Where is your engineering effort{" "}
-                        <span className="text-(--accent)">actually</span> going?
+                        <span className="text-(--accent-text)">actually</span> going?
                     </h1>
                     <p className="mx-auto mt-6 max-w-2xl text-lg text-(--ink-muted)">
                         Full Chaos Dev Health is an open-source analytics platform for team
@@ -269,7 +269,7 @@ export default function MarketingPage() {
                             className="group rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1"
                         >
                             <div className="flex items-center gap-3">
-                                <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent)">
+                                <div className="flex size-9 items-center justify-center rounded-xl bg-(--accent)/10 text-(--accent-text)">
                                     {feature.icon}
                                 </div>
                                 <p className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -340,7 +340,7 @@ export default function MarketingPage() {
                             className="group rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 transition hover:-translate-y-1"
                         >
                             <div className="flex items-center justify-between">
-                                <span className="rounded-full bg-(--accent)/10 px-3 py-1 text-label-caps font-semibold uppercase tracking-[0.2em] text-(--accent)">
+                                <span className="rounded-full bg-(--accent)/10 px-3 py-1 text-label-caps font-semibold uppercase tracking-[0.2em] text-(--accent-text)">
                                     {persona.tag}
                                 </span>
                                 <span className="text-right text-label-caps uppercase tracking-[0.2em] text-(--accent-2)">
