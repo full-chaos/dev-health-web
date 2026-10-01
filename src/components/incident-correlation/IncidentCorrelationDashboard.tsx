@@ -23,7 +23,9 @@ import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { useShellOrganization } from "@/components/shell/ShellContext";
 import { DataState } from "@/components/ui/DataState";
+import { Notice } from "@/components/ui/Notice";
 import { buildExploreUrl } from "@/lib/filters/url";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -310,6 +312,9 @@ export function IncidentCorrelationDashboard({
     filters,
     role,
 }: IncidentCorrelationDashboardProps) {
+    // The organization name as the shell card shows it; the raw id only when it is not known.
+    const orgLabel = useShellOrganization()?.name?.trim() || orgId;
+
     const incidentRows = useMemo(
         () => joinEdges(deploysEdges, incidentEdges),
         [deploysEdges, incidentEdges],
@@ -353,7 +358,7 @@ export function IncidentCorrelationDashboard({
     if (!hasAnyData) {
         return (
             <div
-                className="rounded-2xl border border-(--card-stroke) bg-card p-8 shadow-sm"
+                className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-8"
                 data-testid="empty-state"
             >
                 <h2 className="text-2xl font-semibold tracking-tight">
@@ -361,12 +366,25 @@ export function IncidentCorrelationDashboard({
                 </h2>
                 <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted)">
                     Incident correlation requires deployment activity and linked incidents to be
-                    ingested. Run <code className="font-mono text-[0.85em]">dev-hops sync git</code>{" "}
-                    and ensure incidents are linked in your provider. The page will populate
-                    automatically after the next data sync.
+                    ingested. The page will populate automatically after the next data sync.
                 </p>
+                <details className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted)">
+                    <summary className="cursor-pointer font-medium text-foreground">
+                        How to connect
+                    </summary>
+                    <p className="mt-2">
+                        Run <code className="font-mono text-[0.85em]">dev-hops sync git</code> and
+                        ensure incidents are linked in your provider.
+                    </p>
+                    <Link
+                        href="/org/admin/sync"
+                        className="mt-2 inline-block text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                    >
+                        {CTA_LABELS.checkDataConnections}
+                    </Link>
+                </details>
                 <p className="mt-8 text-xs text-(--ink-muted)">
-                    Org <span className="font-mono">{orgId}</span>
+                    Org <span className="font-mono">{orgLabel}</span>
                 </p>
             </div>
         );
@@ -390,7 +408,6 @@ export function IncidentCorrelationDashboard({
                                 unit={m.unit}
                                 delta={m.delta_pct}
                                 spark={m.spark}
-                                caption={m.label}
                             />
                         ))}
                     </div>
@@ -408,7 +425,7 @@ export function IncidentCorrelationDashboard({
                     const hasCfrTrend = hasRenderableSeries(cfrTrendData);
                     return (
                         <section
-                            className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5"
+                            className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5"
                             aria-label="Change failure rate trend"
                         >
                             <div className="flex items-center justify-between">
@@ -450,7 +467,7 @@ export function IncidentCorrelationDashboard({
                     className="grid gap-6 lg:grid-cols-2"
                     aria-label="Change failure root cause"
                 >
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                    <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
                         <div className="flex items-center justify-between">
                             <h2 className="font-(--font-display) text-xl">
                                 Change Failure Associations
@@ -486,7 +503,7 @@ export function IncidentCorrelationDashboard({
                         )}
                     </div>
 
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                    <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
                         <div className="flex items-center justify-between">
                             <h2 className="font-(--font-display) text-xl">Contributors</h2>
                             <Link
@@ -505,7 +522,7 @@ export function IncidentCorrelationDashboard({
                                 {topContributors.map((c) => (
                                     <div
                                         key={c.id}
-                                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
+                                        className="flex items-center justify-between rounded-(--radius-md) border border-(--border) bg-(--surface-raised) px-4 py-2"
                                     >
                                         <EntityLabel id={c.id} displayName={c.display_name} />
                                         <span className="text-xs text-(--ink-muted)">
@@ -536,9 +553,9 @@ export function IncidentCorrelationDashboard({
                             records
                         </p>
                     </div>
-                    <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90) shadow-sm">
+                    <div className="overflow-hidden rounded-(--radius-lg) border border-(--border) bg-(--surface)">
                         <table className="w-full text-sm" data-testid="incident-linkage-table">
-                            <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
+                            <thead className="bg-(--surface-raised) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
                                 <tr>
                                     <th className="px-5 py-3 text-left">Incident ID</th>
                                     <th className="px-5 py-3 text-right">Linked Deployments</th>
@@ -549,7 +566,7 @@ export function IncidentCorrelationDashboard({
                                 {incidentRows.slice(0, 50).map((row) => (
                                     <tr
                                         key={row.incidentId}
-                                        className="border-t border-(--card-stroke)/60 hover:bg-(--card-60)/60"
+                                        className="border-t border-(--border) hover:bg-(--surface-raised)"
                                         data-testid="incident-row"
                                         data-incident-id={row.incidentId}
                                     >
@@ -580,7 +597,7 @@ export function IncidentCorrelationDashboard({
             {/* ── Sankey: PR → deployment → incident ──────────────────────────────── */}
             {sankeyData && (
                 <section
-                    className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5"
+                    className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5"
                     aria-label="Correlation flow diagram"
                 >
                     <h2 className="font-(--font-display) text-xl">
@@ -602,14 +619,11 @@ export function IncidentCorrelationDashboard({
 
             {/* ── Sub-empty: metrics/explain present but no edges ─────────────────── */}
             {!hasEdgeData && (doraMetrics.length > 0 || hasExplainData) && (
-                <section
-                    className="rounded-2xl border border-(--card-stroke) bg-(--card-60) p-6 text-sm text-(--ink-muted)"
-                    data-testid="empty-edges-state"
-                >
+                <Notice variant="info" live={false} data-testid="empty-edges-state">
                     No deployment-incident linkage found yet. Deployment and incident associations
                     appear here after your connected provider sends enough linked evidence for the
                     selected window.
-                </section>
+                </Notice>
             )}
         </div>
     );

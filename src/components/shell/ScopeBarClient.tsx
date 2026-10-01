@@ -1,22 +1,21 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 
 import { type FilterBarClientProps } from "@/components/filters/filterBarConfig";
 import { formatSelection, toggleValue } from "@/components/filters/filterBarUtils";
 import { ActiveFilterPills } from "@/components/filters/sections/ActiveFilterPills";
 import { AdvancedFiltersPanel } from "@/components/filters/sections/AdvancedFiltersPanel";
 import { QuickFilterMenu } from "@/components/filters/sections/QuickFilterMenu";
-import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 
 import { FilterDrawer } from "./FilterDrawer";
+import { SCOPE_BAR_LABEL_CLASS, SCOPE_BAR_ORG_FALLBACK, ScopeBarCard } from "./ScopeBarFrame";
 import { useShellOrganization } from "./ShellContext";
 import { useScopeBarState } from "./useScopeBarState";
 
 const WINDOW_OPTIONS = [7, 14, 30, 90] as const;
-const ORG_FALLBACK = "Organization";
 const DRAWER_ID = "scope-bar-filters";
 /** The `md` breakpoint: from here up the filters open as a drawer. */
 const DRAWER_MEDIA_QUERY = "(min-width: 768px)";
@@ -29,35 +28,16 @@ export type ScopeBarClientProps = Pick<
     origin?: string | null;
     /** Organization name. Defaults to the shell's active organization. */
     orgName?: string;
+    /**
+     * `false` for a bar with no page filters: no default `f` is written, and
+     * with no `f` in the URL the scope is the organization, as the page reads it.
+     */
+    writeDefaultFilter?: boolean;
+    /** Page-control rows, in the card below the scope row. */
+    children?: ReactNode;
 };
 
-const LABEL_CLASS = "text-label-caps font-semibold uppercase text-(--text-muted)";
-const SEPARATOR = (
-    <span aria-hidden="true" className="text-(--text-muted)">
-        ·
-    </span>
-);
-
-/** The URL in a read-only field, focused with its text selected, ready to copy. */
-function CopyFallbackField({ url }: { url: string }) {
-    const fieldRef = useRef<HTMLInputElement>(null);
-
-    useEffect(() => {
-        fieldRef.current?.focus();
-        fieldRef.current?.select();
-    }, [url]);
-
-    return (
-        <input
-            id="scope-bar-copy-url"
-            ref={fieldRef}
-            readOnly
-            value={url}
-            onFocus={(event) => event.currentTarget.select()}
-            className="min-w-0 flex-1 rounded-(--radius-sm) border border-(--border) bg-(--surface-raised) px-3 py-1.5 text-xs text-(--text-primary)"
-        />
-    );
-}
+const LABEL_CLASS = SCOPE_BAR_LABEL_CLASS;
 
 /**
  * The one scope bar of a page: organization, team, repository and window in one
@@ -71,15 +51,14 @@ export function ScopeBarClient({
     resolvedScopeLock,
     origin,
     orgName,
+    writeDefaultFilter,
+    children,
 }: ScopeBarClientProps) {
     const {
         allowAdvanced,
         artifacts,
         barRef,
-        copyFallbackUrl,
-        copyLink,
         developers,
-        dismissCopyFallback,
         filters,
         flowStage,
         issueType,
@@ -99,10 +78,16 @@ export function ScopeBarClient({
         updatePeopleQuery,
         visibility,
         workCategory,
-    } = useScopeBarState({ view, tab, resolvedVisibility, resolvedScopeLock });
+    } = useScopeBarState({
+        view,
+        tab,
+        resolvedVisibility,
+        resolvedScopeLock,
+        writeDefaultFilter,
+    });
 
     const organization = useShellOrganization();
-    const orgLabel = orgName ?? organization?.name ?? ORG_FALLBACK;
+    const orgLabel = orgName ?? organization?.name ?? SCOPE_BAR_ORG_FALLBACK;
     const isOrgScope = filters.scope.level === "org";
     const blocked = filters.how.blocked ?? false;
 
@@ -215,43 +200,18 @@ export function ScopeBarClient({
     );
 
     return (
-        <section
-            ref={barRef}
-            aria-label="Scope"
-            data-testid="scope-bar"
-            data-view={view ?? "default"}
-            // No backdrop-filter here: it would make this bar the containing block
-            // of the fixed drawer, which is a DOM child so that the outside-click
-            // handler treats its menus as inside the bar.
-            // z-20 keeps the bar's menus under the sticky top bar (z-30). An open
-            // drawer must be over the top bar and the sidebar, so the bar rises.
-            className={`relative rounded-(--radius-md) border border-(--border) bg-(--surface) px-4 py-3 text-xs ${
-                filtersMode === "drawer" ? "z-50" : "z-20"
-            }`}
-        >
-            <div
-                data-testid="scope-bar-row"
-                className="flex flex-wrap items-center gap-x-4 gap-y-2"
-            >
-                <div className="flex items-center gap-2">
-                    <span className={LABEL_CLASS}>Org</span>
-                    <button
-                        type="button"
-                        onClick={() => setScopeLevel("org")}
-                        aria-pressed={isOrgScope}
-                        className={`rounded-(--radius-pill) border px-3 py-1.5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) ${
-                            isOrgScope
-                                ? "border-(--accent) bg-(--accent)/15 text-(--text-primary)"
-                                : "border-(--border) bg-(--surface-raised) text-(--text-secondary) hover:text-(--text-primary)"
-                        }`}
-                    >
-                        {orgLabel}
-                    </button>
-                </div>
-
-                {SEPARATOR}
-
+        <ScopeBarCard
+            barRef={barRef}
+            view={view ?? "default"}
+            raised={filtersMode === "drawer"}
+            organization={{
+                label: orgLabel,
+                pressed: isOrgScope,
+                onSelect: () => setScopeLevel("org"),
+            }}
+            controls={[
                 <QuickFilterMenu
+                    key="team"
                     active={teamIds}
                     emptyLabel="All Teams"
                     items={options.teams}
@@ -262,11 +222,9 @@ export function ScopeBarClient({
                     setOpenMenu={setOpenMenu}
                     toggleValue={toggleValue}
                     value={formatSelection(teamIds, "All")}
-                />
-
-                {SEPARATOR}
-
+                />,
                 <QuickFilterMenu
+                    key="repo"
                     active={repos}
                     emptyLabel="All"
                     items={options.repos}
@@ -277,11 +235,8 @@ export function ScopeBarClient({
                     setOpenMenu={setOpenMenu}
                     toggleValue={toggleValue}
                     value={formatSelection(repos, "All")}
-                />
-
-                {SEPARATOR}
-
-                <div className="flex items-center gap-2">
+                />,
+                <div key="window" className="flex items-center gap-2">
                     <span id="scope-bar-window-label" className={LABEL_CLASS}>
                         Window
                     </span>
@@ -309,18 +264,22 @@ export function ScopeBarClient({
                             );
                         })}
                     </div>
-                </div>
+                </div>,
+            ]}
+            rowExtras={
+                <>
+                    {!hasDrawerFilters ? pageFilterMenus : null}
 
-                {!hasDrawerFilters ? pageFilterMenus : null}
-
-                {origin ? (
-                    <div className="flex items-center gap-2 text-xs text-(--text-secondary)">
-                        <span className={LABEL_CLASS}>Origin</span>
-                        <span className="font-medium text-(--text-primary)">{origin}</span>
-                    </div>
-                ) : null}
-
-                <div className="ml-auto flex flex-wrap items-center gap-2">
+                    {origin ? (
+                        <div className="flex items-center gap-2 text-xs text-(--text-secondary)">
+                            <span className={LABEL_CLASS}>Origin</span>
+                            <span className="font-medium text-(--text-primary)">{origin}</span>
+                        </div>
+                    ) : null}
+                </>
+            }
+            actions={
+                <>
                     {view === "people" ? (
                         <label className="flex items-center gap-2 text-xs">
                             <span className={LABEL_CLASS}>Search</span>
@@ -358,123 +317,122 @@ export function ScopeBarClient({
                             ) : null}
                         </button>
                     ) : null}
-                    <Button variant="secondary" onClick={resetFilters}>
-                        {CTA_LABELS.resetFilters}
-                    </Button>
-                    <Button variant="secondary" onClick={copyLink}>
-                        {CTA_LABELS.copyLink}
-                    </Button>
-                </div>
-            </div>
+                </>
+            }
+            onReset={resetFilters}
+            footer={
+                <>
+                    {activeFilterCount > 0 || repos.length > 0 ? (
+                        <div className="mt-3">
+                            <ActiveFilterPills
+                                artifacts={artifacts}
+                                blocked={blocked}
+                                developers={developers}
+                                flowStage={flowStage}
+                                issueType={issueType}
+                                onClearArtifact={(value) =>
+                                    updateFilters({
+                                        ...filters,
+                                        what: {
+                                            ...filters.what,
+                                            artifacts: toggleValue(
+                                                artifacts,
+                                                value,
+                                            ) as MetricFilter["what"]["artifacts"],
+                                        },
+                                    })
+                                }
+                                onClearBlocked={() =>
+                                    updateFilters({
+                                        ...filters,
+                                        how: { ...filters.how, blocked: false },
+                                    })
+                                }
+                                onClearDeveloper={(value) =>
+                                    updateFilters({
+                                        ...filters,
+                                        who: {
+                                            ...filters.who,
+                                            developers: toggleValue(developers, value),
+                                        },
+                                    })
+                                }
+                                onClearFlowStage={(value) =>
+                                    updateFilters({
+                                        ...filters,
+                                        how: {
+                                            ...filters.how,
+                                            flow_stage: toggleValue(flowStage, value),
+                                        },
+                                    })
+                                }
+                                onClearIssueType={(value) =>
+                                    updateFilters({
+                                        ...filters,
+                                        why: {
+                                            ...filters.why,
+                                            issue_type: toggleValue(issueType, value),
+                                        },
+                                    })
+                                }
+                                onClearRepo={(value) =>
+                                    updateFilters({
+                                        ...filters,
+                                        what: { ...filters.what, repos: toggleValue(repos, value) },
+                                    })
+                                }
+                                onClearRole={(value) =>
+                                    updateFilters({
+                                        ...filters,
+                                        who: { ...filters.who, roles: toggleValue(roles, value) },
+                                    })
+                                }
+                                onClearWorkCategory={(value) =>
+                                    updateFilters({
+                                        ...filters,
+                                        why: {
+                                            ...filters.why,
+                                            work_category: toggleValue(workCategory, value),
+                                        },
+                                    })
+                                }
+                                repos={repos}
+                                roles={roles}
+                                workCategory={workCategory}
+                            />
+                        </div>
+                    ) : null}
 
-            {copyFallbackUrl ? (
-                <div
-                    data-testid="scope-bar-copy-fallback"
-                    className="mt-3 flex flex-wrap items-center gap-2 border-t border-(--border) pt-3"
-                >
-                    <label htmlFor="scope-bar-copy-url" className="text-xs text-(--text-secondary)">
-                        The link could not be copied. Copy it from this field:
-                    </label>
-                    <CopyFallbackField url={copyFallbackUrl} />
-                    <Button variant="ghost" size="sm" onClick={dismissCopyFallback}>
-                        {CTA_LABELS.close}
-                    </Button>
-                </div>
-            ) : null}
-
-            {activeFilterCount > 0 || repos.length > 0 ? (
-                <div className="mt-3">
-                    <ActiveFilterPills
-                        artifacts={artifacts}
-                        blocked={blocked}
-                        developers={developers}
-                        flowStage={flowStage}
-                        issueType={issueType}
-                        onClearArtifact={(value) =>
-                            updateFilters({
-                                ...filters,
-                                what: {
-                                    ...filters.what,
-                                    artifacts: toggleValue(
-                                        artifacts,
-                                        value,
-                                    ) as MetricFilter["what"]["artifacts"],
-                                },
-                            })
-                        }
-                        onClearBlocked={() =>
-                            updateFilters({ ...filters, how: { ...filters.how, blocked: false } })
-                        }
-                        onClearDeveloper={(value) =>
-                            updateFilters({
-                                ...filters,
-                                who: { ...filters.who, developers: toggleValue(developers, value) },
-                            })
-                        }
-                        onClearFlowStage={(value) =>
-                            updateFilters({
-                                ...filters,
-                                how: { ...filters.how, flow_stage: toggleValue(flowStage, value) },
-                            })
-                        }
-                        onClearIssueType={(value) =>
-                            updateFilters({
-                                ...filters,
-                                why: { ...filters.why, issue_type: toggleValue(issueType, value) },
-                            })
-                        }
-                        onClearRepo={(value) =>
-                            updateFilters({
-                                ...filters,
-                                what: { ...filters.what, repos: toggleValue(repos, value) },
-                            })
-                        }
-                        onClearRole={(value) =>
-                            updateFilters({
-                                ...filters,
-                                who: { ...filters.who, roles: toggleValue(roles, value) },
-                            })
-                        }
-                        onClearWorkCategory={(value) =>
-                            updateFilters({
-                                ...filters,
-                                why: {
-                                    ...filters.why,
-                                    work_category: toggleValue(workCategory, value),
-                                },
-                            })
-                        }
-                        repos={repos}
-                        roles={roles}
-                        workCategory={workCategory}
-                    />
-                </div>
-            ) : null}
-
-            {filtersMode && hasDrawerFilters ? (
-                <FilterDrawer
-                    id={DRAWER_ID}
-                    mode={filtersMode}
-                    onClose={closeFilters}
-                    onEscape={handleFiltersEscape}
-                >
-                    <div className="flex flex-wrap items-center gap-3">{pageFilterMenus}</div>
-                    <AdvancedFiltersPanel
-                        artifacts={artifacts}
-                        blocked={blocked}
-                        developers={developers}
-                        filters={filters}
-                        flowStage={flowStage}
-                        issueType={issueType}
-                        repos={repos}
-                        roles={roles}
-                        singleColumn={filtersMode === "drawer"}
-                        updateFilters={updateFilters}
-                        visibility={visibility}
-                        workCategory={workCategory}
-                    />
-                </FilterDrawer>
-            ) : null}
-        </section>
+                    {filtersMode && hasDrawerFilters ? (
+                        <FilterDrawer
+                            id={DRAWER_ID}
+                            mode={filtersMode}
+                            onClose={closeFilters}
+                            onEscape={handleFiltersEscape}
+                        >
+                            <div className="flex flex-wrap items-center gap-3">
+                                {pageFilterMenus}
+                            </div>
+                            <AdvancedFiltersPanel
+                                artifacts={artifacts}
+                                blocked={blocked}
+                                developers={developers}
+                                filters={filters}
+                                flowStage={flowStage}
+                                issueType={issueType}
+                                repos={repos}
+                                roles={roles}
+                                singleColumn={filtersMode === "drawer"}
+                                updateFilters={updateFilters}
+                                visibility={visibility}
+                                workCategory={workCategory}
+                            />
+                        </FilterDrawer>
+                    ) : null}
+                </>
+            }
+        >
+            {children}
+        </ScopeBarCard>
     );
 }

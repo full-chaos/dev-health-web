@@ -6,6 +6,7 @@ import { PieChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
+import { buildTooltip } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
 
 echarts.use([PieChart]);
@@ -42,15 +43,7 @@ export function DonutChart({
     return (
         <Chart
             option={{
-                tooltip: {
-                    trigger: "item",
-                    confine: true,
-                    backgroundColor: chartTheme.background,
-                    borderColor: chartTheme.stroke,
-                    textStyle: {
-                        color: chartTheme.text,
-                    },
-                },
+                tooltip: buildTooltip(chartTheme, { trigger: "item" }),
                 legend: {
                     bottom: 0,
                     textStyle: { color: chartTheme.muted },

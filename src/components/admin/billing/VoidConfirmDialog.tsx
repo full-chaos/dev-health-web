@@ -48,7 +48,7 @@ export function VoidConfirmDialog({
                         type="button"
                         onClick={onConfirm}
                         disabled={isPending}
-                        className="rounded-md bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-500 disabled:opacity-50"
+                        className="rounded-md bg-(--negative) px-3 py-1.5 text-sm font-medium text-(--accent-foreground) hover:bg-(--negative)/90 disabled:opacity-50"
                     >
                         {isPending ? "Voiding..." : "Confirm Void"}
                     </button>
