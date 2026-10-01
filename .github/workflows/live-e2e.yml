@@ -480,7 +480,10 @@ jobs:
                   token="$(jq -r '.access_token // .token // empty' /tmp/login.json)"
                   org_id="$(jq -r '.user.org_id // empty' /tmp/login.json)"
                   test -n "${token}" && test -n "${org_id}" || { echo "::error::login response carries no access token or org id"; exit 1; }
-                  pnpm exec tsx ci/live-e2e-graphql-body.ts "${org_id}" > /tmp/gql-body.json
+                  # the tsx binary directly (not `pnpm exec`): pnpm may write its own lines to stdout,
+                  # and the body file must be exactly the JSON the script prints.
+                  ./node_modules/.bin/tsx ci/live-e2e-graphql-body.ts "${org_id}" > /tmp/gql-body.json
+                  jq -e '.query and .variables' /tmp/gql-body.json >/dev/null || { echo "::error::the smoke body is not the expected JSON"; exit 1; }
                   gql_status=$(curl -s -o /tmp/gql.json -w '%{http_code}' \
                     -X POST "http://127.0.0.1:8090/graphql" \
                     -H 'Content-Type: application/json' \
