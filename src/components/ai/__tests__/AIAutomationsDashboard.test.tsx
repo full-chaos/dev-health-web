@@ -82,7 +82,8 @@ describe("AIAutomationsDashboard", () => {
         expect(within(items[0]).getByText("Rationale 1")).toBeInTheDocument();
         expect(within(items[0]).getByText(/72%/)).toBeInTheDocument();
         expect(items[0]).toHaveTextContent("repeat work");
-        expect(items[0]).toHaveTextContent("sample/web-app");
+        // A7 (EntityLabel): a repo path shows its last segment.
+        expect(items[0]).toHaveTextContent("web-app");
         expect(screen.queryByText("Candidate 6")).not.toBeInTheDocument();
     });
 
