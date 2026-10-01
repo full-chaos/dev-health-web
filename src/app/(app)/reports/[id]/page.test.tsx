@@ -136,3 +136,26 @@ describe("SingleReportPage — CHAOS-4318 manual refresh (no timer-driven pollin
         expect(screen.getByRole("button", { name: /run now/i })).not.toBeDisabled();
     });
 });
+
+describe("SingleReportPage — one h1 with a rendered report (CHAOS-7788)", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockFetchSavedReport.mockResolvedValue(REPORT);
+        mockFetchReportRuns.mockResolvedValue({
+            items: [run({ renderedMarkdown: "# Weekly Health Report\n\n## Summary\n\nText." })],
+            total: 1,
+        });
+    });
+
+    it("keeps the report name as the only h1; the report title is an h2", async () => {
+        const { container } = render(<SingleReportPage />);
+
+        expect(
+            await screen.findByRole("heading", { level: 2, name: "Weekly Health Report" }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 3, name: "Summary" })).toBeInTheDocument();
+        const h1s = container.querySelectorAll("h1");
+        expect(h1s).toHaveLength(1);
+        expect(h1s[0]).toHaveTextContent("Weekly DORA");
+    });
+});

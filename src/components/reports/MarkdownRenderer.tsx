@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import dynamic from "next/dynamic";
+import type { Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -9,6 +10,12 @@ const ReactMarkdown = dynamic(() => import("react-markdown"), {
     ssr: false,
     loading: () => <div className="h-4 animate-pulse bg-muted/40 rounded" />,
 });
+
+/**
+ * The page has its own `h1` (the report name), so a report heading goes one level
+ * down: `#` is an `h2`, `##` an `h3`, and so on (`######` stays `h6`).
+ */
+const SHIFTED_HEADINGS: Components = { h1: "h2", h2: "h3", h3: "h4", h4: "h5", h5: "h6" };
 
 function splitProvenance(md: string): {
     body: string;
@@ -38,7 +45,9 @@ export function MarkdownRenderer({ content }: { content: string }) {
     return (
         <div className="space-y-4">
             <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{body}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={SHIFTED_HEADINGS}>
+                    {body}
+                </ReactMarkdown>
             </div>
 
             {provenance && (
@@ -67,7 +76,10 @@ export function MarkdownRenderer({ content }: { content: string }) {
                     </button>
                     {showProvenance && (
                         <div className="mt-3 prose prose-xs dark:prose-invert max-w-none opacity-70">
-                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={SHIFTED_HEADINGS}
+                            >
                                 {provenance.replace("## Provenance\n", "").trim()}
                             </ReactMarkdown>
                         </div>
