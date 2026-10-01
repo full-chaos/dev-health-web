@@ -54,7 +54,14 @@ const PAGE_HEADER = /<PageHeader[\s/>]/;
  * repository name, which a client hook reads). The component must be rendered
  * by the page, and its own source must render `PageHeader`.
  */
-function rendersSharedPageHeader(entry: { file: string; source: string }): boolean {
+function readComponentSource(file: string): string | undefined {
+    return existsSync(file) ? readFileSync(file, "utf8") : undefined;
+}
+
+function rendersSharedPageHeader(
+    entry: { file: string; source: string },
+    readSource: (file: string) => string | undefined = readComponentSource,
+): boolean {
     if (PAGE_HEADER.test(entry.source)) return true;
 
     const imports = entry.source.matchAll(/import\s+\{([^}]+)\}\s+from\s+"(@\/[^"]+|\.[^"]+)";/g);
@@ -74,11 +81,11 @@ function rendersSharedPageHeader(entry: { file: string; source: string }): boole
         const base = specifier.startsWith("@/")
             ? join(process.cwd(), "src", specifier.slice(2))
             : join(process.cwd(), dirname(entry.file), specifier);
-        const componentFile = [`${base}.tsx`, join(base, "index.tsx")].find((candidate) =>
-            existsSync(candidate),
-        );
-        if (componentFile && PAGE_HEADER.test(stripComments(readFileSync(componentFile, "utf8")))) {
-            return true;
+        for (const candidate of [`${base}.tsx`, join(base, "index.tsx")]) {
+            const componentSource = readSource(candidate);
+            if (componentSource !== undefined && PAGE_HEADER.test(stripComments(componentSource))) {
+                return true;
+            }
         }
     }
     return false;
@@ -123,32 +130,48 @@ describe("shell pages bring no chrome of their own", () => {
     });
 
     it("accepts a header component only when that component renders PageHeader", () => {
-        const page = (source: string) => ({ file: "src/app/(app)/security/x/page.tsx", source });
+        // Component sources are given here, so the test does not depend on the
+        // components of other pages.
+        const sources: Record<string, string> = {
+            [join(process.cwd(), "src/components/demo/DemoHeader.tsx")]:
+                'export function DemoHeader() { return <PageHeader title="Demo" />; }',
+            [join(process.cwd(), "src/components/demo/DemoList.tsx")]:
+                "export function DemoList() { return <ul />; }",
+        };
+        const read = (file: string) => sources[file];
+        const page = (source: string) => ({ file: "src/app/(app)/demo/x/page.tsx", source });
 
         // Renders a component that renders PageHeader.
         expect(
             rendersSharedPageHeader(
                 page(
-                    'import { SecurityRepoHeader } from "@/components/security/SecurityRepoHeader";\nexport default function P() { return <SecurityRepoHeader repoId="r" />; }',
+                    'import { DemoHeader } from "@/components/demo/DemoHeader";\nexport default function P() { return <DemoHeader />; }',
                 ),
+                read,
             ),
         ).toBe(true);
         // Imports it, but does not render it.
         expect(
             rendersSharedPageHeader(
                 page(
-                    'import { SecurityRepoHeader } from "@/components/security/SecurityRepoHeader";\nexport default function P() { return <div />; }',
+                    'import { DemoHeader } from "@/components/demo/DemoHeader";\nexport default function P() { return <div />; }',
                 ),
+                read,
             ),
         ).toBe(false);
         // Renders a component that has no PageHeader.
         expect(
             rendersSharedPageHeader(
                 page(
-                    'import { SecurityAlertQueue } from "@/components/security/SecurityAlertQueue";\nexport default function P() { return <SecurityAlertQueue />; }',
+                    'import { DemoList } from "@/components/demo/DemoList";\nexport default function P() { return <DemoList />; }',
                 ),
+                read,
             ),
         ).toBe(false);
+        // Renders PageHeader itself.
+        expect(
+            rendersSharedPageHeader(page('export default () => <PageHeader title="X" />;'), read),
+        ).toBe(true);
     });
 
     it("a shell page that shows ServiceUnavailable does not let it bring a second <main>", () => {
