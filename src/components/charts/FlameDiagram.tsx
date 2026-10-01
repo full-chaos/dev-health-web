@@ -12,7 +12,8 @@ import { CustomChart } from "echarts/charts";
 import type { FlameFrame } from "@/lib/types";
 
 import { Chart } from "./Chart";
-import { useChartColors, useChartTheme } from "./chartTheme";
+import { useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
+import { tileLabelStyle } from "@/lib/chartLabelColor";
 import { echarts } from "@/lib/echartsInit";
 import { formatNumber } from "@/lib/formatters";
 
@@ -91,6 +92,7 @@ export function FlameDiagram({
 }: FlameDiagramProps) {
     const chartTheme = useChartTheme();
     const colors = useChartColors();
+    const tokens = useChartTokens();
 
     const depthMap = frameDepths(frames);
     const maxDepth = Math.max(0, ...Array.from(depthMap.values()));
@@ -100,20 +102,13 @@ export function FlameDiagram({
         return [frame.start, frame.end, depth, frame.label, frame.state, frame.category];
     });
 
+    // State -> named token role. Five distinct states, as before (state is also in the tooltip).
     const colorForFrame = (state: string, category: string) => {
-        if (category === "rework") {
-            return colors[8] ?? "#f97316";
-        }
-        if (state === "waiting") {
-            return colors[6] ?? "#f59e0b";
-        }
-        if (state === "blocked") {
-            return colors[9] ?? "#ef4444";
-        }
-        if (state === "ci") {
-            return colors[3] ?? "#0ea5e9";
-        }
-        return colors[0] ?? "#1d4ed8";
+        if (category === "rework") return chartTheme.muted;
+        if (state === "waiting") return tokens.caution;
+        if (state === "blocked") return tokens.negative;
+        if (state === "ci") return tokens.themeQuality;
+        return tokens.themeOperational;
     };
 
     const mergedStyle: CSSProperties = { height, width, ...style };
@@ -191,19 +186,27 @@ export function FlameDiagram({
                             const y = startCoord[1] - height / 2;
                             const width = endCoord[0] - startCoord[0];
 
+                            const fill = colorForFrame(state, category);
+                            const ink = tileLabelStyle(fill, undefined, chartTheme.background);
+
+                            // 1px inset on each side: neighbouring frames read as gapped, no outline.
                             return {
                                 type: "rect",
-                                shape: { x: startCoord[0], y, width, height },
-                                style: {
-                                    fill: colorForFrame(state, category),
-                                    stroke: chartTheme.grid,
-                                    lineWidth: 1,
+                                shape: {
+                                    x: startCoord[0] + 1,
+                                    y,
+                                    width: Math.max(0, width - 2),
+                                    height,
+                                    r: 3,
                                 },
+                                style: { fill },
                                 textContent: {
                                     type: "text",
                                     style: {
                                         text: textValue(label),
-                                        fill: chartTheme.text,
+                                        fill: ink.color,
+                                        stroke: ink.textBorderColor,
+                                        lineWidth: ink.textBorderColor ? ink.textBorderWidth : 0,
                                         fontSize: 11,
                                         overflow: "truncate",
                                     },
