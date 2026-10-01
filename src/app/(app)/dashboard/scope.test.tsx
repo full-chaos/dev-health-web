@@ -10,7 +10,7 @@ import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 
 import Home from "./page";
 
-// The Cockpit has ONE scope bar: the global context bar and the page filter bar
+// The Home has ONE scope bar: the global context bar and the page filter bar
 // are merged. The bar is rendered for real here.
 
 vi.mock("next/navigation", () => ({
@@ -85,7 +85,7 @@ beforeEach(() => {
     vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(null as never);
 });
 
-describe("Cockpit scope bar", () => {
+describe("Home scope bar", () => {
     it("renders exactly one bar: the scope bar, not the two old bars", async () => {
         await renderCockpit();
 
@@ -96,7 +96,7 @@ describe("Cockpit scope bar", () => {
         expect(screen.getByRole("main")).toContainElement(screen.getByTestId("scope-bar"));
     });
 
-    it("has the Cockpit's page filters behind the Filters button, and the scope controls in the row", async () => {
+    it("has the Home's page filters behind the Filters button, and the scope controls in the row", async () => {
         await renderCockpit();
 
         const row = within(screen.getByTestId("scope-bar-row"));

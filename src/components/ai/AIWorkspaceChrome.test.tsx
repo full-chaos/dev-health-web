@@ -71,7 +71,7 @@ describe("AIWorkspaceChrome", () => {
 
     it("renders a BackLink returning to the cockpit (A5)", () => {
         render(<AIWorkspaceChrome>content</AIWorkspaceChrome>);
-        const backLink = screen.getByRole("link", { name: /back to cockpit/i });
+        const backLink = screen.getByRole("link", { name: /back to home/i });
         expect(backLink).toBeInTheDocument();
         expect(backLink.getAttribute("href")).toContain("/");
     });

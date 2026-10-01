@@ -14,9 +14,7 @@ test(
     },
     async ({ page }) => {
         await page.goto("/");
-        await expect(
-            page.getByRole("heading", { name: "Developer Health Ops Cockpit" }),
-        ).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Home" })).toBeVisible();
 
         await page.waitForFunction(() => {
             return new URL(window.location.href).searchParams.get("f");

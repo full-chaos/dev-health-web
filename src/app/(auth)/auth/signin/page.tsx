@@ -4,6 +4,7 @@ import { LoginForm } from "@/components/auth/LoginForm";
 import { AuthCard } from "@/components/auth/AuthCard";
 import { SocialLoginError } from "@/components/auth/SocialLoginError";
 import { appendCallbackUrl, safePostLoginRedirect } from "@/lib/post-login-redirect";
+import { Notice } from "@/components/ui/Notice";
 
 type SearchParams = Promise<{
     registered?: string;
@@ -44,9 +45,9 @@ export default async function SignInPage({ searchParams }: { searchParams: Searc
                 </div>
             )}
             {socialError && (
-                <div className="mb-4 w-full max-w-md p-3 text-sm text-red-400 bg-red-950/50 rounded-md border border-red-800 text-center">
+                <Notice variant="danger" live={false} centered className="mb-4 w-full max-w-md">
                     <SocialLoginError error={socialError} />
-                </div>
+                </Notice>
             )}
             <AuthCard callbackUrl={callbackUrl} signUpHref={signupHref} providers={providers}>
                 <LoginForm callbackUrl={callbackUrl} plan={plan} trialIntent={trialIntent} />

@@ -19,9 +19,9 @@ vi.mock("next/link", () => ({
 }));
 
 describe("BackLink", () => {
-    it("defaults to the canonical 'Back to Cockpit' return path", () => {
+    it("defaults to the canonical 'Back to Home' return path", () => {
         render(<BackLink href="/" />);
-        const link = screen.getByRole("link", { name: /back to cockpit/i });
+        const link = screen.getByRole("link", { name: /back to home/i });
         expect(link).toHaveAttribute("href", "/");
     });
 
@@ -34,13 +34,13 @@ describe("BackLink", () => {
     });
 
     it("accepts an explicit registry label", () => {
-        render(<BackLink href="/work" label="Back to Cockpit" />);
-        expect(screen.getByRole("link", { name: /back to cockpit/i })).toBeInTheDocument();
+        render(<BackLink href="/work" label="Back to Home" />);
+        expect(screen.getByRole("link", { name: /back to home/i })).toBeInTheDocument();
     });
 
     it("is not styled as a filter pill (quiet inline link, no pill background)", () => {
         render(<BackLink href="/" />);
-        const link = screen.getByRole("link", { name: /back to cockpit/i });
+        const link = screen.getByRole("link", { name: /back to home/i });
         expect(link.className).not.toContain("rounded-full");
         expect(link.className).toContain("text-(--ink-muted)");
     });

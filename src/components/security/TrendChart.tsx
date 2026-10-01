@@ -1,7 +1,8 @@
 "use client";
 
 // Chart primitive choice: uses the Chart (ECharts) primitive directly with two
-// "line" series — one for opened alerts (red-ish) and one for fixed (emerald-ish).
+// "line" series — one for opened alerts (negative token) and one for fixed (positive token).
+// Two series draw no area fill (concept rule: an area fill only for a single series).
 // The project has TimeseriesChart and StackedAreaChart but neither supports two
 // independent (non-stacked) series out of the box. Using Chart directly keeps
 // the implementation thin and avoids stacking, which would misrepresent the data.
@@ -72,7 +73,6 @@ export function TrendChart({ points, loading }: TrendChartProps) {
                     symbolSize: 5,
                     lineStyle: { ...lineMark, color: OPENED_COLOR },
                     itemStyle: { color: OPENED_COLOR },
-                    areaStyle: { opacity: 0.1, color: OPENED_COLOR },
                     data: withPointSymbols(
                         sorted.map((p) => p.opened),
                         chartTheme,
@@ -88,7 +88,6 @@ export function TrendChart({ points, loading }: TrendChartProps) {
                     symbolSize: 5,
                     lineStyle: { ...lineMark, color: FIXED_COLOR },
                     itemStyle: { color: FIXED_COLOR },
-                    areaStyle: { opacity: 0.1, color: FIXED_COLOR },
                     data: withPointSymbols(
                         sorted.map((p) => p.fixed),
                         chartTheme,

@@ -39,11 +39,11 @@ describe("ShellTopBar — location trail from the nav config (A6)", () => {
         expect(screen.getByTestId("shell-top-bar").tagName).toBe("HEADER");
     });
 
-    it("shows the area as the current crumb on an area with no child (Cockpit)", () => {
+    it("shows the area as the current crumb on an area with no child (Home)", () => {
         render(<ShellTopBar status={LOADING} />);
 
         const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
-        expect(within(trail).getByText("Cockpit")).toHaveAttribute("aria-current", "page");
+        expect(within(trail).getByText("Home")).toHaveAttribute("aria-current", "page");
         expect(within(trail).queryAllByRole("link")).toHaveLength(0);
     });
 

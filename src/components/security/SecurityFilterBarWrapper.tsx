@@ -53,9 +53,17 @@ const multipleOption = (count: number): FilterPillOption<"multiple"> => ({
 
 interface SecurityFilterBarWrapperProps {
     encodedFilter?: string;
+    /**
+     * The rows sit inside another card (the scope bar): no card of their own.
+     * Same options, same URL writes.
+     */
+    embedded?: boolean;
 }
 
-export function SecurityFilterBarWrapper({ encodedFilter }: SecurityFilterBarWrapperProps) {
+export function SecurityFilterBarWrapper({
+    encodedFilter,
+    embedded = false,
+}: SecurityFilterBarWrapperProps) {
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -136,35 +144,47 @@ export function SecurityFilterBarWrapper({ encodedFilter }: SecurityFilterBarWra
         replaceFilter(next);
     };
 
+    const rows = (
+        <div className="flex flex-col gap-3">
+            <FilterPills
+                options={severityOptions}
+                value={severityValue}
+                onChange={setSeverity}
+                ariaLabel="Security severity"
+                leadingLabel="Severity"
+            />
+            <FilterPills
+                options={stateOptions}
+                value={stateValue}
+                onChange={setState}
+                ariaLabel="Security state"
+                leadingLabel="State"
+            />
+            <FilterPills
+                options={sourceOptions}
+                value={sourceValue}
+                onChange={setSource}
+                ariaLabel="Security source"
+                leadingLabel="Source"
+            />
+        </div>
+    );
+
+    if (embedded) {
+        return (
+            <div aria-label="Security filters" role="group" data-testid="security-filter-bar">
+                {rows}
+            </div>
+        );
+    }
+
     return (
         <section
             aria-label="Security filters"
-            className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4"
+            className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-4"
             data-testid="security-filter-bar"
         >
-            <div className="flex flex-col gap-3">
-                <FilterPills
-                    options={severityOptions}
-                    value={severityValue}
-                    onChange={setSeverity}
-                    ariaLabel="Security severity"
-                    leadingLabel="Severity"
-                />
-                <FilterPills
-                    options={stateOptions}
-                    value={stateValue}
-                    onChange={setState}
-                    ariaLabel="Security state"
-                    leadingLabel="State"
-                />
-                <FilterPills
-                    options={sourceOptions}
-                    value={sourceValue}
-                    onChange={setSource}
-                    ariaLabel="Security source"
-                    leadingLabel="Source"
-                />
-            </div>
+            {rows}
         </section>
     );
 }

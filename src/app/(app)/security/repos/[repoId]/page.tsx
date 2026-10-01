@@ -1,4 +1,4 @@
-import { PageHeader } from "@/components/shell/PageHeader";
+import { SecurityRepoHeader } from "@/components/security/SecurityRepoHeader";
 import {
     decodeSecurityFilter,
     defaultSecurityFilter,
@@ -26,11 +26,7 @@ export default async function RepoSecurityPage({ params, searchParams }: RepoSec
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-8">
-            <PageHeader
-                title={repoId}
-                subtitle="Security alerts scoped to this repository."
-                back={{ href: "/security", area: "Security" }}
-            />
+            <SecurityRepoHeader repoId={repoId} filter={lockedFilter} />
 
             <SecurityAlertQueue filter={lockedFilter} lockedRepoId={repoId} />
         </div>

@@ -63,9 +63,7 @@ export function TopReposChart({ repos, loading }: TopReposChartProps) {
     }
 
     if (sorted.length === 0) {
-        return (
-            <p className="py-8 text-center text-sm text-[var(--ink-muted)]">No repos with alerts</p>
-        );
+        return <p className="py-8 text-center text-sm text-(--text-muted)">No repos with alerts</p>;
     }
 
     // Each bar row navigates to /security/repos/[repoId].
@@ -92,11 +90,14 @@ export function TopReposChart({ repos, loading }: TopReposChartProps) {
                     },
                 }}
             />
-            {/* Accessible link list — visually hidden, screen-reader + keyboard friendly */}
-            <ul className="sr-only">
+            {/* Visible link per repository (also the keyboard and screen-reader path to the repo page) */}
+            <ul className="mt-3 flex flex-col gap-1 text-xs" data-testid="top-repos-links">
                 {sorted.map((repo) => (
                     <li key={repo.repoId}>
-                        <Link href={buildRepoHref(repo.repoId, f)}>
+                        <Link
+                            href={buildRepoHref(repo.repoId, f)}
+                            className="text-(--accent-2) hover:underline"
+                        >
                             {repo.repoName} — {repo.count} alerts
                         </Link>
                     </li>

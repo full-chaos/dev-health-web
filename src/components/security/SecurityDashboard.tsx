@@ -2,6 +2,7 @@
 
 import { useSecurityOverview } from "@/lib/graphql/hooks/useSecurity";
 import type { SecurityFilter } from "@/lib/filters/security";
+import { SECURITY_KPI_LABELS } from "@/lib/security/kpiLabels";
 import { KpiTile } from "./KpiTile";
 import { SeverityStackedBar } from "./SeverityStackedBar";
 import { TopReposChart } from "./TopReposChart";
@@ -52,37 +53,44 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                 <div data-testid="kpi-open">
                     {error ? (
-                        <DegradedTile label="Open Alerts" />
+                        <DegradedTile label={SECURITY_KPI_LABELS.open} />
                     ) : (
                         <KpiTile
-                            label="Open Alerts"
+                            label={SECURITY_KPI_LABELS.open}
                             value={kpis?.openTotal ?? 0}
                             delta={fetching ? undefined : kpis?.openDelta30d}
-                            tone={kpis && kpis.openTotal > 0 ? "warn" : "default"}
                             loading={fetching}
                         />
                     )}
                 </div>
                 <div data-testid="kpi-critical">
                     {error ? (
-                        <DegradedTile label="Critical" />
+                        <DegradedTile label={SECURITY_KPI_LABELS.critical} />
                     ) : (
                         <KpiTile
-                            label="Critical"
+                            label={SECURITY_KPI_LABELS.critical}
                             value={kpis?.critical ?? 0}
-                            tone={kpis && kpis.critical > 0 ? "danger" : "default"}
+                            pill={
+                                kpis && kpis.critical > 0
+                                    ? { label: "Critical", tone: "negative" }
+                                    : undefined
+                            }
                             loading={fetching}
                         />
                     )}
                 </div>
                 <div data-testid="kpi-high">
                     {error ? (
-                        <DegradedTile label="High" />
+                        <DegradedTile label={SECURITY_KPI_LABELS.high} />
                     ) : (
                         <KpiTile
-                            label="High"
+                            label={SECURITY_KPI_LABELS.high}
                             value={kpis?.high ?? 0}
-                            tone={kpis && kpis.high > 0 ? "warn" : "default"}
+                            pill={
+                                kpis && kpis.high > 0
+                                    ? { label: "High", tone: "caution" }
+                                    : undefined
+                            }
                             loading={fetching}
                         />
                     )}
@@ -94,7 +102,6 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                         <KpiTile
                             label="Mean Days to Fix (30d)"
                             value={mttfValue}
-                            tone="default"
                             loading={fetching}
                         />
                     )}
