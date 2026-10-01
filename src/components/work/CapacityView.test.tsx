@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import { render, screen, userEvent } from "@/test/utils";
+import { render, screen, within } from "@/test/utils";
 import type { CapacityForecast } from "@/lib/graphql/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
@@ -59,20 +59,22 @@ beforeEach(() => {
     hook.state = { data: forecast(), loading: false, error: null, refetch: vi.fn() };
 });
 
-describe("CapacityView — what the page shows today (pins)", () => {
-    it("shows the forecast card: scope, backlog, 50 / 85 / 95 % dates with days, Target tag", () => {
-        hook.state.data = forecast({ teamId: "team-a" });
+describe("CapacityView — what the page shows (pins, updated for the page pass)", () => {
+    it("shows remaining work and the three percentile dates as tiles, with the days and the Target tag", () => {
         render(<CapacityView filters={filters} />);
 
-        expect(screen.getByText("Team: team-a")).toBeInTheDocument();
-        expect(screen.getByText("42")).toBeInTheDocument();
-        expect(screen.getByText("50% chance")).toBeInTheDocument();
-        expect(screen.getByText("85% chance")).toBeInTheDocument();
-        expect(screen.getByText("95% chance")).toBeInTheDocument();
-        expect(screen.getByText("(9 days)")).toBeInTheDocument();
-        expect(screen.getByText("(19 days)")).toBeInTheDocument();
-        expect(screen.getByText("(30 days)")).toBeInTheDocument();
-        expect(screen.getByText("Target")).toBeInTheDocument();
+        const tile = (id: string) => within(screen.getByTestId(id));
+        expect(tile("tile-remaining").getByText("Remaining work")).toBeInTheDocument();
+        expect(tile("tile-remaining").getByText("42 items")).toBeInTheDocument();
+        expect(tile("tile-p50").getByText("P50 · optimistic")).toBeInTheDocument();
+        expect(tile("tile-p50").getByText("9 days")).toBeInTheDocument();
+        expect(tile("tile-p85").getByText("P85 · target")).toBeInTheDocument();
+        expect(tile("tile-p85").getByText("19 days")).toBeInTheDocument();
+        expect(tile("tile-p85").getByText("Target")).toBeInTheDocument();
+        expect(tile("tile-p95").getByText("P95 · conservative")).toBeInTheDocument();
+        expect(tile("tile-p95").getByText("30 days")).toBeInTheDocument();
+        // The old "50% chance" rows are gone.
+        expect(screen.queryByText("50% chance")).toBeNull();
     });
 
     it("sends only the first team id and the filter's range as history days", () => {
@@ -84,19 +86,26 @@ describe("CapacityView — what the page shows today (pins)", () => {
         });
     });
 
-    it("shows throughput as mean ± standard deviation per day, and the history", () => {
+    it("shows the forecast inputs: mean and standard deviation per day, history, remaining items", () => {
         render(<CapacityView filters={filters} />);
 
-        expect(screen.getByText(/3\.3 ±/)).toBeInTheDocument();
-        expect(screen.getByText(/1\.1/)).toBeInTheDocument();
-        expect(screen.getByText("90 days")).toBeInTheDocument();
+        const inputs = within(screen.getByTestId("forecast-inputs"));
+        expect(inputs.getByText("Forecast inputs")).toBeInTheDocument();
+        expect(inputs.getByText("3.3 items/day")).toBeInTheDocument();
+        expect(inputs.getByText("1.1 items/day")).toBeInTheDocument();
+        expect(inputs.getByText("90 days")).toBeInTheDocument();
+        expect(inputs.getByText("42")).toBeInTheDocument();
         expect(screen.getByText("Based on 90 days of historical data")).toBeInTheDocument();
     });
 
-    it("shows the two warnings when history is short or variance is high", () => {
+    it("shows the two warnings in one warning notice when history is short or variance is high", () => {
         hook.state.data = forecast({ insufficientHistory: true, highVariance: true });
         render(<CapacityView filters={filters} />);
 
+        expect(screen.getByTestId("forecast-warnings")).toHaveAttribute(
+            "data-notice-variant",
+            "warn",
+        );
         expect(
             screen.getByText("Limited history available. Forecast may be less reliable."),
         ).toBeInTheDocument();
@@ -112,7 +121,8 @@ describe("CapacityView — what the page shows today (pins)", () => {
 
         expect(screen.getByTestId("band-chart")).toBeInTheDocument();
         expect(screen.getByTestId("histogram")).toBeInTheDocument();
-        expect(screen.getByText("Completion Projection")).toBeInTheDocument();
+        expect(screen.getByText("Completion projection")).toBeInTheDocument();
+        expect(screen.getByText("Monte Carlo forecast for work completion")).toBeInTheDocument();
         expect(screen.getByText("Throughput Distribution")).toBeInTheDocument();
         expect(
             screen.getByText(
@@ -136,19 +146,19 @@ describe("CapacityView — what the page shows today (pins)", () => {
         ).toBeInTheDocument();
     });
 
-    it("refreshes through the Refresh Forecast button", async () => {
+    it("has no inner heading row: the page title is the only Completion Forecast heading", () => {
         render(<CapacityView filters={filters} />);
 
-        await userEvent.click(screen.getByRole("button", { name: "Refresh Forecast" }));
-
-        expect(hook.state.refetch).toHaveBeenCalledTimes(1);
+        expect(screen.queryByRole("heading", { name: "Completion Forecast" })).toBeNull();
+        expect(screen.queryByRole("button", { name: /Refresh Forecast|Computing/ })).toBeNull();
     });
 
-    it("shows Computing... and a disabled button while loading", () => {
+    it("shows skeleton tiles while loading", () => {
         hook.state = { ...hook.state, loading: true };
         render(<CapacityView filters={filters} />);
 
-        expect(screen.getByRole("button", { name: "Computing..." })).toBeDisabled();
+        expect(screen.getByTestId("forecast-loading")).toBeInTheDocument();
+        expect(screen.queryByTestId("forecast-tiles")).toBeNull();
     });
 
     it("shows the error title and message, and the empty text", () => {
@@ -169,7 +179,7 @@ describe("CapacityView — what the page shows today (pins)", () => {
         expect(screen.getByText("No forecast data available")).toBeInTheDocument();
     });
 
-    it("shows the low-variance range as one row, not three percentiles", () => {
+    it("shows the low-variance range as one tile, not three percentiles", () => {
         hook.state.data = forecast({
             p50Date: "2026-06-15",
             p85Date: "2026-06-15",
@@ -180,7 +190,11 @@ describe("CapacityView — what the page shows today (pins)", () => {
         });
         render(<CapacityView filters={filters} />);
 
-        expect(screen.getByText("≈2 weeks (low variance)")).toBeInTheDocument();
-        expect(screen.queryByText("50% chance")).toBeNull();
+        const range = within(screen.getByTestId("tile-range"));
+        expect(range.getByText("Forecast range")).toBeInTheDocument();
+        expect(range.getByText("≈2 weeks")).toBeInTheDocument();
+        expect(range.getByText(/low variance · Jun 1[45]/)).toBeInTheDocument();
+        expect(screen.queryByTestId("tile-p50")).toBeNull();
+        expect(screen.queryByTestId("tile-p95")).toBeNull();
     });
 });
