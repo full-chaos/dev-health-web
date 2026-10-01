@@ -14,6 +14,7 @@ describe("shell route registry", () => {
             "/landscape",
             "/code",
             "/complexity",
+            "/bottleneck",
         ]);
     });
 
