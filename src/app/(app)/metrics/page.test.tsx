@@ -253,4 +253,32 @@ describe("/metrics today", () => {
             expect(link.getAttribute("href")).toContain("metric=cycle_time");
         }
     });
+
+    it("Summary rows show each metric's current value and delta text, on every tab", async () => {
+        const expected: Record<string, Array<[string, string, string]>> = {
+            flow: [
+                ["Cycle Time", "4.2d", "-12%"],
+                ["Review Latency", "6h", "+30%"],
+                ["Throughput", "50 items", "+5%"],
+                ["WIP Saturation", "120%", "+8%"],
+            ],
+            dora: [
+                ["Deploy Frequency", "9", "0%"],
+                ["Cycle Time", "4.2d", "-12%"],
+                ["Change Failure Rate", "3%", "-1%"],
+                ["Review Latency", "6h", "+30%"],
+            ],
+        };
+        for (const [tab, rows] of Object.entries(expected)) {
+            const { unmount } = await renderTab(tab);
+            const body = within(screen.getByRole("table")).getAllByRole("row").slice(1);
+            expect(body, tab).toHaveLength(rows.length);
+            rows.forEach(([label, value, delta], index) => {
+                expect(body[index], `${tab} ${label}`).toHaveTextContent(label);
+                expect(body[index], `${tab} ${label}`).toHaveTextContent(value);
+                expect(body[index], `${tab} ${label}`).toHaveTextContent(delta);
+            });
+            unmount();
+        }
+    });
 });
