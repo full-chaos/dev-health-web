@@ -7,9 +7,7 @@ import { PersonRangeBar } from "@/components/people/PersonRangeBar";
 import { checkApiHealth } from "@/lib/api/system";
 import { getHeatmap } from "@/lib/api/visuals";
 import { getPersonDrilldown, getPersonMetric, getPersonSummary } from "@/lib/api/people";
-import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { decodeFilter } from "@/lib/filters/encode";
 import { formatNumber } from "@/lib/formatters";
 import { getMetricLabel } from "@/lib/metrics/catalog";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -84,8 +82,6 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
     const { person_id: personId, metric } = await params;
     const rawParams = (await searchParams) ?? {};
     const { range_days, compare_days } = getRangeParams(rawParams);
-    const encodedFilter = Array.isArray(rawParams.f) ? rawParams.f[0] : rawParams.f;
-    const filters = encodedFilter ? decodeFilter(encodedFilter) : defaultMetricFilter;
 
     const evidenceParam = Array.isArray(rawParams.evidence)
         ? rawParams.evidence[0]
