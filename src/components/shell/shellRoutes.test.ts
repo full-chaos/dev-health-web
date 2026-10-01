@@ -9,6 +9,7 @@ describe("shell route registry", () => {
             "/diagnose",
             "/diagnose/work-graph",
             "/metrics",
+            "/explore",
         ]);
     });
 
