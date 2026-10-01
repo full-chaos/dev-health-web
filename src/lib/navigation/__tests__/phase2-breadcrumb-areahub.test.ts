@@ -213,7 +213,11 @@ describe("breadcrumbs — production page source guards (codex round 2: prior te
     // the one trail from navTrailForPathname(pathname) itself (see
     // ShellTopBar.test.tsx and each page's shell.test.tsx), so a page cannot
     // double-append a crumb: it passes no breadcrumbs at all.
-    const pagesWithNoInPageTrail = ["improve/automations/page.tsx", "ai/impact/page.tsx"];
+    const pagesWithNoInPageTrail = [
+        "improve/automations/page.tsx",
+        "ai/impact/page.tsx",
+        "ai/impact/evidence/page.tsx",
+    ];
 
     it.each(pagesWithNoInPageTrail)("%s: has no in-page trail", (relativePath) => {
         const source = readPageSource(relativePath);
@@ -229,10 +233,12 @@ describe("breadcrumbs — production page source guards (codex round 2: prior te
         expect(source).toContain('withFilterParam("/ai/risk", filters, activeRole)');
     });
 
-    it("ai/impact/evidence/page.tsx: parent breadcrumb uses slice(0, -1) + withFilterParam", () => {
+    it("ai/impact/evidence/page.tsx: the return link to Impact keeps the filter and the role", () => {
+        // The in-page trail had a filter-preserving "Impact" crumb. The page is in
+        // the shared app shell now: its "Back to Impact" link is that return path.
         const source = readPageSource("ai/impact/evidence/page.tsx");
-        expect(source).toContain('navTrailForPathname("/ai/impact").slice(0, -1)');
         expect(source).toContain('withFilterParam("/ai/impact", filters, role)');
+        expect(source).toContain('area: "Impact"');
     });
 
     it("ai/attribution/page.tsx is deliberately NOT in the fixed-pages list (navVisible: false child, area-only trail)", () => {
