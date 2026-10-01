@@ -127,7 +127,7 @@ describe("TreemapChart", () => {
         );
     });
 
-    it("shows depth with opacity steps on the generic palette", () => {
+    it("colors only the top level on the generic palette; deeper tiles inherit", () => {
         render(
             <TreemapChart
                 data={{
@@ -141,8 +141,9 @@ describe("TreemapChart", () => {
             option: { series: Array<{ data: Array<TreemapNode> }> };
         };
         const top = props.option.series[0].data[0];
-        expect(top.itemStyle?.opacity).toBe(1);
-        expect(top.children?.[0].itemStyle?.opacity).toBe(0.82);
+        expect(top.itemStyle?.color).toBe("#2563eb");
+        expect(top.children?.[0].itemStyle?.color).toBeUndefined();
+        expect(top.children?.[0].itemStyle?.opacity).toBeUndefined();
     });
 
     it("keeps caller colors and evidence-quality opacity untouched", () => {

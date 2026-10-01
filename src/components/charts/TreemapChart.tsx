@@ -10,7 +10,7 @@ import { Chart } from "./Chart";
 import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
-import { depthOpacity, tileLabelColor } from "@/lib/chartLabelColor";
+import { tileLabelColor } from "@/lib/chartLabelColor";
 import { formatPercent } from "@/lib/formatters";
 
 echarts.use([EChartsTreemapChart]);
@@ -73,7 +73,7 @@ export function TreemapChart({
     const coloredData = useMemo(() => {
         if (useInputColors || !data.children?.length) return data;
 
-        // Generic palette path: no evidence-quality opacity here, so depth is shown by opacity steps.
+        // Generic palette path (hotspots, flow): same color rule as before; no depth shading added.
         const assignColors = (
             node: TreemapNode,
             depth: number,
@@ -82,7 +82,8 @@ export function TreemapChart({
             const baseColor = chartColors[colorIndex % chartColors.length];
             return {
                 ...node,
-                itemStyle: { color: baseColor, opacity: depthOpacity(depth), ...node.itemStyle },
+                // Only the top level carries a color; deeper tiles inherit it (as before).
+                itemStyle: depth === 0 ? { color: baseColor } : node.itemStyle,
                 children: node.children?.map((child, idx) =>
                     assignColors(child, depth + 1, depth === 0 ? idx : colorIndex),
                 ),
