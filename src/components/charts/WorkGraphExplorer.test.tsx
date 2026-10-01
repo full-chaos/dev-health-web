@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen } from "@/test/utils";
 
 import type { WorkGraphEdge } from "@/lib/graphql/types";
-import { WorkGraphExplorer } from "./WorkGraphExplorer";
+import { WorkGraphExplorer, WorkGraphLegend } from "./WorkGraphExplorer";
 
 const chartTheme = {
     text: "#111111",
@@ -138,5 +138,51 @@ describe("WorkGraphExplorer layout modes", () => {
         fireEvent.click(screen.getByRole("radio", { name: "Network" }));
         props().onEvents.click({ dataType: "node", data: { id: "ISSUE:I2" } });
         expect(onClick).toHaveBeenLastCalledWith("I2", "ISSUE");
+    });
+});
+
+describe("today: the Show checkboxes (Release, Feature Flag) and the legend", () => {
+    beforeEach(() => chartSpy.mockClear());
+
+    const layered = [
+        edge("ISSUE", "I1", "PR", "P1"),
+        edge("PR", "P1", "RELEASE", "R1"),
+        edge("PR", "P1", "FEATURE_FLAG", "F1"),
+    ];
+    const ids = () =>
+        series()
+            .data.map((d) => d.id)
+            .sort();
+
+    it("both layers are shown by default and each checkbox hides and restores its nodes", () => {
+        render(<WorkGraphExplorer edges={layered} />);
+        expect(ids()).toEqual(["FEATURE_FLAG:F1", "ISSUE:I1", "PR:P1", "RELEASE:R1"]);
+        fireEvent.click(screen.getByRole("checkbox", { name: /release/i }));
+        expect(ids()).toEqual(["FEATURE_FLAG:F1", "ISSUE:I1", "PR:P1"]);
+        fireEvent.click(screen.getByRole("checkbox", { name: /feature flag/i }));
+        expect(ids()).toEqual(["ISSUE:I1", "PR:P1"]);
+        fireEvent.click(screen.getByRole("checkbox", { name: /release/i }));
+        fireEvent.click(screen.getByRole("checkbox", { name: /feature flag/i }));
+        expect(ids()).toHaveLength(4);
+    });
+
+    it("both modes obey the checkboxes", () => {
+        render(<WorkGraphExplorer edges={layered} />);
+        fireEvent.click(screen.getByRole("checkbox", { name: /release/i }));
+        fireEvent.click(screen.getByRole("radio", { name: "Network" }));
+        expect(ids()).not.toContain("RELEASE:R1");
+        fireEvent.click(screen.getByRole("radio", { name: "Layered" }));
+        expect(ids()).not.toContain("RELEASE:R1");
+    });
+
+    it("the legend names its content and the toggle calls the handler (collapsed and open)", () => {
+        const toggle = vi.fn();
+        const { rerender } = render(<WorkGraphLegend collapsed onToggleAction={toggle} />);
+        fireEvent.click(screen.getByRole("button", { name: /legend/i }));
+        expect(toggle).toHaveBeenCalledTimes(1);
+        rerender(<WorkGraphLegend collapsed={false} onToggleAction={toggle} />);
+        expect(screen.getByText("Node colors + edge styles")).toBeInTheDocument();
+        fireEvent.click(screen.getByRole("button"));
+        expect(toggle).toHaveBeenCalledTimes(2);
     });
 });
