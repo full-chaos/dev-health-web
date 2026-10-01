@@ -16,6 +16,7 @@ describe("shell route registry", () => {
             "/complexity",
             "/bottleneck",
             "/cognitive-load",
+            "/people",
         ]);
     });
 
