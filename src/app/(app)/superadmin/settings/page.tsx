@@ -79,7 +79,7 @@ export default async function SettingsPage() {
                         To edit these settings, please use the{" "}
                         <Link
                             href="/org/admin/settings"
-                            className="text-(--accent) hover:underline"
+                            className="text-(--accent-2) hover:underline"
                         >
                             {CTA_LABELS.orgAdminSettings}
                         </Link>{" "}
