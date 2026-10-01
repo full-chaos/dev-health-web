@@ -168,7 +168,7 @@ function TrendSparkline({ trend }: { trend: CompoundingRiskTrendPointView[] }) {
                         <div
                             key={point.day}
                             data-missing="true"
-                            className="h-0.5 flex-1 bg-(--card-stroke)"
+                            className="h-0.5 flex-1 bg-(--text-muted)"
                             title={`${point.day}: no score`}
                         />
                     ) : (
@@ -183,10 +183,7 @@ function TrendSparkline({ trend }: { trend: CompoundingRiskTrendPointView[] }) {
             </div>
             {hasMissingDay ? (
                 <p className="mt-2 flex items-center gap-2 text-xs text-(--ink-muted)">
-                    <span
-                        aria-hidden="true"
-                        className="inline-block h-0.5 w-3 bg-(--card-stroke)"
-                    />
+                    <span aria-hidden="true" className="inline-block h-0.5 w-3 bg-(--text-muted)" />
                     no score that day
                 </p>
             ) : null}
