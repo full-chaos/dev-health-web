@@ -15,7 +15,8 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
-import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
+import { FALLBACK_DELTAS, metricInverseGood } from "@/lib/metrics/catalog";
+import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 import type { MetricDelta } from "@/lib/types";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
@@ -25,60 +26,6 @@ import { ScopeBar } from "@/components/shell/ScopeBar";
 type MetricsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
-
-type QuadrantType = "churn_throughput" | "cycle_throughput" | "wip_throughput";
-
-type MetricTab = {
-    id: string;
-    label: string;
-    description: string;
-    metrics: string[];
-    highlight: string;
-    quadrant: {
-        type: QuadrantType;
-        title: string;
-        description: string;
-    };
-};
-
-const METRIC_TABS: MetricTab[] = [
-    {
-        id: "dora",
-        label: "DORA",
-        description: "Release speed and stability.",
-        metrics: ["deploy_freq", "cycle_time", "change_failure_rate", "review_latency"],
-        highlight: "deploy_freq",
-        quadrant: {
-            type: "churn_throughput",
-            title: "Churn × Throughput landscape",
-            description: "Operating modes under change volume and delivery pace.",
-        },
-    },
-    {
-        id: "flow",
-        label: "Flow",
-        description: "From idea to merge.",
-        metrics: ["cycle_time", "review_latency", "throughput", "wip_saturation"],
-        highlight: "cycle_time",
-        quadrant: {
-            type: "cycle_throughput",
-            title: "Cycle Time × Throughput landscape",
-            description: "Coordination debt and delivery efficiency.",
-        },
-    },
-    {
-        id: "throughput",
-        label: "Throughput",
-        description: "Delivery volume and pacing.",
-        metrics: ["throughput", "deploy_freq", "wip_saturation", "blocked_work"],
-        highlight: "throughput",
-        quadrant: {
-            type: "wip_throughput",
-            title: "WIP × Throughput landscape",
-            description: "Work-in-progress saturation and delivery capacity.",
-        },
-    },
-];
 
 const getMetric = (deltas: MetricDelta[], metric: string) =>
     deltas.find((item) => item.metric === metric) ??
@@ -323,10 +270,10 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                                 label: data?.label ?? metric,
                                 valueText:
                                     placeholderDeltas || !data
-                                        ? "--"
+                                        ? "—"
                                         : formatMetricValue(data.value, data.unit),
-                                deltaText:
-                                    placeholderDeltas || !data ? null : formatDelta(data.delta_pct),
+                                delta: placeholderDeltas || !data ? null : data.delta_pct,
+                                inverseGood: metricInverseGood(metric),
                                 href: buildExploreUrl({ metric, filters, role: activeRole }),
                             };
                         })}

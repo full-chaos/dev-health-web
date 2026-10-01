@@ -12,7 +12,7 @@ vi.mock("@/components/evidence", () => ({
 }));
 
 import { MetricEvidenceCards } from "./MetricEvidenceCards";
-import { render, screen, userEvent } from "@/test/utils";
+import { render, screen, userEvent, within } from "@/test/utils";
 import { buildExploreUrl } from "@/lib/filters/url";
 
 const deltas = [
@@ -59,7 +59,7 @@ describe("MetricEvidenceCards tile (CHAOS-7597)", () => {
             />,
         );
         const value = screen.getByText("1.4d");
-        const delta = screen.getByText("+12%");
+        const delta = screen.getByText(/\+12%/);
         expect(
             value.compareDocumentPosition(delta) & Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
@@ -67,7 +67,7 @@ describe("MetricEvidenceCards tile (CHAOS-7597)", () => {
         expect(screen.getByTestId("sparkline")).toBeInTheDocument();
     });
 
-    it("shows a missing value as muted '--', not as zero", () => {
+    it("shows a missing value as a muted em dash, not as zero or '--'", () => {
         render(
             <MetricEvidenceCards
                 metrics={["cycle_time"]}
@@ -76,7 +76,8 @@ describe("MetricEvidenceCards tile (CHAOS-7597)", () => {
                 placeholderDeltas
             />,
         );
-        expect(screen.getAllByText("--")[0]).toHaveClass("text-(--ink-muted)");
+        expect(screen.getAllByText("—")[0]).toHaveClass("text-(--ink-muted)");
+        expect(screen.queryByText("--")).toBeNull();
         expect(screen.queryByText("0")).not.toBeInTheDocument();
     });
 });
@@ -106,12 +107,38 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
         expect(container.querySelectorAll("article")).toHaveLength(4);
     });
 
-    it("formats the delta with its own tone: up accent-3, down negative, zero muted, no arrow", () => {
+    it("shows the delta with MetricDelta's arrow and tone (a metric with no polarity reads as higher-is-better)", () => {
         renderFour();
-        expect(screen.getByText("+12%")).toHaveClass("text-(--accent-3)");
-        expect(screen.getByText("-7%")).toHaveClass("text-(--accent-negative)");
-        expect(screen.getByText("0%")).toHaveClass("text-(--ink-muted)");
-        expect(screen.queryByText(/↑|↓/)).toBeNull();
+        expect(screen.getByText(/\+12%/)).toHaveClass("text-(--positive)");
+        expect(screen.getByText(/↑ \+12%/)).toBeInTheDocument();
+        expect(screen.getByText(/↓ -7%/)).toHaveClass("text-(--accent-negative)");
+        expect(screen.getByText("· 0%")).toHaveClass("text-(--ink-muted)");
+    });
+
+    it("colours a delta by the metric's polarity, not by its sign (CHAOS-7730)", () => {
+        const rows = [
+            row("cycle_time", "Cycle Time", 4, "days", 10),
+            row("review_latency", "Review Latency", 6, "hours", -7),
+            row("throughput", "Throughput", 50, "items", 10),
+            row("deploy_freq", "Deploy Frequency", 9, "deploys", -5),
+        ];
+        render(
+            <MetricEvidenceCards
+                metrics={rows.map((r) => r.metric)}
+                deltas={rows}
+                filters={filters}
+                placeholderDeltas={false}
+            />,
+        );
+        const tone = (label: string, text: RegExp) =>
+            within(screen.getByText(label).closest("article") as HTMLElement).getByText(text)
+                .className;
+        // lowerIsBetter: a rise is bad, a fall is good.
+        expect(tone("Cycle Time", /\+10%/)).toContain("text-(--accent-negative)");
+        expect(tone("Review Latency", /-7%/)).toContain("text-(--positive)");
+        // higherIsBetter: a rise is good, a fall is bad.
+        expect(tone("Throughput", /\+10%/)).toContain("text-(--positive)");
+        expect(tone("Deploy Frequency", /-5%/)).toContain("text-(--accent-negative)");
     });
 
     it("formats values per unit", () => {
@@ -121,13 +148,16 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
         expect(screen.getByText("3h")).toBeInTheDocument();
     });
 
-    it("shows muted '--' for value and delta when deltas are placeholders, and no sparkline text change", () => {
+    it("shows a muted em dash for the value and 'No prior period' for the delta when deltas are placeholders", () => {
         renderFour(true);
-        expect(screen.getAllByText("--")).toHaveLength(8);
+        expect(screen.getAllByText("—")).toHaveLength(4);
+        expect(screen.getAllByText("No prior period")).toHaveLength(4);
+        expect(screen.queryByText("--")).toBeNull();
+        expect(screen.queryByText(/0%/)).toBeNull();
         expect(screen.queryByText("10%")).toBeNull();
     });
 
-    it("shows '--' (not 0 or a label) for a metric that has no data row", () => {
+    it("shows an em dash value and 'No prior period' (not 0) for a metric that has no data row", () => {
         render(
             <MetricEvidenceCards
                 metrics={["ghost"]}
@@ -137,7 +167,10 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
             />,
         );
         expect(screen.getByText("ghost")).toBeInTheDocument();
-        expect(screen.getAllByText("--")).toHaveLength(2);
+        expect(screen.getAllByText("—")).toHaveLength(1);
+        expect(screen.getByText("No prior period")).toBeInTheDocument();
+        expect(screen.queryByText("--")).toBeNull();
+        expect(screen.queryByText(/0%/)).toBeNull();
     });
 
     it("shows the 'Trend' text and no chart for a series of one point", () => {
