@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { type ComponentPropsWithoutRef, useState } from "react";
 import dynamic from "next/dynamic";
-import type { Components } from "react-markdown";
+import type { Components, ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -11,12 +11,58 @@ const ReactMarkdown = dynamic(() => import("react-markdown"), {
     loading: () => <div className="h-4 animate-pulse bg-muted/40 rounded" />,
 });
 
+type SourceLevel = 1 | 2 | 3 | 4;
+type HeadingLook = Record<SourceLevel, string>;
+
+/**
+ * The look of each source heading level, as `@tailwindcss/typography` 0.5 drew it
+ * before the shift: size with line height, weight, margins, and the prose heading
+ * color (prose styles `h1`-`h4` only, so the shifted `h5`/`h6` would lose it).
+ * `prose-sm` for the report body, `prose` for the provenance part. `#####` and
+ * `######` had no prose style and get none.
+ */
+const PROSE_SM_LOOK: HeadingLook = {
+    1: "text-(--tw-prose-headings) text-3xl font-extrabold mt-0 mb-6",
+    2: "text-(--tw-prose-headings) text-xl font-bold mt-8 mb-4 first:mt-0",
+    3: "text-(--tw-prose-headings) text-lg font-semibold mt-7 mb-2 first:mt-0",
+    4: "text-(--tw-prose-headings) text-sm font-semibold mt-5 mb-2 first:mt-0",
+};
+const PROSE_LOOK: HeadingLook = {
+    1: "text-(--tw-prose-headings) text-4xl font-extrabold mt-0 mb-8",
+    2: "text-(--tw-prose-headings) text-2xl font-bold mt-12 mb-6 first:mt-0",
+    3: "text-(--tw-prose-headings) text-xl leading-relaxed font-semibold mt-8 mb-3 first:mt-0",
+    4: "text-(--tw-prose-headings) text-base font-semibold mt-6 mb-2 first:mt-0",
+};
+
+type ShiftedTag = "h3" | "h4" | "h5" | "h6";
+
+function shiftedHeading(Tag: ShiftedTag, className: string) {
+    return function ShiftedHeading({
+        node: _node,
+        ...props
+    }: ComponentPropsWithoutRef<"h1"> & ExtraProps) {
+        return <Tag {...props} className={className} />;
+    };
+}
+
 /**
  * The page has its own `h1` (the report name) and the body sits under the card
  * heading (`h2`), so a report heading goes two levels down: `#` is an `h3`, `##`
- * an `h4`, and so on (`####` and below are `h6`).
+ * an `h4`, `###` an `h5`, and `####` and below an `h6`. The tag shifts; the look
+ * stays the one of the source level.
  */
-const SHIFTED_HEADINGS: Components = { h1: "h3", h2: "h4", h3: "h5", h4: "h6", h5: "h6" };
+function shiftedHeadings(look: HeadingLook): Components {
+    return {
+        h1: shiftedHeading("h3", look[1]),
+        h2: shiftedHeading("h4", look[2]),
+        h3: shiftedHeading("h5", look[3]),
+        h4: shiftedHeading("h6", look[4]),
+        h5: "h6",
+    };
+}
+
+const BODY_HEADINGS = shiftedHeadings(PROSE_SM_LOOK);
+const PROVENANCE_HEADINGS = shiftedHeadings(PROSE_LOOK);
 
 function splitProvenance(md: string): {
     body: string;
@@ -46,7 +92,7 @@ export function MarkdownRenderer({ content }: { content: string }) {
     return (
         <div className="space-y-4">
             <div className="prose prose-sm dark:prose-invert max-w-none">
-                <ReactMarkdown remarkPlugins={[remarkGfm]} components={SHIFTED_HEADINGS}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={BODY_HEADINGS}>
                     {body}
                 </ReactMarkdown>
             </div>
@@ -79,7 +125,7 @@ export function MarkdownRenderer({ content }: { content: string }) {
                         <div className="mt-3 prose prose-xs dark:prose-invert max-w-none opacity-70">
                             <ReactMarkdown
                                 remarkPlugins={[remarkGfm]}
-                                components={SHIFTED_HEADINGS}
+                                components={PROVENANCE_HEADINGS}
                             >
                                 {provenance.replace("## Provenance\n", "").trim()}
                             </ReactMarkdown>
