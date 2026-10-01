@@ -9,7 +9,7 @@ import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 
 import Home from "./page";
 
-// The Cockpit's header is the shared PageHeader: one h1 for the page, the
+// The Home's header is the shared PageHeader: one h1 for the page, the
 // eyebrow from the navigation trail. The health summary is rendered for real
 // here, because it used to bring a second h1.
 
@@ -61,13 +61,13 @@ beforeEach(() => {
     vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(null as never);
 });
 
-describe("Cockpit page header", () => {
+describe("Home page header", () => {
     it("has exactly one h1 on the page: the page title", async () => {
         await renderCockpit();
 
         const headings = screen.getAllByRole("heading", { level: 1 });
         expect(headings).toHaveLength(1);
-        expect(headings[0]).toHaveTextContent("Developer Health Ops Cockpit");
+        expect(headings[0]).toHaveTextContent("Home");
         expect(within(screen.getByTestId("page-header")).getByRole("heading", { level: 1 })).toBe(
             headings[0],
         );
@@ -81,10 +81,10 @@ describe("Cockpit page header", () => {
         expect(headline).toHaveTextContent("Engineering health is steady this week");
     });
 
-    it("takes the eyebrow from the navigation trail", async () => {
+    it("has no eyebrow: the h1 is the nav label, so the eyebrow would only repeat it (A8)", async () => {
         await renderCockpit();
 
-        expect(screen.getByTestId("page-header-eyebrow")).toHaveTextContent("Cockpit");
+        expect(screen.queryByTestId("page-header-eyebrow")).toBeNull();
         expect(screen.queryByText("Status")).toBeNull();
     });
 

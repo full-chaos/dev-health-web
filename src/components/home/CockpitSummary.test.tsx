@@ -204,3 +204,44 @@ describe("CockpitSummary", () => {
         expect(scope).not.toHaveTextContent(/unresolved/i);
     });
 });
+
+describe("CockpitSummary markup pin (CHAOS-7611 5.1a)", () => {
+    const states: Array<[string, HomeResponse | null]> = [
+        ["at risk with a top signal", makeHome()],
+        ["no signals", makeHome({ signals: [] })],
+        ["home is null", null],
+        [
+            "critical",
+            makeHome({ health_state: { status: "critical", headline: "H", summary: "S" } }),
+        ],
+    ];
+    it("markup of each state (snapshot taken before the hero restyle)", () => {
+        const html = states.map(([, home]) => {
+            const { container, unmount } = render(<CockpitSummary home={home} filters={filters} />);
+            const out = container.innerHTML;
+            unmount();
+            return out;
+        });
+        expect(html).toMatchSnapshot();
+    });
+});
+
+describe("CockpitSummary hero look (CHAOS-7611 5.1a)", () => {
+    it.each([
+        ["healthy", "border-l-(--positive)"],
+        ["watch", "border-l-(--info)"],
+        ["at_risk", "border-l-(--caution)"],
+        ["critical", "border-l-(--negative)"],
+    ] as const)("%s has a status edge, no gradient, and the state in words", (status, edge) => {
+        render(
+            <CockpitSummary
+                home={makeHome({ health_state: { status, headline: "H", summary: "S" } })}
+                filters={filters}
+            />,
+        );
+        const root = screen.getByTestId("cockpit-summary");
+        expect(root.className).toContain(edge);
+        expect(root.className).not.toContain("gradient");
+        expect(screen.getByTestId("cockpit-health-status").textContent).toMatch(/\S/);
+    });
+});

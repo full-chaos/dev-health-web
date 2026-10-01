@@ -65,7 +65,7 @@ describe("navArea.children — locked child navigation", () => {
                 navAreas.map((area) => [area.label, area.children.map((child) => child.label)]),
             ),
         ).toEqual({
-            Cockpit: [],
+            Home: [],
             Diagnose: [
                 "Overview",
                 "Flow",
@@ -325,9 +325,9 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(navTitleForPathname("/settings")).toBe("Settings");
     });
 
-    it("keeps Cockpit as a single area crumb because it has no children", () => {
-        expect(navTrailForPathname("/dashboard")).toEqual([{ label: "Cockpit" }]);
-        expect(navTitleForPathname("/dashboard")).toBe("Cockpit");
+    it("keeps Home as a single area crumb because it has no children", () => {
+        expect(navTrailForPathname("/dashboard")).toEqual([{ label: "Home" }]);
+        expect(navTitleForPathname("/dashboard")).toBe("Home");
     });
 
     it("builds an Area → Child trail whose last crumb label === the child label", () => {

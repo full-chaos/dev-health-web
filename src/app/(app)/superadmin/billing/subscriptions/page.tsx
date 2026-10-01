@@ -2,6 +2,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SubscriptionList } from "@/components/admin/billing/SubscriptionList";
 import { requireSuperuser } from "@/lib/auth";
 import { getSubscriptions } from "@/lib/billing/actions";
+import { Notice } from "@/components/ui/Notice";
 
 type SubscriptionsPageSearchParams = Promise<{ org_id?: string | string[] }>;
 
@@ -32,9 +33,9 @@ export default async function SuperadminSubscriptionsPage({
             />
 
             {result.error ? (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false}>
                     Failed to load subscriptions: {result.error}
-                </div>
+                </Notice>
             ) : (
                 <SubscriptionList initialData={initialData} initialOrgFilter={orgId ?? ""} />
             )}

@@ -153,7 +153,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
         view === "drilldown"
             ? "Evidence drilldown"
             : view === "home"
-              ? "Cockpit summary"
+              ? "Home summary"
               : "Metric explanation";
     const scopeDetail = filters.scope.ids.length
         ? filters.scope.ids.join(", ")
@@ -194,7 +194,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
         view === "drilldown"
             ? `Evidence table for ${metricLabel} in ${scopeDetail}.`
             : view === "home"
-              ? "Snapshot of the cockpit payload for this scope."
+              ? "Snapshot of the Home payload for this scope."
               : `This view explains ${metricLabel} for ${scopeDetail} over the last ${filters.time.range_days} days.`;
     const breakdownNote = breakdownParam ? `Breakdown: ${breakdownParam}.` : null;
 
@@ -500,7 +500,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
                     <h2 className="font-(--font-display) text-xl">Home Snapshot</h2>
                     <p className="mt-3 text-sm text-(--ink-muted)">
-                        This endpoint powers the cockpit. Open Home for the curated summary.
+                        This endpoint powers Home. Open Home for the curated summary.
                     </p>
                     <pre className="mt-4 max-h-64 overflow-auto rounded-2xl border border-(--card-stroke) bg-(--card-60) px-4 py-3 text-xs text-(--ink-muted)">
                         {JSON.stringify(home ?? {}, null, 2)}
