@@ -77,7 +77,7 @@ export function ChangePlanDialog({
                                             {plan.name}
                                         </span>
                                         {isCurrent && (
-                                            <span className="rounded-full bg-(--accent)/15 px-2 py-0.5 text-label-caps font-semibold uppercase text-(--accent)">
+                                            <span className="rounded-full bg-(--accent)/15 px-2 py-0.5 text-label-caps font-semibold uppercase text-(--accent-text)">
                                                 Current
                                             </span>
                                         )}

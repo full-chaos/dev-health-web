@@ -17,9 +17,11 @@
     color-scheme: light;
     --background: #f1f3f4;
     --foreground: #15171a;
-    --ink-muted: #656c73;
+    --ink-muted: #5c6269;
     --accent: #d6421f;
     --accent-foreground: #ffffff;
+    /* Orange used as TEXT (selection, eyebrow): darker than --accent so it reads on cards and tints. */
+    --accent-text: #b1361a;
     --accent-1: #d6421f;
     --accent-2: #037493;
     --accent-3: #8a5700;
@@ -32,7 +34,7 @@
     --border: #dde1e4;
     --text-primary: #15171a;
     --text-secondary: #4b535b;
-    --text-muted: #656c73;
+    --text-muted: #5c6269;
     --chart-grid: #e4e7e9;
     --chart-text: #15171a;
     --chart-muted: #656c73;
@@ -77,6 +79,7 @@
     --ink-muted: #a7afb5;
     --accent: #f47b20;
     --accent-foreground: #15171a;
+    --accent-text: #f47b20;
     --accent-1: #f47b20;
     --accent-2: #4fd3df;
     --accent-3: #f2b84b;

@@ -207,6 +207,42 @@ describe("infinity palette", () => {
         },
     );
 
+    it.each(THEMES)(
+        "keeps orange text and muted ink readable on cards, the page and tints (%s)",
+        (theme) => {
+            const t = infinity(theme);
+            const surfaces: Record<string, string> = {
+                card: t["--card"],
+                page: t["--background"],
+            };
+            for (const alpha of [0.05, 0.1, 0.15]) {
+                surfaces[`accent ${alpha} on card`] = over(t["--accent"], t["--card"], alpha);
+                surfaces[`accent ${alpha} on page`] = over(t["--accent"], t["--background"], alpha);
+            }
+            // Warm cards (amber-50 "needs attention" tint) exist in the light theme.
+            if (theme === "light") {
+                surfaces["warm tint"] = "#f1e9db";
+            }
+            for (const [name, fill] of Object.entries(surfaces)) {
+                expect(
+                    contrast(t["--accent-text"], fill),
+                    `accent text on ${name}`,
+                ).toBeGreaterThanOrEqual(4.5);
+                expect(
+                    contrast(t["--ink-muted"], fill),
+                    `ink-muted on ${name}`,
+                ).toBeGreaterThanOrEqual(4.5);
+                // Dark text-muted is unchanged by the light ticket and sits under 4.5 on accent tints.
+                if (theme === "light" || name === "card" || name === "page") {
+                    expect(
+                        contrast(t["--text-muted"], fill),
+                        `text-muted on ${name}`,
+                    ).toBeGreaterThanOrEqual(4.5);
+                }
+            }
+        },
+    );
+
     it.each(THEMES)("keeps status pill text readable on its own tint (%s)", (theme) => {
         const t = infinity(theme);
         // Pills: status token as text on the same token at STATUS_PILL_ALPHA over the card.
@@ -223,6 +259,7 @@ describe("infinity palette", () => {
             "--ink-muted",
             "--accent",
             "--accent-foreground",
+            "--accent-text",
             "--accent-1",
             "--accent-2",
             "--accent-3",

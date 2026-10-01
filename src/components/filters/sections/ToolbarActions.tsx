@@ -42,7 +42,7 @@ export function ToolbarActions({
                     onClick={() => setShowAdvanced((prev) => !prev)}
                     className={`rounded-full border px-4 py-2 text-xs uppercase tracking-[0.2em] transition-colors ${
                         showAdvanced
-                            ? "border-(--accent) bg-(--accent-10) text-(--accent)"
+                            ? "border-(--accent) bg-(--accent-10) text-(--accent-text)"
                             : "border-(--card-stroke) bg-(--card-70) hover:border-(--ink-muted)"
                     }`}
                     aria-expanded={showAdvanced}

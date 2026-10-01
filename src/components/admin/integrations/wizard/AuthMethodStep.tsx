@@ -74,7 +74,9 @@ export function AuthMethodStep({
                     onClick={() => onChooseAction("pagerduty_api_token")}
                     aria-pressed={method === "pagerduty_api_token"}
                     className={`text-xs font-medium underline-offset-2 hover:underline ${
-                        method === "pagerduty_api_token" ? "text-(--accent)" : "text-(--ink-muted)"
+                        method === "pagerduty_api_token"
+                            ? "text-(--accent-text)"
+                            : "text-(--ink-muted)"
                     }`}
                 >
                     {CTA_LABELS.usePagerDutyApiToken}
@@ -114,7 +116,7 @@ export function AuthMethodStep({
                 onClick={() => onChooseAction("manual")}
                 aria-pressed={method === "manual"}
                 className={`text-xs font-medium underline-offset-2 hover:underline ${
-                    method === "manual" ? "text-(--accent)" : "text-(--ink-muted)"
+                    method === "manual" ? "text-(--accent-text)" : "text-(--ink-muted)"
                 }`}
             >
                 {CTA_LABELS.useManualToken}

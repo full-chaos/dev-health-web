@@ -51,7 +51,7 @@ export function UpgradeGate({
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-(--card)/80 p-5 text-center backdrop-blur-sm sm:p-8">
                 <div className="max-w-md space-y-4 sm:space-y-6">
                     <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-(--accent)">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-(--accent-text)">
                             {upgradeUnavailable
                                 ? `${requiredTierLabel} plan feature unavailable`
                                 : `${requiredTierLabel} plan feature`}
