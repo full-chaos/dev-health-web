@@ -29,63 +29,28 @@ describe("ThemeToggle", () => {
 
         storage.clear();
         document.documentElement.dataset.theme = "dark";
-        document.documentElement.dataset.palette = "fullchaos-infinity-knot-redux";
+        document.documentElement.dataset.palette = "infinity";
         document.documentElement.style.colorScheme = "dark";
     });
 
-    it("renders the infinity knot palette option when expanded", async () => {
+    it("offers no palette chooser", async () => {
         const user = userEvent.setup();
         render(<ThemeToggle />);
 
         await user.click(screen.getByRole("button", { name: /expand settings/i }));
 
-        expect(screen.getByRole("option", { name: "Fullchaos Infinity Knot" })).toBeInTheDocument();
+        expect(screen.queryByLabelText(/theme palette/i)).not.toBeInTheDocument();
+        expect(screen.getByRole("button", { name: /toggle light\/dark/i })).toBeInTheDocument();
     });
 
-    it("renders the cosmic nebula palette option when expanded", async () => {
+    it("toggles the theme and leaves the palette on infinity", async () => {
         const user = userEvent.setup();
         render(<ThemeToggle />);
 
         await user.click(screen.getByRole("button", { name: /expand settings/i }));
+        await user.click(screen.getByRole("button", { name: /toggle light\/dark/i }));
 
-        expect(screen.getByRole("option", { name: "Fullchaos Cosmic Nebula" })).toBeInTheDocument();
-    });
-
-    it("keeps experimental FC Infinity palettes out of the selector", async () => {
-        const user = userEvent.setup();
-        render(<ThemeToggle />);
-
-        await user.click(screen.getByRole("button", { name: /expand settings/i }));
-
-        expect(screen.queryByRole("option", { name: "FC Infinity Ember" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("option", { name: "FC Infinity Tide" })).not.toBeInTheDocument();
-    });
-
-    it("persists the infinity knot palette selection", async () => {
-        const user = userEvent.setup();
-        render(<ThemeToggle />);
-
-        await user.click(screen.getByRole("button", { name: /expand settings/i }));
-        await user.selectOptions(
-            screen.getByLabelText(/theme palette/i),
-            "fullchaos-infinity-knot",
-        );
-
-        expect(document.documentElement.dataset.palette).toBe("fullchaos-infinity-knot");
-        expect(localStorage.getItem("palette")).toBe("fullchaos-infinity-knot");
-    });
-
-    it("persists the cosmic nebula palette selection", async () => {
-        const user = userEvent.setup();
-        render(<ThemeToggle />);
-
-        await user.click(screen.getByRole("button", { name: /expand settings/i }));
-        await user.selectOptions(
-            screen.getByLabelText(/theme palette/i),
-            "fullchaos-cosmic-nebula",
-        );
-
-        expect(document.documentElement.dataset.palette).toBe("fullchaos-cosmic-nebula");
-        expect(localStorage.getItem("palette")).toBe("fullchaos-cosmic-nebula");
+        expect(document.documentElement.dataset.theme).toBe("light");
+        expect(document.documentElement.dataset.palette).toBe("infinity");
     });
 });

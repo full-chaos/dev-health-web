@@ -7,18 +7,6 @@ import { isServer, getLocalStorage, getWindow } from "@/lib/env";
 import { isTelemetryOptedOut, setTelemetryOptOut } from "@/lib/telemetry/config";
 
 type Theme = "light" | "dark";
-type Palette =
-    | "material"
-    | "echarts"
-    | "fullchaos"
-    | "fullchaos-cosmic-train"
-    | "fullchaos-cosmic-nebula"
-    | "fullchaos-infinity-knot"
-    | "fullchaos-infinity-knot-redux"
-    | "fullchaos-infinity-ember"
-    | "fullchaos-infinity-tide"
-    | "infinity"
-    | "flat";
 type Listener = () => void;
 
 const listeners = new Set<Listener>();
@@ -39,29 +27,6 @@ const getStoredTheme = (): Theme | null => {
     return stored === "light" || stored === "dark" ? stored : null;
 };
 
-const normalizePalette = (value: string | null): Palette | null => {
-    if (value === "tailwind") return "echarts";
-    const valid: Palette[] = [
-        "material",
-        "echarts",
-        "fullchaos",
-        "fullchaos-cosmic-train",
-        "fullchaos-cosmic-nebula",
-        "fullchaos-infinity-knot",
-        "fullchaos-infinity-knot-redux",
-        "fullchaos-infinity-ember",
-        "fullchaos-infinity-tide",
-        "infinity",
-        "flat",
-    ];
-    return valid.includes(value as Palette) ? (value as Palette) : null;
-};
-
-const getStoredPalette = (): Palette | null => {
-    const stored = getLocalStorage()?.getItem("palette") ?? null;
-    return normalizePalette(stored);
-};
-
 const getSystemTheme = (): Theme => {
     const win = getWindow();
     if (!win) return "light";
@@ -75,12 +40,6 @@ const applyTheme = (theme: Theme) => {
     notify();
 };
 
-const applyPalette = (palette: Palette) => {
-    document.documentElement.dataset.palette = palette;
-    localStorage.setItem("palette", palette);
-    notify();
-};
-
 const getThemeSnapshot = (): Theme => {
     if (isServer) return "light";
     const stored = getStoredTheme();
@@ -90,36 +49,12 @@ const getThemeSnapshot = (): Theme => {
     return getSystemTheme();
 };
 
-const getPaletteSnapshot = (): Palette => {
-    if (isServer) return "fullchaos-infinity-knot-redux";
-    const stored = getStoredPalette();
-    if (stored) return stored;
-    const fromDataset = document.documentElement.dataset.palette ?? null;
-    const normalized = normalizePalette(fromDataset);
-    return normalized ?? "fullchaos-infinity-knot-redux";
-};
-
 const getThemeServerSnapshot = (): Theme => "light";
-const getPaletteServerSnapshot = (): Palette => "fullchaos-infinity-knot-redux";
 const getTelemetrySnapshot = (): boolean => (isServer ? false : isTelemetryOptedOut());
 const getTelemetryServerSnapshot = (): boolean => false;
 
-// FC Infinity Ember and Tide remain supported by the theme runtime for internal
-// previews, but stay out of the user-facing chooser pending further design work.
-const PALETTES: { value: Palette; label: string }[] = [
-    { value: "fullchaos", label: "Full Chaos" },
-    { value: "fullchaos-cosmic-train", label: "Cosmic Train" },
-    { value: "fullchaos-cosmic-nebula", label: "Cosmic Nebula" },
-    { value: "fullchaos-infinity-knot", label: "Infinity Knot" },
-    { value: "fullchaos-infinity-knot-redux", label: "Infinity Knot Redux" },
-    { value: "material", label: "Material" },
-    { value: "echarts", label: "ECharts" },
-    { value: "flat", label: "Flat UI" },
-];
-
 export function PreferencesSettings() {
     const theme = useSyncExternalStore(subscribe, getThemeSnapshot, getThemeServerSnapshot);
-    const palette = useSyncExternalStore(subscribe, getPaletteSnapshot, getPaletteServerSnapshot);
     const telemetryOptedOut = useSyncExternalStore(
         subscribe,
         getTelemetrySnapshot,
@@ -164,28 +99,6 @@ export function PreferencesSettings() {
                             <span className="block text-lg mb-1">🌙</span>
                             {CTA_LABELS.darkTheme}
                         </button>
-                    </div>
-                </div>
-
-                <div>
-                    <p className="block text-sm font-medium text-(--foreground) mb-2">
-                        Color Palette
-                    </p>
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                        {PALETTES.map((p) => (
-                            <button
-                                key={p.value}
-                                type="button"
-                                onClick={() => applyPalette(p.value)}
-                                className={`rounded-lg border px-4 py-3 text-sm font-medium transition ${
-                                    palette === p.value
-                                        ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
-                                        : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
-                                }`}
-                            >
-                                {p.label}
-                            </button>
-                        ))}
                     </div>
                 </div>
 
