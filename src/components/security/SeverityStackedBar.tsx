@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import { Chart } from "@/components/charts/Chart";
 import { type ChartTokens, useChartTheme, useChartTokens } from "@/components/charts/chartTheme";
+import { buildTooltip } from "@/components/charts/chartConventions";
 import { SkeletonLine } from "@/components/ui/Skeleton";
 import type { SeverityBucketData } from "./types";
 
@@ -45,13 +46,7 @@ export function SeverityStackedBar({ buckets, loading }: SeverityStackedBarProps
         }));
 
         return {
-            tooltip: {
-                trigger: "axis" as const,
-                confine: true,
-                backgroundColor: chartTheme.background,
-                borderColor: chartTheme.stroke,
-                textStyle: { color: chartTheme.text },
-            },
+            tooltip: buildTooltip(chartTheme),
             grid: { left: 80, right: 24, top: 20, bottom: 20 },
             xAxis: {
                 type: "value" as const,

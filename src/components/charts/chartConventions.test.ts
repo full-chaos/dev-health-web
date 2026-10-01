@@ -34,6 +34,14 @@ describe("buildTooltip", () => {
         });
     });
 
+    it("supports item triggers, an unconfined tooltip and a font size, for charts that set them", () => {
+        expect(buildTooltip(theme, { trigger: "item" }).trigger).toBe("item");
+        const custom = buildTooltip(theme, { confine: false, fontSize: 11 });
+        expect(custom.confine).toBe(false);
+        expect(custom.textStyle).toEqual({ color: theme.text, fontSize: 11 });
+        expect(buildTooltip(theme).textStyle).toEqual({ color: theme.text });
+    });
+
     it("draws a muted, 1px, solid crosshair only when asked", () => {
         expect(buildTooltip(theme).axisPointer).toBeUndefined();
         expect(buildTooltip(theme, { crosshair: true }).axisPointer).toEqual({

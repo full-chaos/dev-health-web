@@ -3,6 +3,13 @@
 import { useMemo } from "react";
 import { Chart } from "@/components/charts/Chart";
 import { useChartTheme } from "@/components/charts/chartTheme";
+import {
+    buildTooltip,
+    dotRing,
+    lineMark,
+    pointSymbolSize,
+} from "@/components/charts/chartConventions";
+
 import type { AiReviewLoadRow } from "@/lib/graphql/__generated__/types";
 import { bucketLabel } from "./utils";
 
@@ -44,13 +51,7 @@ export function AIReviewAmplificationTrend({ daily, loading }: AIReviewAmplifica
 
     const option = useMemo(
         () => ({
-            tooltip: {
-                trigger: "axis" as const,
-                confine: true,
-                backgroundColor: chartTheme.background,
-                borderColor: chartTheme.stroke,
-                textStyle: { color: chartTheme.text },
-            },
+            tooltip: buildTooltip(chartTheme, { crosshair: true }),
             legend: {
                 data: buckets.map(bucketLabel),
                 bottom: 0,
@@ -66,19 +67,27 @@ export function AIReviewAmplificationTrend({ daily, loading }: AIReviewAmplifica
             yAxis: {
                 type: "value" as const,
                 axisLabel: { color: chartTheme.muted, fontSize: 10 },
-                splitLine: { lineStyle: { color: chartTheme.grid, type: "dashed" as const } },
+                splitLine: { lineStyle: { color: chartTheme.grid } },
             },
-            series: buckets.map((bucket) => ({
-                name: bucketLabel(bucket),
-                type: "line" as const,
-                smooth: true,
-                symbol: "circle",
-                data: trend.days.map(
+            series: buckets.map((bucket) => {
+                const data = trend.days.map(
                     (day) =>
                         trend.rows.find((row) => row.bucket === bucket && row.day === day)
                             ?.reviewAmplification ?? null,
-                ),
-            })),
+                );
+                return {
+                    name: bucketLabel(bucket),
+                    type: "line" as const,
+                    smooth: true,
+                    symbol: "circle",
+                    // A dot only on the last and isolated points; days with no data are gaps.
+                    showAllSymbol: true,
+                    symbolSize: pointSymbolSize(data),
+                    lineStyle: lineMark,
+                    itemStyle: dotRing(chartTheme),
+                    data,
+                };
+            }),
         }),
         [buckets, chartTheme, trend],
     );
