@@ -1,6 +1,10 @@
 @import "tailwindcss";
 @plugin "@tailwindcss/typography";
 
+/* `dark:` follows the app theme (`data-theme` on <html>, always set by the root
+ * layout, theme-init.js and the theme toggle), not the OS color scheme. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* ============================================================
  * BASE TOKENS — default (Material Light)
  *
