@@ -3,9 +3,11 @@
 import Link from "next/link";
 
 import { DataState } from "@/components/ui/DataState";
-import { ErrorCard } from "@/components/ui/ErrorCard";
+import { MetricCard } from "@/components/metrics/MetricCard";
+import { Notice } from "@/components/ui/Notice";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { useImproveOpportunities } from "@/lib/graphql/hooks/useImproveOpportunities";
-import { ImproveOpportunityList } from "./ImproveOpportunityList";
+import { ImproveOpportunityList, kindLabel } from "./ImproveOpportunityList";
 
 type ImproveAutomationsDashboardProps = {
     /** Pre-encoded filter string to forward to the AI/automations cross-link. */
@@ -22,14 +24,26 @@ type ImproveAutomationsDashboardProps = {
 export function ImproveAutomationsDashboard({
     aiAutomationsHref,
 }: ImproveAutomationsDashboardProps) {
-    const { data, fetching, error } = useImproveOpportunities();
+    const { data, fetching, error, retry } = useImproveOpportunities();
     const result = data?.improveOpportunities;
 
     if (error) {
         return (
-            <ErrorCard
+            <DataState
+                variant="error"
                 title="Flow opportunities could not load"
                 message={error.message ?? "Please retry the request."}
+                action={
+                    <button
+                        type="button"
+                        onClick={retry}
+                        className="rounded-xl border border-(--card-stroke) bg-background px-4 py-2 text-sm font-medium text-(--accent-2) hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/60"
+                        data-testid="improve-automations-retry"
+                    >
+                        {CTA_LABELS.retry}
+                    </button>
+                }
+                data-testid="improve-automations-error"
             />
         );
     }
@@ -38,8 +52,36 @@ export function ImproveAutomationsDashboard({
         return <AutomationsSkeleton />;
     }
 
+    // Counts: "--" when the detector cannot say (not ready), a real 0 when it ran and found none.
+    const ready = result?.detectorReady === true;
+    const items = result?.opportunities ?? [];
+    const kindCounts = new Map<string, number>();
+    for (const item of items) kindCounts.set(item.kind, (kindCounts.get(item.kind) ?? 0) + 1);
+
     return (
         <div className="flex flex-col gap-6" data-testid="improve-automations-dashboard">
+            {/* ── Counts from the same list ───────────────────────────────── */}
+            <div
+                className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
+                data-testid="improve-automations-tiles"
+            >
+                <MetricCard
+                    label="Detected signals"
+                    value={ready ? result?.totalCount : undefined}
+                    caption="Flow opportunities in this window"
+                />
+                {ready
+                    ? [...kindCounts.entries()].map(([kind, count]) => (
+                          <MetricCard
+                              key={kind}
+                              label={kindLabel(kind)}
+                              value={count}
+                              caption="Detections in the list below"
+                          />
+                      ))
+                    : null}
+            </div>
+
             {/* ── Flow opportunity candidates ─────────────────────────────── */}
             <section
                 className="rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm"
@@ -48,7 +90,7 @@ export function ImproveAutomationsDashboard({
                 <div className="flex items-start justify-between gap-4">
                     <div>
                         <h2 className="font-(--font-display) text-lg font-semibold">
-                            Flow improvement opportunities
+                            Automation candidates
                         </h2>
                         <p className="mt-1 text-sm text-(--ink-muted)">
                             Non-AI, threshold-based signals — review latency, cycle time, rework,
@@ -56,6 +98,13 @@ export function ImproveAutomationsDashboard({
                             only when metric values exceed documented thresholds.
                         </p>
                     </div>
+                    <Link
+                        href={aiAutomationsHref}
+                        className="shrink-0 text-xs uppercase tracking-[0.2em] text-(--accent-2) underline-offset-4 hover:underline"
+                        data-testid="improve-automations-head-link"
+                    >
+                        {CTA_LABELS.seeAIAutomations} →
+                    </Link>
                 </div>
                 <div className="mt-4">
                     {result ? (
@@ -70,41 +119,41 @@ export function ImproveAutomationsDashboard({
             </section>
 
             {/* ── AI-workflow cross-link ───────────────────────────────────── */}
-            <section
-                className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5"
+            <Notice
+                variant="info"
+                live={false}
+                title="Looking for AI-workflow automation opportunities?"
+                titleAs="h3"
                 data-testid="improve-automations-ai-crosslink"
-            >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                        <h3 className="font-(--font-display) text-base font-semibold">
-                            Looking for AI-workflow automation opportunities?
-                        </h3>
-                        <p className="mt-1 text-sm text-(--ink-muted)">
-                            Repeatable patterns best suited for responsible automation — agent
-                            creation, test generation, dependency updates, and more — live under the
-                            AI surface.
-                        </p>
-                    </div>
+                action={
                     <Link
                         href={aiAutomationsHref}
-                        className="shrink-0 rounded-2xl border border-(--card-stroke) bg-background px-4 py-2 text-sm font-medium hover:bg-(--card-80) transition-colors"
+                        className="rounded-xl border border-(--card-stroke) bg-background px-4 py-2 text-sm font-medium text-(--accent-2) hover:bg-(--card-80)"
                         data-testid="improve-automations-ai-link"
                     >
                         View AI automations →
                     </Link>
-                </div>
-            </section>
+                }
+            >
+                Repeatable patterns best suited for responsible automation — agent creation, test
+                generation, dependency updates, and more — live under the AI surface. These
+                detections belong to Improve; AI automation opportunities remain in the AI area.
+            </Notice>
         </div>
     );
 }
 
 function AutomationsSkeleton() {
     return (
-        <div
-            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
-            data-testid="improve-automations-loading"
-        >
-            <div className="h-40 animate-pulse rounded-2xl bg-(--card-80)" />
+        <div className="flex flex-col gap-6" data-testid="improve-automations-loading">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" aria-hidden="true">
+                {[0, 1, 2, 3].map((i) => (
+                    <div key={i} className="h-28 animate-pulse rounded-2xl bg-(--card-80)" />
+                ))}
+            </div>
+            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+                <div className="h-40 animate-pulse rounded-2xl bg-(--card-80)" />
+            </div>
         </div>
     );
 }
