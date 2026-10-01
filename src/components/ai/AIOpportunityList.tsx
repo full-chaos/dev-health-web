@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { EntityLabel } from "@/components/labels/EntityLabel";
 import type { AiOpportunity, AiWorkGraphDrilldownRef } from "@/lib/graphql/__generated__/types";
 import { useAIWorkflowDrilldown } from "@/lib/graphql/hooks/useAIReviewRisk";
 
@@ -113,8 +114,19 @@ export function AIOpportunityList({
                             </span>
                         </div>
                         <p className="mt-2 text-label-caps uppercase text-(--ink-muted)">
-                            {item.kind.replace(/_/g, " ")} {item.repoId ? `· ${item.repoId}` : ""}{" "}
-                            {item.teamId ? `· ${item.teamId}` : ""}
+                            {item.kind.replace(/_/g, " ")}{" "}
+                            {item.repoId ? (
+                                <>
+                                    {"· "}
+                                    <EntityLabel id={item.repoId} />
+                                </>
+                            ) : null}{" "}
+                            {item.teamId ? (
+                                <>
+                                    {"· "}
+                                    <EntityLabel id={item.teamId} />
+                                </>
+                            ) : null}
                         </p>
                         {item.workGraphDrilldowns.length > 0 && (
                             <div className="mt-3 flex flex-wrap gap-2">
