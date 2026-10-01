@@ -204,3 +204,24 @@ describe("CockpitSummary", () => {
         expect(scope).not.toHaveTextContent(/unresolved/i);
     });
 });
+
+describe("CockpitSummary markup pin (CHAOS-7611 5.1a)", () => {
+    const states: Array<[string, HomeResponse | null]> = [
+        ["at risk with a top signal", makeHome()],
+        ["no signals", makeHome({ signals: [] })],
+        ["home is null", null],
+        [
+            "critical",
+            makeHome({ health_state: { status: "critical", headline: "H", summary: "S" } }),
+        ],
+    ];
+    it("markup of each state (snapshot taken before the hero restyle)", () => {
+        const html = states.map(([, home]) => {
+            const { container, unmount } = render(<CockpitSummary home={home} filters={filters} />);
+            const out = container.innerHTML;
+            unmount();
+            return out;
+        });
+        expect(html).toMatchSnapshot();
+    });
+});

@@ -1,0 +1,36 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`DataConfidenceIndicator text pin (CHAOS-7611 5.1a) > shows the same text and test ids for each level (recorded before the Notice change) 1`] = `
+[
+  {
+    "ids": [
+      "data-confidence-indicator",
+      "data-confidence-coverage",
+      "data-confidence-caveats",
+    ],
+    "label": "Data confidence: High confidence",
+    "level": "high",
+    "text": "High confidence92% coverageMost sources this view relies on are connected and recent.ConnectedGitHubJiraMissingGitLab•Weekend data is sparse.",
+  },
+  {
+    "ids": [
+      "data-confidence-indicator",
+      "data-confidence-coverage",
+      "data-confidence-caveats",
+    ],
+    "label": "Data confidence: Medium confidence",
+    "level": "medium",
+    "text": "Medium confidence92% coverageSome sources are missing or sparse — read trends, not point values.ConnectedGitHubJiraMissingGitLab•Weekend data is sparse.",
+  },
+  {
+    "ids": [
+      "data-confidence-indicator",
+      "data-confidence-coverage",
+      "data-confidence-caveats",
+    ],
+    "label": "Data confidence: Low confidence",
+    "level": "low",
+    "text": "Low confidence92% coverageCoverage is limited — this view may not reflect the full picture.ConnectedGitHubJiraMissingGitLab•Weekend data is sparse.",
+  },
+]
+`;

@@ -83,3 +83,34 @@ describe("DataConfidenceIndicator", () => {
         expect(screen.getByTestId("data-confidence-coverage")).toHaveTextContent("100% coverage");
     });
 });
+
+describe("DataConfidenceIndicator text pin (CHAOS-7611 5.1a)", () => {
+    it("shows the same text and test ids for each level (recorded before the Notice change)", () => {
+        const out = (["high", "medium", "low"] as const).map((level) => {
+            const { container, unmount } = render(
+                <DataConfidenceIndicator
+                    confidence={{
+                        ...base,
+                        level,
+                        missing_sources: ["GitLab"],
+                        caveats: ["Weekend data is sparse."],
+                    }}
+                />,
+            );
+            const root = screen.getByTestId("data-confidence-indicator");
+            const text = (container.textContent ?? "").replace(/\s+/g, " ").trim();
+            const ids = [...container.querySelectorAll("[data-testid]")].map((e) =>
+                e.getAttribute("data-testid"),
+            );
+            const record = {
+                level: root.getAttribute("data-level"),
+                label: root.getAttribute("aria-label"),
+                text,
+                ids,
+            };
+            unmount();
+            return record;
+        });
+        expect(out).toMatchSnapshot();
+    });
+});
