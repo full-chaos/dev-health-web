@@ -242,6 +242,25 @@ jobs:
                   exit 1
               working-directory: dev-health-ops
 
+            - name: Generate the query-api envelope JWKS (job-local, nothing stored)
+              # CHAOS-7554: since ops CHAOS-6290 (edge users store) query-api refuses to start with
+              # GO_API_EDGE_JWT_SECRET set unless its /query route is configured, and that route needs
+              # GO_API_REGISTRY_POSTGRES_URI plus the envelope trio (JWKS path, issuer, audience). Same
+              # recipe as ops ci/lib/go_api_prove_e2e.sh: an ed25519 key pair is generated here, the PUBLIC
+              # half is written as the JWKS the verifier reads, and the private half is deleted at once:
+              # nothing in this job signs an envelope, so no key outlives this step and nothing is echoed.
+              run: |
+                  set -euo pipefail
+                  umask 077
+                  dir="${RUNNER_TEMP}/live-e2e-envelope"
+                  mkdir -p "${dir}"
+                  openssl genpkey -algorithm ed25519 -out "${dir}/envelope.pem"
+                  x="$(openssl pkey -in "${dir}/envelope.pem" -pubout -outform DER | tail -c 32 | openssl base64 -A | tr '+/' '-_' | tr -d '=')"
+                  rm -f "${dir}/envelope.pem"
+                  printf '{"keys":[{"kty":"OKP","crv":"Ed25519","kid":"live-e2e","use":"sig","alg":"EdDSA","x":"%s"}]}\n' "${x}" > "${dir}/jwks.json"
+                  test "$(openssl base64 -d -A <<<"$(printf '%s' "${x}" | tr '_-' '/+')==" | wc -c)" -ge 32
+                  echo "LIVE_E2E_JWKS_PATH=${dir}/jwks.json" >> "${GITHUB_ENV}"
+
             - name: Start dev-health-ops go-api and query-api
               # CHAOS-7001: mirror what prod's Ingress and bigboy's traefik plane-split router
               # do -- routes ci/go_served_paths.tsv marks go-api/query-api-owned are served by
@@ -270,6 +289,12 @@ jobs:
                   # Same reason the Python api step sets it: the fail-closed rate-limit posture
                   # otherwise refuses to start without a shared VALKEY_URI.
                   ENVIRONMENT: development
+                  # CHAOS-7554: the /query route's own configuration (see the JWKS step above): registry
+                  # Postgres in the pgx form, and the envelope trio the route requires.
+                  GO_API_REGISTRY_POSTGRES_URI: postgres://postgres:postgres@localhost:5432/test_db?sslmode=disable
+                  GO_API_ENVELOPE_JWKS_PATH: ${{ env.LIVE_E2E_JWKS_PATH }}
+                  GO_API_ENVELOPE_ISSUER: dev-health-ops-edge
+                  GO_API_ENVELOPE_AUDIENCE: query-api
                   CORS_ALLOWED_ORIGINS: "http://127.0.0.1:3002,http://localhost:3002,http://127.0.0.1:8000,http://127.0.0.1:8099"
                   # query-api's per-route Go-plane switches -- plain in-memory flags flipped once
                   # at boot (never Postgres, never the routeswitch ledger). Copied verbatim from
@@ -445,6 +470,36 @@ jobs:
                   cat /tmp/login.json || true
                   if [ "${login_status}" != "200" ]; then
                     echo "::error::Seeded superuser cannot authenticate; onboarding-ui tests will skip."
+                    exit 1
+                  fi
+
+                  # CHAOS-7554: reach the Go /graphql on query-api itself (:8090, the router does not send /graphql
+                  # there yet) with the seeded user's token and a REGISTERED document (query-api answers
+                  # UNREGISTERED_DOCUMENT for anything else), built the way the web client puts it on the wire
+                  # (ci/live-e2e-graphql-body.ts). The token is read into a variable and never printed.
+                  token="$(jq -r '.access_token // .token // empty' /tmp/login.json)"
+                  org_id="$(jq -r '.user.org_id // empty' /tmp/login.json)"
+                  test -n "${token}" && test -n "${org_id}" || { echo "::error::login response carries no access token or org id"; exit 1; }
+                  # the tsx binary directly (not `pnpm exec`): pnpm may write its own lines to stdout,
+                  # and the body file must be exactly the JSON the script prints.
+                  ./node_modules/.bin/tsx ci/live-e2e-graphql-body.ts "${org_id}" > /tmp/gql-body.json
+                  jq -e '.query and .variables' /tmp/gql-body.json >/dev/null || { echo "::error::the smoke body is not the expected JSON"; exit 1; }
+                  gql_status=$(curl -s -o /tmp/gql.json -w '%{http_code}' \
+                    -X POST "http://127.0.0.1:8090/graphql" \
+                    -H 'Content-Type: application/json' \
+                    -H "Authorization: Bearer ${token}" \
+                    --data-binary @/tmp/gql-body.json)
+                  echo "graphql status=${gql_status}"
+                  head -c 300 /tmp/gql.json || true; echo
+                  # 200 alone is not proof: assert the answer is the Go query-api's own GraphQL answer for a
+                  # registered document: data, or the operation-switch refusal (CI has no routing rows, so data
+                  # operations answer OPERATION_NOT_ENABLED here). UNREGISTERED_DOCUMENT or a 401 is a failure.
+                  if ! jq -e '(.data != null) or (.errors[0].extensions.code == "OPERATION_NOT_ENABLED")' /tmp/gql.json >/dev/null; then
+                    echo "::error::/graphql on query-api answered, but not as the Go registered-document path."
+                    exit 1
+                  fi
+                  if [ "${gql_status}" != "200" ]; then
+                    echo "::error::/graphql on query-api did not answer 200 (Go query-api not serving the product path)."
                     exit 1
                   fi
 
