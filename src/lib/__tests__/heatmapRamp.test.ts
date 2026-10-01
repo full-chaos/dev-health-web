@@ -71,7 +71,7 @@ describe("heatmap ramp tokens", () => {
     it.each(THEMES)("draws an empty cell apart from the lightest step (%s)", (theme) => {
         const t = tokens(theme);
         // An empty cell is the card surface, not step 0: missing is not zero.
-        expect(deltaE(t["--card"], t["--seq-0"])).toBeGreaterThanOrEqual(3);
+        expect(deltaE(t["--card"], t["--seq-0"])).toBeGreaterThanOrEqual(6);
     });
 
     it.each(THEMES)("keeps text readable on the lightest and darkest steps (%s)", (theme) => {
