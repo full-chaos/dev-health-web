@@ -3,11 +3,16 @@ import { render, screen, within } from "@testing-library/react";
 
 import { ShellStatusChip, shellStatusFromOrganization, type ShellStatus } from "./ShellStatusChip";
 import { ShellTopBar } from "./ShellTopBar";
+import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
+import type { MetricFilter } from "@/lib/filters/types";
+import { withFilterParam } from "@/lib/filters/url";
 
-const navigationMock = vi.hoisted(() => ({ pathname: "/dashboard" }));
+const navigationMock = vi.hoisted(() => ({ pathname: "/dashboard", search: "" }));
 
 vi.mock("next/navigation", () => ({
     usePathname: () => navigationMock.pathname,
+    useSearchParams: () => new URLSearchParams(navigationMock.search),
 }));
 
 const LOADING: ShellStatus = { kind: "loading" };
@@ -22,6 +27,7 @@ function dot() {
 
 beforeEach(() => {
     navigationMock.pathname = "/dashboard";
+    navigationMock.search = "";
 });
 
 describe("ShellTopBar — location trail from the nav config (A6)", () => {
@@ -47,7 +53,7 @@ describe("ShellTopBar — location trail from the nav config (A6)", () => {
         const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
         expect(within(trail).getByRole("link", { name: "Diagnose" })).toHaveAttribute(
             "href",
-            "/diagnose",
+            expect.stringMatching(/^\/diagnose\?f=/),
         );
         expect(within(trail).getByText("Investment")).toHaveAttribute("aria-current", "page");
     });
@@ -58,6 +64,53 @@ describe("ShellTopBar — location trail from the nav config (A6)", () => {
 
         expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
         expect(chip()).toBeInTheDocument();
+    });
+});
+
+describe("ShellTopBar — a crumb link is the return path and keeps the user's state", () => {
+    const filter: MetricFilter = {
+        ...defaultMetricFilter,
+        scope: { level: "team", ids: ["platform"] },
+        time: { range_days: 90, compare_days: 90 },
+    };
+
+    function areaCrumb() {
+        const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
+        const link = within(trail).getByRole("link", { name: "Diagnose" });
+        return new URL(link.getAttribute("href") ?? "", "https://app.example");
+    }
+
+    it("carries f, role, lens and origin, as the in-page 'Back to Diagnose' link did", () => {
+        navigationMock.pathname = "/investment";
+        navigationMock.search = `f=${encodeFilterParam(filter)}&role=em&lens=pm&origin=cockpit`;
+        render(<ShellTopBar status={LOADING} />);
+
+        const url = areaCrumb();
+        expect(url.pathname).toBe("/diagnose");
+        expect(decodeFilter(url.searchParams.get("f") ?? "")).toEqual(filter);
+        expect(url.searchParams.get("role")).toBe("em");
+        expect(url.searchParams.get("lens")).toBe("pm");
+        expect(url.searchParams.get("origin")).toBe("cockpit");
+        // The same target and state as the BackLink the page had.
+        const backLink = new URL(
+            withFilterParam("/diagnose", filter, "em", "cockpit"),
+            "https://app.example",
+        );
+        expect(url.pathname).toBe(backLink.pathname);
+        for (const key of ["f", "role", "origin"]) {
+            expect(url.searchParams.get(key)).toBe(backLink.searchParams.get(key));
+        }
+    });
+
+    it("adds no role, lens or origin that the URL does not have", () => {
+        navigationMock.pathname = "/investment";
+        render(<ShellTopBar status={LOADING} />);
+
+        const url = areaCrumb();
+        expect(url.searchParams.has("f")).toBe(true);
+        expect(url.searchParams.has("role")).toBe(false);
+        expect(url.searchParams.has("lens")).toBe(false);
+        expect(url.searchParams.has("origin")).toBe(false);
     });
 });
 

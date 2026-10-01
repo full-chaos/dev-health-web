@@ -6,6 +6,7 @@ import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 import type { MetricFilter } from "@/lib/filters/types";
+import { withFilterParam } from "@/lib/filters/url";
 import type { NavArea } from "@/lib/navigation/areas";
 
 import { ShellNav } from "./ShellNav";
@@ -293,6 +294,38 @@ describe("ShellSidebar — filter, role and lens stay in the links", () => {
         expect(url.pathname).toBe("/metrics");
         expect(url.searchParams.get("tab")).toBe("flow");
         expect(url.searchParams.get("role")).toBe("pm");
+    });
+
+    it("the Cockpit entry carries the state the in-page 'Back to Cockpit' link carried", () => {
+        // Diagnose pages had `<BackLink href={withFilterParam("/", filters, role)} />`.
+        navigationMock.pathname = "/diagnose";
+        navigationMock.search = `f=${encodeFilterParam(filter)}&role=em&lens=pm`;
+        renderSidebar();
+
+        const backLink = new URL(withFilterParam("/", filter, "em"), "https://app.example");
+        const params = linkParams(/^Cockpit$/);
+        expect(params.get("f")).toBe(backLink.searchParams.get("f"));
+        expect(params.get("role")).toBe(backLink.searchParams.get("role"));
+        expect(params.get("lens")).toBe("pm");
+        expect(screen.getByRole("link", { name: /^Cockpit$/ })).toHaveAttribute(
+            "href",
+            expect.stringMatching(/^\/dashboard\?/),
+        );
+    });
+
+    it("keeps the role context on standalone /investment in every sidebar link", () => {
+        navigationMock.pathname = "/investment";
+        navigationMock.search = "role=leadership";
+        renderSidebar();
+
+        const links = within(sidebar())
+            .getAllByRole("link")
+            .filter((link) => link.getAttribute("href")?.includes("?"));
+        expect(links.length).toBeGreaterThan(10);
+        for (const link of links) {
+            const url = new URL(link.getAttribute("href") ?? "", "https://app.example");
+            expect(url.searchParams.get("role"), link.textContent ?? "").toBe("leadership");
+        }
     });
 
     it("keeps the Cockpit's production behaviour: links carry the default role when the URL has none", () => {

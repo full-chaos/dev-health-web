@@ -73,6 +73,7 @@ export function ScopeBarClient({
     orgName,
 }: ScopeBarClientProps) {
     const {
+        allowAdvanced,
         artifacts,
         barRef,
         copyFallbackUrl,
@@ -84,6 +85,7 @@ export function ScopeBarClient({
         issueType,
         openMenu,
         options,
+        peopleQuery,
         repos,
         resetFilters,
         roles,
@@ -94,6 +96,7 @@ export function ScopeBarClient({
         setWindow,
         teamIds,
         updateFilters,
+        updatePeopleQuery,
         visibility,
         workCategory,
     } = useScopeBarState({ view, tab, resolvedVisibility, resolvedScopeLock });
@@ -144,8 +147,10 @@ export function ScopeBarClient({
             ? `${CTA_LABELS.filters}, ${activeFilterCount} active`
             : CTA_LABELS.filters;
 
+    // The People view has no filter drawer (as its filter bar had no panel): it
+    // has the person search in the row.
     const hasDrawerFilters = Boolean(
-        visibility.developer || visibility.workType || visibility.flowStage,
+        allowAdvanced && (visibility.developer || visibility.workType || visibility.flowStage),
     );
 
     return (
@@ -253,6 +258,17 @@ export function ScopeBarClient({
                 ) : null}
 
                 <div className="ml-auto flex flex-wrap items-center gap-2">
+                    {view === "people" ? (
+                        <label className="flex items-center gap-2 text-xs">
+                            <span className={LABEL_CLASS}>Search</span>
+                            <input
+                                value={peopleQuery}
+                                onChange={(event) => updatePeopleQuery(event.target.value)}
+                                placeholder="Name or handle"
+                                className="w-full rounded-(--radius-pill) border border-(--border) bg-(--surface-raised) px-4 py-2 text-xs text-(--text-primary) sm:w-56"
+                            />
+                        </label>
+                    ) : null}
                     {hasDrawerFilters ? (
                         <button
                             type="button"
