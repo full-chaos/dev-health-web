@@ -48,6 +48,32 @@ export const fallbackTokens = {
 
 export type ChartTokens = typeof fallbackTokens;
 
+/**
+ * Investment theme color, fixed by entity and never by rank:
+ * Feature = flame, Quality = aqua, Risk = amber, Maintenance = scarlet, Operational = tide.
+ * An unknown theme key returns `fallback`.
+ */
+export const investmentThemeColor = (
+    themeKey: string,
+    tokens: ChartTokens,
+    fallback: string,
+): string => {
+    switch (themeKey) {
+        case "feature_delivery":
+            return tokens.themeFeature;
+        case "quality":
+            return tokens.themeQuality;
+        case "risk":
+            return tokens.themeRisk;
+        case "maintenance":
+            return tokens.themeMaintenance;
+        case "operational":
+            return tokens.themeOperational;
+        default:
+            return fallback;
+    }
+};
+
 const TOKEN_VARS = {
     positive: "--positive",
     caution: "--caution",
