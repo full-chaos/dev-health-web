@@ -40,7 +40,7 @@ export function TokenRevealPanel({
     };
 
     return (
-        <div className="space-y-4 rounded-xl border border-amber-500/30 bg-amber-500/5 p-6">
+        <div className="space-y-4 rounded-xl border border-(--caution)/30 bg-(--caution)/12 p-6">
             <div>
                 <h3 className="text-base font-semibold text-(--ink-base)">
                     {name} — token created

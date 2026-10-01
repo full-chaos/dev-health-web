@@ -16,10 +16,10 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
     const user = result.data;
     const statusLabel = !user.is_active ? "inactive" : !user.is_verified ? "pending" : "active";
     const statusClass = !user.is_active
-        ? "bg-red-500/10 text-red-500"
+        ? "bg-(--negative)/12 text-(--negative)"
         : !user.is_verified
-          ? "bg-yellow-500/10 text-yellow-500"
-          : "bg-green-500/10 text-green-500";
+          ? "bg-(--caution)/12 text-(--caution)"
+          : "bg-(--positive)/12 text-(--positive)";
 
     return (
         <div>
@@ -69,7 +69,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                                         {statusLabel}
                                     </span>
                                     {user.is_superuser && (
-                                        <span className="ml-2 inline-flex items-center rounded-full bg-purple-500/10 px-2.5 py-0.5 text-xs font-medium text-purple-500">
+                                        <span className="ml-2 inline-flex items-center rounded-full bg-(--info)/12 px-2.5 py-0.5 text-xs font-medium text-(--info)">
                                             superuser
                                         </span>
                                     )}
