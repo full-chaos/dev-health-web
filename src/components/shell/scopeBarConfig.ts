@@ -9,6 +9,8 @@ import type { MetricFilter } from "@/lib/filters/types";
 export type ScopeBarConfig = {
     resolvedVisibility: FilterVisibility;
     resolvedScopeLock: MetricFilter["scope"]["level"] | null;
+    /** The bar writes a default `f` when the URL has none. */
+    writeDefaultFilter: boolean;
 };
 
 /**
@@ -22,8 +24,12 @@ export type ScopeBarConfig = {
  * rendered no filter bar, so its scope was not locked and the organization
  * control of the global context bar worked. The scope bar keeps that rule.
  *
+ * The default `f` belongs to the page filters too: the page filter bar wrote
+ * it, the global context bar did not. With no page filter and no `f` in the
+ * URL the scope is the organization, and the bar does not change the URL.
+ *
  * `pageFilters: false` is for a page that had the global context bar alone: the
- * scope row and the actions, with no drawer and no scope lock.
+ * scope row and the actions, with no drawer, no scope lock and no default `f`.
  */
 export function resolveScopeBarConfig(
     view?: FilterBarView,
@@ -43,5 +49,6 @@ export function resolveScopeBarConfig(
             ...(hasPageFilters ? {} : { developer: false, workType: false, flowStage: false }),
         },
         resolvedScopeLock: hasPageFilters ? resolveScopeLock(view) : null,
+        writeDefaultFilter: hasPageFilters,
     };
 }

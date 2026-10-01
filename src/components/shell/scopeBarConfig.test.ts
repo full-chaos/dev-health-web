@@ -81,6 +81,25 @@ describe("resolveScopeBarConfig — scope lock", () => {
     });
 });
 
+describe("resolveScopeBarConfig — default `f`", () => {
+    it("writes the default `f` only where the page filter bar rendered and wrote it", () => {
+        for (const view of ALL_VIEWS) {
+            expect(resolveScopeBarConfig(view).writeDefaultFilter, view).toBe(
+                filterBarRendered(view),
+            );
+        }
+        expect(resolveScopeBarConfig("complexity").writeDefaultFilter).toBe(false);
+        expect(resolveScopeBarConfig("cognitive-load").writeDefaultFilter).toBe(false);
+        expect(resolveScopeBarConfig("home").writeDefaultFilter).toBe(true);
+        expect(resolveScopeBarConfig("metrics", "flow").writeDefaultFilter).toBe(true);
+    });
+
+    it("does not write it with pageFilters: false", () => {
+        expect(resolveScopeBarConfig("home", undefined, false).writeDefaultFilter).toBe(false);
+        expect(resolveScopeBarConfig(undefined, undefined, false).writeDefaultFilter).toBe(false);
+    });
+});
+
 describe("resolveScopeBarConfig — visibility", () => {
     it("keeps scope, dates and repositories out of the drawer: they are in the row", () => {
         for (const view of ALL_VIEWS) {

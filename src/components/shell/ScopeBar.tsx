@@ -20,13 +20,17 @@ type ScopeBarProps = {
     orgName?: string;
     /**
      * `false` for a page that had the global context bar alone: the scope row
-     * and the actions, with no filter drawer and no scope lock.
+     * and the actions, with no filter drawer, no scope lock and no default `f`.
      */
     pageFilters?: boolean;
 };
 
 export function ScopeBar({ view, tab, origin, orgName, pageFilters }: ScopeBarProps) {
-    const { resolvedVisibility, resolvedScopeLock } = resolveScopeBarConfig(view, tab, pageFilters);
+    const { resolvedVisibility, resolvedScopeLock, writeDefaultFilter } = resolveScopeBarConfig(
+        view,
+        tab,
+        pageFilters,
+    );
 
     return (
         <Suspense
@@ -37,6 +41,7 @@ export function ScopeBar({ view, tab, origin, orgName, pageFilters }: ScopeBarPr
                 tab={tab}
                 resolvedVisibility={resolvedVisibility}
                 resolvedScopeLock={resolvedScopeLock}
+                writeDefaultFilter={writeDefaultFilter}
                 origin={origin}
                 orgName={orgName}
             />
