@@ -2,6 +2,7 @@ import { FeatureFlagTable } from "@/components/feature-flags/FeatureFlagTable";
 import { SeverityPill } from "@/components/feature-flags/SeverityPill";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { DataState } from "@/components/ui/DataState";
 import { checkApiHealth } from "@/lib/api/system";
@@ -74,6 +75,8 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
                 title="Feature Flags"
                 subtitle="Flag activity, release friction, and telemetry coverage."
             />
+
+            <ScopeBar view="feature-flags" pageFilters={false} />
 
             <section className="grid gap-4 lg:grid-cols-2">
                 <MetricCard
