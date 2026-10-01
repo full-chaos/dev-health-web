@@ -13,6 +13,7 @@ describe("shell route registry", () => {
             "/investment",
             "/landscape",
             "/code",
+            "/complexity",
         ]);
     });
 
