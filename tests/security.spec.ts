@@ -8,7 +8,7 @@ test("security page renders and shows KPI tiles", async ({ page }) => {
     await page.goto("/security");
 
     // Wait for the main heading to confirm the page mounted
-    await expect(page.getByRole("heading", { name: "Security Alerts" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Security", exact: true })).toBeVisible({
         timeout: 15000,
     });
 
@@ -26,7 +26,7 @@ test("security page has top-repos chart container in DOM", async ({ page }) => {
     await page.goto("/security");
 
     // Wait for page to finish loading
-    await expect(page.getByRole("heading", { name: "Security Alerts" })).toBeVisible({
+    await expect(page.getByRole("heading", { name: "Security", exact: true })).toBeVisible({
         timeout: 15000,
     });
 

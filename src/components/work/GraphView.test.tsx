@@ -1,4 +1,4 @@
-import { render, screen, within } from "@/test/utils";
+import { fireEvent, render, screen, within } from "@/test/utils";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GraphView } from "@/components/work/GraphView";
@@ -49,8 +49,37 @@ vi.mock("@/lib/graphql/provider", () => ({
 }));
 
 vi.mock("@/components/charts/WorkGraphExplorer", () => ({
-    WorkGraphExplorer: () => <div data-testid="work-graph-explorer" />,
+    WorkGraphExplorer: ({ hiddenNodeTypes }: { hiddenNodeTypes?: ReadonlySet<string> }) => (
+        <div
+            data-testid="work-graph-explorer"
+            data-hidden={[...(hiddenNodeTypes ?? [])].sort().join(",")}
+        />
+    ),
     WorkGraphLegend: () => <div data-testid="work-graph-legend" />,
+    // Same contract as the real component: one checkbox per layer, checked unless hidden.
+    WorkGraphLayerToggles: ({
+        hiddenNodeTypes,
+        onToggleAction,
+    }: {
+        hiddenNodeTypes: ReadonlySet<string>;
+        onToggleAction: (type: string) => void;
+    }) => (
+        <div data-testid="layer-toggles">
+            {[
+                ["RELEASE", "Release"],
+                ["FEATURE_FLAG", "Feature Flag"],
+            ].map(([type, label]) => (
+                <label key={type}>
+                    {label}
+                    <input
+                        type="checkbox"
+                        checked={!hiddenNodeTypes.has(type)}
+                        onChange={() => onToggleAction(type)}
+                    />
+                </label>
+            ))}
+        </div>
+    ),
 }));
 
 describe("GraphView", () => {
@@ -1432,7 +1461,7 @@ describe("GraphView", () => {
         }
     });
 
-    it("renders a scope-preserving Open evidence linkback in the explorer header", () => {
+    it("no longer renders Open evidence in the explorer card (the page header owns it)", () => {
         mockUseWorkGraphEdges.mockReturnValue({
             edges: [],
             loading: false,
@@ -1440,14 +1469,89 @@ describe("GraphView", () => {
             totalCount: 0,
             refetch: vi.fn(),
         });
-
         render(<GraphView filters={filters} />);
+        expect(screen.queryByRole("link", { name: CTA_LABELS.openEvidence })).toBeNull();
+    });
 
-        const link = screen.getByRole("link", { name: CTA_LABELS.openEvidence });
-        const href = link.getAttribute("href") ?? "";
-        expect(href).toContain("/explore");
-        expect(href).toContain("metric=throughput");
-        // scope-preserving: the encoded filter param is carried through.
-        expect(href).toContain("f=");
+    describe("Graph context card", () => {
+        const withEdges = (extra: Record<string, unknown> = {}) =>
+            mockUseWorkGraphEdges.mockReturnValue({
+                edges: [
+                    {
+                        sourceType: "ISSUE",
+                        sourceId: "I1",
+                        targetType: "PR",
+                        targetId: "P1",
+                        edgeType: "FIXES",
+                        confidence: 0.9,
+                    },
+                ],
+                loading: false,
+                error: null,
+                totalCount: 1,
+                refetch: vi.fn(),
+                ...extra,
+            });
+
+        it("names the window, the connection type and the edges shown; nothing else", () => {
+            withEdges();
+            render(<GraphView filters={filters} />);
+            const card = screen.getByTestId("graph-context");
+            expect(screen.getByTestId("context-window")).toHaveTextContent("30 days");
+            expect(screen.getByTestId("context-connection")).toHaveTextContent("Work → PRs");
+            expect(screen.getByTestId("context-edges")).toHaveTextContent("1");
+            expect(card).not.toHaveTextContent("org-1");
+        });
+
+        it("a fact with no value says unavailable", () => {
+            withEdges({ loading: true });
+            render(<GraphView filters={{ ...filters, time: {} } as unknown as MetricFilter} />);
+            expect(screen.getByTestId("context-window")).toHaveTextContent("unavailable");
+            expect(screen.getByTestId("context-edges")).toHaveTextContent("unavailable");
+        });
+
+        it("has no connection-type fact on the dependencies tab (no selectors there)", () => {
+            withEdges();
+            render(<GraphView filters={filters} activeTab="dependencies" />);
+            expect(screen.queryByTestId("context-connection")).toBeNull();
+            expect(screen.getByTestId("graph-context")).toBeInTheDocument();
+        });
+
+        it("layer visibility is shared with the explorer and every layer starts visible", () => {
+            withEdges();
+            render(<GraphView filters={filters} />);
+            const release = screen.getByRole("checkbox", { name: /release/i });
+            const flag = screen.getByRole("checkbox", { name: /feature flag/i });
+            expect(release).toBeChecked();
+            expect(flag).toBeChecked();
+            expect(screen.getByTestId("work-graph-explorer").dataset.hidden).toBe("");
+            fireEvent.click(release);
+            expect(screen.getByTestId("work-graph-explorer").dataset.hidden).toBe("RELEASE");
+            fireEvent.click(flag);
+            expect(screen.getByTestId("work-graph-explorer").dataset.hidden).toBe(
+                "FEATURE_FLAG,RELEASE",
+            );
+            fireEvent.click(release);
+            expect(screen.getByTestId("work-graph-explorer").dataset.hidden).toBe("FEATURE_FLAG");
+        });
+
+        it("Browse artifacts opens the Artifacts tab and keeps the page filters", () => {
+            withEdges();
+            render(<GraphView filters={filters} />);
+            const href = screen
+                .getByRole("link", { name: "Browse artifacts" })
+                .getAttribute("href");
+            expect(href).toContain("/diagnose/work-graph?tab=artifacts&f=");
+        });
+
+        it("the legend sits under the graph, inside the explorer card", () => {
+            withEdges();
+            render(<GraphView filters={filters} />);
+            const panel = screen.getByTestId("work-graph-panel");
+            const legend = screen.getByTestId("work-graph-legend-panel");
+            expect(
+                panel.compareDocumentPosition(legend) & Node.DOCUMENT_POSITION_FOLLOWING,
+            ).toBeTruthy();
+        });
     });
 });

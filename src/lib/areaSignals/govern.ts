@@ -21,6 +21,7 @@ import { auth } from "@/lib/auth";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { fetchFeatureFlagsData } from "@/lib/feature-flags/fetchers";
 import { graphqlFetch } from "@/lib/graphql/server";
+import { SECURITY_KPI_LABELS } from "@/lib/security/kpiLabels";
 import { COMPOUNDING_RISK_QUERY, SECURITY_OVERVIEW_QUERY } from "@/lib/graphql/queries";
 import type {
     CompoundingRiskResult,
@@ -106,14 +107,14 @@ function homeDeltaValue(
  */
 function buildSignal(
     descriptor: NavAreaHubItem,
-    resolved: { state: AreaSignalState; value: string },
+    resolved: { state: AreaSignalState; value: string; metricLabel?: string },
 ): AreaSignal {
     return {
         id: descriptor.id,
         label: descriptor.label,
         href: descriptor.href,
         cluster: descriptor.cluster,
-        metricLabel: descriptor.metricLabel ?? descriptor.label,
+        metricLabel: resolved.metricLabel ?? descriptor.metricLabel ?? descriptor.label,
         value: resolved.value,
         state: resolved.state,
         demoted: descriptor.demoted,
@@ -244,7 +245,10 @@ export async function getGovernSignals(
         ]);
 
     const signals: AreaSignal[] = [];
-    const push = (id: string, resolved: { state: AreaSignalState; value: string }) => {
+    const push = (
+        id: string,
+        resolved: { state: AreaSignalState; value: string; metricLabel?: string },
+    ) => {
         const d = descriptor(id);
         if (d) signals.push(buildSignal(d, resolved));
     };
@@ -308,13 +312,36 @@ export async function getGovernSignals(
 
     // ── Cluster: Risk ─────────────────────────────────────────────────────────────
 
-    // Security — GraphQL securityOverview kpis, DERIVE by counts.
-    if (security) {
-        const { critical, high, openTotal } = security.kpis;
-        const state: AreaSignalState =
-            critical >= 1 ? "critical" : high >= 1 ? "high" : openTotal > 0 ? "medium" : "low";
-        const value = critical >= 1 ? formatNumber(critical) : formatNumber(openTotal);
-        push("security", { state, value });
+    // Security — GraphQL securityOverview kpis, DERIVE by counts. The value and the
+    // label follow the count that sets the state, so the number always matches its
+    // words: critical first, then high, then the open total.
+    const securityKpis = security?.kpis;
+    if (
+        securityKpis &&
+        Number.isFinite(securityKpis.critical) &&
+        Number.isFinite(securityKpis.high) &&
+        Number.isFinite(securityKpis.openTotal)
+    ) {
+        const { critical, high, openTotal } = securityKpis;
+        if (critical >= 1) {
+            push("security", {
+                state: "critical",
+                value: formatNumber(critical),
+                metricLabel: SECURITY_KPI_LABELS.critical,
+            });
+        } else if (high >= 1) {
+            push("security", {
+                state: "high",
+                value: formatNumber(high),
+                metricLabel: SECURITY_KPI_LABELS.high,
+            });
+        } else {
+            push("security", {
+                state: openTotal > 0 ? "medium" : "low",
+                value: formatNumber(openTotal),
+                metricLabel: SECURITY_KPI_LABELS.open,
+            });
+        }
     } else {
         push("security", UNAVAILABLE);
     }

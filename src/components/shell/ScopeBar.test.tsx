@@ -102,10 +102,10 @@ describe("ScopeBar — one row", () => {
     });
 
     it("shows the origin when the page passes one", () => {
-        renderBar({ origin: "Cockpit" });
+        renderBar({ origin: "Home" });
 
         expect(within(row()).getByText("Origin")).toBeInTheDocument();
-        expect(within(row()).getByText("Cockpit")).toBeInTheDocument();
+        expect(within(row()).getByText("Home")).toBeInTheDocument();
     });
 });
 
@@ -183,7 +183,7 @@ describe("ScopeBar — each action writes the same `f` the old bars wrote", () =
         );
     });
 
-    it("organization on a team-locked view (the Cockpit): clears the teams, as the two old bars did together", async () => {
+    it("organization on a team-locked view (the Home): clears the teams, as the two old bars did together", async () => {
         const user = userEvent.setup();
         scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}`);
         renderBar({ orgName: "Test" });
@@ -515,7 +515,7 @@ describe("ScopeBar — a view with no page filter (Complexity, Cognitive Load)",
 });
 
 describe("ScopeBar — a view with page filters keeps the team lock", () => {
-    it("the Cockpit view: an organization click ends at the team level", async () => {
+    it("the Home view: an organization click ends at the team level", async () => {
         const user = userEvent.setup();
         render(<ScopeBar view="home" orgName="Test" />);
 
@@ -527,7 +527,7 @@ describe("ScopeBar — a view with page filters keeps the team lock", () => {
         expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
     });
 
-    it("the Cockpit view: adds the default `f` when the URL has none", () => {
+    it("the Home view: adds the default `f` when the URL has none", () => {
         scopeBarUrl.reset("role=em");
         render(<ScopeBar view="home" />);
 
@@ -535,7 +535,7 @@ describe("ScopeBar — a view with page filters keeps the team lock", () => {
         expect(scopeBarUrl.lastParams().get("role")).toBe("em");
     });
 
-    it("the Cockpit view: reset writes the default `f`", async () => {
+    it("the Home view: reset writes the default `f`", async () => {
         const user = userEvent.setup();
         scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}`);
         render(<ScopeBar view="home" />);
@@ -629,5 +629,43 @@ describe("ScopeBar — page-control rows", () => {
 
         expect(scopeBarUrl.replace).toHaveBeenCalledTimes(1);
         expect(scopeBarUrl.lastFilter().time).toEqual({ range_days: 90, compare_days: 90 });
+    });
+});
+
+describe("ScopeBar — the AI view: first load as the two old bars had it", () => {
+    // Every AI page mounted the global context bar plus the page filter bar for
+    // the AI view (it has the work filter), so production locked the scope to
+    // the team level and wrote the default `f`. `<ScopeBar view="ai" />` is what
+    // every AI page mounts now.
+    it("writes the default `f` on first load with no `f`, and keeps the other params", () => {
+        scopeBarUrl.reset("role=em");
+        render(<ScopeBar view="ai" />);
+
+        expect(scopeBarUrl.lastParams().get("f")).toBe(DEFAULT_F);
+        expect(scopeBarUrl.lastParams().get("role")).toBe("em");
+    });
+
+    it("keeps the team scope lock: an organization click ends at the team level", async () => {
+        const user = userEvent.setup();
+        render(<ScopeBar view="ai" orgName="Test" />);
+
+        await user.click(screen.getByRole("button", { name: "Test" }));
+
+        await waitFor(() =>
+            expect(scopeBarUrl.lastFilter().scope).toEqual({ level: "team", ids: [] }),
+        );
+    });
+
+    it("has the Filters drawer with the Work filter and no Developer filter", async () => {
+        const user = userEvent.setup();
+        render(<ScopeBar view="ai" />);
+
+        expect(within(row()).queryByRole("button", { name: /^Work/ })).toBeNull();
+        await user.click(screen.getByRole("button", { name: "Filters" }));
+        const drawer = await screen.findByTestId("filter-drawer");
+
+        expect(within(drawer).getByRole("button", { name: /^Work/ })).toBeInTheDocument();
+        expect(within(drawer).queryByRole("button", { name: /^Developer/ })).toBeNull();
+        expect(screen.getByTestId("scope-bar")).toHaveAttribute("data-view", "ai");
     });
 });

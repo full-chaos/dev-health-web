@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createCustomerPushSource } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { CustomerPushSystem } from "@/lib/admin/types";
+import { Notice } from "@/components/ui/Notice";
 
 type CreateCustomerPushSourceFormProps = {
     provider: string;
@@ -103,22 +104,11 @@ export function CreateCustomerPushSourceForm({
     return (
         <form onSubmit={handleSubmit} className="max-w-xl space-y-6">
             {conflictError && (
-                <div
-                    role="alert"
-                    className="rounded-lg border border-(--negative)/30 bg-(--negative)/12 p-4 text-sm text-(--negative)"
-                >
-                    <p className="font-medium">One-active-owner conflict</p>
-                    <p className="mt-1">{conflictError}</p>
-                </div>
+                <Notice variant="danger" title="One-active-owner conflict">
+                    {conflictError}
+                </Notice>
             )}
-            {genericError && (
-                <div
-                    role="alert"
-                    className="rounded-lg border border-(--negative)/30 bg-(--negative)/12 p-4 text-sm text-(--negative)"
-                >
-                    {genericError}
-                </div>
-            )}
+            {genericError && <Notice variant="danger">{genericError}</Notice>}
 
             <div>
                 <label

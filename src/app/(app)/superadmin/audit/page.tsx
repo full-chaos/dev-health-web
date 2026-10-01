@@ -7,6 +7,7 @@ import { AuditLogFilters } from "@/components/shared/AuditLogFilters";
 import { listPlatformAuditLogs } from "@/lib/admin/server";
 import type { AuditLog, AuditLogFilter } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { Notice } from "@/components/ui/Notice";
 
 export default function AuditLogPage() {
     const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -61,9 +62,9 @@ export default function AuditLogPage() {
             <AuditLogFilters variant="admin" onFilter={handleFilter} />
 
             {error && (
-                <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false} className="mb-6">
                     Error loading audit logs: {error}
-                </div>
+                </Notice>
             )}
 
             {loading ? (

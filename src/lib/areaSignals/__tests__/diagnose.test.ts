@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/graphql/homeFetchers", () => ({ getHomeDataViaGraphQL: vi.fn() }));
 vi.mock("@/lib/graphql/server", () => ({ graphqlFetch: vi.fn() }));
 vi.mock("@/lib/api/code", () => ({ getBusFactorData: vi.fn() }));
+vi.mock("@/lib/api/investment", () => ({ getInvestment: vi.fn() }));
 vi.mock("@/lib/graphql/cognitiveLoadFetchers", () => ({
     getCognitiveLoadViaGraphQL: vi.fn(),
 }));
@@ -21,6 +22,7 @@ vi.mock("@/lib/logger", () => ({
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { getBusFactorData } from "@/lib/api/code";
+import { getInvestment } from "@/lib/api/investment";
 import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
@@ -30,6 +32,7 @@ import type { AreaSignal } from "../types";
 const mockGetHomeData = vi.mocked(getHomeDataViaGraphQL);
 const mockGraphql = vi.mocked(graphqlFetch);
 const mockGetBusFactorData = vi.mocked(getBusFactorData);
+const mockGetInvestment = vi.mocked(getInvestment);
 const mockGetCognitiveLoad = vi.mocked(getCognitiveLoadViaGraphQL);
 
 function byId(signals: AreaSignal[]): Record<string, AreaSignal> {
@@ -190,6 +193,7 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
         expect(ids).toEqual(
             expect.arrayContaining([
                 "flow",
+                "investment",
                 "code",
                 "code",
                 "landscape",
@@ -528,7 +532,7 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
             mockGetHomeData.mockRejectedValue(new Error("home down"));
             mockGraphql.mockRejectedValue(new Error("graphql down"));
             const signals = await getDiagnoseSignals(defaultMetricFilter);
-            expect(signals).toHaveLength(6);
+            expect(signals).toHaveLength(7);
             for (const s of signals) {
                 if (!["landscape", "cognitive-load"].includes(s.id)) {
                     expect(s.state).toBe("unavailable");
@@ -602,5 +606,66 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
             expect(s.href).toBeTruthy();
             expect(s.metricLabel).toBeTruthy();
         }
+    });
+});
+
+describe("Investment card (CHAOS-7612 5.2b)", () => {
+    const mix = (themes: Record<string, number>) => ({
+        theme_distribution: themes,
+        subcategory_distribution: {},
+        unit: "units",
+    });
+    const investment = async (isTestMode = false) =>
+        byId(await getDiagnoseSignals(defaultMetricFilter, isTestMode)).investment;
+
+    it("is a neutral card with the leading theme (canonical label) and its share", async () => {
+        mockGetInvestment.mockResolvedValue(
+            mix({ feature_delivery: 30, maintenance: 50, quality: 20 }) as never,
+        );
+        const card = await investment();
+        expect(card).toMatchObject({
+            state: "neutral",
+            value: "Maintenance / Tech Debt 50%",
+            href: "/investment",
+        });
+        expect(card.metricLabel).toBe("Planned allocation");
+    });
+
+    it("never takes the hero slot (neutral sorts below every severity)", async () => {
+        mockGetInvestment.mockResolvedValue(mix({ feature_delivery: 90, quality: 10 }) as never);
+        const card = await investment();
+        expect(["critical", "high", "medium", "low"]).not.toContain(card.state);
+    });
+
+    it("a tie keeps the order of getSortedThemes (the first theme wins)", async () => {
+        mockGetInvestment.mockResolvedValue(mix({ quality: 50, feature_delivery: 50 }) as never);
+        const card = await investment();
+        expect(card.value).toBe("Quality / Reliability 50%");
+    });
+
+    it("is unavailable, with no value, when the read fails", async () => {
+        mockGetInvestment.mockRejectedValue(new Error("investment down"));
+        expect(await investment()).toMatchObject({ state: "unavailable", value: "" });
+    });
+
+    it("is unavailable for an empty response and for an all-zero mix, never 0%", async () => {
+        mockGetInvestment.mockResolvedValue(undefined as never);
+        expect(await investment()).toMatchObject({ state: "unavailable", value: "" });
+        mockGetInvestment.mockResolvedValue(mix({ feature_delivery: 0, quality: 0 }) as never);
+        const zero = await investment();
+        expect(zero).toMatchObject({ state: "unavailable", value: "" });
+        expect(zero.value).not.toContain("0%");
+    });
+
+    it("reads with the page filters", async () => {
+        mockGetInvestment.mockResolvedValue(mix({ quality: 1 }) as never);
+        await getDiagnoseSignals(defaultMetricFilter);
+        expect(mockGetInvestment).toHaveBeenCalledWith(defaultMetricFilter);
+    });
+
+    it("test mode uses the sample mix and does not call the read", async () => {
+        const card = await investment(true);
+        expect(mockGetInvestment).not.toHaveBeenCalled();
+        expect(card).toMatchObject({ state: "neutral", value: "Feature Delivery 42%" });
     });
 });

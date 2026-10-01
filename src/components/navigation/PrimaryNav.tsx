@@ -151,7 +151,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
                 >
                     <div>
                         <p className="mt-2 font-(--font-display) text-lg font-semibold flex items-center gap-2">
-                            Cockpit
+                            Home
                         </p>
                         <p className="mt-1 text-xs text-(--ink-muted)">
                             Observe patterns, drill into evidence.

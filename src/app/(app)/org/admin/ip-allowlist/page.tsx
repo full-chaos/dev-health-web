@@ -14,6 +14,7 @@ import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { IpAllowlistForm } from "./IpAllowlistForm";
 import { IpAllowlistTable } from "./IpAllowlistTable";
+import { Notice } from "@/components/ui/Notice";
 
 type FormState = { mode: "closed" } | { mode: "create" } | { mode: "edit"; entry: IPAllowlist };
 
@@ -108,9 +109,9 @@ export default function IPAllowlistPage() {
                 />
 
                 {error && (
-                    <div className="mb-6 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                    <Notice variant="danger" className="mb-6">
                         {error}
-                    </div>
+                    </Notice>
                 )}
 
                 <div className="mb-6">

@@ -14,7 +14,7 @@
  */
 export const CTA_LABELS = {
     /** Return to the Dev Health cockpit from global brand navigation. */
-    devHealthCockpit: "Full Chaos Dev Health cockpit",
+    devHealthCockpit: "Full Chaos Dev Health home",
     /** Light / dark theme switch (pressed = light). */
     themeSwitchLight: "Light theme",
     /** Keyboard skip link: move focus past the app shell to the page content. */
@@ -25,8 +25,12 @@ export const CTA_LABELS = {
     markContextIncorrect: "Mark context as incorrect",
     markContextStale: "Mark context as stale",
     markContextIrrelevant: "Mark context as irrelevant",
+    /** Open the Investment Confidence tab (classification confidence, evidence quality, coverage). */
+    inspectConfidence: "Inspect confidence",
     /** Inspect the associations (edges) linked to an entity. */
     inspectAssociations: "Inspect associations",
+    /** Open the Work Graph Artifacts tab (the table form of the graph's entities). */
+    browseArtifacts: "Browse artifacts",
     /** Open a single artifact (flame diagram, PR, deployment, …). */
     openArtifact: "Open artifact",
     /** Open the server-approved provenance URI for a sanitized evidence record. */
@@ -94,7 +98,7 @@ export const CTA_LABELS = {
     /** Dismiss a generic panel. */
     closePanel: "Close panel",
     /** Return to the cockpit (home) — the canonical single return path. */
-    backToCockpit: "Back to Cockpit",
+    backToCockpit: "Back to Home",
     /** Start the frictionless one-click GitHub App install (CHAOS-2235). */
     connectGitHubApp: "Connect GitHub App",
     connectPagerDuty: "Connect PagerDuty",

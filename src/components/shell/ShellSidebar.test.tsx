@@ -68,7 +68,7 @@ describe("ShellSidebar — landmarks and structure", () => {
         expect(screen.getByRole("navigation", { name: "Primary areas" })).toBeInTheDocument();
         expect(screen.getByRole("navigation", { name: "Reports and admin" })).toBeInTheDocument();
 
-        const brand = screen.getByRole("link", { name: "Full Chaos Dev Health cockpit" });
+        const brand = screen.getByRole("link", { name: "Full Chaos Dev Health home" });
         expect(brand).toHaveAttribute("href", "/dashboard");
         expect(brand).toContainElement(
             screen.getByRole("img", { name: "Full Chaos Dev Health logo" }),
@@ -87,7 +87,7 @@ describe("ShellSidebar — landmarks and structure", () => {
             within(primary)
                 .getAllByRole("link")
                 .map((link) => link.textContent),
-        ).toEqual(["Cockpit", "Diagnose", "Plan", "Improve", "Govern", "AI"]);
+        ).toEqual(["Home", "Diagnose", "Plan", "Improve", "Govern", "AI"]);
 
         const utility = screen.getByRole("navigation", { name: "Reports and admin" });
         expect(
@@ -120,10 +120,10 @@ describe("ShellSidebar — landmarks and structure", () => {
 });
 
 describe("ShellSidebar — active area and current page (A1, A10)", () => {
-    it("on the Cockpit marks the Cockpit row as the current page and expands nothing", () => {
+    it("on the Home marks the Home row as the current page and expands nothing", () => {
         renderSidebar();
 
-        expect(screen.getByRole("link", { name: /^Cockpit$/ })).toHaveAttribute(
+        expect(screen.getByRole("link", { name: /^Home$/ })).toHaveAttribute(
             "aria-current",
             "page",
         );
@@ -267,7 +267,7 @@ describe("ShellSidebar — filter, role and lens stay in the links", () => {
         navigationMock.search = `f=${encodeFilterParam(filter)}&role=em&lens=pm`;
         renderSidebar();
 
-        for (const name of [/^Cockpit$/, /^Plan$/, /^Flow$/, /^Reports$/, /^Admin$/]) {
+        for (const name of [/^Home$/, /^Plan$/, /^Flow$/, /^Reports$/, /^Admin$/]) {
             const params = linkParams(name);
             expect(decodeFilter(params.get("f") ?? "")).toEqual(filter);
             expect(params.get("role")).toBe("em");
@@ -297,18 +297,18 @@ describe("ShellSidebar — filter, role and lens stay in the links", () => {
         expect(url.searchParams.get("role")).toBe("pm");
     });
 
-    it("the Cockpit entry carries the state the in-page 'Back to Cockpit' link carried", () => {
+    it("the Home entry carries the state the in-page 'Back to Home' link carried", () => {
         // Diagnose pages had `<BackLink href={withFilterParam("/", filters, role)} />`.
         navigationMock.pathname = "/diagnose";
         navigationMock.search = `f=${encodeFilterParam(filter)}&role=em&lens=pm`;
         renderSidebar();
 
         const backLink = new URL(withFilterParam("/", filter, "em"), "https://app.example");
-        const params = linkParams(/^Cockpit$/);
+        const params = linkParams(/^Home$/);
         expect(params.get("f")).toBe(backLink.searchParams.get("f"));
         expect(params.get("role")).toBe(backLink.searchParams.get("role"));
         expect(params.get("lens")).toBe("pm");
-        expect(screen.getByRole("link", { name: /^Cockpit$/ })).toHaveAttribute(
+        expect(screen.getByRole("link", { name: /^Home$/ })).toHaveAttribute(
             "href",
             expect.stringMatching(/^\/dashboard\?/),
         );
@@ -329,7 +329,7 @@ describe("ShellSidebar — filter, role and lens stay in the links", () => {
         }
     });
 
-    it("keeps the Cockpit's production behaviour: links carry the default role when the URL has none", () => {
+    it("keeps the Home's production behaviour: links carry the default role when the URL has none", () => {
         navigationMock.pathname = "/dashboard";
         renderSidebar();
 
@@ -338,7 +338,7 @@ describe("ShellSidebar — filter, role and lens stay in the links", () => {
         expect(linkParams(/^Diagnose$/).has("lens")).toBe(false);
     });
 
-    it("on the Cockpit resolves the role from the lens first, then from role", () => {
+    it("on the Home resolves the role from the lens first, then from role", () => {
         navigationMock.pathname = "/dashboard";
         navigationMock.search = "lens=leadership&role=em";
         const { unmount } = renderSidebar();
@@ -385,7 +385,7 @@ describe("ShellSidebar — a route with its own `f` encoding (Security)", () => 
         navigationMock.search = `f=${SECURITY_F}`;
         renderSidebar();
 
-        const carried = decodeFilter(linkParams(/^Cockpit$/).get("f")) as Record<string, unknown>;
+        const carried = decodeFilter(linkParams(/^Home$/).get("f")) as Record<string, unknown>;
         expect(Object.keys(carried).sort()).toEqual(Object.keys(defaultMetricFilter).sort());
     });
 
@@ -398,7 +398,7 @@ describe("ShellSidebar — a route with its own `f` encoding (Security)", () => 
         navigationMock.search = `f=${encodeFilterParam(filters)}`;
         renderSidebar();
 
-        expect(decodeFilter(linkParams(/^Cockpit$/).get("f"))).toEqual(filters);
+        expect(decodeFilter(linkParams(/^Home$/).get("f"))).toEqual(filters);
     });
 
     it("keeps role and lens from the URL", () => {
@@ -406,8 +406,8 @@ describe("ShellSidebar — a route with its own `f` encoding (Security)", () => 
         navigationMock.search = `f=${SECURITY_F}&role=em&lens=pm`;
         renderSidebar();
 
-        expect(linkParams(/^Cockpit$/).get("role")).toBe("em");
-        expect(linkParams(/^Cockpit$/).get("lens")).toBe("pm");
+        expect(linkParams(/^Home$/).get("role")).toBe("em");
+        expect(linkParams(/^Home$/).get("lens")).toBe("pm");
     });
 
     it("shows no Beta mark in the brand row", () => {
