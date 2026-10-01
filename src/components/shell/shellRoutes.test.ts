@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { SHELL_ROUTES, isShellRoute, shellRouteForPathname } from "./shellRoutes";
 
 describe("shell route registry", () => {
-    it("registers the Home and the migrated Diagnose, Govern, Plan and Improve routes", () => {
+    it("registers the Home and the migrated Diagnose, Govern, Plan, Improve and AI routes", () => {
         expect(SHELL_ROUTES.map((route) => route.prefix)).toEqual([
             "/dashboard",
             "/diagnose",
@@ -32,6 +32,13 @@ describe("shell route registry", () => {
             "/opportunities",
             "/improve/experiments",
             "/improve/automations",
+            "/ai",
+            "/ai/impact",
+            "/ai/impact/evidence",
+            "/ai/review-load",
+            "/ai/automations",
+            "/ai/risk",
+            "/ai/attribution",
         ]);
     });
 
@@ -52,7 +59,7 @@ describe("shell route registry", () => {
         expect(isShellRoute("/dashboard-old")).toBe(false);
     });
 
-    it.each(["/capacity", "/reports", "/org/admin", "/superadmin", "/settings", "/ai/impact", "/"])(
+    it.each(["/capacity", "/reports", "/org/admin", "/superadmin", "/settings", "/prs/1", "/"])(
         "keeps %s outside the shell",
         (pathname) => {
             expect(isShellRoute(pathname)).toBe(false);
