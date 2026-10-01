@@ -1,6 +1,7 @@
 import { ViewSet } from "@/components/navigation/ViewSet";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { GraphView, type WorkGraphTab } from "@/components/work/GraphView";
+import { WorkGraphHeaderActions } from "@/components/work/WorkGraphHeaderActions";
 import { buildWorkGraphTabs } from "./buildTabs";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
@@ -105,6 +106,14 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
             <PageHeader
                 title="Work Graph"
                 subtitle="Relationship topology across work, pull requests, code, releases, incidents, and evidence-bearing artifacts."
+                actions={
+                    <WorkGraphHeaderActions
+                        filters={filters}
+                        activeTab={activeTab}
+                        role={activeRole}
+                        origin={activeOrigin}
+                    />
+                }
             />
 
             <ScopeBar view="work" origin={activeOrigin} />

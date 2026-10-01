@@ -119,7 +119,7 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
             <TestOpsTabs activeId="overview" filters={filters} role={activeRole} />
 
             <ScopeBar view="testops" />
-            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+            <section className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                     TestOps summary
                 </p>

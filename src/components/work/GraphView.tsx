@@ -4,7 +4,13 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-import { WorkGraphExplorer, WorkGraphLegend } from "@/components/charts/WorkGraphExplorer";
+import {
+    WorkGraphExplorer,
+    WorkGraphLayerToggles,
+    WorkGraphLegend,
+} from "@/components/charts/WorkGraphExplorer";
+import { Notice } from "@/components/ui/Notice";
+import { ReviewNetworkView } from "./ReviewNetwork";
 import { DataState } from "@/components/ui/DataState";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { useWorkGraphEdges, useWorkGraphFlow, useWorkGraphArtifacts } from "@/lib/graphql/hooks";
@@ -19,7 +25,7 @@ import type {
 import type { ReviewEdgeRow } from "@/lib/graphql/reviewEdgesFetchers";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { buildExploreUrl } from "@/lib/filters/url";
+import { withFilterParam } from "@/lib/filters/url";
 import { useOrgId } from "@/lib/graphql/provider";
 import { formatNumber } from "@/lib/formatters";
 import {
@@ -233,6 +239,22 @@ export function GraphView({
     const [subcategory, setSubcategory] = useState(searchState.subcategory);
     const [connectionSliceId, setConnectionSliceId] = useState(searchState.connectionSliceId);
     const [isLegendCollapsed, setIsLegendCollapsed] = useState(true);
+    // Layer visibility (Release / Feature flag): page state, shown in the Graph context card
+    // and obeyed by both explorer modes.
+    const [hiddenNodeTypes, setHiddenNodeTypes] = useState<ReadonlySet<WorkGraphNodeType>>(
+        () => new Set(),
+    );
+    const toggleNodeType = useCallback((nodeType: WorkGraphNodeType) => {
+        setHiddenNodeTypes((current) => {
+            const next = new Set(current);
+            if (next.has(nodeType)) {
+                next.delete(nodeType);
+            } else {
+                next.add(nodeType);
+            }
+            return next;
+        });
+    }, []);
     const graphHeight = 580;
 
     // Theme/subcategory are authoritative server-side filters (CHAOS-2431), so
@@ -577,10 +599,22 @@ export function GraphView({
             ? `No dependency links between work items${themeFilterSuffix} in this scope and window.`
             : `No ${activeConnectionSlice.label} relationships${themeFilterSuffix} in the active connection slice. Try switching Connection type to ${CONNECTION_SLICES[1].label} to inspect PRs, commits, and files.`;
 
+    // Graph context facts: only what the page can name. A fact with no value is "unavailable".
+    const { start_date: windowStart, end_date: windowEnd, range_days: windowDays } = filters.time;
+    const windowLabel =
+        windowStart && windowEnd
+            ? `${windowStart} to ${windowEnd}`
+            : windowDays
+              ? `${formatNumber(windowDays)} days`
+              : "unavailable";
+    const edgesShownLabel = loading
+        ? "unavailable"
+        : hiddenEdgeCount > 0
+          ? `${formatNumber(displayEdges.length)} of ${formatNumber(tabEdges.length)}`
+          : formatNumber(displayEdges.length);
+
     return (
-        <div
-            className={`grid gap-4 2xl:items-start ${isLegendCollapsed ? "2xl:grid-cols-[minmax(0,1fr)_3.25rem]" : "2xl:grid-cols-[minmax(0,1fr)_17rem]"}`}
-        >
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
             <div className="order-1 min-w-0 space-y-4">
                 <div className="bg-card rounded-lg border border-(--card-stroke) p-4">
                     <div className="mb-4 flex items-center justify-between gap-4">
@@ -589,16 +623,6 @@ export function GraphView({
                             <p className="text-sm text-(--ink-muted)">{tabDescription[graphTab]}</p>
                         </div>
                         <div className="flex items-center gap-4">
-                            <Link
-                                href={buildExploreUrl({
-                                    metric: "throughput",
-                                    filters,
-                                    role: activeRole,
-                                })}
-                                className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                            >
-                                {CTA_LABELS.openEvidence}
-                            </Link>
                             <div className="text-xs text-(--ink-muted)">
                                 {loading ? "Loading..." : `${formatNumber(tabEdges.length)} edges`}
                             </div>
@@ -681,7 +705,7 @@ export function GraphView({
                     )}
 
                     {(hiddenEdgeCount > 0 || totalCount > edges.length) && (
-                        <div className="mb-4 rounded-xl bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+                        <Notice variant="warn" live={false} className="mb-4">
                             Showing {formatNumber(displayEdges.length)} edges for browser
                             responsiveness
                             {hiddenEdgeCount > 0
@@ -691,7 +715,7 @@ export function GraphView({
                                 ? `; ${formatNumber(totalCount - edges.length)} additional backend edges are available through narrower filters`
                                 : ""}
                             .
-                        </div>
+                        </Notice>
                     )}
 
                     {error && (
@@ -720,6 +744,8 @@ export function GraphView({
                                 height={graphHeight}
                                 className="p-2"
                                 onNodeClickAction={handleNodeClick}
+                                hiddenNodeTypes={hiddenNodeTypes}
+                                onToggleNodeTypeAction={toggleNodeType}
                                 selectedNodeId={
                                     selectedNode
                                         ? `${selectedNode.type}:${selectedNode.id}`
@@ -728,6 +754,18 @@ export function GraphView({
                             />
                         </div>
                     )}
+
+                    {/* Legend under the graph (collapsible). */}
+                    <div
+                        className={`mt-4 rounded-2xl border border-(--card-stroke) bg-card transition-all ${isLegendCollapsed ? "p-2" : "p-3.5"}`}
+                        data-testid="work-graph-legend-panel"
+                    >
+                        <WorkGraphLegend
+                            orientation="row"
+                            collapsed={isLegendCollapsed}
+                            onToggleAction={() => setIsLegendCollapsed((collapsed) => !collapsed)}
+                        />
+                    </div>
                 </div>
 
                 {selectedNode && nodeDetails && (
@@ -740,16 +778,64 @@ export function GraphView({
                 )}
             </div>
 
-            <div className="order-2 2xl:sticky 2xl:top-4">
-                <div
-                    className={`rounded-2xl border border-(--card-stroke) bg-card transition-all ${isLegendCollapsed ? "p-2" : "p-3.5"}`}
-                >
-                    <WorkGraphLegend
-                        collapsed={isLegendCollapsed}
-                        onToggleAction={() => setIsLegendCollapsed((collapsed) => !collapsed)}
+            <aside
+                className="order-2 rounded-2xl border border-(--card-stroke) bg-card p-4 xl:sticky xl:top-4"
+                aria-label="Graph context"
+                data-testid="graph-context"
+            >
+                <h3 className="text-lg font-medium">Graph context</h3>
+                <dl className="mt-3">
+                    {[
+                        ["Window", windowLabel, "context-window"],
+                        ...(showConnectionSelector
+                            ? [
+                                  [
+                                      "Connection type",
+                                      activeConnectionSlice.label,
+                                      "context-connection",
+                                  ],
+                              ]
+                            : []),
+                        ["Edges shown", edgesShownLabel, "context-edges"],
+                    ].map(([label, value, testId]) => (
+                        <div
+                            key={testId}
+                            className="flex items-baseline justify-between gap-3 border-b border-(--card-stroke) py-2 text-sm"
+                        >
+                            <dt className="text-(--ink-muted)">{label}</dt>
+                            <dd
+                                className="text-right font-medium tabular-nums"
+                                data-testid={testId}
+                            >
+                                {value}
+                            </dd>
+                        </div>
+                    ))}
+                </dl>
+                <div className="mt-4">
+                    <h4 className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
+                        Layer visibility
+                    </h4>
+                    <WorkGraphLayerToggles
+                        hiddenNodeTypes={hiddenNodeTypes}
+                        onToggleAction={toggleNodeType}
                     />
                 </div>
-            </div>
+                <p className="mt-4 text-xs text-(--ink-muted)">
+                    Select a relationship to inspect its evidence. Use the artifact table when a
+                    table is clearer than a graph.
+                </p>
+                <Link
+                    href={withFilterParam(
+                        "/diagnose/work-graph?tab=artifacts",
+                        filters,
+                        activeRole,
+                    )}
+                    className="mt-4 inline-block text-xs uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
+                >
+                    {CTA_LABELS.browseArtifacts}
+                </Link>
+            </aside>
         </div>
     );
 }
@@ -1098,164 +1184,5 @@ function EdgeList({ title, subtitle, edges, getLabel, getRelation }: EdgeListPro
                 ))}
             </ul>
         </div>
-    );
-}
-
-// ---------------------------------------------------------------------------
-// Review Network tab — reviewer→author collaboration edges (CHAOS-2077)
-// ---------------------------------------------------------------------------
-//
-// Data comes from review_edges_daily (via the reviewEdges GraphQL resolver),
-// not from work_graph_edges.  Each row represents one reviewer→author pair
-// on a given day in a given repo.  We aggregate by (reviewer, author) to get
-// total reviews_count across the window, then rank descending.
-//
-// Identities are emails.  The reviewer and author fields are the raw email
-// strings returned by the resolver; we render them as-is since there is no
-// org-scoped display-name lookup available on the client path.
-
-type ReviewNetworkViewProps = {
-    edges: ReviewEdgeRow[] | null;
-    loading: boolean;
-    error: string | null;
-};
-
-/** Aggregate raw per-day review_edges_daily rows into (reviewer, author, totalReviews). */
-function aggregateReviewEdges(
-    rawEdges: ReviewEdgeRow[],
-): { reviewer: string; author: string; totalReviews: number }[] {
-    const map = new Map<string, number>();
-    for (const row of rawEdges) {
-        const key = `${row.reviewer}\t${row.author}`;
-        map.set(key, (map.get(key) ?? 0) + row.reviewsCount);
-    }
-    return Array.from(map.entries())
-        .map(([key, totalReviews]) => {
-            const [reviewer, author] = key.split("\t") as [string, string];
-            return { reviewer, author, totalReviews };
-        })
-        .sort((a, b) => b.totalReviews - a.totalReviews);
-}
-
-/** Extract the local-part of an email (before @) for compact display. */
-function emailDisplayName(email: string): string {
-    const atIndex = email.indexOf("@");
-    return atIndex > 0 ? email.slice(0, atIndex) : email;
-}
-
-function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewProps) {
-    const rows = useMemo(() => {
-        if (!edges) return [];
-        return aggregateReviewEdges(edges);
-    }, [edges]);
-
-    // Derive unique reviewers + authors for a quick summary line.
-    const reviewerCount = useMemo(() => new Set(rows.map((r) => r.reviewer)).size, [rows]);
-    const authorCount = useMemo(() => new Set(rows.map((r) => r.author)).size, [rows]);
-    const totalReviews = useMemo(() => rows.reduce((sum, r) => sum + r.totalReviews, 0), [rows]);
-    const maxReviews = rows.reduce((m, r) => Math.max(m, r.totalReviews), 1);
-
-    return (
-        <section
-            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
-            data-testid="review-network-panel"
-        >
-            <div className="mb-4">
-                <h3 className="text-lg font-semibold tracking-tight">Review Network</h3>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                    Reviewer→author collaboration pairs from code review activity, ranked by review
-                    count. Data sourced from <code className="text-xs">review_edges_daily</code>.
-                </p>
-            </div>
-
-            {loading ? (
-                <p className="text-sm text-(--ink-muted)">Loading…</p>
-            ) : error ? (
-                <DataState
-                    variant="error"
-                    title="Failed to load review network"
-                    description={error}
-                />
-            ) : rows.length === 0 ? (
-                <DataState
-                    variant="detector-enabled-no-findings"
-                    title="No review relationships to show"
-                    description="No reviewer→author activity was recorded in this scope and window. Widen the date range or remove repo filters to see data."
-                />
-            ) : (
-                <>
-                    <div className="mb-4 flex flex-wrap gap-6 text-sm text-(--ink-muted)">
-                        <span>
-                            <span className="font-semibold text-foreground">
-                                {formatNumber(reviewerCount)}
-                            </span>{" "}
-                            reviewer{reviewerCount === 1 ? "" : "s"}
-                        </span>
-                        <span>
-                            <span className="font-semibold text-foreground">
-                                {formatNumber(authorCount)}
-                            </span>{" "}
-                            author{authorCount === 1 ? "" : "s"}
-                        </span>
-                        <span>
-                            <span className="font-semibold text-foreground">
-                                {formatNumber(totalReviews)}
-                            </span>{" "}
-                            total reviews
-                        </span>
-                    </div>
-                    <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90)">
-                        <table className="w-full text-sm" data-testid="review-network-table">
-                            <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
-                                <tr>
-                                    <th className="px-5 py-3 text-left">Reviewer</th>
-                                    <th className="px-5 py-3 text-left">Author</th>
-                                    <th className="px-5 py-3 text-right">Reviews</th>
-                                    <th className="px-5 py-3 text-left">Share</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.map((row) => (
-                                    <tr
-                                        key={`${row.reviewer}|${row.author}`}
-                                        data-testid="review-network-row"
-                                        className="border-t border-(--card-stroke)/60"
-                                    >
-                                        <td className="px-5 py-3 align-middle">
-                                            <span className="font-medium" title={row.reviewer}>
-                                                {emailDisplayName(row.reviewer)}
-                                            </span>
-                                            <span className="ml-1.5 text-xs text-(--ink-muted)">
-                                                @{row.reviewer.slice(row.reviewer.indexOf("@") + 1)}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-3 align-middle">
-                                            <span className="font-medium" title={row.author}>
-                                                {emailDisplayName(row.author)}
-                                            </span>
-                                            <span className="ml-1.5 text-xs text-(--ink-muted)">
-                                                @{row.author.slice(row.author.indexOf("@") + 1)}
-                                            </span>
-                                        </td>
-                                        <td className="px-5 py-3 text-right tabular-nums">
-                                            {formatNumber(row.totalReviews)}
-                                        </td>
-                                        <td className="px-5 py-3 align-middle">
-                                            <div
-                                                aria-hidden
-                                                className="h-2 max-w-[10rem] rounded-full bg-(--accent)/70"
-                                                style={{
-                                                    width: `${Math.round((row.totalReviews / maxReviews) * 100)}%`,
-                                                }}
-                                            />
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </>
-            )}
-        </section>
     );
 }

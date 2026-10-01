@@ -15,6 +15,8 @@
 export const CTA_LABELS = {
     /** Return to the Dev Health cockpit from global brand navigation. */
     devHealthCockpit: "Full Chaos Dev Health home",
+    /** Cognitive Load overview: jump to the Load Drivers tab. */
+    exploreLoadDrivers: "Explore load drivers",
     /** Light / dark theme switch (pressed = light). */
     themeSwitchLight: "Light theme",
     /** Keyboard skip link: move focus past the app shell to the page content. */
@@ -29,6 +31,8 @@ export const CTA_LABELS = {
     inspectConfidence: "Inspect confidence",
     /** Inspect the associations (edges) linked to an entity. */
     inspectAssociations: "Inspect associations",
+    /** Open the Work Graph Artifacts tab (the table form of the graph's entities). */
+    browseArtifacts: "Browse artifacts",
     /** Open a single artifact (flame diagram, PR, deployment, …). */
     openArtifact: "Open artifact",
     /** Open the server-approved provenance URI for a sanitized evidence record. */
