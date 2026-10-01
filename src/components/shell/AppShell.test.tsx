@@ -115,7 +115,7 @@ describe("AppShell — a route in the registry gets the shared shell", () => {
         expect(document.querySelectorAll("aside")).toHaveLength(1);
         expect(screen.getAllByRole("navigation", { name: "Primary areas" })).toHaveLength(1);
         expect(screen.getAllByRole("button", { name: "Show navigation" })).toHaveLength(1);
-        expect(screen.getAllByRole("link", { name: /^Cockpit$/ })).toHaveLength(1);
+        expect(screen.getAllByRole("link", { name: /^Home$/ })).toHaveLength(1);
         expect(document.querySelectorAll("#primary-navigation-panel")).toHaveLength(1);
         // The page content is still there.
         expect(screen.getByRole("heading", { name: "Legacy page" })).toBeInTheDocument();
@@ -288,7 +288,7 @@ describe("AppShell — a route outside the registry keeps today's chrome", () =>
         expect(structureOf(header as Element)).toEqual([
             "header",
             '  nav aria-label="Account"',
-            '    a aria-label="Full Chaos Dev Health cockpit" href="/dashboard"',
+            '    a aria-label="Full Chaos Dev Health home" href="/dashboard"',
             '      img alt="Full Chaos Dev Health logo"',
             '      span "Full Chaos Dev Health"',
             // The light / dark toggle was mounted next to the account menu after
@@ -305,7 +305,7 @@ describe("AppShell — a route outside the registry keeps today's chrome", () =>
         ]);
     });
 
-    it.each(["/org/admin/users", "/superadmin", "/settings", "/ai/impact", "/dashboards"])(
+    it.each(["/org/admin/users", "/superadmin", "/settings", "/prs/1", "/dashboards"])(
         "keeps %s on the legacy chrome",
         (pathname) => {
             navigationMock.pathname = pathname;

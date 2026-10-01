@@ -90,15 +90,9 @@ const testOpsTabRoutes = [
     },
 ] as const;
 
-const knownPreexistingDualContextBarScopes = new Set([
-    "src/app/(app)/ai/attribution/page.tsx",
-    "src/app/(app)/ai/automations/page.tsx",
-    "src/app/(app)/ai/automations/page.tsx",
-    "src/app/(app)/ai/impact/page.tsx",
-    "src/app/(app)/ai/page.tsx",
-    "src/app/(app)/ai/review-load/page.tsx",
-    "src/app/(app)/ai/risk/page.tsx",
-]);
+// Empty: every page that mounted both bars has moved into the shared app shell
+// and has one scope bar. A page that mounts both bars again fails invariant #5.
+const knownPreexistingDualContextBarScopes = new Set<string>([]);
 
 const routePageExists = (routePath: string) => {
     const segments = basePath(routePath).split("/").filter(Boolean);

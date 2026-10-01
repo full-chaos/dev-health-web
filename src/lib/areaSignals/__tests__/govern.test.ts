@@ -161,16 +161,55 @@ describe("getGovernSignals — source → AreaSignal mapping", () => {
         });
     });
 
-    it("falls back to openTotal for Security when there are no criticals", async () => {
+    // The value and the label follow the count that sets the card state.
+    it.each([
+        [{ critical: 0, high: 95, openTotal: 974 }, "high", "95", "High"],
+        [{ critical: 0, high: 0, openTotal: 974 }, "medium", "974", "Open Alerts"],
+        [{ critical: 2, high: 95, openTotal: 974 }, "critical", "2", "Critical"],
+        [{ critical: 0, high: 0, openTotal: 0 }, "low", "0", "Open Alerts"],
+    ])("Security card %j: state %s, value %s, label %s", async (kpis, state, value, label) => {
+        mockGraphql.mockImplementation((query: unknown) =>
+            String(query).includes("securityOverview")
+                ? (Promise.resolve({ securityOverview: { kpis } }) as never)
+                : (Promise.resolve({ compoundingRisk: { rows: [] } }) as never),
+        );
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.security).toMatchObject({ state, value, metricLabel: label });
+    });
+
+    it("never shows the open total as the value of a critical or high card", async () => {
         mockGraphql.mockImplementation((query: unknown) =>
             String(query).includes("securityOverview")
                 ? (Promise.resolve({
-                      securityOverview: { kpis: { critical: 0, high: 0, openTotal: 4 } },
+                      securityOverview: { kpis: { critical: 0, high: 95, openTotal: 974 } },
                   }) as never)
                 : (Promise.resolve({ compoundingRisk: { rows: [] } }) as never),
         );
         const signals = byId(await getGovernSignals(defaultMetricFilter));
-        expect(signals.security).toMatchObject({ state: "medium", value: "4" });
+        expect(signals.security.value).not.toBe("974");
+    });
+
+    it("marks Security unavailable, with no number, when the overview is missing or a count is not finite", async () => {
+        for (const securityOverview of [
+            null,
+            { kpis: { critical: Number.NaN, high: 1, openTotal: 5 } },
+            { kpis: { critical: 0, high: Number.NaN, openTotal: 5 } },
+            { kpis: { critical: 0, high: 0, openTotal: Number.NaN } },
+        ]) {
+            mockGraphql.mockImplementation((query: unknown) =>
+                String(query).includes("securityOverview")
+                    ? (Promise.resolve({ securityOverview }) as never)
+                    : (Promise.resolve({ compoundingRisk: { rows: [] } }) as never),
+            );
+            const signals = byId(await getGovernSignals(defaultMetricFilter));
+            expect(signals.security).toMatchObject({ state: "unavailable", value: "" });
+        }
+    });
+
+    it("keeps the registry label on the other Security states default", async () => {
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        // critical: 2 in the default mock
+        expect(signals.security.metricLabel).toBe("Critical");
     });
 
     it("derives Delivery Risk from release_confidence (×100, higher-is-better)", async () => {
@@ -267,9 +306,11 @@ describe("getGovernSignals — source → AreaSignal mapping", () => {
         // through the SAME derivation logic above (never bypassing it).
         const signals = byId(await getGovernSignals(defaultMetricFilter, true));
 
+        // The sample has 0 critical, 2 high, 9 open: the card shows the high count.
         expect(signals.security).toMatchObject({
             state: "high",
-            value: "9",
+            value: "2",
+            metricLabel: "High",
             cluster: "Risk",
         });
         expect(signals["risk-compounding"]).toMatchObject({

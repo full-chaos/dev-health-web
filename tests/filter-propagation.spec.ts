@@ -82,7 +82,7 @@ test.describe("filter propagation", () => {
             { label: /^Improve$/, path: "/improve" },
             { label: /^Govern$/, path: "/govern" },
             { label: /^AI$/, path: "/ai" },
-            { label: /^Cockpit$/, path: "/dashboard" },
+            { label: /^Home$/, path: "/dashboard" },
         ];
 
         for (const area of areas) {

@@ -69,7 +69,7 @@ describe("Filter drawer — a modal dialog from the md breakpoint up", () => {
         expect(dialog.getByRole("button", { name: /^Work/ })).toBeInTheDocument();
         expect(dialog.getByText("Who")).toBeInTheDocument();
         expect(dialog.getByText("Why")).toBeInTheDocument();
-        // The Cockpit view has no flow filter.
+        // The Home view has no flow filter.
         expect(dialog.queryByRole("button", { name: /^Flow/ })).toBeNull();
     });
 

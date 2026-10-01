@@ -170,13 +170,13 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
             </section>
 
             <section className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
                     <h2 className="font-(--font-display) text-xl mb-4">Pass Rate Trend</h2>
                     <div className="h-64">
                         <TimeseriesChart data={timeseriesData} />
                     </div>
                 </div>
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+                <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
                     <h2 className="font-(--font-display) text-xl mb-4">Flaky Test Patterns</h2>
                     <div className="h-64">
                         <HeatmapChart data={heatmapData} />
