@@ -1015,7 +1015,7 @@ export function BackfillWizard({
                                         ) : outcome.syncRunId ? (
                                             <Link
                                                 href={`/org/admin/sync/${configId}/runs/${outcome.syncRunId}`}
-                                                className="mt-1 inline-block text-(--accent) hover:underline"
+                                                className="mt-1 inline-block text-(--accent-2) hover:underline"
                                             >
                                                 {CTA_LABELS.viewRun}
                                             </Link>
