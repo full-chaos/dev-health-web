@@ -133,11 +133,9 @@ export default async function CompoundingRiskPage({ searchParams }: CompoundingR
     const params = (await searchParams) ?? {};
 
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-    const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
     const breakoutParam = Array.isArray(params.breakout) ? params.breakout[0] : params.breakout;
 
-    const activeRole = typeof roleParam === "string" ? roleParam : undefined;
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 

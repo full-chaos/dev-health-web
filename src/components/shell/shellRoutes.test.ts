@@ -22,6 +22,7 @@ describe("shell route registry", () => {
             "/testops",
             "/incident-correlation",
             "/risk/compounding",
+            "/security",
         ]);
     });
 
