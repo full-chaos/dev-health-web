@@ -4,6 +4,7 @@ import { render, screen } from "@/test/utils";
 import type { FilterVisibility } from "../filterBarConfig";
 
 import { AdvancedFiltersPanel } from "./AdvancedFiltersPanel";
+import { ActiveFilterPills } from "./ActiveFilterPills";
 import { WhySection } from "./WhySection";
 
 const base = {
@@ -64,5 +65,40 @@ describe("AdvancedFiltersPanel — Issue type follows the view's visibility", ()
     it("another view keeps Issue type", () => {
         render(panel({ workType: true }));
         expect(screen.getByText("Issue type")).toBeInTheDocument();
+    });
+});
+
+describe("ActiveFilterPills — Issue type pill follows the view's visibility (CHAOS-7744)", () => {
+    const pills = (showIssueType?: boolean) => (
+        <ActiveFilterPills
+            artifacts={[]}
+            blocked={false}
+            developers={[]}
+            flowStage={[]}
+            issueType={["bug"]}
+            onClearArtifact={vi.fn()}
+            onClearBlocked={vi.fn()}
+            onClearDeveloper={vi.fn()}
+            onClearFlowStage={vi.fn()}
+            onClearIssueType={vi.fn()}
+            onClearRepo={vi.fn()}
+            onClearRole={vi.fn()}
+            onClearWorkCategory={vi.fn()}
+            repos={[]}
+            roles={[]}
+            showIssueType={showIssueType}
+            workCategory={["feature"]}
+        />
+    );
+
+    it("shows the pill by default", () => {
+        render(pills());
+        expect(screen.getByText("bug")).toBeInTheDocument();
+    });
+
+    it("hides the pill where no query reads the issue type, and keeps the others", () => {
+        render(pills(false));
+        expect(screen.queryByText("bug")).toBeNull();
+        expect(screen.getByText("feature")).toBeInTheDocument();
     });
 });

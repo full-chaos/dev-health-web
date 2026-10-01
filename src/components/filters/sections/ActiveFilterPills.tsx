@@ -16,6 +16,8 @@ type ActiveFilterPillsProps = {
     onClearWorkCategory: (value: string) => void;
     repos: string[];
     roles: string[];
+    /** Default true. False on a view whose queries do not read the issue type (the AI pages). */
+    showIssueType?: boolean;
     workCategory: string[];
 };
 
@@ -35,6 +37,7 @@ export function ActiveFilterPills({
     onClearWorkCategory,
     repos,
     roles,
+    showIssueType = true,
     workCategory,
 }: ActiveFilterPillsProps) {
     return (
@@ -71,7 +74,7 @@ export function ActiveFilterPills({
                     onClear={() => onClearWorkCategory(cat)}
                 />
             ))}
-            {issueType.map((type) => (
+            {(showIssueType ? issueType : []).map((type) => (
                 <FilterPill
                     key={`type-${type}`}
                     label="Type"

@@ -123,7 +123,7 @@ export function ScopeBarClient({
         developers.length +
         roles.length +
         workCategory.length +
-        issueType.length +
+        (visibility.issueType !== false ? issueType.length : 0) +
         flowStage.length +
         artifacts.length +
         (blocked ? 1 : 0);
@@ -330,6 +330,7 @@ export function ScopeBarClient({
                                 developers={developers}
                                 flowStage={flowStage}
                                 issueType={issueType}
+                                showIssueType={visibility.issueType !== false}
                                 onClearArtifact={(value) =>
                                     updateFilters({
                                         ...filters,
