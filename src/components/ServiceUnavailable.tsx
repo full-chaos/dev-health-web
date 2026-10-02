@@ -2,10 +2,19 @@ import Link from "next/link";
 import { config } from "@/lib/config";
 import { CTA_LABELS } from "@/lib/design/cta";
 
-export function ServiceUnavailable() {
+type ServiceUnavailableProps = {
+    /**
+     * Render the content as the page's `<main>` landmark (default). A page inside
+     * the shared app shell passes `false`: the shell already owns `<main>`.
+     */
+    landmark?: boolean;
+};
+
+export function ServiceUnavailable({ landmark = true }: ServiceUnavailableProps = {}) {
+    const Content = landmark ? "main" : "div";
     return (
         <div className="min-h-screen bg-background text-foreground">
-            <main className="mx-auto flex w-full max-w-3xl flex-col items-start gap-6 px-6 pb-20 pt-16">
+            <Content className="mx-auto flex w-full max-w-3xl flex-col items-start gap-6 px-6 pb-20 pt-16">
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                     Full Chaos Dev Health Ops
                 </p>
@@ -25,7 +34,7 @@ export function ServiceUnavailable() {
                 >
                     {CTA_LABELS.retry}
                 </Link>
-            </main>
+            </Content>
         </div>
     );
 }

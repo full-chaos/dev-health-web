@@ -757,6 +757,21 @@ export function selectedAreaIdForPathname(
     return undefined;
 }
 
+/**
+ * True when a child destination is listed in the sidebar: it is `navVisible`
+ * and, when it names a `requiredFeature`, the organization has that feature
+ * (A2c). A hidden child keeps its route; only the menu row is absent.
+ */
+export function isNavChildVisible(
+    child: NavChildRoute,
+    features: Record<string, boolean>,
+): boolean {
+    return (
+        child.navVisible &&
+        (child.requiredFeature === undefined || features[child.requiredFeature] === true)
+    );
+}
+
 /** The routes a child claims for active-state. Defaults to `[child.path]`. */
 function ownedPathsFor(child: NavChildRoute): readonly string[] {
     return child.ownedPaths ?? [child.path];

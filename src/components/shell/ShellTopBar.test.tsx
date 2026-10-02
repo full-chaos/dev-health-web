@@ -1,0 +1,167 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
+
+import { ShellStatusChip, shellStatusFromOrganization, type ShellStatus } from "./ShellStatusChip";
+import { ShellTopBar } from "./ShellTopBar";
+
+const navigationMock = vi.hoisted(() => ({ pathname: "/dashboard" }));
+
+vi.mock("next/navigation", () => ({
+    usePathname: () => navigationMock.pathname,
+}));
+
+const LOADING: ShellStatus = { kind: "loading" };
+
+function chip() {
+    return screen.getByTestId("shell-status-chip");
+}
+
+function dot() {
+    return chip().querySelector("span[aria-hidden='true']");
+}
+
+beforeEach(() => {
+    navigationMock.pathname = "/dashboard";
+});
+
+describe("ShellTopBar — location trail from the nav config (A6)", () => {
+    it("is one banner landmark", () => {
+        render(<ShellTopBar status={LOADING} />);
+
+        expect(screen.getAllByRole("banner")).toHaveLength(1);
+        expect(screen.getByTestId("shell-top-bar").tagName).toBe("HEADER");
+    });
+
+    it("shows the area as the current crumb on an area with no child (Cockpit)", () => {
+        render(<ShellTopBar status={LOADING} />);
+
+        const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
+        expect(within(trail).getByText("Cockpit")).toHaveAttribute("aria-current", "page");
+        expect(within(trail).queryAllByRole("link")).toHaveLength(0);
+    });
+
+    it("shows Area / Destination on a child route, with the area as a link", () => {
+        navigationMock.pathname = "/investment";
+        render(<ShellTopBar status={LOADING} />);
+
+        const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
+        expect(within(trail).getByRole("link", { name: "Diagnose" })).toHaveAttribute(
+            "href",
+            "/diagnose",
+        );
+        expect(within(trail).getByText("Investment")).toHaveAttribute("aria-current", "page");
+    });
+
+    it("shows no trail on a route that no area owns", () => {
+        navigationMock.pathname = "/prs/repo:1";
+        render(<ShellTopBar status={LOADING} />);
+
+        expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
+        expect(chip()).toBeInTheDocument();
+    });
+});
+
+describe("ShellTopBar — theme toggle slot", () => {
+    it("renders an empty slot until a toggle is passed", () => {
+        const { container } = render(<ShellTopBar status={LOADING} />);
+
+        const slot = container.querySelector("[data-slot='theme-toggle']");
+        expect(slot).not.toBeNull();
+        expect(slot).toBeEmptyDOMElement();
+    });
+
+    it("renders the passed toggle inside the slot", () => {
+        const { container } = render(
+            <ShellTopBar
+                status={LOADING}
+                themeToggle={<button type="button">Toggle theme</button>}
+            />,
+        );
+
+        const slot = container.querySelector("[data-slot='theme-toggle']");
+        expect(slot).toContainElement(screen.getByRole("button", { name: "Toggle theme" }));
+    });
+});
+
+describe("shellStatusFromOrganization — unknown is its own state", () => {
+    it("is synced for an organization with data and a real timestamp", () => {
+        expect(
+            shellStatusFromOrganization({ hasData: true, lastMetricsAt: "2026-09-30T10:00:00Z" }),
+        ).toEqual({ kind: "synced", at: "2026-09-30T10:00:00Z" });
+    });
+
+    it("is empty only when the organization is known to have no data", () => {
+        expect(shellStatusFromOrganization({ hasData: false, lastMetricsAt: null })).toEqual({
+            kind: "empty",
+        });
+    });
+
+    it.each([
+        ["no timestamp", { hasData: true, lastMetricsAt: null }],
+        ["a timestamp that is not a date", { hasData: true, lastMetricsAt: "soon" }],
+    ])("is present, with no time, for an organization with data and %s", (_label, organization) => {
+        expect(shellStatusFromOrganization(organization)).toEqual({ kind: "present" });
+    });
+
+    it.each([
+        ["null (the request failed)", null],
+        ["undefined", undefined],
+        ["an empty object", {}],
+        ["a string", "ok"],
+        ["a data flag that is not a boolean", { hasData: "yes", lastMetricsAt: null }],
+        ["a timestamp with no data flag", { lastMetricsAt: "2026-09-30T10:00:00Z" }],
+    ])("is unknown for %s", (_label, organization) => {
+        expect(shellStatusFromOrganization(organization)).toEqual({ kind: "unknown" });
+    });
+});
+
+describe("ShellStatusChip — never looks healthy, or empty, when the state is not known", () => {
+    it("is neutral while the organization data loads", () => {
+        render(<ShellStatusChip status={{ kind: "loading" }} />);
+
+        expect(chip()).toHaveAttribute("data-status", "loading");
+        expect(chip()).toHaveAttribute("aria-busy", "true");
+        expect(chip()).toHaveTextContent("Checking data status");
+        expect(dot()?.className).toContain("bg-(--text-muted)");
+    });
+
+    it("shows the neutral 'Status unavailable' state when the state is unknown", () => {
+        render(<ShellStatusChip status={{ kind: "unknown" }} />);
+
+        expect(chip()).toHaveTextContent("Status unavailable");
+        expect(chip()).not.toHaveTextContent("Data through");
+        expect(chip()).not.toHaveTextContent("No data yet");
+        // The neutral dot: not the data colour and not the caution colour.
+        expect(dot()?.className).toContain("bg-(--text-muted)");
+        expect(dot()?.className).not.toContain("--info");
+        expect(dot()?.className).not.toContain("--caution");
+    });
+
+    it("shows 'No data yet' with the caution dot for an organization with no data", () => {
+        render(<ShellStatusChip status={{ kind: "empty" }} />);
+
+        expect(chip()).toHaveTextContent("No data yet");
+        expect(dot()?.className).toContain("bg-(--caution)");
+    });
+
+    it("shows the data time with the data colour, and no health word", () => {
+        render(<ShellStatusChip status={{ kind: "synced", at: "2026-09-30T10:00:00Z" }} />);
+
+        expect(chip()).toHaveTextContent(/^Data through /);
+        expect(chip()).not.toHaveTextContent("Unavailable");
+        expect(chip()).not.toHaveTextContent(/healthy|ok|connected/i);
+        expect(dot()?.className).toContain("bg-(--info)");
+    });
+
+    it("shows 'Has data' when the organization has data and no time is known", () => {
+        render(<ShellStatusChip status={{ kind: "present" }} />);
+
+        expect(chip()).toHaveTextContent("Has data");
+    });
+
+    it("passes the status from the top bar to the chip", () => {
+        render(<ShellTopBar status={{ kind: "empty" }} />);
+
+        expect(chip()).toHaveAttribute("data-status", "empty");
+    });
+});
