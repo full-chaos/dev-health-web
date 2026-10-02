@@ -20,7 +20,6 @@ const ALLOWLIST: Record<string, number> = {
     "app/(app)/operating-review/page.tsx": 28,
     // 6 provider brand-mark hits (Admin page pass) + 3 in one red banner (Notice danger).
     "app/(app)/org/admin/integrations/page.tsx": 6,
-    "app/(app)/plan/backlog-risk/_components.tsx": 4,
     "app/(app)/reports/[id]/page.tsx": 19,
     "app/(app)/reports/new/page.tsx": 3,
     "components/ai/AIEvidenceExplorer.tsx": 6,
