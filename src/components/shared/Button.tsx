@@ -20,9 +20,11 @@ const ICON_ONLY_SIZES: Record<ButtonSize, string> = {
 };
 
 const VARIANTS: Record<ButtonVariant, string> = {
-    primary: "border-(--accent-2) bg-(--accent-2) text-white hover:brightness-110",
+    // Filled action: the approved `--blue` fill with white text (teal = action, orange = selection).
+    primary: "border-(--action) bg-(--action) text-(--on-action) hover:brightness-110",
     secondary: "border-(--card-stroke) bg-(--card) text-foreground hover:bg-(--card-80)",
-    ghost: "border-transparent bg-transparent text-(--accent-text) hover:bg-(--card-80)",
+    // Link-like: the action/link token (approved `--blueInk`), never the orange selection token.
+    ghost: "border-transparent bg-transparent text-(--accent-2) hover:bg-(--card-80)",
 };
 
 /**
