@@ -363,11 +363,44 @@ describe("drawer body as the approved prototype", () => {
         mockGetExplainData.mockResolvedValue(EXPLAIN);
         drawMetric();
         const link = await screen.findByRole("link", { name: /Open evidence/ });
+        // The approved `btn()`: the icon first, then the text; the name is the text only.
+        expect(link).toHaveAccessibleName("Open evidence");
+        // The first NODE (not the first element) is the icon: no text stands before it.
+        expect(link.firstChild?.nodeName.toLowerCase()).toBe("svg");
+        expect(link.firstChild).toHaveAttribute("aria-hidden", "true");
+        expect(link.lastChild?.textContent).toBe("Open evidence");
         expect(link.className).toContain("bg-(--action)");
         expect(link.className).not.toContain("w-full");
         expect(
             within(screen.getByRole("dialog")).getAllByRole("link", { name: /Open evidence/ }),
         ).toHaveLength(1);
+    });
+});
+
+describe("Investment and Opportunities payloads", () => {
+    it("Investment: each served theme share is one row, in order of size, with no sentence about them", async () => {
+        drawFetched("/api/v1/investment?range_days=90", {
+            ...INVESTMENT,
+            theme_distribution: { maintenance: 0.25, feature_delivery: 0.6, quality: 0.15 },
+        });
+        await loaded();
+        const rows = screen.getAllByTestId("evidence-supporting-row").map((row) => row.textContent);
+        expect(rows).toEqual(["Feature Delivery60%", "Maintenance25%", "Quality15%"]);
+        const dialog = screen.getByRole("dialog");
+        expect(dialog).not.toHaveTextContent(/largest/i);
+        expect(screen.queryByTestId("evidence-summary")).toBeNull();
+    });
+
+    it.each([
+        [1, "1 opportunity matched the selected context."],
+        [2, "2 opportunities matched the selected context."],
+    ])("Opportunities: %i served item(s) read with the right plural", async (count, text) => {
+        const item = OPPORTUNITIES.items[0];
+        drawFetched("/api/v1/opportunities?range_days=90", {
+            items: Array.from({ length: count }, (_, i) => ({ ...item, id: `o${i}` })),
+        });
+        await loaded();
+        expect(screen.getByTestId("evidence-summary").textContent).toBe(text);
     });
 });
 

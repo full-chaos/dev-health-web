@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
+import { ArrowUpRight } from "lucide-react";
 import { getExplainData } from "@/lib/api/home";
 import { ValidationErrors } from "@/lib/constants/errors";
 import { logger } from "@/lib/logger";
@@ -165,21 +166,19 @@ const normalizeInvestmentEvidence = (
     result: InvestmentResponse,
     title: string,
 ): EvidencePanelResult => {
+    // The served share of each theme is one row: theme left, share right, in the served order of
+    // size. The web writes no sentence about them (no "largest theme" statement).
     const themes = Object.entries(result.theme_distribution).sort(([, a], [, b]) => b - a);
-    const topTheme = themes[0];
-    const evidence = themes.slice(0, 6).map(([theme, share], index) => ({
+    const evidence = themes.map(([theme, share]) => ({
         id: `theme-${theme}`,
-        title: `${humanizeKey(theme)}: ${formatPercent(share * 100)}`,
+        title: humanizeKey(theme),
         url: "/investment",
         type: "other" as const,
-        meta: index === 0 ? "Largest investment theme" : "Investment theme",
+        value: formatPercent(share * 100),
     }));
 
     return {
         label: title,
-        summary: topTheme
-            ? `${humanizeKey(topTheme[0])} is the largest persisted investment theme in this scope.`
-            : "No investment mix has been persisted for this scope yet.",
         why_it_matters:
             "Investment mix context explains where effort is actually being spent, using persisted WorkUnit distributions.",
         evidence,
@@ -214,7 +213,7 @@ const normalizeOpportunitiesEvidence = (
     return {
         label: title,
         summary: result.items.length
-            ? `${result.items.length} opportunity${result.items.length === 1 ? "" : "ies"} matched the selected context.`
+            ? `${result.items.length} ${result.items.length === 1 ? "opportunity" : "opportunities"} matched the selected context.`
             : "No opportunities matched the selected context yet.",
         why_it_matters:
             "Opportunity context connects the investigation thread to the next reversible operating experiment.",
@@ -464,10 +463,12 @@ export function EvidencePanel({
                     // The shared drawer lives in the layout: close it, or it stays open over the
                     // destination when the path does not change (Explore to Explore).
                     onClick={onCloseAction}
-                    // Approved footer: one primary button (`.btn.primary`), not a full-width strip.
+                    // Approved footer: one primary button (`.btn.primary`), not a full-width strip;
+                    // the icon goes before the text, as the prototype `btn()` draws it.
                     className={buttonClassName("primary", "md")}
                 >
-                    {CTA_LABELS.openEvidence} ↗
+                    <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+                    {CTA_LABELS.openEvidence}
                 </Link>
             }
         >
