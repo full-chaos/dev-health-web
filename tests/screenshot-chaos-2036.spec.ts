@@ -16,7 +16,10 @@ test.describe("CHAOS-2036 screenshots", () => {
     test("opportunities evidence panel contract (authenticated)", async ({ page }) => {
         await page.goto("/opportunities");
         await page.waitForSelector("main", { timeout: 10000 });
-        await page.getByText("Reduce Review Latency").waitFor({ timeout: 10000 });
+        await page
+            .getByTestId("opportunity-detail")
+            .getByRole("heading", { name: "Reduce Review Latency" })
+            .waitFor({ timeout: 10000 });
         await page.waitForTimeout(1000);
         await page.screenshot({
             path: "docs/screenshots/CHAOS-2036/opportunities.png",
