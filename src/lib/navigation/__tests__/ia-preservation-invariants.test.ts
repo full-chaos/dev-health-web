@@ -36,7 +36,12 @@ const appRoot = join(process.cwd(), "src/app/(app)");
 const legacyWorkPagePath = join(appRoot, "work/page.tsx");
 const legacyWorkPageSource = readFileSync(legacyWorkPagePath, "utf8");
 const metricsPagePath = join(appRoot, "metrics/page.tsx");
-const metricsPageSource = readFileSync(metricsPagePath, "utf8");
+// The page and the tab list it renders: the tabs (`id: "flow"`, ...) live in lib/metrics/metricTabs.ts
+// since CHAOS-7730, and the page imports them. Both are the "/metrics page source" for these invariants.
+const metricsPageSource =
+    readFileSync(metricsPagePath, "utf8") +
+    "\n" +
+    readFileSync(join(process.cwd(), "src/lib/metrics/metricTabs.ts"), "utf8");
 const testOpsTabsPath = join(appRoot, "testops/TestOpsTabs.tsx");
 const investmentPageSource = readFileSync(join(appRoot, "investment/page.tsx"), "utf8");
 const investmentViewSource = readFileSync(
@@ -90,15 +95,9 @@ const testOpsTabRoutes = [
     },
 ] as const;
 
-const knownPreexistingDualContextBarScopes = new Set([
-    "src/app/(app)/ai/attribution/page.tsx",
-    "src/app/(app)/ai/automations/page.tsx",
-    "src/app/(app)/ai/automations/page.tsx",
-    "src/app/(app)/ai/impact/page.tsx",
-    "src/app/(app)/ai/page.tsx",
-    "src/app/(app)/ai/review-load/page.tsx",
-    "src/app/(app)/ai/risk/page.tsx",
-]);
+// Empty: every page that mounted both bars has moved into the shared app shell
+// and has one scope bar. A page that mounts both bars again fails invariant #5.
+const knownPreexistingDualContextBarScopes = new Set<string>([]);
 
 const routePageExists = (routePath: string) => {
     const segments = basePath(routePath).split("/").filter(Boolean);
@@ -400,19 +399,21 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
     });
 });
 
-describe("IA preservation invariant #8 — Lens present in global context bar", () => {
-    const globalContextBarClientSource = readFileSync(
-        join(process.cwd(), "src/components/navigation/GlobalContextBarClient.tsx"),
-        "utf8",
+describe("IA preservation invariant #8 — Lens present in the scope bar", () => {
+    // The scope bar replaced the global context bar (CHAOS-7751 deleted it).
+    const scopeBarSources = ["ScopeBarClient.tsx", "ScopeBarFrame.tsx"].map((file) =>
+        readFileSync(join(process.cwd(), "src/components/shell", file), "utf8"),
     );
     const lensSelectorSource = readFileSync(
         join(process.cwd(), "src/components/navigation/LensSelector.tsx"),
         "utf8",
     );
 
-    it("GlobalContextBarClient keeps LensSelector hidden until CHAOS-2253", () => {
-        expect(globalContextBarClientSource).not.toContain("<LensSelector");
-        expect(globalContextBarClientSource).toContain("CHAOS-2253");
+    it("the scope bar keeps LensSelector hidden until CHAOS-2253", () => {
+        for (const source of scopeBarSources) {
+            expect(source).not.toContain("<LensSelector");
+        }
+        expect(scopeBarSources[0]).toContain("CHAOS-2253");
     });
 
     it("LensSelector has a data-testid for test discoverability", () => {

@@ -5,6 +5,8 @@ type WhySectionProps = {
     updateIssueType: (nextValues: string[]) => void;
     updateWorkCategory: (nextValues: string[]) => void;
     workCategory: string[];
+    /** Default true. False on a view whose queries do not read the issue type (the AI pages). */
+    showIssueType?: boolean;
 };
 
 export function WhySection({
@@ -14,6 +16,7 @@ export function WhySection({
     updateIssueType,
     updateWorkCategory,
     workCategory,
+    showIssueType = true,
 }: WhySectionProps) {
     return (
         <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
@@ -30,15 +33,17 @@ export function WhySection({
                         onChange={(event) => updateWorkCategory(toList(event.target.value))}
                     />
                 </label>
-                <label className="flex flex-col gap-2">
-                    <span className="text-xs text-(--ink-muted)">Issue type</span>
-                    <input
-                        className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
-                        placeholder="bug, story"
-                        value={toValue(issueType)}
-                        onChange={(event) => updateIssueType(toList(event.target.value))}
-                    />
-                </label>
+                {showIssueType && (
+                    <label className="flex flex-col gap-2">
+                        <span className="text-xs text-(--ink-muted)">Issue type</span>
+                        <input
+                            className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                            placeholder="bug, story"
+                            value={toValue(issueType)}
+                            onChange={(event) => updateIssueType(toList(event.target.value))}
+                        />
+                    </label>
+                )}
             </div>
         </details>
     );

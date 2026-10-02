@@ -83,6 +83,12 @@ beforeEach(() => {
 describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
     // ── Top signal (synthesized worst opportunity) ────────────────────────────────
 
+    it("carries no driver line on any card (only AI Impact has one)", async () => {
+        const signals = await getImproveSignals(defaultMetricFilter);
+        expect(signals.length).toBeGreaterThan(0);
+        expect(signals.filter((s) => s.driver !== undefined)).toEqual([]);
+    });
+
     it("gates the TOP SIGNAL by polarity (throughput up = NOT hero, churn up = hero, throughput down = 'Recover' hero)", async () => {
         // Throughput up (+10) is GOOD (higher-is-better). Churn up (+5) is BAD (lower-is-better).
         // Throughput down (-15) is BAD (higher-is-better).

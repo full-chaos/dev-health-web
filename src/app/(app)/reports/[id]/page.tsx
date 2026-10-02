@@ -4,10 +4,9 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useRef } from "react";
 
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { RefreshControl } from "@/components/admin/RefreshControl";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { MarkdownRenderer } from "@/components/reports/MarkdownRenderer";
-import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { logger } from "@/lib/logger";
 import { ReportStatus, SavedReport, ReportRun } from "@/lib/reports/types";
 import {
@@ -279,14 +278,11 @@ export default function SingleReportPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-background text-foreground">
-                <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                    <PrimaryNav filters={defaultMetricFilter} active="reports" />
-                    <main className="flex min-w-0 flex-1 flex-col gap-8">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-10 text-center">
-                            <p className="text-(--ink-muted)">Loading report...</p>
-                        </div>
-                    </main>
+            // Rendered inside the shared app shell: the layout owns the navigation, the
+            // page padding and the `<main>` landmark.
+            <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-10 text-center">
+                    <p className="text-(--ink-muted)">Loading report...</p>
                 </div>
             </div>
         );
@@ -294,20 +290,17 @@ export default function SingleReportPage() {
 
     if (!report) {
         return (
-            <div className="min-h-screen bg-background text-foreground">
-                <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                    <PrimaryNav filters={defaultMetricFilter} active="reports" />
-                    <main className="flex min-w-0 flex-1 flex-col gap-8">
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-10 text-center">
-                            <p className="text-(--ink-muted)">Report not found.</p>
-                            <Link
-                                href="/reports"
-                                className="mt-4 inline-block rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
-                            >
-                                {backToArea("Reports")}
-                            </Link>
-                        </div>
-                    </main>
+            // Rendered inside the shared app shell: the layout owns the navigation, the
+            // page padding and the `<main>` landmark.
+            <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-10 text-center">
+                    <p className="text-(--ink-muted)">Report not found.</p>
+                    <Link
+                        href="/reports"
+                        className="mt-4 inline-block rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                    >
+                        {backToArea("Reports")}
+                    </Link>
                 </div>
             </div>
         );
@@ -396,194 +389,163 @@ export default function SingleReportPage() {
     };
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={defaultMetricFilter} active="reports" />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    {error && (
-                        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-500">
-                            {error}
-                        </div>
-                    )}
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            {error && (
+                <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+                    {error}
+                </div>
+            )}
 
-                    <header className="flex flex-wrap items-start justify-between gap-4">
-                        <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-3">
-                                <Link
-                                    href="/reports"
-                                    className="text-(--ink-muted) hover:text-foreground transition-colors"
-                                >
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="20"
-                                        height="20"
-                                        viewBox="0 0 24 24"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                    >
-                                        <title>Back to reports</title>
-                                        <path d="m15 18-6-6 6-6" />
-                                    </svg>
-                                </Link>
-                                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                    Report Details
-                                </p>
-                            </div>
-                            {isEditing ? (
-                                <div className="mt-2 space-y-3">
-                                    <input
-                                        type="text"
-                                        value={editName}
-                                        onChange={(e) => setEditName(e.target.value)}
-                                        className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 font-(--font-display) text-2xl focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
-                                    />
-                                    <textarea
-                                        value={editDescription}
-                                        onChange={(e) => setEditDescription(e.target.value)}
-                                        rows={2}
-                                        className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
-                                        placeholder="Description"
-                                    />
-                                    <div className="flex gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={handleEditSave}
-                                            disabled={isSaving || !editName.trim()}
-                                            className="rounded-full bg-(--accent) px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
-                                        >
-                                            {isSaving ? CTA_LABELS.saving : CTA_LABELS.save}
-                                        </button>
-                                        <button
-                                            type="button"
-                                            onClick={handleEditCancel}
-                                            disabled={isSaving}
-                                            className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
-                                        >
-                                            {CTA_LABELS.cancel}
-                                        </button>
-                                    </div>
-                                </div>
-                            ) : (
-                                <>
-                                    <h1 className="mt-2 font-(--font-display) text-3xl">
-                                        {report.name}
-                                    </h1>
-                                    <p className="mt-2 text-sm text-(--ink-muted)">
-                                        {report.description}
-                                    </p>
-                                </>
-                            )}
+            <PageHeader
+                title={report.name}
+                subtitle={report.description}
+                back={{ href: "/reports", area: "Reports" }}
+                actions={
+                    isEditing ? undefined : (
+                        <div className="flex items-center gap-3">
+                            <button
+                                type="button"
+                                onClick={handleEditStart}
+                                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                            >
+                                {CTA_LABELS.edit}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleCloneStart}
+                                className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                            >
+                                {CTA_LABELS.clone}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowDeleteConfirm(true)}
+                                className="rounded-full border border-red-500/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-red-500 hover:bg-red-500/10 transition-colors"
+                            >
+                                {CTA_LABELS.delete}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleRunNow}
+                                disabled={isRunning}
+                                className="rounded-full bg-(--accent) px-4 py-2 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
+                            >
+                                {isRunning ? "Running..." : CTA_LABELS.runNow}
+                            </button>
                         </div>
-                        {!isEditing && (
-                            <div className="flex items-center gap-3">
-                                <button
-                                    type="button"
-                                    onClick={handleEditStart}
-                                    className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
-                                >
-                                    {CTA_LABELS.edit}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleCloneStart}
-                                    className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
-                                >
-                                    {CTA_LABELS.clone}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowDeleteConfirm(true)}
-                                    className="rounded-full border border-red-500/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-red-500 hover:bg-red-500/10 transition-colors"
-                                >
-                                    {CTA_LABELS.delete}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={handleRunNow}
-                                    disabled={isRunning}
-                                    className="rounded-full bg-(--accent) px-4 py-2 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
-                                >
-                                    {isRunning ? "Running..." : CTA_LABELS.runNow}
-                                </button>
-                            </div>
-                        )}
-                    </header>
-
-                    {showCloneDialog && (
-                        <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-6">
-                            <h2 className="font-(--font-display) text-lg mb-3">Clone Report</h2>
-                            <div className="space-y-3 max-w-md">
-                                <input
-                                    type="text"
-                                    value={cloneName}
-                                    onChange={(e) => setCloneName(e.target.value)}
-                                    className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
-                                    placeholder="Name for cloned report"
-                                />
-                                <div className="flex gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={handleCloneConfirm}
-                                        disabled={isCloning}
-                                        className="rounded-full bg-(--accent) px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
-                                    >
-                                        {isCloning ? "Cloning..." : CTA_LABELS.clone}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowCloneDialog(false)}
-                                        disabled={isCloning}
-                                        className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
-                                    >
-                                        {CTA_LABELS.cancel}
-                                    </button>
-                                </div>
-                            </div>
+                    )
+                }
+            >
+                {/* Edit mode: the name stays the h1; the fields are under it. */}
+                {isEditing ? (
+                    <div className="space-y-3">
+                        <input
+                            type="text"
+                            value={editName}
+                            onChange={(e) => setEditName(e.target.value)}
+                            className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 font-(--font-display) text-2xl focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                        />
+                        <textarea
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            rows={2}
+                            className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                            placeholder="Description"
+                        />
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={handleEditSave}
+                                disabled={isSaving || !editName.trim()}
+                                className="rounded-full bg-(--accent) px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
+                            >
+                                {isSaving ? CTA_LABELS.saving : CTA_LABELS.save}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleEditCancel}
+                                disabled={isSaving}
+                                className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                            >
+                                {CTA_LABELS.cancel}
+                            </button>
                         </div>
-                    )}
+                    </div>
+                ) : null}
+            </PageHeader>
 
-                    {showDeleteConfirm && (
-                        <div className="rounded-3xl border border-red-500/30 bg-red-500/5 p-6">
-                            <h2 className="font-(--font-display) text-lg text-red-500 mb-2">
-                                Delete Report
-                            </h2>
-                            <p className="text-sm text-(--ink-muted) mb-4">
-                                Are you sure you want to delete &ldquo;{report.name}&rdquo;? This
-                                action cannot be undone.
-                            </p>
-                            <div className="flex gap-2">
-                                <button
-                                    type="button"
-                                    onClick={handleDeleteConfirm}
-                                    disabled={isDeleting}
-                                    className="rounded-full bg-red-500 px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-red-600 transition-colors disabled:opacity-50"
-                                >
-                                    {isDeleting ? "Deleting..." : CTA_LABELS.delete}
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => setShowDeleteConfirm(false)}
-                                    disabled={isDeleting}
-                                    className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
-                                >
-                                    {CTA_LABELS.cancel}
-                                </button>
-                            </div>
+            {showCloneDialog && (
+                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-6">
+                    <h2 className="font-(--font-display) text-lg mb-3">Clone Report</h2>
+                    <div className="space-y-3 max-w-md">
+                        <input
+                            type="text"
+                            value={cloneName}
+                            onChange={(e) => setCloneName(e.target.value)}
+                            className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                            placeholder="Name for cloned report"
+                        />
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={handleCloneConfirm}
+                                disabled={isCloning}
+                                className="rounded-full bg-(--accent) px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors disabled:opacity-50"
+                            >
+                                {isCloning ? "Cloning..." : CTA_LABELS.clone}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setShowCloneDialog(false)}
+                                disabled={isCloning}
+                                className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                            >
+                                {CTA_LABELS.cancel}
+                            </button>
                         </div>
-                    )}
+                    </div>
+                </div>
+            )}
 
-                    <RenderedReportAndConfig
-                        report={report}
-                        runs={runs}
-                        runsLastUpdatedAt={runsLastUpdatedAt}
-                        isRefreshingRuns={isRefreshingRuns}
-                        onRefreshRuns={refreshRuns}
-                    />
-                </main>
-            </div>
+            {showDeleteConfirm && (
+                <div className="rounded-3xl border border-red-500/30 bg-red-500/5 p-6">
+                    <h2 className="font-(--font-display) text-lg text-red-500 mb-2">
+                        Delete Report
+                    </h2>
+                    <p className="text-sm text-(--ink-muted) mb-4">
+                        Are you sure you want to delete &ldquo;{report.name}&rdquo;? This action
+                        cannot be undone.
+                    </p>
+                    <div className="flex gap-2">
+                        <button
+                            type="button"
+                            onClick={handleDeleteConfirm}
+                            disabled={isDeleting}
+                            className="rounded-full bg-red-500 px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+                        >
+                            {isDeleting ? "Deleting..." : CTA_LABELS.delete}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setShowDeleteConfirm(false)}
+                            disabled={isDeleting}
+                            className="rounded-full border border-(--card-stroke) px-4 py-1.5 text-xs uppercase tracking-[0.2em] hover:bg-(--card-70) transition-colors"
+                        >
+                            {CTA_LABELS.cancel}
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            <RenderedReportAndConfig
+                report={report}
+                runs={runs}
+                runsLastUpdatedAt={runsLastUpdatedAt}
+                isRefreshingRuns={isRefreshingRuns}
+                onRefreshRuns={refreshRuns}
+            />
         </div>
     );
 }

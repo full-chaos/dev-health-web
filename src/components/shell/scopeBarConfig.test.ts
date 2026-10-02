@@ -94,6 +94,14 @@ describe("resolveScopeBarConfig — default `f`", () => {
         expect(resolveScopeBarConfig("metrics", "flow").writeDefaultFilter).toBe(true);
     });
 
+    it("the AI view keeps the lock, the default `f` and the work filter, as its filter bar had them", () => {
+        const config = resolveScopeBarConfig("ai");
+
+        expect(config.resolvedScopeLock).toBe("team");
+        expect(config.writeDefaultFilter).toBe(true);
+        expect(config.resolvedVisibility).toMatchObject({ developer: false, workType: true });
+    });
+
     it("does not write it with pageFilters: false", () => {
         expect(resolveScopeBarConfig("home", undefined, false).writeDefaultFilter).toBe(false);
         expect(resolveScopeBarConfig(undefined, undefined, false).writeDefaultFilter).toBe(false);
@@ -146,5 +154,33 @@ describe("resolveScopeBarConfig — pageFilters: false", () => {
             workType: false,
             flowStage: false,
         });
+    });
+});
+
+describe("resolveScopeBarConfig — AI pages (CHAOS-7744)", () => {
+    it("lists the URL filters no AI query reads: developers, roles, flow stage, blocked, artifacts and issue type", () => {
+        expect(resolveVisibility("ai").unreadFilters).toEqual([
+            "developers",
+            "roles",
+            "flowStage",
+            "blocked",
+            "artifacts",
+            "issueType",
+        ]);
+    });
+
+    it("does not offer the Issue type filter on an AI page: no AI query reads it", () => {
+        expect(resolveScopeBarConfig("ai").resolvedVisibility.unreadFilters).toContain("issueType");
+        expect(resolveVisibility("ai").unreadFilters).toContain("issueType");
+    });
+
+    it("keeps the Issue type filter wherever it is offered today", () => {
+        for (const view of ALL_VIEWS.filter((v) => v !== "ai")) {
+            expect(resolveVisibility(view).unreadFilters, view).toBeUndefined();
+        }
+    });
+
+    it("keeps the Work control on an AI page: the AIScopeInput queries read it", () => {
+        expect(resolveScopeBarConfig("ai").resolvedVisibility.workType).toBe(true);
     });
 });
