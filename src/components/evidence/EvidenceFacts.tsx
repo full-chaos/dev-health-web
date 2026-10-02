@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 
+import { formatTimestamp } from "@/lib/formatters";
+import { STATUS_PILL } from "@/lib/statusPill";
+
 /** Shown for a field the API did not serve. */
 export const NOT_REPORTED = "Not reported";
 
@@ -10,12 +13,14 @@ export const NOT_REPORTED = "Not reported";
 export function EvidenceFactList({
     children,
     "aria-label": ariaLabel,
+    testId = "evidence-facts",
 }: {
     children: ReactNode;
     "aria-label"?: string;
+    testId?: string;
 }) {
     return (
-        <dl data-testid="evidence-facts" aria-label={ariaLabel} className="text-xs">
+        <dl data-testid={testId} aria-label={ariaLabel} className="text-xs">
             {children}
         </dl>
     );
@@ -52,5 +57,73 @@ export function EvidenceFact({
                 {reported ? value : NOT_REPORTED}
             </dd>
         </div>
+    );
+}
+
+export type EvidenceProvenanceValues = {
+    source?: string | null;
+    quality?: string | null;
+    lastSync?: string | null;
+    /** 0 to 1. */
+    identityConfidence?: number | null;
+    /**
+     * How many artifacts the API returned for the subject. Leave it undefined when the subject has
+     * no artifact list, or the list is not loaded: the row then reads "Not reported". `0` is an
+     * empty list and reads "None returned", never "0".
+     */
+    artifactCount?: number;
+};
+
+/**
+ * The five rows every evidence drawer starts with (approved prototype `openEvidence`,
+ * `app.js:122`): Source, Data quality, Last sync, Identity confidence, Artifacts. A subject
+ * passes only what was served for it; the other rows read "Not reported".
+ */
+export function EvidenceProvenanceFacts({
+    source,
+    quality,
+    lastSync,
+    identityConfidence,
+    artifactCount,
+}: EvidenceProvenanceValues) {
+    return (
+        <EvidenceFactList aria-label="Quality and provenance">
+            <EvidenceFact label="Source" value={source || undefined} />
+            <EvidenceFact
+                label="Data quality"
+                value={
+                    quality ? (
+                        <span
+                            className={`rounded-full border px-2 py-0.5 font-medium ${STATUS_PILL.muted}`}
+                        >
+                            {quality.charAt(0).toUpperCase() + quality.slice(1)}
+                        </span>
+                    ) : undefined
+                }
+            />
+            <EvidenceFact
+                label="Last sync"
+                // An unparseable value is shown as served, not replaced.
+                value={lastSync ? formatTimestamp(lastSync, lastSync) : undefined}
+            />
+            <EvidenceFact
+                label="Identity confidence"
+                value={
+                    typeof identityConfidence === "number"
+                        ? `${Math.round(identityConfidence * 100)}%`
+                        : undefined
+                }
+            />
+            <EvidenceFact
+                label="Artifacts"
+                value={
+                    artifactCount === undefined
+                        ? undefined
+                        : artifactCount > 0
+                          ? `${artifactCount} ${artifactCount === 1 ? "artifact" : "artifacts"}`
+                          : "None returned"
+                }
+            />
+        </EvidenceFactList>
     );
 }

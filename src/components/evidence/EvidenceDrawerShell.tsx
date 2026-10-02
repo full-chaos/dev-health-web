@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 
 import { Drawer } from "@/components/ui/Drawer";
 
@@ -13,6 +13,8 @@ type EvidenceDrawerShellProps = {
     subject: string;
     onCloseAction: () => void;
     footer?: ReactNode;
+    /** Gets focus on close. Default: the element that had focus when the drawer opened. */
+    returnFocusRef?: RefObject<HTMLElement | null>;
     children: ReactNode;
 };
 
@@ -28,6 +30,7 @@ export function EvidenceDrawerShell({
     subject,
     onCloseAction,
     footer,
+    returnFocusRef,
     children,
 }: EvidenceDrawerShellProps) {
     return (
@@ -37,6 +40,7 @@ export function EvidenceDrawerShell({
             title={EVIDENCE_DRAWER_TITLE}
             eyebrow={EVIDENCE_DRAWER_EYEBROW}
             footer={footer}
+            returnFocusRef={returnFocusRef}
         >
             <div className="space-y-4">
                 {/* The subject. The drawer title is the same for all. */}

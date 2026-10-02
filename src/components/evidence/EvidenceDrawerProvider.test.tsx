@@ -1,5 +1,6 @@
 import { render, screen, userEvent, waitFor, within } from "@/test/utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useRef } from "react";
 
 import type { MetricFilter } from "@/lib/filters/types";
 
@@ -164,6 +165,102 @@ describe("EvidenceDrawerProvider", () => {
         await userEvent.click(link);
 
         expect(screen.queryByRole("dialog")).toBeNull();
+    });
+});
+
+/** A caller with a body of its own (as a chart dot, a heatmap cell or a table row has). */
+function ContentPage({ onClose }: { onClose?: () => void }) {
+    const evidence = useEvidenceDrawer();
+    const region = useRef<HTMLDivElement>(null);
+    return (
+        <div>
+            <button
+                type="button"
+                onClick={() =>
+                    evidence.open({
+                        title: "Team Alpha",
+                        content: <p>body of the point</p>,
+                        footer: <a href="/code">Footer link</a>,
+                        onClose,
+                    })
+                }
+            >
+                Row button
+            </button>
+            {/* Not focusable by Tab; stands for a chart region whose marks are drawn on a canvas. */}
+            <div ref={region} tabIndex={-1} data-testid="chart-region">
+                <span
+                    data-testid="canvas-mark"
+                    onClick={() =>
+                        evidence.open({
+                            title: "Team Beta",
+                            content: <p>body of the mark</p>,
+                            returnFocusRef: region,
+                        })
+                    }
+                >
+                    mark
+                </span>
+            </div>
+        </div>
+    );
+}
+
+describe("EvidenceDrawerProvider with a body of the caller", () => {
+    const content = (onClose?: () => void) => (
+        <EvidenceDrawerProvider>
+            <ContentPage onClose={onClose} />
+        </EvidenceDrawerProvider>
+    );
+
+    it("renders the caller's body and footer in the same drawer frame, with no evidence request", async () => {
+        render(content());
+        await userEvent.click(screen.getByRole("button", { name: "Row button" }));
+
+        const dialog = screen.getByRole("dialog", { name: "Evidence & Context" });
+        expect(within(dialog).getByText("Contextual investigation")).toBeInTheDocument();
+        expect(subject()).toHaveTextContent("Team Alpha");
+        expect(within(dialog).getByText("body of the point")).toBeInTheDocument();
+        expect(within(dialog).getByRole("link", { name: "Footer link" })).toBeInTheDocument();
+        expect(mockGetExplainData).not.toHaveBeenCalled();
+    });
+
+    it("closes on Escape and gives focus back to the button that opened it", async () => {
+        render(content());
+        const opener = screen.getByRole("button", { name: "Row button" });
+        await userEvent.click(opener);
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(opener).toHaveFocus();
+    });
+
+    it("gives focus to the caller's region when the opener is not focusable (a mark on a canvas)", async () => {
+        render(content());
+        await userEvent.click(screen.getByTestId("canvas-mark"));
+        expect(subject()).toHaveTextContent("Team Beta");
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(screen.getByTestId("chart-region")).toHaveFocus();
+    });
+
+    it("tells the caller when the drawer closes, and when another subject replaces it", async () => {
+        const onClose = vi.fn();
+        render(content(onClose));
+        await userEvent.click(screen.getByRole("button", { name: "Row button" }));
+        expect(onClose).not.toHaveBeenCalled();
+        await userEvent.click(screen.getByRole("button", { name: "Close" }));
+        expect(onClose).toHaveBeenCalledTimes(1);
+
+        await userEvent.click(screen.getByRole("button", { name: "Row button" }));
+        await userEvent.click(screen.getByTestId("canvas-mark"));
+        expect(screen.getAllByRole("dialog")).toHaveLength(1);
+        expect(subject()).toHaveTextContent("Team Beta");
+        expect(onClose).toHaveBeenCalledTimes(2);
     });
 });
 

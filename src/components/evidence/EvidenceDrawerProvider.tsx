@@ -8,6 +8,7 @@ import {
     useRef,
     useState,
     type ReactNode,
+    type RefObject,
 } from "react";
 import { usePathname } from "next/navigation";
 
@@ -45,6 +46,12 @@ export type EvidenceRequestSubject = SubjectBase & {
 export type EvidenceContentSubject = SubjectBase & {
     content: ReactNode;
     footer?: ReactNode;
+    /**
+     * Gets focus when the drawer closes. Pass it when the opener is not a focusable element (a
+     * mark on a chart canvas): the chart region then gets focus back. Default: the element that
+     * had focus when the drawer opened (the button that opened it).
+     */
+    returnFocusRef?: RefObject<HTMLElement | null>;
 };
 
 /** What the drawer explains. */
@@ -117,6 +124,7 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
                     subject={subject.title}
                     onCloseAction={close}
                     footer={subject.footer}
+                    returnFocusRef={subject.returnFocusRef}
                 >
                     {subject.content}
                 </EvidenceDrawerShell>

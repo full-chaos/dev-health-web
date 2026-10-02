@@ -8,7 +8,7 @@ import { MetricFilter } from "@/lib/filters/types";
 import { Contributor, HomeResponse, InvestmentResponse, OpportunitiesResponse } from "@/lib/types";
 import { EvidenceContext } from "./EvidenceContext";
 import { EvidenceDrawerShell } from "./EvidenceDrawerShell";
-import { EvidenceFact, EvidenceFactList } from "./EvidenceFacts";
+import { EvidenceProvenanceFacts } from "./EvidenceFacts";
 import { EvidenceItems } from "./EvidenceItems";
 import { SuggestedActions } from "./SuggestedActions";
 import { ErrorCard } from "@/components/ui/ErrorCard";
@@ -17,11 +17,7 @@ import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { STATUS_PILL } from "@/lib/statusPill";
 import { getMetricDefinition } from "@/lib/metrics/definitions";
-import {
-    formatNumber,
-    formatPercent as formatDisplayPercent,
-    formatTimestamp,
-} from "@/lib/formatters";
+import { formatNumber, formatPercent as formatDisplayPercent } from "@/lib/formatters";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import Link from "next/link";
 
@@ -535,13 +531,7 @@ export function EvidencePanel({
     );
 }
 
-/**
- * The fact rows of the drawer: one row per field, label left and value right. A field the API
- * did not serve shows "Not reported"; the web never fills a value in.
- *
- * "Artifacts" is the count of artifacts the API returned for this selection. An empty list is
- * "None returned" (a partial-data state), never "0".
- */
+/** The provenance rows of an explain result, and the partial-data note under them. */
 function EvidenceFacts({
     provenance,
     artifactCount,
@@ -549,48 +539,15 @@ function EvidenceFacts({
     provenance?: EvidenceProvenance;
     artifactCount: number;
 }) {
-    const confidence = provenance?.identity_confidence;
-    const quality = provenance?.quality;
-    const lastSync = provenance?.last_sync;
-
     return (
         <section className="text-xs">
-            <EvidenceFactList aria-label="Quality and provenance">
-                <EvidenceFact label="Source" value={provenance?.source || undefined} />
-                <EvidenceFact
-                    label="Data quality"
-                    value={
-                        quality ? (
-                            <span
-                                className={`rounded-full border px-2 py-0.5 font-medium ${STATUS_PILL.muted}`}
-                            >
-                                {quality.charAt(0).toUpperCase() + quality.slice(1)}
-                            </span>
-                        ) : undefined
-                    }
-                />
-                <EvidenceFact
-                    label="Last sync"
-                    // An unparseable value is shown as served, not replaced.
-                    value={lastSync ? formatTimestamp(lastSync, lastSync) : undefined}
-                />
-                <EvidenceFact
-                    label="Identity confidence"
-                    value={
-                        typeof confidence === "number"
-                            ? `${Math.round(confidence * 100)}%`
-                            : undefined
-                    }
-                />
-                <EvidenceFact
-                    label="Artifacts"
-                    value={
-                        artifactCount > 0
-                            ? `${artifactCount} ${artifactCount === 1 ? "artifact" : "artifacts"}`
-                            : "None returned"
-                    }
-                />
-            </EvidenceFactList>
+            <EvidenceProvenanceFacts
+                source={provenance?.source}
+                quality={provenance?.quality}
+                lastSync={provenance?.last_sync}
+                identityConfidence={provenance?.identity_confidence}
+                artifactCount={artifactCount}
+            />
             {provenance?.partial && (
                 <p className={`mt-3 rounded-xl px-3 py-2 ${STATUS_PILL.caution}`}>
                     Partial evidence: the backend did not return a complete artifact list for this
