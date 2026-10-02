@@ -385,7 +385,9 @@ export type AiAttributedPr = {
   mergedAt?: Maybe<Scalars['DateTime']['output']>;
   number: Scalars['Int']['output'];
   repoId: Scalars['ID']['output'];
+  repoName?: Maybe<Scalars['String']['output']>;
   teamId?: Maybe<Scalars['String']['output']>;
+  teamName?: Maybe<Scalars['String']['output']>;
   title?: Maybe<Scalars['String']['output']>;
   workType?: Maybe<Scalars['String']['output']>;
 };
