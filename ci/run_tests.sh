@@ -154,8 +154,11 @@ print_playwright_artifact_summary() {
 }
 
 run_quality() {
-  echo "==> pnpm audit --audit-level=high --prod"
-  pnpm audit --audit-level=high --prod
+  # The dependency audit runs LAST. Under `set -e` the first failing step ends
+  # the job, and a red audit (an advisory in a dependency, outside this
+  # change) used to stop the job before lint and typecheck ever ran, so type
+  # errors stayed hidden behind it. The code checks run first; the audit still
+  # fails the job.
   run_pnpm_script codegen:check
   # CHAOS-4696: query-api resolves a request by digesting the raw query
   # text it receives. This asserts, for every registered document, that
@@ -177,6 +180,8 @@ run_quality() {
   pnpm graphql:wire-parity:check --ops-root "${wire_parity_root}"
   run_pnpm_script lint
   run_pnpm_script typecheck
+  echo "==> pnpm audit --audit-level=high --prod"
+  pnpm audit --audit-level=high --prod
 }
 
 run_unit() {
