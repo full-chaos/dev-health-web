@@ -226,7 +226,7 @@ export function ScopeBarClient({
                     <div
                         role="group"
                         aria-labelledby="scope-bar-window-label"
-                        className="flex rounded-(--radius-pill) border border-(--border) bg-(--surface-raised) p-1"
+                        className="flex items-center gap-1"
                     >
                         {WINDOW_OPTIONS.map((days) => {
                             const active = filters.time.range_days === days;
@@ -236,9 +236,9 @@ export function ScopeBarClient({
                                     type="button"
                                     onClick={() => setWindow(days)}
                                     aria-pressed={active}
-                                    className={`rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) ${
+                                    className={`rounded-(--radius-sm) px-2 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) ${
                                         active
-                                            ? "bg-(--accent) text-(--accent-foreground)"
+                                            ? "bg-(--accent)/15 font-semibold text-(--accent-text)"
                                             : "text-(--text-secondary) hover:text-(--text-primary)"
                                     }`}
                                 >
