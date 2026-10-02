@@ -132,6 +132,12 @@ beforeEach(() => {
 });
 
 describe("getGovernSignals — source → AreaSignal mapping", () => {
+    it("carries no driver line on any card (only AI Impact has one)", async () => {
+        const signals = await getGovernSignals(defaultMetricFilter);
+        expect(signals.length).toBeGreaterThan(0);
+        expect(signals.filter((s) => s.driver !== undefined)).toEqual([]);
+    });
+
     it("derives Quality cluster states from analytics values", async () => {
         const signals = byId(await getGovernSignals(defaultMetricFilter));
 

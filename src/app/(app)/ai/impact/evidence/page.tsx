@@ -1,13 +1,11 @@
 import { AIImpactEvidenceList } from "@/components/ai/AIImpactEvidenceList";
-import { AIPageHeader } from "@/components/ai/AIPageHeader";
-import { FilterBar } from "@/components/filters/FilterBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { BackLink } from "@/components/shared/BackLink";
 import { checkApiHealth } from "@/lib/api/system";
 import { metricFilterToAIFilter } from "@/lib/filters/ai";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
-import { navTrailForPathname } from "@/lib/navigation/areas";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 
 type AIImpactEvidencePageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -22,33 +20,23 @@ export default async function AIImpactEvidencePage({ searchParams }: AIImpactEvi
     const health = await checkApiHealth();
 
     if (!health.ok) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     return (
-        <>
-            <BackLink href={withFilterParam("/ai/impact", filters, role)} area="Impact" />
-            <AIPageHeader
-                eyebrow="AI"
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            <PageHeader
                 title="PR Evidence"
-                breadcrumbs={[
-                    // Drop the trail's final (current-page) "Impact" crumb and
-                    // re-add it as a filter-preserving link back to the rollups,
-                    // with PR Evidence as the current crumb.
-                    ...navTrailForPathname("/ai/impact").slice(0, -1),
-                    { label: "Impact", href: withFilterParam("/ai/impact", filters, role) },
-                    { label: "PR Evidence" },
-                ]}
-            >
-                Every AI-attributed pull request behind the Impact rollups, with provenance badges
-                and Work Graph evidence per PR.
-            </AIPageHeader>
+                subtitle="Every AI-attributed pull request behind the Impact rollups, with provenance badges and Work Graph evidence per PR."
+                back={{ href: withFilterParam("/ai/impact", filters, role), area: "Impact" }}
+            />
 
-            {/* Single context bar per the IA dual-bar invariant: the drilldown
-                keeps FilterBar (it drives the PR list); area context comes from
-                the AI chrome. */}
-            <FilterBar view="ai" />
+            {/* The list reads the organization, the team, the repository, the window and
+                the work type from `f`, so the page has the full scope bar. */}
+            <ScopeBar view="ai" />
             <AIImpactEvidenceList filter={aiFilter} />
-        </>
+        </div>
     );
 }

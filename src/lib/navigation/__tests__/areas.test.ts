@@ -170,13 +170,13 @@ describe("selectedAreaIdForPathname", () => {
     });
 
     it("falls back to the area owning the active id when no path matches", () => {
-        expect(selectedAreaIdForPathname(navAreas, "/prs/123", "people")).toBe("diagnose");
-        expect(selectedAreaIdForPathname(navAreas, "/issues/9", "security")).toBe("govern");
+        expect(selectedAreaIdForPathname(navAreas, "/demo", "people")).toBe("diagnose");
+        expect(selectedAreaIdForPathname(navAreas, "/demo", "security")).toBe("govern");
     });
 
     it("returns undefined when neither path nor fallback resolves", () => {
-        expect(selectedAreaIdForPathname(navAreas, "/prs/123")).toBeUndefined();
-        expect(selectedAreaIdForPathname(navAreas, "/prs/123", "nonexistent")).toBeUndefined();
+        expect(selectedAreaIdForPathname(navAreas, "/demo")).toBeUndefined();
+        expect(selectedAreaIdForPathname(navAreas, "/demo", "nonexistent")).toBeUndefined();
     });
 
     it("does not match a sibling prefix by string-prefix accident", () => {
@@ -290,6 +290,36 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
         }
     });
 
+    it("selects NO child on the route of a preview (navVisible:false) child: a visible sibling with a shorter prefix does not claim it", () => {
+        // The case that was wrong: the AI Overview child (`/ai`) claimed
+        // `/ai/attribution`, so the sidebar and the trail said "Overview" there.
+        expect(selectedChildForPathname(areaById("ai"), "/ai/attribution")).toBeUndefined();
+        expect(navTrailForPathname("/ai/attribution")).toEqual([{ label: "AI" }]);
+        expect(navTitleForPathname("/ai/attribution")).toBe("AI");
+
+        const previewPaths = navAreas.flatMap((area) =>
+            area.children
+                .filter((child) => !child.navVisible)
+                .map((child) => [area.id, child.path] as const),
+        );
+        expect(previewPaths.length).toBeGreaterThan(0);
+        for (const [areaId, path] of previewPaths) {
+            expect(selectedChildForPathname(areaById(areaId), path), path).toBeUndefined();
+        }
+    });
+
+    it("still selects the visible child with the longest prefix, and the area Overview on its own route", () => {
+        expect(selectedChildForPathname(areaById("ai"), "/ai")?.id).toBe("ai-overview");
+        expect(selectedChildForPathname(areaById("ai"), "/ai/impact")?.id).toBe("ai-impact");
+        expect(selectedChildForPathname(areaById("ai"), "/ai/impact/evidence")?.id).toBe(
+            "ai-impact",
+        );
+        expect(navTrailForPathname("/ai/impact/evidence")).toEqual([
+            { label: "AI", href: "/ai" },
+            { label: "Impact" },
+        ]);
+    });
+
     it("links Flow sidebar rows to the Flow metrics tab while keeping /metrics active", () => {
         const flowChild = areaById("diagnose").children.find((child) => child.id === "flow");
         expect(flowChild?.path).toBe("/metrics?tab=flow");
@@ -339,9 +369,18 @@ describe("navTitleForPathname / navTrailForPathname (A6: labels agree)", () => {
         expect(trail[trail.length - 1]?.label).toBe(child?.label);
     });
 
+    it.each(["/prs/repo-1:42", "/issues/x-1", "/deployments/x-1"])(
+        "%s: an artifact detail route belongs to Diagnose, with no destination and a trail that is the area only",
+        (pathname) => {
+            expect(selectedAreaIdForPathname(navAreas, pathname)).toBe("diagnose");
+            expect(selectedChildForPathname(areaById("diagnose"), pathname)).toBeUndefined();
+            expect(navTrailForPathname(pathname)).toEqual([{ label: "Diagnose" }]);
+        },
+    );
+
     it("returns an empty trail/title for routes no area owns", () => {
-        expect(navTrailForPathname("/prs/123")).toEqual([]);
-        expect(navTitleForPathname("/prs/123")).toBe("");
+        expect(navTrailForPathname("/demo")).toEqual([]);
+        expect(navTitleForPathname("/demo")).toBe("");
     });
 });
 

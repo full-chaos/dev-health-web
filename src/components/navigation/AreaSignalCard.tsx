@@ -177,6 +177,13 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
             ) : (
                 <p className="mt-2 text-sm text-(--ink-muted)">{signal.metricLabel}</p>
             )}
+
+            {/* The number that set the state, when it is not the headline value. */}
+            {signal.driver ? (
+                <p data-testid="area-signal-driver" className="mt-1.5 text-xs text-(--ink-muted)">
+                    {signal.driver}
+                </p>
+            ) : null}
         </Link>
     );
 }

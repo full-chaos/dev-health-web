@@ -8,10 +8,6 @@ const getPrDetailViaGraphQLMock = vi.fn();
 const getAIWorkflowDrilldownViaGraphQLMock = vi.fn();
 const getWorkUnitInvestmentDistributionMock = vi.fn();
 
-vi.mock("@/components/navigation/PrimaryNav", () => ({
-    PrimaryNav: () => <nav data-testid="primary-nav" />,
-}));
-
 vi.mock("@/components/charts/FlameDiagram", () => ({
     FlameDiagram: () => <div data-testid="flame-diagram" />,
 }));
