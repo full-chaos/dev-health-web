@@ -1062,7 +1062,12 @@ type NodeDetailPanelProps = {
     onClose: () => void;
 };
 
-function NodeDetailPanel({ node, incomingEdges, outgoingEdges, onClose }: NodeDetailPanelProps) {
+export function NodeDetailPanel({
+    node,
+    incomingEdges,
+    outgoingEdges,
+    onClose,
+}: NodeDetailPanelProps) {
     const typeColors: Record<WorkGraphNodeType, string> = {
         ISSUE: "bg-amber-500",
         PR: "bg-emerald-500",
