@@ -8,8 +8,6 @@ import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 
 import { TAB_SETS, getTabSet, tabHref, type TabSet } from "../tabs";
 
-const appRoot = join(process.cwd(), "src/app/(app)");
-
 // The sets as the general type: loops over every set do not depend on each set's literal type.
 const SETS: readonly TabSet[] = TAB_SETS;
 
