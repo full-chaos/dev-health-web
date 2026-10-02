@@ -1,5 +1,6 @@
 import { formatNumber } from "@/lib/formatters";
 import { formatSubcategoryLabel, titleCase } from "@/lib/investment";
+import { confidenceToneClass } from "./ConfidencePanel";
 import type { MixExplanationState } from "./types";
 
 type InvestmentExplainerProps = {
@@ -103,15 +104,9 @@ export function InvestmentExplainer({
                                     Confidence
                                 </span>
                                 <span
-                                    className={`rounded-full px-2 py-0.5 text-xs uppercase ${
-                                        mixExplanation.data.confidence?.level === "high"
-                                            ? "bg-emerald-500/20 text-emerald-600"
-                                            : mixExplanation.data.confidence?.level === "moderate"
-                                              ? "bg-amber-500/20 text-amber-600"
-                                              : mixExplanation.data.confidence?.level === "low"
-                                                ? "bg-red-500/20 text-red-600"
-                                                : "bg-gray-500/20 text-gray-500"
-                                    }`}
+                                    className={`rounded-full px-2 py-0.5 text-xs uppercase ${confidenceToneClass(
+                                        mixExplanation.data.confidence?.level,
+                                    )}`}
                                 >
                                     {mixExplanation.data.confidence?.level ?? "unknown"}
                                 </span>

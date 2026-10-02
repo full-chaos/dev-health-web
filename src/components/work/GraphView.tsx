@@ -28,6 +28,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { withFilterParam } from "@/lib/filters/url";
 import { useOrgId } from "@/lib/graphql/provider";
 import { formatNumber } from "@/lib/formatters";
+import { nodeTypeDotClass } from "@/lib/workGraphNodeColors";
 import {
     INVESTMENT_SUBCATEGORIES,
     INVESTMENT_THEMES,
@@ -1068,24 +1069,11 @@ export function NodeDetailPanel({
     outgoingEdges,
     onClose,
 }: NodeDetailPanelProps) {
-    const typeColors: Record<WorkGraphNodeType, string> = {
-        ISSUE: "bg-amber-500",
-        PR: "bg-emerald-500",
-        COMMIT: "bg-indigo-500",
-        FILE: "bg-purple-500",
-        RELEASE: "bg-teal-600",
-        FEATURE_FLAG: "bg-amber-600",
-        AI_WORKFLOW_RUN: "bg-cyan-500",
-        DIFF: "bg-pink-500",
-        REVIEW_OUTCOME: "bg-lime-500",
-        DEPLOYMENT: "bg-sky-500",
-        INCIDENT: "bg-red-500",
-    };
     return (
         <div className="bg-card rounded-lg border border-(--card-stroke) p-4">
             <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
-                    <span className={`w-3 h-3 rounded-sm ${typeColors[node.type]}`} />
+                    <span className={`w-3 h-3 rounded-sm ${nodeTypeDotClass(node.type)}`} />
                     <div>
                         <p className="text-xs text-(--ink-muted) uppercase tracking-wider">
                             {NODE_TYPE_LABELS[node.type]}

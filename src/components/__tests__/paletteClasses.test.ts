@@ -24,9 +24,6 @@ const ALLOWLIST: Record<string, number> = {
     "components/ai/AIRiskDashboard.tsx": 2,
     "components/evidence/EvidenceContext.tsx": 6,
     "components/evidence/EvidencePanel.tsx": 2,
-    "components/work/GraphView.tsx": 11,
-    "components/work/investment/ConfidencePanel.tsx": 8,
-    "components/work/investment/InvestmentExplainer.tsx": 8,
 };
 
 function walk(dir: string, out: string[] = []): string[] {
