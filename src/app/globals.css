@@ -375,7 +375,11 @@ html [data-sonner-toaster][data-sonner-theme] {
 /* Selected-row fill of the sidebar (prototype `--surface2`): visible on the light sidebar. */
 :root[data-palette="infinity"][data-theme="light"] {
     --surface2: #e8ecee;
+    /* Sidebar fill (prototype `--sidebar`, theme.css:14). */
+    --sidebar: #f8f9f9;
 }
 :root[data-palette="infinity"][data-theme="dark"] {
     --surface2: #1f272c;
+    /* Sidebar fill (prototype `--sidebar`, dark-tokens.css:2). */
+    --sidebar: #11171a;
 }

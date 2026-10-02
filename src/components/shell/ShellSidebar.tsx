@@ -71,7 +71,7 @@ export function ShellSidebar({
     return (
         <aside
             data-testid="shell-sidebar"
-            className="md:sticky md:top-0 md:h-dvh md:w-60 md:shrink-0 md:border-r md:border-(--border) md:bg-(--surface)"
+            className="md:sticky md:top-0 md:h-dvh md:w-60 md:shrink-0 md:border-r md:border-(--border) md:bg-(--sidebar)"
         >
             {mobileOpen && (
                 <div
@@ -92,7 +92,7 @@ export function ShellSidebar({
                 onClick={(event) => {
                     if ((event.target as HTMLElement).closest("a[href]")) close();
                 }}
-                className={`flex flex-col gap-4 overflow-y-auto border-r border-(--border) bg-(--surface) p-4 focus:outline-none max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:w-60 max-md:max-w-[86vw] max-md:shadow-xl max-md:transition-[transform,visibility] max-md:duration-200 motion-reduce:transition-none ${
+                className={`flex flex-col gap-4 overflow-y-auto border-r border-(--border) bg-(--sidebar) p-4 focus:outline-none max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:w-60 max-md:max-w-[86vw] max-md:shadow-xl max-md:transition-[transform,visibility] max-md:duration-200 motion-reduce:transition-none ${
                     mobileOpen
                         ? "max-md:visible max-md:translate-x-0"
                         : "max-md:invisible max-md:-translate-x-full"
