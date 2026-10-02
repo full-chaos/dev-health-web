@@ -66,8 +66,11 @@ test.describe("AI area journey (CHAOS-2213)", () => {
         );
 
         // Sample data is a severity mix by design — nothing collapses into the
-        // unavailable tier.
-        await expect(page.getByTestId("area-overview-empty-tier")).toHaveCount(0);
+        // unavailable tier (an unavailable signal renders as a muted card with
+        // data-state="unavailable", AreaSignalCard.tsx:82,98).
+        await expect(
+            page.getByTestId("area-hub").locator('[data-state="unavailable"]'),
+        ).toHaveCount(0);
     });
 
     test("overview hub → impact → PR evidence drilldown → back to impact, filters intact", async ({
