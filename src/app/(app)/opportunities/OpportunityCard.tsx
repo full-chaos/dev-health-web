@@ -102,8 +102,8 @@ export function OpportunityCard({ card, filters, activeRole }: OpportunityCardPr
                         href={withFilterParam("/improve/experiments", filters, activeRole)}
                         className={buttonClassName("secondary")}
                     >
-                        {CTA_LABELS.exploreExperiments}
                         <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                        {CTA_LABELS.exploreExperiments}
                     </Link>
                 </div>
                 {more.length > 0 && (

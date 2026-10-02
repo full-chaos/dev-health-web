@@ -63,6 +63,9 @@ describe("ExperimentCards", () => {
         const buttons = screen.getAllByRole("button", { name: "Review evidence" });
         expect(buttons).toHaveLength(1);
         expect(buttons[0].querySelector("svg")).not.toBeNull();
+        // The arrow comes before the label (prototype btn()).
+        expect(buttons[0].firstElementChild?.tagName.toLowerCase()).toBe("span");
+        expect(buttons[0].lastChild?.nodeType).toBe(Node.TEXT_NODE);
         expect(buttons[0].className).toContain("text-(--accent-2)");
         await userEvent.click(buttons[0]);
         expect(screen.getByTestId("evidence-drawer")).toHaveTextContent("review_latency");

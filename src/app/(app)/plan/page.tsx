@@ -291,8 +291,8 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                                     </p>
                                 </div>
                                 <Link href={completionHref} className={buttonClassName("primary")}>
-                                    {CTA_LABELS.completionForecast}
                                     <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                                    {CTA_LABELS.completionForecast}
                                 </Link>
                             </div>
                             <div className="mt-6">
@@ -332,12 +332,12 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                     >
                         <div className="grid gap-3 sm:grid-cols-2">
                             <Link href={completionHref} className={buttonClassName("secondary")}>
-                                {CTA_LABELS.forecastCompletion}
                                 <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                                {CTA_LABELS.forecastCompletion}
                             </Link>
                             <Link href={backlogHref} className={buttonClassName("secondary")}>
-                                {CTA_LABELS.inspectBacklogRisk}
                                 <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                                {CTA_LABELS.inspectBacklogRisk}
                             </Link>
                         </div>
                     </Section>
