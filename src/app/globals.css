@@ -37,6 +37,8 @@
     --accent-text: var(--accent);
     --accent-foreground: #0d1117;
     --accent-2: #625b71;
+    --action: var(--accent-2);
+    --on-action: #ffffff;
     --accent-3: #7d5260;
     --accent-negative: #b3261e;
     --accent-highlight: #fb8c00;
@@ -204,6 +206,8 @@
     --color-accent: var(--accent);
     --color-accent-text: var(--accent-text);
     --color-accent-2: var(--accent-2);
+    --color-action: var(--action);
+    --color-on-action: var(--on-action);
     --color-accent-3: var(--accent-3);
     --color-accent-ai: var(--accent-ai);
     --color-accent-negative: var(--accent-negative);
