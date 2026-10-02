@@ -71,15 +71,15 @@ export const AREA_STATE_LABEL: Record<Exclude<AreaSignalState, "unavailable">, s
 };
 
 /**
- * Area-card severity pill (approved `.pill`): small, tinted fill, no outline, no forced caps.
+ * Area-card severity pill (approved `.pill`): small, fully round (`rounded-full!` beats a caller's `rounded-sm`), tinted fill, no outline, no forced caps.
  * Production's severity words stay (Critical / High / Medium / Low / Info).
  */
 export const AREA_STATE_PILL: Record<Exclude<AreaSignalState, "unavailable">, string> = {
-    critical: "bg-(--accent-negative)/12 text-(--accent-negative)",
-    high: "bg-(--accent-3)/12 text-(--accent-3)",
-    medium: "bg-(--accent-2)/12 text-(--accent-2)",
-    low: "bg-(--positive-wash) text-(--positive)",
-    neutral: "bg-(--info-wash) text-(--info)",
+    critical: "rounded-full! bg-(--accent-negative)/12 text-(--accent-negative)",
+    high: "rounded-full! bg-(--accent-3)/12 text-(--accent-3)",
+    medium: "rounded-full! bg-(--accent-2)/12 text-(--accent-2)",
+    low: "rounded-full! bg-(--positive-wash) text-(--positive)",
+    neutral: "rounded-full! bg-(--info-wash) text-(--info)",
 };
 
 /** Hero big-value color by state: critical and high take their severity token, others stay ink. */
