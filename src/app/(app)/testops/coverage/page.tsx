@@ -215,7 +215,7 @@ export default async function CoveragePage({
 								/>
 							</div>
 						</ChartFrame>
-						<div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
+						<div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
 							<h2 className="font-(--font-display) text-xl mb-4">
 								Coverage by Repository
 							</h2>
