@@ -161,6 +161,7 @@ export type AiImpactBucketRow = {
   bucket: Scalars['String']['output'];
   changesRequestedPerPr?: Maybe<Scalars['Float']['output']>;
   cycleTimeAvgHours?: Maybe<Scalars['Float']['output']>;
+  day: Scalars['Date']['output'];
   incidentRate?: Maybe<Scalars['Float']['output']>;
   incidentsCount: Scalars['Int']['output'];
   prsMerged: Scalars['Int']['output'];
