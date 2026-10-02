@@ -16,7 +16,6 @@ const ACCENT_TEXT_FILES = [
     "components/admin/integrations/wizard/AuthMethodStep.tsx",
     "components/admin/settings/billing/ChangePlanDialog.tsx",
     "components/home/CockpitSummary.tsx",
-    "components/home/CockpitClient.tsx",
     "components/billing/UpgradeGate.tsx",
     "components/admin/llm/ByoLlmSpendSummary.tsx",
     "components/admin/llm/ByoLlmSettings.tsx",

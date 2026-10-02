@@ -36,13 +36,11 @@ vi.mock("@/lib/auth", () => ({
     auth: vi.fn(async () => ({ user: { org_id: "org-1" } })),
 }));
 
-vi.mock("@/components/home/AiWorkflowCallout", () => ({ AiWorkflowCallout: () => null }));
-vi.mock("@/components/home/BackendBanner", () => ({ BackendBanner: () => null }));
-vi.mock("@/components/home/CockpitClient", () => ({ CockpitClient: () => null }));
+vi.mock("@/components/home/HomeMonitoring", () => ({ HomeMonitoring: () => null }));
+vi.mock("@/components/home/InvestigationThreads", () => ({ InvestigationThreads: () => null }));
 vi.mock("@/components/home/DataConfidenceIndicator", () => ({
     DataConfidenceIndicator: () => null,
 }));
-vi.mock("@/components/home/InvestmentPreview", () => ({ InvestmentPreview: () => null }));
 vi.mock("@/components/home/RankedSignals", () => ({ RankedSignals: () => null }));
 vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => null }));
 vi.mock("@/components/onboarding/SetupBanner", () => ({ SetupBanner: () => null }));
@@ -165,6 +163,57 @@ describe("Home page header", () => {
         // The page as a whole: no thread. Same window as the subtitle states.
         expect(call?.searchParams.has("thread")).toBe(false);
         expect(call?.searchParams.get("range_days")).toBe(days);
+    });
+
+    it("lists the served meta coverage counts in the page evidence drawer, not in the header (CHAOS-8064)", async () => {
+        vi.mocked(getApiMeta).mockResolvedValue({
+            backend: "clickhouse",
+            version: "test",
+            last_ingest_at: "2026-07-12T00:07:00Z",
+            coverage: { repos: 1200, prs: 0, note: "n/a" as never },
+            limits: {},
+            supported_endpoints: [],
+        });
+        await renderCockpit();
+
+        // The old header strip ("Synced …", coverage counts) is not on the page.
+        const header = screen.getByTestId("page-header");
+        expect(header).not.toHaveTextContent("Synced");
+        expect(header).not.toHaveTextContent("repos");
+
+        await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
+        const rows = within(
+            within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage"),
+        )
+            .getAllByTestId("evidence-fact")
+            .map((row) => [
+                row.querySelector("dt")?.textContent,
+                row.querySelector("dd")?.textContent,
+            ]);
+        // Every served number, zero included (zero is a served value, not a missing one).
+        expect(rows).toEqual([
+            ["Coverage", "Not reported"],
+            ["Coverage: repos", "1,200"],
+            ["Coverage: prs", "0"],
+        ]);
+    });
+
+    it("adds no meta coverage row when the meta endpoint served none", async () => {
+        vi.mocked(getApiMeta).mockResolvedValue({
+            backend: "clickhouse",
+            version: "test",
+            last_ingest_at: null,
+            coverage: {},
+            limits: {},
+            supported_endpoints: [],
+        });
+        await renderCockpit();
+        await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
+        expect(
+            within(
+                within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage"),
+            ).getAllByTestId("evidence-fact"),
+        ).toHaveLength(1);
     });
 
     it("shows the served source coverage in the page evidence drawer, or Not reported", async () => {
