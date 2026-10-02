@@ -74,7 +74,7 @@ const testOpsTabRoutes = [
         id: "overview",
         label: "Overview",
         path: "/testops",
-        contentGuard: "TestOps summary",
+        contentGuard: "CI and test health",
     },
     {
         id: "pipelines",
