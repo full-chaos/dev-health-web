@@ -174,23 +174,18 @@ describe("QuadrantPanel evidence drawer", () => {
         expect(region).toHaveFocus();
     });
 
-    it("starts the dot drawer with the five provenance rows, 'Not reported' for each field the quadrant query does not serve", async () => {
+    it("shows one muted provenance line in the dot drawer, not five empty rows (the quadrant query serves none)", async () => {
         render(panel());
         await userEvent.click(screen.getByRole("button", { name: "dot Team Alpha" }));
 
-        const rows = within(within(screen.getByRole("dialog")).getByTestId("evidence-facts"))
-            .getAllByTestId("evidence-fact")
-            .map((row) => [
-                row.querySelector("dt")?.textContent,
-                row.querySelector("dd")?.textContent,
-            ]);
-        expect(rows).toEqual([
-            ["Source", "Not reported"],
-            ["Data quality", "Not reported"],
-            ["Last sync", "Not reported"],
-            ["Identity confidence", "Not reported"],
-            ["Artifacts", "Not reported"],
-        ]);
+        const drawer = screen.getByRole("dialog");
+        expect(within(drawer).getByTestId("evidence-provenance-not-reported")).toHaveTextContent(
+            "Provenance is not reported for this item.",
+        );
+        expect(within(drawer).queryByTestId("evidence-facts")).toBeNull();
+        expect(within(drawer).queryByText("Not reported")).toBeNull();
+        // The point's own served values follow.
+        expect(within(drawer).getByTestId("evidence-subject-facts")).toBeInTheDocument();
     });
 
     it("shows the point's raw axis values as the chart formats them, and its window", async () => {

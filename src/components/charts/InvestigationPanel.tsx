@@ -137,8 +137,8 @@ export function InvestigationPanel({ point, data, filters, title }: Investigatio
         <div data-testid="investigation-panel" className="text-xs">
             <div className="space-y-6">
                 {/* The quadrant query serves no source, quality, sync time, identity confidence
-                    or artifact list for a point: the five rows say so. */}
-                <EvidenceProvenanceFacts />
+                    or artifact list for a point: one line says so, in place of five empty rows. */}
+                <EvidenceProvenanceFacts whenEmpty="line" />
                 {/* The point as the chart draws it: the two raw axis values and its window. */}
                 <EvidenceFactList aria-label="Point" testId="evidence-subject-facts">
                     <EvidenceFact
