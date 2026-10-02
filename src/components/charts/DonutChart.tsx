@@ -5,14 +5,25 @@ import type { CSSProperties } from "react";
 import { PieChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
-import { useChartTheme } from "./chartTheme";
+import { useChartColors, useChartTheme } from "./chartTheme";
 import { buildTooltip } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
 
 echarts.use([PieChart]);
 
+export type DonutSegment = {
+    name: string;
+    value: number;
+    /** 1-based position in the theme's chart colors; keeps a category on one color. */
+    colorIndex?: number;
+    /** Use the muted ink color (for a "none of the above" slice such as Human or Unknown). */
+    muted?: boolean;
+};
+
 type DonutChartProps = {
-    data: Array<{ name: string; value: number }>;
+    data: DonutSegment[];
+    /** Write each legend entry's share after its name ("Human 50%"). Off by default. */
+    legendPercent?: boolean;
     selectedIndex?: number;
     height?: number | string;
     width?: number | string;
@@ -22,6 +33,7 @@ type DonutChartProps = {
 
 export function DonutChart({
     data,
+    legendPercent = false,
     selectedIndex = 0,
     height = 280,
     width = "100%",
@@ -29,9 +41,16 @@ export function DonutChart({
     style,
 }: DonutChartProps) {
     const chartTheme = useChartTheme();
-    const segments = data.map((segment, index) => ({
+    const colors = useChartColors();
+    const total = data.reduce((sum, segment) => sum + segment.value, 0);
+    const segments = data.map(({ colorIndex, muted, ...segment }, index) => ({
         ...segment,
         selected: index === selectedIndex,
+        ...(muted
+            ? { itemStyle: { color: chartTheme.muted } }
+            : colorIndex
+              ? { itemStyle: { color: colors[colorIndex - 1] } }
+              : {}),
     }));
 
     const mergedStyle: CSSProperties = {
@@ -47,6 +66,14 @@ export function DonutChart({
                 legend: {
                     bottom: 0,
                     textStyle: { color: chartTheme.muted },
+                    ...(legendPercent
+                        ? {
+                              formatter: (name: string) => {
+                                  const value = data.find((d) => d.name === name)?.value ?? 0;
+                                  return `${name} ${total > 0 ? Math.round((value / total) * 100) : 0}%`;
+                              },
+                          }
+                        : {}),
                 },
                 series: [
                     {

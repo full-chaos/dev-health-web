@@ -34,8 +34,9 @@ vi.mock("@/components/shell/ScopeBar", () => ({
         return <section data-testid="scope-bar" />;
     },
 }));
+const getOpportunitiesMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/api/home", () => ({
-    getOpportunities: vi.fn().mockResolvedValue({ items: [] }),
+    getOpportunities: (...args: unknown[]) => getOpportunitiesMock(...args),
 }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({ ok: true }) }));
 vi.mock("@/lib/config", async (importOriginal) => ({
@@ -55,6 +56,8 @@ async function renderPage() {
 
 beforeEach(() => {
     scopeBarSpy.mockClear();
+    getOpportunitiesMock.mockReset();
+    getOpportunitiesMock.mockResolvedValue({ items: [] });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
 });
 
@@ -100,7 +103,7 @@ describe("Opportunities in the shared app shell", () => {
         expect(
             screen
                 .getByTestId("scope-bar")
-                .compareDocumentPosition(screen.getByRole("region", { name: "Opportunities" })) &
+                .compareDocumentPosition(screen.getByTestId("opportunities-empty")) &
                 Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
     });
@@ -115,5 +118,45 @@ describe("Opportunities in the shared app shell", () => {
         expect(url.pathname).toBe("/ai/automations");
         expect(decodeFilter(url.searchParams.get("f"))).toEqual(FILTERS);
         expect(url.searchParams.get("role")).toBe("em");
+    });
+
+    it("shows a failed fetch as an error with Retry, not as an empty state", async () => {
+        getOpportunitiesMock.mockRejectedValue(new Error("down"));
+        await renderPage();
+
+        const box = screen.getByTestId("opportunities-error");
+        expect(box).toHaveAttribute("data-variant", "error");
+        expect(within(box).getByText("Opportunity data unavailable.")).toBeInTheDocument();
+        expect(within(box).getByRole("button", { name: "Retry" })).toBeInTheDocument();
+        expect(screen.queryByTestId("opportunities-empty")).toBeNull();
+    });
+
+    it("shows no open opportunities as the neutral empty state with the same text", async () => {
+        await renderPage();
+
+        const box = screen.getByTestId("opportunities-empty");
+        expect(box).not.toHaveAttribute("data-variant", "error");
+        expect(box).toHaveTextContent(
+            "No open opportunities in this window — nothing is trending worse for the current scope.",
+        );
+        expect(screen.queryByTestId("opportunities-error")).toBeNull();
+    });
+
+    it("shows the list and the selected opportunity when there are items", async () => {
+        getOpportunitiesMock.mockResolvedValue({
+            items: [
+                {
+                    id: "opp-1",
+                    title: "Reduce Review Latency",
+                    rationale: "Review Latency climbed 1041% in the last 14 days.",
+                    evidence_links: ["/api/v1/explain?metric=review_latency"],
+                    suggested_experiments: ["Trial a review SLA"],
+                },
+            ],
+        });
+        await renderPage();
+
+        expect(screen.getByTestId("opportunity-list")).toBeInTheDocument();
+        expect(screen.getByTestId("opportunity-detail")).toBeInTheDocument();
     });
 });

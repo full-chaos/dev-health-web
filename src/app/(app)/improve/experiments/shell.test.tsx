@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { AppShell } from "@/components/shell/AppShell";
@@ -33,8 +34,13 @@ vi.mock("@/components/shell/ScopeBar", () => ({
 vi.mock("@/lib/auth", () => ({
     requireSession: vi.fn().mockResolvedValue({ user: { org_id: "org-1" } }),
 }));
+const getExperimentsMock = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/graphql/improveFetchers", () => ({
-    getExperimentsViaGraphQL: vi.fn().mockResolvedValue({ items: [] }),
+    getExperimentsViaGraphQL: (...args: unknown[]) => getExperimentsMock(...args),
+}));
+vi.mock("@/components/evidence/EvidencePanel", () => ({
+    EvidencePanel: (props: { isOpen: boolean; metric?: string }) =>
+        props.isOpen ? <div data-testid="evidence-drawer">{props.metric}</div> : null,
 }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({ ok: true }) }));
 vi.mock("@/lib/config", async (importOriginal) => ({
@@ -52,8 +58,20 @@ async function renderPage() {
     );
 }
 
+const experiment = (id: string, metric: string, hypothesis: string) => ({
+    id,
+    opportunityId: "opp-1",
+    metric,
+    hypothesis,
+    status: "SUGGESTED",
+    owner: "",
+    stopCondition: "",
+});
+
 beforeEach(() => {
     scopeBarSpy.mockClear();
+    getExperimentsMock.mockReset();
+    getExperimentsMock.mockResolvedValue({ items: [] });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
 });
 
@@ -70,7 +88,7 @@ describe("Experiments in the shared app shell", () => {
         );
         expect(
             within(screen.getByTestId("page-header")).getByText(
-                "Process experiments derived from improvement opportunities — each with a hypothesis, owner, metric, and stop condition.",
+                "Process experiments derived from improvement opportunities — each with a hypothesis and a metric.",
             ),
         ).toBeInTheDocument();
     });
@@ -101,5 +119,82 @@ describe("Experiments in the shared app shell", () => {
                 .compareDocumentPosition(screen.getByTestId("experiments-empty")) &
                 Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
+    });
+
+    describe("suggestions", () => {
+        const two = () =>
+            getExperimentsMock.mockResolvedValue({
+                items: [
+                    experiment("e1", "review_latency", "Trial a 24h review SLA"),
+                    experiment("e2", "cycle_time", "Cap WIP at three"),
+                ],
+            });
+
+        it("says they are suggestions, not active or assigned experiments", async () => {
+            two();
+            await renderPage();
+
+            const notice = screen.getByTestId("experiments-notice");
+            expect(notice).toHaveTextContent("2 suggested experiments.");
+            expect(notice).toHaveTextContent("Suggestions are not active or assigned experiments.");
+            expect(notice).not.toHaveTextContent(/owner|stop condition/i);
+        });
+
+        it("shows a neutral metric tag, Suggestion N, and the hypothesis as the title", async () => {
+            two();
+            await renderPage();
+
+            const cards = screen.getAllByTestId("experiment-card");
+            expect(cards).toHaveLength(2);
+            expect(within(cards[0]).getByText("Suggestion 1")).toBeInTheDocument();
+            expect(within(cards[1]).getByText("Suggestion 2")).toBeInTheDocument();
+            expect(within(cards[0]).getByText("review_latency")).toBeInTheDocument();
+            expect(within(cards[0]).getByText("Trial a 24h review SLA")).toBeInTheDocument();
+            expect(within(cards[0]).queryByText("SUGGESTED")).toBeNull();
+        });
+
+        it("hides Owner and Stop condition: no rows and no dash cells", async () => {
+            two();
+            await renderPage();
+
+            const list = screen.getByTestId("experiments-list");
+            expect(within(list).queryByText(/^Owner$/i)).toBeNull();
+            expect(within(list).queryByText(/stop condition/i)).toBeNull();
+            expect(within(list).queryByText("—")).toBeNull();
+        });
+
+        it("opens the shared evidence drawer for the card's metric", async () => {
+            two();
+            await renderPage();
+
+            expect(screen.queryByTestId("evidence-drawer")).toBeNull();
+            const cards = screen.getAllByTestId("experiment-card");
+            await userEvent.click(
+                within(cards[1]).getByRole("button", { name: "Review evidence" }),
+            );
+            expect(screen.getByTestId("evidence-drawer")).toHaveTextContent("cycle_time");
+        });
+    });
+
+    it("shows a failed load as an error with Retry, same text, not as an empty state", async () => {
+        getExperimentsMock.mockResolvedValue(null);
+        await renderPage();
+
+        const box = screen.getByTestId("experiments-unavailable");
+        expect(box).toHaveAttribute("data-variant", "error");
+        expect(box).toHaveTextContent("Experiments unavailable");
+        expect(box).toHaveTextContent(
+            "Could not load experiment suggestions for the current window. Connect a data source or retry.",
+        );
+        expect(within(box).getByRole("button", { name: "Retry" })).toBeInTheDocument();
+        expect(screen.queryByTestId("experiments-empty")).toBeNull();
+    });
+
+    it("keeps the neutral empty state for no experiments", async () => {
+        await renderPage();
+
+        const box = screen.getByTestId("experiments-empty");
+        expect(box).not.toHaveAttribute("data-variant", "error");
+        expect(box).toHaveTextContent("No experiments in this window");
     });
 });
