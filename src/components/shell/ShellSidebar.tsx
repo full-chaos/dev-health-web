@@ -117,10 +117,7 @@ export function ShellSidebar({
                     </Link>
                 </div>
 
-                <OrgSwitcher
-                    variant="card"
-                    onActiveOrganizationChange={onActiveOrganizationChange}
-                />
+                <OrgSwitcher onActiveOrganizationChange={onActiveOrganizationChange} />
 
                 <div className="min-h-0 md:flex-1 md:overflow-y-auto">
                     {/* The links read the live query string (filter, role, lens). */}

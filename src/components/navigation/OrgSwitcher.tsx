@@ -51,33 +51,19 @@ type OrgSwitcherProps = {
      * active organization is not in the list.
      */
     onActiveOrganizationChange?: (organization: ActiveOrganizationData | null) => void;
-    /**
-     * `panel` is the legacy look inside `PrimaryNav` / `AdminSidebar`. `card` is
-     * the workspace card of the shared app shell. Behaviour is the same.
-     */
-    variant?: "panel" | "card";
 };
 
-const VARIANT_CLASSES = {
-    panel: {
-        container: "mt-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) p-3",
-        label: "text-label-caps uppercase tracking-widest text-(--ink-muted)",
-        select: "mt-2 w-full rounded-xl border border-(--card-stroke) bg-(--background) px-3 py-2 text-sm text-foreground outline-none transition focus:border-(--accent) disabled:opacity-60",
-        note: "mt-2 text-xs text-(--ink-muted)",
-    },
-    card: {
-        container: "rounded-(--radius-sm) border border-(--border) bg-(--surface-raised) p-3",
-        label: "text-label-caps uppercase text-(--text-muted)",
-        select: "mt-2 w-full rounded-(--radius-sm) border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-primary) outline-none transition focus:border-(--accent-2) disabled:opacity-60",
-        note: "mt-2 text-xs text-(--text-secondary)",
-    },
+// The workspace card of the shared app shell (its organization card). The old "panel" look of
+// the page navigation and the admin sidebar went with them (CHAOS-7751, CHAOS-7965).
+const CLASSES = {
+    container: "rounded-(--radius-sm) border border-(--border) bg-(--surface-raised) p-3",
+    label: "text-label-caps uppercase text-(--text-muted)",
+    select: "mt-2 w-full rounded-(--radius-sm) border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-primary) outline-none transition focus:border-(--accent-2) disabled:opacity-60",
+    note: "mt-2 text-xs text-(--text-secondary)",
 } as const;
 
-export function OrgSwitcher({
-    variant = "panel",
-    onActiveOrganizationChange,
-}: OrgSwitcherProps = {}) {
-    const classes = VARIANT_CLASSES[variant];
+export function OrgSwitcher({ onActiveOrganizationChange }: OrgSwitcherProps = {}) {
+    const classes = CLASSES;
     const router = useRouter();
     const { data: session, update } = useSession();
     const [state, setState] = useState<OrganizationsResponse | null>(null);
@@ -164,7 +150,7 @@ export function OrgSwitcher({
     }
 
     return (
-        <div className={classes.container} data-variant={variant}>
+        <div className={classes.container}>
             <label htmlFor="org-switcher" className={classes.label}>
                 {canSwitchOrganizations ? "Organization" : "Current organization"}
             </label>
