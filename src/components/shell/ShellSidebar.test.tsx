@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -96,26 +97,130 @@ describe("ShellSidebar — landmarks and structure", () => {
                 .map((link) => link.textContent),
         ).toEqual(["Reports", "Admin"]);
     });
+});
 
-    it("keeps the inline navigation control below the md breakpoint: closed by default, Escape closes and returns focus", async () => {
-        const user = userEvent.setup();
-        renderSidebar();
+/** Stands in for the shell: the menu button lives outside the sidebar and the shell owns the state. */
+function SlideOverFrame({ startOpen = false }: { startOpen?: boolean }) {
+    const [open, setOpen] = useState(startOpen);
+    const controlRef = useRef<HTMLButtonElement>(null);
+    return (
+        <AdminTierProvider tier="community" features={{}}>
+            <button
+                type="button"
+                ref={controlRef}
+                aria-expanded={open}
+                aria-controls="primary-navigation-panel"
+                onClick={() => setOpen((value) => !value)}
+            >
+                Menu
+            </button>
+            <ShellSidebar
+                mobileOpen={open}
+                onMobileClose={() => setOpen(false)}
+                mobileControlRef={controlRef}
+            />
+        </AdminTierProvider>
+    );
+}
 
-        const control = screen.getByRole("button", { name: "Show navigation" });
+describe("ShellSidebar — mobile slide-over (CHAOS-7592)", () => {
+    it("is off canvas and not focusable while closed, with no dialog role and no backdrop", () => {
+        render(<SlideOverFrame />);
         const panel = document.getElementById("primary-navigation-panel");
-        expect(control).toHaveAttribute("aria-controls", "primary-navigation-panel");
-        expect(control).toHaveAttribute("aria-expanded", "false");
-        expect(panel).toHaveClass("hidden");
+
+        expect(panel).toHaveClass("max-md:invisible", "max-md:-translate-x-full");
+        expect(panel).not.toHaveClass("max-md:translate-x-0");
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(screen.queryByTestId("shell-nav-backdrop")).toBeNull();
+    });
+
+    it("opens as a modal dialog over a backdrop, moves focus in and locks page scroll", async () => {
+        const user = userEvent.setup();
+        render(<SlideOverFrame />);
+
+        await user.click(screen.getByRole("button", { name: "Menu" }));
+        const dialog = screen.getByRole("dialog", { name: "Navigation" });
+
+        expect(dialog).toHaveAttribute("aria-modal", "true");
+        expect(dialog).toHaveClass("max-md:translate-x-0", "max-md:visible");
+        expect(dialog).toHaveFocus();
+        expect(screen.getByTestId("shell-nav-backdrop")).toHaveClass("md:hidden");
+        expect(document.body.style.overflow).toBe("hidden");
+    });
+
+    it("Escape closes it, returns focus to the menu button and restores page scroll", async () => {
+        const user = userEvent.setup();
+        render(<SlideOverFrame />);
+        const control = screen.getByRole("button", { name: "Menu" });
 
         await user.click(control);
-        expect(control).toHaveAttribute("aria-expanded", "true");
-        expect(control).toHaveTextContent("Hide navigation");
-        expect(panel).not.toHaveClass("hidden");
-
         await user.keyboard("{Escape}");
+
+        expect(screen.queryByRole("dialog")).toBeNull();
         expect(control).toHaveAttribute("aria-expanded", "false");
         expect(control).toHaveFocus();
-        expect(panel).toHaveClass("hidden");
+        expect(document.body.style.overflow).not.toBe("hidden");
+    });
+
+    it("a backdrop click closes it", async () => {
+        const user = userEvent.setup();
+        render(<SlideOverFrame />);
+
+        await user.click(screen.getByRole("button", { name: "Menu" }));
+        await user.click(screen.getByTestId("shell-nav-backdrop"));
+
+        expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("following a navigation link closes it", async () => {
+        const user = userEvent.setup();
+        render(<SlideOverFrame />);
+
+        await user.click(screen.getByRole("button", { name: "Menu" }));
+        await user.click(
+            within(screen.getByRole("dialog")).getByRole("link", { name: "Diagnose" }),
+        );
+
+        expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("keeps Tab inside while open", async () => {
+        const user = userEvent.setup();
+        render(<SlideOverFrame />);
+        await user.click(screen.getByRole("button", { name: "Menu" }));
+        const dialog = screen.getByRole("dialog");
+        const focusable = Array.from(
+            dialog.querySelectorAll<HTMLElement>("a[href], button:not([disabled]), select"),
+        );
+        const first = focusable[0];
+        const last = focusable.at(-1) as HTMLElement;
+
+        last.focus();
+        await user.tab();
+        expect(first).toHaveFocus();
+
+        await user.tab({ shift: true });
+        expect(last).toHaveFocus();
+    });
+
+    it("is the static column from md up: the desktop classes are unchanged and nothing is fixed without max-md", () => {
+        render(<SlideOverFrame />);
+        const panel = document.getElementById("primary-navigation-panel") as HTMLElement;
+
+        expect(panel).toHaveClass("md:flex", "md:h-full", "md:overflow-visible", "md:border-0");
+        expect(sidebar()).toHaveClass("md:sticky", "md:h-dvh", "md:w-60", "md:shrink-0");
+        const unprefixedFixed = panel.className
+            .split(/\s+/u)
+            .filter((c) => c === "fixed" || c === "z-50");
+        expect(unprefixedFixed).toEqual([]);
+        expect(panel).toHaveClass("max-md:w-60");
+    });
+
+    it("has no slide transition for people who ask for reduced motion", () => {
+        render(<SlideOverFrame />);
+        expect(document.getElementById("primary-navigation-panel")).toHaveClass(
+            "motion-reduce:transition-none",
+        );
     });
 });
 
