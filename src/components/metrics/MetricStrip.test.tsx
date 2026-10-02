@@ -52,4 +52,21 @@ describe("MetricStrip", () => {
         expect(cls).toContain("[&>*]:border-0");
         expect(cls).not.toContain("gap-4");
     });
+
+    it("caps at 5 columns and wraps 7 tiles to a second row, filling the last row", () => {
+        render(<MetricStrip data-testid="strip">{tiles(7)}</MetricStrip>);
+        const strip = screen.getByTestId("strip");
+        expect(strip).toHaveAttribute("data-columns", "5");
+        expect(screen.getAllByTestId("metric-strip-filler")).toHaveLength(3);
+        expect(strip.children).toHaveLength(10);
+    });
+
+    it("adds no filler when the last row is full or the strip is one row", () => {
+        const { rerender } = render(<MetricStrip>{tiles(5)}</MetricStrip>);
+        expect(screen.queryAllByTestId("metric-strip-filler")).toHaveLength(0);
+        rerender(<MetricStrip>{tiles(10)}</MetricStrip>);
+        expect(screen.queryAllByTestId("metric-strip-filler")).toHaveLength(0);
+        rerender(<MetricStrip>{tiles(3)}</MetricStrip>);
+        expect(screen.queryAllByTestId("metric-strip-filler")).toHaveLength(0);
+    });
 });
