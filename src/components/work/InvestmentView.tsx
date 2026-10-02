@@ -2,7 +2,6 @@
 
 import { useMemo } from "react";
 import { formatNumber } from "@/lib/formatters";
-import { CTA_LABELS } from "@/lib/design/cta";
 import {
     buildTimeRangeLabel,
     formatBandLabel,
@@ -24,6 +23,7 @@ import { InvestmentEvidenceTable } from "./investment/InvestmentEvidenceTable";
 import { AllocationCoverage } from "./investment/AllocationCoverage";
 import { ConfidencePanel } from "./investment/ConfidencePanel";
 import { EvidenceEntryCard } from "./investment/EvidenceEntryCard";
+import { Section } from "@/components/ui/Section";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -191,29 +191,25 @@ export function InvestmentView({
 
     // ── Evidence block (unit-investment tab + overview) ───────────────────────
     const evidenceBlock = (
-        <div
+        <Section
             id="work-unit-calculation"
-            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+            data-testid="work-unit-calculation"
+            title="How this was calculated"
+            description="Classification rationale and metadata remain reachable from the same view."
         >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h3 className="font-(--font-display) text-lg">How this was calculated</h3>
-                    <p className="mt-1 text-sm text-(--ink-muted)">
-                        This interpretation is text-first, with provider metadata and contextual
-                        structure used to corroborate the investment mix. Evidence quality reflects
-                        how strongly those inputs align.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <label
-                        className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
-                        htmlFor="work-unit-select"
-                    >
+            <p className="text-sm text-(--ink-muted)">
+                This interpretation is text-first, with provider metadata and contextual structure
+                used to corroborate the investment mix. Evidence quality reflects how strongly those
+                inputs align.
+            </p>
+            <div className="mt-4 rounded-(--radius-sm) border border-(--card-stroke) bg-(--card-70) p-3.5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                    <label className="text-xs text-(--ink-muted)" htmlFor="work-unit-select">
                         Work unit
                     </label>
                     <select
                         id="work-unit-select"
-                        className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-xs"
+                        className="min-w-0 max-w-full rounded-(--radius-sm) border border-(--card-stroke) bg-card px-3 py-2 text-xs"
                         value={selectedUnitId}
                         onChange={(event) => {
                             if (event.target.value) {
@@ -432,7 +428,7 @@ export function InvestmentView({
                     Select a work unit from the dropdown to inspect evidence for the current focus.
                 </p>
             )}
-        </div>
+        </Section>
     );
 
     // ── Tab branches ──────────────────────────────────────────────────────────
@@ -441,16 +437,9 @@ export function InvestmentView({
 
     if (activeTab === "allocation") {
         return (
-            <section className="flex flex-col gap-6">
-                <div>
-                    <h2 className="font-(--font-display) text-xl">Allocation</h2>
-                    <p className="mt-2 text-sm text-(--ink-muted)">
-                        How effort is distributed across teams, repositories, and themes. Each
-                        allocation path maps a team or theme onto the repositories where the work
-                        lands.
-                    </p>
-                </div>
+            <section className="flex flex-col gap-4.5" data-testid="investment-allocation">
                 <AllocationCoverage
+                    variant="strip"
                     teamCategoryFlow={data.teamCategoryFlow}
                     repoTeamFlow={data.repoTeamFlow}
                     isLoading={data.isCategoryFlowLoading}
@@ -462,15 +451,7 @@ export function InvestmentView({
 
     if (activeTab === "evidence") {
         return (
-            <section className="flex flex-col gap-6">
-                <div>
-                    <h2 className="font-(--font-display) text-xl">{CTA_LABELS.evidence}</h2>
-                    <p className="mt-2 text-sm text-(--ink-muted)">
-                        The work units behind the investment mix. Group by theme, subcategory, or
-                        type, then expand a unit to read its classification rationale and the
-                        metadata that supports it.
-                    </p>
-                </div>
+            <section className="flex flex-col gap-4.5" data-testid="investment-evidence">
                 <InvestmentEvidenceTable
                     workUnits={data.workUnits}
                     effortUnit={effortUnit}
@@ -502,9 +483,8 @@ export function InvestmentView({
     // overview (default) — key findings, the investment treemap, and top themes.
     // Sankey/Chord deliberately live on Allocation, not here.
     return (
-        <section className="flex flex-col gap-6">
-            <ExplainerCards />
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(18rem,1fr)] xl:items-start">
+        <section className="flex flex-col gap-4.5" data-testid="investment-overview">
+            <div className="grid gap-4.5 xl:grid-cols-[minmax(0,1fr)_20rem] xl:items-start">
                 <InvestmentCharts {...sharedChartProps} section="mix" />
                 <ReadWithContextCard
                     mixExplanation={data.mixExplanation}
@@ -535,6 +515,8 @@ export function InvestmentView({
                 }
                 evidenceHref={withFilterParam("/investment?tab=evidence", filters, activeRole)}
             />
+            {/* Not drawn in the prototype: the reading guidance stays, below the prototype blocks. */}
+            <ExplainerCards />
         </section>
     );
 }

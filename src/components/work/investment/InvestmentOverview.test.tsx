@@ -1,7 +1,8 @@
 /** Overview page pass (CHAOS-7614): context card, classification table, cross-tab links. */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent } from "@testing-library/react";
-import { render, screen, cleanup } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { screen, cleanup, within } from "@/test/utils";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta, WorkUnitInvestment } from "@/lib/types";
 import type { UseInvestmentDataResult } from "./useInvestmentData";
@@ -312,10 +313,13 @@ describe("confidence tab", () => {
         useInvestmentDataMock.mockReset();
     });
 
-    it("links to the Evidence tab", () => {
+    it("links to the Evidence tab from the Low-confidence areas head ('Evidence drilldown')", () => {
         useInvestmentDataMock.mockReturnValue(makeData());
         render(<InvestmentView filters={baseFilters} activeTab="confidence" />);
-        const link = screen.getByRole("link", { name: "Open evidence" });
+        const section = screen.getByTestId("low-confidence-areas");
+        const link = within(section).getByRole("link", { name: "Evidence drilldown" });
         expect(link.getAttribute("href")).toContain("/investment?tab=evidence&f=");
+        // One link to the Evidence tab on this tab: the legacy "Open evidence" link is gone.
+        expect(screen.queryByRole("link", { name: "Open evidence" })).toBeNull();
     });
 });

@@ -5,7 +5,8 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent } from "@testing-library/react";
-import { render, screen, cleanup } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { screen, cleanup } from "@/test/utils";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta, WorkUnitInvestment } from "@/lib/types";
 import type { UseInvestmentDataResult } from "./useInvestmentData";
@@ -222,9 +223,11 @@ describe("InvestmentView overview today", () => {
         }
     });
 
-    it("mounts the mix section (treemap by default) with the theme mix", () => {
+    it("mounts the mix section (the column treemap by default) with the theme mix", () => {
         overview(makeData({ investmentMix: mix as never, workUnits: [makeUnit("a", 5)] }));
-        expect(screen.getByTestId("treemap-chart")).toBeInTheDocument();
+        expect(screen.getByTestId("column-treemap")).toBeInTheDocument();
+        // The ECharts treemap is not used for this card any more.
+        expect(screen.queryByTestId("treemap-chart")).toBeNull();
     });
 
     it("LLM panel: title, Focused line, Regenerate calls the handler", () => {

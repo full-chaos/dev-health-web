@@ -131,10 +131,12 @@ export function RepoTeamSankeySection({
     // A read that produced no flow (failed, or no flow and no error) is unavailable,
     // never a measured "no teams associated" absence; only a produced flow can say that.
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div className="min-w-0" data-testid="repo-team-sankey">
             <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                    <h3 className="font-(--font-display) text-lg">Theme &rarr; Repo &rarr; Team</h3>
+                    <h3 className="text-sm font-semibold text-foreground">
+                        Theme &rarr; Repo &rarr; Team
+                    </h3>
                     <p className="mt-1 text-xs text-(--ink-muted)">Theme to Repo to Team</p>
                 </div>
                 <span className="text-xs text-(--ink-muted)">

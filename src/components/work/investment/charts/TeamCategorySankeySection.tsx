@@ -333,11 +333,11 @@ export function TeamCategorySankeySection({
     );
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div className="min-w-0" data-testid="team-category-sankey">
             <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="font-(--font-display) text-lg">
+                        <h3 className="text-sm font-semibold text-foreground">
                             Team &rarr; Theme &rarr; Repo
                         </h3>
                         <div className="flex flex-wrap items-center gap-3 text-xs text-(--ink-muted)">

@@ -8,7 +8,8 @@
  * never runs in jsdom.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, cleanup } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { fireEvent, screen, cleanup } from "@/test/utils";
 import { InvestmentCharts } from "./InvestmentCharts";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { SankeyResponse, WorkUnitInvestment } from "@/lib/types";
@@ -144,12 +145,15 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
     afterEach(() => cleanup());
 
     describe("section landmarks", () => {
-        it("renders the three h3 section headings that a split refactor must preserve", () => {
+        it("renders the two section cards (h2) and the active allocation view's sub-head (h3)", () => {
             render(<InvestmentCharts {...baseProps()} />);
             expect(
+                screen.getByRole("heading", { level: 2, name: "Allocation paths" }),
+            ).toBeInTheDocument();
+            expect(
                 screen.getByRole("heading", {
-                    level: 3,
-                    name: /treemap|investment mix/i,
+                    level: 2,
+                    name: "Investment mix",
                 }),
             ).toBeInTheDocument();
             expect(
@@ -329,8 +333,8 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             // mix heading
             expect(
                 screen.getByRole("heading", {
-                    level: 3,
-                    name: /treemap|investment mix/i,
+                    level: 2,
+                    name: "Investment mix",
                 }),
             ).toBeInTheDocument();
             // flows heading (the first view; the other is behind the switch)
@@ -344,8 +348,8 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             // mix heading is present
             expect(
                 screen.getByRole("heading", {
-                    level: 3,
-                    name: /treemap|investment mix/i,
+                    level: 2,
+                    name: "Investment mix",
                 }),
             ).toBeInTheDocument();
             // flow headings are NOT present
@@ -362,8 +366,8 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
             // mix heading is NOT present
             expect(
                 screen.queryByRole("heading", {
-                    level: 3,
-                    name: /treemap|investment mix/i,
+                    level: 2,
+                    name: "Investment mix",
                 }),
             ).not.toBeInTheDocument();
             // the flows section IS present: its first view, and the second behind the switch

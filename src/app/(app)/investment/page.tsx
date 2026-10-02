@@ -1,14 +1,11 @@
-import Link from "next/link";
-
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getCurrentOrg, getOrgEntitlements } from "@/lib/admin/server";
-import { CTA_LABELS } from "@/lib/design/cta";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
+import { withFilterParam } from "@/lib/filters/url";
 import { InvestmentGatedBody } from "./_components/InvestmentGatedBody";
 import type { InvestmentTab } from "@/components/work/investment/types";
 import { getTabSet, tabHref } from "@/lib/navigation/tabs";
@@ -16,11 +13,21 @@ import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
+import { Notice } from "@/components/ui/Notice";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 
 const getMetric = (deltas: MetricDelta[], metric: string) =>
     deltas.find((item) => item.metric === metric) ??
     FALLBACK_DELTAS.find((item) => item.metric === metric);
+
+/** The page subtitle of each tab (approved prototype, views 5 to 10). */
+const TAB_SUBTITLE: Record<InvestmentTab, string> = {
+    overview: "Effort and attention allocation over the selected window.",
+    allocation: "How effort is distributed across teams, repositories, and themes.",
+    evidence: "The work units behind the investment mix.",
+    confidence: "Classification confidence, evidence quality, attribution coverage, and rework.",
+};
 
 type InvestmentPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -77,33 +84,23 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
             <UpgradeGate feature="investment_view" requiredTier="team" features={features}>
                 <PageHeader
                     title="Investment"
-                    subtitle="Effort and attention allocation over the selected window."
+                    subtitle={TAB_SUBTITLE[activeTab]}
                     actions={
-                        <Link
-                            href={buildExploreUrl({
+                        // The page subject is the throughput metric, as the header's former
+                        // "Inspect associations" link was: the drawer shows its associations and
+                        // its footer links to the same evidence page.
+                        <PageHeaderEvidenceAction
+                            subject={{
+                                title: "Throughput",
                                 metric: "throughput",
                                 filters,
                                 role: activeRole,
-                                origin: activeOrigin,
-                            })}
-                            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
-                        >
-                            {CTA_LABELS.inspectAssociations}
-                        </Link>
+                            }}
+                        />
                     }
-                >
-                    <p className="text-sm text-(--ink-muted)">Select a segment to investigate.</p>
-                </PageHeader>
+                />
 
                 <ScopeBar view="investment" origin={activeOrigin} />
-
-                <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-3 text-xs leading-relaxed text-(--ink-muted)">
-                    <span className="text-foreground font-semibold uppercase tracking-wider">
-                        Perspective:
-                    </span>{" "}
-                    Investment reflects effort and attention (not spend). Allocation paths move
-                    left-to-right (Allocation &rarr; Streams &rarr; Items).
-                </div>
 
                 <ViewSet
                     orientation="tabs"
@@ -112,6 +109,14 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
                     overviewId="overview"
                     ariaLabel="Investment views"
                 />
+
+                {/* Static guidance, not a status update: no live region. */}
+                <Notice variant="info" live={false} data-testid="investment-perspective">
+                    <strong className="font-semibold text-foreground">
+                        Investment reflects effort and attention—not spend.
+                    </strong>{" "}
+                    Allocation paths move from allocation to streams to items.
+                </Notice>
 
                 <InvestmentGatedBody
                     enabled={investmentEnabled}

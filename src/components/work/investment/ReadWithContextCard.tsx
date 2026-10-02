@@ -1,6 +1,9 @@
+import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
 import Link from "next/link";
 
+import { buttonClassName } from "@/components/shared/Button";
+import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
 import type { SankeyResponse } from "@/lib/types";
@@ -58,15 +61,8 @@ export function ReadWithContextCard({
     const pct = (value: number | null) => (value === null ? "unavailable" : `${asPct(value)}%`);
 
     return (
-        <section
-            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
-            aria-label="Read this with context"
-            data-testid="read-with-context"
-        >
-            <h3 className="font-(--font-display) text-lg">Read this with context</h3>
-            <p className="mt-3 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                Evidence quality
-            </p>
+        <Section title="Read this with context" data-testid="read-with-context">
+            <p className="text-label-caps uppercase text-(--ink-muted)">Evidence quality</p>
             {confidence ? (
                 <div className="mt-2" data-testid="context-quality">
                     <div className="flex flex-wrap items-center gap-2">
@@ -133,13 +129,11 @@ export function ReadWithContextCard({
                     testId="context-unassigned"
                 />
             </dl>
-            <Link
-                href={confidenceHref}
-                className="mt-4 inline-block text-xs uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
-            >
+            <Link href={confidenceHref} className={buttonClassName("primary", "md", "mt-4")}>
+                <ArrowRight aria-hidden="true" className="h-4 w-4" />
                 {CTA_LABELS.inspectConfidence}
             </Link>
             <div className="mt-5 border-t border-(--card-stroke) pt-4">{children}</div>
-        </section>
+        </Section>
     );
 }

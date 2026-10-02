@@ -96,6 +96,8 @@ export const CTA_LABELS = {
     evidence: "Evidence",
     /** Section action on a Flow tab: the evidence page of the tab's metric (approved copy, app.js line 98). */
     metricEvidence: "Metric evidence",
+    /** Investment Confidence, "Low-confidence areas" action: the Evidence tab (approved copy, app.js line 74). */
+    evidenceDrilldown: "Evidence drilldown",
     aiImpact: "Impact",
     aiReviewLoad: "Review Load",
     aiRisk: "Risk",
