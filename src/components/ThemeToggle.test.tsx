@@ -35,57 +35,55 @@ describe("ThemeToggle", () => {
         document.documentElement.style.colorScheme = "dark";
     });
 
-    it("defaults to dark with the switch not pressed", () => {
+    const toLight = () => screen.getByRole("button", { name: "Switch to light theme" });
+    const toDark = () => screen.getByRole("button", { name: "Switch to dark theme" });
+
+    it("defaults to dark: a sun icon button, no text, labelled with the next theme", () => {
         render(<ThemeToggle />);
-        const toggle = screen.getByRole("button", { name: /light theme/i });
-        expect(toggle).toHaveAttribute("aria-pressed", "false");
-        expect(toggle).toHaveTextContent("Dark");
+        const toggle = toLight();
+        expect(toggle).toHaveAttribute("data-theme-current", "dark");
+        expect(toggle).not.toHaveAttribute("aria-pressed");
+        expect(toggle.textContent).toBe("");
+        expect(toggle.querySelector("svg.lucide-sun")).not.toBeNull();
+        expect(toggle.className).toMatch(/\brounded-md\b/);
+        expect(toggle.className).toMatch(/\bw-9\b/);
     });
 
     it("falls back to dark, not the system theme, when nothing is stored or set", () => {
         delete document.documentElement.dataset.theme;
         render(<ThemeToggle />);
-        expect(screen.getByRole("button", { name: /light theme/i })).toHaveAttribute(
-            "aria-pressed",
-            "false",
-        );
+        expect(toLight()).toHaveAttribute("data-theme-current", "dark");
     });
 
-    it("toggles to light, persists, and keeps the palette on infinity", async () => {
+    it("toggles to light, persists, shows the moon and keeps the palette on infinity", async () => {
         const user = userEvent.setup();
         render(<ThemeToggle />);
 
-        await user.click(screen.getByRole("button", { name: /light theme/i }));
+        await user.click(toLight());
 
         expect(document.documentElement.dataset.theme).toBe("light");
         expect(document.documentElement.dataset.palette).toBe("infinity");
         expect(localStorage.getItem("theme")).toBe("light");
-        expect(screen.getByRole("button", { name: /light theme/i })).toHaveAttribute(
-            "aria-pressed",
-            "true",
-        );
+        expect(toDark().querySelector("svg.lucide-moon")).not.toBeNull();
     });
 
     it("toggles back to dark and is keyboard operable", async () => {
         const user = userEvent.setup();
         render(<ThemeToggle />);
-        const toggle = screen.getByRole("button", { name: /light theme/i });
-        toggle.focus();
+        toLight().focus();
         await user.keyboard("{Enter}");
         expect(document.documentElement.dataset.theme).toBe("light");
         await user.keyboard(" ");
         expect(document.documentElement.dataset.theme).toBe("dark");
         expect(localStorage.getItem("theme")).toBe("dark");
+        expect(toLight()).toBeInTheDocument();
     });
 
     it("applies a stored light preference on mount", () => {
         localStorage.setItem("theme", "light");
         render(<ThemeToggle />);
         expect(document.documentElement.dataset.theme).toBe("light");
-        expect(screen.getByRole("button", { name: /light theme/i })).toHaveAttribute(
-            "aria-pressed",
-            "true",
-        );
+        expect(toDark()).toHaveAttribute("data-theme-current", "light");
     });
 
     it("theme-init.js sets the stored theme before paint and leaves dark otherwise", () => {
