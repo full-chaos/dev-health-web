@@ -210,7 +210,7 @@ describe("SingleReportPage — design R9-R16 (CHAOS-8096)", () => {
         render(<SingleReportPage />);
 
         expect(await screen.findByText("Report not found.")).toBeInTheDocument();
-        expect(screen.getByTestId("data-state-no-findings")).toBeInTheDocument();
+        expect(screen.getByTestId("data-state-detector-enabled-no-findings")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Back to Reports" })).toHaveAttribute(
             "href",
             "/reports",

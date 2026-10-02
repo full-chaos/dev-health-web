@@ -288,7 +288,7 @@ export default function SingleReportPage() {
         return (
             <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
                 <DataState
-                    variant="no-findings"
+                    variant="detector-enabled-no-findings"
                     title="Report not found."
                     description="It may have been deleted, or the link is wrong."
                     action={
