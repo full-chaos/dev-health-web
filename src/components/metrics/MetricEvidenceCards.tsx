@@ -5,7 +5,7 @@ import { useState } from "react";
 import { EvidencePanel } from "@/components/evidence";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { buildExploreUrl } from "@/lib/filters/url";
-import { formatDelta } from "@/lib/formatters";
+import { metricInverseGood } from "@/lib/metrics/catalog";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta } from "@/lib/types";
 
@@ -15,15 +15,6 @@ type MetricEvidenceCardsProps = {
     filters: MetricFilter;
     activeRole?: string;
     placeholderDeltas: boolean;
-};
-
-const deltaTone = (value?: number) => {
-    if (value === undefined || value === null) return "text-(--ink-muted)";
-    return value > 0
-        ? "text-(--accent-3)"
-        : value < 0
-          ? "text-(--accent-negative)"
-          : "text-(--ink-muted)";
 };
 
 const getMetric = (deltas: MetricDelta[], metric: string) =>
@@ -63,15 +54,9 @@ export function MetricEvidenceCards({
                             unit={data?.unit}
                             spark={data?.spark}
                             noTrendLabel="Trend"
-                            // This page has no per-metric polarity, so it keeps its own delta
-                            // (sign and tone, "--" when missing) instead of MetricDelta's good / bad.
-                            deltaSlot={
-                                <span className={deltaTone(data?.delta_pct)}>
-                                    {placeholderDeltas || data?.delta_pct === undefined
-                                        ? "--"
-                                        : formatDelta(data.delta_pct)}
-                                </span>
-                            }
+                            // A missing delta (placeholder rows, or no data row) is "No prior period", never 0.
+                            delta={placeholderDeltas ? undefined : data?.delta_pct}
+                            inverseGood={metricInverseGood(metric)}
                             onOpenEvidence={() =>
                                 setActiveMetric(
                                     data ?? {

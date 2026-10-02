@@ -8,7 +8,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 
 import { LegacyAccountBar } from "./LegacyAccountBar";
 import { ShellMobileBar } from "./ShellMobileBar";
-import { ShellOrganizationProvider, ShellProvider } from "./ShellContext";
+import { ShellOrganizationProvider } from "./ShellContext";
 import { ShellSidebar } from "./ShellSidebar";
 import { shellStatusFromOrganization, type ShellStatus } from "./ShellStatusChip";
 import { ShellTopBar } from "./ShellTopBar";
@@ -76,7 +76,7 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
     }
 
     return (
-        <ShellProvider>
+        <>
             <a
                 href="#main-content"
                 className="sr-only rounded-(--radius-sm) bg-(--surface) px-4 py-2 text-sm font-medium text-(--text-primary) focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
@@ -109,6 +109,6 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
                     </main>
                 </div>
             </div>
-        </ShellProvider>
+        </>
     );
 }
