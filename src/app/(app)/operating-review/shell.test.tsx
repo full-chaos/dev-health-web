@@ -4,7 +4,7 @@ import { render, screen, within } from "@testing-library/react";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { AppShell } from "@/components/shell/AppShell";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
-import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
+import { encodeFilterParam } from "@/lib/filters/encode";
 
 import OperatingReviewPage from "./page";
 
