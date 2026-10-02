@@ -89,6 +89,8 @@ export const CTA_LABELS = {
     openInvestment: "Open Investment",
     openMetrics: "Open metrics",
     openWorkView: "Open Work view",
+    /** Row action of a worklist: open the destination named by the row (approved copy, app.js line 113). */
+    open: "Open",
     evidence: "Evidence",
     aiImpact: "Impact",
     aiReviewLoad: "Review Load",
