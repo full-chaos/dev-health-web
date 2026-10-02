@@ -187,21 +187,22 @@ function ContentPage({ onClose }: { onClose?: () => void }) {
             >
                 Row button
             </button>
-            {/* Not focusable by Tab; stands for a chart region whose marks are drawn on a canvas. */}
-            <div ref={region} tabIndex={-1} data-testid="chart-region">
-                <span
-                    data-testid="canvas-mark"
-                    onClick={() =>
-                        evidence.open({
-                            title: "Team Beta",
-                            content: <p>body of the mark</p>,
-                            returnFocusRef: region,
-                        })
-                    }
-                >
-                    mark
-                </span>
-            </div>
+            {/* Not in the Tab order; stands for a chart region. */}
+            <div ref={region} tabIndex={-1} data-testid="chart-region" />
+            {/* Stands for a mark on a canvas: a click on it gives focus to no element, so only
+                `returnFocusRef` can bring focus to the region. */}
+            <span
+                data-testid="canvas-mark"
+                onClick={() =>
+                    evidence.open({
+                        title: "Team Beta",
+                        content: <p>body of the mark</p>,
+                        returnFocusRef: region,
+                    })
+                }
+            >
+                mark
+            </span>
         </div>
     );
 }
