@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getSetupStatus } from "@/lib/admin/server";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 
 import Home from "./page";
 

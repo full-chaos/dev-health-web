@@ -23,6 +23,8 @@ export const CTA_LABELS = {
     skipToMainContent: "Skip to main content",
     /** Open the evidence trail behind a signal / metric / work unit. */
     openEvidence: "Open evidence",
+    /** Page header action: open the shared evidence drawer for the page as a whole. */
+    viewEvidence: "View evidence",
     /** Primary-signal hero action for the Code destination (approved copy, app.js line 97). */
     inspectCode: "Inspect code",
     /** Primary-signal hero action for the Opportunities destination (approved copy, app.js line 108). */

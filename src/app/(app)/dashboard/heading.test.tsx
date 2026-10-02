@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
@@ -100,5 +101,29 @@ describe("Home page header", () => {
         ).toBeInTheDocument();
         expect(within(header).getByText(/Last updated:/)).toBeInTheDocument();
         expect(within(header).queryAllByRole("link")).toHaveLength(0);
+    });
+
+    it("opens the page evidence from the header: the Home payload for the page scope and window", async () => {
+        await renderCockpit();
+
+        const action = within(screen.getByTestId("page-header-actions")).getByRole("button", {
+            name: "View evidence",
+        });
+        expect(screen.queryByRole("dialog")).toBeNull();
+        await userEvent.click(action);
+
+        const drawer = screen.getByRole("dialog", { name: "Evidence & Context" });
+        expect(within(drawer).getByTestId("evidence-subject")).toHaveTextContent("Home");
+        const days = screen
+            .getByTestId("page-header")
+            .textContent?.match(/over the last (\d+) days/)?.[1];
+        const call = vi
+            .mocked(global.fetch)
+            .mock.calls.map(([input]) => new URL(String(input), "http://local"))
+            .find((url) => url.pathname === "/api/v1/home");
+        expect(call).toBeDefined();
+        // The page as a whole: no thread. Same window as the subtitle states.
+        expect(call?.searchParams.has("thread")).toBe(false);
+        expect(call?.searchParams.get("range_days")).toBe(days);
     });
 });
