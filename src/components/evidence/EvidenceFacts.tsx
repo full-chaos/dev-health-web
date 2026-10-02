@@ -74,8 +74,21 @@ export type EvidenceProvenanceValues = {
     artifactCount?: number;
 };
 
+/** The one line a drawer shows in place of five empty provenance rows. */
+export const PROVENANCE_NOT_REPORTED = "Provenance is not reported for this item.";
+
+type EvidenceProvenanceFactsProps = EvidenceProvenanceValues & {
+    /**
+     * What to show when NO row is served. `rows` (default): the five rows, each "Not reported";
+     * the explain-backed drawer uses it, because its request can serve every row. `line`: one
+     * muted line in place of five empty rows; a drawer whose query serves none of them uses it.
+     * As soon as one row is served, the five rows show (the others read "Not reported").
+     */
+    whenEmpty?: "rows" | "line";
+};
+
 /**
- * The five rows every evidence drawer starts with (approved prototype `openEvidence`,
+ * The provenance block an evidence drawer starts with (approved prototype `openEvidence`,
  * `app.js:122`): Source, Data quality, Last sync, Identity confidence, Artifacts. A subject
  * passes only what was served for it; the other rows read "Not reported".
  */
@@ -85,7 +98,26 @@ export function EvidenceProvenanceFacts({
     lastSync,
     identityConfidence,
     artifactCount,
-}: EvidenceProvenanceValues) {
+    whenEmpty = "rows",
+}: EvidenceProvenanceFactsProps) {
+    const anyServed =
+        Boolean(source) ||
+        Boolean(quality) ||
+        Boolean(lastSync) ||
+        typeof identityConfidence === "number" ||
+        artifactCount !== undefined;
+
+    if (!anyServed && whenEmpty === "line") {
+        return (
+            <p
+                data-testid="evidence-provenance-not-reported"
+                className="text-xs text-(--ink-muted)"
+            >
+                {PROVENANCE_NOT_REPORTED}
+            </p>
+        );
+    }
+
     return (
         <EvidenceFactList aria-label="Quality and provenance">
             <EvidenceFact label="Source" value={source || undefined} />
