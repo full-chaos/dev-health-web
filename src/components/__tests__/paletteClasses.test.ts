@@ -23,7 +23,7 @@ const ALLOWLIST: Record<string, number> = {
     "app/(app)/reports/[id]/page.tsx": 19,
     "app/(app)/reports/new/page.tsx": 3,
     "components/ai/AIEvidenceExplorer.tsx": 6,
-    "components/ai/AIOpportunityList.tsx": 4,
+    "components/ai/AIOpportunityList.tsx": 2,
     "components/ai/AIRiskDashboard.tsx": 2,
     "components/evidence/EvidenceContext.tsx": 6,
     "components/evidence/EvidencePanel.tsx": 2,
