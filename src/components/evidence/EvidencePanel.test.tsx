@@ -151,6 +151,33 @@ describe("EvidencePanel", () => {
         expect(fact("Last sync")).toHaveTextContent("nightly batch");
     });
 
+    it("keeps the lens role on the footer link to Explore", async () => {
+        mockGetExplainData.mockResolvedValue({
+            metric: "cycle_time",
+            label: "Cycle Time",
+            summary: "Cycle time appears lower in this window.",
+            evidence: [],
+            actions: [],
+        });
+
+        render(
+            <EvidencePanel
+                isOpen
+                onCloseAction={() => undefined}
+                title="Cycle Time"
+                metric="cycle_time"
+                filters={filters}
+                role="manager"
+            />,
+        );
+
+        const link = await screen.findByRole("link", { name: /Open evidence/i });
+        const url = new URL(link.getAttribute("href") ?? "", "http://local");
+        expect(url.pathname).toBe("/explore");
+        expect(url.searchParams.get("metric")).toBe("cycle_time");
+        expect(url.searchParams.get("role")).toBe("manager");
+    });
+
     it("does not render the prototype parts that have no served data or are out of scope", async () => {
         mockGetExplainData.mockResolvedValue({
             metric: "cycle_time",

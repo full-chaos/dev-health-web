@@ -2,7 +2,6 @@
 
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { MetricCard } from "@/components/metrics/MetricCard";
-import { buildExploreUrl } from "@/lib/filters/url";
 import { metricInverseGood } from "@/lib/metrics/catalog";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta } from "@/lib/types";
@@ -47,8 +46,11 @@ export function MetricEvidenceCards({
                             // A missing delta (placeholder rows, or no data row) is "No prior period", never 0.
                             delta={placeholderDeltas ? undefined : data?.delta_pct}
                             inverseGood={metricInverseGood(metric)}
-                            onOpenEvidence={() => evidence.open({ title: label, metric, filters })}
-                            evidenceHref={buildExploreUrl({ metric, filters, role: activeRole })}
+                            // One evidence path per tile: the button opens the shared drawer, and
+                            // the drawer footer links to Explore for the metric (with the role).
+                            onOpenEvidence={() =>
+                                evidence.open({ title: label, metric, filters, role: activeRole })
+                            }
                         />
                     );
                 })}

@@ -11,6 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import Link from "next/link";
 
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getQuadrantDefinition, getZoneOverlay } from "@/lib/quadrantZones";
@@ -205,9 +206,30 @@ export function QuadrantPanel({
     const zoneIgnoredLogged = useRef(false);
     const axesKey = scopedData ? `${scopedData.axes.x.metric}:${scopedData.axes.y.metric}` : null;
 
+    const evidence = useEvidenceDrawer();
+    // A dot (or a point chip) opens the shared evidence drawer for that point. The selection stays
+    // while the drawer is open and is cleared when it closes.
     const handlePointSelect = (point: QuadrantPoint) => {
+        if (!scopedData) {
+            return;
+        }
         setSelectedPoint(point);
         setSelectedPointKey(dataKey);
+        evidence.open({
+            title: point.entity_label,
+            content: (
+                <InvestigationPanel
+                    point={point}
+                    data={scopedData}
+                    filters={filters}
+                    title={title}
+                />
+            ),
+            onClose: () => {
+                setSelectedPoint(null);
+                setSelectedPointKey(null);
+            },
+        });
     };
 
     useEffect(() => {
@@ -551,21 +573,6 @@ export function QuadrantPanel({
                         </div>
                     )}
                 </div>
-
-                {activeSelectedPoint && scopedData && (
-                    <aside className="w-full shrink-0 overflow-hidden rounded-3xl border border-(--card-stroke) shadow-2xl lg:w-96">
-                        <InvestigationPanel
-                            point={activeSelectedPoint}
-                            data={scopedData}
-                            filters={filters}
-                            title={title}
-                            onCloseAction={() => {
-                                setSelectedPoint(null);
-                                setSelectedPointKey(null);
-                            }}
-                        />
-                    </aside>
-                )}
             </div>
         </div>
     );

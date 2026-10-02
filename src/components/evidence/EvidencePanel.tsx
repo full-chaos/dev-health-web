@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { getExplainData } from "@/lib/api/home";
 import { ValidationErrors } from "@/lib/constants/errors";
 import { logger } from "@/lib/logger";
 import { MetricFilter } from "@/lib/filters/types";
 import { Contributor, HomeResponse, InvestmentResponse, OpportunitiesResponse } from "@/lib/types";
 import { EvidenceContext } from "./EvidenceContext";
+import { EvidenceDrawerShell } from "./EvidenceDrawerShell";
+import { EvidenceFact, EvidenceFactList } from "./EvidenceFacts";
 import { EvidenceItems } from "./EvidenceItems";
 import { SuggestedActions } from "./SuggestedActions";
 import { ErrorCard } from "@/components/ui/ErrorCard";
-import { Drawer } from "@/components/ui/Drawer";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -68,12 +69,6 @@ type EvidencePanelResult = Partial<EvidencePanelData> & {
     source?: string | null;
     identity_confidence?: number | null;
 };
-
-/** The drawer title is the same for every subject; the subject is a heading in the body. */
-export const EVIDENCE_DRAWER_TITLE = "Evidence & Context";
-const EVIDENCE_DRAWER_EYEBROW = "Contextual investigation";
-/** Shown for a field the API did not serve. */
-const NOT_REPORTED = "Not reported";
 
 const formatPercent = (value?: number | null) =>
     typeof value === "number" ? formatDisplayPercent(value) : "not available";
@@ -290,8 +285,12 @@ const evidenceDestination = (params: {
     apiUrl?: string;
     metric?: string;
     filters: MetricFilter;
+    role?: string;
 }) => {
-    if (params.metric) return buildExploreUrl({ metric: params.metric, filters: params.filters });
+    const { role } = params;
+    if (params.metric) {
+        return buildExploreUrl({ metric: params.metric, filters: params.filters, role });
+    }
     if (!params.apiUrl) return "#";
 
     try {
@@ -300,16 +299,16 @@ const evidenceDestination = (params: {
             typeof window === "undefined" ? "http://localhost" : window.location.origin,
         );
         if (url.pathname === "/api/v1/investment") {
-            return withFilterParam("/investment", params.filters);
+            return withFilterParam("/investment", params.filters, role);
         }
         if (url.pathname === "/api/v1/opportunities") {
-            return withFilterParam("/opportunities", params.filters);
+            return withFilterParam("/opportunities", params.filters, role);
         }
     } catch {
-        return buildExploreUrl({ api: params.apiUrl, filters: params.filters });
+        return buildExploreUrl({ api: params.apiUrl, filters: params.filters, role });
     }
 
-    return buildExploreUrl({ api: params.apiUrl, filters: params.filters });
+    return buildExploreUrl({ api: params.apiUrl, filters: params.filters, role });
 };
 
 const readJsonOrEmpty = async <T,>(response: Response): Promise<T | null> => {
@@ -330,6 +329,8 @@ export type EvidencePanelProps = {
     apiUrl?: string;
     metric?: string;
     filters: MetricFilter;
+    /** The active lens role. It is kept in the footer link (Explore and the other destinations). */
+    role?: string;
 };
 
 export function EvidencePanel({
@@ -339,6 +340,7 @@ export function EvidencePanel({
     apiUrl,
     metric,
     filters,
+    role,
 }: EvidencePanelProps) {
     const [data, setData] = useState<EvidencePanelData | null>(null);
     const [loading, setLoading] = useState(false);
@@ -466,17 +468,14 @@ export function EvidencePanel({
 
     const showDevDiagnostics = isEvidenceDebugEnabled();
 
-    const exploreUrl = evidenceDestination({ apiUrl, metric, filters });
+    const exploreUrl = evidenceDestination({ apiUrl, metric, filters, role });
 
-    // Escape contract: Drawer closes on Escape unless an inner control already handled it and
-    // called `preventDefault()`. Nothing inside this panel handles Escape today (links and
-    // buttons only); a future inner menu must call `preventDefault()` on its own Escape.
+    // Nothing inside this panel handles Escape today (links and buttons only); a future inner
+    // menu must call `preventDefault()` on its own Escape (see `EvidenceDrawerShell`).
     return (
-        <Drawer
-            open
+        <EvidenceDrawerShell
+            subject={title}
             onCloseAction={onCloseAction}
-            title={EVIDENCE_DRAWER_TITLE}
-            eyebrow={EVIDENCE_DRAWER_EYEBROW}
             footer={
                 <Link
                     href={exploreUrl}
@@ -489,14 +488,7 @@ export function EvidencePanel({
                 </Link>
             }
         >
-            <div className="space-y-4">
-                {/* The subject (signal, metric or card). The drawer title is the same for all. */}
-                <h3
-                    data-testid="evidence-subject"
-                    className="text-h3 font-semibold text-foreground"
-                >
-                    {title}
-                </h3>
+            <>
                 {loading ? (
                     <div className="space-y-4 animate-pulse">
                         <div className="h-24 bg-(--card-70) rounded-2xl" />
@@ -538,8 +530,8 @@ export function EvidencePanel({
                         description="There's no supporting detail to display for this selection right now. Try a different metric or widen the time window."
                     />
                 )}
-            </div>
-        </Drawer>
+            </>
+        </EvidenceDrawerShell>
     );
 }
 
@@ -562,8 +554,8 @@ function EvidenceFacts({
     const lastSync = provenance?.last_sync;
 
     return (
-        <section aria-label="Quality and provenance" className="text-xs">
-            <dl data-testid="evidence-facts">
+        <section className="text-xs">
+            <EvidenceFactList aria-label="Quality and provenance">
                 <EvidenceFact label="Source" value={provenance?.source || undefined} />
                 <EvidenceFact
                     label="Data quality"
@@ -598,7 +590,7 @@ function EvidenceFacts({
                             : "None returned"
                     }
                 />
-            </dl>
+            </EvidenceFactList>
             {provenance?.partial && (
                 <p className={`mt-3 rounded-xl px-3 py-2 ${STATUS_PILL.caution}`}>
                     Partial evidence: the backend did not return a complete artifact list for this
@@ -606,25 +598,5 @@ function EvidenceFacts({
                 </p>
             )}
         </section>
-    );
-}
-
-function EvidenceFact({ label, value }: { label: string; value?: ReactNode }) {
-    const reported = value !== undefined;
-    return (
-        <div
-            data-testid="evidence-fact"
-            data-reported={reported}
-            className="flex items-center gap-3 border-b border-(--card-stroke) py-2.5 last:border-b-0"
-        >
-            <dt className="text-(--ink-muted)">{label}</dt>
-            <dd
-                className={`ml-auto text-right tabular-nums ${
-                    reported ? "font-semibold text-foreground" : "text-(--ink-muted)"
-                }`}
-            >
-                {reported ? value : NOT_REPORTED}
-            </dd>
-        </div>
     );
 }

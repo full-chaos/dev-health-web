@@ -28,6 +28,8 @@ import { Chart } from "@/components/charts/Chart";
 import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/chartConventions";
 import { TreemapChart } from "@/components/charts/TreemapChart";
 import type { TreemapNode } from "@/components/charts/TreemapChart";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
@@ -354,16 +356,39 @@ function FileTable({
     );
 }
 
-function EvidenceCell({ url }: { url: string | null }) {
+/**
+ * The Evidence cell of a file row. It opens the shared evidence drawer for the file: the row's
+ * served values as fact rows, and the served evidence link in the drawer footer.
+ */
+function EvidenceCell({ row }: { row: HotspotRow }) {
+    const evidence = useEvidenceDrawer();
+    const url = row.evidenceUrl;
     if (url) {
+        const fileName = row.filePath.split("/").pop() ?? row.filePath;
         return (
-            <Link
-                href={url}
+            <button
+                type="button"
+                onClick={() =>
+                    evidence.open({
+                        title: fileName,
+                        content: <HotspotEvidence row={row} />,
+                        footer: (
+                            <Link
+                                href={url}
+                                data-testid="evidence-link"
+                                onClick={evidence.close}
+                                className="flex w-full items-center justify-center rounded-xl border border-(--accent-2)/20 bg-(--accent-2)/10 px-4 py-3 text-sm font-medium text-(--info) transition-colors hover:bg-(--accent-2)/20"
+                            >
+                                {CTA_LABELS.openEvidence} ↗
+                            </Link>
+                        ),
+                    })
+                }
                 className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
-                data-testid="evidence-link"
+                data-testid="evidence-open"
             >
-                Open evidence →
-            </Link>
+                {CTA_LABELS.openEvidence}
+            </button>
         );
     }
     return (
@@ -372,6 +397,33 @@ function EvidenceCell({ url }: { url: string | null }) {
             title="No artifact link"
             description="The source did not provide a link for this evidence row."
         />
+    );
+}
+
+/** The drawer body for one file row: the values the hotspots query served for it. */
+function HotspotEvidence({ row }: { row: HotspotRow }) {
+    return (
+        <EvidenceFactList aria-label="File">
+            <EvidenceFact
+                label="File"
+                value={<span className="break-all font-mono font-medium">{row.filePath}</span>}
+            />
+            <EvidenceFact label="Repo" value={row.repoName || undefined} />
+            <EvidenceFact
+                label="Risk score"
+                value={formatNumber(row.riskScore, { maximumFractionDigits: 3 })}
+            />
+            <EvidenceFact label="Cyclomatic avg" value={formatNumber(row.cyclomaticAvg)} />
+            <EvidenceFact label="Churn LOC 30d" value={formatNumber(row.churnLoc30d)} />
+            <EvidenceFact
+                label="Owner concentration"
+                value={
+                    row.blameConcentration === null
+                        ? undefined
+                        : `${Math.round(row.blameConcentration * 100)}%`
+                }
+            />
+        </EvidenceFactList>
     );
 }
 
@@ -592,7 +644,7 @@ function HotspotsView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                                     {formatNumber(row.churnLoc30d)}
                                 </td>
                                 <td className="px-5 py-3">
-                                    <EvidenceCell url={row.evidenceUrl} />
+                                    <EvidenceCell row={row} />
                                 </td>
                             </tr>
                         );
@@ -670,7 +722,7 @@ function OwnershipRiskView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                                 {formatNumber(row.riskScore, { maximumFractionDigits: 3 })}
                             </td>
                             <td className="px-5 py-3">
-                                <EvidenceCell url={row.evidenceUrl} />
+                                <EvidenceCell row={row} />
                             </td>
                         </tr>
                     );
