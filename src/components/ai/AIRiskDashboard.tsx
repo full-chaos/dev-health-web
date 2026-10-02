@@ -5,6 +5,7 @@ import { useState } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import type { AIFilter } from "@/lib/filters/ai";
+import { STATUS_PILL } from "@/lib/statusPill";
 import { formatPercent } from "@/lib/formatters";
 import type { AiMissingState, AiRiskBreakdownRow } from "@/lib/graphql/__generated__/types";
 import {
@@ -217,7 +218,9 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
             <AIViolationsList violations={violations} loading={governance.fetching} />
 
             {governance.error && (
-                <p className="rounded-(--radius-md) border border-(--accent-negative)/30 bg-red-500/5 px-4 py-3 text-sm text-red-600">
+                <p
+                    className={`rounded-(--radius-md) border px-4 py-3 text-sm ${STATUS_PILL.negative}`}
+                >
                     Governance findings unavailable: {governance.error.message}
                 </p>
             )}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { STATUS_PILL } from "@/lib/statusPill";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import type { AiOpportunity, AiWorkGraphDrilldownRef } from "@/lib/graphql/__generated__/types";
 import { useAIWorkflowDrilldown } from "@/lib/graphql/hooks/useAIReviewRisk";
@@ -25,7 +26,9 @@ function OpportunityEvidence({ selected }: { selected: AiWorkGraphDrilldownRef |
 
     if (error) {
         return (
-            <p className="mt-3 rounded-(--radius-sm) border border-(--accent-negative)/30 bg-red-500/5 px-3 py-2 text-xs text-red-600">
+            <p
+                className={`mt-3 rounded-(--radius-sm) border px-3 py-2 text-xs ${STATUS_PILL.negative}`}
+            >
                 Evidence unavailable: {error.message}
             </p>
         );

@@ -15,6 +15,7 @@ import { aggregateOperatingReviews } from "@/lib/operatingReviewAggregate";
 import { selectedOperatingReviewTeamIds } from "@/lib/operatingReviewScope";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { STATUS_PILL, type StatusPillTone } from "@/lib/statusPill";
 
 /** Discriminated fetch result: distinguishes a real error from a genuine empty payload. */
 type ReviewResult =
@@ -36,6 +37,22 @@ const sectionDescriptions: Record<string, string> = {
 };
 
 const AI_WORKFLOW_SECTION_KEY = "ai_workflow_intelligence";
+
+/**
+ * Fill and text of a status chip: the status pill's classes without its border
+ * (these chips never had one). Derived from `STATUS_PILL`, so the two cannot
+ * drift; the literal classes live in `lib/statusPill.ts`.
+ */
+const statusTint = (tone: StatusPillTone) =>
+    STATUS_PILL[tone]
+        .split(" ")
+        .filter((cls) => !cls.startsWith("border-"))
+        .join(" ");
+const TINT = {
+    improved: statusTint("positive"),
+    worsened: statusTint("negative"),
+    changed: statusTint("info"),
+} as const;
 
 export default async function OperatingReviewPage({ searchParams }: OperatingReviewPageProps) {
     const params = (await searchParams) ?? {};
@@ -212,7 +229,7 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
                     <a
                         key={section.key}
                         href={`#${section.key}`}
-                        className={`rounded-2xl border bg-card p-4 transition hover:border-primary/50 ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-sky-400/40 shadow-sm shadow-sky-500/10" : "border-border"}`}
+                        className={`rounded-2xl border bg-card p-4 transition hover:border-primary/50 ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-(--info)/40 shadow-sm shadow-(color:--info)/10" : "border-border"}`}
                     >
                         <h2 className="text-base font-semibold">{section.title}</h2>
                         <p className="mt-2 text-xs text-muted-foreground">
@@ -227,7 +244,7 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
                 <section
                     id={section.key}
                     key={section.key}
-                    className={`rounded-[1.75rem] border bg-card/90 p-6 shadow-sm ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-sky-400/40 shadow-sky-500/10" : "border-border"}`}
+                    className={`rounded-[1.75rem] border bg-card/90 p-6 shadow-sm ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-(--info)/40 shadow-(color:--info)/10" : "border-border"}`}
                 >
                     <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                         <div>
@@ -289,7 +306,7 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
 function AIWorkflowIntelligenceCallout() {
     return (
         <div
-            className="mt-5 rounded-2xl border border-sky-400/30 bg-sky-500/5 p-4"
+            className="mt-5 rounded-2xl border border-(--info)/30 bg-(--info)/5 p-4"
             data-testid="operating-review-ai-workflow-callout"
         >
             <p className="text-sm text-muted-foreground">
@@ -299,25 +316,25 @@ function AIWorkflowIntelligenceCallout() {
             </p>
             <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
                 <Link
-                    className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
+                    className="rounded-full border border-(--info)/30 bg-background/60 px-3 py-1 text-foreground"
                     href="/ai"
                 >
                     {CTA_LABELS.aiImpact}
                 </Link>
                 <Link
-                    className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
+                    className="rounded-full border border-(--info)/30 bg-background/60 px-3 py-1 text-foreground"
                     href="/ai/review-load"
                 >
                     {CTA_LABELS.aiReviewLoad}
                 </Link>
                 <Link
-                    className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
+                    className="rounded-full border border-(--info)/30 bg-background/60 px-3 py-1 text-foreground"
                     href="/ai/risk"
                 >
                     {CTA_LABELS.aiRisk}
                 </Link>
                 <Link
-                    className="rounded-full border border-sky-400/30 bg-background/60 px-3 py-1 text-foreground"
+                    className="rounded-full border border-(--info)/30 bg-background/60 px-3 py-1 text-foreground"
                     href="/ai/automations"
                 >
                     {CTA_LABELS.aiAutomations}
@@ -359,15 +376,9 @@ function DeltaPill({
 }) {
     return (
         <div className="flex flex-wrap gap-2 text-xs font-medium">
-            <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-emerald-700 dark:text-emerald-300">
-                {improved} improved
-            </span>
-            <span className="rounded-full bg-rose-500/10 px-3 py-1 text-rose-700 dark:text-rose-300">
-                {worsened} worsened
-            </span>
-            <span className="rounded-full bg-sky-500/10 px-3 py-1 text-sky-700 dark:text-sky-300">
-                {changed} changed
-            </span>
+            <span className={`rounded-full px-3 py-1 ${TINT.improved}`}>{improved} improved</span>
+            <span className={`rounded-full px-3 py-1 ${TINT.worsened}`}>{worsened} worsened</span>
+            <span className={`rounded-full px-3 py-1 ${TINT.changed}`}>{changed} changed</span>
         </div>
     );
 }
@@ -445,9 +456,8 @@ function formatSigned(value: number, unit: string): string {
 
 function statusClass(status: string): string {
     const base = "rounded-full px-2 py-1 text-xs font-medium capitalize";
-    if (status === "improved")
-        return `${base} bg-emerald-500/10 text-emerald-700 dark:text-emerald-300`;
-    if (status === "worsened") return `${base} bg-rose-500/10 text-rose-700 dark:text-rose-300`;
-    if (status === "changed") return `${base} bg-sky-500/10 text-sky-700 dark:text-sky-300`;
+    if (status === "improved") return `${base} ${TINT.improved}`;
+    if (status === "worsened") return `${base} ${TINT.worsened}`;
+    if (status === "changed") return `${base} ${TINT.changed}`;
     return `${base} bg-muted text-muted-foreground`;
 }
