@@ -11,11 +11,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     return <ShellContext.Provider value={true}>{children}</ShellContext.Provider>;
 }
 
-/**
- * True inside the shared app shell. Page-level navigation (`PrimaryNav`) reads
- * this and renders nothing, so a page in the shell cannot show a second
- * navigation.
- */
+/** True inside the shared app shell. */
 export function useInShell(): boolean {
     return useContext(ShellContext);
 }

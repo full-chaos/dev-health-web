@@ -3,8 +3,6 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
-import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { AppShell } from "./AppShell";
 
@@ -25,11 +23,11 @@ vi.mock("next-auth/react", () => ({
     signOut: vi.fn(),
 }));
 
-/** A page that is not migrated: it renders its own navigation and `<main>`. */
+/** A page outside the shell: it renders its own navigation and `<main>`, as the Admin layout does. */
 function LegacyPage() {
     return (
         <div>
-            <PrimaryNav filters={defaultMetricFilter} active="home" />
+            <nav aria-label="Admin navigation" />
             <main>
                 <h1>Legacy page</h1>
             </main>
@@ -109,18 +107,6 @@ describe("AppShell — a route in the registry gets the shared shell", () => {
         expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toBeInTheDocument();
     });
 
-    it("does not render a second navigation when the page still renders PrimaryNav", () => {
-        renderFrame(<LegacyPage />);
-
-        expect(document.querySelectorAll("aside")).toHaveLength(1);
-        expect(screen.getAllByRole("navigation", { name: "Primary areas" })).toHaveLength(1);
-        expect(screen.getAllByRole("button", { name: "Show navigation" })).toHaveLength(1);
-        expect(screen.getAllByRole("link", { name: /^Home$/ })).toHaveLength(1);
-        expect(document.querySelectorAll("#primary-navigation-panel")).toHaveLength(1);
-        // The page content is still there.
-        expect(screen.getByRole("heading", { name: "Legacy page" })).toBeInTheDocument();
-    });
-
     it("puts the skip link first in the focus order, and its target exists", async () => {
         const user = userEvent.setup();
         renderFrame(<ShellPage />);
@@ -145,16 +131,53 @@ describe("AppShell — a route in the registry gets the shared shell", () => {
         ).toBeTruthy();
     });
 
-    it("keeps the account bar for the size below md and the account block in the sidebar, with different menu ids", () => {
+    it("has the mobile bar below md (menu button, brand, theme toggle, account) and the account block in the sidebar, with different menu ids", () => {
         renderFrame(<ShellPage />);
 
-        const accountBar = screen.getByRole("navigation", { name: "Account" });
-        expect(accountBar.closest("div.md\\:hidden")).not.toBeNull();
+        const bar = screen.getByTestId("shell-mobile-bar");
+        expect(bar).toHaveClass("md:hidden");
+        expect(within(bar).getByRole("button", { name: "Show navigation" })).toHaveAttribute(
+            "aria-controls",
+            "primary-navigation-panel",
+        );
+        expect(within(bar).getByRole("link", { name: /home/i })).toHaveAttribute(
+            "href",
+            "/dashboard",
+        );
+        expect(within(bar).getByTestId("theme-toggle")).toBeInTheDocument();
         const controls = screen.getAllByRole("button", { name: "Account options" });
         expect(controls.map((control) => control.getAttribute("aria-controls")).sort()).toEqual([
             "account-options",
             "account-options-sidebar",
         ]);
+        // The legacy account bar is not rendered on a shell route.
+        expect(screen.queryByRole("navigation", { name: "Account" })).toBeNull();
+    });
+
+    it("opens the slide-over from the menu button and closes it when the route changes", async () => {
+        const user = userEvent.setup();
+        const view = renderFrame(<ShellPage />);
+
+        await user.click(screen.getByRole("button", { name: "Show navigation" }));
+        expect(screen.getByRole("dialog", { name: "Navigation" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Hide navigation" })).toHaveAttribute(
+            "aria-expanded",
+            "true",
+        );
+
+        navigationMock.pathname = "/dashboard/other";
+        view.rerender(
+            <AdminTierProvider tier="community" features={{}}>
+                <AppShell banners={<div data-testid="banners">Banner</div>}>
+                    <ShellPage />
+                </AppShell>
+            </AdminTierProvider>,
+        );
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(screen.getByRole("button", { name: "Show navigation" })).toHaveAttribute(
+            "aria-expanded",
+            "false",
+        );
     });
 });
 
@@ -249,7 +272,7 @@ describe("AppShell — the status chip states what the organization card knows",
 
 describe("AppShell — a route outside the registry keeps today's chrome", () => {
     beforeEach(() => {
-        navigationMock.pathname = "/reports";
+        navigationMock.pathname = "/settings";
     });
 
     it("renders no shell part: no sidebar, no top bar, no skip link, no shell main", () => {
@@ -265,7 +288,7 @@ describe("AppShell — a route outside the registry keeps today's chrome", () =>
     it("lets the page render its own navigation and its own main", () => {
         renderFrame(<LegacyPage />);
 
-        expect(screen.getAllByRole("navigation", { name: "Primary areas" })).toHaveLength(1);
+        expect(screen.getAllByRole("navigation", { name: "Admin navigation" })).toHaveLength(1);
         expect(screen.getAllByRole("main")).toHaveLength(1);
         expect(
             within(screen.getByRole("main")).getByRole("heading", { name: "Legacy page" }),
@@ -305,7 +328,7 @@ describe("AppShell — a route outside the registry keeps today's chrome", () =>
         ]);
     });
 
-    it.each(["/org/admin/users", "/superadmin", "/settings", "/prs/1", "/dashboards"])(
+    it.each(["/org/admin/users", "/superadmin", "/settings", "/data-health", "/dashboards"])(
         "keeps %s on the legacy chrome",
         (pathname) => {
             navigationMock.pathname = pathname;

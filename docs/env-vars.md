@@ -53,7 +53,6 @@ All fields are `optional()` in the Zod schema — the app applies its own defaul
 | `NEXT_PUBLIC_DOCS_URL`              | string | `"/docs"` | Base URL for documentation links.                                       |
 | `NEXT_PUBLIC_DEV_HEALTH_TEST_MODE`  | string | —         | Client-side test mode flag. Mirrors `DEV_HEALTH_TEST_MODE`.             |
 | `NEXT_PUBLIC_DEMO_MODE`             | string | —         | Enables demo mode UI behaviour.                                         |
-| `NEXT_PUBLIC_BETA`                  | string | —         | Enables beta feature flags in the UI.                                   |
 | `NEXT_PUBLIC_TELEMETRY_ENABLED`     | string | `"true"`  | Enables product telemetry. Set to `"false"` to disable globally.        |
 | `NEXT_PUBLIC_RUM_ENDPOINT`          | string | —         | Real User Monitoring endpoint URL.                                      |
 | `NEXT_PUBLIC_SENTRY_DSN`            | string | —         | Sentry DSN for client-side error reporting.                             |

@@ -20,11 +20,21 @@ export type FilterBarView =
     | "risk-compounding"
     | "ai";
 
+export type UnreadFilter =
+    "developers" | "roles" | "flowStage" | "blocked" | "artifacts" | "issueType";
+
 export type FilterVisibility = {
     scope?: boolean;
     repo?: boolean;
     developer?: boolean;
     workType?: boolean;
+    /** The view's queries take ONE work type (the AI `AIScopeInput.workType` is a single string): the Work control is single-select. */
+    workTypeSingle?: boolean;
+    /**
+     * URL filters this view's queries do not read: the drawer does not offer them, and a value
+     * left in an old URL is neither shown as a pill nor counted as active. Unset = all are read.
+     */
+    unreadFilters?: UnreadFilter[];
     flowStage?: boolean;
     date?: boolean;
 };
@@ -156,17 +166,21 @@ const RISK_COMPOUNDING_VISIBILITY: FilterVisibility = {
 };
 
 // AI workflow surfaces expose team / repo / work-type scoping but never
-// person-level breakdowns (aggregated reviewer distribution only).
+// person-level breakdowns (aggregated reviewer distribution only). The AI queries
+// read team, repo, the date range and the work category only (CHAOS-7744): the
+// other filters are not offered and not shown or counted when an old URL has them.
 const AI_VISIBILITY: FilterVisibility = {
     scope: true,
     repo: true,
     developer: false,
     workType: true,
+    workTypeSingle: true,
+    unreadFilters: ["developers", "roles", "flowStage", "blocked", "artifacts", "issueType"],
     flowStage: false,
     date: true,
 };
 
-export const resolveVisibility = (view?: FilterBarView, tab?: string): FilterVisibility => {
+const resolveViewVisibility = (view?: FilterBarView, tab?: string): FilterVisibility => {
     if (view === "metrics") {
         if (tab === "flow") {
             return METRICS_FLOW_VISIBILITY;
@@ -219,6 +233,21 @@ export const resolveVisibility = (view?: FilterBarView, tab?: string): FilterVis
     return DEFAULT_VISIBILITY;
 };
 
+/**
+ * Filters no view's queries read (CHAOS-7795): `what.artifacts` is only printed as a chip on the
+ * explore page; every query reads `what.repos`. So no view shows or counts an artifacts value left
+ * in the URL, and none offers the input. A view's own list (the AI pages) is added to.
+ */
+const NEVER_READ: UnreadFilter[] = ["artifacts"];
+
+export const resolveVisibility = (view?: FilterBarView, tab?: string): FilterVisibility => {
+    const visibility = resolveViewVisibility(view, tab);
+    return {
+        ...visibility,
+        unreadFilters: Array.from(new Set([...(visibility.unreadFilters ?? []), ...NEVER_READ])),
+    };
+};
+
 export const resolveScopeLock = (view?: FilterBarView): MetricFilter["scope"]["level"] | null => {
     const lockedViews: FilterBarView[] = [
         "metrics",
@@ -238,3 +267,7 @@ export const resolveScopeLock = (view?: FilterBarView): MetricFilter["scope"]["l
 
     return view && lockedViews.includes(view) ? "team" : null;
 };
+
+/** True when the view's queries read this URL filter (so it is shown as a pill and counted). */
+export const isFilterRead = (visibility: FilterVisibility, filter: UnreadFilter): boolean =>
+    !visibility.unreadFilters?.includes(filter);

@@ -60,7 +60,7 @@ describe("ShellTopBar — location trail from the nav config (A6)", () => {
     });
 
     it("shows no trail on a route that no area owns", () => {
-        navigationMock.pathname = "/prs/repo:1";
+        navigationMock.pathname = "/demo";
         render(<ShellTopBar status={LOADING} />);
 
         expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();

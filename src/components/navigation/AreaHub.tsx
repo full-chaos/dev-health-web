@@ -63,7 +63,7 @@ export function AreaHub({ areaId, signals, filters, role, title, description }: 
         <section
             aria-label={`${area.label} signals`}
             data-testid="area-hub"
-            className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5"
+            className="flex flex-col gap-6"
         >
             <div>
                 <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
@@ -74,7 +74,7 @@ export function AreaHub({ areaId, signals, filters, role, title, description }: 
                 ) : null}
             </div>
 
-            <div className="mt-4 space-y-6">
+            <div className="space-y-6">
                 {clusters.map((group) => (
                     <div
                         key={group.cluster ?? "_flat"}

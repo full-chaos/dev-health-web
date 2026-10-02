@@ -156,3 +156,61 @@ describe("resolveScopeBarConfig — pageFilters: false", () => {
         });
     });
 });
+
+describe("resolveScopeBarConfig — AI pages (CHAOS-7744)", () => {
+    it("lists the URL filters no AI query reads: developers, roles, flow stage, blocked, artifacts and issue type", () => {
+        expect(resolveVisibility("ai").unreadFilters).toEqual([
+            "developers",
+            "roles",
+            "flowStage",
+            "blocked",
+            "artifacts",
+            "issueType",
+        ]);
+    });
+
+    it("does not offer the Issue type filter on an AI page: no AI query reads it", () => {
+        expect(resolveScopeBarConfig("ai").resolvedVisibility.unreadFilters).toContain("issueType");
+        expect(resolveVisibility("ai").unreadFilters).toContain("issueType");
+    });
+
+    it("keeps the Issue type filter wherever it is offered today", () => {
+        for (const view of ALL_VIEWS.filter((v) => v !== "ai")) {
+            expect(resolveVisibility(view).unreadFilters, view).toEqual(["artifacts"]);
+        }
+    });
+
+    it("keeps the Work control on an AI page: the AIScopeInput queries read it", () => {
+        expect(resolveScopeBarConfig("ai").resolvedVisibility.workType).toBe(true);
+    });
+});
+
+describe("resolveScopeBarConfig — Work is single-select on AI pages (CHAOS-7784)", () => {
+    it("the AI queries take one work type, so the AI view is single-select", () => {
+        expect(resolveScopeBarConfig("ai").resolvedVisibility.workTypeSingle).toBe(true);
+    });
+
+    it("every other view keeps multi-select", () => {
+        for (const view of ALL_VIEWS.filter((v) => v !== "ai")) {
+            expect(resolveVisibility(view).workTypeSingle, view).toBeUndefined();
+        }
+    });
+});
+
+describe("resolveVisibility — artifacts are read by no view (CHAOS-7795)", () => {
+    it("lists artifacts as unread on every view, with and without a tab", () => {
+        for (const view of ALL_VIEWS) {
+            expect(resolveVisibility(view).unreadFilters, view).toContain("artifacts");
+            expect(resolveScopeBarConfig(view).resolvedVisibility.unreadFilters, view).toContain(
+                "artifacts",
+            );
+        }
+        expect(resolveVisibility(undefined).unreadFilters).toContain("artifacts");
+        expect(resolveVisibility("metrics", "flow").unreadFilters).toContain("artifacts");
+    });
+
+    it("lists artifacts once, also on the AI view", () => {
+        const ai = resolveVisibility("ai").unreadFilters ?? [];
+        expect(ai.filter((f) => f === "artifacts")).toHaveLength(1);
+    });
+});

@@ -1,3 +1,4 @@
+import { STATUS_PILL } from "@/lib/statusPill";
 import {
     CONFIDENCE_SHOW_THRESHOLD,
     CONFIDENCE_WARN_THRESHOLD,
@@ -13,9 +14,9 @@ function resolveLevel(score: number): ConfidenceLevel {
 }
 
 const LEVEL_STYLES: Record<ConfidenceLevel, string> = {
-    high: "border-green-500/30 bg-green-500/10 text-green-500",
-    medium: "border-amber-500/30 bg-amber-500/10 text-amber-400",
-    low: "border-red-500/30 bg-red-500/10 text-red-400",
+    high: STATUS_PILL.positive,
+    medium: STATUS_PILL.caution,
+    low: STATUS_PILL.negative,
 };
 
 interface ConfidenceBadgeProps {
