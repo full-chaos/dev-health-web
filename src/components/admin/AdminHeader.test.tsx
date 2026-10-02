@@ -90,11 +90,23 @@ describe("AdminHeader", () => {
         );
     });
 
-    it("has no tab row on a page outside the Admin tabs (platform admin pages)", () => {
+    it("shows the Platform row on a platform admin page (CHAOS-7967)", () => {
         navigation.pathname = "/superadmin/users";
-        render(<AdminHeader title="Users" />);
+        render(
+            <AdminNavProvider isPlatformAdmin>
+                <AdminHeader title="Users" />
+            </AdminNavProvider>,
+        );
 
         expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Users");
+        expect(screen.getByRole("tab", { name: "Users" })).toHaveAttribute("aria-selected", "true");
+        expect(screen.getByRole("tablist", { name: "Platform views" })).toBeInTheDocument();
+    });
+
+    it("has no tab row on a page outside the Admin tabs", () => {
+        navigation.pathname = "/demo";
+        render(<AdminHeader title="Demo" />);
+
         expect(screen.queryByRole("tablist")).toBeNull();
     });
 });

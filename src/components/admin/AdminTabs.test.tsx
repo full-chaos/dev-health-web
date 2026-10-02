@@ -133,8 +133,43 @@ describe("AdminTabs (AD-1 option A)", () => {
         expect(screen.queryByRole("link", { name: "Platform Admin" })).toBeNull();
     });
 
+    it("shows the Platform row on a platform admin page, and the Platform billing row on a billing page (CHAOS-7967)", () => {
+        renderAt("/superadmin/orgs/o1", { isPlatformAdmin: true });
+        const platform = screen.getByRole("tablist", { name: "Platform views" });
+        expect(tabNames(platform)).toEqual([
+            "Overview",
+            "Organizations",
+            "Users",
+            "Licensing",
+            "Product Telemetry",
+            "Context Fabric Validation",
+            "Audit Log",
+            "Settings",
+        ]);
+        expect(within(platform).getByRole("tab", { name: "Organizations" })).toHaveAttribute(
+            "aria-selected",
+            "true",
+        );
+        // The Platform Admin link belongs to the Organization row only.
+        expect(screen.queryByRole("link", { name: "Platform Admin" })).toBeNull();
+
+        renderAt("/superadmin/billing/audit", { isPlatformAdmin: true });
+        const billing = screen.getByRole("tablist", { name: "Platform billing views" });
+        expect(tabNames(billing)).toEqual([
+            "Billing Plans",
+            "Invoices",
+            "Subscriptions",
+            "Refunds",
+            "Billing Audit",
+        ]);
+        expect(within(billing).getByRole("tab", { name: "Billing Audit" })).toHaveAttribute(
+            "aria-selected",
+            "true",
+        );
+    });
+
     it("renders nothing outside the Admin tab routes", () => {
-        const { container } = renderAt("/superadmin/users");
+        const { container } = renderAt("/demo");
         expect(container).toBeEmptyDOMElement();
         expect(renderAt("/testops/pipelines").container).toBeEmptyDOMElement();
         expect(renderAt("/settings").container).toBeEmptyDOMElement();

@@ -1,5 +1,6 @@
 import { Toaster } from "sonner";
 
+import { AdminNavProvider } from "@/components/admin/AdminTabs";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { SessionProvider } from "@/components/auth/SessionProvider";
@@ -62,11 +63,15 @@ export default async function AppLayout({
                 features={hasValidEntitlements ? entitlements.features : {}}
                 limits={hasValidEntitlements ? entitlements.limits : {}}
             >
-                <GraphQLProvider orgId={session.user.org_id}>
-                    <TelemetryProvider orgId={session.user.org_id} userId={session.user.id}>
-                        {authenticatedShell}
-                    </TelemetryProvider>
-                </GraphQLProvider>
+                {/* The shell lists the platform admin rows for a platform admin (CHAOS-7967);
+                    the Admin pages read the same flag for their tab rows and pill. */}
+                <AdminNavProvider isPlatformAdmin={session.user.is_superuser === true}>
+                    <GraphQLProvider orgId={session.user.org_id}>
+                        <TelemetryProvider orgId={session.user.org_id} userId={session.user.id}>
+                            {authenticatedShell}
+                        </TelemetryProvider>
+                    </GraphQLProvider>
+                </AdminNavProvider>
             </AdminTierProvider>
         </SessionProvider>
     );

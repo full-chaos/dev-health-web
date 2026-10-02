@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
 import { requireRole } from "@/lib/auth";
-import { AdminNavProvider } from "@/components/admin/AdminTabs";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { getOrgEntitlements } from "@/lib/admin/server";
 
@@ -32,11 +31,10 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
     // Rendered inside the shared app shell: the shell owns the navigation, the page padding and
     // the `<main>` landmark. Each page's header brings the tab row of its Admin destination.
+    // The platform admin flag for the tab rows comes from the authed app layout (one source).
     return (
-        <AdminNavProvider isPlatformAdmin={isSuperuser}>
-            <AdminTierProvider tier={tier} features={features}>
-                <div className="flex min-w-0 flex-1 flex-col gap-10">{children}</div>
-            </AdminTierProvider>
-        </AdminNavProvider>
+        <AdminTierProvider tier={tier} features={features}>
+            <div className="flex min-w-0 flex-1 flex-col gap-10">{children}</div>
+        </AdminTierProvider>
     );
 }

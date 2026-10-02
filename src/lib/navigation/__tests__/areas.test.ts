@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 import {
+    isNavChildVisible,
     navAreas,
     getAreaById,
     selectedAreaIdForPathname,
@@ -104,8 +105,43 @@ describe("navArea.children — locked child navigation", () => {
                 "Automations",
             ],
             Reports: ["Report Center", "Weekly Review", "Executive Summary", "Export History"],
-            Admin: ["Organization", "Connections", "Data Confidence", "Settings", "Billing"],
+            // CHAOS-7967: "Platform" and "Platform billing" are listed only for platform admins.
+            Admin: [
+                "Organization",
+                "Connections",
+                "Data Confidence",
+                "Settings",
+                "Platform",
+                "Platform billing",
+                "Billing",
+            ],
         });
+    });
+
+    it("lists the platform admin destinations only for a platform admin (CHAOS-7967)", () => {
+        const admin = navAreas.find((area) => area.id === "admin")!;
+        const listed = (isPlatformAdmin: boolean) =>
+            admin.children
+                .filter((child) => isNavChildVisible(child, {}, { isPlatformAdmin }))
+                .map((child) => child.label);
+        expect(listed(false)).toEqual([
+            "Organization",
+            "Connections",
+            "Data Confidence",
+            "Settings",
+        ]);
+        expect(listed(true)).toEqual([
+            "Organization",
+            "Connections",
+            "Data Confidence",
+            "Settings",
+            "Platform",
+            "Platform billing",
+        ]);
+        // No viewer given: not a platform admin.
+        expect(
+            admin.children.filter((child) => isNavChildVisible(child, {})).map((c) => c.label),
+        ).toEqual(listed(false));
     });
 
     it("has unique child ids across all areas", () => {
@@ -353,6 +389,11 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
         ["/data-health/identity", "data-confidence"],
         ["/data-health/mapping", "data-confidence"],
         ["/settings", "settings"],
+        ["/superadmin", "platform"],
+        ["/superadmin/orgs/o1", "platform"],
+        ["/superadmin/context-fabric/validation", "platform"],
+        ["/superadmin/billing/plans", "platform-billing"],
+        ["/superadmin/billing/audit", "platform-billing"],
     ])("selects the Admin destination of %s: %s", (pathname, childId) => {
         expect(selectedChildForPathname(areaById("admin"), pathname)?.id).toBe(childId);
     });

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { AdminNavProvider } from "@/components/admin/AdminTabs";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { AppShell } from "@/components/shell/AppShell";
 
@@ -49,9 +50,12 @@ async function renderAdminPage(pathname: string, title: string) {
         </div>
     );
     const layout = await AdminLayout({ children: page });
+    // The authed app layout provides the platform admin flag from the session (CHAOS-7967).
     return render(
         <AdminTierProvider tier="community" features={{}}>
-            <AppShell>{layout}</AppShell>
+            <AdminNavProvider isPlatformAdmin={session.user.is_superuser === true}>
+                <AppShell>{layout}</AppShell>
+            </AdminNavProvider>
         </AdminTierProvider>,
     );
 }
@@ -125,7 +129,7 @@ describe("org admin pages in the shared app shell (CHAOS-7591)", () => {
         ).toHaveAttribute("aria-selected", "true");
     });
 
-    it("gives a platform admin the pill and the Platform Admin link, from the session the layout reads", async () => {
+    it("gives a platform admin the pill, the Platform Admin link and the two platform destinations", async () => {
         session.user = { org_id: "org-1", role: "admin", is_superuser: true };
         await renderAdminPage("/org/admin", "Admin Dashboard");
 
@@ -136,5 +140,25 @@ describe("org admin pages in the shared app shell (CHAOS-7591)", () => {
             "href",
             "/superadmin",
         );
+        expect(
+            within(screen.getByTestId("nav-children-admin"))
+                .getAllByRole("link")
+                .map((link) => link.textContent),
+        ).toEqual([
+            "Organization",
+            "Connections",
+            "Data Confidence",
+            "Settings",
+            "Platform",
+            "Platform billing",
+        ]);
+    });
+
+    it("lists no platform destination for an org admin", async () => {
+        await renderAdminPage("/org/admin", "Admin Dashboard");
+
+        const children = screen.getByTestId("nav-children-admin");
+        expect(within(children).queryByRole("link", { name: "Platform" })).toBeNull();
+        expect(within(children).queryByRole("link", { name: "Platform billing" })).toBeNull();
     });
 });
