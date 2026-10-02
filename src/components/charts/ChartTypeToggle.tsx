@@ -46,7 +46,7 @@ export function ChartTypeToggle<T extends string = string>({
               flex items-center gap-1.5 rounded-md px-3 py-1.5 text-[10px] uppercase tracking-[0.15em] font-medium transition-all duration-150
               ${
                   isActive
-                      ? "bg-[color-mix(in_srgb,var(--accent-2)_55%,black)] text-white shadow-sm"
+                      ? "bg-(--accent-wash) text-(--accent-ink)"
                       : "text-(--ink-muted) hover:text-foreground hover:bg-(--card-80)"
               }
             `}

@@ -1,5 +1,6 @@
 "use client";
 
+import { ListFilter } from "lucide-react";
 import { type ReactNode, useRef, useState } from "react";
 
 import { isFilterRead, type FilterBarClientProps } from "@/components/filters/filterBarConfig";
@@ -7,6 +8,7 @@ import { formatSelection, toggleValue } from "@/components/filters/filterBarUtil
 import { ActiveFilterPills } from "@/components/filters/sections/ActiveFilterPills";
 import { AdvancedFiltersPanel } from "@/components/filters/sections/AdvancedFiltersPanel";
 import { QuickFilterMenu } from "@/components/filters/sections/QuickFilterMenu";
+import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 
@@ -224,7 +226,7 @@ export function ScopeBarClient({
                     <div
                         role="group"
                         aria-labelledby="scope-bar-window-label"
-                        className="flex rounded-(--radius-pill) border border-(--border) bg-(--surface-raised) p-1"
+                        className="flex items-center gap-1"
                     >
                         {WINDOW_OPTIONS.map((days) => {
                             const active = filters.time.range_days === days;
@@ -234,9 +236,9 @@ export function ScopeBarClient({
                                     type="button"
                                     onClick={() => setWindow(days)}
                                     aria-pressed={active}
-                                    className={`rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) ${
+                                    className={`rounded-(--radius-sm) px-2 py-1 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) ${
                                         active
-                                            ? "bg-(--accent) text-(--accent-foreground)"
+                                            ? "bg-(--accent)/15 font-semibold text-(--accent-text)"
                                             : "text-(--text-secondary) hover:text-(--text-primary)"
                                     }`}
                                 >
@@ -273,18 +275,18 @@ export function ScopeBarClient({
                         </label>
                     ) : null}
                     {hasDrawerFilters ? (
-                        <button
-                            type="button"
+                        <Button
                             ref={filtersButtonRef}
+                            variant="ghost"
+                            size="sm"
+                            icon={<ListFilter />}
                             onClick={() => (filtersOpen ? closeFilters() : openFilters())}
                             aria-label={filtersButtonName}
                             aria-expanded={filtersOpen}
                             aria-controls={DRAWER_ID}
-                            className={`flex items-center gap-2 rounded-full border px-4 py-2 text-xs font-medium uppercase tracking-[0.2em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) ${
-                                filtersOpen || activeFilterCount > 0
-                                    ? "border-(--accent) text-(--text-primary)"
-                                    : "border-(--border) bg-(--surface-raised) text-(--text-primary) hover:border-(--text-muted)"
-                            }`}
+                            className={
+                                filtersOpen || activeFilterCount > 0 ? "border-(--accent)!" : ""
+                            }
                         >
                             {CTA_LABELS.filters}
                             {activeFilterCount > 0 ? (
@@ -296,7 +298,7 @@ export function ScopeBarClient({
                                     {activeFilterCount}
                                 </span>
                             ) : null}
-                        </button>
+                        </Button>
                     ) : null}
                 </>
             }
