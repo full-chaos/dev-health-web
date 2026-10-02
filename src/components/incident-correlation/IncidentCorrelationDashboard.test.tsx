@@ -12,9 +12,11 @@
  *   LINKED_INCIDENT:  source = deployment,  target = incident
  */
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { render } from "@/test/utils";
+import { renderWithEvidenceDrawer } from "@/test/evidenceDrawer";
 import { ShellOrganizationProvider } from "@/components/shell/ShellContext";
 import {
     buildSankeyData,
@@ -616,44 +618,54 @@ describe("IncidentCorrelationDashboard", () => {
     };
 
     it("renders empty state when no data is available", () => {
-        render(<IncidentCorrelationDashboard {...baseProps} />);
+        renderWithEvidenceDrawer(<IncidentCorrelationDashboard {...baseProps} />);
         expect(screen.getByTestId("empty-state")).toBeInTheDocument();
         expect(screen.getByText(/no incident-correlation evidence/i)).toBeInTheDocument();
     });
 
-    it("includes orgId in empty state", () => {
-        render(<IncidentCorrelationDashboard {...baseProps} orgId="org-sentinel" />);
-        expect(screen.getByText(/org-sentinel/)).toBeInTheDocument();
+    it("never shows the raw organization id in the empty state (Govern D6)", () => {
+        renderWithEvidenceDrawer(
+            <IncidentCorrelationDashboard {...baseProps} orgId="org-sentinel" />,
+        );
+        expect(screen.queryByText(/org-sentinel/)).toBeNull();
+        // Without a known name the organization line is left out.
+        expect(screen.queryByTestId("empty-state-organization")).toBeNull();
     });
 
     it("shows the organization name, not the raw id, when the shell knows it", () => {
-        render(
+        renderWithEvidenceDrawer(
             <ShellOrganizationProvider
                 value={{ name: "Acme Corp", hasData: false, lastMetricsAt: null }}
             >
                 <IncidentCorrelationDashboard {...baseProps} orgId="org-sentinel" />
             </ShellOrganizationProvider>,
         );
-        expect(screen.getByText("Acme Corp")).toBeInTheDocument();
+        expect(screen.getByTestId("empty-state-organization")).toHaveTextContent(
+            "Organization: Acme Corp",
+        );
         expect(screen.queryByText(/org-sentinel/)).toBeNull();
     });
 
-    it("keeps the sync command reachable behind How to connect, with the Connections link", () => {
-        render(<IncidentCorrelationDashboard {...baseProps} />);
-        const details = screen.getByText("How to connect").closest("details");
-        expect(details).not.toBeNull();
-        expect(details).toHaveTextContent("dev-hops sync git");
-        expect(details).toHaveTextContent("ensure incidents are linked in your provider");
-        expect(screen.getByRole("link", { name: "Check data connections" })).toHaveAttribute(
+    it("draws the shared empty panel with a 'How to connect' link to the connections page, and no internal command (Govern D6)", () => {
+        renderWithEvidenceDrawer(<IncidentCorrelationDashboard {...baseProps} />);
+        const empty = screen.getByTestId("empty-state");
+        expect(empty.querySelector("[data-variant='no-data-connected']")).not.toBeNull();
+        expect(empty).toHaveTextContent("No incident-correlation evidence in this window.");
+        expect(empty).toHaveTextContent(
+            "The page will populate automatically after the next data sync.",
+        );
+        expect(screen.getByRole("link", { name: "How to connect" })).toHaveAttribute(
             "href",
             "/org/admin/sync",
         );
+        expect(empty).not.toHaveTextContent("dev-hops");
+        expect(empty.querySelector("details")).toBeNull();
     });
 
     it("renders incident linkage table when edge data is present", () => {
         // LINKED_INCIDENT: dep-1 → inc-1 gives one incident row
         const incidents = [makeEdge("l1", "dep-1", "inc-1", "LINKED_INCIDENT")];
-        render(
+        renderWithEvidenceDrawer(
             <IncidentCorrelationDashboard
                 {...baseProps}
                 deploysEdges={[]}
@@ -667,7 +679,7 @@ describe("IncidentCorrelationDashboard", () => {
     it("renders the SankeyChart when joined edge data produces links", () => {
         // dep-1 → inc-1 produces a deployment→incident link in the Sankey
         const incidents = [makeEdge("l1", "dep-1", "inc-1", "LINKED_INCIDENT")];
-        render(
+        renderWithEvidenceDrawer(
             <IncidentCorrelationDashboard
                 {...baseProps}
                 deploysEdges={[]}
@@ -686,7 +698,7 @@ describe("IncidentCorrelationDashboard", () => {
             delta_pct: -0.1,
             spark: [],
         };
-        render(
+        renderWithEvidenceDrawer(
             <IncidentCorrelationDashboard
                 {...baseProps}
                 deltas={[delta]}
@@ -706,7 +718,7 @@ describe("IncidentCorrelationDashboard", () => {
             { metric: "deployment_frequency", label: "Deployment Frequency" },
             { metric: "mttr", label: "MTTR" },
         ].map((m) => ({ ...m, value: 1, unit: "", delta_pct: 0, spark: [] }));
-        render(<IncidentCorrelationDashboard {...baseProps} deltas={deltas} />);
+        renderWithEvidenceDrawer(<IncidentCorrelationDashboard {...baseProps} deltas={deltas} />);
         const cards = screen.getAllByTestId("metric-card");
         expect(cards).toHaveLength(3);
         for (const card of cards) {
@@ -723,7 +735,7 @@ describe("IncidentCorrelationDashboard", () => {
             delta_pct: -0.1,
             spark: [],
         };
-        render(<IncidentCorrelationDashboard {...baseProps} deltas={[delta]} />);
+        renderWithEvidenceDrawer(<IncidentCorrelationDashboard {...baseProps} deltas={[delta]} />);
         const cards = screen.getAllByTestId("metric-card");
         // Only 1 card — not 3 (deployment_frequency + mttr are absent from deltas)
         expect(cards).toHaveLength(1);
@@ -742,7 +754,7 @@ describe("IncidentCorrelationDashboard", () => {
                 { ts: "2026-05-02", value: 0.06 },
             ],
         };
-        render(<IncidentCorrelationDashboard {...baseProps} deltas={[delta]} />);
+        renderWithEvidenceDrawer(<IncidentCorrelationDashboard {...baseProps} deltas={[delta]} />);
         expect(screen.getByTestId("cfr-trend-chart")).toBeInTheDocument();
         expect(screen.getByTestId("timeseries-chart")).toHaveTextContent("0.04,0.06");
     });
@@ -760,7 +772,9 @@ describe("IncidentCorrelationDashboard", () => {
                 { ts: "2026-05-03", value: 0.06 },
             ],
         };
-        render(<IncidentCorrelationDashboard {...baseProps} deltas={[delta as never]} />);
+        renderWithEvidenceDrawer(
+            <IncidentCorrelationDashboard {...baseProps} deltas={[delta as never]} />,
+        );
         // join() renders null as "": two commas = the gap survived; a dropped point would be "0.04,0.06".
         expect(screen.getByTestId("timeseries-chart")).toHaveTextContent("0.04,,0.06");
     });
@@ -778,7 +792,9 @@ describe("IncidentCorrelationDashboard", () => {
                 { ts: "2026-05-03", value: 0.06 },
             ],
         };
-        render(<IncidentCorrelationDashboard {...baseProps} deltas={[delta as never]} />);
+        renderWithEvidenceDrawer(
+            <IncidentCorrelationDashboard {...baseProps} deltas={[delta as never]} />,
+        );
         expect(screen.getByTestId("timeseries-chart")).toHaveTextContent("0.04,,0.06");
     });
 
@@ -794,7 +810,9 @@ describe("IncidentCorrelationDashboard", () => {
                 { ts: "2026-05-02", value: null },
             ],
         };
-        render(<IncidentCorrelationDashboard {...baseProps} deltas={[delta as never]} />);
+        renderWithEvidenceDrawer(
+            <IncidentCorrelationDashboard {...baseProps} deltas={[delta as never]} />,
+        );
         expect(screen.getByTestId("cfr-trend-empty")).toBeInTheDocument();
     });
 
@@ -807,7 +825,7 @@ describe("IncidentCorrelationDashboard", () => {
             delta_pct: -0.1,
             spark: [{ ts: "2026-05-01", value: 0.04 }],
         };
-        render(<IncidentCorrelationDashboard {...baseProps} deltas={[delta]} />);
+        renderWithEvidenceDrawer(<IncidentCorrelationDashboard {...baseProps} deltas={[delta]} />);
         expect(screen.getByTestId("cfr-trend-empty")).toBeInTheDocument();
         expect(screen.queryByTestId("cfr-trend-chart")).not.toBeInTheDocument();
     });
@@ -822,7 +840,7 @@ describe("IncidentCorrelationDashboard", () => {
                 evidence_link: "/e/1",
             },
         ];
-        render(<IncidentCorrelationDashboard {...baseProps} drivers={drivers} />);
+        renderWithEvidenceDrawer(<IncidentCorrelationDashboard {...baseProps} drivers={drivers} />);
         expect(screen.getByTestId("change-failure-associations-empty")).toBeInTheDocument();
         expect(screen.queryByTestId("horizontal-bar-chart")).not.toBeInTheDocument();
     });
@@ -844,7 +862,7 @@ describe("IncidentCorrelationDashboard", () => {
                 evidence_link: "/e/2",
             },
         ];
-        render(<IncidentCorrelationDashboard {...baseProps} drivers={drivers} />);
+        renderWithEvidenceDrawer(<IncidentCorrelationDashboard {...baseProps} drivers={drivers} />);
         expect(screen.getByTestId("horizontal-bar-chart")).toBeInTheDocument();
         expect(screen.getByTestId("horizontal-bar-chart")).toHaveTextContent("Long PR,No tests");
     });
@@ -861,7 +879,9 @@ describe("IncidentCorrelationDashboard", () => {
                 evidence_link: "/e/c1",
             },
         ];
-        render(<IncidentCorrelationDashboard {...baseProps} contributors={contributors} />);
+        renderWithEvidenceDrawer(
+            <IncidentCorrelationDashboard {...baseProps} contributors={contributors} />,
+        );
         expect(screen.getByText("meridian/billing-service")).toBeInTheDocument();
         expect(screen.queryByText(/698c0211-0000/)).not.toBeInTheDocument();
     });
@@ -878,7 +898,9 @@ describe("IncidentCorrelationDashboard", () => {
                 evidence_link: "/e/c2",
             },
         ];
-        render(<IncidentCorrelationDashboard {...baseProps} contributors={contributors} />);
+        renderWithEvidenceDrawer(
+            <IncidentCorrelationDashboard {...baseProps} contributors={contributors} />,
+        );
         expect(screen.getByText("Unresolved")).toBeInTheDocument();
         expect(screen.queryByText(/4e00fff2-df66/)).not.toBeInTheDocument();
     });
@@ -892,7 +914,7 @@ describe("IncidentCorrelationDashboard", () => {
                 targetDisplayName: "INC-2025-001",
             }),
         ];
-        render(
+        renderWithEvidenceDrawer(
             <IncidentCorrelationDashboard
                 {...baseProps}
                 deploysEdges={[]}
@@ -912,7 +934,7 @@ describe("IncidentCorrelationDashboard", () => {
                 targetDisplayName: null,
             }),
         ];
-        render(
+        renderWithEvidenceDrawer(
             <IncidentCorrelationDashboard
                 {...baseProps}
                 deploysEdges={[]}
@@ -922,5 +944,133 @@ describe("IncidentCorrelationDashboard", () => {
         expect(screen.getByTestId("incident-linkage-table")).toBeInTheDocument();
         expect(screen.getByText("Unresolved")).toBeInTheDocument();
         expect(screen.queryByText(/698c0211-0000/)).not.toBeInTheDocument();
+    });
+
+    describe("Linked Incidents rows open their evidence (Govern D5)", () => {
+        // inc-1: two deployments (dep-a, dep-b) with PRs pr-1 + pr-2 and pr-2 again; inc-2: one deployment.
+        const incidentEdges = [
+            makeEdge("l1", "dep-a", "inc-1", "LINKED_INCIDENT", {
+                targetDisplayName: "INC-482 Checkout timeouts",
+                sourceDisplayName: "atlas-api · Sep 24",
+            }),
+            makeEdge("l2", "dep-b", "inc-1", "LINKED_INCIDENT", {
+                sourceDisplayName: "atlas-web · Sep 22",
+            }),
+            makeEdge("l3", "dep-c", "inc-2", "LINKED_INCIDENT", {
+                targetDisplayName: "INC-455 Search index lag",
+            }),
+        ];
+        const deploysEdges = [
+            makeEdge("d1", "pr-1", "dep-a", "DEPLOYS", {
+                sourceDisplayName: "#1842 Raise pool size",
+            }),
+            makeEdge("d2", "pr-2", "dep-a", "DEPLOYS", { sourceDisplayName: "#1847 Retry on 502" }),
+            makeEdge("d3", "pr-2", "dep-b", "DEPLOYS", { sourceDisplayName: "#1847 Retry on 502" }),
+        ];
+
+        it("draws the table in a section card with the count line in its head", () => {
+            renderWithEvidenceDrawer(
+                <IncidentCorrelationDashboard
+                    {...baseProps}
+                    deploysEdges={deploysEdges}
+                    incidentEdges={incidentEdges}
+                />,
+            );
+            const card = screen.getByTestId("linked-incidents");
+            expect(card.tagName).toBe("SECTION");
+            expect(within(card).getByRole("heading", { level: 2 })).toHaveTextContent(
+                "Linked Incidents",
+            );
+            expect(within(card).getByTestId("linked-incidents-count")).toHaveTextContent(
+                "2 incidents · showing the strongest linked records",
+            );
+            const rows = within(card).getAllByTestId("incident-row");
+            expect(
+                rows.map((row) =>
+                    within(row)
+                        .getAllByRole("cell")
+                        .slice(0, 3)
+                        .map((cell) => cell.textContent),
+                ),
+            ).toEqual([
+                ["INC-482 Checkout timeouts", "2", "2"],
+                ["INC-455 Search index lag", "1", "0"],
+            ]);
+        });
+
+        it("gives every row an 'Open evidence' action", () => {
+            renderWithEvidenceDrawer(
+                <IncidentCorrelationDashboard
+                    {...baseProps}
+                    deploysEdges={deploysEdges}
+                    incidentEdges={incidentEdges}
+                />,
+            );
+            const rows = screen.getAllByTestId("incident-row");
+            for (const row of rows) {
+                expect(within(row).getByTestId("incident-row-evidence")).toHaveTextContent(
+                    "Open evidence",
+                );
+            }
+            expect(screen.getAllByTestId("incident-row-evidence")).toHaveLength(2);
+        });
+
+        it("opens the ONE shared drawer with the row's linked records, and says a link is not a cause", async () => {
+            renderWithEvidenceDrawer(
+                <IncidentCorrelationDashboard
+                    {...baseProps}
+                    deploysEdges={deploysEdges}
+                    incidentEdges={incidentEdges}
+                />,
+            );
+            const [firstRow] = screen.getAllByTestId("incident-row");
+            await userEvent.click(within(firstRow).getByTestId("incident-row-evidence"));
+
+            const body = await screen.findByTestId("incident-evidence");
+            const dialog = body.closest("[role='dialog']");
+            expect(dialog).not.toBeNull();
+            expect(dialog).toHaveTextContent("INC-482 Checkout timeouts");
+            const facts = within(body).getAllByTestId("evidence-fact");
+            expect(facts.map((fact) => fact.textContent)).toEqual([
+                "IncidentINC-482 Checkout timeouts",
+                "Linked deployments2",
+                "Linked PRs2",
+            ]);
+            expect(within(body).getByTestId("incident-evidence-deployments")).toHaveTextContent(
+                "atlas-api · Sep 24",
+            );
+            expect(within(body).getByTestId("incident-evidence-deployments")).toHaveTextContent(
+                "atlas-web · Sep 22",
+            );
+            const prs = within(body).getByTestId("incident-evidence-prs");
+            expect(
+                within(prs)
+                    .getAllByRole("listitem")
+                    .map((li) => li.textContent),
+            ).toEqual(["#1842 Raise pool size", "#1847 Retry on 502"]);
+            expect(body).toHaveTextContent(
+                "A link shows that the records are connected; it does not show cause.",
+            );
+        });
+
+        it("opens the clicked row, not the first one, and leaves out an empty PR list", async () => {
+            renderWithEvidenceDrawer(
+                <IncidentCorrelationDashboard
+                    {...baseProps}
+                    deploysEdges={deploysEdges}
+                    incidentEdges={incidentEdges}
+                />,
+            );
+            const rows = screen.getAllByTestId("incident-row");
+            await userEvent.click(within(rows[1]).getByTestId("incident-row-evidence"));
+            const body = await screen.findByTestId("incident-evidence");
+            expect(within(body).getAllByTestId("evidence-fact")[0]).toHaveTextContent(
+                "INC-455 Search index lag",
+            );
+            expect(within(body).queryByTestId("incident-evidence-prs")).toBeNull();
+            expect(within(body).getAllByTestId("evidence-fact")[2]).toHaveTextContent(
+                "Linked PRs0",
+            );
+        });
     });
 });

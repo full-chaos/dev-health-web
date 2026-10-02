@@ -17,17 +17,23 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { useMemo } from "react";
 
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { buttonClassName } from "@/components/shared/Button";
+import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { useShellOrganization } from "@/components/shell/ShellContext";
 import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
+import { Section } from "@/components/ui/Section";
 import { buildExploreUrl } from "@/lib/filters/url";
-import { formatDelta, formatMetricValue } from "@/lib/formatters";
+import { formatDelta, formatMetricValue, formatNumber } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { Contributor, MetricDelta, SankeyLink, SankeyNode } from "@/lib/types";
@@ -95,6 +101,7 @@ export type IncidentRow = {
 };
 
 export type IncidentCorrelationDashboardProps = {
+    /** The organization id. Not shown: the empty state names the organization, never its raw id. */
     orgId: string;
     deltas: MetricDelta[];
     drivers: Contributor[];
@@ -302,7 +309,6 @@ export function buildSankeyData(
 // ---------------------------------------------------------------------------
 
 export function IncidentCorrelationDashboard({
-    orgId,
     deltas,
     drivers,
     contributors,
@@ -312,8 +318,9 @@ export function IncidentCorrelationDashboard({
     filters,
     role,
 }: IncidentCorrelationDashboardProps) {
-    // The organization name as the shell card shows it; the raw id only when it is not known.
-    const orgLabel = useShellOrganization()?.name?.trim() || orgId;
+    // The organization name as the shell card shows it. When it is not known the line is left
+    // out: the raw organization id is never customer copy (Govern D6).
+    const orgName = useShellOrganization()?.name?.trim() || undefined;
 
     const incidentRows = useMemo(
         () => joinEdges(deploysEdges, incidentEdges),
@@ -356,36 +363,34 @@ export function IncidentCorrelationDashboard({
     // Empty state (mirrors CompoundingRiskDashboard voice)
     // ---------------------------------------------------------------------------
     if (!hasAnyData) {
+        // The approved empty panel (Govern D6): the shared dashed state, a "How to connect" action
+        // to the data connections page, and the organization name. No internal command.
         return (
-            <div
-                className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-8"
-                data-testid="empty-state"
-            >
-                <h2 className="text-2xl font-semibold tracking-tight">
-                    No incident-correlation evidence in this window.
-                </h2>
-                <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted)">
-                    Incident correlation requires deployment activity and linked incidents to be
-                    ingested. The page will populate automatically after the next data sync.
-                </p>
-                <details className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted)">
-                    <summary className="cursor-pointer font-medium text-foreground">
-                        How to connect
-                    </summary>
-                    <p className="mt-2">
-                        Run <code className="font-mono text-[0.85em]">dev-hops sync git</code> and
-                        ensure incidents are linked in your provider.
-                    </p>
-                    <Link
-                        href="/org/admin/sync"
-                        className="mt-2 inline-block text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                    >
-                        {CTA_LABELS.checkDataConnections}
-                    </Link>
-                </details>
-                <p className="mt-8 text-xs text-(--ink-muted)">
-                    Org <span className="font-mono">{orgLabel}</span>
-                </p>
+            <div data-testid="empty-state">
+                <DataState
+                    variant="no-data-connected"
+                    title="No incident-correlation evidence in this window."
+                    description="Incident correlation requires deployment activity and linked incidents to be ingested. The page will populate automatically after the next data sync."
+                    action={
+                        <div className="flex flex-col items-center gap-3">
+                            <Link
+                                href="/org/admin/sync"
+                                className={buttonClassName("secondary", "md")}
+                            >
+                                <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                                {CTA_LABELS.howToConnect}
+                            </Link>
+                            {orgName ? (
+                                <p
+                                    data-testid="empty-state-organization"
+                                    className="text-sm text-(--ink-muted)"
+                                >
+                                    Organization: {orgName}
+                                </p>
+                            ) : null}
+                        </div>
+                    }
+                />
             </div>
         );
     }
@@ -544,54 +549,32 @@ export function IncidentCorrelationDashboard({
 
             {/* ── PR ↔ Deployment ↔ Incident table ────────────────────────────────── */}
             {hasEdgeData && (
-                <section aria-label="Linked incidents">
-                    <div className="mb-4 flex items-baseline justify-between">
-                        <h2 className="text-lg font-semibold tracking-tight">Linked Incidents</h2>
-                        <p className="text-xs text-(--ink-muted)">
+                <Section
+                    title="Linked Incidents"
+                    aria-label="Linked incidents"
+                    data-testid="linked-incidents"
+                    action={
+                        <p
+                            data-testid="linked-incidents-count"
+                            className="text-xs text-(--ink-muted)"
+                        >
                             {incidentRows.length} incident
                             {incidentRows.length !== 1 ? "s" : ""} · showing the strongest linked
                             records
                         </p>
-                    </div>
-                    <div className="overflow-hidden rounded-(--radius-lg) border border-(--border) bg-(--surface)">
-                        <table className="w-full text-sm" data-testid="incident-linkage-table">
-                            <thead className="bg-(--surface-raised) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
-                                <tr>
-                                    <th className="px-5 py-3 text-left">Incident ID</th>
-                                    <th className="px-5 py-3 text-right">Linked Deployments</th>
-                                    <th className="px-5 py-3 text-right">Linked PRs</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {incidentRows.slice(0, 50).map((row) => (
-                                    <tr
-                                        key={row.incidentId}
-                                        className="border-t border-(--border) hover:bg-(--surface-raised)"
-                                        data-testid="incident-row"
-                                        data-incident-id={row.incidentId}
-                                    >
-                                        <td className="px-5 py-3 text-xs">
-                                            <EntityLabel
-                                                id={row.incidentId}
-                                                displayName={row.incidentDisplayName}
-                                                className="font-mono"
-                                            />
-                                        </td>
-                                        <td className="px-5 py-3 text-right tabular-nums">
-                                            {row.deploymentIds.length}
-                                        </td>
-                                        <td className="px-5 py-3 text-right tabular-nums">
-                                            {
-                                                new Set(Object.values(row.prIdsByDeployment).flat())
-                                                    .size
-                                            }
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </section>
+                    }
+                >
+                    <DataTable
+                        accessibleLabel="Linked incidents"
+                        columns={INCIDENT_COLUMNS}
+                        data={incidentRows.slice(0, 50)}
+                        rowKeyAction={(row) => row.incidentId}
+                        rowActions={(row) => <IncidentEvidenceAction row={row} />}
+                        emptyMessage="No linked incidents in this window."
+                        testId="incident-linkage-table"
+                        rowTestId="incident-row"
+                    />
+                </Section>
             )}
 
             {/* ── Sankey: PR → deployment → incident ──────────────────────────────── */}
@@ -625,6 +608,126 @@ export function IncidentCorrelationDashboard({
                     selected window.
                 </Notice>
             )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Linked Incidents table: columns and the row's evidence (Govern D5)
+// ---------------------------------------------------------------------------
+
+/** Distinct PR ids of one incident, over all of its deployments. */
+function linkedPrIds(row: IncidentRow): string[] {
+    return Array.from(new Set(Object.values(row.prIdsByDeployment).flat()));
+}
+
+const INCIDENT_COLUMNS: DataTableColumn<IncidentRow>[] = [
+    {
+        key: "incident",
+        header: "Incident",
+        render: (row) => (
+            <EntityLabel
+                id={row.incidentId}
+                displayName={row.incidentDisplayName}
+                className="font-mono"
+            />
+        ),
+    },
+    {
+        key: "deployments",
+        header: "Linked Deployments",
+        numeric: true,
+        render: (row) => row.deploymentIds.length,
+    },
+    {
+        key: "prs",
+        header: "Linked PRs",
+        numeric: true,
+        render: (row) => linkedPrIds(row).length,
+    },
+];
+
+/** The row action: opens the ONE shared evidence drawer with the incident's linked records. */
+function IncidentEvidenceAction({ row }: { row: IncidentRow }) {
+    const evidence = useEvidenceDrawer();
+    const {
+        labels: [title],
+    } = resolveEntityLabels([row.incidentId], {
+        name: row.incidentDisplayName ?? undefined,
+        unresolvedFallback: "Incident",
+    });
+    return (
+        <button
+            type="button"
+            data-testid="incident-row-evidence"
+            aria-label={`${CTA_LABELS.openEvidence}: ${title}`}
+            onClick={() => evidence.open({ title, content: <IncidentEvidence row={row} /> })}
+            className={buttonClassName("ghost", "sm")}
+        >
+            {CTA_LABELS.openEvidence}
+            <ArrowRight aria-hidden="true" className="h-4 w-4" />
+        </button>
+    );
+}
+
+/**
+ * The drawer body of one Linked Incidents row: the incident, its linked deployments and its linked
+ * pull requests, as served by the work graph (resolved names; an unresolved id is never shown raw).
+ * A link is a connection, not a cause.
+ */
+function IncidentEvidence({ row }: { row: IncidentRow }) {
+    const prIds = linkedPrIds(row);
+    return (
+        <div className="space-y-5" data-testid="incident-evidence">
+            <EvidenceFactList aria-label="Linked records">
+                <EvidenceFact
+                    label="Incident"
+                    value={
+                        <EntityLabel id={row.incidentId} displayName={row.incidentDisplayName} />
+                    }
+                />
+                <EvidenceFact
+                    label="Linked deployments"
+                    value={formatNumber(row.deploymentIds.length)}
+                />
+                <EvidenceFact label="Linked PRs" value={formatNumber(prIds.length)} />
+            </EvidenceFactList>
+            {row.deploymentIds.length > 0 ? (
+                <div>
+                    <p className="text-label-caps uppercase text-(--ink-muted)">Deployments</p>
+                    <ul
+                        className="mt-2 space-y-1.5 text-xs"
+                        data-testid="incident-evidence-deployments"
+                    >
+                        {row.deploymentIds.map((id) => (
+                            <li key={id}>
+                                <EntityLabel
+                                    id={id}
+                                    displayName={row.deploymentDisplayNames?.[id] ?? null}
+                                />
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            ) : null}
+            {prIds.length > 0 ? (
+                <div>
+                    <p className="text-label-caps uppercase text-(--ink-muted)">Pull requests</p>
+                    <ul className="mt-2 space-y-1.5 text-xs" data-testid="incident-evidence-prs">
+                        {prIds.map((id) => (
+                            <li key={id}>
+                                <EntityLabel
+                                    id={id}
+                                    displayName={row.prDisplayNames?.[id] ?? null}
+                                />
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            ) : null}
+            <p className="text-xs text-(--ink-muted)">
+                A link shows that the records are connected; it does not show cause.
+            </p>
         </div>
     );
 }

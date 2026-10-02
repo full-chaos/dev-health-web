@@ -105,6 +105,8 @@ export const CTA_LABELS = {
     /** From an opportunity to the experiments derived from it. */
     exploreExperiments: "Explore experiments",
     checkDataConnections: "Check data connections",
+    /** Empty state of a page with no connected source: open the data connections page (approved copy, Govern D6). */
+    howToConnect: "How to connect",
     /** Open the Plan / Completion Forecast destination (Plan overview). */
     completionForecast: "Completion Forecast",
     /** Recompute the Completion Forecast (page header action). */
