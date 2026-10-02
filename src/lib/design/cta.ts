@@ -88,6 +88,8 @@ export const CTA_LABELS = {
     /** Open the Investment view (allocation tab from the Diagnose overview). */
     openInvestment: "Open Investment",
     openMetrics: "Open metrics",
+    /** Row action of the Home investigation threads (approved copy, app.js line 100). */
+    inspect: "Inspect",
     openWorkView: "Open Work view",
     evidence: "Evidence",
     aiImpact: "Impact",
@@ -328,6 +330,10 @@ export const CTA_LABELS = {
     startWithAiImpact: "Start with AI Impact",
     weeklyReview: "Weekly review",
     viewAll: "View all",
+    /** Home ranked signals table: show the rows after the first five, in place. */
+    showAllSignals: "Show all signals",
+    /** Home ranked signals table: back to the first five rows. */
+    showFewerSignals: "Show fewer signals",
     provenance: "Provenance",
     apply: "Apply",
     saveOverride: "Save Override",
