@@ -223,6 +223,17 @@ describe("paletteEntries", () => {
         });
     });
 
+    it("lists the Data Confidence tabs after their destination", () => {
+        const entries = paletteEntries(navAreas, {});
+        expect(entries.find((e) => e.path === "/data-health/identity")).toMatchObject({
+            label: "Identity",
+            areaLabel: "Data Confidence · Admin",
+        });
+        expect(entries.filter((e) => e.path === "/data-health").map((e) => e.label)).toEqual([
+            "Data Confidence",
+        ]);
+    });
+
     it("lists no destination twice", () => {
         const entries = paletteEntries(navAreas, {});
         const keys = entries.map((e) => `${e.path}|${e.label}`);

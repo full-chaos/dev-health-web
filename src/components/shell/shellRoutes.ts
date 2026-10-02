@@ -83,6 +83,9 @@ export const SHELL_ROUTES: readonly ShellRoute[] = [
     // Admin: Organization and Connections (AD-1 option A). The pages read no filter; the links
     // carry the default metric filter.
     { prefix: "/org/admin", filterParam: "none" },
+    // Admin: Data Confidence and Settings (personal preferences). No filter state.
+    { prefix: "/data-health", filterParam: "none" },
+    { prefix: "/settings", filterParam: "none" },
 ];
 
 function matchesRoute(pathname: string, route: ShellRoute): boolean {

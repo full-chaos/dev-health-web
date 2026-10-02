@@ -186,6 +186,17 @@ describe("tab registry", () => {
         ]);
     });
 
+    it("holds the Data Confidence tabs of the design: the overview and its three sub-pages", () => {
+        const set = getTabSet("data-confidence");
+        expect(set.tabs.map((t) => [t.label, t.path])).toEqual([
+            ["Overview", "/data-health"],
+            ["Connectors", "/data-health/connectors"],
+            ["Identity", "/data-health/identity"],
+            ["Mapping", "/data-health/mapping"],
+        ]);
+        expect(set.tabs.every((t) => !("requiredFeature" in t))).toBe(true);
+    });
+
     it("keeps every page of the old admin sidebar, with its route and its entitlement key", () => {
         const adminTabs = [getTabSet("admin-organization"), getTabSet("admin-connections")].flatMap(
             (set): TabSet["tabs"][number][] => [...set.tabs],
@@ -220,6 +231,9 @@ describe("tab registry", () => {
         expect(at("/org/admin/integrations/github/sync")).toBe("admin-connections/providers");
         expect(at("/org/administration")).toBeUndefined();
         expect(at("/testops/pipelines")).toBe("testops/pipelines");
+        expect(at("/data-health")).toBe("data-confidence/overview");
+        expect(at("/data-health/identity")).toBe("data-confidence/identity");
+        expect(at("/settings")).toBeUndefined();
         expect(at("/superadmin/users")).toBeUndefined();
     });
 

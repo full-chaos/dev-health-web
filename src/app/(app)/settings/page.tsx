@@ -1,25 +1,15 @@
-import Link from "next/link";
 import { PreferencesSettings } from "@/components/settings/PreferencesSettings";
-import { CTA_LABELS } from "@/lib/design/cta";
+import { PageHeader } from "@/components/shell/PageHeader";
 
+// Rendered inside the shared app shell (CHAOS-7966): the shell owns the navigation, the page
+// padding and the `<main>` landmark; the trail ("Admin / Settings") replaces the in-page trail.
 export default function UserPreferencesPage() {
     return (
-        <div className="mx-auto w-full max-w-3xl px-6 pb-20 pt-10">
-            <div className="mb-8">
-                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                    <Link href="/dashboard" className="hover:text-foreground transition-colors">
-                        {CTA_LABELS.dashboard}
-                    </Link>
-                    {" / "}
-                    Preferences
-                </p>
-                <h1 className="mt-3 font-(--font-display) text-2xl text-(--foreground)">
-                    Preferences
-                </h1>
-                <p className="mt-2 text-sm text-(--ink-muted)">
-                    Personal display settings stored in your browser.
-                </p>
-            </div>
+        <div className="flex w-full max-w-3xl flex-col gap-8">
+            <PageHeader
+                title="Preferences"
+                subtitle="Personal display settings stored in your browser."
+            />
 
             <PreferencesSettings />
         </div>
