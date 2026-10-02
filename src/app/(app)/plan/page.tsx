@@ -34,7 +34,7 @@ function firstParam(value: string | string[] | undefined): string | undefined {
 
 function formatWeeks(value: number | null | undefined) {
     return typeof value === "number"
-        ? `${formatNumber(value, { maximumFractionDigits: 0 })} weeks`
+        ? `${formatNumber(value, { maximumFractionDigits: 0 })} ${Math.round(value) === 1 ? "week" : "weeks"}`
         : "—";
 }
 
@@ -61,7 +61,8 @@ function RiskFact({ risk }: { risk: ThroughputRiskOverlay }) {
     const Icon = risk.active ? TriangleAlert : CircleCheck;
     return (
         <EvidenceFact
-            label={risk.label}
+            // The prototype's name for the incident check; the served label stays for the others.
+            label={risk.kind === "incident_load" ? "Incident burden" : risk.label}
             value={
                 <span data-testid="risk-row" className="inline-flex items-center gap-2">
                     <span>{riskValue(risk)}</span>
@@ -95,8 +96,7 @@ function RiskInset({ forecast }: { forecast: ThroughputForecast }) {
     const [wip, review, incident] = risks.map((risk) => thresholdText(risk) ?? "not reported");
     return (
         <Inset title="No elevated risk" data-testid="risk-inset">
-            Captured checks: WIP threshold {wip}, review threshold {review}, incident threshold{" "}
-            {incident}.
+            Checks: WIP threshold {wip}, review threshold {review}, incident threshold {incident}.
         </Inset>
     );
 }
@@ -197,9 +197,9 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                             deltaSlot={<span>Derived from current filters</span>}
                         />
                         {[
-                            ["P50", forecast.p50Weeks],
-                            ["P75", forecast.p75Weeks],
-                            ["P90", forecast.p90Weeks],
+                            ["P50 forecast", forecast.p50Weeks],
+                            ["P75 forecast", forecast.p75Weeks],
+                            ["P90 forecast", forecast.p90Weeks],
                         ].map(([label, weeks]) => (
                             <MetricCard
                                 key={label as string}
@@ -223,7 +223,7 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
                                         ) : null}
                                         <span>
                                             {typeof weeks === "number"
-                                                ? "Weeks to complete backlog"
+                                                ? "throughput-based"
                                                 : "Not enough throughput"}
                                         </span>
                                     </>

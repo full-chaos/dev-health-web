@@ -22,9 +22,9 @@ describe("Plan route placement", () => {
     it("labels forecast bands with the GraphQL percentile fields actually rendered", () => {
         const source = readRoute("plan");
 
-        expect(source).toContain('["P50", forecast.p50Weeks]');
-        expect(source).toContain('["P75", forecast.p75Weeks]');
-        expect(source).toContain('["P90", forecast.p90Weeks]');
+        expect(source).toContain('["P50 forecast", forecast.p50Weeks]');
+        expect(source).toContain('["P75 forecast", forecast.p75Weeks]');
+        expect(source).toContain('["P90 forecast", forecast.p90Weeks]');
         expect(source).not.toContain('["P85", forecast.p75Weeks]');
         expect(source).not.toContain('["P95", forecast.p90Weeks]');
     });
