@@ -20,7 +20,7 @@ export function Inset({
         <div className={`mt-3.5 rounded-sm bg-background p-3.75 ${className}`.trim()} {...rest}>
             <h4 className="text-[0.8125rem] font-semibold">{title}</h4>
             {children ? (
-                <p className="mt-1.5 text-[0.8125rem] text-(--ink-muted)">{children}</p>
+                <div className="mt-1.5 text-[0.8125rem] text-(--ink-muted)">{children}</div>
             ) : null}
         </div>
     );

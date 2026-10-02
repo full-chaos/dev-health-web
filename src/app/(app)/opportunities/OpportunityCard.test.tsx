@@ -51,6 +51,22 @@ describe("OpportunityCard (the selected opportunity)", () => {
         expect(within(evidence).queryByText(/24h review SLA/)).not.toBeInTheDocument();
     });
 
+    it("draws the next steps in an inset with a numbered badge per step, and a primary evidence button", () => {
+        render(<OpportunityCard card={reduceReviewLatency} filters={filters} activeRole="eng" />);
+
+        const inset = screen.getByTestId("opportunity-card-next-step");
+        expect(
+            within(inset).getByRole("heading", { level: 4, name: "Suggested next steps" }),
+        ).toBeInTheDocument();
+        const badges = within(inset)
+            .getAllByRole("listitem")
+            .map((li) => li.querySelector("span[aria-hidden]")?.textContent);
+        expect(badges).toEqual(["1", "2"]);
+        const button = screen.getByRole("button", { name: "View metric evidence" });
+        expect(button.querySelector("svg")).not.toBeNull();
+        expect(button.className).toContain("bg-(--action)");
+    });
+
     it("opens the shared evidence drawer on the first evidence link", async () => {
         render(<OpportunityCard card={reduceReviewLatency} filters={filters} activeRole="eng" />);
 
