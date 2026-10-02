@@ -76,7 +76,6 @@ export function PagerDutyCallback() {
 
     return (
         <section className="mx-auto max-w-xl space-y-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
-            <h1 className="text-h1 text-foreground">PagerDuty connection</h1>
             {callbackState === "failed" ? (
                 <div role="alert">
                     <DataState

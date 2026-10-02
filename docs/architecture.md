@@ -11,7 +11,7 @@
 
 - **`(app)`**: Main authenticated shell.
     - **Layout**: `src/app/(app)/layout.tsx`. Wraps in `SessionProvider` + `GraphQLProvider`. Calls `requireSession()`.
-    - **`admin/`**: Sub-group. Uses `requireRole(["admin", "owner"])` + `AdminSidebar`.
+    - **`org/admin/`**: Sub-group in the shared app shell. Uses `requireRole(["admin", "owner"])`; each page's `AdminHeader` brings the tab row of its Admin destination (`AdminTabs`: Organization or Connections, from `lib/navigation/tabs.ts`).
     - **`superadmin/`**: Sub-group. Uses `requireSuperuser()` + `SuperadminSidebar`.
     - **Dashboard**: `(app)/dashboard/page.tsx`.
 - **`(auth)`**: Public auth flows (signin, onboard, error).
@@ -53,7 +53,7 @@ the request-ordering checks.
 
 - **Shared app shell**: `src/components/shell/AppShell.tsx`. Sidebar (`ShellSidebar`), top bar with the location trail, and the one `<main>`; the route registry `shellRoutes.ts` selects the routes it renders. The area tree is `src/lib/navigation/areas.ts`.
 - **Scope bar**: `src/components/shell/ScopeBar.tsx`. Organization, team, repository and window, with the page filters in a drawer.
-- **Settings Sidebars**: `AdminSidebar` and `SuperadminSidebar` for administrative contexts.
+- **Admin navigation**: the shell sidebar's Admin area (Organization, Connections, Data Confidence, Settings) plus the tab rows of `AdminTabs`. The platform admin pages keep `SuperadminSidebar`.
 
 ## Route Map
 

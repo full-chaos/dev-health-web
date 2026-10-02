@@ -340,8 +340,9 @@ describe("admin layout — orgless superuser redirect", () => {
 
 describe("tier feature gating — sidebar and UpgradeGate logic", () => {
     /**
-     * Extracted sidebar filter logic — mirrors AdminSidebar's navItems.filter()
-     * exactly as implemented in the component.
+     * The gating rule of the old admin sidebar, now held by the Admin tab rows
+     * (CHAOS-7591: `tabs.ts` `requiredFeature`, and `AdminTabs` hides Settings
+     * from platform admins; `AdminTabs.test.tsx` renders the real rows).
      */
     type NavItem = {
         id: string;

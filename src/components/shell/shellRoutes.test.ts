@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { SHELL_ROUTES, isShellRoute, shellRouteForPathname } from "./shellRoutes";
 
 describe("shell route registry", () => {
-    it("registers the Home and the migrated Diagnose, Govern, Plan, Improve and AI routes", () => {
+    it("registers the Home and the migrated Diagnose, Govern, Plan, Improve, AI, Reports and Admin routes", () => {
         expect(SHELL_ROUTES.map((route) => route.prefix)).toEqual([
             "/dashboard",
             "/diagnose",
@@ -44,6 +44,7 @@ describe("shell route registry", () => {
             "/deployments",
             "/reports",
             "/reports",
+            "/org/admin",
         ]);
     });
 
@@ -64,16 +65,19 @@ describe("shell route registry", () => {
         expect(isShellRoute("/dashboard-old")).toBe(false);
     });
 
-    it.each([
-        "/demo",
-        "/data-health",
-        "/org/admin",
-        "/superadmin",
-        "/settings",
-        "/org/admin/users",
-        "/",
-    ])("keeps %s outside the shell", (pathname) => {
-        expect(isShellRoute(pathname)).toBe(false);
+    it.each(["/demo", "/data-health", "/superadmin", "/superadmin/users", "/settings", "/"])(
+        "keeps %s outside the shell",
+        (pathname) => {
+            expect(isShellRoute(pathname)).toBe(false);
+        },
+    );
+
+    it("puts the Admin pages in the shell with no filter state (CHAOS-7591)", () => {
+        for (const pathname of ["/org/admin", "/org/admin/users/new", "/org/admin/sync/c1"]) {
+            expect(isShellRoute(pathname), pathname).toBe(true);
+            expect(shellRouteForPathname(pathname)?.filterParam, pathname).toBe("none");
+        }
+        expect(isShellRoute("/org/administration")).toBe(false);
     });
 
     it("treats a missing pathname as outside the shell", () => {
@@ -105,13 +109,13 @@ describe("shell route registry", () => {
         ).toEqual(["/security"]);
     });
 
-    it("marks the artifact detail routes as routes with no filter state, and no other route", () => {
+    it("marks the artifact detail, report and admin routes as routes with no filter state, and no other route", () => {
         expect(shellRouteForPathname("/prs/repo-1:42")?.filterParam).toBe("none");
         expect(
             SHELL_ROUTES.filter((route) => route.filterParam === "none").map(
                 (route) => route.prefix,
             ),
-        ).toEqual(["/prs", "/issues", "/deployments", "/reports"]);
+        ).toEqual(["/prs", "/issues", "/deployments", "/reports", "/org/admin"]);
     });
 
     it("gives Report Center its own entry and its descendants the no-filter entry: the first equal-length match wins", () => {

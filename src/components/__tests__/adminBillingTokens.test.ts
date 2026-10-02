@@ -23,8 +23,9 @@ const ratio = (a: number[], b: number[]) => {
 
 describe("admin sidebars", () => {
     it("have no purple and keep the orange selection tint on the active item", () => {
+        // The org admin sidebar is gone (CHAOS-7591): its "Platform Admin" pill is in AdminHeader.
         for (const f of [
-            "components/admin/AdminSidebar.tsx",
+            "components/admin/AdminHeader.tsx",
             "components/superadmin/SuperadminSidebar.tsx",
         ]) {
             expect(src(f), f).not.toMatch(/purple/u);
@@ -32,7 +33,7 @@ describe("admin sidebars", () => {
         const sup = src("components/superadmin/SuperadminSidebar.tsx");
         expect(sup).toContain('"border-(--accent) bg-(--accent)/15 text-foreground"');
         expect(sup).toContain("text-(--accent-text)");
-        expect(src("components/admin/AdminSidebar.tsx")).toContain("STATUS_PILL.info");
+        expect(src("components/admin/AdminHeader.tsx")).toContain("STATUS_PILL.info");
     });
 });
 

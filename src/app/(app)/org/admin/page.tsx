@@ -139,7 +139,6 @@ export default async function AdminDashboardPage() {
             <AdminHeader
                 title="Admin Dashboard"
                 description={`Welcome back, ${user?.name || user?.email}.`}
-                breadcrumbs={[{ label: "Home", href: "/dashboard" }, { label: "Admin" }]}
             />
 
             {hasPartialSignals && (

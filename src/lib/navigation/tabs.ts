@@ -18,6 +18,11 @@ export type TabDef = {
     label: string;
     /** Route sets only (`param: "route"`): the tab's own route. */
     path?: string;
+    /**
+     * Shown only when the organization has this feature (the Admin tabs keep the entitlement
+     * keys of the old admin sidebar). The tab's route stays; only the link is absent.
+     */
+    requiredFeature?: string;
 };
 
 export type TabSet = {
@@ -149,6 +154,58 @@ export const TAB_SETS = [
             { id: "coverage", label: "Coverage", path: "/testops/coverage" },
         ],
     },
+    // Admin (AD-1 option A): the old admin sidebar's items are the tab rows of two destinations.
+    // Labels follow the design (concept MAPPING-CHAOS-7630 §3): the sidebar's "Dashboard" is the
+    // Organization "Overview", its "Organization" item (`/org/admin/settings`) is "Settings".
+    {
+        id: "admin-organization",
+        areaId: "admin",
+        basePath: "/org/admin",
+        param: "route",
+        defaultTabId: "overview",
+        tabs: [
+            { id: "overview", label: "Overview", path: "/org/admin" },
+            { id: "users", label: "Users", path: "/org/admin/users" },
+            { id: "teams", label: "Teams", path: "/org/admin/teams" },
+            { id: "identities", label: "Identities", path: "/org/admin/identities" },
+            {
+                id: "audit-logs",
+                label: "Audit Logs",
+                path: "/org/admin/audit-logs",
+                requiredFeature: "audit_log",
+            },
+            {
+                id: "ip-allowlist",
+                label: "IP Allowlist",
+                path: "/org/admin/ip-allowlist",
+                requiredFeature: "ip_allowlist",
+            },
+            {
+                id: "retention",
+                label: "Data Retention",
+                path: "/org/admin/retention",
+                requiredFeature: "custom_retention",
+            },
+            {
+                id: "ai-setup",
+                label: "AI Setup",
+                path: "/org/admin/ai",
+                requiredFeature: "byo_llm",
+            },
+            { id: "settings", label: "Settings", path: "/org/admin/settings" },
+        ],
+    },
+    {
+        id: "admin-connections",
+        areaId: "admin",
+        basePath: "/org/admin/sync",
+        param: "route",
+        defaultTabId: "sync",
+        tabs: [
+            { id: "sync", label: "Sync Status", path: "/org/admin/sync" },
+            { id: "providers", label: "Providers", path: "/org/admin/integrations" },
+        ],
+    },
 ] as const satisfies readonly TabSet[];
 
 export type TabSetId = (typeof TAB_SETS)[number]["id"];
@@ -172,6 +229,8 @@ const TAB_SET_BY_ID = {
     metrics: TAB_SETS[5],
     "ai-governance-risk": TAB_SETS[6],
     testops: TAB_SETS[7],
+    "admin-organization": TAB_SETS[8],
+    "admin-connections": TAB_SETS[9],
 } as const satisfies { [S in TabSetId]: TabSetOf<S> };
 
 export function getTabSet<S extends TabSetId>(id: S): (typeof TAB_SET_BY_ID)[S] {
@@ -188,4 +247,31 @@ export function tabHref(set: TabSet, tabId: string): string {
     return tabId === set.defaultTabId && !set.explicitDefault
         ? set.basePath
         : `${set.basePath}?${set.param}=${encodeURIComponent(tabId)}`;
+}
+
+/** True when the organization may see the tab (no feature needed, or it has the feature). */
+export function isTabVisible(tab: TabDef, features: Record<string, boolean>): boolean {
+    return tab.requiredFeature === undefined || features[tab.requiredFeature] === true;
+}
+
+/**
+ * The route tab set and tab that own a pathname: the tab whose route is the longest prefix of
+ * the path (`/org/admin/users/new` → Organization / Users; `/org/admin` → Organization / Overview).
+ * `undefined` when no route tab owns the path.
+ */
+export function routeTabForPathname(
+    pathname: string,
+    tabSets: readonly TabSet[] = TAB_SETS,
+): { set: TabSet; tab: TabDef } | undefined {
+    let found: { set: TabSet; tab: TabDef } | undefined;
+    for (const set of tabSets) {
+        if (set.param !== "route") continue;
+        for (const tab of set.tabs) {
+            const path = tab.path;
+            if (!path) continue;
+            const owns = pathname === path || pathname.startsWith(`${path}/`);
+            if (owns && path.length > (found?.tab.path?.length ?? -1)) found = { set, tab };
+        }
+    }
+    return found;
 }

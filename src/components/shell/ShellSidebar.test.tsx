@@ -273,7 +273,7 @@ describe("ShellSidebar — active area and current page (A1, A10)", () => {
         expect(currentPageLinks().map((link) => link.textContent)).toEqual(["Diagnose"]);
     });
 
-    it("never expands a utility area, also when it is active", () => {
+    it("does not expand a utility area with one destination, also when it is active (Reports)", () => {
         navigationMock.pathname = "/reports";
         renderSidebar();
 
@@ -283,6 +283,27 @@ describe("ShellSidebar — active area and current page (A1, A10)", () => {
         );
         expect(screen.queryByTestId("nav-children-reports")).toBeNull();
         expect(currentPageLinks()).toHaveLength(1);
+    });
+
+    it("expands Admin to its four destinations when it is active (AD-1 option A)", () => {
+        navigationMock.pathname = "/org/admin/integrations";
+        renderSidebar();
+
+        const children = screen.getByTestId("nav-children-admin");
+        expect(
+            within(children)
+                .getAllByRole("link")
+                .map((link) => link.textContent),
+        ).toEqual(["Organization", "Connections", "Data Confidence", "Settings"]);
+        expect(currentPageLinks().map((link) => link.textContent)).toEqual(["Connections"]);
+        expect(screen.getByRole("link", { name: /^Admin$/ })).not.toHaveAttribute("aria-current");
+    });
+
+    it("keeps Admin collapsed when another area is active", () => {
+        navigationMock.pathname = "/plan";
+        renderSidebar();
+
+        expect(screen.queryByTestId("nav-children-admin")).toBeNull();
     });
 });
 

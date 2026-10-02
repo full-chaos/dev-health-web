@@ -80,6 +80,9 @@ export const SHELL_ROUTES: readonly ShellRoute[] = [
     // Its descendants (Create Report, report detail): no filter state. On an
     // equal prefix length the first entry wins, so `/reports` keeps the entry above.
     { prefix: "/reports", filterParam: "none" },
+    // Admin: Organization and Connections (AD-1 option A). The pages read no filter; the links
+    // carry the default metric filter.
+    { prefix: "/org/admin", filterParam: "none" },
 ];
 
 function matchesRoute(pathname: string, route: ShellRoute): boolean {
