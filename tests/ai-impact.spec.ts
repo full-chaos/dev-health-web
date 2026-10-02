@@ -78,11 +78,9 @@ test.describe("AI Impact dashboard", () => {
         // CHAOS-2186: populated breakdowns render ranked rollups + evidence link.
         await expect(dashboard.getByTestId("ai-impact-breakdown")).toBeVisible();
         await expect(dashboard.getByRole("link", { name: /Open evidence/ })).toBeVisible();
+        // Now an information notice (not a panel heading); the same title text stays visible.
         await expect(
-            dashboard.getByRole("heading", {
-                name: "Best-fit automation opportunities",
-                exact: true,
-            }),
+            dashboard.getByText("Best-fit automation opportunities", { exact: true }),
         ).toBeVisible();
 
         // Unknown attribution bucket must remain visible (data coverage transparency).
