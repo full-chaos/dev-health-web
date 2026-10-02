@@ -41,6 +41,11 @@ export type AreaSignal = {
      * Empty string when `state === "unavailable"`.
      */
     value: string;
+    /**
+     * Optional second line that names the number which set `state`, when that number is not the
+     * headline `value` (AI Impact: the rework drag of AI-assisted work). Shown only where set.
+     */
+    driver?: string;
     /** Severity ladder, widened with "neutral" / "unavailable" (honest states). */
     state: AreaSignalState;
     /** Optional trend glyph direction for the metric. */
