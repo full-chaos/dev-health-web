@@ -65,11 +65,12 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
             >
                 {CTA_LABELS.skipToMainContent}
             </a>
-            {/* Prototype `body::before`: a 2px orange-to-teal line along the top edge. */}
+            {/* Prototype `body::before`: a 2px orange-to-teal line along the top edge. z-35: over the sticky top bar (z-30), under the mobile
+            slide-over and its backdrop (z-40/50), drawers and dialogs (z-50), so it never covers them. Fixed, so it adds no scroll offset. */}
             <div
                 aria-hidden="true"
                 data-testid="shell-ribbon"
-                className="pointer-events-none fixed inset-x-0 top-0 z-70 h-0.5 bg-(image:--ribbon)"
+                className="pointer-events-none fixed inset-x-0 top-0 z-35 h-0.5 bg-(image:--ribbon)"
             />
             {banners}
             <ShellMobileBar

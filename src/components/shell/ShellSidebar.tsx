@@ -107,7 +107,7 @@ export function ShellSidebar({
                             priority
                         />
                         <span className="flex min-w-0 flex-col leading-tight">
-                            <span className="text-[1.0625rem] font-[650] tracking-tight text-(--text-primary)">
+                            <span className="text-[1.0625rem] font-bold tracking-tight text-(--text-primary)">
                                 Full Chaos
                             </span>
                             <span className="mt-0.5 text-[0.5625rem] font-semibold uppercase tracking-[0.17em] text-(--text-muted)">
