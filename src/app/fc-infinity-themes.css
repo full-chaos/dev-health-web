@@ -76,6 +76,13 @@
     --caution: #7d4f00;
     --negative: #a61708;
     --info: #03627d;
+    /* Status washes (prototype greenWash, amberWash, redWash, blueWash: theme.css:20-22) */
+    --positive-wash: #e1f2eb;
+    --caution-wash: #fff0d0;
+    --negative-wash: #fbe6e1;
+    --info-wash: #dcf0f4;
+    /* De-emphasised line (prototype sparkline stroke) */
+    --deemph: #9aa2a9;
     --accent-ai: #074757;
     --hero-gradient: none;
     --app-gradient: none;
@@ -141,6 +148,12 @@
     --caution: #f2b84b;
     --negative: #ff8266;
     --info: #4fd3df;
+    /* Status washes (prototype dark-tokens.css:6-7) */
+    --positive-wash: #13322a;
+    --caution-wash: #33290f;
+    --negative-wash: #3b1b15;
+    --info-wash: #11333c;
+    --deemph: #5f6a72;
     --accent-ai: #4fd3df;
     --hero-gradient: none;
     --app-gradient: none;
