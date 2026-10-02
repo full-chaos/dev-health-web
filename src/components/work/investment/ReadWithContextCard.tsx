@@ -5,7 +5,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
 import type { SankeyResponse } from "@/lib/types";
 import { asPct, combineCoverage } from "./AllocationCoverage";
-import { CONFIDENCE_TONE } from "./ConfidencePanel";
+import { confidenceToneClass } from "./ConfidencePanel";
 import type { MixExplanationState } from "./types";
 
 type ReadWithContextCardProps = {
@@ -71,10 +71,9 @@ export function ReadWithContextCard({
                 <div className="mt-2" data-testid="context-quality">
                     <div className="flex flex-wrap items-center gap-2">
                         <span
-                            className={`rounded-full px-2 py-0.5 text-xs uppercase ${
-                                CONFIDENCE_TONE[confidence.level ?? ""] ??
-                                "bg-(--card-stroke) text-(--ink-muted)"
-                            }`}
+                            className={`rounded-full px-2 py-0.5 text-xs uppercase ${confidenceToneClass(
+                                confidence.level,
+                            )}`}
                         >
                             {confidence.level ?? "unknown"}
                         </span>

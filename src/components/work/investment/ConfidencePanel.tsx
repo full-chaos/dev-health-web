@@ -8,6 +8,7 @@ import Link from "next/link";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber } from "@/lib/formatters";
+import { STATUS_PILL } from "@/lib/statusPill";
 import {
     formatBandLabel,
     formatQuality,
@@ -42,10 +43,14 @@ type ConfidencePanelProps = {
 };
 
 export const CONFIDENCE_TONE: Record<string, string> = {
-    high: "bg-emerald-500/20 text-emerald-600",
-    moderate: "bg-amber-500/20 text-amber-600",
-    low: "bg-red-500/20 text-red-600",
+    high: STATUS_PILL.positive,
+    moderate: STATUS_PILL.caution,
+    low: STATUS_PILL.negative,
 };
+
+/** Pill classes of a confidence level; a level the table does not know is the muted pill. */
+export const confidenceToneClass = (level: string | null | undefined): string =>
+    CONFIDENCE_TONE[level ?? ""] ?? STATUS_PILL.muted;
 
 const DRIVER_COPY: Record<string, string> = {
     low_text_signal: "Short descriptions lack categorization signals",
@@ -202,10 +207,9 @@ export function ConfidencePanel({
                 {confidence ? (
                     <div className="mt-3 flex flex-wrap items-center gap-3">
                         <span
-                            className={`rounded-full px-2 py-0.5 text-xs uppercase ${
-                                CONFIDENCE_TONE[confidence.level ?? ""] ??
-                                "bg-gray-500/20 text-gray-500"
-                            }`}
+                            className={`rounded-full px-2 py-0.5 text-xs uppercase ${confidenceToneClass(
+                                confidence.level,
+                            )}`}
                         >
                             {confidence.level ?? "unknown"}
                         </span>

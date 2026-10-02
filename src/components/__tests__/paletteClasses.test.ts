@@ -17,9 +17,6 @@ const ALLOWLIST: Record<string, number> = {
     "app/(app)/org/admin/integrations/page.tsx": 6,
     "app/(app)/reports/[id]/page.tsx": 19,
     "app/(app)/reports/new/page.tsx": 3,
-    "components/work/GraphView.tsx": 11,
-    "components/work/investment/ConfidencePanel.tsx": 8,
-    "components/work/investment/InvestmentExplainer.tsx": 8,
 };
 
 function walk(dir: string, out: string[] = []): string[] {

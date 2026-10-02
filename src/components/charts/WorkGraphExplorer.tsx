@@ -5,6 +5,7 @@ import type { EChartsOption } from "echarts";
 import { GraphChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
+import { NODE_TYPE_COLOR_SOURCE } from "@/lib/workGraphNodeColors";
 import { type ChartTokens, useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -54,21 +55,6 @@ type WorkGraphExplorerProps = {
     hiddenNodeTypes?: ReadonlySet<WorkGraphNodeType>;
     onToggleNodeTypeAction?: (nodeType: WorkGraphNodeType) => void;
     selectedNodeId?: string;
-};
-
-// Node colors: an index into the theme series colors, or a status role.
-const NODE_TYPE_COLOR_SOURCE: Record<WorkGraphNodeType, number | "negative"> = {
-    ISSUE: 1,
-    PR: 0,
-    COMMIT: 5,
-    FILE: 8,
-    RELEASE: 3,
-    FEATURE_FLAG: 4,
-    AI_WORKFLOW_RUN: 9,
-    DIFF: 6,
-    REVIEW_OUTCOME: 7,
-    DEPLOYMENT: 2,
-    INCIDENT: "negative",
 };
 
 const buildNodeTypeColors = (
