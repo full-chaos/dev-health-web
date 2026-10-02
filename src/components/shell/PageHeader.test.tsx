@@ -38,7 +38,7 @@ describe("PageHeader — eyebrow from the navigation trail", () => {
     });
 
     it("has no eyebrow on a route that no area owns", () => {
-        navigationMock.pathname = "/prs/repo:1";
+        navigationMock.pathname = "/demo";
         render(<PageHeader title="Pull request 1" />);
 
         expect(screen.queryByTestId("page-header-eyebrow")).toBeNull();

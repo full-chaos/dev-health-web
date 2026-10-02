@@ -13,11 +13,11 @@ import { MarketingShell } from "@/components/marketing/MarketingShell";
  * at the root with no discoverability).
  */
 export const metadata: Metadata = {
-    title: "Full Chaos Dev Health (Beta) — Where is your engineering effort going?",
+    title: "Full Chaos Dev Health — Where is your engineering effort going?",
     description:
         "Full Chaos Dev Health is an open-source analytics platform for team operating modes and developer health. See where effort is invested and what it costs your people.",
     openGraph: {
-        title: "Full Chaos Dev Health (Beta) — Engineering Effort Analytics",
+        title: "Full Chaos Dev Health — Engineering Effort Analytics",
         description:
             "Understand where human effort is actually being invested, and the cost to people when certain work dominates.",
         url: "/",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: "summary_large_image",
-        title: "Full Chaos Dev Health (Beta) — Engineering Effort Analytics",
+        title: "Full Chaos Dev Health — Engineering Effort Analytics",
         description: "Open-source analytics for team operating modes and developer health.",
         images: ["/opengraph-image.png"],
     },
