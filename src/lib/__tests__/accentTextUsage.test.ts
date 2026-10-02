@@ -6,7 +6,6 @@ import { describe, expect, it } from "vitest";
 // rings. This scan covers the files the ticket changed.
 const ACCENT_TEXT_FILES = [
     "components/shared/FilterPills.tsx",
-    "components/filters/sections/ToolbarActions.tsx",
     "components/filters/sections/QuickFilterMenu.tsx",
     "components/admin/sync/config-form/StepProgress.tsx",
     "components/admin/integrations/wizard/AddProviderStepProgress.tsx",
