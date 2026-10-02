@@ -164,7 +164,7 @@ export function CommandPalette() {
             >
                 <Search className="size-3.5" aria-hidden="true" />
                 {TRIGGER_LABEL}
-                <kbd className="rounded border border-(--card-stroke) px-1.5 py-0.5 text-[10px]">
+                <kbd className="rounded border border-(--card-stroke) px-1.5 py-0.5 text-label-caps">
                     {hint}
                 </kbd>
             </button>

@@ -1,3 +1,4 @@
+import { CTA_LABELS } from "@/lib/design/cta";
 import type { AiGovernanceViolationRow } from "@/lib/graphql/__generated__/types";
 
 type AIViolationsListProps = {
@@ -43,7 +44,7 @@ export function AIViolationsList({ violations, loading }: AIViolationsListProps)
                                 <th className="px-3 py-2.75 font-medium">Severity</th>
                                 <th className="px-3 py-2.75 font-medium">Rule</th>
                                 <th className="px-3 py-2.75 font-medium">PR</th>
-                                <th className="px-3 py-2.75 font-medium">Evidence</th>
+                                <th className="px-3 py-2.75 font-medium">{CTA_LABELS.evidence}</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-(--card-stroke)">
