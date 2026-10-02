@@ -445,16 +445,29 @@ describe("infinity palette", () => {
     });
 
     // Pin of the whole dark block: CHAOS-7746 left it byte-equal; CHAOS-7892 changed exactly dark series 7
-    // and 8 (the diff of this hash is those two lines).
+    // and 8 (the diff of this hash is those two lines); CHAOS-8061 added exactly --action and --on-action.
     it("leaves the dark block byte for byte as pinned", () => {
         const block = infinityCss.match(
             /:root\[data-palette="infinity"\]\[data-theme="dark"\] \{([\s\S]*?)\n\}/u,
         );
         expect(block).not.toBeNull();
         expect(createHash("sha256").update(block![1]).digest("hex")).toBe(
-            "3ef223c88b2f79d6283a0dd9de308b76ee2534b501dd3dd7a04e4093c575faff",
+            "707b55afde652aaf21438818ecef86ac92f194a717bf86856aa0b6312a2c169a",
         );
     });
+
+    it.each([
+        ["light", "#037493"],
+        ["dark", "#0a7f9c"],
+    ] as const)(
+        "filled action (primary button) is the approved blue with white text (%s)",
+        (theme, fill) => {
+            const t = infinity(theme);
+            expect(t["--action"]).toBe(fill);
+            expect(t["--on-action"]).toBe("#ffffff");
+            expect(contrast(t["--on-action"], t["--action"])).toBeGreaterThanOrEqual(4.5);
+        },
+    );
 
     it.each(THEMES)(
         "keeps production's solid caution strip: amber fill, black ink (%s)",
