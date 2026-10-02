@@ -525,7 +525,6 @@ export type CapacityForecastInput = {
   simulations?: Scalars['Int']['input'];
   targetDate?: InputMaybe<Scalars['Date']['input']>;
   targetItems?: InputMaybe<Scalars['Int']['input']>;
-  /** @deprecated Use teamIds. */
   teamId?: InputMaybe<Scalars['String']['input']>;
   teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
   workScopeId?: InputMaybe<Scalars['String']['input']>;
