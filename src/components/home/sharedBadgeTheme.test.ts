@@ -50,6 +50,7 @@ describe("area severity pill: Low and Info carry a wash (CHAOS-8189)", () => {
     it("low uses the positive wash token, neutral (Info) the info wash token, no card fill", () => {
         expect(AREA_STATE_PILL.low).toContain("bg-(--positive-wash)");
         expect(AREA_STATE_PILL.neutral).toContain("bg-(--info-wash)");
+        for (const pill of Object.values(AREA_STATE_PILL)) expect(pill).toContain("rounded-full!");
         expect(AREA_STATE_PILL.low).not.toContain("card-70");
         expect(AREA_STATE_PILL.neutral).not.toContain("card-70");
     });
