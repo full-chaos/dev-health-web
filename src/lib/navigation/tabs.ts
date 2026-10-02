@@ -8,6 +8,8 @@
 // tab is the default: its link has no query value (`/complexity`, not `/complexity?tab=overview`),
 // as the pages always linked it. Labels and ids are exactly what the pages rendered before.
 
+import { CTA_LABELS } from "@/lib/design/cta";
+
 import type { NavAreaId } from "./areas";
 
 export type TabDef = {
@@ -81,8 +83,7 @@ export const TAB_SETS = [
         tabs: [
             { id: "overview", label: "Overview" },
             { id: "allocation", label: "Allocation" },
-            // design-lint-disable-next-line cta-from-registry -- "Evidence" is the tab label (CHAOS-2154), not a CTA
-            { id: "evidence", label: "Evidence" },
+            { id: "evidence", label: CTA_LABELS.evidence },
             { id: "confidence", label: "Confidence" },
         ],
     },
