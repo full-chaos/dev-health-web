@@ -86,6 +86,13 @@ describe("OpportunityCard (the selected opportunity)", () => {
         expect(more).toHaveAttribute("href", expect.stringContaining("api=%2Fapi%2Fv1%2Fexplain"));
     });
 
+    it("draws the arrow before 'Explore experiments' (prototype btn())", () => {
+        render(<OpportunityCard card={reduceReviewLatency} filters={filters} activeRole="eng" />);
+
+        const link = screen.getByRole("link", { name: "Explore experiments" });
+        expect(link.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+    });
+
     it("links to the experiments with the filter and the role", () => {
         render(<OpportunityCard card={reduceReviewLatency} filters={filters} activeRole="eng" />);
 
