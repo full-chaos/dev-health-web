@@ -25,7 +25,9 @@ test(
         const quadrantPanel = page.getByTestId("quadrant-investigation");
 
         await quadrantPanel.getByRole("button", { name: "Core" }).click();
-        const flowLink = quadrantPanel.getByRole("link", {
+        // A point opens the shared evidence drawer; the investigation paths are its body.
+        const drawer = page.getByRole("dialog", { name: "Evidence & Context" });
+        const flowLink = drawer.getByRole("link", {
             name: /view flow/i,
         });
         await expect(flowLink).toBeVisible();
