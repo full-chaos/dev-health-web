@@ -77,7 +77,7 @@ describe("Report Center page", () => {
         fetchChecked.mockResolvedValue({ items: [], total: 0, error: false });
         await renderPage();
 
-        expect(screen.getByTestId("data-state-no-findings")).toBeInTheDocument();
+        expect(screen.getByTestId("data-state-detector-enabled-no-findings")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Create Report" })).toHaveAttribute(
             "href",
             "/reports/new",
@@ -92,7 +92,7 @@ describe("Report Center page", () => {
 
         expect(screen.getByTestId("data-state-error")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
-        expect(screen.queryByTestId("data-state-no-findings")).toBeNull();
+        expect(screen.queryByTestId("data-state-detector-enabled-no-findings")).toBeNull();
         expect(screen.queryByText("No saved reports yet")).toBeNull();
     });
 });
