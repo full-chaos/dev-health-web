@@ -165,3 +165,60 @@ describe("AreaOverview note slot", () => {
         expect(screen.getByTestId("area-overview-note")).toHaveTextContent("a note");
     });
 });
+
+describe("AreaOverview — hero action, group heads, no eyebrow", () => {
+    it("draws the hero with one primary link into the sub-area", () => {
+        renderOverview([signal("crit", "critical"), signal("high", "high")]);
+        const hero = screen.getByTestId("area-overview-hero");
+        expect(within(hero).getByRole("link", { name: "Open crit" })).toHaveAttribute(
+            "href",
+            expect.stringContaining("/crit"),
+        );
+        expect(within(hero).getByText("Primary signal")).toBeInTheDocument();
+    });
+
+    it("draws no eyebrow unless a title is passed", () => {
+        const { rerender } = renderOverview([signal("crit", "critical")]);
+        expect(screen.queryByText(/area$/i)).toBeNull();
+        expect(screen.queryByText("Related workflows")).toBeNull();
+        expect(screen.getByTestId("area-overview").firstElementChild).toBe(
+            screen.getByTestId("area-overview-hero"),
+        );
+        rerender(
+            <AreaOverview
+                areaId="govern"
+                signals={[signal("crit", "critical")]}
+                filters={defaultMetricFilter}
+                title="Eyebrow"
+            />,
+        );
+        expect(screen.getByText("Eyebrow")).toBeInTheDocument();
+    });
+
+    it("splits the grid under group heads when signals carry clusters", () => {
+        renderOverview([
+            signal("hero", "critical", { cluster: "Quality" }),
+            signal("q2", "high", { cluster: "Quality" }),
+            signal("r1", "medium", { cluster: "Risk" }),
+        ]);
+        const groups = screen.getAllByTestId("area-overview-cluster");
+        expect(groups.map((g) => g.getAttribute("data-cluster"))).toEqual(["Quality", "Risk"]);
+        expect(within(groups[0]).getByText("Quality")).toBeInTheDocument();
+        expect(
+            within(groups[0])
+                .getAllByTestId("area-signal-card")
+                .map((c) => c.getAttribute("data-signal-id")),
+        ).toEqual(["q2"]);
+        expect(
+            within(groups[1])
+                .getAllByTestId("area-signal-card")
+                .map((c) => c.getAttribute("data-signal-id")),
+        ).toEqual(["r1"]);
+    });
+
+    it("keeps one flat grid and no group heads without clusters", () => {
+        renderOverview([signal("a", "critical"), signal("b", "high"), signal("c", "low")]);
+        expect(screen.queryByTestId("area-overview-cluster")).toBeNull();
+        expect(screen.getAllByTestId("area-overview-grid")).toHaveLength(1);
+    });
+});

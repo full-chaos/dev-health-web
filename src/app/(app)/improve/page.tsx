@@ -48,7 +48,6 @@ export default async function ImprovePage({ searchParams }: ImprovePageProps) {
                 signals={improveSignals}
                 filters={filters}
                 role={activeRole}
-                title="Related workflows"
                 description="Improvement workflows, ordered by severity."
                 note={
                     <Notice variant="info" live={false} data-testid="improve-destinations-note">
