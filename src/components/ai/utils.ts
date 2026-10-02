@@ -88,10 +88,12 @@ export function assistedWorkShareRows(rows: AiImpactBucketTotals[]) {
 export function agentCreatedTrend(rows: AiImpactBucketRow[]) {
     return rows
         .filter((row) => bucketEquals(row.bucket, "AGENT_CREATED"))
-        .map((row, index) => ({
-            day: row.day ? formatReviewTrendDay(row.day) : String(index + 1),
-            value: row.prsTotal,
-        }));
+        .map((row, index) =>
+            row.day
+                ? // `day` is the chart's sort key (ISO, so the line runs in date order); `label` is what the axis shows.
+                  { day: row.day, label: formatReviewTrendDay(row.day), value: row.prsTotal }
+                : { day: String(index + 1), value: row.prsTotal },
+        );
 }
 
 export function leverageSeries(components?: AiLeverageComponents | null) {
