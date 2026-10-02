@@ -103,7 +103,8 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                 </span>
             </div>
 
-            <h1
+            {/* The page title is the one h1 (PageHeader); this is a section heading. */}
+            <h2
                 data-testid="cockpit-headline"
                 className="mt-4 max-w-3xl font-(--font-display) text-3xl leading-tight sm:text-4xl"
             >
@@ -111,7 +112,7 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
                     variant="text"
                     id={health?.headline ?? "Engineering health is steady this week"}
                 />
-            </h1>
+            </h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-(--ink-muted)">
                 <EntityLabel
                     variant="text"

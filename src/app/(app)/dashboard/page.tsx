@@ -10,6 +10,7 @@ import { DataConfidenceIndicator } from "@/components/home/DataConfidenceIndicat
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { FilterBar } from "@/components/filters/FilterBar";
 import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { getLensFromSearchParams, getLensConfig, DEFAULT_ROLE } from "@/lib/lensContext";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
@@ -117,35 +118,20 @@ export default async function Home({ searchParams }: HomePageProps) {
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-10 text-foreground">
-            <header className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.4)]">
-                <div className="flex flex-col gap-6">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Status
-                            </p>
-                            <h1 className="mt-4 font-(--font-display) text-3xl leading-tight sm:text-4xl">
-                                Developer Health Ops Cockpit
-                            </h1>
-                            <p className="mt-3 max-w-xl text-sm text-(--ink-muted)">
-                                System patterns over the last {filters.time.range_days} days.
-                            </p>
-                            {lensConfig.framing ? (
-                                <p className="mt-1 text-xs text-(--accent-2)/80">
-                                    {lensConfig.framing}
-                                </p>
-                            ) : null}
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <BackendBanner meta={meta} />
-                        <p className="text-body font-medium text-(--text-secondary)">
-                            <ClientTimestamp value={lastUpdatedAt} prefix="Last updated: " />
-                        </p>
-                    </div>
+            <PageHeader
+                title="Developer Health Ops Cockpit"
+                subtitle={<>System patterns over the last {filters.time.range_days} days.</>}
+            >
+                {lensConfig.framing ? (
+                    <p className="text-xs text-(--accent-2)/80">{lensConfig.framing}</p>
+                ) : null}
+                <div className="flex items-center justify-between">
+                    <BackendBanner meta={meta} />
+                    <p className="text-body font-medium text-(--text-secondary)">
+                        <ClientTimestamp value={lastUpdatedAt} prefix="Last updated: " />
+                    </p>
                 </div>
-            </header>
+            </PageHeader>
 
             {setupStatus ? <SetupBanner status={setupStatus} orgId={setupOrgId} /> : null}
 
