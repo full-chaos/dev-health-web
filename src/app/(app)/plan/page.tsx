@@ -123,7 +123,16 @@ function overviewFacts(forecast: ThroughputForecast): PageFact[] {
         { label: "WIP congestion", value: risk(forecast.wipCongestion) },
         { label: "Review bottleneck", value: risk(forecast.reviewBottleneck) },
         { label: "Incident burden", value: risk(forecast.incidentLoad) },
-        { label: "History", value: forecast.insufficientHistory ? "Limited" : undefined },
+        {
+            label: "History",
+            // The served flag as a word; "Not reported" only when the field is absent.
+            value:
+                typeof forecast.insufficientHistory === "boolean"
+                    ? forecast.insufficientHistory
+                        ? "Insufficient"
+                        : "Sufficient"
+                    : undefined,
+        },
     ];
 }
 
