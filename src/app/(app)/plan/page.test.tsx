@@ -257,6 +257,24 @@ describe("Plan overview — View evidence", () => {
         expect(rows).toContainEqual(["WIP congestion", "0.69× · Normal"]);
     });
 
+    it("shows the served history state, 'Not reported' only when the flag is absent", async () => {
+        const history = async (over: Record<string, unknown>) => {
+            mockForecast.mockResolvedValue(forecast(over));
+            const view = await renderPage();
+            const drawer = render(evidenceSubject.current?.content as React.ReactElement);
+            const row = within(drawer.container)
+                .getAllByTestId("evidence-fact")
+                .find((r) => r.querySelector("dt")?.textContent === "History");
+            const text = row?.querySelector("dd")?.textContent;
+            drawer.unmount();
+            view.unmount();
+            return text;
+        };
+        expect(await history({ insufficientHistory: false })).toBe("Sufficient");
+        expect(await history({ insufficientHistory: true })).toBe("Insufficient");
+        expect(await history({ insufficientHistory: undefined })).toBe("Not reported");
+    });
+
     it("has no View evidence action when there is no forecast", async () => {
         mockForecast.mockResolvedValue(null);
         await renderPage();
