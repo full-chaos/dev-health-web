@@ -45,13 +45,8 @@ export const encodeFilter = (filters: MetricFilter) => {
  */
 const NEVER_READ_KEYS = ["roles", "artifacts", "issue_type", "flow_stage", "blocked"];
 
-const withoutNeverRead = <T extends object>(group: T): T => {
-    const rest: Record<string, unknown> = { ...group };
-    for (const key of NEVER_READ_KEYS) {
-        delete rest[key];
-    }
-    return rest as T;
-};
+const withoutNeverRead = (group: object) =>
+    Object.fromEntries(Object.entries(group).filter(([key]) => !NEVER_READ_KEYS.includes(key)));
 
 export const decodeFilter = (encoded?: string | null): MetricFilter => {
     if (!encoded) {
