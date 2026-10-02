@@ -656,6 +656,35 @@ describe("ScopeBar — the AI view: first load as the two old bars had it", () =
         );
     });
 
+    it("does not show or count a filter from an old URL that no AI query reads (CHAOS-7744)", () => {
+        scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}`);
+        render(<ScopeBar view="ai" />);
+
+        const bar = within(screen.getByTestId("scope-bar"));
+        // In the URL: developers, a role, an issue type, a flow stage, artifacts and blocked.
+        for (const hidden of [
+            "ana@example.com",
+            "bo@example.com",
+            "reviewer",
+            "bug",
+            "review",
+            "Blocked",
+        ]) {
+            expect(bar.queryByText(hidden), hidden).toBeNull();
+        }
+        // The Work category is read by the AI queries, so it stays and is the only one counted.
+        expect(bar.getByText("feature")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Filters, 1 active" })).toBeInTheDocument();
+    });
+
+    it("keeps the issue type pill and count on a view that offers it", () => {
+        scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}`);
+        renderBar();
+
+        expect(within(screen.getByTestId("scope-bar")).getByText("bug")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Filters, 9 active" })).toBeInTheDocument();
+    });
+
     it("has the Filters drawer with the Work filter and no Developer filter", async () => {
         const user = userEvent.setup();
         render(<ScopeBar view="ai" />);

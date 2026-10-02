@@ -12,7 +12,7 @@ import AIWorkflowsPage from "./page";
 // only; the five AI destinations are the sidebar children, not a tab strip.
 
 const scopeBarSpy = vi.hoisted(() => vi.fn());
-const areaOverviewSpy = vi.hoisted(() => vi.fn());
+const areaHubSpy = vi.hoisted(() => vi.fn());
 const FILTERS = { ...defaultMetricFilter, scope: { level: "team" as const, ids: ["platform"] } };
 const F = encodeFilterParam(FILTERS);
 
@@ -35,10 +35,10 @@ vi.mock("@/components/shell/ScopeBar", () => ({
         return <section data-testid="scope-bar" />;
     },
 }));
-vi.mock("@/components/navigation/AreaOverview", () => ({
-    AreaOverview: (props: Record<string, unknown>) => {
-        areaOverviewSpy(props);
-        return <div data-testid="area-overview" />;
+vi.mock("@/components/navigation/AreaHub", () => ({
+    AreaHub: (props: Record<string, unknown>) => {
+        areaHubSpy(props);
+        return <div data-testid="area-hub" />;
     },
 }));
 vi.mock("@/lib/areaSignals", () => ({ getAreaSignals: vi.fn().mockResolvedValue([]) }));
@@ -62,7 +62,7 @@ async function renderPage() {
 
 beforeEach(() => {
     scopeBarSpy.mockClear();
-    areaOverviewSpy.mockClear();
+    areaHubSpy.mockClear();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
 });
 
@@ -145,7 +145,7 @@ describe("AI overview in the shared app shell", () => {
         expect(
             screen
                 .getByTestId("scope-bar")
-                .compareDocumentPosition(screen.getByTestId("area-overview")) &
+                .compareDocumentPosition(screen.getByTestId("area-hub")) &
                 Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
     });
@@ -153,7 +153,7 @@ describe("AI overview in the shared app shell", () => {
     it("gives the filter and the role to the overview cards, as before", async () => {
         await renderPage();
 
-        expect(areaOverviewSpy).toHaveBeenCalledWith(
+        expect(areaHubSpy).toHaveBeenCalledWith(
             expect.objectContaining({ areaId: "ai", filters: FILTERS, role: "em" }),
         );
     });

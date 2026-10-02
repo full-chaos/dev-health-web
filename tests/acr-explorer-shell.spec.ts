@@ -52,6 +52,11 @@ async function openExplorer(page: Page) {
             level: 1,
         }),
     ).toBeVisible();
+    // The h1 is server-rendered. Wait until React has attached the form's handlers: a click on
+    // "Generate context" before that is a native submit and the goal never goes invalid (CHAOS-7649).
+    await expect(
+        page.locator('form[data-testid="context-packet-form"][data-hydrated="true"]'),
+    ).toBeVisible();
     return { faults, requests };
 }
 

@@ -1,4 +1,5 @@
 import { FilterPill } from "../FilterPill";
+import type { UnreadFilter } from "../filterBarConfig";
 
 type ActiveFilterPillsProps = {
     artifacts: string[];
@@ -16,6 +17,8 @@ type ActiveFilterPillsProps = {
     onClearWorkCategory: (value: string) => void;
     repos: string[];
     roles: string[];
+    /** Filters the view's queries do not read: no pill for a value left in an old URL. */
+    unread?: readonly UnreadFilter[];
     workCategory: string[];
 };
 
@@ -35,6 +38,7 @@ export function ActiveFilterPills({
     onClearWorkCategory,
     repos,
     roles,
+    unread = [],
     workCategory,
 }: ActiveFilterPillsProps) {
     return (
@@ -47,7 +51,7 @@ export function ActiveFilterPills({
                     onClear={() => onClearRepo(repo)}
                 />
             ))}
-            {developers.map((dev) => (
+            {(unread.includes("developers") ? [] : developers).map((dev) => (
                 <FilterPill
                     key={`dev-${dev}`}
                     label="Dev"
@@ -55,7 +59,7 @@ export function ActiveFilterPills({
                     onClear={() => onClearDeveloper(dev)}
                 />
             ))}
-            {roles.map((role) => (
+            {(unread.includes("roles") ? [] : roles).map((role) => (
                 <FilterPill
                     key={`role-${role}`}
                     label="Role"
@@ -71,7 +75,7 @@ export function ActiveFilterPills({
                     onClear={() => onClearWorkCategory(cat)}
                 />
             ))}
-            {issueType.map((type) => (
+            {(unread.includes("issueType") ? [] : issueType).map((type) => (
                 <FilterPill
                     key={`type-${type}`}
                     label="Type"
@@ -79,7 +83,7 @@ export function ActiveFilterPills({
                     onClear={() => onClearIssueType(type)}
                 />
             ))}
-            {flowStage.map((stage) => (
+            {(unread.includes("flowStage") ? [] : flowStage).map((stage) => (
                 <FilterPill
                     key={`stage-${stage}`}
                     label="Stage"
@@ -87,7 +91,7 @@ export function ActiveFilterPills({
                     onClear={() => onClearFlowStage(stage)}
                 />
             ))}
-            {artifacts.map((art) => (
+            {(unread.includes("artifacts") ? [] : artifacts).map((art) => (
                 <FilterPill
                     key={`art-${art}`}
                     label="Artifact"
@@ -95,7 +99,9 @@ export function ActiveFilterPills({
                     onClear={() => onClearArtifact(art)}
                 />
             ))}
-            {blocked && <FilterPill label="Status" value="Blocked" onClear={onClearBlocked} />}
+            {blocked && !unread.includes("blocked") && (
+                <FilterPill label="Status" value="Blocked" onClear={onClearBlocked} />
+            )}
         </div>
     );
 }

@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
+import { ReadTheSignal } from "@/components/metrics/ReadTheSignal";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { buttonClassName } from "@/components/shared/Button";
 import { checkApiHealth } from "@/lib/api/system";
@@ -235,54 +236,57 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
 
             <ScopeBar view="explore" />
 
-            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 text-sm">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                            Context
-                        </p>
-                        <p className="mt-1 text-sm font-semibold">{metricLabel}</p>
+            <div
+                className={
+                    view === "explain" ? "grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-start" : ""
+                }
+            >
+                {view === "explain" && (
+                    <ReadTheSignal
+                        label={metricLabel}
+                        value={data?.value}
+                        unit={data?.unit ?? ""}
+                        deltaPct={data?.delta_pct}
+                    />
+                )}
+                <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                                Context
+                            </p>
+                            <p className="mt-1 text-sm font-semibold">{metricLabel}</p>
+                        </div>
+                        <span className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                            {view.toUpperCase()}
+                        </span>
                     </div>
-                    <span className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                        {view.toUpperCase()}
-                    </span>
-                </div>
-                <div className="mt-4 grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
-                    <div>
-                        <p className="text-sm text-(--ink-muted)">{explanation}</p>
-                        <p className="mt-2 text-xs text-(--ink-muted)">Source: {sourceLabel}</p>
-                        {breakdownNote ? (
-                            <p className="mt-2 text-xs text-(--ink-muted)">{breakdownNote}</p>
-                        ) : null}
-                    </div>
-                    <div>
-                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                            Active filters
-                        </p>
-                        <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                            {chips.map((chip) => (
-                                <span
-                                    key={chip}
-                                    className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
-                                >
-                                    {chip}
-                                </span>
-                            ))}
+                    <div className="mt-4 grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
+                        <div>
+                            <p className="text-sm text-(--ink-muted)">{explanation}</p>
+                            <p className="mt-2 text-xs text-(--ink-muted)">Source: {sourceLabel}</p>
+                            {breakdownNote ? (
+                                <p className="mt-2 text-xs text-(--ink-muted)">{breakdownNote}</p>
+                            ) : null}
+                        </div>
+                        <div>
+                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                                Active filters
+                            </p>
+                            <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                                {chips.map((chip) => (
+                                    <span
+                                        key={chip}
+                                        className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
+                                    >
+                                        {chip}
+                                    </span>
+                                ))}
+                            </div>
                         </div>
                     </div>
-                </div>
-            </section>
-
-            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-                <details>
-                    <summary className="cursor-pointer text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                        Debug filters
-                    </summary>
-                    <pre className="mt-3 max-h-64 overflow-auto rounded-2xl border border-(--card-stroke) bg-(--card-60) px-4 py-3 text-xs text-(--ink-muted)">
-                        {JSON.stringify(filters, null, 2)}
-                    </pre>
-                </details>
-            </section>
+                </section>
+            </div>
 
             {view === "explain" && (
                 <section id="evidence" className="grid gap-6 lg:grid-cols-3">

@@ -35,6 +35,9 @@ vi.mock("@/components/shell/ScopeBar", () => ({
 vi.mock("@/components/work/CapacityView", () => ({
     CapacityView: () => <div data-testid="capacity-view" />,
 }));
+vi.mock("@/components/capacity/RefreshForecastButton", () => ({
+    RefreshForecastButton: () => <button type="button">Refresh Forecast</button>,
+}));
 vi.mock("@/lib/graphql/HydrateUrqlResults", () => ({ HydrateUrqlResults: () => null }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({ ok: true }) }));
 vi.mock("@/lib/admin/server", () => ({
@@ -125,5 +128,29 @@ describe("Completion Forecast in the shared app shell", () => {
         expect(screen.getByTestId("page-header").closest('[aria-hidden="true"]')).toBeNull();
         expect(screen.getByTestId("scope-bar").closest('[aria-hidden="true"]')).toBeNull();
         expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Completion Forecast");
+    });
+
+    it("puts Refresh Forecast in the page header actions when the gate is open", async () => {
+        await renderPage();
+
+        const header = screen.getByTestId("page-header");
+        expect(
+            within(header).getByRole("button", { name: "Refresh Forecast" }),
+        ).toBeInTheDocument();
+        expect(within(header).getByRole("heading", { level: 1 })).toHaveTextContent(
+            "Completion Forecast",
+        );
+    });
+
+    it("has no Refresh Forecast in the header when the upgrade gate is closed", async () => {
+        entitlements.features = {};
+        await renderPage();
+
+        expect(
+            within(screen.getByTestId("page-header")).queryByRole("button", {
+                name: "Refresh Forecast",
+            }),
+        ).toBeNull();
+        expect(screen.queryByRole("button", { name: "Refresh Forecast" })).toBeNull();
     });
 });
