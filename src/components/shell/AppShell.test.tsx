@@ -23,18 +23,6 @@ vi.mock("next-auth/react", () => ({
     signOut: vi.fn(),
 }));
 
-/** A page outside the shell: it renders its own navigation and `<main>`, as the Admin layout does. */
-function LegacyPage() {
-    return (
-        <div>
-            <nav aria-label="Admin navigation" />
-            <main>
-                <h1>Legacy page</h1>
-            </main>
-        </div>
-    );
-}
-
 /** A migrated page: content only. */
 function ShellPage() {
     return <h1>Shell page</h1>;
@@ -150,7 +138,7 @@ describe("AppShell — a route in the registry gets the shared shell", () => {
             "account-options",
             "account-options-sidebar",
         ]);
-        // The legacy account bar is not rendered on a shell route.
+        // There is no account bar: the sidebar and top bar carry the account menu.
         expect(screen.queryByRole("navigation", { name: "Account" })).toBeNull();
     });
 
@@ -270,80 +258,19 @@ describe("AppShell — the status chip states what the organization card knows",
     });
 });
 
-describe("AppShell — a route outside the registry keeps today's chrome", () => {
-    beforeEach(() => {
-        navigationMock.pathname = "/demo";
-    });
-
-    it("renders no shell part: no sidebar, no top bar, no skip link, no shell main", () => {
-        renderFrame(<LegacyPage />);
-
-        expect(screen.queryByTestId("app-shell")).toBeNull();
-        expect(screen.queryByTestId("shell-sidebar")).toBeNull();
-        expect(screen.queryByTestId("shell-top-bar")).toBeNull();
-        expect(screen.queryByRole("link", { name: "Skip to main content" })).toBeNull();
-        expect(document.getElementById("main-content")).toBeNull();
-    });
-
-    it("lets the page render its own navigation and its own main", () => {
-        renderFrame(<LegacyPage />);
-
-        expect(screen.getAllByRole("navigation", { name: "Admin navigation" })).toHaveLength(1);
-        expect(screen.getAllByRole("main")).toHaveLength(1);
-        expect(
-            within(screen.getByRole("main")).getByRole("heading", { name: "Legacy page" }),
-        ).toBeInTheDocument();
-    });
-
-    it("renders the legacy account bar with the structure it had in the layout", () => {
-        const { container } = renderFrame(<ShellPage />);
-
-        // Frame order: banners, account bar, page. Nothing else.
-        expect(Array.from(container.children).map((child) => child.tagName)).toEqual([
-            "DIV",
-            "HEADER",
-            "H1",
-        ]);
-        expect(container.children[0]).toHaveAttribute("data-testid", "banners");
-
-        const header = container.querySelector("header");
-        expect(header).not.toBeNull();
-        expect(structureOf(header as Element)).toEqual([
-            "header",
-            '  nav aria-label="Account"',
-            '    a aria-label="Full Chaos Dev Health home" href="/dashboard"',
-            '      img alt="Full Chaos Dev Health logo"',
-            '      span "Full Chaos Dev Health"',
-            // The light / dark toggle was mounted next to the account menu after
-            // the shell was built; it is part of the legacy bar now.
-            "    div",
-            '      button aria-label="Switch to light theme" type="button"',
-            "        svg",
-            "          circle",
-            "          path",
-            "          path",
-            "          path",
-            "          path",
-            "          path",
-            "          path",
-            "          path",
-            "          path",
-            "      div",
-            '        button aria-label="Account options" aria-controls="account-options" aria-expanded="false" type="button"',
-            '          div "A"',
-            '          span "Account"',
-            '          span "admin"',
-        ]);
-    });
-
-    it.each(["/demo", "/demo/charts", "/dashboards", "/superadmins"])(
-        "keeps %s on the legacy chrome",
+describe("AppShell — every authed route renders in the shell", () => {
+    it.each(["/demo", "/demo/charts", "/dashboards", "/superadmins", "/not-a-route"])(
+        "renders the sidebar, top bar, skip link and one main on %s, with no account bar",
         (pathname) => {
             navigationMock.pathname = pathname;
             renderFrame(<ShellPage />);
 
-            expect(screen.queryByTestId("app-shell")).toBeNull();
-            expect(screen.getByRole("navigation", { name: "Account" })).toBeInTheDocument();
+            expect(screen.getByTestId("app-shell")).toBeInTheDocument();
+            expect(screen.getByTestId("shell-sidebar")).toBeInTheDocument();
+            expect(screen.getByTestId("shell-top-bar")).toBeInTheDocument();
+            expect(screen.getByRole("link", { name: "Skip to main content" })).toBeInTheDocument();
+            expect(screen.getAllByRole("main")).toHaveLength(1);
+            expect(screen.queryByRole("navigation", { name: "Account" })).toBeNull();
         },
     );
 });
