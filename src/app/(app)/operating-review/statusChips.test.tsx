@@ -169,6 +169,12 @@ describe("Operating Review AI-workflow callout is an info notice", () => {
         const chip = screen.getAllByText("changed", { selector: "span" })[0];
         expect(chip.className).toContain("absolute");
         expect(chip.className).toContain("right-4");
+        // A 5+ card row keeps the pill in the flow, so it cannot cover a long label.
+        const crowded = screen
+            .getAllByText("changed", { selector: "span" })
+            .filter((el) => el.closest("[data-columns='5']"));
+        expect(crowded.length).toBeGreaterThan(0);
+        for (const el of crowded) expect(el.className).not.toContain("absolute");
     });
 
     it("shows the agenda index as six-card strip with the three counts as pills", async () => {
