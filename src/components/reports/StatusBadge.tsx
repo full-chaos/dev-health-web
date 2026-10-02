@@ -10,9 +10,7 @@ const PILL = "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs fo
 function Pill({ tone, icon, children }: { tone: string; icon: ReactNode; children: string }) {
     return (
         <span className={`${PILL} ${tone}`}>
-            <span aria-hidden="true" className="inline-flex h-3 w-3 items-center">
-                {icon}
-            </span>
+            {icon}
             {children}
         </span>
     );
@@ -32,25 +30,37 @@ export function StatusBadge({ status }: { status?: ReportStatus | string }) {
     switch (status) {
         case ReportStatus.SUCCESS:
             return (
-                <Pill tone={STATUS_PILL.positive} icon={<CircleCheck className="h-3 w-3" />}>
+                <Pill
+                    tone={STATUS_PILL.positive}
+                    icon={<CircleCheck aria-hidden="true" className="h-3 w-3" />}
+                >
                     Success
                 </Pill>
             );
         case ReportStatus.FAILED:
             return (
-                <Pill tone={STATUS_PILL.negative} icon={<TriangleAlert className="h-3 w-3" />}>
+                <Pill
+                    tone={STATUS_PILL.negative}
+                    icon={<TriangleAlert aria-hidden="true" className="h-3 w-3" />}
+                >
                     Failed
                 </Pill>
             );
         case ReportStatus.RUNNING:
             return (
-                <Pill tone={STATUS_PILL.info} icon={<Loader className="h-3 w-3" />}>
+                <Pill
+                    tone={STATUS_PILL.info}
+                    icon={<Loader aria-hidden="true" className="h-3 w-3" />}
+                >
                     Running
                 </Pill>
             );
         case ReportStatus.PENDING:
             return (
-                <Pill tone={STATUS_PILL.caution} icon={<Clock className="h-3 w-3" />}>
+                <Pill
+                    tone={STATUS_PILL.caution}
+                    icon={<Clock aria-hidden="true" className="h-3 w-3" />}
+                >
                     Pending
                 </Pill>
             );
