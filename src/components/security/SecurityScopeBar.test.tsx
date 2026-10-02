@@ -98,12 +98,12 @@ describe("SecurityScopeBar", () => {
         expect(new URL(href, "https://x.test").searchParams.get("role")).toBe("em");
     });
 
-    it("Reset filters writes the default Security filter", async () => {
+    it("Reset writes the default Security filter", async () => {
         const encoded = encodeSecurityFilter({ openOnly: false, severities: ["critical"] });
         search = `f=${encoded}`;
         render(<SecurityScopeBar encodedFilter={encoded} />);
 
-        await userEvent.click(screen.getByRole("button", { name: "Reset filters" }));
+        await userEvent.click(screen.getByRole("button", { name: "Reset" }));
 
         expect(lastFilter()).toEqual(defaultSecurityFilter());
     });

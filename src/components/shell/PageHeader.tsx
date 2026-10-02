@@ -62,7 +62,7 @@ export function PageHeader({ title, subtitle, actions, back, children }: PageHea
                             {eyebrow}
                         </p>
                     ) : null}
-                    <h1 className="text-h1 font-semibold text-(--text-primary)">{heading}</h1>
+                    <h1 className="text-h1 text-(--text-primary)">{heading}</h1>
                     {subtitle ? (
                         <p className="mt-2 max-w-3xl text-body text-(--text-secondary)">
                             {subtitle}

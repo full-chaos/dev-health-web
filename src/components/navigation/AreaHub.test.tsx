@@ -172,3 +172,22 @@ describe("AreaHub — severity-sorted signal cards", () => {
         expect(flags.getAttribute("data-demoted")).toBe("true");
     });
 });
+
+describe("AreaHub — group order unchanged by the Govern group-order fix", () => {
+    it("keeps the first-seen group order (AI: Signal, then Action) even when an Action card is more severe", () => {
+        render(
+            <AreaHub
+                areaId="ai"
+                signals={[
+                    { ...signal("ai-impact", "low"), cluster: "Signal" },
+                    { ...signal("ai-automations", "critical"), cluster: "Action" },
+                    { ...signal("ai-review-load", "medium"), cluster: "Signal" },
+                ]}
+                filters={defaultMetricFilter}
+            />,
+        );
+        expect(
+            screen.getAllByTestId("area-hub-cluster").map((g) => g.getAttribute("data-cluster")),
+        ).toEqual(["Signal", "Action"]);
+    });
+});

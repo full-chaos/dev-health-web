@@ -41,6 +41,63 @@ describe("PrimarySignalHero", () => {
         expect(screen.queryByTestId("area-signal-hero-link")).toBeNull();
     });
 
+    it("draws the caller's own action in place of every link (CHAOS-8063)", () => {
+        render(
+            <PrimarySignalHero
+                signal={base}
+                filters={defaultMetricFilter}
+                actionLabel="Inspect code"
+                action={<button type="button">Open evidence</button>}
+            />,
+        );
+        const slot = screen.getByTestId("area-signal-hero-action");
+        expect(slot).toContainElement(screen.getByRole("button", { name: "Open evidence" }));
+        // The caller's action is the one action: no overlay link and no action-text link.
+        expect(screen.queryAllByRole("link")).toHaveLength(0);
+        expect(screen.queryByTestId("area-signal-hero-link")).toBeNull();
+        expect(screen.queryByText("Inspect code")).toBeNull();
+    });
+
+    it("draws no whole-hero link behind the caller's action when no action text is given", () => {
+        render(
+            <PrimarySignalHero
+                signal={base}
+                filters={defaultMetricFilter}
+                action={<button type="button">Open evidence</button>}
+            />,
+        );
+        // Without this guard the overlay link covers the hero and takes the button's clicks.
+        expect(screen.queryByTestId("area-signal-hero-link")).toBeNull();
+        expect(screen.queryAllByRole("link")).toHaveLength(0);
+        expect(screen.getByRole("button", { name: "Open evidence" })).toBeInTheDocument();
+    });
+
+    it("keeps the link paths unchanged when no action is passed", () => {
+        const { rerender } = render(
+            <PrimarySignalHero signal={base} filters={defaultMetricFilter} />,
+        );
+        expect(screen.queryByTestId("area-signal-hero-action")).toBeNull();
+        expect(screen.getByTestId("area-signal-hero-link")).toBeInTheDocument();
+        rerender(
+            <PrimarySignalHero
+                signal={base}
+                filters={defaultMetricFilter}
+                actionLabel="Inspect code"
+            />,
+        );
+        expect(screen.queryByTestId("area-signal-hero-action")).toBeNull();
+        expect(screen.getByRole("link", { name: "Inspect code" })).toBeInTheDocument();
+    });
+
+    it("names the signal in an h3 by default and in the caller's level when given", () => {
+        const { rerender } = render(
+            <PrimarySignalHero signal={base} filters={defaultMetricFilter} />,
+        );
+        expect(screen.getByRole("heading", { name: "Security" }).tagName).toBe("H3");
+        rerender(<PrimarySignalHero signal={base} filters={defaultMetricFilter} titleAs="h2" />);
+        expect(screen.getByRole("heading", { name: "Security" }).tagName).toBe("H2");
+    });
+
     it("never invents a value: no value node when none is served", () => {
         render(<PrimarySignalHero signal={{ ...base, value: "" }} filters={defaultMetricFilter} />);
         expect(screen.queryByTestId("area-signal-value")).toBeNull();

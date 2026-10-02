@@ -91,7 +91,7 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
                     <main
                         id="main-content"
                         tabIndex={-1}
-                        className="flex min-w-0 flex-1 flex-col px-4 pb-20 pt-6 focus:outline-none sm:px-6 md:pt-8"
+                        className="flex min-w-0 flex-1 flex-col px-4 pb-20 pt-6 focus:outline-none sm:px-6 md:px-8 md:pt-8"
                     >
                         <ShellOrganizationProvider value={organization}>
                             {children}

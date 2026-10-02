@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getSetupStatus } from "@/lib/admin/server";
@@ -9,7 +9,9 @@ import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 
 import Home from "./page";
 
-// Pin tests for the Monitoring views card (CHAOS-7738, 5.1b): green before the restyle, kept green after.
+// The Monitoring block on the Home page (CHAOS-8064). It replaced the "Monitoring views" card of
+// three link cards (CHAOS-7738) and the Key Shifts tile grid: the three view links and the lens
+// order stay; the cards' description texts and the "Open metrics" link are gone.
 
 vi.mock("next/navigation", () => ({
     usePathname: () => "/dashboard",
@@ -20,39 +22,62 @@ vi.mock("@/lib/graphql/homeFetchers", () => ({ getHomeDataViaGraphQL: vi.fn() })
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn(), getApiMeta: vi.fn() }));
 vi.mock("@/lib/admin/server", () => ({ getSetupStatus: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ auth: vi.fn(async () => ({ user: { org_id: "org-1" } })) }));
-vi.mock("@/components/home/AiWorkflowCallout", () => ({ AiWorkflowCallout: () => null }));
-vi.mock("@/components/home/BackendBanner", () => ({ BackendBanner: () => null }));
-vi.mock("@/components/home/CockpitClient", () => ({ CockpitClient: () => null }));
+vi.mock("@/components/charts/SparklineChart", () => ({
+    SparklineChart: () => <div data-testid="sparkline" />,
+}));
 vi.mock("@/components/home/CockpitSummary", () => ({ CockpitSummary: () => null }));
 vi.mock("@/components/home/DataConfidenceIndicator", () => ({
     DataConfidenceIndicator: () => null,
 }));
-vi.mock("@/components/home/InvestmentPreview", () => ({ InvestmentPreview: () => null }));
+vi.mock("@/components/home/InvestigationThreads", () => ({ InvestigationThreads: () => null }));
 vi.mock("@/components/home/RankedSignals", () => ({ RankedSignals: () => null }));
 vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => null }));
 vi.mock("@/components/onboarding/SetupBanner", () => ({ SetupBanner: () => null }));
+
+const delta = (metric: string, label: string, value: number, unit: string, delta_pct: number) => ({
+    metric,
+    label,
+    value,
+    unit,
+    delta_pct,
+    spark: [],
+});
+
+const HOME = {
+    freshness: { last_ingested_at: null, sources: { github: "ok" }, coverage: {} },
+    deltas: [
+        delta("cycle_time", "Cycle Time", 1.5, "days", 655),
+        delta("review_latency", "Review Latency", 0.3, "hours", 258),
+        delta("throughput", "Throughput", 1006, "items", -30),
+        delta("wip_saturation", "WIP Saturation", 301, "%", -29),
+        delta("deploy_freq", "Deploy Frequency", 148, "deploys", -45),
+    ],
+    summary: [],
+    tiles: {},
+    constraint: { title: "", claim: "", evidence: [], experiments: [] },
+    events: [],
+} as never;
 
 beforeEach(() => {
     vi.mocked(checkApiHealth).mockResolvedValue({ ok: true, data: null });
     vi.mocked(getApiMeta).mockResolvedValue(null);
     vi.mocked(getSetupStatus).mockResolvedValue({ error: "not needed" });
-    vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(null as never);
+    vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(HOME);
 });
 
 async function renderHome(params: Record<string, string> = {}) {
     render(await Home({ searchParams: Promise.resolve(params) }));
-    const card = screen.getByText("Monitoring views").closest("section") as HTMLElement;
-    const links = [...card.querySelectorAll("a")];
-    return { card, links };
+    const block = screen.getByTestId("home-monitoring");
+    const links = within(screen.getByTestId("monitoring-segments")).getAllByRole(
+        "link",
+    ) as HTMLAnchorElement[];
+    return { block, links };
 }
 
 const segmentIds = (links: HTMLAnchorElement[]) =>
-    links
-        .filter((a) => a.getAttribute("href")?.includes("tab="))
-        .slice(1) // the first link is the section's own "Open metrics" (tab=dora)
-        .map((a) => /tab=([a-z]+)/.exec(a.getAttribute("href") ?? "")?.[1]);
+    links.map((a) => /tab=([a-z]+)/.exec(a.getAttribute("href") ?? "")?.[1]);
 
-describe("Monitoring views card pinned (CHAOS-7738)", () => {
+describe("Monitoring block on Home (CHAOS-8064)", () => {
     it.each([
         ["neutral", {}, ["flow", "throughput", "dora"]],
         ["ic", { lens: "ic" }, ["flow", "throughput", "dora"]],
@@ -61,54 +86,56 @@ describe("Monitoring views card pinned (CHAOS-7738)", () => {
         ["leadership", { lens: "leadership" }, ["throughput", "dora", "flow"]],
     ] as const)("%s lens orders the three views %j", async (_name, params, expected) => {
         const { links } = await renderHome({ ...params });
-        expect(segmentIds(links as HTMLAnchorElement[])).toEqual([...expected]);
+        expect(segmentIds(links)).toEqual([...expected]);
     });
 
-    it("has the heading, the line under it and the Open metrics link to the DORA tab", async () => {
-        const { card, links } = await renderHome();
-        expect(card).toHaveTextContent("Monitoring views");
-        expect(card).toHaveTextContent("Tabs for steady trend monitoring.");
-        const openMetrics = links.find((a) => a.textContent === "Open metrics");
-        const href = openMetrics?.getAttribute("href") ?? "";
-        expect(href.startsWith("/metrics?tab=dora&f=")).toBe(true);
-        expect(href).toContain(`role=${DEFAULT_ROLE}`);
+    it("has the heading 'Monitoring' and the jump text; the old card texts and 'Open metrics' are gone", async () => {
+        const { block } = await renderHome();
+        expect(within(block).getByRole("heading", { name: "Monitoring" })).toBeInTheDocument();
+        expect(block).toHaveTextContent("Jump to full diagnostic views");
+        expect(screen.queryByText("Monitoring views")).toBeNull();
+        expect(screen.queryByText("Tabs for steady trend monitoring.")).toBeNull();
+        expect(screen.queryByRole("link", { name: "Open metrics" })).toBeNull();
+        expect(screen.queryByText("Release speed and stability.")).toBeNull();
     });
 
-    it("each view links to its tab with the filter and the role, and shows its label, description and focus", async () => {
-        const { card, links } = await renderHome({ lens: "em" });
-        for (const [id, label, description, focus] of [
-            [
-                "dora",
-                "DORA",
-                "Release speed and stability.",
-                "Deploy frequency, cycle time, failure rate.",
-            ],
-            ["flow", "Flow", "Idea to merge insight.", "Review latency, throughput, WIP."],
-            [
-                "throughput",
-                "Throughput",
-                "Delivery volume and pacing.",
-                "Throughput, WIP saturation, blocked work.",
-            ],
-        ]) {
-            const link = links.find(
-                (a) =>
-                    a.getAttribute("href")?.includes(`tab=${id}`) &&
-                    a.textContent?.includes(description),
-            );
-            expect(link, id).toBeTruthy();
-            expect(link?.getAttribute("href")).toContain("role=em");
-            expect(link?.getAttribute("href")).toContain("f=");
-            expect(link).toHaveTextContent(label);
-            expect(link).toHaveTextContent(focus);
+    it("each view links to its tab with the filter and the role of the page", async () => {
+        const { links } = await renderHome({ lens: "em" });
+        expect(links.map((a) => a.textContent)).toEqual(["Flow", "Throughput", "DORA"]);
+        for (const link of links) {
+            const href = link.getAttribute("href") ?? "";
+            expect(href.startsWith("/metrics?tab=")).toBe(true);
+            expect(href).toContain("role=em");
+            expect(href).toContain("f=");
         }
-        expect(card).toBeInTheDocument();
     });
-});
 
-describe("Monitoring views markup (snapshot taken before the restyle)", () => {
-    it("markup of the card for the neutral lens", async () => {
-        const { card } = await renderHome();
-        expect(card.outerHTML.replace(/f=[A-Za-z0-9_-]+/g, "f=…")).toMatchSnapshot();
+    it("keeps the default role on the links when no lens is set", async () => {
+        const { links } = await renderHome();
+        for (const link of links) {
+            expect(link.getAttribute("href")).toContain(`role=${DEFAULT_ROLE}`);
+        }
+    });
+
+    it("shows the four tiles from the served deltas, each a link to its metric evidence with the page role", async () => {
+        const { block } = await renderHome({ lens: "pm" });
+        const tiles = within(block).getByTestId("monitoring-tiles");
+        expect(tiles).toHaveAttribute("data-columns", "4");
+        for (const [metric, label] of [
+            ["cycle_time", "Cycle Time"],
+            ["review_latency", "Review Latency"],
+            ["throughput", "Throughput"],
+            ["wip_saturation", "WIP Saturation"],
+        ]) {
+            const tile = within(tiles).getByTestId(`monitoring-tile-${metric}`);
+            expect(tile).toHaveTextContent(label);
+            const href = within(tile).getByRole("link").getAttribute("href") ?? "";
+            expect(href).toContain(`/explore?metric=${metric}`);
+            expect(href).toContain("role=pm");
+            expect(href).toContain("f=");
+        }
+        // The Key Shifts grid of up to eight tiles is not on the page.
+        expect(screen.queryByTestId("key-shifts-row")).toBeNull();
+        expect(tiles).not.toHaveTextContent("Deploy Frequency");
     });
 });
