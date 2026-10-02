@@ -73,7 +73,7 @@ const REVIEW_AMPLIFICATION_THRESHOLDS: SeverityThresholds = {
  */
 function buildSignal(
     descriptor: NavAreaHubItem,
-    resolved: { state: AreaSignalState; value: string },
+    resolved: { state: AreaSignalState; value: string; driver?: string },
 ): AreaSignal {
     return {
         id: descriptor.id,
@@ -82,6 +82,7 @@ function buildSignal(
         cluster: descriptor.cluster,
         metricLabel: descriptor.metricLabel ?? descriptor.label,
         value: resolved.value,
+        ...(resolved.driver ? { driver: resolved.driver } : {}),
         state: resolved.state,
         demoted: descriptor.demoted,
     };
@@ -190,7 +191,10 @@ export async function getAISignals(
     ]);
 
     const signals: AreaSignal[] = [];
-    const push = (id: string, resolved: { state: AreaSignalState; value: string }) => {
+    const push = (
+        id: string,
+        resolved: { state: AreaSignalState; value: string; driver?: string },
+    ) => {
         const d = descriptor(id);
         if (d) signals.push(buildSignal(d, resolved));
     };
@@ -205,9 +209,11 @@ export async function getAISignals(
         const aiBucket = impact.byBucket.find((b) => bucketEquals(b.bucket, "AI_ASSISTED"));
         const reworkDrag = aiBucket?.reworkDragRate;
         const adoptionRatio = impact.aiAssistedPrRatio;
+        // One number sets the state and names itself in `driver`.
+        const reworkDragPercent = reworkDrag != null ? reworkDrag * 100 : null;
         const state: AreaSignalState =
-            reworkDrag != null
-                ? deriveState(reworkDrag * 100, {
+            reworkDragPercent != null
+                ? deriveState(reworkDragPercent, {
                       thresholds: BACKEND_LADDER,
                       direction: "lowerIsBetter",
                   })
@@ -215,6 +221,9 @@ export async function getAISignals(
         push("ai-impact", {
             state,
             value: adoptionRatio != null ? `${formatPercent(adoptionRatio * 100)} AI-assisted` : "",
+            ...(reworkDragPercent != null
+                ? { driver: `Rework drag ${formatPercent(reworkDragPercent)} · AI-assisted work` }
+                : {}),
         });
     } else {
         push("ai-impact", UNAVAILABLE);

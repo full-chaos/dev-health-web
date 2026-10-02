@@ -107,7 +107,8 @@ describe("AI / Attribution in the shared app shell", () => {
     it("renders one scope bar for the AI view, above the dashboard, and gives the dashboard the filter", async () => {
         await renderPage();
 
-        expect(scopeBarSpy).toHaveBeenCalledWith({ view: "ai" });
+        // The Attribution query scope has no work type (CHAOS-7744): no page filters, no Work control.
+        expect(scopeBarSpy).toHaveBeenCalledWith({ view: "ai", pageFilters: false });
         expect(screen.getAllByTestId("scope-bar")).toHaveLength(1);
         expect(
             screen

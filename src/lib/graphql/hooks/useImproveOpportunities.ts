@@ -7,14 +7,21 @@ type HookResult = {
     data: { improveOpportunities: ImproveOpportunitiesResult } | undefined;
     fetching: boolean;
     error: Error | undefined;
+    /** Run the query again from the network (the error state's Retry). */
+    retry: () => void;
 };
 
 export function useImproveOpportunities(limit = 10, windowDays = 30): HookResult {
-    const [result] = useQuery<{ improveOpportunities: ImproveOpportunitiesResult }>({
+    const [result, reexecute] = useQuery<{ improveOpportunities: ImproveOpportunitiesResult }>({
         query: IMPROVE_OPPORTUNITIES_QUERY,
         variables: { scope: null, limit, windowDays },
         requestPolicy: "cache-and-network",
     });
 
-    return { data: result.data, fetching: result.fetching, error: result.error };
+    return {
+        data: result.data,
+        fetching: result.fetching,
+        error: result.error,
+        retry: () => reexecute({ requestPolicy: "network-only" }),
+    };
 }

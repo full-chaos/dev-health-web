@@ -1,5 +1,5 @@
 import type { MetricFilter } from "@/lib/filters/types";
-import type { FilterVisibility } from "../filterBarConfig";
+import { isFilterRead, type FilterVisibility } from "../filterBarConfig";
 import { toEmailList, toList, toValue } from "../filterBarUtils";
 import { HowSection } from "./HowSection";
 import { WhatSection } from "./WhatSection";
@@ -89,6 +89,7 @@ export function AdvancedFiltersPanel({
             )}
             {showWhy && (
                 <WhySection
+                    showIssueType={isFilterRead(visibility, "issueType")}
                     issueType={issueType}
                     toList={toList}
                     toValue={toValue}

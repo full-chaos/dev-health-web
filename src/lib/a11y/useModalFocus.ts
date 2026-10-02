@@ -2,8 +2,10 @@
 
 import { useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent, type RefObject } from "react";
 
+// Elements taken out of the tab order (`tabindex="-1"`, for example the options of a listbox that
+// the arrow keys drive) are not stops: the trap wraps at the first and last real Tab stop.
 const FOCUSABLE_SELECTOR =
-    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), summary, [tabindex]:not([tabindex="-1"])';
+    'a[href]:not([tabindex="-1"]), button:not([disabled]):not([tabindex="-1"]), textarea:not([disabled]):not([tabindex="-1"]), input:not([disabled]):not([tabindex="-1"]), select:not([disabled]):not([tabindex="-1"]), summary, [tabindex]:not([tabindex="-1"])';
 
 const focusableIn = (container: HTMLElement) =>
     Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
