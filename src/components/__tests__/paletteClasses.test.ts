@@ -13,7 +13,6 @@ const RAW =
     /\b(?:text|bg|border|ring|from|via|to|fill|stroke|divide|outline|shadow|accent|decoration)-(?:red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone)-\d{2,3}\b/gu;
 
 const ALLOWLIST: Record<string, number> = {
-    "app/(app)/cognitive-load/page.tsx": 3,
     "app/(app)/data-health/_components/AliasSuggestionRow.tsx": 2,
     "app/(app)/data-health/_components/CoverageBar.tsx": 3,
     "app/(app)/data-health/connectors/page.tsx": 3,

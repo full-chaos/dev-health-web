@@ -40,14 +40,10 @@ describe("ConfidenceBadge uses the status pill form (the level keeps its text la
 });
 
 describe("cognitive-load page tokens", () => {
-    it("has no amber, emerald or rose class except the fetch-error banner", () => {
-        const s = src("app/(app)/cognitive-load/page.tsx")
-            .split("\n")
-            .filter((l) => !/rose-(?:200|50|800)/u.test(l))
-            .join("\n");
-        expect(s).not.toMatch(/\b(?:text|bg|border)-(?:amber|emerald|rose)-\d{2,3}/u);
-        expect(s).toContain("bg-(--caution-solid)");
-        expect(s).toContain("text-(--on-caution-solid)");
+    it("has no amber, emerald, rose or red palette class (the callout and the error moved to Notice / DataState)", () => {
+        const s = src("app/(app)/cognitive-load/page.tsx");
+        expect(s).not.toMatch(/\b(?:text|bg|border)-(?:amber|emerald|rose|red)-\d{2,3}/u);
+        expect(s).toContain("text-(--caution)");
     });
     for (const theme of ["light", "dark"] as const) {
         it(`caution text, positive text and the solid pill reach 4.5:1 in ${theme}`, () => {
