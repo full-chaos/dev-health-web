@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArrowRight, Info } from "lucide-react";
 
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
+import { associationMeterRows, contributorMeterRows } from "@/components/metrics/associationRows";
 import { MetricEvidenceButton } from "@/components/metrics/MetricEvidenceButton";
 import { MetricEvidenceCards } from "@/components/metrics/MetricEvidenceCards";
 import { buttonClassName } from "@/components/shared/Button";
@@ -18,7 +19,6 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { formatMetricValue, formatNumber } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 import { getTabSet, tabHref } from "@/lib/navigation/tabs";
@@ -35,12 +35,6 @@ type MetricsPageProps = {
 const getMetric = (deltas: MetricDelta[], metric: string) =>
     deltas.find((item) => item.metric === metric) ??
     FALLBACK_DELTAS.find((item) => item.metric === metric);
-
-/** A served percent change with its sign, as it is shown on an association row ("+10%", "-20%"). */
-const signedPercent = (value: number) =>
-    `${value > 0 ? "+" : value < 0 ? "-" : ""}${formatNumber(Math.abs(value), {
-        maximumFractionDigits: 1,
-    })}%`;
 
 /** The small note under a chart (prototype `.data-note`): an info icon and one muted line. */
 function DataNote({ children }: { children: ReactNode }) {
@@ -198,13 +192,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                         <MeterRows
                             aria-label="Likely associations"
                             testId="association-meter-rows"
-                            rows={drivers.map((driver, index) => ({
-                                key: driver.id,
-                                label: driverChartLabels.labels[index],
-                                title: driverChartLabels.titles[index],
-                                value: Math.abs(driver.delta_pct),
-                                display: signedPercent(driver.delta_pct),
-                            }))}
+                            rows={associationMeterRows(drivers, driverChartLabels)}
                         />
                     ) : (
                         <p className="text-sm text-(--ink-muted)">
@@ -232,15 +220,11 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                         <MeterRows
                             aria-label="Primary contributors"
                             testId="contributor-meter-rows"
-                            rows={contributors.map((contributor, index) => ({
-                                key: contributor.id,
-                                label: contributorChartLabels.labels[index],
-                                title: contributorChartLabels.titles[index],
-                                value: contributor.value,
-                                display: highlight?.unit
-                                    ? formatMetricValue(contributor.value, highlight.unit)
-                                    : undefined,
-                            }))}
+                            rows={contributorMeterRows(
+                                contributors,
+                                highlight?.unit,
+                                contributorChartLabels,
+                            )}
                         />
                     ) : (
                         <p className="text-sm text-(--ink-muted)">
