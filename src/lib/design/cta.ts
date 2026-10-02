@@ -17,8 +17,10 @@ export const CTA_LABELS = {
     devHealthCockpit: "Full Chaos Dev Health home",
     /** Cognitive Load overview: jump to the Load Drivers tab. */
     exploreLoadDrivers: "Explore load drivers",
-    /** Light / dark theme switch (pressed = light). */
-    themeSwitchLight: "Light theme",
+    /** Theme switch while the theme is dark: the click switches to light. */
+    themeSwitchToLight: "Switch to light theme",
+    /** Theme switch while the theme is light: the click switches to dark. */
+    themeSwitchToDark: "Switch to dark theme",
     /** Keyboard skip link: move focus past the app shell to the page content. */
     skipToMainContent: "Skip to main content",
     /** Open the evidence trail behind a signal / metric / work unit. */
@@ -92,6 +94,8 @@ export const CTA_LABELS = {
     /** Diagnose overview "Follow a question into evidence": the Investment Allocation tab (approved copy, app.js line 97). */
     traceEffortAllocation: "Trace effort allocation",
     openMetrics: "Open metrics",
+    /** Row action of the Home investigation threads (approved copy, app.js line 100). */
+    inspect: "Inspect",
     openWorkView: "Open Work view",
     evidence: "Evidence",
     /** Section action on a Flow tab: the evidence page of the tab's metric (approved copy, app.js line 98). */
@@ -334,6 +338,10 @@ export const CTA_LABELS = {
     startWithAiImpact: "Start with AI Impact",
     weeklyReview: "Weekly review",
     viewAll: "View all",
+    /** Home ranked signals table: show the rows after the first five, in place. */
+    showAllSignals: "Show all signals",
+    /** Home ranked signals table: back to the first five rows. */
+    showFewerSignals: "Show fewer signals",
     provenance: "Provenance",
     apply: "Apply",
     saveOverride: "Save Override",
