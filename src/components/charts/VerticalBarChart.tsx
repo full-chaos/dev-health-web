@@ -8,6 +8,7 @@ import { BarChart } from "echarts/charts";
 import { Chart } from "./Chart";
 import { formatChartValue, type ChartValueFormat } from "./chartValueFormat";
 import { useChartTheme } from "./chartTheme";
+import { buildLegend, buildTooltip } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
 
 echarts.use([BarChart]);
@@ -20,6 +21,11 @@ type VerticalBarChartProps = {
     className?: string;
     style?: CSSProperties;
     valueFormat?: ChartValueFormat;
+    /**
+     * Show the legend. Default: only for two or more series. Pass `true` where the legend is the
+     * only place the measure is named; leave it off where a title, heading or axis name already says it.
+     */
+    showLegend?: boolean;
 };
 
 type NumericChartParam = {
@@ -37,6 +43,7 @@ export function VerticalBarChart({
     className,
     style,
     valueFormat = "number",
+    showLegend,
 }: VerticalBarChartProps) {
     const chartTheme = useChartTheme();
 
@@ -61,6 +68,12 @@ export function VerticalBarChart({
         },
     }));
 
+    const legend = buildLegend(
+        series.map((item) => item.name),
+        chartTheme,
+        showLegend,
+    );
+
     const mergedStyle: CSSProperties = {
         height,
         width,
@@ -70,14 +83,7 @@ export function VerticalBarChart({
     return (
         <Chart
             option={{
-                tooltip: {
-                    trigger: "axis",
-                    confine: true,
-                    backgroundColor: chartTheme.background,
-                    borderColor: chartTheme.stroke,
-                    textStyle: {
-                        color: chartTheme.text,
-                    },
+                tooltip: buildTooltip(chartTheme, {
                     formatter: (params: unknown): string => {
                         const list = Array.isArray(params) ? params : [params];
                         return list
@@ -88,14 +94,15 @@ export function VerticalBarChart({
                             })
                             .join("<br/>");
                     },
+                }),
+                legend,
+                grid: {
+                    left: 24,
+                    right: 16,
+                    top: 32,
+                    bottom: legend ? 52 : 32,
+                    containLabel: true,
                 },
-                legend: {
-                    data: series.map((item) => item.name),
-                    bottom: 0,
-                    left: "center",
-                    textStyle: { color: chartTheme.muted },
-                },
-                grid: { left: 24, right: 16, top: 32, bottom: 52, containLabel: true },
                 xAxis: {
                     type: "category",
                     data: categories,

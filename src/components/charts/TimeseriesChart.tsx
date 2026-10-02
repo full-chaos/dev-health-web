@@ -7,6 +7,7 @@ import { LineChart } from "echarts/charts";
 import { Chart } from "./Chart";
 import { formatChartValue, type ChartValueFormat } from "./chartValueFormat";
 import { useChartTheme } from "./chartTheme";
+import { buildTooltip, dotRing, lineMark, pointSymbolSize } from "./chartConventions";
 import { orderTimeseriesPoints, type TimeseriesPoint } from "./timeseriesData";
 import { echarts } from "@/lib/echartsInit";
 
@@ -80,14 +81,8 @@ export function TimeseriesChart({
     return (
         <Chart
             option={{
-                tooltip: {
-                    trigger: "axis",
-                    confine: true,
-                    backgroundColor: chartTheme.background,
-                    borderColor: chartTheme.stroke,
-                    textStyle: {
-                        color: chartTheme.text,
-                    },
+                tooltip: buildTooltip(chartTheme, {
+                    crosshair: true,
                     formatter: (params: unknown): string => {
                         const list = Array.isArray(params) ? params : [params];
                         return list
@@ -99,7 +94,7 @@ export function TimeseriesChart({
                             })
                             .join("<br/>");
                     },
-                },
+                }),
                 grid: { left: 24, right: 16, top: 32, bottom: 32, containLabel: true },
                 xAxis: {
                     type: "category",
@@ -119,8 +114,13 @@ export function TimeseriesChart({
                         data: values,
                         smooth: true,
                         symbol: "circle",
-                        symbolSize: 6,
-                        lineStyle: { width: 2 },
+                        // A dot only on the last point and on isolated points (see chartConventions).
+                        // ECharts' default `showAllSymbol: "auto"` hides symbols between label ticks on a dense
+                        // category axis, which can hide the end dot; `pointSymbolSize` already limits the dots.
+                        showAllSymbol: true,
+                        symbolSize: pointSymbolSize(values),
+                        itemStyle: dotRing(chartTheme),
+                        lineStyle: lineMark,
                         areaStyle: { opacity: 0.12 },
                         ...(baselineMarkLine ? { markLine: baselineMarkLine } : {}),
                     },

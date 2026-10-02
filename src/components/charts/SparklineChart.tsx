@@ -6,6 +6,7 @@ import { LineChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
 import { useChartTheme } from "./chartTheme";
+import { buildTooltip, dotRing, lineMark, pointSymbolSize } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
 import { formatNumber } from "@/lib/formatters";
 
@@ -88,15 +89,8 @@ export function SparklineChart({
     return (
         <Chart
             option={{
-                tooltip: {
-                    trigger: "axis",
-                    confine: true,
-                    backgroundColor: chartTheme.background,
-                    borderColor: chartTheme.stroke,
-                    textStyle: {
-                        color: chartTheme.text,
-                    },
-                    axisPointer: { type: "line" },
+                tooltip: buildTooltip(chartTheme, {
+                    crosshair: true,
                     formatter: (params: unknown): string => {
                         const list = Array.isArray(params) ? params : [params];
                         const first = list[0] as SparklineTooltipParam | undefined;
@@ -106,7 +100,7 @@ export function SparklineChart({
                         const value = formatSparklineTooltipValue(first?.value ?? null);
                         return `${first?.marker ?? ""}${label}: ${value}`;
                     },
-                },
+                }),
                 grid: { left: 8, right: 8, top: 10, bottom: 10 },
                 xAxis: {
                     type: "category",
@@ -127,11 +121,15 @@ export function SparklineChart({
                         data,
                         smooth: true,
                         symbol: "circle",
-                        symbolSize: 6,
-                        lineStyle: { width: 2 },
+                        // A dot only on the last point and on isolated points (see chartConventions).
+                        // ECharts' default `showAllSymbol: "auto"` hides symbols between label ticks on a dense
+                        // category axis, which can hide the end dot; `pointSymbolSize` already limits the dots.
+                        showAllSymbol: true,
+                        symbolSize: pointSymbolSize(data),
+                        lineStyle: lineMark,
                         areaStyle: { opacity: 0.15 },
                         emphasis: { scale: true },
-                        itemStyle: { color: chartTheme.muted },
+                        itemStyle: { color: chartTheme.muted, ...dotRing(chartTheme) },
                     },
                 ],
             }}

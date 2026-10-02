@@ -13,6 +13,7 @@ const MODULES = [
     "../../components/charts/TransitionHeatmapChart.tsx",
     "../../components/charts/HeatmapScaleLegend.tsx",
     "../heatmapRamp.ts",
+    "../../components/charts/chartConventions.ts",
     "../chartTransforms.ts",
     "../chartUtils.ts",
     "../quadrantZones.ts",
