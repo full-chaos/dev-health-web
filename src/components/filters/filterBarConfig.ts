@@ -21,7 +21,7 @@ export type FilterBarView =
     | "ai";
 
 export type UnreadFilter =
-    "developers" | "roles" | "flowStage" | "blocked" | "artifacts" | "issueType";
+    "developers" | "roles" | "workCategory" | "flowStage" | "blocked" | "artifacts" | "issueType";
 
 export type FilterVisibility = {
     scope?: boolean;
