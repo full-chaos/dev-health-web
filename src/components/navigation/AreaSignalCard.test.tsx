@@ -136,3 +136,45 @@ describe("AreaSignalCard pinned behaviour (before the CHAOS-7598 restyle)", () =
         }
     });
 });
+
+describe("AreaSignalCard approved look (CHAOS-8062)", () => {
+    const sig = (extra: Partial<AreaSignal> = {}): AreaSignal => ({
+        id: "cov",
+        label: "TestOps",
+        href: "/testops",
+        metricLabel: "Line coverage",
+        value: "60%",
+        state: "high",
+        ...extra,
+    });
+    const renderCard = (signal: AreaSignal) =>
+        render(<AreaSignalCard signal={signal} filters={defaultMetricFilter} />);
+
+    it("draws the severity word as a small tinted pill: no outline, no forced caps", () => {
+        renderCard(sig());
+        const pill = screen.getByTestId("area-signal-badge");
+        expect(pill).toHaveTextContent("High");
+        expect(pill).toHaveClass("rounded-sm", "bg-(--accent-3)/12");
+        expect(pill.className).not.toMatch(/\bborder\b|uppercase|tracking-/);
+    });
+
+    it("puts the metric name below the value as link text with an arrow", () => {
+        renderCard(sig());
+        const value = screen.getByTestId("area-signal-value");
+        const metric = screen.getByTestId("area-signal-metric");
+        expect(metric).toHaveTextContent("Line coverage →");
+        expect(metric.className).not.toMatch(/uppercase|tracking-/);
+        expect(
+            value.compareDocumentPosition(metric) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(value.parentElement).not.toContainElement(metric);
+    });
+
+    it("draws an unavailable signal as a normal card with the no-data state inside", () => {
+        renderCard(sig({ state: "unavailable", value: "", label: "Feature Flags" }));
+        const card = screen.getByTestId("area-signal-card");
+        expect(card).toHaveClass("border", "bg-(--card)", "rounded-(--radius-md)");
+        expect(screen.getByRole("heading", { name: "Feature Flags" })).toBeInTheDocument();
+        expect(screen.getByTestId("area-signal-unavailable")).toBeInTheDocument();
+    });
+});

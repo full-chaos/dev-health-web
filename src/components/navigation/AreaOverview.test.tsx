@@ -261,3 +261,18 @@ describe("AreaOverview — hero action text comes from the destination (prototyp
         expect(within(hero).queryByRole("link", { name: "Inspect code" })).toBeNull();
     });
 });
+
+describe("AreaOverview — a no-data Risk card stays a normal card in its group (D16)", () => {
+    it("keeps the unavailable Feature Flags card inside the Risk group with card chrome", () => {
+        renderOverview([
+            signal("hero", "critical", { cluster: "Quality" }),
+            signal("risk", "high", { cluster: "Risk" }),
+            signal("flags", "unavailable", { cluster: "Risk", demoted: true }),
+        ]);
+        const groups = screen.getAllByTestId("area-overview-cluster");
+        expect(groups.map((g) => g.getAttribute("data-cluster"))).toEqual(["Risk"]);
+        const cards = within(groups[0]).getAllByTestId("area-signal-card");
+        expect(cards.map((c) => c.getAttribute("data-signal-id"))).toEqual(["risk", "flags"]);
+        expect(cards[1]).toHaveClass("border", "bg-(--card)");
+    });
+});

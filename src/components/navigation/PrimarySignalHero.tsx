@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { AREA_STATE_BADGE, AREA_STATE_LABEL } from "@/components/home/severityTokens";
+import {
+    AREA_STATE_LABEL,
+    AREA_STATE_PILL,
+    AREA_STATE_VALUE_COLOR,
+} from "@/components/home/severityTokens";
 import { buttonClassName } from "@/components/shared/Button";
 import type { AreaSignal } from "@/lib/areaSignals/types";
 import { withFilterParam } from "@/lib/filters/url";
@@ -60,7 +64,7 @@ export function PrimarySignalHero({ signal, filters, role, actionLabel }: Primar
                 <div className="flex items-center gap-2.5">
                     <span
                         data-testid="area-signal-badge"
-                        className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-[0.18em] ${AREA_STATE_BADGE[signal.state]}`}
+                        className={`shrink-0 rounded-sm px-1.75 py-0.75 text-xs font-semibold ${AREA_STATE_PILL[signal.state]}`}
                     >
                         {AREA_STATE_LABEL[signal.state]}
                     </span>
@@ -84,7 +88,7 @@ export function PrimarySignalHero({ signal, filters, role, actionLabel }: Primar
                 {signal.value ? (
                     <span
                         data-testid="area-signal-value"
-                        className="text-[2.3125rem] font-semibold leading-tight tabular-nums text-foreground"
+                        className={`text-[2.3125rem] font-semibold leading-tight tabular-nums ${AREA_STATE_VALUE_COLOR[signal.state]}`}
                     >
                         {signal.value}
                     </span>

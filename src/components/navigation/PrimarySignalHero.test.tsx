@@ -65,4 +65,26 @@ describe("PrimarySignalHero", () => {
         const root = screen.getByTestId("area-signal-card");
         expect(root).toHaveClass("p-6.25", "gap-5.5", "border-l-3", "border-l-(--accent-negative)");
     });
+
+    it("colors the big value by severity token, never a raw color", () => {
+        const { rerender } = render(
+            <PrimarySignalHero signal={base} filters={defaultMetricFilter} />,
+        );
+        expect(screen.getByTestId("area-signal-value")).toHaveClass("text-(--accent-negative)");
+        rerender(
+            <PrimarySignalHero signal={{ ...base, state: "high" }} filters={defaultMetricFilter} />,
+        );
+        expect(screen.getByTestId("area-signal-value")).toHaveClass("text-(--accent-3)");
+        rerender(
+            <PrimarySignalHero signal={{ ...base, state: "low" }} filters={defaultMetricFilter} />,
+        );
+        expect(screen.getByTestId("area-signal-value")).toHaveClass("text-foreground");
+    });
+
+    it("draws the state as a small tinted pill", () => {
+        render(<PrimarySignalHero signal={base} filters={defaultMetricFilter} />);
+        const pill = screen.getByTestId("area-signal-badge");
+        expect(pill).toHaveClass("rounded-sm");
+        expect(pill.className).not.toMatch(/\bborder\b|uppercase|tracking-/);
+    });
 });

@@ -2,8 +2,8 @@ import Link from "next/link";
 
 import { DataState } from "@/components/ui/DataState";
 import {
-    AREA_STATE_BADGE,
     AREA_STATE_LABEL,
+    AREA_STATE_PILL,
     DIRECTION_GLYPH,
 } from "@/components/home/severityTokens";
 import type { AreaSignal } from "@/lib/areaSignals/types";
@@ -56,13 +56,14 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
     if (signal.state === "unavailable") {
         // The dashed box is the DataState inside (3.6); only ROUTED (clickable) cards get the hover
         // affordance — a preview card must not look interactive.
-        const unavailableBaseClassName = "group block rounded-(--radius-md)";
-        const unavailableClassName = `${unavailableBaseClassName} transition hover:[&_.border-dashed]:border-(--accent)`;
+        const unavailableBaseClassName =
+            "group block min-h-30 overflow-hidden rounded-(--radius-md) border border-(--card-stroke) bg-(--card) p-4.75";
+        const unavailableClassName = `${unavailableBaseClassName} transition hover:border-(--accent)`;
         const body = (
             <>
-                <p className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
+                <h3 className="font-(--font-display) text-base leading-tight text-foreground">
                     {signal.label}
-                </p>
+                </h3>
                 <DataState
                     variant="detector-unavailable"
                     title={AREA_UNAVAILABLE_EMPTY_STATE.title}
@@ -104,7 +105,7 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
         );
     }
 
-    const badge = AREA_STATE_BADGE[signal.state];
+    const badge = AREA_STATE_PILL[signal.state];
     const stateLabel = AREA_STATE_LABEL[signal.state];
 
     return (
@@ -143,7 +144,7 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                 </h3>
                 <span
                     data-testid="area-signal-badge"
-                    className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-bold uppercase tracking-[0.18em] ${badge}`}
+                    className={`shrink-0 rounded-sm px-1.75 py-0.75 text-xs font-semibold ${badge}`}
                 >
                     {stateLabel}
                 </span>
@@ -152,28 +153,34 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
             {/* Metric label + formatted value (+ optional trend glyph). A value-less
           neutral card (navigational sub-area) shows just its descriptor copy. */}
             {signal.value ? (
-                <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                    <span
-                        data-testid="area-signal-value"
-                        className={
-                            demoted
-                                ? "text-lg font-semibold tabular-nums text-foreground"
-                                : emphasized
-                                  ? "text-[2.3125rem] font-semibold leading-tight tabular-nums text-foreground"
-                                  : "text-2xl font-semibold tabular-nums text-foreground"
-                        }
-                    >
-                        {signal.value}
-                    </span>
-                    {signal.direction ? (
-                        <span aria-hidden className="text-xs text-(--ink-muted)">
-                            {DIRECTION_GLYPH[signal.direction]}
+                <>
+                    <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <span
+                            data-testid="area-signal-value"
+                            className={
+                                demoted
+                                    ? "text-lg font-semibold tabular-nums text-foreground"
+                                    : emphasized
+                                      ? "text-[2.3125rem] font-semibold leading-tight tabular-nums text-foreground"
+                                      : "text-2xl font-semibold tabular-nums text-foreground"
+                            }
+                        >
+                            {signal.value}
                         </span>
-                    ) : null}
-                    <span className="text-xs uppercase tracking-[0.12em] text-(--ink-muted)">
-                        {signal.metricLabel}
-                    </span>
-                </div>
+                        {signal.direction ? (
+                            <span aria-hidden className="text-xs text-(--ink-muted)">
+                                {DIRECTION_GLYPH[signal.direction]}
+                            </span>
+                        ) : null}
+                    </div>
+                    {/* Approved `.signal small`: the metric name sits below the value as link text with an arrow. */}
+                    <p
+                        data-testid="area-signal-metric"
+                        className="mt-1 text-xs text-(--accent-text) group-hover:underline"
+                    >
+                        {signal.metricLabel} <span aria-hidden="true">→</span>
+                    </p>
+                </>
             ) : (
                 <p className="mt-2 text-sm text-(--ink-muted)">{signal.metricLabel}</p>
             )}
