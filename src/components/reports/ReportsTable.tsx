@@ -7,6 +7,11 @@ import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/reports/StatusBadge";
 import type { SavedReport } from "@/lib/reports/types";
 
+/** Internal report path built from the id alone; a served value never decides where the link goes. */
+export function reportHref(id: string): string {
+    return `/reports/${encodeURIComponent(id)}`;
+}
+
 // Saved reports as a table (design R3 / R-2): name + description, schedule, last run, status and an
 // open arrow. Every cell is a served field of the report; nothing is computed here.
 const COLUMNS: readonly DataTableColumn<SavedReport>[] = [
@@ -17,7 +22,7 @@ const COLUMNS: readonly DataTableColumn<SavedReport>[] = [
         render: (report) => (
             <>
                 <Link
-                    href={`/reports/${report.id}`}
+                    href={reportHref(report.id)}
                     className="font-semibold text-(--accent-2) hover:underline"
                 >
                     {report.name}
@@ -61,7 +66,7 @@ export function ReportsTable({ reports }: { reports: readonly SavedReport[] }) {
             rowKeyAction={(report) => report.id}
             rowActions={(report) => (
                 <Link
-                    href={`/reports/${report.id}`}
+                    href={reportHref(report.id)}
                     aria-label={`Open ${report.name}`}
                     className="inline-flex text-(--accent-2)"
                 >

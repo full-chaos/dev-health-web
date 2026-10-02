@@ -96,3 +96,29 @@ describe("Report Center page", () => {
         expect(screen.queryByText("No saved reports yet")).toBeNull();
     });
 });
+
+describe("Report links stay inside /reports/", () => {
+    it("builds the path from the id alone: a slash or a scheme in the id is encoded", async () => {
+        fetchChecked.mockResolvedValue({
+            error: false,
+            total: 2,
+            items: [
+                report({ id: "a/b", name: "Slash" }),
+                report({ id: "//evil.example", name: "Evil" }),
+            ],
+        });
+        await renderPage();
+
+        for (const [name, href] of [
+            ["Slash", "/reports/a%2Fb"],
+            ["Evil", "/reports/%2F%2Fevil.example"],
+        ]) {
+            const link = screen.getByRole("link", { name });
+            expect(link).toHaveAttribute("href", href);
+            expect(screen.getByRole("link", { name: `Open ${name}` })).toHaveAttribute(
+                "href",
+                href,
+            );
+        }
+    });
+});
