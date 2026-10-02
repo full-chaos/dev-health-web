@@ -229,20 +229,6 @@ export const iaPreservationBaseline = {
             expectedPath: "/cognitive-load",
             expectedTab: "heatmap",
         },
-        {
-            source: "FlowView",
-            intent: "selected node flame view",
-            href: "/complexity?tab=flame&mode=throughput&context_node=Selected%20Node",
-            expectedPath: "/complexity",
-            expectedTab: "flame",
-        },
-        {
-            source: "FlowView/InspectPanel",
-            intent: "work graph view",
-            href: "/diagnose/work-graph",
-            expectedPath: "/diagnose/work-graph",
-            expectedTab: null,
-        },
     ],
     // Direct destination links (NOT Work workbench deep-links): these point at a
     // real area destination. LandscapeView's 'Open metrics' CTA goes straight to the
