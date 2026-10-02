@@ -2,7 +2,7 @@
 
 import { type ReactNode, useRef, useState } from "react";
 
-import { type FilterBarClientProps } from "@/components/filters/filterBarConfig";
+import { isFilterRead, type FilterBarClientProps } from "@/components/filters/filterBarConfig";
 import { formatSelection, toggleValue } from "@/components/filters/filterBarUtils";
 import { ActiveFilterPills } from "@/components/filters/sections/ActiveFilterPills";
 import { AdvancedFiltersPanel } from "@/components/filters/sections/AdvancedFiltersPanel";
@@ -123,13 +123,13 @@ export function ScopeBarClient({
 
     // Filters that live in the drawer. Team, repository and window are in the row.
     const activeFilterCount =
-        developers.length +
-        roles.length +
+        (isFilterRead(visibility, "developers") ? developers.length : 0) +
+        (isFilterRead(visibility, "roles") ? roles.length : 0) +
         workCategory.length +
-        issueType.length +
-        flowStage.length +
-        artifacts.length +
-        (blocked ? 1 : 0);
+        (isFilterRead(visibility, "issueType") ? issueType.length : 0) +
+        (isFilterRead(visibility, "flowStage") ? flowStage.length : 0) +
+        (isFilterRead(visibility, "artifacts") ? artifacts.length : 0) +
+        (blocked && isFilterRead(visibility, "blocked") ? 1 : 0);
     const filtersButtonName =
         activeFilterCount > 0
             ? `${CTA_LABELS.filters}, ${activeFilterCount} active`
@@ -333,6 +333,7 @@ export function ScopeBarClient({
                                 developers={developers}
                                 flowStage={flowStage}
                                 issueType={issueType}
+                                unread={visibility.unreadFilters}
                                 onClearArtifact={(value) =>
                                     updateFilters({
                                         ...filters,
