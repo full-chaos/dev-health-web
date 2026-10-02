@@ -265,16 +265,15 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
         if (basePath(path) === "/diagnose/work-graph") {
             expect(routePageExists(path), path).toBe(true);
             expect(workGraphPageSource).toContain("Work Graph views");
-            // Tab labels live in buildTabs.ts (see note at workGraphTabsSource).
-            for (const label of [
+            // Tab labels live in the tab registry (CHAOS-7783); buildTabs.ts renders from it.
+            expect(workGraphTabsSource).toContain('getTabSet("work-graph")');
+            expect(getTabSet("work-graph").tabs.map((tab) => tab.label)).toEqual([
                 "Overview",
                 "Dependencies",
                 "Inflow-Outflow",
                 "Review Network",
                 "Artifacts",
-            ]) {
-                expect(workGraphTabsSource).toContain(label);
-            }
+            ]);
         }
         if (basePath(path) === "/cognitive-load") {
             expect(routePageExists(path), path).toBe(true);
@@ -331,19 +330,24 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
             join(process.cwd(), "src/components/work/investment/types.ts"),
             "utf8",
         );
-        for (const tab of ["overview", "allocation", "evidence", "confidence"]) {
-            expect(investmentTypesSource).toContain(`"${tab}"`);
-        }
-        for (const label of ["Allocation", "Evidence", "Confidence"]) {
-            expect(investmentPageSource).toContain(`"${label}"`);
-        }
-        for (const retired of [
-            '"mix"',
-            '"unit-investment"',
-            '"strategic-allocation"',
-            '"rework"',
-        ]) {
-            expect(investmentTypesSource).not.toContain(retired);
+        // The tab list lives in the tab registry (CHAOS-7783); the page renders from it.
+        expect(investmentPageSource).toContain('getTabSet("investment")');
+        const investmentTabs = getTabSet("investment").tabs;
+        expect(investmentTabs.map((tab) => tab.id)).toEqual([
+            "overview",
+            "allocation",
+            "evidence",
+            "confidence",
+        ]);
+        expect(investmentTabs.map((tab) => tab.label)).toEqual([
+            "Overview",
+            "Allocation",
+            "Evidence",
+            "Confidence",
+        ]);
+        for (const retired of ["mix", "unit-investment", "strategic-allocation", "rework"]) {
+            expect(investmentTabs.map((tab) => tab.id)).not.toContain(retired);
+            expect(investmentTypesSource).not.toContain(`"${retired}"`);
         }
         // Investment reserves "flow" for delivery flow under Metrics/Monitoring.
         expect(investmentViewSource.toLowerCase()).not.toContain('section="all"');

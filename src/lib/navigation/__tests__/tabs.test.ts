@@ -24,6 +24,26 @@ const BEFORE = {
         ["focus-pressure", "Focus Pressure"],
         ["load-drivers", "Load Drivers"],
     ],
+    landscape: [
+        ["overview", "Overview"],
+        ["teams", "Teams"],
+        ["repos", "Repos"],
+        ["ownership", "Ownership"],
+        ["hotspots", "Hotspots"],
+    ],
+    investment: [
+        ["overview", "Overview"],
+        ["allocation", "Allocation"],
+        ["evidence", "Evidence"],
+        ["confidence", "Confidence"],
+    ],
+    "work-graph": [
+        ["overview", "Overview"],
+        ["dependencies", "Dependencies"],
+        ["inflow-outflow", "Inflow-Outflow"],
+        ["review-network", "Review Network"],
+        ["artifacts", "Artifacts"],
+    ],
 } as const;
 
 describe("tab registry", () => {
@@ -52,6 +72,11 @@ describe("tab registry", () => {
         expect(tabHref(getTabSet("cognitive-load"), "load-drivers")).toBe(
             "/cognitive-load?tab=load-drivers",
         );
+        expect(tabHref(getTabSet("landscape"), "teams")).toBe("/landscape?tab=teams");
+        expect(tabHref(getTabSet("investment"), "overview")).toBe("/investment");
+        expect(tabHref(getTabSet("work-graph"), "inflow-outflow")).toBe(
+            "/diagnose/work-graph?tab=inflow-outflow",
+        );
     });
 
     it("names a destination the sidebar lists: every set's base path is a visible navAreas child", () => {
@@ -62,12 +87,20 @@ describe("tab registry", () => {
         }
     });
 
-    it.each(["complexity", "cognitive-load"] as const)(
-        "%s page renders its tabs from the registry and holds no inline list",
+    const PAGE_FILE = {
+        complexity: "complexity/page.tsx",
+        "cognitive-load": "cognitive-load/page.tsx",
+        landscape: "landscape/page.tsx",
+        investment: "investment/page.tsx",
+        "work-graph": "diagnose/work-graph/buildTabs.ts",
+    } as const;
+
+    it.each(Object.keys(PAGE_FILE) as Array<keyof typeof PAGE_FILE>)(
+        "%s renders its tabs from the registry and holds no inline list",
         (page) => {
-            const source = readFileSync(join(appRoot, page, "page.tsx"), "utf8");
+            const source = readFileSync(join(appRoot, PAGE_FILE[page]), "utf8");
             expect(source).toContain(`getTabSet("${page}")`);
-            expect(source).toContain("tabHref(tabSet, tab.id)");
+            expect(source).toMatch(/tabHref\((tabSet|\w+Tabs|set), (tab\.id|id)\)/);
             // No tab literal of the old inline list is left in the page.
             for (const [id, label] of BEFORE[page]) {
                 expect(source).not.toContain(`id: "${id}"`);

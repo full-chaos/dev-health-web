@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
+import { getTabSet, tabHref, type TabIdOf } from "@/lib/navigation/tabs";
 import {
     HotspotsView,
     OwnershipView,
@@ -39,8 +40,7 @@ const QUADRANT_CARDS = [
     },
 ];
 
-const LANDSCAPE_TABS = ["overview", "teams", "repos", "ownership", "hotspots"] as const;
-type LandscapeTab = (typeof LANDSCAPE_TABS)[number];
+type LandscapeTab = TabIdOf<"landscape">;
 
 type LandscapePageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -81,7 +81,8 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
     const lensParam = Array.isArray(params.lens) ? params.lens[0] : params.lens;
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
-    const activeTab: LandscapeTab = LANDSCAPE_TABS.includes(tabParam as LandscapeTab)
+    const landscapeTabs = getTabSet("landscape");
+    const activeTab: LandscapeTab = landscapeTabs.tabs.some((tab) => tab.id === tabParam)
         ? (tabParam as LandscapeTab)
         : "overview";
     const activeLensId =
@@ -144,14 +145,10 @@ export default async function LandscapePage({ searchParams }: LandscapePageProps
     const cycleIndex = QUADRANT_CARDS.findIndex((c) => c.type === "cycle_throughput");
     const churnIndex = QUADRANT_CARDS.findIndex((c) => c.type === "churn_throughput");
 
-    const tabs: ViewSetItem[] = LANDSCAPE_TABS.map((id) => ({
-        id,
-        label: id === "overview" ? "Overview" : id[0].toUpperCase() + id.slice(1),
-        path: withFilterParam(
-            id === "overview" ? "/landscape" : `/landscape?tab=${id}`,
-            filters,
-            activeRole,
-        ),
+    const tabs: ViewSetItem[] = landscapeTabs.tabs.map((tab) => ({
+        id: tab.id,
+        label: tab.label,
+        path: withFilterParam(tabHref(landscapeTabs, tab.id), filters, activeRole),
         navVisible: true,
     }));
 

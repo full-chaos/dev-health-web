@@ -58,9 +58,57 @@ export const TAB_SETS = [
             { id: "load-drivers", label: "Load Drivers" },
         ],
     },
+    {
+        id: "landscape",
+        areaId: "diagnose",
+        basePath: "/landscape",
+        param: "tab",
+        defaultTabId: "overview",
+        tabs: [
+            { id: "overview", label: "Overview" },
+            { id: "teams", label: "Teams" },
+            { id: "repos", label: "Repos" },
+            { id: "ownership", label: "Ownership" },
+            { id: "hotspots", label: "Hotspots" },
+        ],
+    },
+    {
+        id: "investment",
+        areaId: "diagnose",
+        basePath: "/investment",
+        param: "tab",
+        defaultTabId: "overview",
+        tabs: [
+            { id: "overview", label: "Overview" },
+            { id: "allocation", label: "Allocation" },
+            // design-lint-disable-next-line cta-from-registry -- "Evidence" is the tab label (CHAOS-2154), not a CTA
+            { id: "evidence", label: "Evidence" },
+            { id: "confidence", label: "Confidence" },
+        ],
+    },
+    {
+        id: "work-graph",
+        areaId: "diagnose",
+        basePath: "/diagnose/work-graph",
+        param: "tab",
+        defaultTabId: "overview",
+        tabs: [
+            { id: "overview", label: "Overview" },
+            { id: "dependencies", label: "Dependencies" },
+            { id: "inflow-outflow", label: "Inflow-Outflow" },
+            { id: "review-network", label: "Review Network" },
+            { id: "artifacts", label: "Artifacts" },
+        ],
+    },
 ] as const satisfies readonly TabSet[];
 
 export type TabSetId = (typeof TAB_SETS)[number]["id"];
+
+/** The tab ids of one set, as a union (for a page's `activeTab` type). */
+export type TabIdOf<S extends TabSetId> = Extract<
+    (typeof TAB_SETS)[number],
+    { id: S }
+>["tabs"][number]["id"];
 
 export function getTabSet(id: TabSetId): TabSet {
     const set = TAB_SETS.find((candidate) => candidate.id === id);
