@@ -1,11 +1,15 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
+import { ArrowRight, Info } from "lucide-react";
 
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
+import { MetricEvidenceButton } from "@/components/metrics/MetricEvidenceButton";
 import { MetricEvidenceCards } from "@/components/metrics/MetricEvidenceCards";
-import { MetricsSummaryTable } from "@/components/metrics/MetricsSummaryTable";
+import { buttonClassName } from "@/components/shared/Button";
 import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
@@ -14,14 +18,13 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { formatDelta, formatMetricValue } from "@/lib/formatters";
-import { FALLBACK_DELTAS, metricInverseGood } from "@/lib/metrics/catalog";
+import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 import { getTabSet, tabHref } from "@/lib/navigation/tabs";
 import type { MetricDelta } from "@/lib/types";
-import { EntityLabel } from "@/components/labels/EntityLabel";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 
 type MetricsPageProps = {
@@ -31,6 +34,19 @@ type MetricsPageProps = {
 const getMetric = (deltas: MetricDelta[], metric: string) =>
     deltas.find((item) => item.metric === metric) ??
     FALLBACK_DELTAS.find((item) => item.metric === metric);
+
+/** The small note under a chart (prototype `.data-note`): an info icon and one muted line. */
+function DataNote({ children }: { children: ReactNode }) {
+    return (
+        <p
+            data-testid="data-note"
+            className="mt-2.5 flex items-center gap-1.5 text-xs text-(--ink-muted)"
+        >
+            <Info aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
+            {children}
+        </p>
+    );
+}
 
 export default async function MetricsPage({ searchParams }: MetricsPageProps) {
     const params = (await searchParams) ?? {};
@@ -95,13 +111,23 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
         { unresolvedFallback: "Unresolved" },
     );
 
+    // The tab's metric: the subject of "View evidence", of the section actions and of both cards.
+    const highlightSubject = {
+        title: highlightLabel,
+        metric: activeTab.highlight,
+        filters,
+        role: activeRole,
+    };
+
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
-            <PageHeader title="Flow" subtitle="Trends over the selected window.">
-                <p className="text-sm text-(--ink-muted)">Open a metric to investigate.</p>
-            </PageHeader>
+            <PageHeader
+                title="Flow"
+                subtitle={activeTab.description}
+                actions={<PageHeaderEvidenceAction subject={highlightSubject} />}
+            />
 
             <ScopeBar view="metrics" tab={activeTab.id} />
 
@@ -115,22 +141,6 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 }))}
             />
 
-            <p className="text-sm text-(--ink-muted)">{activeTab.description}</p>
-
-            <div className="-mb-4 flex justify-end">
-                <Link
-                    href={buildExploreUrl({
-                        metric: activeTab.highlight,
-                        filters,
-                        role: activeRole,
-                    })}
-                    className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                    title={`Open evidence for ${highlightLabel}`}
-                >
-                    {CTA_LABELS.openEvidence}
-                </Link>
-            </div>
-
             <MetricEvidenceCards
                 metrics={activeTab.metrics}
                 deltas={deltas}
@@ -139,149 +149,89 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 placeholderDeltas={placeholderDeltas}
             />
 
-            <section>
-                <QuadrantPanel
-                    title={activeTab.quadrant.title}
-                    description={activeTab.quadrant.description}
-                    data={quadrant}
-                    filters={filters}
-                    emptyState="Quadrant data unavailable for this scope."
-                />
-            </section>
+            <QuadrantPanel
+                title={activeTab.quadrant.title}
+                description={activeTab.quadrant.description}
+                data={quadrant}
+                filters={filters}
+                emptyState="Quadrant data unavailable for this scope."
+                action={
+                    // The evidence page of the tab's metric (was the "Open evidence" link above
+                    // the tiles). A dot opens the shared drawer by itself.
+                    <Link
+                        href={buildExploreUrl({
+                            metric: activeTab.highlight,
+                            filters,
+                            role: activeRole,
+                        })}
+                        data-testid="quadrant-metric-evidence"
+                        title={`${CTA_LABELS.metricEvidence}: ${highlightLabel}`}
+                        className={buttonClassName("ghost", "sm")}
+                    >
+                        <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                        {CTA_LABELS.metricEvidence}
+                    </Link>
+                }
+            />
 
-            <section className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="font-(--font-display) text-xl">Likely associations</h2>
-                        <Link
-                            href={buildExploreUrl({
-                                metric: activeTab.highlight,
-                                filters,
-                                role: activeRole,
-                            })}
-                            className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                        >
-                            {CTA_LABELS.openEvidence}
-                        </Link>
-                    </div>
-                    <p className="mt-2 text-xs text-(--ink-muted)">
-                        Preview of the selected window. Select a data point for detail.
-                    </p>
+            <div data-testid="association-cards" className="grid gap-4.5 lg:grid-cols-2">
+                <Section
+                    title="Likely associations"
+                    description="Selected-window associations"
+                    action={
+                        <MetricEvidenceButton
+                            subject={highlightSubject}
+                            section="Likely associations"
+                        />
+                    }
+                >
                     {drivers.length ? (
-                        <div className="mt-4 space-y-4">
-                            <HorizontalBarChart
-                                categories={driverChartLabels.labels}
-                                values={drivers.map((driver) => Math.abs(driver.delta_pct))}
-                                categoryTitles={driverChartLabels.titles}
-                            />
-                            <div className="space-y-2 text-sm">
-                                {drivers.map((driver) => (
-                                    <Link
-                                        key={driver.id}
-                                        href={buildExploreUrl({
-                                            api: driver.evidence_link,
-                                            filters,
-                                            role: activeRole,
-                                        })}
-                                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
-                                    >
-                                        <EntityLabel id={driver.label} />
-                                        <span className="text-xs text-(--ink-muted)">
-                                            {formatDelta(driver.delta_pct)}
-                                        </span>
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
+                        <HorizontalBarChart
+                            categories={driverChartLabels.labels}
+                            values={drivers.map((driver) => Math.abs(driver.delta_pct))}
+                            categoryTitles={driverChartLabels.titles}
+                        />
                     ) : (
-                        <p className="mt-4 text-sm text-(--ink-muted)">
+                        <p className="text-sm text-(--ink-muted)">
                             Association detail will appear once data is ingested.
                         </p>
                     )}
-                </div>
+                    {/* The bar labels are plain numbers, as production draws them: the note names the unit. */}
+                    <DataNote>
+                        Association values are percent change in the selected window; no causal
+                        conclusion is added.
+                    </DataNote>
+                </Section>
 
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
-                    <div className="flex items-center justify-between">
-                        <h2 className="font-(--font-display) text-xl">Primary contributors</h2>
-                        <Link
-                            href={buildExploreUrl({
-                                metric: activeTab.highlight,
-                                filters,
-                                role: activeRole,
-                            })}
-                            className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                        >
-                            {CTA_LABELS.openEvidence}
-                        </Link>
-                    </div>
-                    <p className="mt-2 text-xs text-(--ink-muted)">
-                        Where the impact concentrates in this window.
-                    </p>
+                <Section
+                    title="Primary contributors"
+                    description="Where the impact concentrates in this window."
+                    action={
+                        <MetricEvidenceButton
+                            subject={highlightSubject}
+                            section="Primary contributors"
+                        />
+                    }
+                >
                     {contributors.length ? (
-                        <div className="mt-4 space-y-4">
-                            <HorizontalBarChart
-                                categories={contributorChartLabels.labels}
-                                values={contributors.map((contributor) => contributor.value)}
-                                categoryTitles={contributorChartLabels.titles}
-                            />
-                            <div className="space-y-2 text-sm">
-                                {contributors.map((contributor) => (
-                                    <Link
-                                        key={contributor.id}
-                                        href={buildExploreUrl({
-                                            api: contributor.evidence_link,
-                                            filters,
-                                            role: activeRole,
-                                        })}
-                                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2"
-                                    >
-                                        <EntityLabel id={contributor.label} />
-                                        <span className="text-xs text-(--ink-muted)">
-                                            {highlight
-                                                ? formatMetricValue(
-                                                      contributor.value,
-                                                      highlight.unit,
-                                                  )
-                                                : "--"}
-                                        </span>
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
+                        <HorizontalBarChart
+                            categories={contributorChartLabels.labels}
+                            values={contributors.map((contributor) => contributor.value)}
+                            categoryTitles={contributorChartLabels.titles}
+                        />
                     ) : (
-                        <p className="mt-4 text-sm text-(--ink-muted)">
+                        <p className="text-sm text-(--ink-muted)">
                             Contributor detail will appear once data is ingested.
                         </p>
                     )}
-                </div>
-            </section>
-
-            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-                <div className="flex items-center justify-between">
-                    <h2 className="font-(--font-display) text-xl">Summary</h2>
-                    <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                        Active window
-                    </span>
-                </div>
-                <div className="mt-4">
-                    <MetricsSummaryTable
-                        rows={activeTab.metrics.map((metric) => {
-                            const data = getMetric(deltas, metric);
-                            return {
-                                metric,
-                                label: data?.label ?? metric,
-                                valueText:
-                                    placeholderDeltas || !data
-                                        ? "—"
-                                        : formatMetricValue(data.value, data.unit),
-                                delta: placeholderDeltas || !data ? null : data.delta_pct,
-                                inverseGood: metricInverseGood(metric),
-                                href: buildExploreUrl({ metric, filters, role: activeRole }),
-                            };
-                        })}
-                    />
-                </div>
-            </section>
+                    {contributors.length && highlight?.unit ? (
+                        // The bar labels are plain numbers: the note names the served unit.
+                        <DataNote>
+                            {highlightLabel} per contributor, in {highlight.unit}.
+                        </DataNote>
+                    ) : null}
+                </Section>
+            </div>
         </div>
     );
 }

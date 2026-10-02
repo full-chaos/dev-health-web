@@ -98,12 +98,31 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
             />,
         );
 
-    it("lays the tiles out in a 2 / 4 column grid", () => {
+    it("lays the tiles out in the metric strip: one column per tile, two under the lg breakpoint", () => {
         const { container } = renderFour();
-        const grid = container.querySelector("section") as HTMLElement;
-        expect(grid.className).toContain("grid-cols-2");
-        expect(grid.className).toContain("lg:grid-cols-4");
-        expect(container.querySelectorAll("article")).toHaveLength(4);
+        const strip = screen.getByTestId("metric-tile-strip");
+        expect(strip).toHaveAttribute("data-columns", "4");
+        expect(strip.className).toContain("grid-cols-2");
+        expect(strip.style.getPropertyValue("--cols")).toBe("4");
+        expect(strip.querySelectorAll(":scope > article")).toHaveLength(4);
+        // The old free-standing 2 / 4 grid of separate cards is gone.
+        expect(container.querySelector("section")).toBeNull();
+        expect(screen.queryByTestId("metric-strip-filler")).toBeNull();
+    });
+
+    it("gives three tiles three columns (the Throughput tab), with no filler cell", () => {
+        render(
+            <MetricEvidenceCards
+                metrics={["a", "b", "c"]}
+                deltas={four}
+                filters={filters}
+                placeholderDeltas={false}
+            />,
+        );
+        const strip = screen.getByTestId("metric-tile-strip");
+        expect(strip).toHaveAttribute("data-columns", "3");
+        expect(strip.querySelectorAll(":scope > article")).toHaveLength(3);
+        expect(screen.queryByTestId("metric-strip-filler")).toBeNull();
     });
 
     it("shows the delta with MetricDelta's arrow and tone (a metric with no polarity reads as higher-is-better)", () => {
@@ -164,16 +183,34 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
                 placeholderDeltas={false}
             />,
         );
-        expect(screen.getByText("ghost")).toBeInTheDocument();
+        // No served row: the name comes from the key, readable, and the value is not a number.
+        expect(screen.getByText("Ghost")).toBeInTheDocument();
+        expect(screen.queryByText("ghost")).toBeNull();
         expect(screen.getAllByText("--")).toHaveLength(1);
         expect(screen.getByText("No prior period")).toBeInTheDocument();
         expect(screen.queryByText(/0%/)).toBeNull();
     });
 
-    it("shows the 'Trend' text and no chart for a series of one point", () => {
+    it("shows 'No trend yet' and no chart for a series of one point", () => {
         renderFour();
-        expect(screen.getAllByText("Trend")).toHaveLength(1);
+        expect(screen.getAllByText("No trend yet")).toHaveLength(1);
+        expect(screen.queryByText("Trend")).toBeNull();
         expect(screen.getAllByTestId("sparkline")).toHaveLength(3);
+    });
+
+    it("names a catalog metric that has no served row by its catalog label, never by its key", () => {
+        render(
+            <MetricEvidenceCards
+                metrics={["blocked_work"]}
+                deltas={[]}
+                filters={filters}
+                placeholderDeltas={false}
+            />,
+        );
+        expect(screen.getByText("Blocked Work")).toBeInTheDocument();
+        expect(screen.queryByText("blocked_work")).toBeNull();
+        expect(screen.getByText("--")).toBeInTheDocument();
+        expect(screen.getByText("No prior period")).toBeInTheDocument();
     });
 
     it("has one Open evidence target per tile: a button that opens the shared drawer (no second link to Explore)", async () => {
@@ -205,12 +242,12 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
         expect(panelProps.last).toMatchObject({ metric: "a", role: "manager" });
     });
 
-    it("markup of a four-tile section (snapshot taken before the merge)", () => {
+    it("markup of a four-tile strip", () => {
         const { container } = renderFour();
         expect(container.innerHTML).toMatchSnapshot();
     });
 
-    it("sparkline threshold counts real points: two points with one gap shows 'Trend', not a chart (changed by CHAOS-7705)", () => {
+    it("sparkline threshold counts real points: two points with one gap shows 'No trend yet', not a chart (changed by CHAOS-7705)", () => {
         // Before the merge this series (2 points, 1 null) drew a chart with a single dot.
         const gap = {
             ...row("g", "Gappy", 4, "", 1),
@@ -228,6 +265,6 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
             />,
         );
         expect(screen.queryByTestId("sparkline")).toBeNull();
-        expect(screen.getByText("Trend")).toBeInTheDocument();
+        expect(screen.getByText("No trend yet")).toBeInTheDocument();
     });
 });
