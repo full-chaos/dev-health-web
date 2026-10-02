@@ -31,6 +31,44 @@ export const CTA_LABELS = {
     inspectCode: "Inspect code",
     /** Primary-signal hero action for the Opportunities destination (approved copy, app.js line 108). */
     reviewOpportunities: "Review opportunities",
+    /** Primary-signal hero action for the Flow destination (ruling 93: "Inspect <item>"). */
+    inspectFlow: "Inspect flow",
+    /** Primary-signal hero action for the Investment destination (ruling 93: "Inspect <item>"). */
+    inspectInvestment: "Inspect investment",
+    /** Primary-signal hero action for the Landscape destination (ruling 93: "Inspect <item>"). */
+    inspectLandscape: "Inspect landscape",
+    /** Primary-signal hero action for the Complexity destination (ruling 93: "Inspect <item>"). */
+    inspectComplexity: "Inspect complexity",
+    /** Primary-signal hero action for the Cognitive Load destination (ruling 93: "Inspect <item>"). */
+    inspectCognitiveLoad: "Inspect cognitive load",
+    /** Primary-signal hero action for the Bottlenecks destination (ruling 93: "Inspect <item>"). */
+    inspectBottlenecks: "Inspect bottlenecks",
+    /** Primary-signal hero action for the Operating Review destination (ruling 93: "Inspect <item>"). */
+    inspectOperatingReview: "Inspect operating review",
+    /** Primary-signal hero action for the Experiments destination (ruling 93: "Inspect <item>"). */
+    inspectExperiments: "Inspect experiments",
+    /** Primary-signal hero action for the Automations (Improve and AI) destination (ruling 93: "Inspect <item>"). */
+    inspectAutomations: "Inspect automations",
+    /** Primary-signal hero action for the TestOps destination (ruling 93: "Inspect <item>"). */
+    inspectTestOps: "Inspect TestOps",
+    /** Primary-signal hero action for the Quality destination (ruling 93: "Inspect <item>"). */
+    inspectQuality: "Inspect quality",
+    /** Primary-signal hero action for the Security destination (ruling 93: "Inspect <item>"). */
+    inspectSecurity: "Inspect security",
+    /** Primary-signal hero action for the Delivery Risk destination (ruling 93: "Inspect <item>"). */
+    inspectDeliveryRisk: "Inspect delivery risk",
+    /** Primary-signal hero action for the Compounding Risk destination (ruling 93: "Inspect <item>"). */
+    inspectCompoundingRisk: "Inspect compounding risk",
+    /** Primary-signal hero action for the Incident Correlation destination (ruling 93: "Inspect <item>"). */
+    inspectIncidentCorrelation: "Inspect incident correlation",
+    /** Primary-signal hero action for the Feature Flags destination (ruling 93: "Inspect <item>"). */
+    inspectFeatureFlags: "Inspect feature flags",
+    /** Primary-signal hero action for the AI Impact destination (ruling 93: "Inspect <item>"). */
+    inspectAiImpact: "Inspect AI impact",
+    /** Primary-signal hero action for the Review Load destination (ruling 93: "Inspect <item>"). */
+    inspectReviewLoad: "Inspect review load",
+    /** Primary-signal hero action for the Governance Risk destination (ruling 93: "Inspect <item>"). */
+    inspectGovernanceRisk: "Inspect governance risk",
     generateContext: "Generate context",
     markContextIncorrect: "Mark context as incorrect",
     markContextStale: "Mark context as stale",
@@ -88,6 +126,8 @@ export const CTA_LABELS = {
     /** Open the Investment view (allocation tab from the Diagnose overview). */
     openInvestment: "Open Investment",
     openMetrics: "Open metrics",
+    /** Row action of the Home investigation threads (approved copy, app.js line 100). */
+    inspect: "Inspect",
     openWorkView: "Open Work view",
     /** Row action of a worklist: open the destination named by the row (approved copy, app.js line 113). */
     open: "Open",
@@ -330,6 +370,10 @@ export const CTA_LABELS = {
     startWithAiImpact: "Start with AI Impact",
     weeklyReview: "Weekly review",
     viewAll: "View all",
+    /** Home ranked signals table: show the rows after the first five, in place. */
+    showAllSignals: "Show all signals",
+    /** Home ranked signals table: back to the first five rows. */
+    showFewerSignals: "Show fewer signals",
     provenance: "Provenance",
     apply: "Apply",
     saveOverride: "Save Override",
