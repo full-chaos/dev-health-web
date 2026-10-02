@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { getExplainData } from "@/lib/api/home";
 import { ValidationErrors } from "@/lib/constants/errors";
 import { logger } from "@/lib/logger";
@@ -16,7 +16,11 @@ import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { STATUS_PILL } from "@/lib/statusPill";
 import { getMetricDefinition } from "@/lib/metrics/definitions";
-import { formatNumber, formatPercent as formatDisplayPercent } from "@/lib/formatters";
+import {
+    formatNumber,
+    formatPercent as formatDisplayPercent,
+    formatTimestamp,
+} from "@/lib/formatters";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import Link from "next/link";
 
@@ -64,6 +68,12 @@ type EvidencePanelResult = Partial<EvidencePanelData> & {
     source?: string | null;
     identity_confidence?: number | null;
 };
+
+/** The drawer title is the same for every subject; the subject is a heading in the body. */
+export const EVIDENCE_DRAWER_TITLE = "Evidence & Context";
+const EVIDENCE_DRAWER_EYEBROW = "Contextual investigation";
+/** Shown for a field the API did not serve. */
+const NOT_REPORTED = "Not reported";
 
 const formatPercent = (value?: number | null) =>
     typeof value === "number" ? formatDisplayPercent(value) : "not available";
@@ -465,11 +475,14 @@ export function EvidencePanel({
         <Drawer
             open
             onCloseAction={onCloseAction}
-            title={title}
-            eyebrow="Evidence & Context"
+            title={EVIDENCE_DRAWER_TITLE}
+            eyebrow={EVIDENCE_DRAWER_EYEBROW}
             footer={
                 <Link
                     href={exploreUrl}
+                    // The shared drawer lives in the layout: close it, or it stays open over the
+                    // destination when the path does not change (Explore to Explore).
+                    onClick={onCloseAction}
                     className="flex w-full items-center justify-center rounded-xl border border-(--accent-2)/20 bg-(--accent-2)/10 px-4 py-3 text-sm font-medium text-(--info) transition-colors hover:bg-(--accent-2)/20"
                 >
                     {CTA_LABELS.openEvidence} ↗
@@ -477,6 +490,13 @@ export function EvidencePanel({
             }
         >
             <div className="space-y-4">
+                {/* The subject (signal, metric or card). The drawer title is the same for all. */}
+                <h3
+                    data-testid="evidence-subject"
+                    className="text-h3 font-semibold text-foreground"
+                >
+                    {title}
+                </h3>
                 {loading ? (
                     <div className="space-y-4 animate-pulse">
                         <div className="h-24 bg-(--card-70) rounded-2xl" />
@@ -497,7 +517,10 @@ export function EvidencePanel({
                     </div>
                 ) : data ? (
                     <>
-                        <EvidenceProvenanceStrip provenance={data.provenance} />
+                        <EvidenceFacts
+                            provenance={data.provenance}
+                            artifactCount={data.evidence?.length ?? 0}
+                        />
                         <EvidenceContext data={data} />
                         {data.evidence?.length ? (
                             <EvidenceItems items={data.evidence} />
@@ -520,33 +543,64 @@ export function EvidencePanel({
     );
 }
 
-function EvidenceProvenanceStrip({ provenance }: { provenance?: EvidenceProvenance }) {
+/**
+ * The fact rows of the drawer: one row per field, label left and value right. A field the API
+ * did not serve shows "Not reported"; the web never fills a value in.
+ *
+ * "Artifacts" is the count of artifacts the API returned for this selection. An empty list is
+ * "None returned" (a partial-data state), never "0".
+ */
+function EvidenceFacts({
+    provenance,
+    artifactCount,
+}: {
+    provenance?: EvidenceProvenance;
+    artifactCount: number;
+}) {
     const confidence = provenance?.identity_confidence;
+    const quality = provenance?.quality;
+    const lastSync = provenance?.last_sync;
 
     return (
-        <section className="grid gap-3 rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4 text-xs text-(--ink-muted)">
-            <p className="text-xs uppercase tracking-[0.2em]">Quality + provenance</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-                <EvidenceProvenanceItem
-                    label="Source"
-                    value={provenance?.source || "metrics API"}
+        <section aria-label="Quality and provenance" className="text-xs">
+            <dl data-testid="evidence-facts">
+                <EvidenceFact label="Source" value={provenance?.source || undefined} />
+                <EvidenceFact
+                    label="Data quality"
+                    value={
+                        quality ? (
+                            <span
+                                className={`rounded-full border px-2 py-0.5 font-medium ${STATUS_PILL.muted}`}
+                            >
+                                {quality.charAt(0).toUpperCase() + quality.slice(1)}
+                            </span>
+                        ) : undefined
+                    }
                 />
-                <EvidenceProvenanceItem label="Quality" value={provenance?.quality || "partial"} />
-                <EvidenceProvenanceItem
+                <EvidenceFact
                     label="Last sync"
-                    value={provenance?.last_sync || "not reported"}
+                    // An unparseable value is shown as served, not replaced.
+                    value={lastSync ? formatTimestamp(lastSync, lastSync) : undefined}
                 />
-                <EvidenceProvenanceItem
+                <EvidenceFact
                     label="Identity confidence"
                     value={
                         typeof confidence === "number"
                             ? `${Math.round(confidence * 100)}%`
-                            : "not reported"
+                            : undefined
                     }
                 />
-            </div>
+                <EvidenceFact
+                    label="Artifacts"
+                    value={
+                        artifactCount > 0
+                            ? `${artifactCount} ${artifactCount === 1 ? "artifact" : "artifacts"}`
+                            : "None returned"
+                    }
+                />
+            </dl>
             {provenance?.partial && (
-                <p className={`rounded-xl px-3 py-2 ${STATUS_PILL.caution}`}>
+                <p className={`mt-3 rounded-xl px-3 py-2 ${STATUS_PILL.caution}`}>
                     Partial evidence: the backend did not return a complete artifact list for this
                     selection.
                 </p>
@@ -555,10 +609,22 @@ function EvidenceProvenanceStrip({ provenance }: { provenance?: EvidenceProvenan
     );
 }
 
-function EvidenceProvenanceItem({ label, value }: { label: string; value: string }) {
+function EvidenceFact({ label, value }: { label: string; value?: ReactNode }) {
+    const reported = value !== undefined;
     return (
-        <span className="rounded-xl border border-(--card-stroke) bg-background/35 px-3 py-2 leading-5">
-            {label}: {value}
-        </span>
+        <div
+            data-testid="evidence-fact"
+            data-reported={reported}
+            className="flex items-center gap-3 border-b border-(--card-stroke) py-2.5 last:border-b-0"
+        >
+            <dt className="text-(--ink-muted)">{label}</dt>
+            <dd
+                className={`ml-auto text-right tabular-nums ${
+                    reported ? "font-semibold text-foreground" : "text-(--ink-muted)"
+                }`}
+            >
+                {reported ? value : NOT_REPORTED}
+            </dd>
+        </div>
     );
 }

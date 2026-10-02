@@ -1,4 +1,5 @@
-import { fireEvent, render, screen, waitFor } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { fireEvent, screen, waitFor } from "@/test/utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { MetricFilter } from "@/lib/filters/types";

@@ -1,6 +1,7 @@
-import { render, screen, waitFor } from "@/test/utils";
+import { render, screen, waitFor, within } from "@/test/utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { formatTimestamp } from "@/lib/formatters";
 import { STATUS_PILL } from "@/lib/statusPill";
 import { EvidencePanel } from "./EvidencePanel";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -30,6 +31,15 @@ const filters = {
     why: {},
     how: {},
 } as MetricFilter;
+
+/** The value cell of one fact row, by its label. */
+const fact = (label: string) => {
+    const row = screen
+        .getAllByTestId("evidence-fact")
+        .find((candidate) => within(candidate).queryByText(label, { selector: "dt" }));
+    if (!row) throw new Error(`no fact row "${label}"`);
+    return row.querySelector("dd") as HTMLElement;
+};
 
 describe("EvidencePanel", () => {
     it("renders provenance and contributing artifacts", async () => {
@@ -68,10 +78,103 @@ describe("EvidencePanel", () => {
             />,
         );
 
-        await waitFor(() => expect(screen.getByText("Quality + provenance")).toBeInTheDocument());
-        expect(screen.getByText(/Source: workGraphEdges/i)).toBeInTheDocument();
-        expect(screen.getByText(/Identity confidence: 92%/i)).toBeInTheDocument();
+        await waitFor(() => expect(screen.getByTestId("evidence-facts")).toBeInTheDocument());
+        // One row per field, in the prototype's order; values are the served ones.
+        expect(
+            screen
+                .getAllByTestId("evidence-fact")
+                .map((row) => row.querySelector("dt")?.textContent),
+        ).toEqual(["Source", "Data quality", "Last sync", "Identity confidence", "Artifacts"]);
+        expect(fact("Source")).toHaveTextContent("workGraphEdges");
+        expect(fact("Data quality")).toHaveTextContent("High");
+        expect(fact("Last sync")).toHaveTextContent(formatTimestamp("2026-05-20T00:00:00Z"));
+        expect(fact("Identity confidence")).toHaveTextContent("92%");
+        expect(fact("Artifacts")).toHaveTextContent("1 artifact");
         expect(screen.getByText("Shorten review queue")).toBeInTheDocument();
+    });
+
+    it("shows 'Not reported' for a field the API did not serve, never a made value", async () => {
+        mockGetExplainData.mockResolvedValue({
+            metric: "cycle_time",
+            label: "Cycle Time",
+            summary: "Cycle time appears lower in this window.",
+            evidence: [],
+            actions: [],
+            // The API served a provenance block with no field in it.
+            provenance: {},
+        });
+
+        render(
+            <EvidencePanel
+                isOpen
+                onCloseAction={() => undefined}
+                title="Cycle Time"
+                metric="cycle_time"
+                filters={filters}
+            />,
+        );
+
+        await waitFor(() => expect(screen.getByTestId("evidence-facts")).toBeInTheDocument());
+        for (const label of ["Source", "Data quality", "Last sync", "Identity confidence"]) {
+            expect(fact(label)).toHaveTextContent(/^Not reported$/);
+            expect(fact(label).closest("[data-testid='evidence-fact']")).toHaveAttribute(
+                "data-reported",
+                "false",
+            );
+        }
+        // An empty artifact list is a partial-data state, not a zero.
+        expect(fact("Artifacts")).toHaveTextContent(/^None returned$/);
+        expect(screen.getByTestId("evidence-facts")).not.toHaveTextContent(/\b0\b/);
+    });
+
+    it("keeps a served last-sync value that is not a timestamp as served", async () => {
+        mockGetExplainData.mockResolvedValue({
+            metric: "cycle_time",
+            label: "Cycle Time",
+            summary: "Cycle time appears lower in this window.",
+            evidence: [],
+            actions: [],
+            provenance: { last_sync: "nightly batch" },
+        });
+
+        render(
+            <EvidencePanel
+                isOpen
+                onCloseAction={() => undefined}
+                title="Cycle Time"
+                metric="cycle_time"
+                filters={filters}
+            />,
+        );
+
+        await waitFor(() => expect(screen.getByTestId("evidence-facts")).toBeInTheDocument());
+        expect(fact("Last sync")).toHaveTextContent("nightly batch");
+    });
+
+    it("does not render the prototype parts that have no served data or are out of scope", async () => {
+        mockGetExplainData.mockResolvedValue({
+            metric: "cycle_time",
+            label: "Cycle Time",
+            summary: "Cycle time appears lower in this window.",
+            evidence: [],
+            actions: [],
+        });
+
+        render(
+            <EvidencePanel
+                isOpen
+                onCloseAction={() => undefined}
+                title="Cycle Time"
+                metric="cycle_time"
+                filters={filters}
+            />,
+        );
+
+        await waitFor(() => expect(screen.getByTestId("evidence-facts")).toBeInTheDocument());
+        const dialog = screen.getByRole("dialog");
+        expect(dialog).not.toHaveTextContent(/Ask in context/i);
+        expect(dialog).not.toHaveTextContent(/View original source/i);
+        expect(dialog).not.toHaveTextContent(/Supporting repositories/i);
     });
 
     it("formats contributor values and percentages for display", async () => {
@@ -234,9 +337,7 @@ describe("EvidencePanel", () => {
                 />,
             );
 
-            await waitFor(() =>
-                expect(screen.getByText("Quality + provenance")).toBeInTheDocument(),
-            );
+            await waitFor(() => expect(screen.getByTestId("evidence-facts")).toBeInTheDocument());
             expect(screen.getByRole("link", { name: /Open evidence/i })).toHaveAttribute(
                 "href",
                 expect.stringContaining(expectedHref),

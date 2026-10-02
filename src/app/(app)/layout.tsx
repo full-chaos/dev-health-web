@@ -5,6 +5,7 @@ import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { ImpersonationBanner } from "@/components/admin/ImpersonationBanner";
 import { SessionProvider } from "@/components/auth/SessionProvider";
 import { TrialBanner } from "@/components/billing/TrialBanner";
+import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { AppShell } from "@/components/shell/AppShell";
 import { TelemetryProvider } from "@/components/telemetry/TelemetryProvider";
@@ -28,17 +29,21 @@ export default async function AppLayout({
     // route in the shell registry, the legacy account bar for every other route.
     const authenticatedShell = (
         <div className="min-h-screen bg-[image:var(--app-gradient)] bg-fixed">
-            <AppShell
-                themeToggle={<ThemeToggle />}
-                banners={
-                    <>
-                        <ImpersonationBanner />
-                        <TrialBanner />
-                    </>
-                }
-            >
-                {children}
-            </AppShell>
+            {/* One "Evidence & Context" drawer for every authed page: a page header action, a
+                card and a table row open it through `useEvidenceDrawer()`. */}
+            <EvidenceDrawerProvider>
+                <AppShell
+                    themeToggle={<ThemeToggle />}
+                    banners={
+                        <>
+                            <ImpersonationBanner />
+                            <TrialBanner />
+                        </>
+                    }
+                >
+                    {children}
+                </AppShell>
+            </EvidenceDrawerProvider>
             <Toaster
                 containerAriaLabel="Notifications"
                 position="top-right"
