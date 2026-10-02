@@ -474,9 +474,37 @@ export type BusFactorScopeInput = {
   teamId?: InputMaybe<Scalars['String']['input']>;
 };
 
+/**
+ * One forecast's simulation results as histograms: for each mode, the distinct
+ * outcomes of the runs and how many runs produced each, ascending by value. A
+ * mode that did not simulate is null. The counts of one mode sum to the
+ * forecast's simulation count, so any percentile can be recomputed from the bins.
+ */
+export type CapacityDistribution = {
+  __typename?: 'CapacityDistribution';
+  /** Fixed-scope mode: days to complete the target items, one bin per distinct day count. */
+  days?: Maybe<Array<CapacityDistributionBin>>;
+  /** Fixed-date mode: items completed by the target date, one bin per distinct total. */
+  items?: Maybe<Array<CapacityDistributionBin>>;
+};
+
+export type CapacityDistributionBin = {
+  __typename?: 'CapacityDistributionBin';
+  /** How many simulation runs ended on this value. */
+  count: Scalars['Int']['output'];
+  /** The outcome: a day count (days) or an item count (items). */
+  value: Scalars['Int']['output'];
+};
+
 export type CapacityForecast = {
   __typename?: 'CapacityForecast';
   backlogSize: Scalars['Int']['output'];
+  /**
+   * The Monte Carlo distribution the p50 / p85 / p95 above were taken from, as
+   * histograms (CHAOS-7624). Null = no distribution: a forecast stored before it
+   * existed, or one where neither mode simulated. Never an object of zero bins.
+   */
+  completionDistribution?: Maybe<CapacityDistribution>;
   computedAt: Scalars['String']['output'];
   forecastId: Scalars['String']['output'];
   highVariance: Scalars['Boolean']['output'];
