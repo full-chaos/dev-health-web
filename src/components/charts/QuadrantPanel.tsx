@@ -11,8 +11,10 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { Info } from "lucide-react";
 
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import { buttonClassName } from "@/components/shared/Button";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getQuadrantDefinition, getZoneOverlay } from "@/lib/quadrantZones";
@@ -387,25 +389,10 @@ export function QuadrantPanel({
             data-empty="false"
             className="min-w-0 rounded-(--radius-md) border border-(--card-stroke) bg-card p-5.25"
         >
+            {/* Prototype `.sectionhead`: title and description left, ONE action right. */}
             <div className="flex flex-wrap items-start justify-between gap-4">
                 {headText}
-                <div className="flex flex-col items-end gap-2 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                    {actionNode}
-                    <span>Select a dot to investigate</span>
-                    {showViewGuide ? (
-                        <button
-                            ref={triggerRef}
-                            type="button"
-                            onClick={() => setIsGuideOpen(true)}
-                            className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-xs uppercase tracking-[0.25em] text-(--ink-muted) btn-help"
-                        >
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-card text-xs text-foreground">
-                                ⓘ
-                            </span>
-                            {CTA_LABELS.viewGuide}
-                        </button>
-                    ) : null}
-                </div>
+                {actionNode}
             </div>
             {showViewGuide && isGuideOpen && typeof document !== "undefined"
                 ? createPortal(
@@ -466,7 +453,22 @@ export function QuadrantPanel({
                       document.body,
                   )
                 : null}
-            <div className="mt-3 flex flex-wrap items-start gap-3 text-xs text-(--ink-muted)">
+            {/* Control row under the head: the guide (ghost, small) and the overlay toggle. */}
+            <div
+                data-testid="quadrant-controls"
+                className="mt-3 flex flex-wrap items-start gap-3 text-xs text-(--ink-muted)"
+            >
+                {showViewGuide ? (
+                    <button
+                        ref={triggerRef}
+                        type="button"
+                        onClick={() => setIsGuideOpen(true)}
+                        className={buttonClassName("ghost", "sm")}
+                    >
+                        <Info aria-hidden="true" className="h-3.5 w-3.5" />
+                        {CTA_LABELS.viewGuide}
+                    </button>
+                ) : null}
                 {hasInterpretationOverlay ? (
                     <div className="space-y-1">
                         <label className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-xs">

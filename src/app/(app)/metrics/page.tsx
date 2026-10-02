@@ -2,13 +2,13 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, Info } from "lucide-react";
 
-import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { MetricEvidenceButton } from "@/components/metrics/MetricEvidenceButton";
 import { MetricEvidenceCards } from "@/components/metrics/MetricEvidenceCards";
 import { buttonClassName } from "@/components/shared/Button";
 import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { MeterRows } from "@/components/ui/MeterRows";
 import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
@@ -18,6 +18,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
+import { formatMetricValue, formatNumber } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 import { getTabSet, tabHref } from "@/lib/navigation/tabs";
@@ -34,6 +35,12 @@ type MetricsPageProps = {
 const getMetric = (deltas: MetricDelta[], metric: string) =>
     deltas.find((item) => item.metric === metric) ??
     FALLBACK_DELTAS.find((item) => item.metric === metric);
+
+/** A served percent change with its sign, as it is shown on an association row ("+10%", "-20%"). */
+const signedPercent = (value: number) =>
+    `${value > 0 ? "+" : value < 0 ? "-" : ""}${formatNumber(Math.abs(value), {
+        maximumFractionDigits: 1,
+    })}%`;
 
 /** The small note under a chart (prototype `.data-note`): an info icon and one muted line. */
 function DataNote({ children }: { children: ReactNode }) {
@@ -186,17 +193,24 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                     }
                 >
                     {drivers.length ? (
-                        <HorizontalBarChart
-                            categories={driverChartLabels.labels}
-                            values={drivers.map((driver) => Math.abs(driver.delta_pct))}
-                            categoryTitles={driverChartLabels.titles}
+                        // Meter rows (prototype `bars()`): the fill is |delta| as production
+                        // draws it; the value is the served signed percent change.
+                        <MeterRows
+                            aria-label="Likely associations"
+                            testId="association-meter-rows"
+                            rows={drivers.map((driver, index) => ({
+                                key: driver.id,
+                                label: driverChartLabels.labels[index],
+                                title: driverChartLabels.titles[index],
+                                value: Math.abs(driver.delta_pct),
+                                display: signedPercent(driver.delta_pct),
+                            }))}
                         />
                     ) : (
                         <p className="text-sm text-(--ink-muted)">
                             Association detail will appear once data is ingested.
                         </p>
                     )}
-                    {/* The bar labels are plain numbers, as production draws them: the note names the unit. */}
                     <DataNote>
                         Association values are percent change in the selected window; no causal
                         conclusion is added.
@@ -214,22 +228,25 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                     }
                 >
                     {contributors.length ? (
-                        <HorizontalBarChart
-                            categories={contributorChartLabels.labels}
-                            values={contributors.map((contributor) => contributor.value)}
-                            categoryTitles={contributorChartLabels.titles}
+                        // Meter rows: the served contributor values, each with the served unit.
+                        <MeterRows
+                            aria-label="Primary contributors"
+                            testId="contributor-meter-rows"
+                            rows={contributors.map((contributor, index) => ({
+                                key: contributor.id,
+                                label: contributorChartLabels.labels[index],
+                                title: contributorChartLabels.titles[index],
+                                value: contributor.value,
+                                display: highlight?.unit
+                                    ? formatMetricValue(contributor.value, highlight.unit)
+                                    : undefined,
+                            }))}
                         />
                     ) : (
                         <p className="text-sm text-(--ink-muted)">
                             Contributor detail will appear once data is ingested.
                         </p>
                     )}
-                    {contributors.length && highlight?.unit ? (
-                        // The bar labels are plain numbers: the note names the served unit.
-                        <DataNote>
-                            {highlightLabel} per contributor, in {highlight.unit}.
-                        </DataNote>
-                    ) : null}
                 </Section>
             </div>
         </div>

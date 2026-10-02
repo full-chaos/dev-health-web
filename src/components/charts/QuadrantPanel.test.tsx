@@ -128,23 +128,39 @@ describe("QuadrantPanel", () => {
             expect(title.className).not.toContain("text-xl");
         });
 
-        it("places the caller's action in the head, before the guide button", () => {
-            render(<QuadrantPanel {...defaultProps} action={action} />);
+        it("has ONE action in the head: the caller's; the guide is a ghost small button in the control row under it", () => {
+            render(<QuadrantPanel {...defaultProps} action={action} showViewGuide={true} />);
             const slot = screen.getByTestId("quadrant-panel-action");
             const link = within(slot).getByRole("link", { name: "Metric evidence" });
             expect(link).toHaveAttribute("href", "/explore?metric=cycle_time");
-            const guide = screen.getByRole("button", { name: /view guide/i });
+            // The head row holds the title block and the action slot, nothing else.
+            const head = slot.parentElement as HTMLElement;
+            expect(Array.from(head.children)).toHaveLength(2);
+            expect(within(head).queryByRole("button", { name: /view guide/i })).toBeNull();
+
+            const controls = screen.getByTestId("quadrant-controls");
+            const guide = within(controls).getByRole("button", { name: "View guide" });
+            expect(guide.className).toContain("border-transparent");
+            expect(guide.className).toContain("min-h-7");
+            expect(guide.className).not.toContain("uppercase");
+            // The icon comes before the text.
+            expect(guide.firstElementChild?.tagName.toLowerCase()).toBe("svg");
             expect(
-                slot.compareDocumentPosition(guide) & Node.DOCUMENT_POSITION_FOLLOWING,
+                head.compareDocumentPosition(controls) & Node.DOCUMENT_POSITION_FOLLOWING,
             ).toBeTruthy();
-            // The action keeps its own case: the head's uppercase tracking does not reach it.
-            expect(slot.className).toContain("normal-case");
         });
 
-        it("draws no action slot when the caller gives none (other pages are unchanged)", () => {
+        it("draws no upper-case dot hint in the head (the note under the chart says it)", () => {
+            render(<QuadrantPanel {...defaultProps} action={action} />);
+            expect(screen.queryByText(/select a dot to investigate$/i)).toBeNull();
+            expect(
+                screen.getByText("Select a dot in the chart above to investigate patterns."),
+            ).toBeInTheDocument();
+        });
+
+        it("draws no action slot when the caller gives none", () => {
             render(<QuadrantPanel {...defaultProps} />);
             expect(screen.queryByTestId("quadrant-panel-action")).toBeNull();
-            expect(screen.getByText("Select a dot to investigate")).toBeInTheDocument();
         });
 
         it("keeps the title, description and action when there are no points: an explicit empty state", () => {
@@ -168,7 +184,7 @@ describe("QuadrantPanel", () => {
             );
             // No chart, no dot prompt and no invented point.
             expect(screen.queryByTestId("quadrant-chart")).toBeNull();
-            expect(screen.queryByText("Select a dot to investigate")).toBeNull();
+            expect(screen.queryByText(/select a dot/i)).toBeNull();
         });
 
         it("treats an empty point list like no data", () => {
