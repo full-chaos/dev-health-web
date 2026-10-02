@@ -53,7 +53,8 @@ vi.mock("@/lib/testops/fetchers", () => ({
 vi.mock("@/lib/auth", () => ({
     requireSession: vi.fn().mockResolvedValue({ user: { org_id: "org-1" } }),
 }));
-vi.mock("@/lib/graphql/server", () => ({ graphqlFetch: vi.fn().mockResolvedValue(null) }));
+const graphqlFetchMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/graphql/server", () => ({ graphqlFetch: graphqlFetchMock }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({ ok: true }) }));
 vi.mock("@/lib/config", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/config")>()),
@@ -70,6 +71,7 @@ function inShell(children: ReactNode) {
 
 beforeEach(() => {
     scopeBarSpy.mockClear();
+    graphqlFetchMock.mockReset().mockResolvedValue(null);
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
 });
 
@@ -138,8 +140,7 @@ describe("Compounding Risk in the shared app shell", () => {
 });
 
 describe("Security repository page in the shared app shell", () => {
-    it("has the repository id as the one h1, a way back to Security and the alert queue", async () => {
-        nav.pathname = "/security/repos/test-repo-id";
+    const renderRepoPage = async () =>
         inShell(
             await RepoSecurityPage({
                 params: Promise.resolve({ repoId: "test-repo-id" }),
@@ -147,13 +148,50 @@ describe("Security repository page in the shared app shell", () => {
             }),
         );
 
+    it("has the repository NAME as the one h1, a way back to Security and the alert queue", async () => {
+        nav.pathname = "/security/repos/test-repo-id";
+        graphqlFetchMock.mockResolvedValue({
+            securityAlerts: {
+                edges: [{ node: { repoId: "test-repo-id", repoName: "acme/billing" } }],
+            },
+        });
+        await renderRepoPage();
+
         const headings = screen.getAllByRole("heading", { level: 1 });
         expect(headings).toHaveLength(1);
-        expect(headings[0]).toHaveTextContent("test-repo-id");
+        expect(headings[0]).toHaveTextContent("acme/billing");
+        // One alert of that repository, in any state, names it.
+        const [, variables] = graphqlFetchMock.mock.calls[0];
+        expect(variables).toMatchObject({
+            filters: { repoIds: ["test-repo-id"], openOnly: false },
+            pagination: { first: 1 },
+        });
         expect(screen.getByText("Security alerts scoped to this repository.")).toBeInTheDocument();
         expect(
             within(screen.getByRole("main")).getByRole("link", { name: /Back to Security/ }),
         ).toHaveAttribute("href", "/security");
         expect(screen.getByTestId("alert-queue")).toBeInTheDocument();
+    });
+
+    it("falls back to the repository id, never blank, when no alert row carries the name", async () => {
+        nav.pathname = "/security/repos/test-repo-id";
+        graphqlFetchMock.mockRejectedValue(new Error("no data"));
+        await renderRepoPage();
+
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("test-repo-id");
+    });
+
+    it("has a scope bar with the repository control locked to the route", async () => {
+        nav.pathname = "/security/repos/test-repo-id";
+        graphqlFetchMock.mockResolvedValue({
+            securityAlerts: {
+                edges: [{ node: { repoId: "test-repo-id", repoName: "acme/billing" } }],
+            },
+        });
+        await renderRepoPage();
+
+        const bar = screen.getByTestId("scope-bar");
+        expect(bar).toHaveAttribute("data-view", "security-repo");
+        expect(within(bar).getByRole("button", { name: /Repo/ })).toBeDisabled();
     });
 });

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type MouseEvent } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { SeverityBadge } from "./SeverityBadge";
@@ -27,11 +26,15 @@ function relativeAge(iso: string): string {
     return `${diffDays}d ago`;
 }
 
-const ROW_BASE =
-    "grid grid-cols-[auto_auto_1fr_auto_auto_auto_auto_auto] items-center gap-x-3 border-b border-[var(--card-stroke)] px-3 py-2 text-sm transition-colors hover:bg-[var(--card-70)]";
+const CELL = "px-3 py-2 align-middle";
 
+/**
+ * One row of the alert queue table. The provider page is a real link in the
+ * Alert cell (keyboard, new tab, `noopener noreferrer`): there is no click
+ * handler on the row and no link laid over it. The repository is a separate
+ * link in its own cell; no interactive element is nested in another.
+ */
 export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
-    const [isHovered, setIsHovered] = useState(false);
     const {
         alertId,
         repoId,
@@ -48,30 +51,17 @@ export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
 
     const searchParams = useSearchParams();
     const f = searchParams.get("f") ?? undefined;
-
-    const stopPropagation = (e: MouseEvent) => e.stopPropagation();
+    const label = title ?? alertId;
 
     const chip = packageName ? (
-        <span className="max-w-30 truncate rounded bg-[var(--card-70)] px-1.5 py-0.5 font-mono text-xs text-[var(--ink-muted)]">
+        <span className="max-w-30 truncate rounded-(--radius-sm) bg-(--surface-raised) px-1.5 py-0.5 font-mono text-xs text-(--text-muted)">
             {packageName}
         </span>
     ) : cveId ? (
-        <span className="rounded bg-[var(--card-70)] px-1.5 py-0.5 font-mono text-xs text-[var(--ink-muted)]">
+        <span className="rounded-(--radius-sm) bg-(--surface-raised) px-1.5 py-0.5 font-mono text-xs text-(--text-muted)">
             {cveId}
         </span>
     ) : null;
-
-    const repoLink = (
-        <Link
-            href={buildRepoHref(repoId, f)}
-            onClick={stopPropagation}
-            onMouseEnter={() => setIsHovered(true)}
-            onMouseLeave={() => setIsHovered(false)}
-            className="max-w-36 truncate text-xs text-[var(--ink-muted)] hover:underline"
-        >
-            {repoName}
-        </Link>
-    );
 
     const externalIcon = (
         <svg
@@ -84,7 +74,7 @@ export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
             strokeWidth={2}
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="shrink-0 text-[var(--ink-muted)] opacity-60"
+            className="shrink-0 opacity-60"
             aria-hidden="true"
         >
             <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
@@ -93,47 +83,46 @@ export function SecurityAlertRow({ alert }: SecurityAlertRowProps) {
         </svg>
     );
 
-    const inner = (
-        <div className={`${ROW_BASE} ${isHovered ? "bg-[var(--card-70)]" : ""}`}>
-            <SeverityBadge severity={severity} />
-            <SourceBadge source={source} />
-            <span className="min-w-0 truncate" title={title ?? alertId}>
-                {title ?? alertId}
-            </span>
-            <span className="flex shrink-0">{chip}</span>
-            <span className="relative z-20 shrink-0">{repoLink}</span>
-            <StateBadge state={state} />
-            <span className="shrink-0 text-xs text-[var(--ink-muted)]">
-                {relativeAge(createdAt)}
-            </span>
-            {externalIcon}
-        </div>
-    );
-
-    if (url) {
-        const handleRowClick = (event: MouseEvent<HTMLAnchorElement>) => {
-            event.preventDefault();
-            window.open(url, "_blank", "noopener,noreferrer");
-        };
-        return (
-            <div className="relative">
-                <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="absolute inset-0 z-10"
-                    aria-label={`${title ?? alertId} — opens in new tab`}
-                    title={title ?? alertId}
-                    onClick={handleRowClick}
-                    onMouseEnter={() => setIsHovered(true)}
-                    onMouseLeave={() => setIsHovered(false)}
+    return (
+        <tr className="border-b border-(--border) text-sm transition-colors hover:bg-(--surface-raised)">
+            <td className={CELL}>
+                <SeverityBadge severity={severity} />
+            </td>
+            <td className={CELL}>
+                <SourceBadge source={source} />
+            </td>
+            <td className={`${CELL} min-w-0 max-w-md`}>
+                {url ? (
+                    <a
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={label}
+                        className="inline-flex max-w-full items-center gap-1.5 text-(--accent-2) hover:underline"
+                    >
+                        <span className="truncate">{label}</span>
+                        {externalIcon}
+                        <span className="sr-only">(opens in a new tab)</span>
+                    </a>
+                ) : (
+                    <span className="block truncate" title={label}>
+                        {label}
+                    </span>
+                )}
+            </td>
+            <td className={CELL}>{chip}</td>
+            <td className={CELL}>
+                <Link
+                    href={buildRepoHref(repoId, f)}
+                    className="block max-w-36 truncate text-xs text-(--accent-2) hover:underline"
                 >
-                    <span className="sr-only">Open alert details</span>
-                </a>
-                {inner}
-            </div>
-        );
-    }
-
-    return <div>{inner}</div>;
+                    {repoName}
+                </Link>
+            </td>
+            <td className={CELL}>
+                <StateBadge state={state} />
+            </td>
+            <td className={`${CELL} text-xs text-(--text-muted)`}>{relativeAge(createdAt)}</td>
+        </tr>
+    );
 }
