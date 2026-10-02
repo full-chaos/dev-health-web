@@ -17,14 +17,14 @@
     color-scheme: light;
     --background: #f1f3f4;
     --foreground: #15171a;
-    --ink-muted: #5c6269;
+    --ink-muted: #585e65;
     --accent: #d6421f;
     --accent-foreground: #ffffff;
     /* Orange used as TEXT (selection, eyebrow): darker than --accent so it reads on cards and tints. */
     --accent-text: #b1361a;
     --accent-1: #d6421f;
-    --accent-2: #037493;
-    --accent-3: #8a5700;
+    --accent-2: #03627d;
+    --accent-3: #7d4f00;
     --accent-negative: #a61708;
     --accent-highlight: #f06a00;
     --card: #fdfdfc;
@@ -34,7 +34,7 @@
     --border: #dde1e4;
     --text-primary: #15171a;
     --text-secondary: #4b535b;
-    --text-muted: #5c6269;
+    --text-muted: #585e65;
     --chart-grid: #e4e7e9;
     --chart-text: #15171a;
     --chart-muted: #656c73;
@@ -66,10 +66,10 @@
     /* Solid caution strip: production's amber-500 (Tailwind 4: #fe9a00) with black ink in both themes. */
     --caution-solid: #fe9a00;
     --on-caution-solid: #000000;
-    --positive: #1c785a;
-    --caution: #8a5700;
+    --positive: #18664d;
+    --caution: #7d4f00;
     --negative: #a61708;
-    --info: #03657f;
+    --info: #03627d;
     --accent-ai: #074757;
     --hero-gradient: none;
     --app-gradient: none;
