@@ -1,6 +1,7 @@
 import { describe, expect, it, beforeEach } from "vitest";
 import {
     formatDelta,
+    formatMetricParts,
     formatMetricValue,
     formatNumber,
     formatPercent,
@@ -63,6 +64,51 @@ describe("formatters", () => {
             expect(formatMetricValue(42, "%")).toBe("42%");
             expect(formatMetricValue(3, "days")).toBe("3d");
         });
+    });
+});
+
+describe("formatMetricParts (number and unit apart, for the metric tile)", () => {
+    it("gives the number and the served unit word as two parts", () => {
+        expect(formatMetricParts(3.4, "days")).toEqual({ value: "3.4", unit: "days" });
+        expect(formatMetricParts(8, "hours")).toEqual({ value: "8", unit: "hours" });
+        expect(formatMetricParts(11, "%")).toEqual({ value: "11", unit: "%" });
+        expect(formatMetricParts(181, "items")).toEqual({ value: "181", unit: "items" });
+        expect(formatMetricParts(16, "deploys")).toEqual({ value: "16", unit: "deploys" });
+    });
+
+    it("reads 'loc' as LOC with the compact number, and 'm' as min", () => {
+        expect(formatMetricParts(1_300_000, "loc")).toEqual({ value: "1.3M", unit: "LOC" });
+        expect(formatMetricParts(9.345, "m")).toEqual({ value: "9.3", unit: "min" });
+    });
+
+    it("uses the singular word only when the shown number is exactly 1", () => {
+        expect(formatMetricParts(1, "days")).toEqual({ value: "1", unit: "day" });
+        expect(formatMetricParts(1, "hours")).toEqual({ value: "1", unit: "hour" });
+        expect(formatMetricParts(1.5, "days")).toEqual({ value: "1.5", unit: "days" });
+        expect(formatMetricParts(0, "hours")).toEqual({ value: "0", unit: "hours" });
+        expect(formatMetricParts(2, "hours")).toEqual({ value: "2", unit: "hours" });
+        // Units with no singular rule stay as served.
+        expect(formatMetricParts(1, "items")).toEqual({ value: "1", unit: "items" });
+    });
+
+    it("gives an empty unit for a metric with no unit, and keeps a served zero as 0", () => {
+        expect(formatMetricParts(12, "")).toEqual({ value: "12", unit: "" });
+        expect(formatMetricParts(0, "%")).toEqual({ value: "0", unit: "%" });
+    });
+
+    it("shows the same number as formatMetricValue for every unit (one digits rule)", () => {
+        const suffix: Record<string, string> = { "%": "%", days: "d", hours: "h", loc: "", m: "m" };
+        const values = [0, 0.04, 0.3, 0.96, 1, 1.5, 9.94, 9.96, 12.345, 181, 1234.5, 1_300_000];
+        for (const unit of ["%", "days", "hours", "loc", "m", "items", ""]) {
+            for (const value of values) {
+                const joined = formatMetricValue(value, unit);
+                const expected =
+                    unit in suffix
+                        ? joined.slice(0, joined.length - suffix[unit].length)
+                        : joined.slice(0, joined.length - (unit ? unit.length + 1 : 0));
+                expect(formatMetricParts(value, unit).value, `${value} ${unit}`).toBe(expected);
+            }
+        }
     });
 });
 

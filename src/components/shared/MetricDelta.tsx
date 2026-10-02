@@ -50,6 +50,45 @@ const toneFor = (rounded: number, inverseGood: boolean) => {
     return inverseGood ? POSITIVE_TONE : NEGATIVE_TONE;
 };
 
+export type MetricDeltaParts = {
+    /** Signed text, for example "+5%" or "-3". */
+    label: string;
+    /** Direction glyph: up, down, or a dot for no change. */
+    glyph: string;
+    /** Tone class of the polarity: positive, negative or muted (no change). */
+    toneClass: string;
+    /** `good` / `bad` after `inverseGood`; `flat` when the rounded change is 0. */
+    polarity: "good" | "bad" | "flat";
+};
+
+/**
+ * The sign, text and polarity of a delta, as `MetricDelta` shows them. One rule for every
+ * surface that prints a delta (the metric tile reads it for its meta line and its trend dot).
+ * Returns null when there is no delta: a missing delta is never a 0.
+ */
+export function metricDeltaParts(
+    value: number | null | undefined,
+    options: { format?: MetricDeltaFormat; inverseGood?: boolean; precision?: number } = {},
+): MetricDeltaParts | null {
+    const { format = "percent", inverseGood = false, precision = 0 } = options;
+    if (value === null || value === undefined || !Number.isFinite(value)) {
+        return null;
+    }
+    const safePrecision = clampPrecision(precision);
+    const rounded = roundToPrecision(value, safePrecision);
+    const toneClass = toneFor(rounded, inverseGood);
+    return {
+        label:
+            format === "percent"
+                ? formatSignedPercentDelta(value, rounded, safePrecision)
+                : formatSignedNumberDelta(rounded, safePrecision),
+        glyph: rounded > 0 ? "↑" : rounded < 0 ? "↓" : "·",
+        toneClass,
+        polarity:
+            toneClass === POSITIVE_TONE ? "good" : toneClass === NEGATIVE_TONE ? "bad" : "flat",
+    };
+}
+
 export function MetricDelta({
     value,
     format = "percent",
@@ -59,10 +98,9 @@ export function MetricDelta({
     className,
     leadingDot = true,
 }: MetricDeltaProps) {
-    const safePrecision = clampPrecision(precision);
-    const isUnavailable = value === null || value === undefined || !Number.isFinite(value);
+    const parts = metricDeltaParts(value, { format, inverseGood, precision });
 
-    if (isUnavailable) {
+    if (parts === null) {
         return (
             <span
                 title="No prior period available to compute a change"
@@ -74,19 +112,12 @@ export function MetricDelta({
         );
     }
 
-    const rounded = roundToPrecision(value, safePrecision);
-    const glyph = rounded > 0 ? "↑" : rounded < 0 ? "↓" : "·";
-    const label =
-        format === "percent"
-            ? formatSignedPercentDelta(value, rounded, safePrecision)
-            : formatSignedNumberDelta(rounded, safePrecision);
-
     return (
         <span
-            title={rounded === 0 ? "No change" : undefined}
-            className={`${BASE} ${toneFor(rounded, inverseGood)} ${className ?? ""}`.trim()}
+            title={parts.polarity === "flat" ? "No change" : undefined}
+            className={`${BASE} ${parts.toneClass} ${className ?? ""}`.trim()}
         >
-            {glyph} {label}
+            {parts.glyph} {parts.label}
         </span>
     );
 }
