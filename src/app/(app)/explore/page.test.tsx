@@ -287,6 +287,41 @@ describe("/explore in the approved prototype layout (CHAOS-8068)", () => {
         ).toBeNull();
     });
 
+    it("'Return to investigation' goes to the served origin when the URL carries an internal one", async () => {
+        const origin = "/investment?tab=allocation&role=manager";
+        await renderExplore({ origin, role: "em" });
+        const back = within(screen.getByTestId("explore-context")).getByRole("link", {
+            name: "Return to investigation",
+        });
+        expect(back).toHaveAttribute("href", origin);
+    });
+
+    it("'Return to investigation' rejects an origin that is not an internal path: the Flow tab instead", async () => {
+        for (const origin of [
+            "https://evil.example/x",
+            "//evil.example/x",
+            "/\\evil.example/x",
+            "javascript:alert(1)",
+            "metrics?tab=flow",
+            "/metrics\nSet-Cookie: x",
+            "",
+        ]) {
+            const { unmount } = await renderExplore({ origin, role: "manager" });
+            const back = within(screen.getByTestId("explore-context")).getByRole("link", {
+                name: "Return to investigation",
+            });
+            const href = back.getAttribute("href") ?? "";
+            expect(href, origin).not.toContain("evil");
+            expect(href, origin).not.toMatch(/^javascript:/u);
+            const url = new URL(href, "https://app.example");
+            expect(url.origin, origin).toBe("https://app.example");
+            expect(url.pathname, origin).toBe("/metrics");
+            expect(url.searchParams.get("tab"), origin).toBe("flow");
+            expect(url.searchParams.get("role"), origin).toBe("manager");
+            unmount();
+        }
+    });
+
     it("'Return to investigation' picks the tab that shows the metric when it is no tab's headline", async () => {
         await renderExplore({ metric: "blocked_work" });
         const back = within(screen.getByTestId("explore-context")).getByRole("link", {
@@ -297,7 +332,7 @@ describe("/explore in the approved prototype layout (CHAOS-8068)", () => {
         ).toBe("flow");
     });
 
-    it("'Likely associations' and 'Primary contributors': two section cards, bars only, an Evidence button each", async () => {
+    it("'Likely associations' and 'Primary contributors': two section cards, meter rows only, an Evidence button each", async () => {
         await renderExplore({ role: "manager" });
         const cards = screen.getByTestId("association-cards");
         const sections = Array.from(cards.querySelectorAll(":scope > section")) as HTMLElement[];
@@ -306,16 +341,24 @@ describe("/explore in the approved prototype layout (CHAOS-8068)", () => {
         ).toEqual(["Likely associations", "Primary contributors"]);
         expect(screen.queryByText("Top Associations")).toBeNull();
         expect(screen.queryByText("Contributors")).toBeNull();
-        // Bars only: the link rows went to the drawer (it lists the same items with links).
+        // Meter rows only (prototype bars()): no axis chart; the link rows went to the drawer
+        // (it lists the same items with links).
         expect(within(cards).queryAllByRole("link")).toHaveLength(0);
-        expect(barSpy.mock.calls[0][0]).toMatchObject({ categories: ["repo-alpha"], values: [20] });
-        expect(barSpy.mock.calls[1][0]).toMatchObject({ categories: ["repo-gamma"], values: [7] });
+        expect(barSpy).not.toHaveBeenCalled();
+        const associationRows = within(
+            within(sections[0]).getByRole("list", { name: "Likely associations" }),
+        ).getAllByTestId("meter-row");
+        expect(associationRows.map((row) => row.textContent)).toEqual(["repo-alpha-20%"]);
+        expect(within(associationRows[0]).getByTestId("meter-fill").style.width).toBe("100%");
+        const contributorRows = within(
+            within(sections[1]).getByRole("list", { name: "Primary contributors" }),
+        ).getAllByTestId("meter-row");
+        // The value carries the served unit, so the unit note under the card is gone.
+        expect(contributorRows.map((row) => row.textContent)).toEqual(["repo-gamma7d"]);
         expect(within(sections[0]).getByTestId("data-note")).toHaveTextContent(
             "no causal conclusion is added.",
         );
-        expect(within(sections[1]).getByTestId("data-note")).toHaveTextContent(
-            "Cycle Time per contributor, in days.",
-        );
+        expect(within(sections[1]).queryByTestId("data-note")).toBeNull();
 
         await userEvent.click(
             screen.getByRole("button", { name: "Evidence: Primary contributors" }),

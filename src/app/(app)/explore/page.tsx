@@ -2,7 +2,9 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { DataNote } from "@/components/charts/DataNote";
-import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
+import { associationMeterRows, contributorMeterRows } from "@/components/metrics/associationRows";
+import { MeterRows } from "@/components/ui/MeterRows";
+import { safeReturnTo } from "@/lib/onboarding/returnTo";
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricEvidenceButton } from "@/components/metrics/MetricEvidenceButton";
@@ -103,8 +105,8 @@ const getItemHref = (item: Record<string, unknown>, fallback: string) => {
 };
 
 /**
- * Where "Return to investigation" goes: the Flow tab whose headline metric this is, else the first
- * tab that shows it, else the Flow page.
+ * Where "Return to investigation" goes when the URL carries no usable `origin`: the Flow tab whose
+ * headline metric this is, else the first tab that shows it, else the Flow page.
  */
 const investigationPath = (metric: string): string => {
     const tab =
@@ -122,6 +124,10 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+    const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
+    // The page the reader came from, accepted only as an internal path ("/…", not "//…", no
+    // scheme, no backslash or control character). Anything else falls back to the Flow tab.
+    const servedOrigin = safeReturnTo(originParam);
 
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
@@ -248,7 +254,11 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
             </EvidenceFactList>
             <div className="mt-4 flex flex-wrap items-center gap-2">
                 <Link
-                    href={withFilterParam(investigationPath(metricFromApi), filters, activeRole)}
+                    href={
+                        servedOrigin ??
+                        withFilterParam(investigationPath(metricFromApi), filters, activeRole)
+                    }
+                    data-testid="explore-return"
                     className={buttonClassName("primary", "md")}
                 >
                     <ArrowRight aria-hidden="true" className="h-4 w-4" />
@@ -339,9 +349,10 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                             }
                         >
                             {drivers.length ? (
-                                <HorizontalBarChart
-                                    categories={drivers.map((driver) => driver.label)}
-                                    values={drivers.map((driver) => Math.abs(driver.delta_pct))}
+                                <MeterRows
+                                    aria-label="Likely associations"
+                                    testId="association-meter-rows"
+                                    rows={associationMeterRows(drivers)}
                                 />
                             ) : (
                                 <p className="text-sm text-(--ink-muted)">
@@ -369,22 +380,16 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                             }
                         >
                             {contributors.length ? (
-                                <HorizontalBarChart
-                                    categories={contributors.map(
-                                        (contributor) => contributor.label,
-                                    )}
-                                    values={contributors.map((contributor) => contributor.value)}
+                                <MeterRows
+                                    aria-label="Primary contributors"
+                                    testId="contributor-meter-rows"
+                                    rows={contributorMeterRows(contributors, data?.unit)}
                                 />
                             ) : (
                                 <p className="text-sm text-(--ink-muted)">
                                     Contributor detail will appear once data is ingested.
                                 </p>
                             )}
-                            {contributors.length && data?.unit ? (
-                                <DataNote>
-                                    {metricLabel} per contributor, in {data.unit}.
-                                </DataNote>
-                            ) : null}
                         </Section>
                     </div>
                 </>
