@@ -25,6 +25,9 @@ vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org-1" }));
 vi.mock("@/components/charts/ConfidenceBandChart", () => ({
     ConfidenceBandChart: () => <div data-testid="band-chart" />,
 }));
+vi.mock("@/components/charts/CompletionSpreadChart", () => ({
+    CompletionSpreadChart: () => <div data-testid="spread-chart" />,
+}));
 vi.mock("@/components/charts/ThroughputHistogram", () => ({
     ThroughputHistogram: () => <div data-testid="histogram" />,
 }));
@@ -143,9 +146,48 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(screen.getByText("Throughput Distribution")).toBeInTheDocument();
         expect(
             screen.getByText(
-                /Line = backlog burned at the mean throughput; markers = the forecast's P50 \/ P85 \/ P95 days\. No distribution is drawn\./,
+                /Line = backlog burned at the mean throughput; markers = the forecast's P50 \/ P85 \/ P95 days\. The spread of the simulated outcomes is shown below\./,
             ),
         ).toBeInTheDocument();
+        expect(screen.queryByText(/No distribution is drawn/)).toBeNull();
+    });
+
+    // CHAOS-7977: the spread comes from the API's completionDistribution and nothing else.
+    it("draws the simulated spread in its own card when the forecast has a distribution", () => {
+        hook.state = {
+            ...hook.state,
+            data: forecast({
+                completionDistribution: {
+                    days: [
+                        { value: 9, count: 40 },
+                        { value: 10, count: 60 },
+                    ],
+                    items: null,
+                },
+            }),
+        };
+        render(<CapacityView filters={filters} />);
+
+        const card = within(screen.getByTestId("completion-spread-card"));
+        expect(card.getByText("Simulated outcomes")).toBeInTheDocument();
+        expect(card.getByTestId("completion-spread")).toBeInTheDocument();
+        expect(card.getByTestId("spread-chart")).toBeInTheDocument();
+    });
+
+    it("says so, and draws no chart, when the forecast has no stored distribution", () => {
+        render(<CapacityView filters={filters} />);
+
+        const card = within(screen.getByTestId("completion-spread-card"));
+        expect(
+            card.getByText("No simulation spread was stored for this forecast."),
+        ).toBeInTheDocument();
+        expect(card.queryByTestId("spread-chart")).toBeNull();
+    });
+
+    it("has no spread card while there is no forecast", () => {
+        hook.state = { ...hook.state, data: null };
+        render(<CapacityView filters={filters} />);
+        expect(screen.queryByTestId("completion-spread-card")).toBeNull();
     });
 
     it("keeps the How to Interpret texts", () => {

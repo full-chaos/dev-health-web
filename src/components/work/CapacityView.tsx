@@ -4,6 +4,7 @@ import { useMemo } from "react";
 
 import { ForecastInputsCard } from "@/components/capacity/ForecastInputsCard";
 import { ForecastNotices } from "@/components/capacity/ForecastNotices";
+import { CompletionSpread } from "@/components/capacity/CompletionSpread";
 import { ForecastTiles } from "@/components/capacity/ForecastTiles";
 import { ConfidenceBandChart } from "@/components/charts/ConfidenceBandChart";
 import { ThroughputHistogram } from "@/components/charts/ThroughputHistogram";
@@ -103,7 +104,8 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                             />
                             <p className="mt-2 text-xs text-(--text-muted)">
                                 Line = backlog burned at the mean throughput; markers = the
-                                forecast&apos;s P50 / P85 / P95 days. No distribution is drawn.
+                                forecast&apos;s P50 / P85 / P95 days. The spread of the simulated
+                                outcomes is shown below.
                             </p>
                         </>
                     ) : isLoading ? (
@@ -121,6 +123,16 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
 
                 {forecast ? <ForecastInputsCard forecast={forecast} teamCount={teamCount} /> : null}
             </div>
+
+            {forecast && (
+                <div className={CARD} data-testid="completion-spread-card">
+                    <h3 className="mb-1 text-sm font-medium text-foreground">Simulated outcomes</h3>
+                    <p className="mb-4 text-sm text-(--text-muted)">
+                        How the simulation runs behind the forecast spread.
+                    </p>
+                    <CompletionSpread forecast={forecast} />
+                </div>
+            )}
 
             {forecast && (
                 <div className="grid gap-6 lg:grid-cols-2">
