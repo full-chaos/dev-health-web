@@ -25,6 +25,7 @@ const { chartSpy } = vi.hoisted(() => ({ chartSpy: vi.fn() }));
 vi.mock("./chartTheme", () => ({
     useChartTheme: () => chartTheme,
     useChartColors: () => [],
+    useChartTokens: () => ({ negative: "#888888" }),
 }));
 
 vi.mock("./Chart", () => ({

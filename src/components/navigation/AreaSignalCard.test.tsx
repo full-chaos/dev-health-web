@@ -154,7 +154,7 @@ describe("AreaSignalCard approved look (CHAOS-8062)", () => {
         renderCard(sig());
         const pill = screen.getByTestId("area-signal-badge");
         expect(pill).toHaveTextContent("High");
-        expect(pill).toHaveClass("rounded-sm", "bg-(--accent-3)/12");
+        expect(pill).toHaveClass("rounded-full!", "bg-(--accent-3)/12");
         expect(pill.className).not.toMatch(/\bborder\b|uppercase|tracking-/);
     });
 

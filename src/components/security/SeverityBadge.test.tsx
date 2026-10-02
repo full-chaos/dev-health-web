@@ -21,7 +21,7 @@ describe("SeverityBadge", () => {
     it("applies the critical color class", () => {
         render(<SeverityBadge severity="critical" />);
         const badge = screen.getByText("Critical");
-        expect(badge.className).toContain("bg-(--negative)/12");
+        expect(badge.className).toContain("bg-(--negative-wash)");
         expect(badge.className).toContain("text-(--negative)");
     });
 

@@ -10,6 +10,8 @@ import {
     useState,
 } from "react";
 
+import { Copy } from "lucide-react";
+
 import { formatSelection, toggleValue } from "@/components/filters/filterBarUtils";
 import { QuickFilterMenu } from "@/components/filters/sections/QuickFilterMenu";
 import { Button } from "@/components/shared/Button";
@@ -21,11 +23,8 @@ import { useCopyLink } from "./useCopyLink";
 export const SCOPE_BAR_ORG_FALLBACK = "Organization";
 export const SCOPE_BAR_LABEL_CLASS = "text-label-caps font-semibold uppercase text-(--text-muted)";
 
-const SEPARATOR = (
-    <span aria-hidden="true" className="text-(--text-muted)">
-        ·
-    </span>
-);
+/** The prototype's scope-item divider: a 1px vertical rule after each scope control. */
+const SEPARATOR = <span aria-hidden="true" className="h-5 w-px self-center bg-(--border)" />;
 
 /** The URL in a read-only field, focused with its text selected, ready to copy. */
 function CopyFallbackField({ url }: { url: string }) {
@@ -121,10 +120,10 @@ export function ScopeBarCard({
                         onClick={organization.onSelect}
                         aria-pressed={organization.pressed}
                         disabled={organization.disabled}
-                        className={`rounded-(--radius-pill) border px-3 py-1.5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) ${
+                        className={`rounded-(--radius-sm) px-1.5 py-0.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) ${
                             organization.pressed
-                                ? "border-(--accent) bg-(--accent)/15 text-(--text-primary)"
-                                : "border-(--border) bg-(--surface-raised) text-(--text-secondary) hover:text-(--text-primary)"
+                                ? "font-medium text-(--text-primary)"
+                                : "text-(--text-secondary) hover:text-(--text-primary)"
                         }`}
                     >
                         {organization.label}
@@ -142,10 +141,11 @@ export function ScopeBarCard({
 
                 <div className="ml-auto flex flex-wrap items-center gap-2">
                     {actions}
-                    <Button variant="secondary" onClick={onReset}>
-                        {CTA_LABELS.resetFilters}
+                    {/* Prototype `scopebar()`: Reset is ghost small, Copy link small with the copy icon. */}
+                    <Button variant="ghost" size="sm" onClick={onReset}>
+                        {CTA_LABELS.reset}
                     </Button>
-                    <Button variant="secondary" onClick={copyLink}>
+                    <Button variant="secondary" size="sm" icon={<Copy />} onClick={copyLink}>
                         {CTA_LABELS.copyLink}
                     </Button>
                 </div>
