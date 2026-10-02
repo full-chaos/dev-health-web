@@ -68,10 +68,21 @@ export const formatNumber = (value: number, options?: Intl.NumberFormatOptions) 
 export const formatPercent = (value: number) =>
     `${formatNumber(value, { maximumFractionDigits: 0 })}%`;
 
+/**
+ * A percent change as a whole percent with its sign ("+12%", "-8%"). A served change that is
+ * not 0 never shows as "0%": under 0.5 it keeps one decimal ("+0.3%"), and when even that
+ * cannot show it, "+<0.1%" / "-<0.1%". A served 0 (or -0) is "0%". The sign comes from the served
+ * value, so -0.5 and +0.5 round the same way ("-1%", "+1%").
+ */
 export const formatDelta = (value: number) => {
-    const rounded = Math.round(value);
-    const sign = rounded > 0 ? "+" : rounded < 0 ? "-" : "";
-    return `${sign}${formatNumber(Math.abs(rounded), { maximumFractionDigits: 0 })}%`;
+    const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+    const magnitude = Math.abs(value);
+    const whole = Math.round(magnitude);
+    if (whole !== 0 || magnitude === 0) {
+        return `${sign}${formatNumber(whole, { maximumFractionDigits: 0 })}%`;
+    }
+    const tenths = formatNumber(magnitude, { maximumFractionDigits: 1 });
+    return `${sign}${tenths === "0" ? "<0.1" : tenths}%`;
 };
 
 /**

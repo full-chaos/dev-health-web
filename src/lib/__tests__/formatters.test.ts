@@ -26,8 +26,23 @@ describe("formatters", () => {
         expect(formatDelta(-8.2)).toBe("-8%");
     });
 
-    it("formats rounded negative-zero deltas as zero", () => {
-        expect(formatDelta(-0.2)).toBe("0%");
+    it("formats a zero delta, and a served -0, as 0% (never -0%)", () => {
+        expect(formatDelta(0)).toBe("0%");
+        expect(formatDelta(-0)).toBe("0%");
+    });
+
+    it("a served delta that is not 0 never shows as 0%", () => {
+        expect(formatDelta(0.3)).toBe("+0.3%");
+        expect(formatDelta(-0.2)).toBe("-0.2%");
+        expect(formatDelta(0.04)).toBe("+<0.1%");
+        expect(formatDelta(-0.04)).toBe("-<0.1%");
+        // From 0.5 the whole-percent rule shows it, the same both ways.
+        expect(formatDelta(0.5)).toBe("+1%");
+        expect(formatDelta(-0.5)).toBe("-1%");
+        expect(formatDelta(12.4)).toBe("+12%");
+        for (const value of [0.001, 0.04, 0.05, 0.3, 0.49, -0.001, -0.3, -0.49, -0.5]) {
+            expect(formatDelta(value), String(value)).not.toMatch(/^[+-]?0%$/);
+        }
     });
 
     it("formats metric values by unit", () => {

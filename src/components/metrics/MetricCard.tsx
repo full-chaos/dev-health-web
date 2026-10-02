@@ -113,7 +113,7 @@ export function MetricCard({
             node: (
                 <span
                     data-testid="metric-delta"
-                    title={deltaParts.polarity === "flat" ? "No change" : undefined}
+                    title={delta === 0 ? "No change" : undefined}
                     className={`font-medium ${deltaParts.toneClass}`}
                 >
                     {deltaParts.label}
