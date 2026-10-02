@@ -27,7 +27,7 @@
  *
  * NOTE: `import "server-only"` is intentionally omitted. The existing
  * `@/lib/api` is imported by a handful of
- * client components (FlowView, FlameView, HeatmapPanel, EvidencePanel,
+ * client components (FlameView, HeatmapPanel, EvidencePanel,
  * useInvestmentData). Those client paths never execute `graphqlFetch` at
  * runtime (`api.ts` gates the GraphQL branch with
  * `runtimeConfig.useGraphQLAnalytics()`
