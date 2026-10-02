@@ -542,7 +542,7 @@ describe("ShellSidebar — a route with its own `f` encoding (Security)", () => 
         renderSidebar();
 
         expect(within(sidebar()).queryByText(/^beta$/i)).toBeNull();
-        expect(within(sidebar()).getByText("Engineering intelligence")).toBeInTheDocument();
+        expect(within(sidebar()).getByText("Dev Health")).toBeInTheDocument();
     });
 
     it("draws an icon on every area row and a chevron only where the area has destinations", () => {

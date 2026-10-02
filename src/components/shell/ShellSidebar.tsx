@@ -111,7 +111,7 @@ export function ShellSidebar({
                                 Full Chaos
                             </span>
                             <span className="text-label-caps uppercase text-(--text-muted)">
-                                Engineering intelligence
+                                Dev Health
                             </span>
                         </span>
                     </Link>
