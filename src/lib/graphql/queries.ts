@@ -928,6 +928,7 @@ query AIAttributedPrs($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AI
     dataAvailable
     rows {
       repoId
+      repoName
       number
       title
       kind

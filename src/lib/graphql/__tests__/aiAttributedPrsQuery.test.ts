@@ -13,6 +13,7 @@ describe("AI_ATTRIBUTED_PRS_QUERY", () => {
     it("asks for the row fields the evidence list reads", () => {
         expect(rowFields(AI_ATTRIBUTED_PRS_QUERY)).toEqual([
             "repoId",
+            "repoName",
             "number",
             "title",
             "kind",
