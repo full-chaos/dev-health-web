@@ -80,7 +80,7 @@ const testOpsTabRoutes = [
         id: "pipelines",
         label: "Pipelines",
         path: "/testops/pipelines",
-        contentGuard: "Success Rate Trend",
+        contentGuard: "Pipeline trends",
     },
     {
         id: "tests",
