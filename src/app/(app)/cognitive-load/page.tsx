@@ -207,7 +207,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                   label: "Context spread",
                   value: formatLoad(avgContextSpread),
                   delta: `avg over ${cognitiveLoadData?.totalDays ?? rawSignals.length} days`,
-                  deltaTone: avgContextSpread > 6 ? "text-amber-600" : "text-(--ink-muted)",
+                  deltaTone: avgContextSpread > 6 ? "text-(--caution)" : "text-(--ink-muted)",
                   interpretation: avgContextSpread > 6 ? "Watch" : "Stable",
                   description:
                       "Distinct repos, PRs, reviews, and touched file areas in the selected team scope.",
@@ -216,7 +216,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                   label: "Review request load",
                   value: formatLoad(avgReviewRequestLoad),
                   delta: `avg over ${cognitiveLoadData?.totalDays ?? rawSignals.length} days`,
-                  deltaTone: avgReviewRequestLoad > 10 ? "text-rose-600" : "text-(--ink-muted)",
+                  deltaTone: avgReviewRequestLoad > 10 ? "text-(--negative)" : "text-(--ink-muted)",
                   interpretation:
                       avgReviewRequestLoad > 10
                           ? "Rising"
@@ -237,7 +237,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                           : "no team scope",
                   deltaTone:
                       avgAfterHours != null && avgAfterHours > 0.3
-                          ? "text-amber-600"
+                          ? "text-(--caution)"
                           : "text-(--ink-muted)",
                   interpretation:
                       avgAfterHours == null ? "N/A" : avgAfterHours > 0.3 ? "Watch" : "Stable",
@@ -250,8 +250,8 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                       avgWeekend != null ? (teamId ? "team-scoped" : "org-wide") : "no team scope",
                   deltaTone:
                       avgWeekend != null && avgWeekend > 0.2
-                          ? "text-amber-600"
-                          : "text-emerald-600",
+                          ? "text-(--caution)"
+                          : "text-(--positive)",
                   interpretation: avgWeekend == null ? "N/A" : avgWeekend > 0.2 ? "Watch" : "Lower",
                   description:
                       "Existing weekend activity ratio, aggregated before it reaches this surface.",
@@ -343,8 +343,8 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
             {activeTab === "heatmap" && canShowSelectedScope ? (
                 <HeatmapView filters={filters} scopeId={scopeId} reviewHeatmap={reviewHeatmap} />
             ) : !canShowSelectedScope ? (
-                <section className="rounded-[1.75rem] border border-amber-400/40 bg-amber-50/80 p-6 text-amber-950 shadow-sm">
-                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-amber-700">
+                <section className="rounded-[1.75rem] border border-(--caution)/30 bg-(--caution)/12 p-6 text-foreground shadow-sm">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--caution)">
                         Individual guardrail
                     </p>
                     <h2 className="mt-2 text-2xl font-semibold tracking-tight">
@@ -357,7 +357,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                     </p>
                     <Link
                         href="/cognitive-load"
-                        className="mt-5 inline-flex rounded-full bg-amber-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-amber-50"
+                        className="mt-5 inline-flex rounded-full bg-(--caution-solid) px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-(--on-caution-solid)"
                     >
                         Return to team/repo view
                     </Link>
