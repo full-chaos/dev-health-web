@@ -13,7 +13,7 @@ test.describe("AI views", () => {
 
         await expect(page).toHaveURL(/\/ai(?:[?#].*)?$/);
         await expect(page.getByRole("heading", { level: 1, name: "AI" })).toBeVisible();
-        await expect(page.getByTestId("area-overview")).toBeVisible();
+        await expect(page.getByTestId("area-hub")).toBeVisible();
         // The AI destinations are the sidebar children of the AI area; there is no
         // area tab strip.
         await expect(page.getByRole("navigation", { name: "AI views" })).toHaveCount(0);

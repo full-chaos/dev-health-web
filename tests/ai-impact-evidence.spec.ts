@@ -105,7 +105,7 @@ test.describe("AI Impact PR evidence", () => {
             .click();
         const filters = page.getByRole("dialog", { name: "Filters" });
         await filters.getByRole("button", { name: /^Work/ }).click();
-        await filters.getByRole("checkbox", { name: "feature" }).check();
+        await filters.getByRole("radio", { name: "feature" }).check();
         // Escape closes the open menu, then the drawer.
         await page.keyboard.press("Escape");
         await page.keyboard.press("Escape");
