@@ -42,5 +42,13 @@ test(
 test("opportunities page renders", async ({ page }) => {
     await page.goto("/opportunities");
     await expect(page.getByRole("heading", { name: "Opportunities", level: 1 })).toBeVisible();
-    await expect(page.getByText("Reduce Review Latency")).toBeVisible();
+    // The first opportunity is selected: its title is in the list and in the detail card.
+    await expect(
+        page.getByTestId("opportunity-list").getByRole("button", { name: /Reduce Review Latency/ }),
+    ).toBeVisible();
+    await expect(
+        page
+            .getByTestId("opportunity-detail")
+            .getByRole("heading", { name: "Reduce Review Latency" }),
+    ).toBeVisible();
 });
