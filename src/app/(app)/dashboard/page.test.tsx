@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
-import { screen } from "@/test/utils";
+import { screen, within } from "@/test/utils";
 
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
@@ -24,14 +24,12 @@ vi.mock("@/components/ClientTimestamp", () => ({
     ),
 }));
 vi.mock("@/components/ServiceUnavailable", () => ({ ServiceUnavailable: () => null }));
-vi.mock("@/components/home/AiWorkflowCallout", () => ({ AiWorkflowCallout: () => null }));
-vi.mock("@/components/home/BackendBanner", () => ({ BackendBanner: () => null }));
-vi.mock("@/components/home/CockpitClient", () => ({ CockpitClient: () => null }));
+vi.mock("@/components/home/HomeMonitoring", () => ({ HomeMonitoring: () => null }));
+vi.mock("@/components/home/InvestigationThreads", () => ({ InvestigationThreads: () => null }));
 vi.mock("@/components/home/CockpitSummary", () => ({ CockpitSummary: () => null }));
 vi.mock("@/components/home/DataConfidenceIndicator", () => ({
     DataConfidenceIndicator: () => null,
 }));
-vi.mock("@/components/home/InvestmentPreview", () => ({ InvestmentPreview: () => null }));
 vi.mock("@/components/home/RankedSignals", () => ({ RankedSignals: () => null }));
 vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => null }));
 vi.mock("@/components/onboarding/SetupBanner", () => ({ SetupBanner: () => null }));
@@ -54,6 +52,16 @@ const HOME_DATA: HomeResponse = {
     events: [],
 };
 
+/** The "Last sync" row of the "Evidence & context" card. */
+const lastSyncRow = () => {
+    const card = within(screen.getByTestId("evidence-context-card"));
+    const row = card
+        .getAllByTestId("evidence-fact")
+        .find((candidate) => within(candidate).queryByText("Last sync") !== null);
+    if (!row) throw new Error('no "Last sync" row');
+    return row;
+};
+
 describe("dashboard freshness", () => {
     beforeEach(() => {
         vi.mocked(checkApiHealth).mockResolvedValue({ ok: true, data: null });
@@ -69,14 +77,19 @@ describe("dashboard freshness", () => {
         vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(HOME_DATA);
     });
 
-    it("renders the org-readable successful sync time instead of older metric computation time", async () => {
+    it("renders the org-readable successful sync time, not the older metric computation time, as Last sync", async () => {
         render(await Home({ searchParams: Promise.resolve({}) }));
 
-        expect(screen.getByText("Last updated: 2026-07-13T15:05:00Z")).toBeInTheDocument();
+        expect(lastSyncRow()).toHaveTextContent("2026-07-13T15:05:00Z");
+        expect(lastSyncRow()).not.toHaveTextContent("2026-07-12T00:07:00Z");
+        // The header has no "Last updated" row: the card row is the one place for it.
+        expect(screen.queryByText(/Last updated:/)).toBeNull();
     });
 
+    // Changed with CHAOS-8063: the row is named "Last sync", so a metric computation (ingest) time
+    // is not shown under that name. Before, the header row "Last updated" fell back to it.
     it.each([null, undefined])(
-        "falls back to metric computation time when successful sync time is %s",
+        "reads Not reported, not the metric computation time, when successful sync time is %s",
         async (latestSuccessfulSyncAt) => {
             vi.mocked(getHomeDataViaGraphQL).mockResolvedValue({
                 ...HOME_DATA,
@@ -89,7 +102,9 @@ describe("dashboard freshness", () => {
 
             render(await Home({ searchParams: Promise.resolve({}) }));
 
-            expect(screen.getByText("Last updated: 2026-07-12T00:07:00Z")).toBeInTheDocument();
+            expect(lastSyncRow()).toHaveTextContent("Not reported");
+            expect(lastSyncRow()).toHaveAttribute("data-reported", "false");
+            expect(screen.queryByText(/2026-07-12T00:07:00Z/)).toBeNull();
         },
     );
 });

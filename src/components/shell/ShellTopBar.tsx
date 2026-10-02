@@ -45,7 +45,7 @@ export function ShellTopBar({ status, themeToggle }: ShellTopBarProps) {
     return (
         <header
             data-testid="shell-top-bar"
-            className="sticky top-0 z-30 hidden min-h-14 items-center gap-4 border-b border-(--border) bg-(--surface)/92 px-6 backdrop-blur-sm md:flex"
+            className="sticky top-0 z-30 hidden h-(--shell-topbar-h) items-center gap-4 border-b border-(--border) bg-(--surface)/92 px-6 backdrop-blur-sm md:flex"
         >
             <div className="min-w-48 shrink-0">
                 {/* The links read the live query string; the bare trail is the fallback. */}

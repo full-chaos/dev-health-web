@@ -81,7 +81,7 @@ describe("EvidencePanel", () => {
         await waitFor(() => expect(screen.getByTestId("evidence-facts")).toBeInTheDocument());
         // One row per field, in the prototype's order; values are the served ones.
         expect(
-            screen
+            within(screen.getByTestId("evidence-facts"))
                 .getAllByTestId("evidence-fact")
                 .map((row) => row.querySelector("dt")?.textContent),
         ).toEqual(["Source", "Data quality", "Last sync", "Identity confidence", "Artifacts"]);
@@ -201,6 +201,7 @@ describe("EvidencePanel", () => {
         const dialog = screen.getByRole("dialog");
         expect(dialog).not.toHaveTextContent(/Ask in context/i);
         expect(dialog).not.toHaveTextContent(/View original source/i);
+        // The API does not serve the kind of a supporting row, so the drawer names none.
         expect(dialog).not.toHaveTextContent(/Supporting repositories/i);
     });
 
@@ -234,7 +235,10 @@ describe("EvidencePanel", () => {
             />,
         );
 
-        expect(await screen.findByText("11,993 (361%)")).toBeInTheDocument();
+        // The served value with the unit of the payload, and the served change, at the right.
+        const row = await screen.findByTestId("evidence-supporting-row");
+        expect(row).toHaveTextContent("Repository activity");
+        expect(row).toHaveTextContent("11,993 items (+361%)");
         expect(document.body).not.toHaveTextContent("361.38753526545264");
     });
 

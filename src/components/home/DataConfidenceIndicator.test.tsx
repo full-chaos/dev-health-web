@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 
-import { DataConfidenceIndicator, type DataConfidence } from "./DataConfidenceIndicator";
+import {
+    DataConfidenceIndicator,
+    SIGNAL_LEVEL_SENTENCE,
+    type DataConfidence,
+} from "./DataConfidenceIndicator";
 import { render, screen } from "@/test/utils";
 
 const base: DataConfidence = {
@@ -11,34 +15,47 @@ const base: DataConfidence = {
     caveats: [],
 };
 
-describe("DataConfidenceIndicator", () => {
-    it("renders the high-confidence level and coverage", () => {
+// The confidence banner of Home (CHAOS-8063): one Notice strip, approved prototype `note(...)`.
+describe("DataConfidenceIndicator banner", () => {
+    it.each([
+        ["high", "High confidence", "good"],
+        ["medium", "Medium confidence", "warn"],
+        ["low", "Low confidence", "warn"],
+    ] as const)(
+        "%s: the served level in words, the %s notice tone and its icon",
+        (level, label, variant) => {
+            render(<DataConfidenceIndicator confidence={{ ...base, level }} />);
+            const root = screen.getByTestId("data-confidence-indicator");
+            expect(root).toHaveAttribute("data-level", level);
+            expect(root).toHaveAttribute("data-notice-variant", variant);
+            expect(screen.getByTestId("data-confidence-level")).toHaveTextContent(label);
+            // Status colour is never the only signal: the notice has its icon.
+            expect(root.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+        },
+    );
+
+    it("is ONE strip: no heading, no second card, no coverage chip, no caveat list", () => {
+        const { container } = render(
+            <DataConfidenceIndicator
+                confidence={{ ...base, caveats: ["Weekend data is sparse."] }}
+            />,
+        );
+        expect(container.children).toHaveLength(1);
+        expect(screen.queryByRole("heading")).toBeNull();
+        expect(screen.queryByTestId("data-confidence-coverage")).toBeNull();
+        expect(screen.queryByTestId("data-confidence-caveats")).toBeNull();
+        expect(container).not.toHaveTextContent("Weekend data is sparse.");
+        expect(container).not.toHaveTextContent("92");
+    });
+
+    it("names the served connected sources and ends with the signal-level sentence", () => {
         render(<DataConfidenceIndicator confidence={base} />);
-        const root = screen.getByTestId("data-confidence-indicator");
-        expect(root).toHaveAttribute("data-level", "high");
-        expect(screen.getByText("High confidence")).toBeInTheDocument();
-        expect(screen.getByTestId("data-confidence-coverage")).toHaveTextContent("92% coverage");
-    });
-
-    it("renders the medium-confidence level", () => {
-        render(<DataConfidenceIndicator confidence={{ ...base, level: "medium" }} />);
-        expect(screen.getByTestId("data-confidence-indicator")).toHaveAttribute(
-            "data-level",
-            "medium",
+        expect(screen.getByTestId("data-confidence-text")).toHaveTextContent(
+            `Connected sources: GitHub, Jira. ${SIGNAL_LEVEL_SENTENCE}`,
         );
-        expect(screen.getByText("Medium confidence")).toBeInTheDocument();
     });
 
-    it("renders the low-confidence level", () => {
-        render(<DataConfidenceIndicator confidence={{ ...base, level: "low" }} />);
-        expect(screen.getByTestId("data-confidence-indicator")).toHaveAttribute(
-            "data-level",
-            "low",
-        );
-        expect(screen.getByText("Low confidence")).toBeInTheDocument();
-    });
-
-    it("lists connected and missing sources", () => {
+    it("names the served missing sources: missing is not healthy", () => {
         render(
             <DataConfidenceIndicator
                 confidence={{
@@ -49,105 +66,23 @@ describe("DataConfidenceIndicator", () => {
                 }}
             />,
         );
-        expect(screen.getByText("Connected")).toBeInTheDocument();
-        expect(screen.getByText("GitHub")).toBeInTheDocument();
-        expect(screen.getByText("Missing")).toBeInTheDocument();
-        expect(screen.getByText("GitLab")).toBeInTheDocument();
-        expect(screen.getByText("Jira")).toBeInTheDocument();
+        expect(screen.getByTestId("data-confidence-text")).toHaveTextContent(
+            `Connected sources: GitHub. Missing sources: GitLab, Jira. ${SIGNAL_LEVEL_SENTENCE}`,
+        );
     });
 
-    it("renders caveats when present and omits the list when empty", () => {
-        const { rerender } = render(
+    it("writes no source sentence when the API served no source name", () => {
+        render(
             <DataConfidenceIndicator
-                confidence={{
-                    ...base,
-                    caveats: ["Weekend data is sparse for this window."],
-                }}
+                confidence={{ ...base, connected_sources: [], missing_sources: [] }}
             />,
         );
-        expect(screen.getByTestId("data-confidence-caveats")).toHaveTextContent(
-            "Weekend data is sparse for this window.",
-        );
-
-        rerender(<DataConfidenceIndicator confidence={{ ...base, caveats: [] }} />);
-        expect(screen.queryByTestId("data-confidence-caveats")).not.toBeInTheDocument();
+        expect(screen.getByTestId("data-confidence-text").textContent).toBe(SIGNAL_LEVEL_SENTENCE);
     });
-
-    it("omits coverage when coverage_pct is missing", () => {
-        render(<DataConfidenceIndicator confidence={{ ...base, coverage_pct: null }} />);
-        expect(screen.queryByTestId("data-confidence-coverage")).not.toBeInTheDocument();
-    });
-
-    it("clamps out-of-range coverage to 0–100", () => {
-        render(<DataConfidenceIndicator confidence={{ ...base, coverage_pct: 140 }} />);
-        expect(screen.getByTestId("data-confidence-coverage")).toHaveTextContent("100% coverage");
-    });
-});
-
-describe("DataConfidenceIndicator text pin (CHAOS-7611 5.1a)", () => {
-    it("shows the same text and test ids for each level (recorded before the Notice change)", () => {
-        const out = (["high", "medium", "low"] as const).map((level) => {
-            const { container, unmount } = render(
-                <DataConfidenceIndicator
-                    confidence={{
-                        ...base,
-                        level,
-                        missing_sources: ["GitLab"],
-                        caveats: ["Weekend data is sparse."],
-                    }}
-                />,
-            );
-            const root = screen.getByTestId("data-confidence-indicator");
-            const text = (container.textContent ?? "").replace(/\s+/g, " ").trim();
-            const ids = [...container.querySelectorAll("[data-testid]")].map((e) =>
-                e.getAttribute("data-testid"),
-            );
-            const record = {
-                level: root.getAttribute("data-level"),
-                label: root.getAttribute("aria-label"),
-                text,
-                ids,
-            };
-            unmount();
-            return record;
-        });
-        expect(out).toMatchSnapshot();
-    });
-});
-
-describe("DataConfidenceIndicator as a Notice (CHAOS-7611 5.1a)", () => {
-    it.each([
-        ["high", "good"],
-        ["medium", "warn"],
-        ["low", "warn"],
-    ] as const)(
-        "%s confidence is a %s notice with its word and icon, not color alone",
-        (level, variant) => {
-            const { container } = render(
-                <DataConfidenceIndicator confidence={{ ...base, level }} />,
-            );
-            const notice = container.querySelector("[data-notice-variant]") as HTMLElement;
-            expect(notice).toHaveAttribute("data-notice-variant", variant);
-            expect(notice.querySelector("svg[aria-hidden='true']")).not.toBeNull();
-            expect(
-                screen.getByText(`${level[0].toUpperCase()}${level.slice(1)} confidence`),
-            ).toBeInTheDocument();
-        },
-    );
 
     it("is not a live region (the page is static content)", () => {
         render(<DataConfidenceIndicator confidence={base} />);
         expect(screen.queryByRole("status")).toBeNull();
-    });
-
-    it("shows the Evidence & context card only when there is something to show", () => {
-        const { rerender } = render(<DataConfidenceIndicator confidence={base} />);
-        expect(screen.getByRole("heading", { name: "Evidence & context" })).toBeInTheDocument();
-        rerender(
-            <DataConfidenceIndicator
-                confidence={{ ...base, connected_sources: [], missing_sources: [], caveats: [] }}
-            />,
-        );
-        expect(screen.queryByRole("heading", { name: "Evidence & context" })).toBeNull();
+        expect(screen.queryByRole("alert")).toBeNull();
     });
 });

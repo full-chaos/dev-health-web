@@ -175,4 +175,35 @@ describe("Govern overview page — approved layout", () => {
             expect(hrefs).toContain(path);
         }
     });
+
+    it("shows the hero's visible primary button, arrow first, to the hero destination (ruling 93)", async () => {
+        getGovernSignalsMock.mockResolvedValue(governSignals({ security: "critical" }));
+        await renderPage();
+        const hero = screen.getByTestId("area-overview-hero");
+        const button = within(hero).getByRole("link", { name: "Inspect security" });
+        expect(button.getAttribute("href")?.split("?")[0]).toBe("/security");
+        expect(button.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+    });
+
+    it("draws QUALITY above RISK even when a Risk card is the most severe after the hero", async () => {
+        getGovernSignalsMock.mockResolvedValue(
+            governSignals({
+                security: "critical",
+                "risk-compounding": "critical",
+                testops: "low",
+                quality: "low",
+            }),
+        );
+        await renderPage();
+        expect(
+            screen
+                .getAllByTestId("area-overview-cluster")
+                .map((group) => group.getAttribute("data-cluster")),
+        ).toEqual(["Quality", "Risk"]);
+        // The hero choice is unchanged by the group order.
+        expect(
+            within(screen.getByTestId("area-overview-hero")).getByTestId("area-signal-card"),
+        ).toHaveAttribute("data-signal-id", "security");
+        expect(clusterIds("Risk")[0]).toBe("risk-compounding");
+    });
 });

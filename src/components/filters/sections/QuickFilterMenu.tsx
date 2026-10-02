@@ -1,3 +1,5 @@
+import { ChevronDown } from "lucide-react";
+
 import { OptionList } from "./OptionList";
 
 type QuickFilterMenuProps = {
@@ -42,14 +44,17 @@ export function QuickFilterMenu({
                 type="button"
                 disabled={disabled}
                 onClick={() => setOpenMenu(openMenu === menuKey ? null : menuKey)}
-                className={`flex items-center gap-2 rounded-full border border-(--card-stroke) bg-card px-4 py-2 text-xs ${
-                    variant === "accent" && isActive ? "border-(--accent) text-(--accent-text)" : ""
+                // Prototype `.scope-item`: label and value with no pill border or fill.
+                className={`flex items-center gap-2 rounded-(--radius-sm) px-1.5 py-0.5 text-xs transition-colors hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) disabled:cursor-default disabled:hover:bg-transparent ${
+                    variant === "accent" && isActive ? "text-(--accent-text)" : ""
                 }`}
                 aria-expanded={openMenu === menuKey}
             >
-                <span className="uppercase tracking-[0.2em] text-(--ink-muted)">{label}</span>
+                <span className="text-label-caps font-semibold uppercase text-(--text-muted)">
+                    {label}
+                </span>
                 {value ? <span className="font-medium text-foreground">{value}</span> : null}
-                <span className="text-(--ink-muted)">▾</span>
+                <ChevronDown aria-hidden="true" className="size-3.5 text-(--text-muted)" />
             </button>
             {openMenu === menuKey && (
                 <div className="absolute left-0 z-50 mt-2 w-72 rounded-2xl border border-(--card-stroke) bg-card p-4 shadow-lg">
