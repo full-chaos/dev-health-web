@@ -4,13 +4,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import AppLayout from "./layout";
 
-const { adminTierProviderSpy, getOrgEntitlementsMock, requireSessionMock, userMenuSpy } =
-    vi.hoisted(() => ({
+const { adminTierProviderSpy, getOrgEntitlementsMock, requireSessionMock, shellSpy } = vi.hoisted(
+    () => ({
         adminTierProviderSpy: vi.fn(),
         getOrgEntitlementsMock: vi.fn(),
         requireSessionMock: vi.fn(),
-        userMenuSpy: vi.fn(),
-    }));
+        shellSpy: vi.fn(),
+    }),
+);
 
 vi.mock("@/lib/auth", () => ({
     requireSession: requireSessionMock,
@@ -49,10 +50,26 @@ vi.mock("@/components/telemetry/TelemetryProvider", () => ({
     TelemetryProvider: ({ children }: { readonly children: ReactNode }) => <>{children}</>,
 }));
 
-vi.mock("@/components/auth/UserMenu", () => ({
-    UserMenu: () => {
-        userMenuSpy();
-        return <div data-testid="global-user-menu" />;
+// The shell (sidebar, top bar, account menu) has its own tests; here it is a stub that
+// shows the layout hands it the theme toggle and the banners.
+vi.mock("@/components/shell/AppShell", () => ({
+    AppShell: ({
+        banners,
+        children,
+        themeToggle,
+    }: {
+        readonly banners?: ReactNode;
+        readonly children: ReactNode;
+        readonly themeToggle?: ReactNode;
+    }) => {
+        shellSpy();
+        return (
+            <div data-testid="app-shell-stub">
+                <div data-testid="shell-banners">{banners}</div>
+                <div data-testid="shell-theme-slot">{themeToggle}</div>
+                {children}
+            </div>
+        );
     },
 }));
 vi.mock("@/components/admin/ImpersonationBanner", () => ({ ImpersonationBanner: () => null }));
@@ -63,7 +80,7 @@ vi.mock("sonner", () => ({ Toaster: () => null }));
 describe("AppLayout entitlement wiring", () => {
     beforeEach(() => {
         adminTierProviderSpy.mockClear();
-        userMenuSpy.mockClear();
+        shellSpy.mockClear();
         requireSessionMock.mockResolvedValue({
             user: { id: "user-1", org_id: "org-1", token: "secret-token" },
         });
@@ -90,27 +107,19 @@ describe("AppLayout entitlement wiring", () => {
         });
     });
 
-    it("renders the shared brand logo and account controls in the account navigation", async () => {
+    it("wraps every page in the shared app shell and gives it the theme toggle", async () => {
         getOrgEntitlementsMock.mockResolvedValue({
-            data: {
-                features: {},
-                is_valid: true,
-                limits: {},
-                tier: "community",
-            },
+            data: { features: {}, is_valid: true, limits: {}, tier: "community" },
         });
 
         render(await AppLayout({ children: <span>Context Fabric</span> }));
 
-        const accountNavigation = screen.getByRole("navigation", { name: "Account" });
-        const brandLink = screen.getByRole("link", { name: "Full Chaos Dev Health home" });
-        expect(brandLink).toHaveAttribute("href", "/dashboard");
-        expect(brandLink).toContainElement(
-            screen.getByRole("img", { name: "Full Chaos Dev Health logo" }),
+        const shell = screen.getByTestId("app-shell-stub");
+        expect(shell).toContainElement(screen.getByText("Context Fabric"));
+        expect(screen.getByTestId("shell-theme-slot")).toContainElement(
+            screen.getByTestId("theme-toggle"),
         );
-        expect(accountNavigation).toContainElement(brandLink);
-        expect(accountNavigation).toContainElement(screen.getByTestId("global-user-menu"));
-        expect(userMenuSpy).toHaveBeenCalledOnce();
+        expect(shellSpy).toHaveBeenCalledOnce();
     });
 
     it.each([

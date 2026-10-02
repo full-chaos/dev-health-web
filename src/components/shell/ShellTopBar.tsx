@@ -36,8 +36,8 @@ function ShellTrail({ pathname }: { pathname: string }) {
 /**
  * Top bar of the shared app shell: the location trail from the nav config (A6:
  * breadcrumb label = sidebar label), the data-freshness chip, and a slot for the
- * theme toggle. Shown from the `md` breakpoint up; below it the legacy account
- * bar is the top chrome.
+ * theme toggle. Shown from the `md` breakpoint up; below it the mobile bar
+ * is the top chrome.
  */
 export function ShellTopBar({ status, themeToggle }: ShellTopBarProps) {
     const pathname = usePathname() ?? "";

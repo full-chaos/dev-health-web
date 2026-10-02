@@ -100,11 +100,8 @@ describe("ThemeToggle", () => {
         expect(document.documentElement.style.colorScheme).toBe("light");
     });
 
-    it("is mounted in the legacy account bar and in the app layout shell slot", () => {
+    it("is mounted in the app layout shell slot", () => {
         const root = join(process.cwd(), "src");
-        expect(readFileSync(join(root, "components/shell/LegacyAccountBar.tsx"), "utf8")).toMatch(
-            /<ThemeToggle \/>/,
-        );
         expect(readFileSync(join(root, "app/(app)/layout.tsx"), "utf8")).toMatch(
             /themeToggle=\{<ThemeToggle \/>\}/,
         );
