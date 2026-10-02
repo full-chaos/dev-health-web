@@ -4,10 +4,10 @@ import { render, screen } from "@/test/utils";
 import { MetricDelta, metricDeltaParts } from "./MetricDelta";
 
 describe("MetricDelta", () => {
-    it("renders rounded signed zero as 0% with muted tone", () => {
+    it("renders a served change under 0.5% with its value, in the muted tone (never 0% or -0%)", () => {
         render(<MetricDelta value={-0.2} />);
 
-        const delta = screen.getByText("· 0%");
+        const delta = screen.getByText("↓ -0.2%");
         expect(delta).toBeInTheDocument();
         expect(delta).not.toHaveTextContent("-0%");
         expect(delta).toHaveClass("text-(--ink-muted)");
@@ -103,8 +103,15 @@ describe("metricDeltaParts (the delta rule, for surfaces that draw the delta the
         });
     });
 
-    it("a change that rounds to zero is flat and muted, with no minus sign", () => {
+    it("a change under the shown precision keeps its value and sign, and is muted (no good or bad tone)", () => {
         expect(metricDeltaParts(-0.2)).toEqual({
+            label: "-0.2%",
+            glyph: "↓",
+            toneClass: "text-(--ink-muted)",
+            polarity: "flat",
+        });
+        expect(metricDeltaParts(0.04)).toMatchObject({ label: "+<0.1%", glyph: "↑" });
+        expect(metricDeltaParts(0)).toEqual({
             label: "0%",
             glyph: "·",
             toneClass: "text-(--ink-muted)",
@@ -117,10 +124,13 @@ describe("metricDeltaParts (the delta rule, for surfaces that draw the delta the
         expect(metricDeltaParts(3.26, { precision: 1 })?.label).toBe("+3.3%");
     });
 
-    it("MetricDelta says 'No change' in its title only for a flat delta", () => {
-        const { unmount } = render(<MetricDelta value={0.2} />);
+    it("MetricDelta says 'No change' in its title only for a served 0", () => {
+        const { unmount } = render(<MetricDelta value={0} />);
         expect(screen.getByText("· 0%")).toHaveAttribute("title", "No change");
         unmount();
+        const small = render(<MetricDelta value={0.2} />);
+        expect(screen.getByText("↑ +0.2%")).not.toHaveAttribute("title");
+        small.unmount();
         render(<MetricDelta value={12} />);
         expect(screen.getByText("↑ +12%")).not.toHaveAttribute("title");
     });

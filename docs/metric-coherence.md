@@ -47,6 +47,14 @@ it with either a **real period-over-period delta** or an **explicit labeled stat
   not serve shows **"Not reported"** (muted), never `--` and never `0`; a served `0` shows
   `0`. A metric with no series to plot says **"No trend yet"** in the meta line; no flat line
   is drawn for it.
+- A served value that is not 0 never shows as `0` (`formatMetricValue`, `formatMetricParts`):
+  hours and percent keep one decimal below 10 and none from 10 (`0.3 hours`, `4.2%`,
+  `13 hours`, `42%`); days and minutes keep one decimal; a value too small for the digits
+  shows `<0.1` (`>-0.1` below zero).
+- The same holds for a percent change (`formatDelta`): a served change that is not 0 never
+  shows as `0%`; under 0.5 it keeps one decimal (`+0.3%`), or `+<0.1%` / `-<0.1%`. Such a
+  change is muted (too small to call better or worse) and is not titled "No change"; only a
+  served 0 is.
 - The sparkline of a `MetricCard` shows the SHAPE of the series: it runs from the lowest to
   the highest served point (a flat series is a line through the middle). It has no axis, so
   it is never read for a magnitude; the number of the tile carries the value.

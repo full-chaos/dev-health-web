@@ -68,26 +68,49 @@ export const formatNumber = (value: number, options?: Intl.NumberFormatOptions) 
 export const formatPercent = (value: number) =>
     `${formatNumber(value, { maximumFractionDigits: 0 })}%`;
 
+/**
+ * A percent change as a whole percent with its sign ("+12%", "-8%"). A served change that is
+ * not 0 never shows as "0%": under 0.5 it keeps one decimal ("+0.3%"), and when even that
+ * cannot show it, "+<0.1%" / "-<0.1%". A served 0 (or -0) is "0%". The sign comes from the served
+ * value, so -0.5 and +0.5 round the same way ("-1%", "+1%").
+ */
 export const formatDelta = (value: number) => {
-    const rounded = Math.round(value);
-    const sign = rounded > 0 ? "+" : rounded < 0 ? "-" : "";
-    return `${sign}${formatNumber(Math.abs(rounded), { maximumFractionDigits: 0 })}%`;
+    const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+    const magnitude = Math.abs(value);
+    const whole = Math.round(magnitude);
+    if (whole !== 0 || magnitude === 0) {
+        return `${sign}${formatNumber(whole, { maximumFractionDigits: 0 })}%`;
+    }
+    const tenths = formatNumber(magnitude, { maximumFractionDigits: 1 });
+    return `${sign}${tenths === "0" ? "<0.1" : tenths}%`;
 };
 
 /**
  * The number of a metric value as text, with the digits its unit gets. The ONE place that
  * decides the digits: `formatMetricValue` (joined string) and `formatMetricParts` (number and
  * unit apart) both read it, so the two can never show different numbers for one value.
+ *
+ * Rule: hours and percent keep one decimal below 10 and none from 10 (0.3 hours, 4.2%, 13 hours,
+ * 42%); days and minutes keep one decimal; LOC is compact; other units keep at most one decimal.
+ * A served value that is not 0 never shows as 0: when the digits cannot show it, it is "<0.1"
+ * (">-0.1" below zero). A served 0 shows 0.
  */
-const formatMetricNumber = (value: number, unit: string) => {
-    if (unit === "%") {
-        return formatNumber(value, { maximumFractionDigits: 0 });
+const formatMetricNumber = (served: number, unit: string) => {
+    // A served -0 is 0: it never prints as "-0".
+    const value = served === 0 ? 0 : served;
+    const text = formatMetricDigits(value, unit);
+    if (value !== 0 && /^-?0$/.test(text)) {
+        return value > 0 ? "<0.1" : ">-0.1";
+    }
+    return text;
+};
+
+const formatMetricDigits = (value: number, unit: string) => {
+    if (unit === "%" || unit === "hours") {
+        return formatNumber(value, { maximumFractionDigits: Math.abs(value) < 10 ? 1 : 0 });
     }
     if (unit === "days") {
         return formatNumber(value, { maximumFractionDigits: 1 });
-    }
-    if (unit === "hours") {
-        return formatNumber(value, { maximumFractionDigits: 0 });
     }
     if (unit === "loc") {
         return formatNumber(value, { notation: "compact" });

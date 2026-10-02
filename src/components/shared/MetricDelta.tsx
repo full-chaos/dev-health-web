@@ -57,7 +57,10 @@ export type MetricDeltaParts = {
     glyph: string;
     /** Tone class of the polarity: positive, negative or muted (no change). */
     toneClass: string;
-    /** `good` / `bad` after `inverseGood`; `flat` when the rounded change is 0. */
+    /**
+     * `good` / `bad` after `inverseGood`; `flat` when the change rounds to 0 at the precision:
+     * too small to call better or worse, so muted (its value is still shown).
+     */
     polarity: "good" | "bad" | "flat";
 };
 
@@ -82,7 +85,8 @@ export function metricDeltaParts(
             format === "percent"
                 ? formatSignedPercentDelta(value, rounded, safePrecision)
                 : formatSignedNumberDelta(rounded, safePrecision),
-        glyph: rounded > 0 ? "↑" : rounded < 0 ? "↓" : "·",
+        // The glyph follows the served sign, so a small change that is shown (+0.3%) is not a dot.
+        glyph: value > 0 ? "↑" : value < 0 ? "↓" : "·",
         toneClass,
         polarity:
             toneClass === POSITIVE_TONE ? "good" : toneClass === NEGATIVE_TONE ? "bad" : "flat",
@@ -114,7 +118,7 @@ export function MetricDelta({
 
     return (
         <span
-            title={parts.polarity === "flat" ? "No change" : undefined}
+            title={value === 0 ? "No change" : undefined}
             className={`${BASE} ${parts.toneClass} ${className ?? ""}`.trim()}
         >
             {parts.glyph} {parts.label}

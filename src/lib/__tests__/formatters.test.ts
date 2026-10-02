@@ -26,8 +26,23 @@ describe("formatters", () => {
         expect(formatDelta(-8.2)).toBe("-8%");
     });
 
-    it("formats rounded negative-zero deltas as zero", () => {
-        expect(formatDelta(-0.2)).toBe("0%");
+    it("formats a zero delta, and a served -0, as 0% (never -0%)", () => {
+        expect(formatDelta(0)).toBe("0%");
+        expect(formatDelta(-0)).toBe("0%");
+    });
+
+    it("a served delta that is not 0 never shows as 0%", () => {
+        expect(formatDelta(0.3)).toBe("+0.3%");
+        expect(formatDelta(-0.2)).toBe("-0.2%");
+        expect(formatDelta(0.04)).toBe("+<0.1%");
+        expect(formatDelta(-0.04)).toBe("-<0.1%");
+        // From 0.5 the whole-percent rule shows it, the same both ways.
+        expect(formatDelta(0.5)).toBe("+1%");
+        expect(formatDelta(-0.5)).toBe("-1%");
+        expect(formatDelta(12.4)).toBe("+12%");
+        for (const value of [0.001, 0.04, 0.05, 0.3, 0.49, -0.001, -0.3, -0.49, -0.5]) {
+            expect(formatDelta(value), String(value)).not.toMatch(/^[+-]?0%$/);
+        }
     });
 
     it("formats metric values by unit", () => {
@@ -107,6 +122,61 @@ describe("formatMetricParts (number and unit apart, for the metric tile)", () =>
                         ? joined.slice(0, joined.length - suffix[unit].length)
                         : joined.slice(0, joined.length - (unit ? unit.length + 1 : 0));
                 expect(formatMetricParts(value, unit).value, `${value} ${unit}`).toBe(expected);
+            }
+        }
+    });
+});
+
+describe("small served values never show as 0", () => {
+    // Rule: hours and percent keep one decimal below 10 and none from 10; days and minutes keep
+    // one decimal; a served non-zero value that the digits cannot show is "<0.1", never "0".
+    it("hours: a served 0.3 hours is 0.3, not 0", () => {
+        expect(formatMetricValue(0.3, "hours")).toBe("0.3h");
+        expect(formatMetricParts(0.3, "hours")).toEqual({ value: "0.3", unit: "hours" });
+        expect(formatMetricValue(9.94, "hours")).toBe("9.9h");
+        expect(formatMetricValue(12.6, "hours")).toBe("13h");
+        expect(formatMetricValue(0.04, "hours")).toBe("<0.1h");
+        expect(formatMetricParts(0.04, "hours")).toEqual({ value: "<0.1", unit: "hours" });
+    });
+
+    it("percent: a served 0.4% is 0.4%, not 0%", () => {
+        expect(formatMetricValue(0.4, "%")).toBe("0.4%");
+        expect(formatMetricParts(0.4, "%")).toEqual({ value: "0.4", unit: "%" });
+        expect(formatMetricValue(4.24, "%")).toBe("4.2%");
+        expect(formatMetricValue(42.4, "%")).toBe("42%");
+        expect(formatMetricValue(0.04, "%")).toBe("<0.1%");
+    });
+
+    it("days and minutes: one decimal, and a value too small for it is <0.1", () => {
+        expect(formatMetricValue(0.2, "days")).toBe("0.2d");
+        expect(formatMetricValue(0.04, "days")).toBe("<0.1d");
+        expect(formatMetricParts(0.04, "days")).toEqual({ value: "<0.1", unit: "days" });
+        expect(formatMetricValue(0.5, "m")).toBe("0.5m");
+        expect(formatMetricValue(0.04, "m")).toBe("<0.1m");
+        expect(formatMetricParts(0.04, "m")).toEqual({ value: "<0.1", unit: "min" });
+    });
+
+    it("other units: a value too small for one decimal is <0.1", () => {
+        expect(formatMetricValue(0.04, "items")).toBe("<0.1 items");
+        expect(formatMetricParts(0.04, "")).toEqual({ value: "<0.1", unit: "" });
+    });
+
+    it("a served 0 stays 0, and a small negative value is never '-0'", () => {
+        for (const unit of ["hours", "%", "days", "m", "items"]) {
+            expect(formatMetricParts(0, unit).value, unit).toBe("0");
+        }
+        expect(formatMetricParts(-0, "hours").value).toBe("0");
+        expect(formatMetricValue(-0.04, "hours")).toBe(">-0.1h");
+        expect(formatMetricValue(-0.3, "hours")).toBe("-0.3h");
+    });
+
+    it("never shows a served non-zero value as 0, for any unit", () => {
+        const values = [0.001, 0.04, 0.049, 0.05, 0.3, 0.45, 0.96, 4.24, 9.94];
+        for (const unit of ["hours", "%", "days", "m", "loc", "items", ""]) {
+            for (const value of values) {
+                expect(formatMetricParts(value, unit).value, `${value} ${unit}`).not.toMatch(
+                    /^-?0$/,
+                );
             }
         }
     });
