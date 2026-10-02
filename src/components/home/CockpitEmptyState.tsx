@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { EmptyState } from "@/components/ui/EmptyState";
+import { STATE_ICONS } from "@/components/ui/stateIcons";
 
 /**
  * Phase-1 customer-safe sparse/empty states for the cockpit (CHAOS-2052).
@@ -74,7 +75,7 @@ export function CockpitEmptyState({
     return (
         <div data-testid={testId ?? `cockpit-empty-${variant}`} data-variant={variant}>
             <EmptyState
-                icon={icon}
+                icon={icon ?? STATE_ICONS[variant]}
                 title={title ?? copy.title}
                 description={description ?? copy.description}
                 action={action}
