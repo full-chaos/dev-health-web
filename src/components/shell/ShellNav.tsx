@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { useAdminNav } from "@/components/admin/AdminTabs";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import {
     isNavChildVisible,
@@ -39,6 +40,8 @@ export function ShellNav({ areas = navAreas }: ShellNavProps) {
     const pathname = usePathname() ?? "";
     const params = useShellNavParams(pathname);
     const { features } = useAdminTier();
+    // The platform admin rows (CHAOS-7967) are listed only for a platform admin.
+    const { isPlatformAdmin } = useAdminNav();
     const selectedAreaId = selectedAreaIdForPathname(areas, pathname);
 
     const mainAreas = areas.filter((area) => area.placement === "main");
@@ -64,7 +67,9 @@ export function ShellNav({ areas = navAreas }: ShellNavProps) {
     const renderArea = (area: NavArea) => {
         const isActive = selectedAreaId === area.id;
         const listedChildren = isActive
-            ? area.children.filter((child) => isNavChildVisible(child, features))
+            ? area.children.filter((child) =>
+                  isNavChildVisible(child, features, { isPlatformAdmin }),
+              )
             : [];
         const visibleChildren =
             area.placement === "main" || listedChildren.length > 1 ? listedChildren : [];

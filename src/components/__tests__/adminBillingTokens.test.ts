@@ -21,19 +21,13 @@ const ratio = (a: number[], b: number[]) => {
     return (hi + 0.05) / (lo + 0.05);
 };
 
-describe("admin sidebars", () => {
-    it("have no purple and keep the orange selection tint on the active item", () => {
-        // The org admin sidebar is gone (CHAOS-7591): its "Platform Admin" pill is in AdminHeader.
-        for (const f of [
-            "components/admin/AdminHeader.tsx",
-            "components/superadmin/SuperadminSidebar.tsx",
-        ]) {
-            expect(src(f), f).not.toMatch(/purple/u);
-        }
-        const sup = src("components/superadmin/SuperadminSidebar.tsx");
-        expect(sup).toContain('"border-(--accent) bg-(--accent)/15 text-foreground"');
-        expect(sup).toContain("text-(--accent-text)");
-        expect(src("components/admin/AdminHeader.tsx")).toContain("STATUS_PILL.info");
+describe("admin navigation marks", () => {
+    it("the Platform Admin pill uses the info status pill, with no purple", () => {
+        // Both admin sidebars are gone (CHAOS-7591, CHAOS-7967): the "Platform Admin" pill is in
+        // AdminHeader, and the shell sidebar marks the active destination.
+        const header = src("components/admin/AdminHeader.tsx");
+        expect(header).not.toMatch(/purple/u);
+        expect(header).toContain("STATUS_PILL.info");
     });
 });
 

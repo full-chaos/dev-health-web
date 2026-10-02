@@ -234,6 +234,29 @@ describe("paletteEntries", () => {
         ]);
     });
 
+    it("offers the platform admin destinations and their tabs only to a platform admin (CHAOS-7967)", () => {
+        const orgAdmin = paletteEntries(navAreas, {});
+        expect(orgAdmin.filter((e) => e.path.startsWith("/superadmin"))).toEqual([]);
+
+        const platformAdmin = paletteEntries(navAreas, {}, undefined, { isPlatformAdmin: true });
+        expect(platformAdmin.find((e) => e.path === "/superadmin")).toMatchObject({
+            label: "Platform",
+            areaLabel: "Admin",
+        });
+        expect(platformAdmin.find((e) => e.path === "/superadmin/orgs")).toMatchObject({
+            label: "Organizations",
+            areaLabel: "Platform · Admin",
+        });
+        expect(platformAdmin.find((e) => e.path === "/superadmin/billing/plans")).toMatchObject({
+            label: "Platform billing",
+            areaLabel: "Admin",
+        });
+        expect(platformAdmin.find((e) => e.path === "/superadmin/billing/refunds")).toMatchObject({
+            label: "Refunds",
+            areaLabel: "Platform billing · Admin",
+        });
+    });
+
     it("lists no destination twice", () => {
         const entries = paletteEntries(navAreas, {});
         const keys = entries.map((e) => `${e.path}|${e.label}`);

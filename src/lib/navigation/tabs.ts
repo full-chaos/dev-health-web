@@ -221,6 +221,52 @@ export const TAB_SETS = [
             { id: "mapping", label: "Mapping", path: "/data-health/mapping" },
         ],
     },
+    // Platform admin (CHAOS-7967): the 13 rows of the old platform admin sidebar, as the tabs of
+    // two Admin destinations that only platform admins see. Labels are the sidebar's; its
+    // "Dashboard" is "Overview", as in Organization.
+    {
+        id: "platform",
+        areaId: "admin",
+        basePath: "/superadmin",
+        param: "route",
+        defaultTabId: "overview",
+        tabs: [
+            { id: "overview", label: "Overview", path: "/superadmin" },
+            { id: "orgs", label: "Organizations", path: "/superadmin/orgs" },
+            { id: "users", label: "Users", path: "/superadmin/users" },
+            { id: "licensing", label: "Licensing", path: "/superadmin/licensing" },
+            {
+                id: "product-telemetry",
+                label: "Product Telemetry",
+                path: "/superadmin/product-telemetry",
+            },
+            {
+                id: "context-fabric-validation",
+                label: "Context Fabric Validation",
+                path: "/superadmin/context-fabric/validation",
+            },
+            { id: "audit", label: "Audit Log", path: "/superadmin/audit" },
+            { id: "settings", label: "Settings", path: "/superadmin/settings" },
+        ],
+    },
+    {
+        id: "platform-billing",
+        areaId: "admin",
+        basePath: "/superadmin/billing/plans",
+        param: "route",
+        defaultTabId: "plans",
+        tabs: [
+            { id: "plans", label: "Billing Plans", path: "/superadmin/billing/plans" },
+            { id: "invoices", label: "Invoices", path: "/superadmin/billing/invoices" },
+            {
+                id: "subscriptions",
+                label: "Subscriptions",
+                path: "/superadmin/billing/subscriptions",
+            },
+            { id: "refunds", label: "Refunds", path: "/superadmin/billing/refunds" },
+            { id: "billing-audit", label: "Billing Audit", path: "/superadmin/billing/audit" },
+        ],
+    },
 ] as const satisfies readonly TabSet[];
 
 export type TabSetId = (typeof TAB_SETS)[number]["id"];
@@ -247,6 +293,8 @@ const TAB_SET_BY_ID = {
     "admin-organization": TAB_SETS[8],
     "admin-connections": TAB_SETS[9],
     "data-confidence": TAB_SETS[10],
+    platform: TAB_SETS[11],
+    "platform-billing": TAB_SETS[12],
 } as const satisfies { [S in TabSetId]: TabSetOf<S> };
 
 export function getTabSet<S extends TabSetId>(id: S): (typeof TAB_SET_BY_ID)[S] {

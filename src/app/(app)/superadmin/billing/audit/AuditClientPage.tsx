@@ -38,7 +38,6 @@ export function AuditClientPage({ initialEntries }: AuditClientPageProps) {
 
     return (
         <div className="space-y-4">
-            <h1 className="text-2xl font-semibold">Billing Audit</h1>
             <AuditLogFilters variant="billing" onApply={(filters) => void refresh(filters)} />
             <ReconciliationTrigger
                 running={running}
