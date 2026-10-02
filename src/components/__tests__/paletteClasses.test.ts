@@ -12,12 +12,8 @@ const SRC = join(process.cwd(), "src");
 const RAW =
     /\b(?:text|bg|border|ring|from|via|to|fill|stroke|divide|outline|shadow|accent|decoration)-(?:red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone)-\d{2,3}\b/gu;
 
-const ALLOWLIST: Record<string, number> = {
-    // 6 provider brand-mark hits (Admin page pass) + 3 in one red banner (Notice danger).
-    "app/(app)/org/admin/integrations/page.tsx": 6,
-    "app/(app)/reports/[id]/page.tsx": 19,
-    "app/(app)/reports/new/page.tsx": 3,
-};
+// Every slice is done: no file may use a raw palette class.
+const ALLOWLIST: Record<string, number> = {};
 
 function walk(dir: string, out: string[] = []): string[] {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {

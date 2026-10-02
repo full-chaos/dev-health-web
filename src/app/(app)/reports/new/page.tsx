@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { createSavedReport } from "@/lib/reports/fetchers";
 import type { CreateSavedReportInput } from "@/lib/reports/types";
+import { STATUS_PILL } from "@/lib/statusPill";
 
 const SCHEDULE_CRON_MAP: Record<string, string | undefined> = {
     none: undefined,
@@ -188,7 +189,9 @@ export default function NewReportPage() {
                     </div>
 
                     {error && (
-                        <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+                        <div
+                            className={`rounded-xl border px-4 py-3 text-sm ${STATUS_PILL.negative}`}
+                        >
                             {error}
                         </div>
                     )}
