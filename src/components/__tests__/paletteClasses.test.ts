@@ -14,9 +14,6 @@ const RAW =
 
 const ALLOWLIST: Record<string, number> = {
     "app/(app)/data-health/_components/AliasSuggestionRow.tsx": 2,
-    "app/(app)/data-health/_components/CoverageBar.tsx": 3,
-    "app/(app)/data-health/connectors/page.tsx": 3,
-    "app/(app)/data-health/mapping/page.tsx": 3,
     "app/(app)/operating-review/page.tsx": 28,
     // 6 provider brand-mark hits (Admin page pass) + 3 in one red banner (Notice danger).
     "app/(app)/org/admin/integrations/page.tsx": 6,
