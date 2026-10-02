@@ -35,8 +35,15 @@ const updateDeveloperFilter = async (page: Page, value: string, previous: string
     const nextValue = getFilterParam(page.url());
     expect(nextValue).toBeTruthy();
 
-    // Click "Filters" again to collapse the panel (toggle behavior)
-    await page.getByRole("button", { name: /^Filters$/ }).click();
+    // Close the filters again. On a page with the scope bar they are in a modal
+    // drawer (Escape closes it, and the button's name then carries the active
+    // count); on the other pages the "Filters" button toggles the inline panel.
+    if (await page.getByRole("dialog", { name: "Filters" }).isVisible()) {
+        await page.keyboard.press("Escape");
+        await expect(page.getByRole("dialog", { name: "Filters" })).toBeHidden();
+    } else {
+        await page.getByRole("button", { name: /^Filters$/ }).click();
+    }
 
     return nextValue as string;
 };

@@ -48,6 +48,8 @@ export const CTA_LABELS = {
     importSelected: "Import Selected",
     /** Copy the current selection / link to the clipboard. */
     copy: "Copy",
+    /** Copy the current page URL, with its scope and filter state. */
+    copyLink: "Copy link",
     edit: "Edit",
     save: "Save",
     delete: "Delete",

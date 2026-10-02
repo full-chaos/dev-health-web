@@ -15,6 +15,8 @@ type AdvancedFiltersPanelProps = {
     issueType: string[];
     repos: string[];
     roles: string[];
+    /** One column for a narrow container (the scope bar's drawer). Default: two from `md` up. */
+    singleColumn?: boolean;
     updateFilters: (nextFilters: MetricFilter) => void;
     visibility: FilterVisibility;
     workCategory: string[];
@@ -29,6 +31,7 @@ export function AdvancedFiltersPanel({
     issueType,
     repos,
     roles,
+    singleColumn = false,
     updateFilters,
     visibility,
     workCategory,
@@ -39,7 +42,7 @@ export function AdvancedFiltersPanel({
     const showHow = Boolean(visibility.flowStage);
 
     return (
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className={`mt-4 grid gap-3 ${singleColumn ? "" : "md:grid-cols-2"}`.trim()}>
             {showWho && (
                 <WhoSection
                     developers={developers}

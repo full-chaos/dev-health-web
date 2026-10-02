@@ -7,7 +7,7 @@ import type { ActiveOrganizationData } from "@/components/navigation/OrgSwitcher
 import { CTA_LABELS } from "@/lib/design/cta";
 
 import { LegacyAccountBar } from "./LegacyAccountBar";
-import { ShellProvider } from "./ShellContext";
+import { ShellOrganizationProvider, ShellProvider } from "./ShellContext";
 import { ShellSidebar } from "./ShellSidebar";
 import { shellStatusFromOrganization, type ShellStatus } from "./ShellStatusChip";
 import { ShellTopBar } from "./ShellTopBar";
@@ -35,14 +35,18 @@ type AppShellProps = {
  */
 export function AppShell({ banners, themeToggle, children }: AppShellProps) {
     const pathname = usePathname();
-    // The organization card owns the request; the top bar chip shows its answer.
-    const [dataStatus, setDataStatus] = useState<ShellStatus>({ kind: "loading" });
-    const handleActiveOrganizationChange = useCallback(
-        (organization: ActiveOrganizationData | null) => {
-            setDataStatus(shellStatusFromOrganization(organization));
-        },
-        [],
+    // The organization card owns the request. The top bar chip and the scope bar
+    // show its answer: `undefined` while it loads, `null` when it is not known.
+    const [organization, setOrganization] = useState<ActiveOrganizationData | null | undefined>(
+        undefined,
     );
+    const handleActiveOrganizationChange = useCallback((next: ActiveOrganizationData | null) => {
+        setOrganization(next);
+    }, []);
+    const dataStatus: ShellStatus =
+        organization === undefined
+            ? { kind: "loading" }
+            : shellStatusFromOrganization(organization);
 
     if (!isShellRoute(pathname)) {
         return (
@@ -75,7 +79,9 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
                         tabIndex={-1}
                         className="flex min-w-0 flex-1 flex-col px-4 pb-20 pt-6 focus:outline-none sm:px-6 md:pt-8"
                     >
-                        {children}
+                        <ShellOrganizationProvider value={organization}>
+                            {children}
+                        </ShellOrganizationProvider>
                     </main>
                 </div>
             </div>

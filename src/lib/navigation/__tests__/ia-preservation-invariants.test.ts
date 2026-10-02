@@ -95,7 +95,6 @@ const knownPreexistingDualContextBarScopes = new Set([
     "src/app/(app)/ai/review-load/page.tsx",
     "src/app/(app)/ai/risk/page.tsx",
     "src/app/(app)/code/page.tsx",
-    "src/app/(app)/dashboard/page.tsx",
     "src/app/(app)/diagnose/page.tsx",
     "src/app/(app)/diagnose/work-graph/page.tsx",
     "src/app/(app)/explore/page.tsx",
