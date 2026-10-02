@@ -67,7 +67,7 @@ export function ActiveFilterPills({
                     onClear={() => onClearRole(role)}
                 />
             ))}
-            {workCategory.map((cat) => (
+            {(unread.includes("workCategory") ? [] : workCategory).map((cat) => (
                 <FilterPill
                     key={`cat-${cat}`}
                     label="Work"

@@ -130,7 +130,7 @@ export function ScopeBarClient({
     const activeFilterCount =
         (isFilterRead(visibility, "developers") ? developers.length : 0) +
         (isFilterRead(visibility, "roles") ? roles.length : 0) +
-        workCategory.length +
+        (isFilterRead(visibility, "workCategory") ? workCategory.length : 0) +
         (isFilterRead(visibility, "issueType") ? issueType.length : 0) +
         (isFilterRead(visibility, "flowStage") ? flowStage.length : 0) +
         (isFilterRead(visibility, "artifacts") ? artifacts.length : 0) +
@@ -150,7 +150,7 @@ export function ScopeBarClient({
     // with no drawer (People) keeps them in the row, where its filter bar had them.
     const pageFilterMenus = (
         <>
-            {visibility.developer ? (
+            {visibility.developer && isFilterRead(visibility, "developers") ? (
                 <QuickFilterMenu
                     active={developers}
                     emptyLabel="All"
@@ -168,7 +168,7 @@ export function ScopeBarClient({
                     toggleValue={toggleValue}
                 />
             ) : null}
-            {visibility.workType ? (
+            {visibility.workType && isFilterRead(visibility, "workCategory") ? (
                 <QuickFilterMenu
                     active={workCategory}
                     emptyLabel="All"
@@ -187,7 +187,7 @@ export function ScopeBarClient({
                     toggleValue={toggleValue}
                 />
             ) : null}
-            {visibility.flowStage ? (
+            {visibility.flowStage && isFilterRead(visibility, "flowStage") ? (
                 <QuickFilterMenu
                     active={flowStage}
                     emptyLabel="All"

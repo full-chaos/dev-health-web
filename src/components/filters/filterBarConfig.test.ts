@@ -17,7 +17,7 @@ describe("resolveVisibility (pure)", () => {
             workType: true,
             flowStage: false,
             date: true,
-            unreadFilters: ["artifacts"],
+            unreadFilters: ["artifacts", "roles", "flowStage", "blocked", "issueType"],
         });
     });
 

@@ -14,7 +14,9 @@ const waitForFilterParam = async (page: Page) => {
     return value as string;
 };
 
-const updateDeveloperFilter = async (page: Page, value: string, previous: string) => {
+// The drawer filter these specs set is the Work category (Why section). The developer control is not in any
+// drawer any more: no query reads developers where it was offered (CHAOS-7796).
+const updateWorkCategoryFilter = async (page: Page, value: string, previous: string) => {
     // Click "Filters" button to expand the advanced filters panel. Anchor the
     // name so it targets only the advanced toggle, not the adjacent "Reset
     // filters" CTA (CHAOS-2058 registry label) under substring matching.
@@ -22,8 +24,8 @@ const updateDeveloperFilter = async (page: Page, value: string, previous: string
         timeout: 15000,
     });
     await page.getByRole("button", { name: /^Filters$/ }).click();
-    await page.locator("summary", { hasText: "Who" }).click();
-    await page.getByPlaceholder("alice@example.com, bob@example.com").fill(value);
+    await page.locator("summary", { hasText: "Why" }).click();
+    await page.getByPlaceholder("feature, maintenance").fill(value);
     await page.waitForFunction(
         (prev) => {
             const current = new URL(window.location.href).searchParams.get("f");
@@ -55,12 +57,12 @@ const expectFilterParam = async (page: Page, expected: string) => {
     );
 };
 
-const expectDeveloperFilter = async (page: Page, expected: string) => {
+const expectWorkCategoryFilter = async (page: Page, expected: string) => {
     await expect
         .poll(() => {
             const encoded = getFilterParam(page.url());
             const filters = decodeFilter(encoded);
-            return filters.who.developers?.join(",") ?? "";
+            return filters.why.work_category?.join(",") ?? "";
         })
         .toBe(expected);
 };
@@ -69,11 +71,7 @@ test.describe("filter propagation", () => {
     test("primary area routes retain filter param", async ({ page }) => {
         await page.goto("/dashboard");
         const initialFilter = await waitForFilterParam(page);
-        const updatedFilter = await updateDeveloperFilter(
-            page,
-            "dev-health-web@example.com",
-            initialFilter,
-        );
+        const updatedFilter = await updateWorkCategoryFilter(page, "feature", initialFilter);
 
         const nav = page.locator("aside nav");
         const areas = [
@@ -92,18 +90,14 @@ test.describe("filter propagation", () => {
                 new RegExp(`${area.path}(?:[?#].*)?$`),
             );
             await expectFilterParam(page, updatedFilter);
-            await expectDeveloperFilter(page, "dev-health-web@example.com");
+            await expectWorkCategoryFilter(page, "feature");
         }
     });
 
     test("diagnose child routes retain filter param", async ({ page }) => {
         await page.goto("/dashboard");
         const initialFilter = await waitForFilterParam(page);
-        const updatedFilter = await updateDeveloperFilter(
-            page,
-            "diagnose-owner@example.com",
-            initialFilter,
-        );
+        const updatedFilter = await updateWorkCategoryFilter(page, "maintenance", initialFilter);
 
         const nav = page.locator("aside nav");
         await clickUntilUrl(
@@ -124,19 +118,18 @@ test.describe("filter propagation", () => {
                 new RegExp(`${child.path}(?:[?#].*)?$`),
             );
             await expectFilterParam(page, updatedFilter);
-            await expectDeveloperFilter(page, "diagnose-owner@example.com");
+            await expectWorkCategoryFilter(page, "maintenance");
             await page.goto(`/diagnose?f=${updatedFilter}`);
         }
     });
 
     test("filter change updates URL and persists across nav", async ({ page }) => {
-        await page.goto("/metrics?tab=dora");
+        // /dashboard, as the other two specs: the view CI proves. Not /investment: its page, scope bar
+        // included, sits behind the `investment_view` entitlement (UpgradeGate), so an org without it
+        // has no Filters button there.
+        await page.goto("/dashboard");
         const initialFilter = await waitForFilterParam(page);
-        const updatedFilter = await updateDeveloperFilter(
-            page,
-            "metrics-owner@example.com",
-            initialFilter,
-        );
+        const updatedFilter = await updateWorkCategoryFilter(page, "feature", initialFilter);
         expect(updatedFilter).not.toBe(initialFilter);
 
         const nav = page.locator("aside nav");
@@ -146,6 +139,6 @@ test.describe("filter propagation", () => {
             /\/govern(?:[?#].*)?$/,
         );
         await expectFilterParam(page, updatedFilter);
-        await expectDeveloperFilter(page, "metrics-owner@example.com");
+        await expectWorkCategoryFilter(page, "feature");
     });
 });
