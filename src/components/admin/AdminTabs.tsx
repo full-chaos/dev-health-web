@@ -6,6 +6,7 @@ import { createContext, useContext, type ReactNode } from "react";
 
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { getAreaById } from "@/lib/navigation/areas";
 import { isTabVisible, routeTabForPathname, tabHref } from "@/lib/navigation/tabs";
 
@@ -83,7 +84,7 @@ export function AdminTabs() {
                     prefetch={false}
                     className="shrink-0 px-3.5 py-3 text-label-caps uppercase text-(--ink-muted) hover:text-foreground"
                 >
-                    Platform Admin
+                    {CTA_LABELS.platformAdmin}
                 </Link>
             ) : null}
         </div>
