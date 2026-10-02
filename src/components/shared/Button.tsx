@@ -3,25 +3,26 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 export type ButtonVariant = "primary" | "secondary" | "ghost";
 export type ButtonSize = "sm" | "md";
 
+// Approved prototype `.btn` (style.css + theme.css): sentence case, 6px radius, weight 550, 7px
+// icon gap, 35px high (28px small), 13px text (12px small). Theme tokens only.
 const BASE =
-    "inline-flex items-center justify-center gap-1.5 rounded-full font-medium uppercase tracking-[0.2em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex items-center justify-center gap-1.75 whitespace-nowrap rounded-sm border font-[550] no-underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-50";
 
 const SIZES: Record<ButtonSize, string> = {
-    sm: "px-3 py-1.5 text-[10px]",
-    md: "px-4 py-2 text-xs",
+    sm: "min-h-7 px-2.25 py-1.25 text-xs",
+    md: "min-h-8.75 px-3.25 py-2 text-[0.8125rem]",
 };
 
-/** Circle icon button: fixed square, no horizontal padding (prototype `.btn.circle`). */
+/** Circle icon button (`.btn.circle`): 35px wide (28px small), no padding, same 6px radius. */
 const ICON_ONLY_SIZES: Record<ButtonSize, string> = {
-    sm: "h-7 w-7 p-0",
-    md: "h-9 w-9 p-0",
+    sm: "min-h-7 w-7 p-0 text-xs",
+    md: "min-h-8.75 w-8.75 p-0 text-[0.8125rem]",
 };
 
 const VARIANTS: Record<ButtonVariant, string> = {
-    primary: "border border-(--accent-2) bg-(--accent-2) text-white hover:bg-(--accent-2)/90",
-    secondary:
-        "border border-(--card-stroke) bg-(--card-70) text-foreground hover:border-(--ink-muted)",
-    ghost: "border border-transparent text-(--ink-muted) hover:text-foreground hover:bg-(--card-80)",
+    primary: "border-(--accent-2) bg-(--accent-2) text-white hover:brightness-110",
+    secondary: "border-(--card-stroke) bg-(--card) text-foreground hover:bg-(--card-80)",
+    ghost: "border-transparent bg-transparent text-(--accent-text) hover:bg-(--card-80)",
 };
 
 /**
