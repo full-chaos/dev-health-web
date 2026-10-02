@@ -522,7 +522,7 @@ Backend enforcement
 Frontend enforcement
 
 - `UpgradeGate` component controls gated content.
-- `AdminSidebar` filters items by `featureKey`.
+- The Admin tab rows (`AdminTabs`, `lib/navigation/tabs.ts` `requiredFeature`) show a feature tab only when the organization has the feature.
 
 Impersonation behavior
 
@@ -536,7 +536,7 @@ flowchart TD
     T -- No --> F403[Return 403]
     OK --> FE[Frontend route loads]
     FE --> G[UpgradeGate evaluates feature]
-    G --> S[AdminSidebar filters by featureKey]
+    G --> S[AdminTabs filters tabs by requiredFeature]
     S --> V[Render only allowed items]
     I[If impersonating] --> TI[Resolve tier from target org]
     TI --> G

@@ -17,10 +17,12 @@ import { shellHref } from "./shellHref";
 import { useShellNavParams } from "./useShellNavParams";
 
 // Sidebar navigation of the shared app shell (Framework A1). The decision areas
-// come from the nav config (`navAreas`); the ACTIVE main area expands to its
-// child destinations, the others stay collapsed, and the utility areas (Reports,
-// Admin) never expand. Exactly one row is the current page (A10): the accent
-// marks it, and hover / focus use a different treatment.
+// come from the nav config (`navAreas`); the ACTIVE area expands to its child
+// destinations and the others stay collapsed. A utility area (Reports, Admin)
+// expands only when it has more than one destination: Admin shows its four
+// (AD-1 option A); Reports' one child would only repeat the area row. Exactly
+// one row is the current page (A10): the accent marks it, and hover / focus use
+// a different treatment.
 
 const ROW_FOCUS =
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/60";
@@ -61,13 +63,14 @@ export function ShellNav({ areas = navAreas }: ShellNavProps) {
 
     const renderArea = (area: NavArea) => {
         const isActive = selectedAreaId === area.id;
+        const listedChildren = isActive
+            ? area.children.filter((child) => isNavChildVisible(child, features))
+            : [];
         const visibleChildren =
-            isActive && area.placement === "main"
-                ? area.children.filter((child) => isNavChildVisible(child, features))
-                : [];
+            area.placement === "main" || listedChildren.length > 1 ? listedChildren : [];
         const selectedChild = isActive ? selectedChildForPathname(area, pathname) : undefined;
         const activeChild = visibleChildren.find((child) => child.id === selectedChild?.id);
-        const areaRowIsSelected = isActive && (area.placement === "utility" || !activeChild);
+        const areaRowIsSelected = isActive && !activeChild;
         // The active area keeps primary ink when one of its children is the page.
         const idleInk = isActive ? "text-(--text-primary)" : "text-(--text-secondary)";
 
