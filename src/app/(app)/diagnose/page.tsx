@@ -50,7 +50,6 @@ export default async function DiagnosePage({ searchParams }: DiagnosePageProps) 
                 signals={diagnoseSignals}
                 filters={filters}
                 role={activeRole}
-                title="Related workflows"
                 description="Diagnostic sub-areas, ordered by severity."
             />
 
