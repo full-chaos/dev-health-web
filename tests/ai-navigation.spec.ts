@@ -42,7 +42,7 @@ test.describe("AI workflow primary navigation", () => {
         // Heavy dashboard hydrates slowly under suite load; allow a longer retry
         // budget (paired with test.slow()) so the entry click reliably lands.
         await clickUntilUrl(page, aiEntry, /\/ai(\?|$)/, 60000);
-        await expect(page.getByTestId("area-overview")).toBeVisible();
+        await expect(page.getByTestId("area-hub")).toBeVisible();
     });
 
     test("nav links route between real AI views", async ({ page }) => {
@@ -62,7 +62,7 @@ test.describe("AI workflow primary navigation", () => {
         await expect(page.getByTestId("ai-risk-dashboard")).toBeVisible();
 
         await clickUntilUrl(page, overviewLink(page), /\/ai(\?|$)/);
-        await expect(page.getByTestId("area-overview")).toBeVisible();
+        await expect(page.getByTestId("area-hub")).toBeVisible();
 
         await clickUntilUrl(page, impactLink(page), /\/ai\/impact/);
         await expect(page.getByRole("heading", { name: "Impact", exact: true })).toBeVisible();

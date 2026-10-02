@@ -41,7 +41,7 @@ test.describe("AI area journey (CHAOS-2213)", () => {
     // severity derivation, so the hub renders a stable mix of states.
     test("overview hub renders populated signal values in test mode", async ({ page }) => {
         await page.goto(`/ai?f=${populatedFilter}`);
-        await expect(page.getByTestId("area-overview")).toBeVisible();
+        await expect(page.getByTestId("area-hub")).toBeVisible();
 
         const card = (id: string) => page.locator(`[data-signal-id="${id}"]`);
 
@@ -77,7 +77,7 @@ test.describe("AI area journey (CHAOS-2213)", () => {
         await page.goto(`/ai?f=${populatedFilter}`);
         await waitForHydration(page);
 
-        await expect(page.getByTestId("area-overview")).toBeVisible();
+        await expect(page.getByTestId("area-hub")).toBeVisible();
 
         // Sidebar owns exactly the five visible AI children; the retired and
         // preview routes are absent (CHAOS-2197 / CHAOS-2200).
@@ -248,7 +248,7 @@ test.describe("AI area journey (CHAOS-2213)", () => {
         // CLIENT-side surfaces below, where the MSW harness honors the
         // `team-missing` scope with dataAvailable=false.
         await page.goto(`/ai?f=${missingDataFilter}`);
-        await expect(page.getByTestId("area-overview")).toBeVisible();
+        await expect(page.getByTestId("area-hub")).toBeVisible();
         await expect(page.getByTestId("area-signal-value").first()).toBeVisible();
 
         // Evidence tab: explicit missing-data panel, not the honest-zero empty
