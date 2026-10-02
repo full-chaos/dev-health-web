@@ -22,6 +22,9 @@
     --accent-foreground: #ffffff;
     /* Orange used as TEXT (selection, eyebrow): darker than --accent so it reads on cards and tints. */
     --accent-text: #b1361a;
+    /* Selected control (segmented toggle, window button): prototype --accentWash with the AA ink. */
+    --accent-wash: #ffe9da;
+    --accent-ink: #b1361a;
     --accent-1: #d6421f;
     --accent-2: #03627d;
     /* Filled action (primary button): approved `--blue` with white text. */
@@ -85,7 +88,9 @@
     --ink-muted: #a7afb5;
     --accent: #f47b20;
     --accent-foreground: #15171a;
-    --accent-text: #f47b20;
+    --accent-text: #ffab66;
+    --accent-wash: #3a2110;
+    --accent-ink: #ffab66;
     --accent-1: #f47b20;
     --accent-2: #4fd3df;
     --action: #0a7f9c;

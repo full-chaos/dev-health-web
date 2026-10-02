@@ -31,6 +31,12 @@ describe("Button", () => {
         }
     });
 
+    it("draws the keyboard focus ring in the action teal, never the selection orange (CHAOS-8141)", () => {
+        const cls = buttonClassName("primary", "md");
+        expect(cls).toContain("focus-visible:ring-(--accent-2)");
+        expect(cls).not.toContain("focus-visible:ring-(--accent) ");
+    });
+
     it("pins the size classes: md 35px, small 28px", () => {
         expect(buttonClassName("secondary", "md")).toContain("min-h-8.75");
         expect(buttonClassName("secondary", "md")).toContain("px-3.25");
