@@ -15,6 +15,7 @@ import { Notice } from "@/components/ui/Notice";
 import { Section } from "@/components/ui/Section";
 import { MarkdownRenderer } from "@/components/reports/MarkdownRenderer";
 import { StatusBadge } from "@/components/reports/StatusBadge";
+import { formatDateUTC } from "@/lib/formatters";
 import { logger } from "@/lib/logger";
 import { SavedReport, ReportRun } from "@/lib/reports/types";
 import {
@@ -69,8 +70,12 @@ function RenderedReportAndConfig({
                                 <Sparkles aria-hidden="true" className="h-3 w-3" />
                                 AI-generated report
                             </span>
-                            {runDate ? (
-                                <span>Run of {new Date(runDate).toLocaleDateString()}</span>
+                            {latestRun ? (
+                                <span>
+                                    {runDate
+                                        ? `Run of ${formatDateUTC(runDate)}`
+                                        : "Run date not reported"}
+                                </span>
                             ) : null}
                         </div>
                     }
@@ -91,7 +96,7 @@ function RenderedReportAndConfig({
                         <FactRow label="Scope" value={scopeLabel(params.scope)} />
                         <FactRow
                             label="Date Range"
-                            value={params.dateRange?.replace(/_/g, " ") || "Not reported"}
+                            value={params.dateRange?.replace(/_/g, " ") || "Not set"}
                             capitalize
                         />
                         <FactRow
@@ -111,7 +116,7 @@ function RenderedReportAndConfig({
                                 </span>
                             ))
                         ) : (
-                            <span className="text-sm text-(--ink-muted)">Not reported</span>
+                            <span className="text-sm text-(--ink-muted)">Not set</span>
                         )}
                     </div>
                 </Section>
@@ -151,7 +156,7 @@ const SCOPE_LABELS: Record<string, string> = {
 };
 
 function scopeLabel(scope?: string): string {
-    if (!scope) return "Not reported";
+    if (!scope) return "Not set";
     return SCOPE_LABELS[scope] ?? scope;
 }
 
@@ -178,7 +183,7 @@ const RUN_COLUMNS: readonly DataTableColumn<ReportRun>[] = [
     {
         key: "date",
         header: "Date",
-        render: (run) => (run.startedAt ? new Date(run.startedAt).toLocaleDateString() : "-"),
+        render: (run) => (run.startedAt ? formatDateUTC(run.startedAt) : "-"),
     },
     { key: "status", header: "Status", render: (run) => <StatusBadge status={run.status} /> },
     {

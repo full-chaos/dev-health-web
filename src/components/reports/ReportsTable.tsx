@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/reports/StatusBadge";
+import { formatDateUTC } from "@/lib/formatters";
 import type { SavedReport } from "@/lib/reports/types";
 
 /** Internal report path built from the id alone; a served value never decides where the link goes. */
@@ -45,7 +46,7 @@ const COLUMNS: readonly DataTableColumn<SavedReport>[] = [
         header: "Last run",
         render: (report) =>
             report.lastRunAt ? (
-                new Date(report.lastRunAt).toLocaleDateString()
+                formatDateUTC(report.lastRunAt)
             ) : (
                 <span className="text-(--ink-muted)">Never</span>
             ),

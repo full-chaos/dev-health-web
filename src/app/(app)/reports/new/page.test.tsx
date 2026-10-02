@@ -22,7 +22,7 @@ describe("New report form (CHAOS-8096)", () => {
         render(<NewReportPage />);
 
         expect(screen.getByRole("link", { name: "Cancel" })).toHaveAttribute("href", "/reports");
-        const submit = screen.getByRole("button", { name: "Create Report" });
+        const submit = screen.getByRole("button", { name: "Create report" });
         expect(submit).toHaveAttribute("type", "submit");
         expect(submit.className).toContain("bg-(--action)");
     });
@@ -34,7 +34,7 @@ describe("New report form (CHAOS-8096)", () => {
         fireEvent.change(screen.getByLabelText("Report Name"), { target: { value: "R" } });
         await act(async () => {
             fireEvent.submit(
-                screen.getByRole("button", { name: "Create Report" }).closest("form")!,
+                screen.getByRole("button", { name: "Create report" }).closest("form")!,
             );
         });
 

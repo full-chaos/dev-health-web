@@ -175,17 +175,15 @@ describe("SingleReportPage — design R9-R16 (CHAOS-8096)", () => {
 
         const label = await screen.findByTestId("ai-report-label");
         expect(label).toHaveTextContent("AI-generated report");
-        expect(
-            screen.getByText(`Run of ${new Date("2026-09-29T12:00:00.000Z").toLocaleDateString()}`),
-        ).toBeInTheDocument();
+        expect(screen.getByText("Run of Sep 29, 2026")).toBeInTheDocument();
     });
 
-    it("shows 'Not reported' for a configuration value the report does not carry", async () => {
+    it("shows 'Not set' for a configuration parameter the report does not carry", async () => {
         render(<SingleReportPage />);
 
         await screen.findByTestId("ai-report-label");
-        expect(screen.queryByText("Not set")).toBeNull();
-        expect(screen.getAllByText("Not reported").length).toBeGreaterThanOrEqual(3);
+        expect(screen.queryByText("Not reported")).toBeNull();
+        expect(screen.getAllByText("Not set").length).toBeGreaterThanOrEqual(3);
     });
 
     it("opens the delete confirmation as a panel with the report name and Cancel closes it", async () => {
@@ -226,5 +224,18 @@ describe("SingleReportPage — scope label (CHAOS-8096)", () => {
 
         expect(await screen.findByText("Organization")).toBeInTheDocument();
         expect(screen.queryByText("org")).toBeNull();
+    });
+});
+
+describe("SingleReportPage — run date (CHAOS-8096)", () => {
+    it("says 'Run date not reported' when the latest run carries no date", async () => {
+        mockFetchSavedReport.mockResolvedValue(REPORT);
+        mockFetchReportRuns.mockResolvedValue({
+            items: [run({ renderedMarkdown: "Text.", startedAt: undefined, createdAt: "" })],
+            total: 1,
+        });
+        render(<SingleReportPage />);
+
+        expect(await screen.findByText("Run date not reported")).toBeInTheDocument();
     });
 });
