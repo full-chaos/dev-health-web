@@ -16,6 +16,7 @@ import { formatMetricValue as fmtMetric } from "@/lib/formatters";
 import { getOperatingReviewViaGraphQL } from "@/lib/graphql/operatingReviewFetchers";
 import type { OperatingReview, OperatingReviewMetric } from "@/lib/graphql/types";
 import { aggregateOperatingReviews } from "@/lib/operatingReviewAggregate";
+import { balancedColumns } from "@/lib/operatingReviewColumns";
 import { selectedOperatingReviewTeamIds } from "@/lib/operatingReviewScope";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
@@ -272,12 +273,15 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
                     ) : null}
 
                     {section.metrics.length ? (
-                        <MetricStrip columns={Math.min(section.metrics.length, 5)} className="mt-4">
+                        <MetricStrip
+                            columns={balancedColumns(section.metrics.length)}
+                            className="mt-4"
+                        >
                             {section.metrics.map((metric) => (
                                 <MetricTile
                                     key={metric.key}
                                     metric={metric}
-                                    narrow={section.metrics.length >= 5}
+                                    narrow={balancedColumns(section.metrics.length) >= 5}
                                 />
                             ))}
                         </MetricStrip>
