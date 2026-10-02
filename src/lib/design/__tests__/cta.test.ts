@@ -12,7 +12,7 @@ describe("CTA registry (Part D)", () => {
             applyFilters: "Apply filters",
             resetFilters: "Reset filters",
             copy: "Copy",
-            backToCockpit: "Back to Cockpit",
+            backToCockpit: "Back to Home",
             continue: "Continue",
             back: "Back",
             saving: "Saving...",

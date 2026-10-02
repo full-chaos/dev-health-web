@@ -3,7 +3,7 @@ import { expect, test, type APIRequestContext, type Page } from "@playwright/tes
 import { clickUntilUrl, waitForHydration } from "./helpers/nav";
 
 const primaryAreas = [
-    { label: "Cockpit", path: "/dashboard" },
+    { label: "Home", path: "/dashboard" },
     { label: "Diagnose", path: "/diagnose" },
     { label: "Plan", path: "/plan" },
     { label: "Improve", path: "/improve" },

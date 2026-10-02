@@ -273,7 +273,7 @@ Audit and align existing uses. No visual change for most, but makes future work 
 
 **Problem:** Large metric numbers (`text-2xl font-semibold`) are plain white/dark text. They don't draw the eye to the most important data.
 
-**Recommendation:** For hero metrics (dashboard cockpit, top-level DORA scores), apply a subtle gradient text effect:
+**Recommendation:** For hero metrics (Home dashboard, top-level DORA scores), apply a subtle gradient text effect:
 
 ```css
 .metric-hero {

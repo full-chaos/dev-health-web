@@ -24,16 +24,16 @@ describe("PageHeader — eyebrow from the navigation trail", () => {
 
     it("shows the area for a page with its own title", () => {
         navigationMock.pathname = "/dashboard";
-        render(<PageHeader title="Developer Health Ops Cockpit" />);
+        render(<PageHeader title="Weekly summary" />);
 
-        expect(screen.getByTestId("page-header-eyebrow")).toHaveTextContent("Cockpit");
+        expect(screen.getByTestId("page-header-eyebrow")).toHaveTextContent("Home");
     });
 
     it("leaves the eyebrow out when it would only repeat the title (A8)", () => {
         navigationMock.pathname = "/dashboard";
         render(<PageHeader />);
 
-        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Cockpit");
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Home");
         expect(screen.queryByTestId("page-header-eyebrow")).toBeNull();
     });
 

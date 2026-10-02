@@ -138,7 +138,7 @@ Home | People | Metrics | Landscape | Work | Capacity | Code | Quality | Opportu
 #### Target Structure (Grouped by Intent)
 
 ```
-COCKPIT (Home)
+HOME
   └─ Status overview, key shifts, limiting factors
 
 OBSERVE
@@ -224,7 +224,7 @@ ADMIN (existing)
 
 #### Acceptance Criteria
 
-- [ ] Navigation grouped into Cockpit, Observe, Investigate sections
+- [ ] Navigation grouped into Home, Observe, Investigate sections
 - [ ] Group headers are collapsible with state persisted
 - [ ] Reduced from 9 to 6 visible nav items (plus groups)
 - [ ] Backward-compatible redirects if routes change
@@ -250,7 +250,7 @@ ADMIN (existing)
     - Sets role preference and persists to user profile if authenticated
 
 2. **GuidedTour** (`src/components/onboarding/GuidedTour.tsx`)
-    - Step-by-step tooltip tour of Cockpit
+    - Step-by-step tooltip tour of Home
     - Highlights: Key Shifts, Monitoring Views, Limiting Factor, Investigation Threads
     - Uses library: `driver.js` or custom implementation
     - Skip button always visible
@@ -287,7 +287,7 @@ ADMIN (existing)
     // After session check, render <WelcomeModal /> if !hasSeenWelcome
     ```
 
-3. **Integrate GuidedTour on Cockpit**
+3. **Integrate GuidedTour on Home**
 
     ```tsx
     // src/app/page.tsx
@@ -302,7 +302,7 @@ ADMIN (existing)
 #### Acceptance Criteria
 
 - [ ] New users see role selection modal on first sign-in
-- [ ] Guided tour highlights 4-5 key cockpit sections
+- [ ] Guided tour highlights 4-5 key Home sections
 - [ ] Empty states show sample data with explanatory overlay
 - [ ] Data ingestion shows progress indicator
 - [ ] Tour can be skipped at any point
@@ -369,7 +369,7 @@ ADMIN (existing)
     - Scrollable content area
     - Overlay behind panel to dim main content
 
-2. **Add panel state to Cockpit**
+2. **Add panel state to Home**
 
     ```tsx
     // src/app/page.tsx (convert to client component or use state management)
@@ -396,7 +396,7 @@ ADMIN (existing)
 - [ ] "Open in Explore" button available for full-page view
 - [ ] Panel closes on escape key or overlay click
 - [ ] Panel works on mobile (full-width)
-- [ ] Back button on mobile returns to cockpit (not browser back)
+- [ ] Back button on mobile returns to Home (not browser back)
 
 ---
 

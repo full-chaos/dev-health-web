@@ -102,10 +102,10 @@ describe("ScopeBar — one row", () => {
     });
 
     it("shows the origin when the page passes one", () => {
-        renderBar({ origin: "Cockpit" });
+        renderBar({ origin: "Home" });
 
         expect(within(row()).getByText("Origin")).toBeInTheDocument();
-        expect(within(row()).getByText("Cockpit")).toBeInTheDocument();
+        expect(within(row()).getByText("Home")).toBeInTheDocument();
     });
 });
 
@@ -183,7 +183,7 @@ describe("ScopeBar — each action writes the same `f` the old bars wrote", () =
         );
     });
 
-    it("organization on a team-locked view (the Cockpit): clears the teams, as the two old bars did together", async () => {
+    it("organization on a team-locked view (the Home): clears the teams, as the two old bars did together", async () => {
         const user = userEvent.setup();
         scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}`);
         renderBar({ orgName: "Test" });
@@ -515,7 +515,7 @@ describe("ScopeBar — a view with no page filter (Complexity, Cognitive Load)",
 });
 
 describe("ScopeBar — a view with page filters keeps the team lock", () => {
-    it("the Cockpit view: an organization click ends at the team level", async () => {
+    it("the Home view: an organization click ends at the team level", async () => {
         const user = userEvent.setup();
         render(<ScopeBar view="home" orgName="Test" />);
 
@@ -527,7 +527,7 @@ describe("ScopeBar — a view with page filters keeps the team lock", () => {
         expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
     });
 
-    it("the Cockpit view: adds the default `f` when the URL has none", () => {
+    it("the Home view: adds the default `f` when the URL has none", () => {
         scopeBarUrl.reset("role=em");
         render(<ScopeBar view="home" />);
 
@@ -535,7 +535,7 @@ describe("ScopeBar — a view with page filters keeps the team lock", () => {
         expect(scopeBarUrl.lastParams().get("role")).toBe("em");
     });
 
-    it("the Cockpit view: reset writes the default `f`", async () => {
+    it("the Home view: reset writes the default `f`", async () => {
         const user = userEvent.setup();
         scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}`);
         render(<ScopeBar view="home" />);

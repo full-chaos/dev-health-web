@@ -103,7 +103,7 @@ describe("AppLayout entitlement wiring", () => {
         render(await AppLayout({ children: <span>Context Fabric</span> }));
 
         const accountNavigation = screen.getByRole("navigation", { name: "Account" });
-        const brandLink = screen.getByRole("link", { name: "Full Chaos Dev Health cockpit" });
+        const brandLink = screen.getByRole("link", { name: "Full Chaos Dev Health home" });
         expect(brandLink).toHaveAttribute("href", "/dashboard");
         expect(brandLink).toContainElement(
             screen.getByRole("img", { name: "Full Chaos Dev Health logo" }),
