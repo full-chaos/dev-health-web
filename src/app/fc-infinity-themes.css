@@ -51,7 +51,7 @@
     --theme-feature: var(--chart-color-5);
     --theme-quality: var(--chart-color-4);
     --theme-risk: var(--chart-color-2);
-    --theme-maintenance: #a30a06;
+    --theme-maintenance: var(--chart-color-3);
     --theme-operational: var(--chart-color-1);
     --seq-0: #dbeaee;
     --seq-1: #b0dbe5;
@@ -112,7 +112,7 @@
     --theme-feature: var(--chart-color-5);
     --theme-quality: var(--chart-color-4);
     --theme-risk: var(--chart-color-2);
-    --theme-maintenance: #da2100;
+    --theme-maintenance: var(--chart-color-3);
     --theme-operational: var(--chart-color-1);
     --seq-0: #162d36;
     --seq-1: #17566a;

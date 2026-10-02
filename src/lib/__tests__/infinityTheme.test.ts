@@ -251,8 +251,9 @@ describe("infinity palette", () => {
             expect(t["--theme-feature"]).toBe("var(--chart-color-5)");
             expect(t["--theme-quality"]).toBe("var(--chart-color-4)");
             expect(t["--theme-risk"]).toBe("var(--chart-color-2)");
-            // Investment's Maintenance keeps its own color: it does not follow series 3 (CHAOS-7892).
-            expect(t["--theme-maintenance"]).toBe(theme === "light" ? "#a30a06" : "#da2100");
+            // Investment's Maintenance follows chart series 3 (chris ruling 66, CHAOS-7892): it is that very token.
+            expect(t["--theme-maintenance"]).toBe("var(--chart-color-3)");
+            expect(t["--chart-color-3"]).toBe(theme === "light" ? "#2525d0" : "#da2100");
             expect(t["--theme-operational"]).toBe("var(--chart-color-1)");
             const ramp = [0, 1, 2, 3, 4, 5].map((n) => luminance(t[`--seq-${n}`]));
             const sorted = [...ramp].sort((a, b) => (theme === "light" ? b - a : a - b));
@@ -443,15 +444,15 @@ describe("infinity palette", () => {
         expect(light["--chart-color-1"]).toBe("#0087a9");
     });
 
-    // Pin of the whole dark block: CHAOS-7746 left it byte-equal; CHAOS-7892 changed exactly series 7 and 8
-    // and the Maintenance theme color (the diff of this hash is those three lines).
+    // Pin of the whole dark block: CHAOS-7746 left it byte-equal; CHAOS-7892 changed exactly dark series 7
+    // and 8 (the diff of this hash is those two lines).
     it("leaves the dark block byte for byte as pinned", () => {
         const block = infinityCss.match(
             /:root\[data-palette="infinity"\]\[data-theme="dark"\] \{([\s\S]*?)\n\}/u,
         );
         expect(block).not.toBeNull();
         expect(createHash("sha256").update(block![1]).digest("hex")).toBe(
-            "c669ae2a52e632f4066967dad6fb50238e2a2cf0fa63bec0ba4fcaf421de462c",
+            "3ef223c88b2f79d6283a0dd9de308b76ee2534b501dd3dd7a04e4093c575faff",
         );
     });
 

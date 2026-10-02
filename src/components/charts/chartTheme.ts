@@ -85,8 +85,7 @@ const TOKEN_VARS = {
     themeFeature: "--chart-color-5",
     themeQuality: "--chart-color-4",
     themeRisk: "--chart-color-2",
-    // Investment's Maintenance keeps its own color: it does not follow series 3 (CHAOS-7892).
-    themeMaintenance: "--theme-maintenance",
+    themeMaintenance: "--chart-color-3",
     themeOperational: "--chart-color-1",
 } as const;
 
