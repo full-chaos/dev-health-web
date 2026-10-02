@@ -75,6 +75,20 @@ describe("ScopeBar — one row", () => {
                 .getAllByRole("button")
                 .map((button) => button.textContent),
         ).toEqual(["7d", "14d", "30d", "90d"]);
+        // Prototype `.scope-item`: plain label + value triggers (no pill border), dividers, a
+        // plain window row whose active button has a wash.
+        const team = inRow.getByRole("button", { name: /^Team/ });
+        expect(team.className).not.toContain("border");
+        expect(team.querySelector("svg.lucide-chevron-down")).not.toBeNull();
+        expect(inRow.getByRole("button", { name: "Test" }).className).not.toContain("border");
+        const windowGroup = inRow.getByRole("group", { name: "Window" });
+        expect(
+            within(windowGroup)
+                .getAllByRole("button")
+                .find((button) => button.getAttribute("aria-pressed") === "true")?.className,
+        ).toContain("bg-(--accent)/15");
+        expect(windowGroup.className).not.toContain("border");
+        expect(row().querySelectorAll("span.w-px")).toHaveLength(3);
         const filters = inRow.getByRole("button", { name: "Filters" });
         // Prototype `scopebar()`: Filters is ghost small with the filter icon.
         expect(filters.querySelector("svg.lucide-list-filter")).not.toBeNull();
