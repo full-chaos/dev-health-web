@@ -46,7 +46,7 @@ describe("ThemeToggle", () => {
         expect(toggle.textContent).toBe("");
         expect(toggle.querySelector("svg.lucide-sun")).not.toBeNull();
         expect(toggle.className).toMatch(/\brounded-md\b/);
-        expect(toggle.className).toMatch(/w-\[35px\]/);
+        expect(toggle.className).toMatch(/\bw-9\b/);
     });
 
     it("falls back to dark, not the system theme, when nothing is stored or set", () => {
