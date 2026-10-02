@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
@@ -31,18 +32,36 @@ type PrimarySignalHeroProps = {
      * (for example "Inspect code"). Without it the whole hero is the link (no invented copy).
      */
     actionLabel?: string;
+    /**
+     * The caller's own primary action (for example a button that opens the evidence drawer). It
+     * takes the place of the link: with it the hero draws no link, and `signal.href` and
+     * `actionLabel` are not used.
+     */
+    action?: ReactNode;
+    /**
+     * Heading element of the signal name. Default `h3` (the hero under a section heading). A page
+     * where the hero comes right after the page title passes `h2`, so no heading level is skipped.
+     */
+    titleAs?: "h2" | "h3";
 };
 
 /**
  * Shared primary-signal hero (prototype `hero()`): severity badge and "Primary signal" eyebrow,
  * the sub-area name, an optional caption, the headline value exactly as served, its metric name,
- * and one primary action into the sub-area when the caller supplies the prototype action text;
- * otherwise the whole hero links there.
+ * and one primary action: the caller's own `action` node, or a link into the sub-area with the
+ * prototype action text; with neither, the whole hero links there.
  *
  * Presentational. It shows the served `value`, `metricLabel` and `driver` and picks nothing:
  * the caller chooses the signal (existing severity rule).
  */
-export function PrimarySignalHero({ signal, filters, role, actionLabel }: PrimarySignalHeroProps) {
+export function PrimarySignalHero({
+    signal,
+    filters,
+    role,
+    actionLabel,
+    action,
+    titleAs: TitleTag = "h3",
+}: PrimarySignalHeroProps) {
     const href = withFilterParam(signal.href, filters, role);
     return (
         <div
@@ -52,7 +71,7 @@ export function PrimarySignalHero({ signal, filters, role, actionLabel }: Primar
             data-emphasized="true"
             className={`relative flex flex-wrap items-center justify-between gap-5.5 rounded-(--radius-md) border border-l-3 border-(--card-stroke) bg-(--card) p-6.25 ${HERO_EDGE[signal.state]}`}
         >
-            {actionLabel ? null : (
+            {action || actionLabel ? null : (
                 <Link
                     href={href}
                     aria-label={signal.label}
@@ -72,9 +91,9 @@ export function PrimarySignalHero({ signal, filters, role, actionLabel }: Primar
                         Primary signal
                     </span>
                 </div>
-                <h3 className="mt-2 font-(--font-display) text-xl leading-7 text-foreground">
+                <TitleTag className="mt-2 font-(--font-display) text-xl leading-7 text-foreground">
                     {signal.label}
-                </h3>
+                </TitleTag>
                 {signal.driver ? (
                     <p
                         data-testid="area-signal-driver"
@@ -94,10 +113,19 @@ export function PrimarySignalHero({ signal, filters, role, actionLabel }: Primar
                     </span>
                 ) : null}
                 <span className="text-xs text-(--ink-muted)">{signal.metricLabel}</span>
-                {actionLabel ? (
-                    <Link href={href} className={buttonClassName("primary", "md", "mt-3")}>
-                        {actionLabel}
+                {action ? (
+                    <div data-testid="area-signal-hero-action" className="mt-3">
+                        {action}
+                    </div>
+                ) : actionLabel ? (
+                    <Link
+                        href={href}
+                        data-testid="area-signal-hero-cta"
+                        className={buttonClassName("primary", "md", "mt-3")}
+                    >
+                        {/* Prototype `btn()`: the icon comes before the text. */}
                         <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                        {actionLabel}
                     </Link>
                 ) : null}
             </div>

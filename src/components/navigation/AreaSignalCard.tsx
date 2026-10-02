@@ -144,7 +144,7 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                 </h3>
                 <span
                     data-testid="area-signal-badge"
-                    className={`shrink-0 rounded-sm px-1.75 py-0.75 text-xs font-semibold ${badge}`}
+                    className={`shrink-0 px-1.75 py-0.75 text-xs font-semibold ${badge}`}
                 >
                     {stateLabel}
                 </span>

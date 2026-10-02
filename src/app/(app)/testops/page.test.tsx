@@ -146,6 +146,14 @@ describe("TestOps Overview page — approved layout", () => {
         expect(screen.getByTestId("testops-tabs")).toHaveAttribute("data-active", "overview");
     });
 
+    it("uses the approved subtitle (no 'durable')", async () => {
+        await renderPage();
+        expect(
+            screen.getByText("Pipeline, test, and coverage operations in one destination."),
+        ).toBeInTheDocument();
+        expect(screen.queryByText(/durable/)).toBeNull();
+    });
+
     it("has exactly the five approved tiles, in order, with the served values", async () => {
         await renderPage();
         const strip = screen.getByTestId("testops-overview-tiles");
