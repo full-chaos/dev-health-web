@@ -1,10 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { AppShell } from "@/components/shell/AppShell";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
+
+import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
+import { getAreaSignals } from "@/lib/areaSignals";
 
 import ImprovePage from "./page";
 
@@ -51,9 +55,11 @@ vi.mock("@/lib/config", async (importOriginal) => ({
 async function renderPage() {
     return render(
         <AdminTierProvider tier="community" features={{}}>
-            <AppShell>
-                {await ImprovePage({ searchParams: Promise.resolve({ f: F, role: "em" }) })}
-            </AppShell>
+            <EvidenceDrawerProvider>
+                <AppShell>
+                    {await ImprovePage({ searchParams: Promise.resolve({ f: F, role: "em" }) })}
+                </AppShell>
+            </EvidenceDrawerProvider>
         </AdminTierProvider>,
     );
 }
@@ -119,6 +125,51 @@ describe("Improve overview in the shared app shell", () => {
         expect(areaOverviewSpy).toHaveBeenCalledWith(
             expect.objectContaining({ areaId: "improve", filters: FILTERS, role: "em" }),
         );
+    });
+
+    it("drops the legacy line 'Improvement workflows, ordered by severity.'", async () => {
+        await renderPage();
+
+        expect(areaOverviewSpy.mock.calls[0][0]).not.toHaveProperty("description");
+        expect(screen.queryByText(/ordered by severity/)).toBeNull();
+    });
+
+    it("has a View evidence action that lists the served signals, 'Not reported' for an unavailable one", async () => {
+        vi.mocked(getAreaSignals).mockResolvedValueOnce([
+            {
+                id: "opportunities",
+                label: "Opportunities",
+                href: "/opportunities",
+                metricLabel: "4 evidence-linked",
+                value: "4 open",
+                state: "neutral",
+            },
+            {
+                id: "improve-automations",
+                label: "Automations",
+                href: "/improve/automations",
+                metricLabel: "Automations",
+                value: "",
+                state: "unavailable",
+            },
+        ]);
+        await renderPage();
+
+        await userEvent.click(
+            within(screen.getByTestId("page-header")).getByRole("button", {
+                name: "View evidence",
+            }),
+        );
+        const rows = within(await screen.findByTestId("page-evidence-facts"))
+            .getAllByTestId("evidence-fact")
+            .map((row) => [
+                row.querySelector("dt")?.textContent,
+                row.querySelector("dd")?.textContent,
+            ]);
+        expect(rows).toEqual([
+            ["Opportunities", "4 open · 4 evidence-linked"],
+            ["Automations", "Not reported"],
+        ]);
     });
 
     it("passes the note on the two automation destinations to the overview", async () => {

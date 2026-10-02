@@ -142,6 +142,35 @@ describe("Operating Review AI-workflow callout is an info notice", () => {
         expect(container.innerHTML).not.toMatch(RAW);
     });
 
+    it("sets one metric column per card (wrap after 5), so a short section has no empty cell", async () => {
+        const many = (n: number) =>
+            Array.from({ length: n }, (_, i) => metric(`m${n}-${i}`, "changed"));
+        reviewMock.review = {
+            ...review,
+            sections: [
+                { ...review.sections[0], key: "delivery_movement", metrics: many(3) },
+                { ...review.sections[0], key: "risk", title: "Risk", metrics: many(4) },
+                {
+                    ...review.sections[0],
+                    key: "reliability",
+                    title: "Reliability",
+                    metrics: many(6),
+                },
+            ],
+        } as unknown as OperatingReview;
+        const { container } = await renderPage();
+
+        const columns = [...container.querySelectorAll("[data-columns]")].map((el) =>
+            el.getAttribute("data-columns"),
+        );
+        expect(columns).toEqual(["3", "4", "5"]);
+        expect(container.querySelectorAll("[data-testid='metric-strip-filler']")).toHaveLength(4);
+        // The status pill sits at the top right of its tile (design picture).
+        const chip = screen.getAllByText("changed", { selector: "span" })[0];
+        expect(chip.className).toContain("absolute");
+        expect(chip.className).toContain("right-4");
+    });
+
     it("shows the agenda index as six-card strip with the three counts as pills", async () => {
         await renderPage();
 
