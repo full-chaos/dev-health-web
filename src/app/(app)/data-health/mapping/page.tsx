@@ -1,4 +1,5 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { Notice } from "@/components/ui/Notice";
 import { CoverageBar } from "../_components/CoverageBar";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import {
@@ -33,9 +34,9 @@ export default async function MappingHealthPage() {
             />
 
             {error && (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false}>
                     Failed to load data: {error}
-                </div>
+                </Notice>
             )}
 
             {!error && !coverageData && (

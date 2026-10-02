@@ -1,4 +1,5 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
+import { Notice } from "@/components/ui/Notice";
 import {
     ConnectorStatusTable,
     type ConnectorStatusItem,
@@ -41,9 +42,9 @@ export default async function ConnectorsHealthPage() {
             />
 
             {error ? (
-                <div className="rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false}>
                     Failed to load data: {error}
-                </div>
+                </Notice>
             ) : (
                 <ConnectorStatusTable data={data} />
             )}

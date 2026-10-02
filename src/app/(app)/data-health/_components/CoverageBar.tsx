@@ -1,5 +1,7 @@
 "use client";
 
+import { STATUS_DOT } from "@/lib/statusPill";
+
 type CoverageBarProps = {
     coveragePercent: number; // 0 to 100
     label?: string;
@@ -10,9 +12,9 @@ export function CoverageBar({ coveragePercent, label, className = "" }: Coverage
     const percent = Math.max(0, Math.min(100, Math.round(coveragePercent)));
 
     // Color code based on coverage
-    let barColor = "bg-red-500";
-    if (percent >= 90) barColor = "bg-green-500";
-    else if (percent >= 70) barColor = "bg-yellow-500";
+    let barColor: string = STATUS_DOT.negative;
+    if (percent >= 90) barColor = STATUS_DOT.positive;
+    else if (percent >= 70) barColor = STATUS_DOT.caution;
 
     return (
         <div className={`flex flex-col gap-1.5 ${className}`}>
