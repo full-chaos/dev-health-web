@@ -447,14 +447,14 @@ describe("infinity palette", () => {
     // Pin of the whole dark block: CHAOS-7746 left it byte-equal; CHAOS-7892 changed exactly dark series 7
     // and 8 (the diff of this hash is those two lines); CHAOS-8061 added exactly --action and --on-action;
     // CHAOS-8141 added --accent-wash and --accent-ink and set --accent-text to #ffab66 (4 lines);
-    // CHAOS-8171 added the four --*-wash status tokens (comment line + 4 lines).
+    // CHAOS-8171 added the four --*-wash status tokens (comment line + 4 lines); --deemph added (CHAOS-8171 follow-up).
     it("leaves the dark block byte for byte as pinned", () => {
         const block = infinityCss.match(
             /:root\[data-palette="infinity"\]\[data-theme="dark"\] \{([\s\S]*?)\n\}/u,
         );
         expect(block).not.toBeNull();
         expect(createHash("sha256").update(block![1]).digest("hex")).toBe(
-            "667e308c64e706c00890c5eea254289e4d006ac23b133a9465d958e1a9c854e3",
+            "0cda353fc32d4a5860b8f680b7b9641c0a855201465bdc35bf47e64c8e2dd7da",
         );
     });
 
