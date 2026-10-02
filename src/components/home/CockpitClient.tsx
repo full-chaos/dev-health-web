@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { EvidencePanel } from "@/components/evidence";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
@@ -12,12 +12,16 @@ import { sortDeltasByRole, getMetricPolarity } from "@/lib/metrics/catalog";
 import { formatMetricValue } from "@/lib/formatters";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import type { HomeResponse } from "@/lib/types";
+
+import { ThreadRow } from "./ThreadRow";
 import type { MetricFilter } from "@/lib/filters/types";
 
 type CockpitClientProps = {
     home: HomeResponse | null;
     filters: MetricFilter;
     activeRole: string;
+    /** Extra rows for the Investigation threads list (rendered by the page, after the built-in ones). */
+    children?: ReactNode;
 };
 
 const THREAD_API_TARGETS: Record<string, string> = {
@@ -61,7 +65,7 @@ const getThreadEvidenceTarget = (
     };
 };
 
-export function CockpitClient({ home, filters, activeRole }: CockpitClientProps) {
+export function CockpitClient({ home, filters, activeRole, children }: CockpitClientProps) {
     const [panelState, setPanelState] = useState<{
         isOpen: boolean;
         title: string;
@@ -161,13 +165,17 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                 )}
             </section>
 
-            <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-                    <h2 className="font-(--font-display) text-2xl">Notable shifts</h2>
-                    <p className="mt-2 text-sm text-(--ink-muted)">
-                        Short shifts from the selected window.
-                    </p>
-                    <div className="mt-4 space-y-3 text-sm text-(--ink-muted)">
+            <section
+                aria-label="Investigation threads"
+                data-testid="investigation-threads"
+                className="overflow-hidden rounded-(--radius-md) border border-(--card-stroke) bg-(--card)"
+            >
+                <ThreadRow
+                    id="notable-shifts"
+                    title="Notable shifts"
+                    summary="Short shifts from the selected window."
+                >
+                    <div className="space-y-3 text-sm text-(--ink-muted)">
                         {(home?.summary ?? []).map((sentence, idx) => (
                             <button
                                 type="button"
@@ -175,22 +183,25 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                                 onClick={() =>
                                     openPanel("Notable Shift", { apiUrl: sentence.evidence_link })
                                 }
-                                className="block w-full text-left rounded-2xl border border-transparent bg-(--card-60) px-4 py-3 transition hover:border-(--card-stroke)"
+                                className="block w-full text-left rounded-(--radius-sm) border border-transparent bg-background px-4 py-3 transition hover:border-(--card-stroke)"
                             >
                                 {scrubIdentifiers(sentence.text).text}
                             </button>
                         ))}
                         {!home?.summary?.length && (
-                            <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3">
+                            <p className="rounded-(--radius-sm) border border-dashed border-(--card-stroke) bg-background px-4 py-3">
                                 Summary will appear once data is ingested.
                             </p>
                         )}
                     </div>
-                </div>
+                </ThreadRow>
 
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-                    <div className="flex items-center justify-between">
-                        <h3 className="font-(--font-display) text-xl">Investigation threads</h3>
+                <ThreadRow
+                    id="investigation-threads"
+                    title="Investigation threads"
+                    summary={home?.constraint.title ?? "Constraint pending"}
+                >
+                    <div className="flex items-center justify-end">
                         <Link
                             href={withFilterParam("/opportunities", filters, activeRole)}
                             className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
@@ -210,9 +221,9 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                                               getThreadEvidenceTarget(key, tile, filters),
                                           )
                                       }
-                                      className="group w-full text-left rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
+                                      className="group w-full text-left rounded-(--radius-sm) border border-(--card-stroke) bg-background px-4 py-3 transition hover:border-(--accent)"
                                   >
-                                      <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                                      <p className="text-label-caps uppercase text-(--ink-muted)">
                                           {tile.title}
                                       </p>
                                       <p className="mt-2 text-base font-semibold text-foreground">
@@ -226,9 +237,9 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                             : null}
                         <Link
                             href={withFilterParam("/opportunities", filters, activeRole)}
-                            className="block rounded-2xl border border-(--card-stroke) bg-(--accent)/15 px-4 py-3"
+                            className="block rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface-raised) px-4 py-3"
                         >
-                            <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                            <p className="text-label-caps uppercase text-(--ink-muted)">
                                 Focus thread
                             </p>
                             <p className="mt-2 text-base font-semibold">
@@ -239,13 +250,18 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                             </p>
                         </Link>
                     </div>
-                </div>
-            </section>
+                </ThreadRow>
 
-            <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5">
-                    <div className="flex items-center justify-between">
-                        <h3 className="font-(--font-display) text-xl">Limiting factor</h3>
+                <ThreadRow
+                    id="limiting-factor"
+                    title="Limiting factor"
+                    summary={
+                        home?.limiting_factor?.claim ??
+                        home?.constraint.claim ??
+                        "Evidence will appear once data is ingested."
+                    }
+                >
+                    <div className="flex items-center justify-end">
                         <button
                             type="button"
                             onClick={() =>
@@ -269,7 +285,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                         </p>
                     ) : null}
                     {home?.limiting_factor?.recommended_action ? (
-                        <div className="mt-3 rounded-2xl border border-(--accent)/20 bg-(--accent)/8 p-3">
+                        <div className="mt-3 rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface-raised) p-3">
                             <p className="text-label-caps font-semibold uppercase tracking-[0.2em] text-(--accent-text)">
                                 Recommended action
                             </p>
@@ -284,7 +300,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                                 type="button"
                                 key={`${item.label}-${item.link}`}
                                 onClick={() => openPanel(item.label, { apiUrl: item.link })}
-                                className="block w-full text-left rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3 hover:bg-(--card-60) transition-colors"
+                                className="block w-full text-left rounded-(--radius-sm) border border-(--card-stroke) bg-background px-4 py-3 transition-colors hover:border-(--accent)"
                             >
                                 {item.label}
                             </button>
@@ -300,11 +316,16 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                             </span>
                         ))}
                     </div>
-                </div>
+                </ThreadRow>
 
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-                    <div className="flex items-center justify-between">
-                        <h3 className="font-(--font-display) text-xl">Recent events</h3>
+                <ThreadRow
+                    id="recent-events"
+                    title="Recent events"
+                    summary={
+                        home?.events?.[0]?.text ?? "No major shifts detected in the current window."
+                    }
+                >
+                    <div className="flex items-center justify-end">
                         <Link
                             href={buildExploreUrl({ filters, role: activeRole })}
                             className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
@@ -318,9 +339,9 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                                 type="button"
                                 key={`${event.type}-${event.ts}-${event.text}`}
                                 onClick={() => openPanel(event.type, { apiUrl: event.link })}
-                                className="block w-full text-left rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 hover:border-(--card-stroke)/80 transition-colors"
+                                className="block w-full text-left rounded-(--radius-sm) border border-(--card-stroke) bg-background px-4 py-3 transition-colors hover:border-(--accent)"
                             >
-                                <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                                <div className="flex items-center justify-between text-label-caps uppercase text-(--ink-muted)">
                                     <span>{event.type}</span>
                                     <ClientTimestamp value={event.ts} />
                                 </div>
@@ -328,12 +349,14 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                             </button>
                         ))}
                         {!home?.events?.length && (
-                            <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card) px-4 py-3 text-(--ink-muted)">
+                            <p className="rounded-(--radius-sm) border border-dashed border-(--card-stroke) bg-background px-4 py-3 text-(--ink-muted)">
                                 No major shifts detected in the current window.
                             </p>
                         )}
                     </div>
-                </div>
+                </ThreadRow>
+
+                {children}
             </section>
         </>
     );
