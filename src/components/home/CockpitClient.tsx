@@ -104,14 +104,12 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
 
             {/* Key Shifts — role-aware delta row (CHAOS-2094) */}
             <section
-                className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5"
+                className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card) p-5"
                 data-testid="key-shifts-row"
             >
                 <div className="flex items-center justify-between">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                            Key Shifts
-                        </p>
+                        <p className="text-label-caps uppercase text-(--ink-muted)">Key Shifts</p>
                         <p className="mt-1 text-sm text-(--ink-muted)">
                             Metric movements ordered for your role.
                         </p>
@@ -126,7 +124,7 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
 
                 {sortedDeltas.length > 0 ? (
                     <div
-                        className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4"
+                        className="mt-4 grid grid-cols-2 gap-3.5 md:grid-cols-4"
                         data-testid="key-shifts-grid"
                     >
                         {/* Role-priority ordering intentionally trumps magnitude; show top 8 per window. */}
@@ -138,12 +136,12 @@ export function CockpitClient({ home, filters, activeRole }: CockpitClientProps)
                                     filters,
                                     role: activeRole,
                                 })}
-                                className="group rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
+                                className="group min-h-31 rounded-(--radius-md) border border-(--card-stroke) bg-background px-5 py-4.5 transition hover:-translate-y-0.5 hover:border-(--accent)"
                             >
-                                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                                <p className="text-label-caps uppercase text-(--ink-muted)">
                                     {delta.label}
                                 </p>
-                                <p className="mt-2 text-base font-semibold text-foreground">
+                                <p className="mt-2.5 text-[1.75rem] font-semibold leading-tight tabular-nums text-foreground">
                                     {formatMetricValue(delta.value, delta.unit)}
                                 </p>
                                 <MetricDelta
