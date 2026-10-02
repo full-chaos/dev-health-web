@@ -86,13 +86,20 @@ export function ImproveOpportunityList({
             <table className="w-full text-sm" data-testid="improve-automations-table">
                 <thead className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                     <tr>
-                        {["Signal", "Entity", "Severity", "Detail", "Recommended", "Evidence"].map(
-                            (label) => (
-                                <th key={label} className="px-3 py-2 text-left font-medium">
-                                    {label}
-                                </th>
-                            ),
-                        )}
+                        {[
+                            "Signal",
+                            "Captured entity",
+                            "Value",
+                            "Threshold",
+                            "Severity",
+                            "Detail",
+                            "Recommended",
+                            "Evidence",
+                        ].map((label) => (
+                            <th key={label} className="px-3 py-2 text-left font-medium">
+                                {label}
+                            </th>
+                        ))}
                     </tr>
                 </thead>
                 <tbody>
@@ -107,6 +114,19 @@ export function ImproveOpportunityList({
                             </td>
                             <td className="px-3 py-3">
                                 <EntityCell item={item} />
+                            </td>
+                            {/* Not served per detection yet (CHAOS-7626): never computed here. */}
+                            <td
+                                className="px-3 py-3 text-(--ink-muted)"
+                                data-testid="detection-value"
+                            >
+                                Not reported
+                            </td>
+                            <td
+                                className="px-3 py-3 text-(--ink-muted)"
+                                data-testid="detection-threshold"
+                            >
+                                Not reported
                             </td>
                             <td className="px-3 py-3">
                                 <SeverityBadge severity={item.severity} />

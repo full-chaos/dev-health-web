@@ -1,10 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 import { DataState } from "@/components/ui/DataState";
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
+import { Button, buttonClassName } from "@/components/shared/Button";
 import { Notice } from "@/components/ui/Notice";
+import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { useImproveOpportunities } from "@/lib/graphql/hooks/useImproveOpportunities";
 import { ImproveOpportunityList, kindLabel } from "./ImproveOpportunityList";
@@ -34,14 +38,9 @@ export function ImproveAutomationsDashboard({
                 title="Flow opportunities could not load"
                 message={error.message ?? "Please retry the request."}
                 action={
-                    <button
-                        type="button"
-                        onClick={retry}
-                        className="rounded-xl border border-(--card-stroke) bg-background px-4 py-2 text-sm font-medium text-(--accent-2) hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/60"
-                        data-testid="improve-automations-retry"
-                    >
+                    <Button onClick={retry} data-testid="improve-automations-retry">
                         {CTA_LABELS.retry}
-                    </button>
+                    </Button>
                 }
                 data-testid="improve-automations-error"
             />
@@ -61,14 +60,13 @@ export function ImproveAutomationsDashboard({
     return (
         <div className="flex flex-col gap-6" data-testid="improve-automations-dashboard">
             {/* ── Counts from the same list ───────────────────────────────── */}
-            <div
-                className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4"
-                data-testid="improve-automations-tiles"
-            >
+            <MetricStrip data-testid="improve-automations-tiles">
                 <MetricCard
                     label="Detected signals"
                     value={ready ? result?.totalCount : undefined}
                     caption="This window"
+                    hideTrend
+                    deltaUnavailableLabel="No data"
                 />
                 {ready
                     ? [...kindCounts.entries()].map(([kind, count]) => (
@@ -77,46 +75,37 @@ export function ImproveAutomationsDashboard({
                               label={kindLabel(kind)}
                               value={count}
                               caption="In the list"
+                              hideTrend
                           />
                       ))
                     : null}
-            </div>
+            </MetricStrip>
 
             {/* ── Flow opportunity candidates ─────────────────────────────── */}
-            <section
-                className="rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm"
+            <Section
                 data-testid="improve-automations-flow-panel"
-            >
-                <div className="flex items-start justify-between gap-4">
-                    <div>
-                        <h2 className="font-(--font-display) text-lg font-semibold">
-                            Automation candidates
-                        </h2>
-                        <p className="mt-1 text-sm text-(--ink-muted)">
-                            Non-AI, threshold-based signals — review latency, cycle time, rework,
-                            WIP congestion, throughput, churn, and change failure rate. Each fires
-                            only when metric values exceed documented thresholds.
-                        </p>
-                    </div>
+                title="Automation candidates"
+                description="Non-AI, threshold-based signals — review latency, cycle time, rework, WIP congestion, throughput, churn, and change failure rate. Each fires only when metric values exceed documented thresholds."
+                action={
                     <Link
                         href={aiAutomationsHref}
-                        className="shrink-0 text-xs uppercase tracking-[0.2em] text-(--accent-2) underline-offset-4 hover:underline"
+                        className={buttonClassName("ghost", "sm")}
                         data-testid="improve-automations-head-link"
                     >
-                        {CTA_LABELS.seeAIAutomations} →
+                        {CTA_LABELS.seeAIAutomations}
+                        <ArrowRight aria-hidden="true" className="h-4 w-4" />
                     </Link>
-                </div>
-                <div className="mt-4">
-                    {result ? (
-                        <ImproveOpportunityList
-                            detectorReady={result.detectorReady}
-                            opportunities={result.opportunities}
-                        />
-                    ) : (
-                        <DataState variant="loading" />
-                    )}
-                </div>
-            </section>
+                }
+            >
+                {result ? (
+                    <ImproveOpportunityList
+                        detectorReady={result.detectorReady}
+                        opportunities={result.opportunities}
+                    />
+                ) : (
+                    <DataState variant="loading" />
+                )}
+            </Section>
 
             {/* ── AI-workflow cross-link ───────────────────────────────────── */}
             <Notice
@@ -128,7 +117,7 @@ export function ImproveAutomationsDashboard({
                 action={
                     <Link
                         href={aiAutomationsHref}
-                        className="rounded-xl border border-(--card-stroke) bg-background px-4 py-2 text-sm font-medium text-(--accent-2) hover:bg-(--card-80)"
+                        className={buttonClassName("secondary", "sm")}
                         data-testid="improve-automations-ai-link"
                     >
                         View AI automations →

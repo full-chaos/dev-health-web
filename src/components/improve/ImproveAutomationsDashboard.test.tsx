@@ -62,14 +62,16 @@ describe("ImproveAutomationsDashboard", () => {
         expect(tiles().queryByText("High WIP")).toBeNull();
     });
 
-    it("shows a table with the fields that exist and no Value or Threshold column", () => {
+    it("shows a table with Captured entity, Value and Threshold columns; Value and Threshold read Not reported until they are served", () => {
         hook.mockReturnValue(result());
         render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
 
         const table = within(screen.getByTestId("improve-automations-table"));
         expect(table.getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
             "Signal",
-            "Entity",
+            "Captured entity",
+            "Value",
+            "Threshold",
             "Severity",
             "Detail",
             "Recommended",
@@ -80,9 +82,28 @@ describe("ImproveAutomationsDashboard", () => {
             "title",
             "Review latency is high",
         );
+        expect(row.getByTestId("detection-value")).toHaveTextContent("Not reported");
+        expect(row.getByTestId("detection-threshold")).toHaveTextContent("Not reported");
         expect(row.getByText(/threshold: 48 h/)).toBeInTheDocument();
         expect(row.getByText("Add a second reviewer rota")).toBeInTheDocument();
         expect(row.getByText("review_latency · cycle_time")).toBeInTheDocument();
+    });
+
+    it("draws the tiles as one joined strip and the candidates as a Section with a ghost AI link", () => {
+        hook.mockReturnValue(result());
+        render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
+
+        expect(screen.getByTestId("improve-automations-tiles")).toHaveAttribute(
+            "data-columns",
+            "2",
+        );
+        const panel = within(screen.getByTestId("improve-automations-flow-panel"));
+        expect(
+            panel.getByRole("heading", { level: 2, name: "Automation candidates" }),
+        ).toBeInTheDocument();
+        expect(panel.getByTestId("improve-automations-head-link").className).toContain(
+            "text-(--accent-2)",
+        );
     });
 
     it("writes severity as a word with an icon", () => {
