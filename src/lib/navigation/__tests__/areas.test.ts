@@ -494,3 +494,47 @@ describe("navTitleForPathname / navTrailForPathname — /explore (CHAOS-2096)", 
         expect(exploreOwners[0]?.id).toBe("diagnose");
     });
 });
+
+describe("Every area hub item has its hero action text (ruling 93)", () => {
+    // The visible primary button of an area hero: the prototype's text where it gives one
+    // ("Inspect code", "Review opportunities", "Forecast completion"), else "Inspect <item>".
+    const expected: Record<string, string> = {
+        flow: "Inspect flow",
+        investment: "Inspect investment",
+        code: "Inspect code",
+        landscape: "Inspect landscape",
+        complexity: "Inspect complexity",
+        "cognitive-load": "Inspect cognitive load",
+        bottleneck: "Inspect bottlenecks",
+        capacity: "Forecast completion",
+        "operating-review": "Inspect operating review",
+        opportunities: "Review opportunities",
+        experiments: "Inspect experiments",
+        "improve-automations": "Inspect automations",
+        testops: "Inspect TestOps",
+        quality: "Inspect quality",
+        security: "Inspect security",
+        risk: "Inspect delivery risk",
+        "risk-compounding": "Inspect compounding risk",
+        "incident-correlation": "Inspect incident correlation",
+        "feature-flags": "Inspect feature flags",
+        "ai-impact": "Inspect AI impact",
+        "ai-review-load": "Inspect review load",
+        "ai-governance-risk": "Inspect governance risk",
+        "ai-automations": "Inspect automations",
+    };
+
+    it("no hub item of any area lacks a hero action text", () => {
+        const missing = navAreas.flatMap((area) =>
+            area.hubItems.filter((item) => !item.heroCta).map((item) => `${area.id}/${item.id}`),
+        );
+        expect(missing).toEqual([]);
+    });
+
+    it("uses the approved label table", () => {
+        const actual = Object.fromEntries(
+            navAreas.flatMap((area) => area.hubItems.map((item) => [item.id, item.heroCta])),
+        );
+        expect(actual).toEqual(expected);
+    });
+});

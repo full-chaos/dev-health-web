@@ -2,61 +2,98 @@
 
 import Link from "next/link";
 
-type EvidenceItem = {
+export type EvidenceItem = {
     id: string;
+    /** The served name of the row: a contributor, an artifact title, a served sentence. */
     title: string;
+    /** The served link of the row. "#" or empty: the row is not a link. */
     url: string;
     type: "pr" | "issue" | "commit" | "other";
+    /** A served line about the row, shown under its name. */
     meta?: string;
+    /** The served value of the row, shown at the right (for example "1.2 hours"). */
+    value?: string;
+    /** A served figure beside the value (for example the change). */
+    valueNote?: string;
 };
 
 type EvidenceItemsProps = {
     items: EvidenceItem[];
 };
 
+/** Title of the supporting section. The API does not serve the kind of a row, so no kind is named. */
+export const EVIDENCE_SUPPORTING_TITLE = "Supporting evidence";
+
+const TYPE_LABEL: Record<Exclude<EvidenceItem["type"], "other">, string> = {
+    pr: "Pull request",
+    issue: "Issue",
+    commit: "Commit",
+};
+
+/**
+ * The supporting rows of the evidence drawer (approved prototype `openEvidence`, `app.js:122`:
+ * one plain section of fact rows, name left and value right).
+ *
+ * Every text is served: the name, the value, the line under the name. A row whose API link was
+ * served is a link to it. The count of rows is the "Artifacts" fact row of the drawer.
+ */
 export function EvidenceItems({ items }: EvidenceItemsProps) {
     if (!items || items.length === 0) return null;
 
     return (
-        <section className="space-y-3 rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4">
-            <div className="flex items-center justify-between gap-3">
-                <p className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
-                    Supporting Evidence
-                </p>
-                <span className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-label-caps text-(--ink-muted)">
-                    {items.length} artifacts
-                </span>
-            </div>
-            <div className="space-y-2">
-                {items.map((item) => (
-                    <Link
-                        key={item.id}
-                        href={item.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group block rounded-xl border border-(--card-stroke) bg-background/35 p-3 transition-all hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5"
-                    >
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 space-y-1.5">
-                                <div className="flex items-center gap-2">
-                                    <span className="rounded border border-(--card-stroke) bg-(--card-70) px-1.5 py-0.5 text-label-caps font-bold uppercase text-(--ink-muted)">
-                                        {item.type}
-                                    </span>
-                                </div>
-                                <p className="line-clamp-2 text-sm font-medium leading-5 text-foreground group-hover:text-(--accent-2)">
-                                    {item.title}
-                                </p>
+        <section
+            data-testid="evidence-supporting"
+            aria-labelledby="evidence-supporting-title"
+            className="rounded-(--radius-md) border border-(--card-stroke) p-4"
+        >
+            <h4 id="evidence-supporting-title" className="text-sm font-semibold text-foreground">
+                {EVIDENCE_SUPPORTING_TITLE}
+            </h4>
+            <ul className="mt-2 text-xs">
+                {items.map((item) => {
+                    const linked = Boolean(item.url) && item.url !== "#";
+                    const kind = item.type === "other" ? null : TYPE_LABEL[item.type];
+                    const under = [kind, item.meta].filter(Boolean).join(" · ");
+                    return (
+                        <li
+                            key={item.id}
+                            data-testid="evidence-supporting-row"
+                            className="flex items-start gap-x-3 border-b border-(--card-stroke) py-2.5 last:border-b-0"
+                        >
+                            <div className="min-w-0">
+                                {linked ? (
+                                    <Link
+                                        href={item.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-foreground underline-offset-4 hover:text-(--accent-2) hover:underline"
+                                    >
+                                        {item.title}
+                                    </Link>
+                                ) : (
+                                    <span className="text-foreground">{item.title}</span>
+                                )}
+                                {under ? (
+                                    <p className="mt-0.5 text-(--ink-muted)">{under}</p>
+                                ) : null}
                             </div>
-                            <span className="text-(--ink-muted) opacity-0 transition-opacity group-hover:text-(--accent-2) group-hover:opacity-100">
-                                ↗
-                            </span>
-                        </div>
-                        {item.meta && (
-                            <p className="mt-2 text-xs leading-4 text-(--ink-muted)">{item.meta}</p>
-                        )}
-                    </Link>
-                ))}
-            </div>
+                            {item.value ? (
+                                <span className="ml-auto shrink-0 whitespace-nowrap text-right tabular-nums">
+                                    <span className="font-semibold text-foreground">
+                                        {item.value}
+                                    </span>
+                                    {item.valueNote ? (
+                                        <span className="text-(--ink-muted)">
+                                            {" "}
+                                            {item.valueNote}
+                                        </span>
+                                    ) : null}
+                                </span>
+                            ) : null}
+                        </li>
+                    );
+                })}
+            </ul>
         </section>
     );
 }
