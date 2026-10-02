@@ -278,3 +278,37 @@ describe("DataTable concept shell (CHAOS-7725)", () => {
         expect(td.className).toContain("text-right");
     });
 });
+
+describe("DataTable test hooks (CHAOS-7765)", () => {
+    it("puts testId on the table and rowTestId on each data row", () => {
+        render(<DataTable {...base} testId="things-table" rowTestId="things-row" />);
+
+        expect(screen.getByTestId("things-table").tagName).toBe("TABLE");
+        const rows = screen.getAllByTestId("things-row");
+        expect(rows).toHaveLength(2);
+        for (const row of rows) expect(row.tagName).toBe("TR");
+    });
+
+    it("adds no data-testid at all when the hooks are not given (other callers render as before)", () => {
+        const { container } = render(<DataTable {...base} />);
+
+        expect(container.querySelectorAll("[data-testid]")).toHaveLength(0);
+    });
+
+    it("does not tag the rows a caller renders itself with renderRowAction", () => {
+        render(
+            <DataTable
+                {...base}
+                rowTestId="things-row"
+                renderRowAction={(row) => (
+                    <tr data-testid={`own-${row.id}`}>
+                        <td>{row.name}</td>
+                    </tr>
+                )}
+            />,
+        );
+
+        expect(screen.queryByTestId("things-row")).toBeNull();
+        expect(screen.getByTestId("own-a")).toBeInTheDocument();
+    });
+});

@@ -59,6 +59,10 @@ type DataTableProps<T> = {
     isPending?: boolean;
     summaryLabel?: string;
     toolbar?: ReactNode;
+    /** Test hook: `data-testid` of the `<table>`. No attribute when it is not given. */
+    testId?: string;
+    /** Test hook: `data-testid` of each data `<tr>` (not used with `renderRowAction`). No attribute when it is not given. */
+    rowTestId?: string;
 };
 
 export function DataTable<T>({
@@ -79,6 +83,8 @@ export function DataTable<T>({
     isPending = false,
     summaryLabel,
     toolbar,
+    testId,
+    rowTestId,
 }: DataTableProps<T>) {
     const totalPages = pagination
         ? pagination.limit <= 0
@@ -141,7 +147,7 @@ export function DataTable<T>({
                 tabIndex={0}
                 className="overflow-x-auto rounded-(--radius-md) border border-(--card-stroke) bg-(--card-80)"
             >
-                <table className="w-full text-left text-sm">
+                <table className="w-full text-left text-sm" data-testid={testId}>
                     {/* Concept `th`: caps label on the page background. The type scale rules (label-caps 11/16,
                         design-system C1), not the concept's 9px. Callers' own `headerClassName`
                         only sets padding and weight, so this cascades to every column. */}
@@ -172,7 +178,11 @@ export function DataTable<T>({
                                 return <Fragment key={key}>{renderRowAction(row)}</Fragment>;
                             }
                             return (
-                                <tr className="transition-colors hover:bg-background" key={key}>
+                                <tr
+                                    className="transition-colors hover:bg-background"
+                                    key={key}
+                                    data-testid={rowTestId}
+                                >
                                     {columns.map((column) => (
                                         <td
                                             key={column.key}

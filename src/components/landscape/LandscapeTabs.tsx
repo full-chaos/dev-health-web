@@ -2,52 +2,10 @@ import type { ReactNode } from "react";
 
 import type { HotspotRow } from "@/components/complexity/ComplexityDashboard";
 import { DataState } from "@/components/ui/DataState";
-import { formatNumber } from "@/lib/formatters";
 import type { BusFactor } from "@/lib/graphql/types";
 import type { QuadrantResponse } from "@/lib/types";
 
-// ── Shared table shell (server-rendered) ────────────────────────────────────
-
-export function LandscapeTable({
-    columns,
-    rows,
-    testId,
-    empty,
-}: {
-    columns: { label: string; align?: "left" | "right" }[];
-    rows: ReactNode[];
-    testId: string;
-    empty: { title: string; description: string };
-}) {
-    if (rows.length === 0) {
-        return (
-            <DataState
-                variant="detector-enabled-no-findings"
-                title={empty.title}
-                description={empty.description}
-            />
-        );
-    }
-    return (
-        <div className="overflow-hidden rounded-(--radius-sm) border border-(--card-stroke) bg-(--card-90) shadow-sm">
-            <table className="w-full text-sm" data-testid={testId}>
-                <thead className="bg-(--card-60) text-label-caps font-semibold uppercase text-(--ink-muted)">
-                    <tr>
-                        {columns.map((col) => (
-                            <th
-                                key={col.label}
-                                className={`px-5 py-3 ${col.align === "right" ? "text-right" : "text-left"}`}
-                            >
-                                {col.label}
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>{rows}</tbody>
-            </table>
-        </div>
-    );
-}
+import { HotspotsTable, OwnershipTable, ReposTable, TeamsTable } from "./LandscapeTables";
 
 export function TabPanel({
     title,
@@ -100,40 +58,23 @@ export function TeamsView({
             description="Delivery pace and pressure per team — throughput against cycle time and change volume."
             testId="landscape-teams"
         >
-            <LandscapeTable
-                testId="teams-table"
-                empty={{
-                    title: "No team data",
-                    description:
-                        "Team operating-mode data is not available for this scope and window.",
-                }}
-                columns={[
-                    { label: "Team" },
-                    { label: "Throughput (items)", align: "right" },
-                    { label: "Cycle time (days)", align: "right" },
-                    { label: "Churn (loc)", align: "right" },
-                ]}
-                rows={rows.map((r) => (
-                    <tr
-                        key={r.id}
-                        data-testid="teams-row"
-                        className="border-t border-(--card-stroke)/60"
-                    >
-                        <td className="px-5 py-3 align-middle font-medium">{r.label}</td>
-                        <td className="px-5 py-3 text-right tabular-nums">
-                            {formatNumber(r.throughput, { maximumFractionDigits: 1 })}
-                        </td>
-                        <td className="px-5 py-3 text-right tabular-nums">
-                            {formatNumber(r.cycle, { maximumFractionDigits: 1 })}
-                        </td>
-                        <td className="px-5 py-3 text-right tabular-nums">
-                            {r.churn === undefined
-                                ? "—"
-                                : formatNumber(r.churn, { maximumFractionDigits: 0 })}
-                        </td>
-                    </tr>
-                ))}
-            />
+            {rows.length === 0 ? (
+                <DataState
+                    variant="detector-enabled-no-findings"
+                    title="No team data"
+                    description="Team operating-mode data is not available for this scope and window."
+                />
+            ) : (
+                <TeamsTable
+                    rows={rows.map((r) => ({
+                        id: r.id,
+                        label: r.label,
+                        throughput: r.throughput,
+                        cycle: r.cycle,
+                        churn: r.churn === undefined ? null : r.churn,
+                    }))}
+                />
+            )}
         </TabPanel>
     );
 }
@@ -167,38 +108,22 @@ export function ReposView({ hotspots }: { hotspots: HotspotRow[] }) {
             description="Repository activity and risk — change volume and average hotspot risk across tracked files."
             testId="landscape-repos"
         >
-            <LandscapeTable
-                testId="repos-table"
-                empty={{
-                    title: "No repository data",
-                    description:
-                        "Repository hotspot data is not available for this scope and window.",
-                }}
-                columns={[
-                    { label: "Repo" },
-                    { label: "Hotspot files", align: "right" },
-                    { label: "Churn LOC 30d", align: "right" },
-                    { label: "Avg risk", align: "right" },
-                ]}
-                rows={rows.map((r) => (
-                    <tr
-                        key={r.repoName}
-                        data-testid="repos-row"
-                        className="border-t border-(--card-stroke)/60"
-                    >
-                        <td className="px-5 py-3 align-middle font-medium">{r.repoName}</td>
-                        <td className="px-5 py-3 text-right tabular-nums">
-                            {formatNumber(r.files)}
-                        </td>
-                        <td className="px-5 py-3 text-right tabular-nums">
-                            {formatNumber(r.churn)}
-                        </td>
-                        <td className="px-5 py-3 text-right tabular-nums">
-                            {formatNumber(r.avgRisk, { maximumFractionDigits: 3 })}
-                        </td>
-                    </tr>
-                ))}
-            />
+            {rows.length === 0 ? (
+                <DataState
+                    variant="detector-enabled-no-findings"
+                    title="No repository data"
+                    description="Repository hotspot data is not available for this scope and window."
+                />
+            ) : (
+                <ReposTable
+                    rows={rows.map((r) => ({
+                        repoName: r.repoName,
+                        files: r.files,
+                        churn: r.churn,
+                        avgRisk: r.avgRisk,
+                    }))}
+                />
+            )}
         </TabPanel>
     );
 }
@@ -214,41 +139,26 @@ export function OwnershipView({ busFactor }: { busFactor: BusFactor | null }) {
             description="Bus factor per repository — how many maintainers carry each repo. Lower means more single-owner risk."
             testId="landscape-ownership"
         >
-            <LandscapeTable
-                testId="ownership-table"
-                empty={{
-                    title: "No ownership data",
-                    description:
-                        "Bus-factor data needs commit-author history for this scope and window.",
-                }}
-                columns={[
-                    { label: "Repo" },
-                    { label: "Bus factor", align: "right" },
-                    { label: "Top maintainer" },
-                    { label: "Share", align: "right" },
-                ]}
-                rows={rows.map((r) => {
-                    const top = r.topMaintainers[0];
-                    return (
-                        <tr
-                            key={r.repoId}
-                            data-testid="ownership-row"
-                            className="border-t border-(--card-stroke)/60"
-                        >
-                            <td className="px-5 py-3 align-middle font-medium">{r.repoName}</td>
-                            <td className="px-5 py-3 text-right tabular-nums">
-                                {formatNumber(r.value, { maximumFractionDigits: 1 })}
-                            </td>
-                            <td className="px-5 py-3 align-middle text-(--ink-muted)">
-                                {top ? top.author : "—"}
-                            </td>
-                            <td className="px-5 py-3 text-right tabular-nums">
-                                {top ? `${Math.round(top.sharePercent)}%` : "—"}
-                            </td>
-                        </tr>
-                    );
-                })}
-            />
+            {rows.length === 0 ? (
+                <DataState
+                    variant="detector-enabled-no-findings"
+                    title="No ownership data"
+                    description="Bus-factor data needs commit-author history for this scope and window."
+                />
+            ) : (
+                <OwnershipTable
+                    rows={rows.map((r) => {
+                        const top = r.topMaintainers[0];
+                        return {
+                            repoId: r.repoId,
+                            repoName: r.repoName,
+                            value: r.value,
+                            topAuthor: top ? top.author : null,
+                            topSharePercent: top ? top.sharePercent : null,
+                        };
+                    })}
+                />
+            )}
         </TabPanel>
     );
 }
@@ -264,45 +174,24 @@ export function HotspotsView({ hotspots }: { hotspots: HotspotRow[] }) {
             description="Files carrying the most risk — churn × complexity × ownership concentration."
             testId="landscape-hotspots"
         >
-            <LandscapeTable
-                testId="hotspots-table"
-                empty={{
-                    title: "No hotspot files",
-                    description: "No files crossed the hotspot risk threshold in this window.",
-                }}
-                columns={[
-                    { label: "File" },
-                    { label: "Repo" },
-                    { label: "Risk score", align: "right" },
-                    { label: "Churn LOC 30d", align: "right" },
-                ]}
-                rows={rows.map((r) => {
-                    const fileName = r.filePath.split("/").pop() ?? r.filePath;
-                    return (
-                        <tr
-                            key={`${r.repoId}-${r.filePath}`}
-                            data-testid="hotspots-row"
-                            className="border-t border-(--card-stroke)/60"
-                        >
-                            <td
-                                className="px-5 py-3 align-middle font-mono text-[0.82em]"
-                                title={r.filePath}
-                            >
-                                {fileName}
-                            </td>
-                            <td className="px-5 py-3 align-middle text-(--ink-muted)">
-                                {r.repoName}
-                            </td>
-                            <td className="px-5 py-3 text-right tabular-nums">
-                                {formatNumber(r.riskScore, { maximumFractionDigits: 3 })}
-                            </td>
-                            <td className="px-5 py-3 text-right tabular-nums">
-                                {formatNumber(r.churnLoc30d)}
-                            </td>
-                        </tr>
-                    );
-                })}
-            />
+            {rows.length === 0 ? (
+                <DataState
+                    variant="detector-enabled-no-findings"
+                    title="No hotspot files"
+                    description="No files crossed the hotspot risk threshold in this window."
+                />
+            ) : (
+                <HotspotsTable
+                    rows={rows.map((r) => ({
+                        key: `${r.repoId}-${r.filePath}`,
+                        fileName: r.filePath.split("/").pop() ?? r.filePath,
+                        filePath: r.filePath,
+                        repoName: r.repoName,
+                        riskScore: r.riskScore,
+                        churnLoc30d: r.churnLoc30d,
+                    }))}
+                />
+            )}
         </TabPanel>
     );
 }
