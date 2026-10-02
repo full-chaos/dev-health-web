@@ -6,13 +6,11 @@ import { usePathname } from "next/navigation";
 import type { ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
 import { CTA_LABELS } from "@/lib/design/cta";
 
-import { LegacyAccountBar } from "./LegacyAccountBar";
 import { ShellMobileBar } from "./ShellMobileBar";
 import { ShellOrganizationProvider } from "./ShellContext";
 import { ShellSidebar } from "./ShellSidebar";
 import { shellStatusFromOrganization, type ShellStatus } from "./ShellStatusChip";
 import { ShellTopBar } from "./ShellTopBar";
-import { isShellRoute } from "./shellRoutes";
 
 type AppShellProps = {
     /** Full-width banners (impersonation, trial). Always first, above the chrome. */
@@ -23,16 +21,10 @@ type AppShellProps = {
 };
 
 /**
- * The frame of every authed page.
- *
- * The route registry (`shellRoutes.ts`) is the single switch:
- * - a registered route gets the shared app shell: skip link, sidebar, top bar
- *   and the one `<main>` landmark;
- * - every other route gets the legacy chrome without a change (the account bar,
- *   then the page, which renders its own navigation and `<main>`).
- *
- * The choice is made on the client from the pathname, because a layout does not
- * re-render on a client navigation.
+ * The frame of every authed page: skip link, sidebar, top bar and the one `<main>`
+ * landmark. Every authed route renders inside it, including a route the registry
+ * (`shellRoutes.ts`) does not name (a not-found page, an error): the registry now
+ * only carries per-route link behaviour (role, filter param), not a chrome switch.
  */
 export function AppShell({ banners, themeToggle, children }: AppShellProps) {
     const pathname = usePathname();
@@ -65,16 +57,6 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
             ? { kind: "loading" }
             : shellStatusFromOrganization(organization);
 
-    if (!isShellRoute(pathname)) {
-        return (
-            <>
-                {banners}
-                <LegacyAccountBar />
-                {children}
-            </>
-        );
-    }
-
     return (
         <>
             <a
@@ -83,6 +65,13 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
             >
                 {CTA_LABELS.skipToMainContent}
             </a>
+            {/* Prototype `body::before`: a 2px orange-to-teal line along the top edge. z-35: over the sticky top bar (z-30), under the mobile
+            slide-over and its backdrop (z-40/50), drawers and dialogs (z-50), so it never covers them. Fixed, so it adds no scroll offset. */}
+            <div
+                aria-hidden="true"
+                data-testid="shell-ribbon"
+                className="pointer-events-none fixed inset-x-0 top-0 z-35 h-0.5 bg-(image:--ribbon)"
+            />
             {banners}
             <ShellMobileBar
                 open={mobileOpen}
@@ -91,6 +80,7 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
             />
             <div className="flex flex-col md:flex-row" data-testid="app-shell">
                 <ShellSidebar
+                    organization={organization}
                     onActiveOrganizationChange={handleActiveOrganizationChange}
                     mobileOpen={mobileOpen}
                     onMobileClose={closeMobileNav}

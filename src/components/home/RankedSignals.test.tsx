@@ -1,4 +1,5 @@
-import { render, screen, userEvent, waitFor } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { screen, userEvent, waitFor, within } from "@/test/utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { MetricFilter } from "@/lib/filters/types";
@@ -7,6 +8,7 @@ import { RankedSignals } from "./RankedSignals";
 import type { CockpitSignal } from "@/lib/types";
 
 vi.mock("next/navigation", () => ({
+    usePathname: () => "/dashboard",
     useSearchParams: () => new URLSearchParams(),
 }));
 
@@ -77,7 +79,7 @@ describe("RankedSignals", () => {
         expect(cards[1]).toHaveTextContent("Second signal claim");
     });
 
-    it("opens a populated EvidencePanel via evidence_ref", async () => {
+    it("opens the shared evidence drawer, populated, via evidence_ref", async () => {
         vi.stubGlobal(
             "fetch",
             vi.fn().mockResolvedValue({
@@ -114,10 +116,17 @@ describe("RankedSignals", () => {
 
         await userEvent.click(screen.getByTestId("signal-open-evidence"));
 
-        await waitFor(() => expect(screen.getByText("Quality + provenance")).toBeInTheDocument());
+        const drawer = screen.getByRole("dialog", { name: "Evidence & Context" });
+        // The signal is the subject of the drawer.
+        expect(within(drawer).getByTestId("evidence-subject")).toHaveTextContent(
+            "Review latency is climbing",
+        );
+        await waitFor(() =>
+            expect(within(drawer).getByTestId("evidence-facts")).toBeInTheDocument(),
+        );
         // Panel is populated with a real artifact — not an empty / recommendation-only drawer.
-        expect(screen.getByText("Shorten review queue")).toBeInTheDocument();
-        expect(screen.getByText(/Source: workGraphEdges/i)).toBeInTheDocument();
+        expect(within(drawer).getByText("Shorten review queue")).toBeInTheDocument();
+        expect(within(drawer).getByTestId("evidence-facts")).toHaveTextContent("workGraphEdges");
         expect(global.fetch).toHaveBeenCalledWith("/api/home/explain/review_latency");
     });
 });

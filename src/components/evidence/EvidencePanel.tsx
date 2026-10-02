@@ -7,10 +7,11 @@ import { logger } from "@/lib/logger";
 import { MetricFilter } from "@/lib/filters/types";
 import { Contributor, HomeResponse, InvestmentResponse, OpportunitiesResponse } from "@/lib/types";
 import { EvidenceContext } from "./EvidenceContext";
+import { EvidenceDrawerShell } from "./EvidenceDrawerShell";
+import { EvidenceProvenanceFacts } from "./EvidenceFacts";
 import { EvidenceItems } from "./EvidenceItems";
 import { SuggestedActions } from "./SuggestedActions";
 import { ErrorCard } from "@/components/ui/ErrorCard";
-import { Drawer } from "@/components/ui/Drawer";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -280,8 +281,12 @@ const evidenceDestination = (params: {
     apiUrl?: string;
     metric?: string;
     filters: MetricFilter;
+    role?: string;
 }) => {
-    if (params.metric) return buildExploreUrl({ metric: params.metric, filters: params.filters });
+    const { role } = params;
+    if (params.metric) {
+        return buildExploreUrl({ metric: params.metric, filters: params.filters, role });
+    }
     if (!params.apiUrl) return "#";
 
     try {
@@ -290,16 +295,16 @@ const evidenceDestination = (params: {
             typeof window === "undefined" ? "http://localhost" : window.location.origin,
         );
         if (url.pathname === "/api/v1/investment") {
-            return withFilterParam("/investment", params.filters);
+            return withFilterParam("/investment", params.filters, role);
         }
         if (url.pathname === "/api/v1/opportunities") {
-            return withFilterParam("/opportunities", params.filters);
+            return withFilterParam("/opportunities", params.filters, role);
         }
     } catch {
-        return buildExploreUrl({ api: params.apiUrl, filters: params.filters });
+        return buildExploreUrl({ api: params.apiUrl, filters: params.filters, role });
     }
 
-    return buildExploreUrl({ api: params.apiUrl, filters: params.filters });
+    return buildExploreUrl({ api: params.apiUrl, filters: params.filters, role });
 };
 
 const readJsonOrEmpty = async <T,>(response: Response): Promise<T | null> => {
@@ -320,6 +325,8 @@ export type EvidencePanelProps = {
     apiUrl?: string;
     metric?: string;
     filters: MetricFilter;
+    /** The active lens role. It is kept in the footer link (Explore and the other destinations). */
+    role?: string;
 };
 
 export function EvidencePanel({
@@ -329,6 +336,7 @@ export function EvidencePanel({
     apiUrl,
     metric,
     filters,
+    role,
 }: EvidencePanelProps) {
     const [data, setData] = useState<EvidencePanelData | null>(null);
     const [loading, setLoading] = useState(false);
@@ -456,27 +464,27 @@ export function EvidencePanel({
 
     const showDevDiagnostics = isEvidenceDebugEnabled();
 
-    const exploreUrl = evidenceDestination({ apiUrl, metric, filters });
+    const exploreUrl = evidenceDestination({ apiUrl, metric, filters, role });
 
-    // Escape contract: Drawer closes on Escape unless an inner control already handled it and
-    // called `preventDefault()`. Nothing inside this panel handles Escape today (links and
-    // buttons only); a future inner menu must call `preventDefault()` on its own Escape.
+    // Nothing inside this panel handles Escape today (links and buttons only); a future inner
+    // menu must call `preventDefault()` on its own Escape (see `EvidenceDrawerShell`).
     return (
-        <Drawer
-            open
+        <EvidenceDrawerShell
+            subject={title}
             onCloseAction={onCloseAction}
-            title={title}
-            eyebrow="Evidence & Context"
             footer={
                 <Link
                     href={exploreUrl}
+                    // The shared drawer lives in the layout: close it, or it stays open over the
+                    // destination when the path does not change (Explore to Explore).
+                    onClick={onCloseAction}
                     className="flex w-full items-center justify-center rounded-xl border border-(--accent-2)/20 bg-(--accent-2)/10 px-4 py-3 text-sm font-medium text-(--info) transition-colors hover:bg-(--accent-2)/20"
                 >
                     {CTA_LABELS.openEvidence} ↗
                 </Link>
             }
         >
-            <div className="space-y-4">
+            <>
                 {loading ? (
                     <div className="space-y-4 animate-pulse">
                         <div className="h-24 bg-(--card-70) rounded-2xl" />
@@ -497,7 +505,10 @@ export function EvidencePanel({
                     </div>
                 ) : data ? (
                     <>
-                        <EvidenceProvenanceStrip provenance={data.provenance} />
+                        <EvidenceFacts
+                            provenance={data.provenance}
+                            artifactCount={data.evidence?.length ?? 0}
+                        />
                         <EvidenceContext data={data} />
                         {data.evidence?.length ? (
                             <EvidenceItems items={data.evidence} />
@@ -515,50 +526,34 @@ export function EvidencePanel({
                         description="There's no supporting detail to display for this selection right now. Try a different metric or widen the time window."
                     />
                 )}
-            </div>
-        </Drawer>
+            </>
+        </EvidenceDrawerShell>
     );
 }
 
-function EvidenceProvenanceStrip({ provenance }: { provenance?: EvidenceProvenance }) {
-    const confidence = provenance?.identity_confidence;
-
+/** The provenance rows of an explain result, and the partial-data note under them. */
+function EvidenceFacts({
+    provenance,
+    artifactCount,
+}: {
+    provenance?: EvidenceProvenance;
+    artifactCount: number;
+}) {
     return (
-        <section className="grid gap-3 rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4 text-xs text-(--ink-muted)">
-            <p className="text-xs uppercase tracking-[0.2em]">Quality + provenance</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-                <EvidenceProvenanceItem
-                    label="Source"
-                    value={provenance?.source || "metrics API"}
-                />
-                <EvidenceProvenanceItem label="Quality" value={provenance?.quality || "partial"} />
-                <EvidenceProvenanceItem
-                    label="Last sync"
-                    value={provenance?.last_sync || "not reported"}
-                />
-                <EvidenceProvenanceItem
-                    label="Identity confidence"
-                    value={
-                        typeof confidence === "number"
-                            ? `${Math.round(confidence * 100)}%`
-                            : "not reported"
-                    }
-                />
-            </div>
+        <section className="text-xs">
+            <EvidenceProvenanceFacts
+                source={provenance?.source}
+                quality={provenance?.quality}
+                lastSync={provenance?.last_sync}
+                identityConfidence={provenance?.identity_confidence}
+                artifactCount={artifactCount}
+            />
             {provenance?.partial && (
-                <p className={`rounded-xl px-3 py-2 ${STATUS_PILL.caution}`}>
+                <p className={`mt-3 rounded-xl px-3 py-2 ${STATUS_PILL.caution}`}>
                     Partial evidence: the backend did not return a complete artifact list for this
                     selection.
                 </p>
             )}
         </section>
-    );
-}
-
-function EvidenceProvenanceItem({ label, value }: { label: string; value: string }) {
-    return (
-        <span className="rounded-xl border border-(--card-stroke) bg-background/35 px-3 py-2 leading-5">
-            {label}: {value}
-        </span>
     );
 }

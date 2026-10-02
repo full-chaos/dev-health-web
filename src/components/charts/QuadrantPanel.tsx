@@ -11,6 +11,7 @@ import {
 import { createPortal } from "react-dom";
 import Link from "next/link";
 
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getQuadrantDefinition, getZoneOverlay } from "@/lib/quadrantZones";
@@ -205,7 +206,34 @@ export function QuadrantPanel({
     const zoneIgnoredLogged = useRef(false);
     const axesKey = scopedData ? `${scopedData.axes.x.metric}:${scopedData.axes.y.metric}` : null;
 
-    const handlePointSelect = (point: QuadrantPoint) => {
+    const evidence = useEvidenceDrawer();
+    // A dot is a mark on the chart canvas, not a focusable element: when the drawer closes, focus
+    // goes back to the chart region. A point chip is a button and gets focus back itself.
+    const chartRegionRef = useRef<HTMLDivElement>(null);
+    // A dot (or a point chip) opens the shared evidence drawer for that point. The selection stays
+    // while the drawer is open and is cleared when it closes.
+    const handlePointSelect = (point: QuadrantPoint, from: "chart" | "chip") => {
+        if (!scopedData) {
+            return;
+        }
+        evidence.open({
+            title: point.entity_label,
+            content: (
+                <InvestigationPanel
+                    point={point}
+                    data={scopedData}
+                    filters={filters}
+                    title={title}
+                />
+            ),
+            returnFocusRef: from === "chart" ? chartRegionRef : undefined,
+            onClose: () => {
+                setSelectedPoint(null);
+                setSelectedPointKey(null);
+            },
+        });
+        // After `open`: opening tells the subject before this one that it closed (its `onClose`
+        // clears the selection), so the new selection is set last.
         setSelectedPoint(point);
         setSelectedPointKey(dataKey);
     };
@@ -428,12 +456,19 @@ export function QuadrantPanel({
                                 : "grid-cols-1"
                         }`}
                     >
-                        <div className="min-w-0">
+                        <div
+                            ref={chartRegionRef}
+                            tabIndex={-1}
+                            role="group"
+                            aria-label={`${title} chart`}
+                            data-testid="quadrant-chart-region"
+                            className="min-w-0"
+                        >
                             <QuadrantChart
                                 data={scopedData}
                                 height={chartHeight}
                                 className="w-full min-w-0"
-                                onPointSelectAction={handlePointSelect}
+                                onPointSelectAction={(point) => handlePointSelect(point, "chart")}
                                 focusEntityIds={focusEntityIds}
                                 scopeType={scopeType}
                                 zoneOverlay={zoneOverlay}
@@ -503,39 +538,40 @@ export function QuadrantPanel({
                         ) : null}
                     </div>
 
-                    {!activeSelectedPoint && (
-                        <div className="text-xs text-(--ink-muted) bg-(--card-80) rounded-2xl p-4 border border-dashed border-(--card-stroke)">
-                            <p>
-                                {isPersonScope
-                                    ? "Individual in view."
-                                    : "Select a dot in the chart above to investigate patterns."}
-                            </p>
-                            {selectablePoints.length > 0 && (
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    {selectablePoints.map((point, index) => {
-                                        const pointKey = `${point.entity_id}:${point.window_start}:${point.window_end}:${index}`;
-                                        return isPersonScope ? (
-                                            <span
-                                                key={pointKey}
-                                                className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2)"
-                                            >
-                                                {point.entity_label}
-                                            </span>
-                                        ) : (
-                                            <button
-                                                key={pointKey}
-                                                type="button"
-                                                onClick={() => handlePointSelect(point)}
-                                                className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2) hover:bg-(--accent-2)/5 transition"
-                                            >
-                                                {point.entity_label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    {/* Always shown: the chips stay in the page while the drawer is open, so the
+                        chip that opened it gets focus back on close. */}
+                    <div className="text-xs text-(--ink-muted) bg-(--card-80) rounded-2xl p-4 border border-dashed border-(--card-stroke)">
+                        <p>
+                            {isPersonScope
+                                ? "Individual in view."
+                                : "Select a dot in the chart above to investigate patterns."}
+                        </p>
+                        {selectablePoints.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {selectablePoints.map((point, index) => {
+                                    const pointKey = `${point.entity_id}:${point.window_start}:${point.window_end}:${index}`;
+                                    return isPersonScope ? (
+                                        <span
+                                            key={pointKey}
+                                            className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2)"
+                                        >
+                                            {point.entity_label}
+                                        </span>
+                                    ) : (
+                                        <button
+                                            key={pointKey}
+                                            type="button"
+                                            aria-pressed={activeSelectedPoint === point}
+                                            onClick={() => handlePointSelect(point, "chip")}
+                                            className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2) hover:bg-(--accent-2)/5 transition"
+                                        >
+                                            {point.entity_label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
 
                     {supplementalLinks.length > 0 && (
                         <div className="flex flex-wrap gap-3 text-xs">
@@ -551,21 +587,6 @@ export function QuadrantPanel({
                         </div>
                     )}
                 </div>
-
-                {activeSelectedPoint && scopedData && (
-                    <aside className="w-full shrink-0 overflow-hidden rounded-3xl border border-(--card-stroke) shadow-2xl lg:w-96">
-                        <InvestigationPanel
-                            point={activeSelectedPoint}
-                            data={scopedData}
-                            filters={filters}
-                            title={title}
-                            onCloseAction={() => {
-                                setSelectedPoint(null);
-                                setSelectedPointKey(null);
-                            }}
-                        />
-                    </aside>
-                )}
             </div>
         </div>
     );

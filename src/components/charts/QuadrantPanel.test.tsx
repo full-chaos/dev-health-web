@@ -1,5 +1,6 @@
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, waitFor, within } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { screen, fireEvent, waitFor, within } from "@/test/utils";
 import { QuadrantPanel } from "./QuadrantPanel";
 
 vi.mock("./QuadrantChart", () => ({

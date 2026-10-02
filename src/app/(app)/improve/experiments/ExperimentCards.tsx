@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
-
-import { EvidencePanel } from "@/components/evidence/EvidencePanel";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { Experiment } from "@/lib/graphql/types";
@@ -19,7 +17,7 @@ type ExperimentCardsProps = {
  * experiments can be saved (ruling 10).
  */
 export function ExperimentCards({ experiments, filters }: ExperimentCardsProps) {
-    const [open, setOpen] = useState<Experiment | null>(null);
+    const evidence = useEvidenceDrawer();
 
     return (
         <>
@@ -49,7 +47,13 @@ export function ExperimentCards({ experiments, filters }: ExperimentCardsProps) 
                             <div>
                                 <button
                                     type="button"
-                                    onClick={() => setOpen(experiment)}
+                                    onClick={() =>
+                                        evidence.open({
+                                            title: `${getMetricLabel(experiment.metric)} evidence`,
+                                            metric: experiment.metric,
+                                            filters,
+                                        })
+                                    }
                                     className="rounded-xl border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--accent-2) hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/60"
                                 >
                                     {CTA_LABELS.reviewEvidence}
@@ -59,13 +63,6 @@ export function ExperimentCards({ experiments, filters }: ExperimentCardsProps) 
                     </article>
                 ))}
             </section>
-            <EvidencePanel
-                isOpen={open !== null}
-                onCloseAction={() => setOpen(null)}
-                title={open ? `${getMetricLabel(open.metric)} evidence` : "Evidence"}
-                metric={open?.metric}
-                filters={filters}
-            />
         </>
     );
 }

@@ -1,4 +1,5 @@
-import { render, screen } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { screen } from "@/test/utils";
 import { describe, expect, it, vi } from "vitest";
 
 import { describeArtifact, HeatmapPanel } from "./HeatmapPanel";

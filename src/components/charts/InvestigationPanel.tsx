@@ -1,6 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import {
+    EvidenceFact,
+    EvidenceFactList,
+    EvidenceProvenanceFacts,
+} from "@/components/evidence/EvidenceFacts";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { useActiveRole } from "@/lib/lensContext.client";
 import { getRoleConfig } from "@/lib/roleContext";
@@ -9,21 +15,23 @@ import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import { useMemo } from "react";
 
+import { formatQuadrantValue } from "./quadrantFormat";
+
 type InvestigationPanelProps = {
     point: QuadrantPoint;
     data: QuadrantResponse;
     filters: MetricFilter;
-    onCloseAction: () => void;
     title?: string;
 };
 
-export function InvestigationPanel({
-    point,
-    data,
-    filters,
-    onCloseAction,
-    title,
-}: InvestigationPanelProps) {
+/**
+ * The body of the shared evidence drawer for one quadrant point: the summary and the
+ * investigation paths. The drawer supplies the title, the subject heading (the point's label)
+ * and the close control.
+ */
+export function InvestigationPanel({ point, data, filters, title }: InvestigationPanelProps) {
+    // A path can lead to the page the drawer is open on (same path, other tab): close it.
+    const { close } = useEvidenceDrawer();
     const activeRole = useActiveRole();
     const roleConfig = getRoleConfig(activeRole);
 
@@ -126,25 +134,26 @@ export function InvestigationPanel({
     const primaryType = roleConfig.investigationOrder[0];
 
     return (
-        <div className="flex h-full flex-col bg-(--card-80) text-xs shadow-xl animate-in fade-in slide-in-from-right-4 duration-300">
-            <header className="flex items-center justify-between border-b border-(--card-stroke) p-4">
-                <div>
-                    <p className="text-label-caps uppercase tracking-widest text-(--ink-muted)">
-                        Investigation
-                    </p>
-                    <h3 className="text-sm font-semibold text-foreground">{point.entity_label}</h3>
-                </div>
-                <button
-                    type="button"
-                    onClick={onCloseAction}
-                    className="rounded-full border border-(--card-stroke) p-1.5 text-label-caps uppercase tracking-widest text-(--ink-muted) hover:bg-(--card-70)"
-                    title={CTA_LABELS.closePanel}
-                >
-                    ✕
-                </button>
-            </header>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        <div data-testid="investigation-panel" className="text-xs">
+            <div className="space-y-6">
+                {/* The quadrant query serves no source, quality, sync time, identity confidence
+                    or artifact list for a point: one line says so, in place of five empty rows. */}
+                <EvidenceProvenanceFacts whenEmpty="line" />
+                {/* The point as the chart draws it: the two raw axis values and its window. */}
+                <EvidenceFactList aria-label="Point" testId="evidence-subject-facts">
+                    <EvidenceFact
+                        label={data.axes.x.label}
+                        value={formatQuadrantValue(point.x, data.axes.x.unit)}
+                    />
+                    <EvidenceFact
+                        label={data.axes.y.label}
+                        value={formatQuadrantValue(point.y, data.axes.y.unit)}
+                    />
+                    <EvidenceFact
+                        label="Window"
+                        value={`${point.window_start} to ${point.window_end}`}
+                    />
+                </EvidenceFactList>
                 <section>
                     <div className="flex items-center justify-between mb-2">
                         <p className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -174,6 +183,7 @@ export function InvestigationPanel({
                                 <Link
                                     key={path.id}
                                     href={path.href}
+                                    onClick={close}
                                     className={`group flex items-center justify-between rounded-xl border px-4 py-3 transition ${
                                         isSuggested
                                             ? "border-(--accent-2) bg-(--accent-2)/5"
@@ -200,11 +210,9 @@ export function InvestigationPanel({
                 </section>
             </div>
 
-            <footer className="border-t border-(--card-stroke) p-4 bg-(--card-90)">
-                <p className="text-label-caps text-(--ink-muted) text-center font-medium">
-                    Lens: {roleConfig.label}
-                </p>
-            </footer>
+            <p className="mt-6 text-label-caps font-medium text-(--ink-muted)">
+                Lens: {roleConfig.label}
+            </p>
         </div>
     );
 }

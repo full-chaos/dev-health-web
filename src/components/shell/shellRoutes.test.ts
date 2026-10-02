@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { SHELL_ROUTES, isShellRoute, shellRouteForPathname } from "./shellRoutes";
+import { SHELL_ROUTES, shellRouteForPathname } from "./shellRoutes";
 
 describe("shell route registry", () => {
     it("registers the Home and the migrated Diagnose, Govern, Plan, Improve, AI, Reports and Admin routes", () => {
@@ -48,30 +48,31 @@ describe("shell route registry", () => {
             "/data-health",
             "/settings",
             "/superadmin",
+            "/demo",
         ]);
     });
 
     it("matches an exact route only on its own path", () => {
         const routes = [{ prefix: "/diagnose", exact: true }];
-        expect(isShellRoute("/diagnose", routes)).toBe(true);
-        expect(isShellRoute("/diagnose/work-graph", routes)).toBe(false);
-        expect(isShellRoute("/diagnoses", routes)).toBe(false);
+        expect(shellRouteForPathname("/diagnose", routes)).toBeDefined();
+        expect(shellRouteForPathname("/diagnose/work-graph", routes)).toBeUndefined();
+        expect(shellRouteForPathname("/diagnoses", routes)).toBeUndefined();
     });
 
     it("matches a registered prefix and its descendants", () => {
-        expect(isShellRoute("/dashboard")).toBe(true);
-        expect(isShellRoute("/dashboard/anything")).toBe(true);
+        expect(shellRouteForPathname("/dashboard")).toBeDefined();
+        expect(shellRouteForPathname("/dashboard/anything")).toBeDefined();
     });
 
     it("does not match a path that only starts with the same characters", () => {
-        expect(isShellRoute("/dashboards")).toBe(false);
-        expect(isShellRoute("/dashboard-old")).toBe(false);
+        expect(shellRouteForPathname("/dashboards")).toBeUndefined();
+        expect(shellRouteForPathname("/dashboard-old")).toBeUndefined();
     });
 
-    it.each(["/demo", "/superadmins", "/settingsx", "/"])(
-        "keeps %s outside the shell",
+    it.each(["/superadmins", "/settingsx", "/demox", "/"])(
+        "has no registry entry for %s",
         (pathname) => {
-            expect(isShellRoute(pathname)).toBe(false);
+            expect(shellRouteForPathname(pathname)).toBeUndefined();
         },
     );
 
@@ -86,16 +87,16 @@ describe("shell route registry", () => {
             "/superadmin",
             "/superadmin/billing/plans",
         ]) {
-            expect(isShellRoute(pathname), pathname).toBe(true);
+            expect(shellRouteForPathname(pathname), pathname).toBeDefined();
             expect(shellRouteForPathname(pathname)?.filterParam, pathname).toBe("none");
         }
-        expect(isShellRoute("/org/administration")).toBe(false);
+        expect(shellRouteForPathname("/org/administration")).toBeUndefined();
     });
 
     it("treats a missing pathname as outside the shell", () => {
-        expect(isShellRoute(null)).toBe(false);
-        expect(isShellRoute(undefined)).toBe(false);
-        expect(isShellRoute("")).toBe(false);
+        expect(shellRouteForPathname(null)).toBeUndefined();
+        expect(shellRouteForPathname(undefined)).toBeUndefined();
+        expect(shellRouteForPathname("")).toBeUndefined();
     });
 
     it("selects the longest matching prefix", () => {
@@ -136,6 +137,7 @@ describe("shell route registry", () => {
             "/data-health",
             "/settings",
             "/superadmin",
+            "/demo",
         ]);
     });
 

@@ -18,25 +18,9 @@ import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 import { Chart } from "./Chart";
 import { type ChartTheme, useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
-import { formatNumber } from "@/lib/formatters";
+import { formatQuadrantValue } from "./quadrantFormat";
 
 echarts.use([ScatterChart]);
-
-const formatValue = (value: number, unit: string) => {
-    if (!Number.isFinite(value)) {
-        return "--";
-    }
-    if (unit === "%") {
-        return `${formatNumber(value, { maximumFractionDigits: 1 })}%`;
-    }
-    if (unit === "days") {
-        return `${formatNumber(value, { maximumFractionDigits: 1 })}d`;
-    }
-    if (unit === "hours") {
-        return `${formatNumber(value, { maximumFractionDigits: 1 })}h`;
-    }
-    return `${formatNumber(value, { maximumFractionDigits: 1 })} ${unit}`.trim();
-};
 
 const normalizeScopeType = (
     scopeType?: "org" | "team" | "repo" | "person" | "developer" | "service" | string,
@@ -282,8 +266,8 @@ export const buildQuadrantOption = ({
                 }
                 const xLabel = data.axes.x.label;
                 const yLabel = data.axes.y.label;
-                const xValue = formatValue(point.x, data.axes.x.unit);
-                const yValue = formatValue(point.y, data.axes.y.unit);
+                const xValue = formatQuadrantValue(point.x, data.axes.x.unit);
+                const yValue = formatQuadrantValue(point.y, data.axes.y.unit);
                 const entityLabel = isPersonScope ? "You" : chartEntityLabel(point.entity_label);
 
                 return [

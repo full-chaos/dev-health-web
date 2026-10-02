@@ -17,15 +17,17 @@ type ModeTabsProps<TId extends string = string> = {
     className?: string;
 };
 
-const CONTAINER =
-    "flex items-center gap-1 overflow-x-auto whitespace-nowrap border-b border-(--card-stroke) px-1 scrollbar-hide";
+// Prototype `.tabs` / `.tab` (style.css, theme.css:55): sentence case 13px, 24px apart, a hairline under
+// the row; the current tab is heavier, in ink, with a 2px --ember gradient underline (not flat).
+export const TAB_CONTAINER =
+    "flex items-center gap-6 overflow-x-auto whitespace-nowrap border-b border-(--card-stroke) px-1 scrollbar-hide";
 
-const TAB_BASE =
-    "-mb-px flex items-center gap-1.5 border-b-2 px-3.5 py-3 text-[10px] uppercase tracking-[0.18em] transition-all";
+export const TAB_BASE =
+    "-mb-px flex items-center gap-1.5 border-b-2 border-transparent px-0.5 pb-3 pt-2 text-[0.8125rem] transition-colors";
 
-const TAB_ACTIVE = "border-(--accent) text-foreground font-semibold";
-const TAB_INACTIVE =
-    "border-transparent text-(--ink-muted) hover:border-(--card-stroke) hover:text-foreground";
+export const TAB_ACTIVE =
+    "font-bold text-foreground bg-(image:--ember) bg-bottom bg-no-repeat bg-size-[100%_2px]";
+export const TAB_INACTIVE = "text-(--ink-muted) hover:text-foreground";
 
 /**
  * Shared route-tab strip primitive (framework A2).
@@ -45,7 +47,7 @@ export function ModeTabs<TId extends string = string>({
     className,
 }: ModeTabsProps<TId>) {
     return (
-        <nav aria-label={ariaLabel} className={`${CONTAINER} ${className ?? ""}`.trim()}>
+        <nav aria-label={ariaLabel} className={`${TAB_CONTAINER} ${className ?? ""}`.trim()}>
             {items.map((tab) => {
                 const isActive = tab.id === activeId;
                 return (
