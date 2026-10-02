@@ -544,4 +544,27 @@ describe("ShellSidebar — a route with its own `f` encoding (Security)", () => 
         expect(within(sidebar()).queryByText(/^beta$/i)).toBeNull();
         expect(within(sidebar()).getByText("Dev Health")).toBeInTheDocument();
     });
+
+    it("draws an icon on every area row and a chevron only where the area has destinations", () => {
+        navigationMock.pathname = "/investment";
+        navigationMock.search = "";
+        renderSidebar();
+
+        const nav = within(sidebar()).getByRole("navigation", { name: "Primary areas" });
+        const links = within(nav).getAllByRole("link", {
+            name: /^(Home|Diagnose|Plan|Improve|Govern|AI)/,
+        });
+        expect(links.length).toBeGreaterThanOrEqual(5);
+        for (const link of links) {
+            expect(link.querySelector("svg"), link.textContent ?? "").not.toBeNull();
+        }
+        // Home has no destinations: no chevron. The open area shows down, the others right.
+        expect(within(sidebar()).queryByTestId("nav-chevron-cockpit")).toBeNull();
+        expect(
+            within(sidebar()).getByTestId("nav-chevron-diagnose").getAttribute("class"),
+        ).toContain("lucide-chevron-down");
+        expect(within(sidebar()).getByTestId("nav-chevron-plan").getAttribute("class")).toContain(
+            "lucide-chevron-right",
+        );
+    });
 });

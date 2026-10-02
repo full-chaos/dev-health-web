@@ -23,7 +23,7 @@ import { filterPaletteEntries, paletteEntries } from "./commandPaletteEntries";
 import { shellHref } from "./shellHref";
 import { useShellNavParams } from "./useShellNavParams";
 
-const TRIGGER_LABEL = "Find a destination…";
+const TRIGGER_LABEL = "Find a product surface…";
 
 const subscribeNever = () => () => {};
 const serverHint = () => "Ctrl K";
@@ -61,7 +61,7 @@ function Palette({ onClose }: { onClose: () => void }) {
         <Dialog
             open
             onCloseAction={onClose}
-            title="Find a destination"
+            title="Find a product surface"
             hideTitle
             initialFocusRef={inputRef}
             data-testid="command-palette"
