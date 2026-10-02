@@ -328,6 +328,10 @@ export const CTA_LABELS = {
     startWithAiImpact: "Start with AI Impact",
     weeklyReview: "Weekly review",
     viewAll: "View all",
+    /** Home ranked signals table: show the rows after the first five, in place. */
+    showAllSignals: "Show all signals",
+    /** Home ranked signals table: back to the first five rows. */
+    showFewerSignals: "Show fewer signals",
     provenance: "Provenance",
     apply: "Apply",
     saveOverride: "Save Override",

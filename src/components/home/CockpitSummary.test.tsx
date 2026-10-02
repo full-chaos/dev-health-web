@@ -1,6 +1,6 @@
 import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
-import { screen } from "@/test/utils";
-import { describe, expect, it, vi } from "vitest";
+import { screen, userEvent, within } from "@/test/utils";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { MetricFilter } from "@/lib/filters/types";
 import type { CockpitSignal, HomeResponse } from "@/lib/types";
@@ -14,7 +14,7 @@ vi.mock("next/navigation", () => ({
 
 const filters = {
     scope: { level: "org", ids: ["org-1"] },
-    time: { range_days: 30 },
+    time: { range_days: 90, compare_days: 90 },
     who: {},
     what: {},
     why: {},
@@ -22,19 +22,19 @@ const filters = {
 } as MetricFilter;
 
 const topSignal: CockpitSignal = {
-    id: "sig-1",
-    title: "Review latency is climbing",
+    id: "metric:review_latency",
+    title: "Review Latency appears up",
     metric: "review_latency",
-    current_value: "2.4d",
-    prior_value: "1.6d",
-    delta: "+50%",
+    current_value: "0.9 hours",
+    prior_value: "0.1 hours",
+    delta: "+1,041%",
     direction: "up",
-    severity: "high",
+    severity: "critical",
     confidence: "medium",
     affected_scope: "3 repos · payments",
     evidence_count: 7,
-    why_it_matters: "Longer reviews delay delivery and frustrate contributors.",
-    recommended_action: "Rebalance reviewers on the payments repos.",
+    why_it_matters: "Longer reviews suggest delivery may wait on review capacity.",
+    recommended_action: "Rebalance reviewer rotation and clear stale review queues.",
     evidence_ref: "/api/home/explain/review_latency",
     category: "delivery",
 };
@@ -60,111 +60,148 @@ const makeHome = (overrides: Partial<HomeResponse> = {}): HomeResponse => ({
         summary: "Reviews are taking longer and slowing delivery.",
     },
     signals: [topSignal],
-    limiting_factor: {
-        claim: "Review latency is the limiting factor.",
-        why_it_matters: "It is the largest drag on delivery.",
-        recommended_action: "Rebalance reviewers.",
-        confidence: "medium",
-    },
-    data_confidence: {
-        level: "medium",
-        connected_sources: ["GitHub"],
-        missing_sources: [],
-        caveats: [],
-    },
     ...overrides,
 });
 
-describe("CockpitSummary", () => {
-    it("renders the dominant health state and headline", () => {
+afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+});
+
+// The primary-signal hero of Home (CHAOS-8063): approved prototype `hero(...)`, `app.js:100`.
+describe("CockpitSummary primary-signal hero", () => {
+    it("shows the top signal as served: severity, title, change, window, current from previous", () => {
         render(<CockpitSummary home={makeHome()} filters={filters} />);
 
-        expect(screen.getByTestId("cockpit-summary")).toHaveAttribute("data-status", "at_risk");
-        expect(screen.getByTestId("cockpit-health-status")).toHaveTextContent(/at risk/i);
-        expect(screen.getByTestId("cockpit-headline")).toHaveTextContent(
-            /review latency is the limiting factor/i,
-        );
+        const hero = within(screen.getByTestId("cockpit-summary"));
+        expect(hero.getByText("Primary signal")).toBeInTheDocument();
+        expect(hero.getByTestId("area-signal-badge")).toHaveTextContent("Critical");
+        // A section heading right under the page title (h1): no level is skipped.
+        expect(hero.getByRole("heading", { name: "Review Latency appears up" }).tagName).toBe("H2");
+        // The big value is the served change string, not a number the web made.
+        expect(hero.getByTestId("area-signal-value").textContent).toBe("+1,041%");
+        expect(hero.getByText("vs previous 90 days")).toBeInTheDocument();
+        expect(hero.getByTestId("area-signal-driver").textContent).toBe("0.9 hours from 0.1 hours");
     });
 
-    it("surfaces the top change with why + recommended action + evidence", () => {
+    it("states the comparison window the page asked for, with the singular for one day", () => {
+        render(
+            <CockpitSummary
+                home={makeHome()}
+                filters={{ ...filters, time: { range_days: 7, compare_days: 1 } } as MetricFilter}
+            />,
+        );
+        expect(screen.getByText("vs previous 1 day")).toBeInTheDocument();
+    });
+
+    it("writes only the current value when the API served no previous value", () => {
+        render(
+            <CockpitSummary
+                home={makeHome({ signals: [{ ...topSignal, prior_value: null }] })}
+                filters={filters}
+            />,
+        );
+        expect(screen.getByTestId("area-signal-driver").textContent).toBe("0.9 hours");
+    });
+
+    it("draws no big value when the API served no change (never a made-up number)", () => {
+        render(
+            <CockpitSummary
+                home={makeHome({ signals: [{ ...topSignal, delta: null }] })}
+                filters={filters}
+            />,
+        );
+        expect(screen.queryByTestId("area-signal-value")).toBeNull();
+    });
+
+    it("has ONE action, the approved 'Open evidence' button, and no link", () => {
+        render(<CockpitSummary home={makeHome()} filters={filters} />);
+        const hero = within(screen.getByTestId("cockpit-summary"));
+        expect(hero.getAllByRole("button")).toHaveLength(1);
+        expect(hero.getByRole("button", { name: "Open evidence" })).toBe(
+            screen.getByTestId("cockpit-top-change-evidence"),
+        );
+        expect(hero.queryAllByRole("link")).toHaveLength(0);
+    });
+
+    it("shows nothing the prototype hero does not have: no health chip, headline or action box", () => {
+        render(<CockpitSummary home={makeHome()} filters={filters} />);
+        const hero = screen.getByTestId("cockpit-summary");
+        expect(screen.queryByTestId("cockpit-health-status")).toBeNull();
+        expect(screen.queryByTestId("cockpit-headline")).toBeNull();
+        expect(hero).not.toHaveTextContent("Review latency is the limiting factor this week");
+        expect(hero).not.toHaveTextContent("Recommended action");
+        expect(hero).not.toHaveTextContent("Rebalance reviewer rotation");
+        expect(hero).not.toHaveTextContent("Longer reviews suggest");
+    });
+
+    it("opens the shared evidence drawer for the signal, with its served why and action first", async () => {
+        const fetchMock = vi.fn().mockResolvedValue({ ok: false });
+        vi.stubGlobal("fetch", fetchMock);
         render(<CockpitSummary home={makeHome()} filters={filters} />);
 
-        const topChange = screen.getByTestId("cockpit-top-change");
-        expect(topChange).toHaveTextContent("Review latency is climbing");
-        expect(topChange).toHaveTextContent(/longer reviews delay/i);
-        expect(topChange).toHaveTextContent(/rebalance reviewers/i);
-        expect(screen.getByTestId("cockpit-top-change-evidence")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).toBeNull();
+        await userEvent.click(screen.getByTestId("cockpit-top-change-evidence"));
+
+        const drawer = within(screen.getByRole("dialog", { name: "Evidence & Context" }));
+        expect(drawer.getByTestId("evidence-subject")).toHaveTextContent(
+            "Review Latency appears up",
+        );
+        const intro = within(drawer.getByTestId("signal-evidence-intro"));
+        expect(intro.getByTestId("signal-scope")).toHaveTextContent("3 repos · payments");
+        expect(intro.getByTestId("signal-why").textContent).toBe(
+            "Longer reviews suggest delivery may wait on review capacity.",
+        );
+        expect(intro.getByTestId("signal-recommended-action").textContent).toBe(
+            "Rebalance reviewer rotation and clear stale review queues.",
+        );
+        // The served evidence_ref drives the request.
+        expect(fetchMock).toHaveBeenCalledWith("/api/home/explain/review_latency");
     });
 
     it("falls back to a trust-preserving state when there are no signals", () => {
         render(<CockpitSummary home={makeHome({ signals: [] })} filters={filters} />);
         expect(screen.getByTestId("cockpit-top-change-empty")).toBeInTheDocument();
-        expect(screen.queryByTestId("cockpit-top-change")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("area-signal-card")).toBeNull();
+        expect(screen.queryByRole("button")).toBeNull();
     });
 
-    it("renders a safe default when home is null", () => {
+    it("renders the same safe state when home is null", () => {
         render(<CockpitSummary home={null} filters={filters} />);
-        expect(screen.getByTestId("cockpit-summary")).toHaveAttribute("data-status", "watch");
-        expect(screen.getByTestId("cockpit-headline")).toBeInTheDocument();
+        expect(screen.getByTestId("cockpit-top-change-empty")).toBeInTheDocument();
     });
 
     const UUID = "3f2504e0-4f89-41d3-9a0c-0305e82c3301";
     const HASH32 = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6";
 
-    it("never renders a raw UUID as the dominant headline", () => {
-        render(
-            <CockpitSummary
-                home={makeHome({
-                    health_state: { status: "watch", headline: UUID, summary: "x" },
-                })}
-                filters={filters}
-            />,
-        );
-        const headline = screen.getByTestId("cockpit-headline");
-        expect(headline.textContent ?? "").not.toContain(UUID);
-        expect(headline).toHaveTextContent("#3f2504e0");
-        expect(headline).toHaveTextContent(/unresolved/i);
-    });
-
-    it("scrubs UUIDs embedded inside the backend-built headline (CHAOS-2064)", () => {
-        // Real backend payload interpolates an unresolved scope id into prose.
-        const embedded = `Compounding risk appears elevated for ${UUID} across ${UUID}`;
-        render(
-            <CockpitSummary
-                home={makeHome({
-                    health_state: {
-                        status: "at_risk",
-                        headline: embedded,
-                        summary: `Risk is concentrated in ${UUID}.`,
-                    },
-                })}
-                filters={filters}
-            />,
-        );
-        const summary = screen.getByTestId("cockpit-summary");
-        // No raw UUID anywhere in the dominant conclusion block.
-        expect(summary.textContent ?? "").not.toContain(UUID);
-        const headline = screen.getByTestId("cockpit-headline");
-        // Prose is preserved; only the id is degraded to a stable short token.
-        expect(headline).toHaveTextContent(/Compounding risk appears elevated/i);
-        expect(headline).toHaveTextContent("#3f2504e0");
-        expect(headline).toHaveTextContent(/unresolved/i);
-    });
-
-    it("never renders a raw hash as the top-change title", () => {
+    it("never renders a raw hash as the hero title", () => {
         render(
             <CockpitSummary
                 home={makeHome({ signals: [{ ...topSignal, title: HASH32 }] })}
                 filters={filters}
             />,
         );
-        const topChange = screen.getByTestId("cockpit-top-change");
-        expect(topChange.textContent ?? "").not.toContain(HASH32);
-        expect(topChange).toHaveTextContent("#a1b2c3d4");
-        expect(topChange).toHaveTextContent(/unresolved/i);
+        const hero = screen.getByTestId("cockpit-summary");
+        expect(hero.textContent ?? "").not.toContain(HASH32);
+        expect(hero).toHaveTextContent("#a1b2c3d4");
     });
 
-    it("renders the server-resolved scope display name, not its id", () => {
+    it("scrubs a UUID embedded in the served title (CHAOS-2064)", () => {
+        render(
+            <CockpitSummary
+                home={makeHome({
+                    signals: [{ ...topSignal, title: `Compounding risk appears high for ${UUID}` }],
+                })}
+                filters={filters}
+            />,
+        );
+        const hero = screen.getByTestId("cockpit-summary");
+        expect(hero.textContent ?? "").not.toContain(UUID);
+        expect(hero).toHaveTextContent("Compounding risk appears high for #3f2504e0");
+    });
+
+    it("shows the server-resolved scope name in the drawer, not its id", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
         render(
             <CockpitSummary
                 home={makeHome({
@@ -178,72 +215,32 @@ describe("CockpitSummary", () => {
                 filters={filters}
             />,
         );
-        const scope = screen.getByTestId("cockpit-top-change-scope");
+        await userEvent.click(screen.getByTestId("cockpit-top-change-evidence"));
+        const scope = screen.getByTestId("signal-scope");
         expect(scope).toHaveTextContent("payments-api");
         expect(scope.textContent ?? "").not.toContain(UUID);
-        expect(scope).not.toHaveTextContent(/unresolved/i);
-    });
-
-    it("degrades an unresolved scope id to a short token + Unresolved badge", () => {
-        render(
-            <CockpitSummary
-                home={makeHome({
-                    signals: [{ ...topSignal, affected_scope: "", scope_entity: { id: UUID } }],
-                })}
-                filters={filters}
-            />,
-        );
-        const scope = screen.getByTestId("cockpit-top-change-scope");
-        expect(scope.textContent ?? "").not.toContain(UUID);
-        expect(scope).toHaveTextContent("#3f2504e0");
-        expect(scope).toHaveTextContent(/unresolved/i);
-    });
-
-    it("renders a human scope verbatim without an Unresolved badge", () => {
-        render(<CockpitSummary home={makeHome()} filters={filters} />);
-        const scope = screen.getByTestId("cockpit-top-change-scope");
-        expect(scope).toHaveTextContent("3 repos");
-        expect(scope).not.toHaveTextContent(/unresolved/i);
     });
 });
 
-describe("CockpitSummary markup pin (CHAOS-7611 5.1a)", () => {
-    const states: Array<[string, HomeResponse | null]> = [
-        ["at risk with a top signal", makeHome()],
-        ["no signals", makeHome({ signals: [] })],
-        ["home is null", null],
-        [
-            "critical",
-            makeHome({ health_state: { status: "critical", headline: "H", summary: "S" } }),
-        ],
-    ];
-    it("markup of each state (snapshot taken before the hero restyle)", () => {
-        const html = states.map(([, home]) => {
-            const { container, unmount } = render(<CockpitSummary home={home} filters={filters} />);
-            const out = container.innerHTML;
-            unmount();
-            return out;
-        });
-        expect(html).toMatchSnapshot();
-    });
-});
-
-describe("CockpitSummary hero look (CHAOS-7611 5.1a)", () => {
+describe("CockpitSummary hero look", () => {
     it.each([
-        ["healthy", "border-l-(--positive)"],
-        ["watch", "border-l-(--info)"],
-        ["at_risk", "border-l-(--caution)"],
-        ["critical", "border-l-(--negative)"],
-    ] as const)("%s has a status edge, no gradient, and the state in words", (status, edge) => {
-        render(
-            <CockpitSummary
-                home={makeHome({ health_state: { status, headline: "H", summary: "S" } })}
-                filters={filters}
-            />,
-        );
-        const root = screen.getByTestId("cockpit-summary");
-        expect(root.className).toContain(edge);
-        expect(root.className).not.toContain("gradient");
-        expect(screen.getByTestId("cockpit-health-status").textContent).toMatch(/\S/);
-    });
+        ["critical", "border-l-(--accent-negative)"],
+        ["high", "border-l-(--accent-3)"],
+        ["medium", "border-l-(--accent-2)"],
+        ["low", "border-l-(--ink-muted)"],
+    ] as const)(
+        "%s severity has its edge and the state in words, no gradient",
+        (severity, edge) => {
+            render(
+                <CockpitSummary
+                    home={makeHome({ signals: [{ ...topSignal, severity }] })}
+                    filters={filters}
+                />,
+            );
+            const card = screen.getByTestId("area-signal-card");
+            expect(card.className).toContain(edge);
+            expect(card.className).not.toContain("gradient");
+            expect(screen.getByTestId("area-signal-badge").textContent).toMatch(/\S/);
+        },
+    );
 });
