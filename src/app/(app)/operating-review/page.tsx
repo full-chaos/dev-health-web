@@ -274,7 +274,11 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
                     {section.metrics.length ? (
                         <MetricStrip columns={Math.min(section.metrics.length, 5)} className="mt-4">
                             {section.metrics.map((metric) => (
-                                <MetricTile key={metric.key} metric={metric} />
+                                <MetricTile
+                                    key={metric.key}
+                                    metric={metric}
+                                    narrow={section.metrics.length >= 5}
+                                />
                             ))}
                         </MetricStrip>
                     ) : null}
@@ -342,7 +346,11 @@ function AIWorkflowIntelligenceCallout() {
     );
 }
 
-function MetricTile({ metric }: { metric: OperatingReviewMetric }) {
+/**
+ * `narrow`: five or more cards share a row, so a label can run under a top-right pill. The pill
+ * then sits in the flow, before the prior-period line.
+ */
+function MetricTile({ metric, narrow }: { metric: OperatingReviewMetric; narrow: boolean }) {
     return (
         <MetricCard
             label={metric.label}
@@ -350,7 +358,9 @@ function MetricTile({ metric }: { metric: OperatingReviewMetric }) {
             hideTrend
             deltaSlot={
                 <>
-                    <span className={`absolute right-4 top-4 ${statusClass(metric.delta.status)}`}>
+                    <span
+                        className={`${narrow ? "mr-2" : "absolute right-4 top-4"} ${statusClass(metric.delta.status)}`}
+                    >
                         {metric.delta.status}
                     </span>
                     <span>
