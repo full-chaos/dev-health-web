@@ -1,8 +1,6 @@
 "use client";
 
-import { useState } from "react";
-
-import { EvidencePanel } from "@/components/evidence";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -56,19 +54,11 @@ type CockpitSummaryProps = {
     filters: MetricFilter;
 };
 
-type PanelState = {
-    isOpen: boolean;
-    title: string;
-    apiUrl?: string;
-    metric?: string;
-};
-
 export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
-    const [panel, setPanel] = useState<PanelState>({ isOpen: false, title: "" });
+    const evidence = useEvidenceDrawer();
 
     const openPanel = (title: string, params: { apiUrl?: string; metric?: string }) =>
-        setPanel({ isOpen: true, title, ...params });
-    const closePanel = () => setPanel((prev) => ({ ...prev, isOpen: false }));
+        evidence.open({ title, ...params, filters });
 
     const health = home?.health_state;
     const status: CockpitHealthStatus = health?.status ?? "watch";
@@ -83,15 +73,6 @@ export function CockpitSummary({ home, filters }: CockpitSummaryProps) {
             // state in words), no gradient and no heavy shadow.
             className={`relative overflow-hidden rounded-(--radius-md) border border-l-3 border-(--card-stroke) bg-(--card) p-6 sm:p-8 ${meta.edge}`}
         >
-            <EvidencePanel
-                isOpen={panel.isOpen}
-                onCloseAction={closePanel}
-                title={panel.title}
-                apiUrl={panel.apiUrl}
-                metric={panel.metric}
-                filters={filters}
-            />
-
             {/* Health state — the dominant conclusion */}
             <div className="flex flex-wrap items-center gap-3">
                 <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">

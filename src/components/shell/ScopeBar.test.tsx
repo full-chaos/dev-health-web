@@ -75,8 +75,26 @@ describe("ScopeBar — one row", () => {
                 .getAllByRole("button")
                 .map((button) => button.textContent),
         ).toEqual(["7d", "14d", "30d", "90d"]);
-        expect(inRow.getByRole("button", { name: "Filters" })).toBeInTheDocument();
-        expect(inRow.getByRole("button", { name: "Reset filters" })).toBeInTheDocument();
+        // Prototype `.scope-item`: plain label + value triggers (no pill border), dividers, a
+        // plain window row whose active button has a wash.
+        const team = inRow.getByRole("button", { name: /^Team/ });
+        expect(team.className).not.toContain("border");
+        expect(team.querySelector("svg.lucide-chevron-down")).not.toBeNull();
+        expect(inRow.getByRole("button", { name: "Test" }).className).not.toContain("border");
+        const windowGroup = inRow.getByRole("group", { name: "Window" });
+        expect(
+            within(windowGroup)
+                .getAllByRole("button")
+                .find((button) => button.getAttribute("aria-pressed") === "true")?.className,
+        ).toContain("bg-(--accent)/15");
+        expect(windowGroup.className).not.toContain("border");
+        expect(row().querySelectorAll("span.w-px")).toHaveLength(3);
+        const filters = inRow.getByRole("button", { name: "Filters" });
+        // Prototype `scopebar()`: Filters is ghost small with the filter icon.
+        expect(filters.querySelector("svg.lucide-list-filter")).not.toBeNull();
+        expect(filters.className).toContain("bg-transparent");
+        expect(filters.className).toContain("min-h-7");
+        expect(inRow.getByRole("button", { name: "Reset" })).toBeInTheDocument();
         expect(inRow.getByRole("button", { name: "Copy link" })).toBeInTheDocument();
     });
 
@@ -205,7 +223,7 @@ describe("ScopeBar — each action writes the same `f` the old bars wrote", () =
         scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}&role=em&lens=pm`);
         renderBar();
 
-        await user.click(screen.getByRole("button", { name: "Reset filters" }));
+        await user.click(screen.getByRole("button", { name: "Reset" }));
 
         expect(scopeBarUrl.lastParams().get("f")).toBe(encodeFilterParam(defaultMetricFilter));
         expect(scopeBarUrl.lastParams().get("f")).toBe(DEFAULT_F);
@@ -382,7 +400,7 @@ describe("ScopeBar — People view", () => {
         render(<ScopeBarClient {...PEOPLE} />);
         expect(screen.getByRole("textbox", { name: "Search" })).toHaveValue("ana");
 
-        await user.click(screen.getByRole("button", { name: "Reset filters" }));
+        await user.click(screen.getByRole("button", { name: "Reset" }));
 
         expect(scopeBarUrl.lastParams().has("q")).toBe(false);
         expect(scopeBarUrl.lastParams().get("f")).toBe(DEFAULT_F);
@@ -440,7 +458,7 @@ describe("ScopeBar — a view with no page filter (Complexity, Cognitive Load)",
         expect(screen.queryByRole("button", { name: /^Developer/ })).toBeNull();
         expect(screen.queryByRole("button", { name: /^Work/ })).toBeNull();
         expect(within(row()).getByRole("button", { name: /^Team/ })).toBeInTheDocument();
-        expect(within(row()).getByRole("button", { name: "Reset filters" })).toBeInTheDocument();
+        expect(within(row()).getByRole("button", { name: "Reset" })).toBeInTheDocument();
     });
 
     it("keeps an organization scope from the URL: it is not changed to the team level", () => {
@@ -514,7 +532,7 @@ describe("ScopeBar — a view with no page filter (Complexity, Cognitive Load)",
             "false",
         );
 
-        await user.click(screen.getByRole("button", { name: "Reset filters" }));
+        await user.click(screen.getByRole("button", { name: "Reset" }));
 
         expect(scopeBarUrl.lastParams().has("f")).toBe(false);
         expect(scopeBarUrl.lastParams().get("role")).toBe("em");
@@ -561,7 +579,7 @@ describe("ScopeBar — a view with page filters keeps the team lock", () => {
         scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}`);
         render(<ScopeBar view="home" />);
 
-        await user.click(screen.getByRole("button", { name: "Reset filters" }));
+        await user.click(screen.getByRole("button", { name: "Reset" }));
 
         expect(scopeBarUrl.lastParams().get("f")).toBe(DEFAULT_F);
     });
@@ -576,7 +594,7 @@ describe("ScopeBar — pageFilters={false}", () => {
         expect(inRow.getByRole("button", { name: /^Team/ })).toBeInTheDocument();
         expect(inRow.getByRole("button", { name: /^Repo/ })).toBeInTheDocument();
         expect(inRow.getByRole("group", { name: "Window" })).toBeInTheDocument();
-        expect(inRow.getByRole("button", { name: "Reset filters" })).toBeInTheDocument();
+        expect(inRow.getByRole("button", { name: "Reset" })).toBeInTheDocument();
         expect(inRow.getByRole("button", { name: "Copy link" })).toBeInTheDocument();
         expect(screen.queryByRole("button", { name: /^Filters/ })).toBeNull();
         expect(screen.queryByRole("button", { name: /^Developer/ })).toBeNull();

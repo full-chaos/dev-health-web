@@ -4,7 +4,7 @@ vi.mock("@/components/charts/SparklineChart", () => ({
     SparklineChart: () => <div data-testid="sparkline" />,
 }));
 const panelProps = vi.hoisted(() => ({ last: null as null | Record<string, unknown> }));
-vi.mock("@/components/evidence", () => ({
+vi.mock("@/components/evidence/EvidencePanel", () => ({
     EvidencePanel: (props: Record<string, unknown>) => {
         panelProps.last = props;
         return null;
@@ -12,8 +12,8 @@ vi.mock("@/components/evidence", () => ({
 }));
 
 import { MetricEvidenceCards } from "./MetricEvidenceCards";
-import { render, screen, userEvent, within } from "@/test/utils";
-import { buildExploreUrl } from "@/lib/filters/url";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { screen, userEvent, within } from "@/test/utils";
 
 const deltas = [
     {
@@ -49,7 +49,7 @@ const row = (metric: string, label: string, value: number, unit: string, delta_p
 });
 
 describe("MetricEvidenceCards tile (CHAOS-7597)", () => {
-    it("shows value, then delta, with both Open evidence targets and a sparkline", () => {
+    it("shows value, then delta, with ONE Open evidence target and a sparkline", () => {
         render(
             <MetricEvidenceCards
                 metrics={["cycle_time"]}
@@ -63,7 +63,7 @@ describe("MetricEvidenceCards tile (CHAOS-7597)", () => {
         expect(
             value.compareDocumentPosition(delta) & Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
-        expect(screen.getAllByText("Open evidence")).toHaveLength(2);
+        expect(screen.getAllByText("Open evidence")).toHaveLength(1);
         expect(screen.getByTestId("sparkline")).toBeInTheDocument();
     });
 
@@ -176,18 +176,22 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
         expect(screen.getAllByTestId("sparkline")).toHaveLength(3);
     });
 
-    it("has two Open evidence targets per tile: a button that opens the panel and a link to Explore", async () => {
+    it("has one Open evidence target per tile: a button that opens the shared drawer (no second link to Explore)", async () => {
         renderFour();
         expect(screen.getAllByRole("button", { name: "Open evidence" })).toHaveLength(4);
-        const links = screen.getAllByRole("link", { name: "Open evidence" });
-        expect(links).toHaveLength(4);
-        expect(links[0]).toHaveAttribute("href", buildExploreUrl({ metric: "a", filters }));
-        expect(panelProps.last?.isOpen).toBe(false);
+        expect(screen.queryAllByRole("link", { name: "Open evidence" })).toHaveLength(0);
+        // The shared drawer mounts no panel until a tile opens it.
+        expect(panelProps.last).toBeNull();
         await userEvent.click(screen.getAllByRole("button", { name: "Open evidence" })[1]);
-        expect(panelProps.last).toMatchObject({ isOpen: true, title: "Down", metric: "b" });
+        expect(panelProps.last).toMatchObject({
+            isOpen: true,
+            title: "Down",
+            metric: "b",
+            filters,
+        });
     });
 
-    it("passes the role into the Explore link", () => {
+    it("passes the role to the drawer, which keeps it on its Explore link", async () => {
         render(
             <MetricEvidenceCards
                 metrics={["a"]}
@@ -197,10 +201,8 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
                 placeholderDeltas={false}
             />,
         );
-        expect(screen.getByRole("link", { name: "Open evidence" })).toHaveAttribute(
-            "href",
-            buildExploreUrl({ metric: "a", filters, role: "manager" }),
-        );
+        await userEvent.click(screen.getByRole("button", { name: "Open evidence" }));
+        expect(panelProps.last).toMatchObject({ metric: "a", role: "manager" });
     });
 
     it("markup of a four-tile section (snapshot taken before the merge)", () => {

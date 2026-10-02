@@ -116,4 +116,12 @@ describe("ViewSet", () => {
             "false",
         );
     });
+
+    it("draws the tab orientation as the prototype tab row (shared with ModeTabs)", () => {
+        render(<ViewSet orientation="tabs" items={items} activeId="flow" />);
+        const current = screen.getByRole("tab", { name: "Renamed Flow Label" });
+        expect(current.className).toContain("bg-(image:--ember)");
+        expect(current.className).toContain("font-bold");
+        expect(current.className).not.toContain("uppercase");
+    });
 });

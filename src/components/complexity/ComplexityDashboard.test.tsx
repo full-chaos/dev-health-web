@@ -7,9 +7,10 @@
  *   - ComplexityDashboard: empty state, KPI tiles, trend panel, treemap, drilldown table
  */
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
-import { render } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import {
     ComplexityDashboard,
     computeKpis,
@@ -62,6 +63,7 @@ vi.mock("@/components/charts/chartTheme", () => ({
 vi.mock("next/navigation", () => ({
     usePathname: () => "/complexity",
     useRouter: () => ({ refresh: vi.fn() }),
+    useSearchParams: () => new URLSearchParams(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -305,15 +307,114 @@ describe("ComplexityDashboard", () => {
         expect(screen.getAllByTestId("hotspot-row")).toHaveLength(20);
     });
 
-    it("renders evidence link when evidenceUrl is provided (hotspots tab)", () => {
+    it("opens the shared evidence drawer from a hotspot row: served values as fact rows, served link in the footer", async () => {
         const hotspots = [
-            makeHotspot("a.py", 0.9, { evidenceUrl: "https://example.com/evidence" }),
+            makeHotspot("src/app/a.py", 0.9, {
+                evidenceUrl: "/code?file=src/app/a.py",
+                blameConcentration: 0.82,
+            }),
         ];
         render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
-        expect(screen.getAllByTestId("evidence-link")[0]).toHaveAttribute(
-            "href",
-            "https://example.com/evidence",
+        // The row has a button, not a link that leaves the page.
+        expect(screen.queryByTestId("evidence-link")).toBeNull();
+        expect(screen.queryByRole("dialog")).toBeNull();
+
+        await userEvent.click(
+            within(screen.getByTestId("hotspot-row")).getByRole("button", {
+                name: "Open evidence",
+            }),
         );
+
+        const drawer = screen.getByRole("dialog", { name: "Evidence & Context" });
+        expect(within(drawer).getByTestId("evidence-subject")).toHaveTextContent("a.py");
+        const facts = Object.fromEntries(
+            within(within(drawer).getByTestId("evidence-subject-facts"))
+                .getAllByTestId("evidence-fact")
+                .map((row) => [
+                    row.querySelector("dt")?.textContent,
+                    row.querySelector("dd")?.textContent,
+                ]),
+        );
+        expect(facts).toEqual({
+            File: "src/app/a.py",
+            Repo: "repo-one",
+            "Risk score": "0.9",
+            "Cyclomatic avg": "8.5",
+            "Churn LOC 30d": "100",
+            "Owner concentration": "82%",
+        });
+        // The evidence link stays: it is the drawer's footer action.
+        expect(within(drawer).getByTestId("evidence-link")).toHaveAttribute(
+            "href",
+            "/code?file=src/app/a.py",
+        );
+    });
+
+    it("shows one muted provenance line in the row drawer, not five empty rows (the hotspots query serves none)", async () => {
+        const hotspots = [
+            makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py", blameConcentration: 0.5 }),
+        ];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
+        await userEvent.click(screen.getByRole("button", { name: "Open evidence" }));
+
+        const drawer = screen.getByRole("dialog");
+        expect(within(drawer).getByTestId("evidence-provenance-not-reported")).toHaveTextContent(
+            "Provenance is not reported for this item.",
+        );
+        expect(within(drawer).queryByTestId("evidence-facts")).toBeNull();
+        expect(within(drawer).queryByText("Not reported")).toBeNull();
+        expect(within(drawer).getByTestId("evidence-subject-facts")).toBeInTheDocument();
+    });
+
+    it("Escape closes the row drawer and focus returns to the row's Evidence button", async () => {
+        const hotspots = [
+            makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py" }),
+            makeHotspot("b.py", 0.8, { evidenceUrl: "/code?file=b.py" }),
+        ];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
+        const opener = within(screen.getAllByTestId("hotspot-row")[1]).getByRole("button", {
+            name: "Open evidence",
+        });
+        await userEvent.click(opener);
+        expect(screen.getByTestId("evidence-subject")).toHaveTextContent("b.py");
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(opener).toHaveFocus();
+    });
+
+    it("shows 'Not reported' in the drawer for an owner concentration the query did not serve", async () => {
+        const hotspots = [makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py" })];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
+
+        await userEvent.click(screen.getByRole("button", { name: "Open evidence" }));
+
+        const row = within(screen.getByRole("dialog"))
+            .getAllByTestId("evidence-fact")
+            .find((fact) => fact.querySelector("dt")?.textContent === "Owner concentration");
+        expect(row?.querySelector("dd")).toHaveTextContent(/^Not reported$/);
+    });
+
+    it("closes the drawer when the user follows the footer evidence link", async () => {
+        const hotspots = [makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py" })];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
+        await userEvent.click(screen.getByRole("button", { name: "Open evidence" }));
+        const link = screen.getByTestId("evidence-link");
+        link.addEventListener("click", (event) => event.preventDefault());
+
+        await userEvent.click(link);
+
+        expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("keeps the 'No artifact link' state for a row with no served link (no button)", () => {
+        const hotspots = [makeHotspot("a.py", 0.9)];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
+
+        const row = screen.getByTestId("hotspot-row");
+        expect(within(row).getByText("No artifact link")).toBeInTheDocument();
+        expect(within(row).queryByRole("button", { name: "Open evidence" })).toBeNull();
     });
 
     it("shows a DataState (not the treemap) on the hotspots tab when only points exist", () => {

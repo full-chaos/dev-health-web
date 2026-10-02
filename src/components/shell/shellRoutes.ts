@@ -1,13 +1,9 @@
 /**
- * Shell route registry — the single switch between the shared app shell and
- * the legacy chrome.
+ * Shell route registry: per-route link behaviour inside the shared app shell.
  *
- * A pathname that matches a registered prefix renders inside the shared shell
- * (sidebar, top bar, one `<main>`). Every other authed route keeps the legacy
- * chrome unchanged: the account bar from the layout plus the page's own
- * navigation (the Admin sidebar). Page migrations add their prefix here and
- * remove the page-level navigation in the same change. When every authed route
- * is registered, this file and the legacy branch of `AppShell` are deleted.
+ * Every authed route renders in the shell (`AppShell`); this registry no longer
+ * switches chrome. An entry sets how the navigation links of a route carry the
+ * `role` and the `f` (filter) param. A route with no entry gets the default.
  */
 export type ShellRoute = {
     /** Route prefix. Matches the exact path and its descendants. */
@@ -88,6 +84,8 @@ export const SHELL_ROUTES: readonly ShellRoute[] = [
     { prefix: "/settings", filterParam: "none" },
     // Admin: the platform admin pages (Platform, Platform billing; platform admins only).
     { prefix: "/superadmin", filterParam: "none" },
+    // The chart prototype page. It reads no filter.
+    { prefix: "/demo", filterParam: "none" },
 ];
 
 function matchesRoute(pathname: string, route: ShellRoute): boolean {
@@ -111,12 +109,4 @@ export function shellRouteForPathname(
         }
     }
     return selected;
-}
-
-/** True when `pathname` renders inside the shared app shell. */
-export function isShellRoute(
-    pathname: string | null | undefined,
-    routes: readonly ShellRoute[] = SHELL_ROUTES,
-): boolean {
-    return shellRouteForPathname(pathname, routes) !== undefined;
 }

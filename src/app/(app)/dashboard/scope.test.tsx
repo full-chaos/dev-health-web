@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 import { AppShell } from "@/components/shell/AppShell";
 import { FILTER_OPTIONS, scopeBarUrl } from "@/test/scopeBarHarness";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
@@ -54,7 +55,9 @@ const fetchMock = vi.fn();
 async function renderCockpit() {
     return render(
         <AdminTierProvider tier="community" features={{}}>
-            <AppShell>{await Home({ searchParams: Promise.resolve({}) })}</AppShell>
+            <EvidenceDrawerProvider>
+                <AppShell>{await Home({ searchParams: Promise.resolve({}) })}</AppShell>
+            </EvidenceDrawerProvider>
         </AdminTierProvider>,
     );
 }

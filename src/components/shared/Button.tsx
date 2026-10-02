@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost";
 export type ButtonSize = "sm" | "md";
@@ -50,6 +50,8 @@ export function buttonClassName(
 type ButtonBaseProps = ButtonHTMLAttributes<HTMLButtonElement> & {
     variant?: ButtonVariant;
     size?: ButtonSize;
+    /** React 19 passes `ref` as a prop; it reaches the `<button>` through the rest spread. */
+    ref?: Ref<HTMLButtonElement>;
     /** Decorative icon element (for example a lucide icon). Rendered `aria-hidden`. */
     icon?: ReactNode;
     /** Which side of the label the icon sits on. Default `start`. */

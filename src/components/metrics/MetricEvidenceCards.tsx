@@ -1,10 +1,7 @@
 "use client";
 
-import { useState } from "react";
-
-import { EvidencePanel } from "@/components/evidence";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { MetricCard } from "@/components/metrics/MetricCard";
-import { buildExploreUrl } from "@/lib/filters/url";
 import { metricInverseGood } from "@/lib/metrics/catalog";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta } from "@/lib/types";
@@ -27,18 +24,10 @@ export function MetricEvidenceCards({
     activeRole,
     placeholderDeltas,
 }: MetricEvidenceCardsProps) {
-    const [activeMetric, setActiveMetric] = useState<MetricDelta | null>(null);
+    const evidence = useEvidenceDrawer();
 
     return (
         <>
-            <EvidencePanel
-                isOpen={Boolean(activeMetric)}
-                onCloseAction={() => setActiveMetric(null)}
-                title={activeMetric?.label ?? "Metric evidence"}
-                metric={activeMetric?.metric}
-                filters={filters}
-            />
-
             <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
                 {metrics.map((metric) => {
                     const data = getMetric(deltas, metric);
@@ -57,19 +46,11 @@ export function MetricEvidenceCards({
                             // A missing delta (placeholder rows, or no data row) is "No prior period", never 0.
                             delta={placeholderDeltas ? undefined : data?.delta_pct}
                             inverseGood={metricInverseGood(metric)}
+                            // One evidence path per tile: the button opens the shared drawer, and
+                            // the drawer footer links to Explore for the metric (with the role).
                             onOpenEvidence={() =>
-                                setActiveMetric(
-                                    data ?? {
-                                        metric,
-                                        label,
-                                        value: 0,
-                                        unit: "",
-                                        delta_pct: 0,
-                                        spark: [],
-                                    },
-                                )
+                                evidence.open({ title: label, metric, filters, role: activeRole })
                             }
-                            evidenceHref={buildExploreUrl({ metric, filters, role: activeRole })}
                         />
                     );
                 })}

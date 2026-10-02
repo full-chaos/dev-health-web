@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getSetupStatus } from "@/lib/admin/server";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { DEFAULT_ROLE } from "@/lib/lensContext";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 
 import Home from "./page";
 
