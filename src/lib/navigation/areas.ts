@@ -685,17 +685,20 @@ export const navAreas: readonly NavArea[] = [
         hubItems: [],
         children: [
             {
+                // Its tabs (Overview, Users, Teams, ... Settings) are routes under `/org/admin`;
+                // Connections owns the longer `/org/admin/sync` and `/org/admin/integrations`.
                 id: "organization",
                 label: "Organization",
                 path: "/org/admin",
                 navVisible: true,
-                exact: true,
             },
             {
                 id: "connections",
                 label: "Connections",
                 path: "/org/admin/sync",
                 navVisible: true,
+                // The Providers tab of Connections (AD-1 option A).
+                ownedPaths: ["/org/admin/sync", "/org/admin/integrations"],
             },
             {
                 id: "data-confidence",

@@ -174,6 +174,55 @@ describe("paletteEntries", () => {
         expect(withFeature).not.toContain("Hidden tab");
     });
 
+    it("lists the Admin tabs after their destination, and a feature tab only with its feature", () => {
+        const plain = paletteEntries(navAreas, {});
+        expect(plain.find((e) => e.path === "/org/admin/users")).toMatchObject({
+            label: "Users",
+            areaLabel: "Organization · Admin",
+        });
+        expect(plain.find((e) => e.path === "/org/admin/integrations")).toMatchObject({
+            label: "Providers",
+            areaLabel: "Connections · Admin",
+        });
+        // Overview and Sync Status are the destination rows themselves (no second row for them).
+        expect(plain.filter((e) => e.path === "/org/admin").map((e) => e.label)).toEqual([
+            "Admin",
+            "Organization",
+        ]);
+        expect(plain.filter((e) => e.path === "/org/admin/sync").map((e) => e.label)).toEqual([
+            "Connections",
+        ]);
+        // The four entitlement tabs need their feature, as in the old admin sidebar.
+        const gated = [
+            "/org/admin/audit-logs",
+            "/org/admin/ip-allowlist",
+            "/org/admin/retention",
+            "/org/admin/ai",
+        ];
+        for (const path of gated)
+            expect(
+                plain.find((e) => e.path === path),
+                path,
+            ).toBeUndefined();
+        const all = paletteEntries(navAreas, {
+            audit_log: true,
+            ip_allowlist: true,
+            custom_retention: true,
+            byo_llm: true,
+        });
+        for (const path of gated)
+            expect(
+                all.find((e) => e.path === path),
+                path,
+            ).toBeDefined();
+        expect(
+            paletteEntries(navAreas, { byo_llm: true }).find((e) => e.path === "/org/admin/ai"),
+        ).toMatchObject({
+            label: "AI Setup",
+            areaLabel: "Organization · Admin",
+        });
+    });
+
     it("lists no destination twice", () => {
         const entries = paletteEntries(navAreas, {});
         const keys = entries.map((e) => `${e.path}|${e.label}`);

@@ -327,7 +327,29 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
     });
 
     it("returns undefined for an owned area route with no matching child", () => {
-        expect(selectedChildForPathname(areaById("admin"), "/org/admin/users")).toBeUndefined();
+        // Diagnose owns the artifact detail routes, but no child lists them (CHAOS-7747).
+        expect(selectedChildForPathname(areaById("diagnose"), "/prs/1")).toBeUndefined();
+    });
+
+    // AD-1 option A: the old admin sidebar's pages are tabs of two Admin destinations.
+    it.each([
+        ["/org/admin", "organization"],
+        ["/org/admin/users", "organization"],
+        ["/org/admin/users/new", "organization"],
+        ["/org/admin/teams/t1/edit", "organization"],
+        ["/org/admin/identities", "organization"],
+        ["/org/admin/audit-logs", "organization"],
+        ["/org/admin/ip-allowlist", "organization"],
+        ["/org/admin/retention", "organization"],
+        ["/org/admin/ai/byo-llm", "organization"],
+        ["/org/admin/settings", "organization"],
+        ["/org/admin/sync", "connections"],
+        ["/org/admin/sync/new", "connections"],
+        ["/org/admin/sync/c1/runs/r1", "connections"],
+        ["/org/admin/integrations", "connections"],
+        ["/org/admin/integrations/github/sync", "connections"],
+    ])("selects the Admin destination of %s: %s", (pathname, childId) => {
+        expect(selectedChildForPathname(areaById("admin"), pathname)?.id).toBe(childId);
     });
 });
 

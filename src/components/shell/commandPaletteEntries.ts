@@ -1,5 +1,5 @@
 import { isNavChildVisible, type NavArea } from "@/lib/navigation/areas";
-import { TAB_SETS, tabHref, type TabSet } from "@/lib/navigation/tabs";
+import { TAB_SETS, isTabVisible, tabHref, type TabSet } from "@/lib/navigation/tabs";
 
 export type PaletteEntry = {
     /** Unique row id (also the DOM id suffix). */
@@ -15,7 +15,8 @@ export type PaletteEntry = {
  * (`isNavChildVisible`: shown in the menu and, when it needs a feature, the organization has it).
  * Registry order, labels as the sidebar writes them. After a destination come its tabs, from the tab
  * registry (`lib/navigation/tabs.ts`). Nothing here is invented: no actions, no entry for a hidden or
- * preview route, no tab of a destination the sidebar would not list.
+ * preview route, no tab of a destination the sidebar would not list, no tab whose feature the
+ * organization lacks.
  */
 export function paletteEntries(
     areas: readonly NavArea[],
@@ -40,6 +41,8 @@ export function paletteEntries(
                 if (set.areaId !== area.id || (set.childPath ?? set.basePath) !== child.path)
                     continue;
                 for (const tab of set.tabs) {
+                    // A tab that needs a feature the organization lacks is not offered (Admin).
+                    if (!isTabVisible(tab, features)) continue;
                     const href = tabHref(set, tab.id);
                     // The tab that is the destination row itself is not listed twice.
                     if (href === child.path) continue;

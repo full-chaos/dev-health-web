@@ -6,7 +6,15 @@ import { getAreaById, isNavChildVisible } from "../areas";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 
-import { TAB_SETS, getTabSet, tabHref, type TabSet } from "../tabs";
+import { getAreaById as areaOf, selectedChildForPathname } from "../areas";
+import {
+    TAB_SETS,
+    getTabSet,
+    isTabVisible,
+    routeTabForPathname,
+    tabHref,
+    type TabSet,
+} from "../tabs";
 
 // The sets as the general type: loops over every set do not depend on each set's literal type.
 const SETS: readonly TabSet[] = TAB_SETS;
@@ -65,6 +73,24 @@ const BEFORE = {
         ["artifacts", "Artifacts"],
     ],
 } as const;
+
+// AD-1 option A: the old admin sidebar (`AdminSidebar.tsx`, deleted) listed these 11 pages, with
+// these entitlement keys. The tab rows hold the same routes and keys; two labels follow the design
+// (MAPPING-CHAOS-7630 §3): "Dashboard" is the Organization "Overview", "Organization" is "Settings".
+const ADMIN_SIDEBAR_BEFORE = [
+    ["Dashboard", "/org/admin", undefined],
+    ["Users", "/org/admin/users", undefined],
+    ["Organization", "/org/admin/settings", undefined],
+    ["Providers", "/org/admin/integrations", undefined],
+    ["Sync Status", "/org/admin/sync", undefined],
+    ["Teams", "/org/admin/teams", undefined],
+    ["Identities", "/org/admin/identities", undefined],
+    ["Audit Logs", "/org/admin/audit-logs", "audit_log"],
+    ["IP Allowlist", "/org/admin/ip-allowlist", "ip_allowlist"],
+    ["Data Retention", "/org/admin/retention", "custom_retention"],
+    ["AI Setup", "/org/admin/ai", "byo_llm"],
+] as const;
+const ADMIN_RENAMED: Record<string, string> = { Dashboard: "Overview", Organization: "Settings" };
 
 describe("tab registry", () => {
     it.each(Object.entries(BEFORE))(
@@ -137,6 +163,72 @@ describe("tab registry", () => {
             for (const tab of set.tabs) {
                 expect("path" in tab && Boolean(tab.path), `${set.id}/${tab.id}`).toBe(
                     set.param === "route",
+                );
+            }
+        }
+    });
+
+    it("holds the Admin tab rows of the design, in its order", () => {
+        expect(getTabSet("admin-organization").tabs.map((t) => t.label)).toEqual([
+            "Overview",
+            "Users",
+            "Teams",
+            "Identities",
+            "Audit Logs",
+            "IP Allowlist",
+            "Data Retention",
+            "AI Setup",
+            "Settings",
+        ]);
+        expect(getTabSet("admin-connections").tabs.map((t) => t.label)).toEqual([
+            "Sync Status",
+            "Providers",
+        ]);
+    });
+
+    it("keeps every page of the old admin sidebar, with its route and its entitlement key", () => {
+        const adminTabs = [getTabSet("admin-organization"), getTabSet("admin-connections")].flatMap(
+            (set): TabSet["tabs"][number][] => [...set.tabs],
+        );
+        expect(adminTabs).toHaveLength(ADMIN_SIDEBAR_BEFORE.length);
+        for (const [label, path, feature] of ADMIN_SIDEBAR_BEFORE) {
+            const tab = adminTabs.find((t) => t.path === path);
+            expect(tab, path).toBeDefined();
+            expect(tab?.label, path).toBe(ADMIN_RENAMED[label] ?? label);
+            expect(tab?.requiredFeature, path).toBe(feature);
+        }
+    });
+
+    it("hides a feature tab until the organization has the feature", () => {
+        const audit = getTabSet("admin-organization").tabs.find((t) => t.id === "audit-logs")!;
+        expect(isTabVisible(audit, {})).toBe(false);
+        expect(isTabVisible(audit, { audit_log: false })).toBe(false);
+        expect(isTabVisible(audit, { audit_log: true })).toBe(true);
+        expect(isTabVisible(getTabSet("admin-organization").tabs[0], {})).toBe(true);
+    });
+
+    it("finds the route tab of a path by the longest tab route", () => {
+        const at = (pathname: string) => {
+            const found = routeTabForPathname(pathname);
+            return found ? `${found.set.id}/${found.tab.id}` : undefined;
+        };
+        expect(at("/org/admin")).toBe("admin-organization/overview");
+        expect(at("/org/admin/users")).toBe("admin-organization/users");
+        expect(at("/org/admin/users/u1/edit")).toBe("admin-organization/users");
+        expect(at("/org/admin/ai/byo-llm")).toBe("admin-organization/ai-setup");
+        expect(at("/org/admin/sync/c1/runs/r1")).toBe("admin-connections/sync");
+        expect(at("/org/admin/integrations/github/sync")).toBe("admin-connections/providers");
+        expect(at("/org/administration")).toBeUndefined();
+        expect(at("/testops/pipelines")).toBe("testops/pipelines");
+        expect(at("/superadmin/users")).toBeUndefined();
+    });
+
+    it("a route tab's path selects the destination of its set in the sidebar", () => {
+        for (const set of SETS.filter((s) => s.param === "route")) {
+            const area = areaOf(set.areaId)!;
+            for (const tab of set.tabs) {
+                expect(selectedChildForPathname(area, tab.path!)?.path, `${set.id}/${tab.id}`).toBe(
+                    set.childPath ?? set.basePath,
                 );
             }
         }
