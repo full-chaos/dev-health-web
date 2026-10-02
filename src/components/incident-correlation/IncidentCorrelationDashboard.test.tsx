@@ -15,7 +15,6 @@ import { describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { render } from "@/test/utils";
 import { renderWithEvidenceDrawer } from "@/test/evidenceDrawer";
 import { ShellOrganizationProvider } from "@/components/shell/ShellContext";
 import {
