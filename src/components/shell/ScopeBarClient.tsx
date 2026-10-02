@@ -236,7 +236,7 @@ export function ScopeBarClient({
                                     aria-pressed={active}
                                     className={`rounded-(--radius-pill) px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) ${
                                         active
-                                            ? "bg-(--accent) text-(--accent-foreground)"
+                                            ? "bg-(--accent-wash) text-(--accent-ink)"
                                             : "text-(--text-secondary) hover:text-(--text-primary)"
                                     }`}
                                 >

@@ -115,6 +115,9 @@
 :root[data-palette][data-theme="light"] {
     /* C2 color roles */
     --surface: var(--card);
+    /* Selected-control fill and ink; the infinity palette sets literal values. */
+    --accent-wash: color-mix(in srgb, var(--accent) 15%, var(--card));
+    --accent-ink: var(--accent-text);
     --surface-raised: color-mix(in srgb, var(--card) 97%, var(--foreground));
     --border: var(--card-stroke);
     --text-primary: var(--foreground);
@@ -343,18 +346,15 @@ html [data-sonner-toaster][data-sonner-theme] {
     border-radius: 0.75rem;
     box-shadow:
         0 0 0 2px var(--background),
-        0 0 0 4px var(--accent);
+        0 0 0 4px var(--accent-2);
 }
 
 :focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-2);
     outline-offset: 2px;
     border-radius: inherit;
 }
 
 .metric-hero {
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-primary);
 }

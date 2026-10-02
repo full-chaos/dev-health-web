@@ -123,7 +123,7 @@ export function ScopeBarCard({
                         disabled={organization.disabled}
                         className={`rounded-(--radius-pill) border px-3 py-1.5 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) ${
                             organization.pressed
-                                ? "border-(--accent) bg-(--accent)/15 text-(--text-primary)"
+                                ? "border-(--accent-wash) bg-(--accent-wash) text-(--accent-ink)"
                                 : "border-(--border) bg-(--surface-raised) text-(--text-secondary) hover:text-(--text-primary)"
                         }`}
                     >
