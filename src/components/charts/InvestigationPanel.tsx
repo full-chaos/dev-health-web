@@ -2,6 +2,11 @@
 
 import Link from "next/link";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import {
+    EvidenceFact,
+    EvidenceFactList,
+    EvidenceProvenanceFacts,
+} from "@/components/evidence/EvidenceFacts";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { useActiveRole } from "@/lib/lensContext.client";
 import { getRoleConfig } from "@/lib/roleContext";
@@ -9,6 +14,8 @@ import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import { useMemo } from "react";
+
+import { formatQuadrantValue } from "./quadrantFormat";
 
 type InvestigationPanelProps = {
     point: QuadrantPoint;
@@ -129,6 +136,24 @@ export function InvestigationPanel({ point, data, filters, title }: Investigatio
     return (
         <div data-testid="investigation-panel" className="text-xs">
             <div className="space-y-6">
+                {/* The quadrant query serves no source, quality, sync time, identity confidence
+                    or artifact list for a point: the five rows say so. */}
+                <EvidenceProvenanceFacts />
+                {/* The point as the chart draws it: the two raw axis values and its window. */}
+                <EvidenceFactList aria-label="Point" testId="evidence-subject-facts">
+                    <EvidenceFact
+                        label={data.axes.x.label}
+                        value={formatQuadrantValue(point.x, data.axes.x.unit)}
+                    />
+                    <EvidenceFact
+                        label={data.axes.y.label}
+                        value={formatQuadrantValue(point.y, data.axes.y.unit)}
+                    />
+                    <EvidenceFact
+                        label="Window"
+                        value={`${point.window_start} to ${point.window_end}`}
+                    />
+                </EvidenceFactList>
                 <section>
                     <div className="flex items-center justify-between mb-2">
                         <p className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">

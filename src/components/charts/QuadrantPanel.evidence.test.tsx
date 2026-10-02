@@ -6,6 +6,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
 import { QuadrantPanel } from "./QuadrantPanel";
+import { formatQuadrantValue } from "./quadrantFormat";
 
 // CHAOS-8060: a quadrant dot opens the ONE shared evidence drawer. The investigation content is
 // the drawer body; the inline side panel is gone. Invented entities.
@@ -124,20 +125,93 @@ describe("QuadrantPanel evidence drawer", () => {
         expect(url.searchParams.get("api")).toBe("/api/v1/explain?metric=throughput&scope_id=t2");
     });
 
-    it("marks the point as selected while the drawer is open and clears it on close", async () => {
+    it("marks the point chip as pressed while the drawer is open and clears it on close", async () => {
         render(panel());
-        // Not selected: the chip is a button.
-        const chip = () => screen.queryByRole("button", { name: "Team Alpha" });
-        expect(chip()).not.toBeNull();
+        const chip = screen.getByRole("button", { name: "Team Alpha" });
+        expect(chip).toHaveAttribute("aria-pressed", "false");
 
-        await userEvent.click(chip() as HTMLElement);
+        await userEvent.click(chip);
         expect(screen.getByRole("dialog")).toBeInTheDocument();
-        // Selected: the chip is plain text, not a button.
-        expect(chip()).toBeNull();
+        expect(chip).toHaveAttribute("aria-pressed", "true");
+        // The other chip is not pressed.
+        expect(screen.getByRole("button", { name: "Team Beta" })).toHaveAttribute(
+            "aria-pressed",
+            "false",
+        );
 
         await userEvent.click(screen.getByRole("button", { name: "Close" }));
         expect(screen.queryByRole("dialog")).toBeNull();
-        expect(chip()).not.toBeNull();
+        expect(chip).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("Escape closes the drawer and focus returns to the chip that opened it", async () => {
+        render(panel());
+        const chip = screen.getByRole("button", { name: "Team Alpha" });
+        await userEvent.click(chip);
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(screen.queryByRole("dialog")).toBeNull();
+        // The same node is still in the page: the chips are not removed while the drawer is open.
+        expect(chip).toBeInTheDocument();
+        expect(chip).toHaveFocus();
+    });
+
+    it("Escape closes the drawer opened from a dot and focus returns to the chart region", async () => {
+        render(panel());
+        const region = screen.getByTestId("quadrant-chart-region");
+        expect(region).toHaveAttribute("tabindex", "-1");
+        expect(region).toHaveAccessibleName("Delivery landscape chart");
+        // A real dot is a mark on a canvas; the stand-in must not keep focus itself.
+        const dot = screen.getByRole("button", { name: "dot Team Alpha" });
+        await userEvent.click(dot);
+        dot.blur();
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(region).toHaveFocus();
+    });
+
+    it("starts the dot drawer with the five provenance rows, 'Not reported' for each field the quadrant query does not serve", async () => {
+        render(panel());
+        await userEvent.click(screen.getByRole("button", { name: "dot Team Alpha" }));
+
+        const rows = within(within(screen.getByRole("dialog")).getByTestId("evidence-facts"))
+            .getAllByTestId("evidence-fact")
+            .map((row) => [
+                row.querySelector("dt")?.textContent,
+                row.querySelector("dd")?.textContent,
+            ]);
+        expect(rows).toEqual([
+            ["Source", "Not reported"],
+            ["Data quality", "Not reported"],
+            ["Last sync", "Not reported"],
+            ["Identity confidence", "Not reported"],
+            ["Artifacts", "Not reported"],
+        ]);
+    });
+
+    it("shows the point's raw axis values as the chart formats them, and its window", async () => {
+        render(panel());
+        await userEvent.click(screen.getByRole("button", { name: "dot Team Alpha" }));
+
+        const rows = Object.fromEntries(
+            within(within(screen.getByRole("dialog")).getByTestId("evidence-subject-facts"))
+                .getAllByTestId("evidence-fact")
+                .map((row) => [
+                    row.querySelector("dt")?.textContent,
+                    row.querySelector("dd")?.textContent,
+                ]),
+        );
+        expect(rows).toEqual({
+            "Cycle Time": formatQuadrantValue(4.2, "days"),
+            Throughput: formatQuadrantValue(18, "items"),
+            Window: "2026-06-01 to 2026-09-01",
+        });
+        expect(rows["Cycle Time"]).toBe("4.2d");
+        expect(rows.Throughput).toBe("18 items");
     });
 
     it("replaces the subject when another dot is selected: still one drawer", async () => {
@@ -148,7 +222,14 @@ describe("QuadrantPanel evidence drawer", () => {
         expect(screen.getAllByRole("dialog")).toHaveLength(1);
         expect(screen.getByTestId("evidence-subject")).toHaveTextContent("Team Beta");
         // The first point is not selected any more.
-        expect(screen.queryByRole("button", { name: "Team Alpha" })).not.toBeNull();
+        expect(screen.getByRole("button", { name: "Team Alpha" })).toHaveAttribute(
+            "aria-pressed",
+            "false",
+        );
+        expect(screen.getByRole("button", { name: "Team Beta" })).toHaveAttribute(
+            "aria-pressed",
+            "true",
+        );
     });
 
     it("closes the drawer when the user follows an investigation path", async () => {
