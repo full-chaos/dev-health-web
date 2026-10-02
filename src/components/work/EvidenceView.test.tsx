@@ -25,3 +25,28 @@ describe("EvidenceView", () => {
         expect(screen.getAllByRole("link", { name: /inspect associations/i })).toHaveLength(1);
     });
 });
+
+describe("EvidenceView strings (pin, CHAOS-7749)", () => {
+    it("keeps both card titles, the WIP-only action and the empty texts", () => {
+        render(<EvidenceView filters={filters} wipExplain={null} blockedExplain={null} />);
+        expect(screen.getByRole("heading", { name: "WIP Associations" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { name: "Blocked Associations" })).toBeInTheDocument();
+        expect(screen.getAllByRole("link", { name: /inspect associations/i })).toHaveLength(1);
+        expect(
+            screen.getByText("WIP association detail will appear once data is ingested."),
+        ).toBeInTheDocument();
+        expect(
+            screen.getByText("Blocked association detail will appear once data is ingested."),
+        ).toBeInTheDocument();
+    });
+
+    it("renders driver rows as links with the signed delta", () => {
+        const explain = {
+            drivers: [{ id: "d1", label: "Driver one", delta_pct: 12, evidence_link: "/api/x" }],
+        } as never;
+        render(<EvidenceView filters={filters} wipExplain={explain} blockedExplain={null} />);
+        const row = screen.getByRole("link", { name: /Driver one/u });
+        expect(row).toHaveAttribute("href");
+        expect(row).toHaveTextContent("Driver one");
+    });
+});

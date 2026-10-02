@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { OpportunityCard } from "./OpportunityCard";
+import { OpportunityMasterDetail } from "./OpportunityMasterDetail";
+import { DataState } from "@/components/ui/DataState";
+import { Notice } from "@/components/ui/Notice";
+import { RetryButton } from "@/components/ui/RetryButton";
 import { checkApiHealth } from "@/lib/api/system";
 import { getOpportunities } from "@/lib/api/home";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
@@ -48,49 +51,49 @@ export default async function OpportunitiesPage({ searchParams }: OpportunitiesP
 
             <ScopeBar view="opportunities" />
 
-            <section className="grid gap-6 md:grid-cols-2" aria-label="Opportunities">
-                {(data?.items ?? []).map((card) => (
-                    <OpportunityCard
-                        key={card.id}
-                        card={card}
-                        filters={filters}
-                        activeRole={activeRole}
-                    />
-                ))}
-                {data && data.items.length === 0 && (
-                    <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
-                        No open opportunities in this window — nothing is trending worse for the
-                        current scope.
-                    </div>
-                )}
-                {!data && (
-                    <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
-                        Opportunity data unavailable.
-                    </div>
-                )}
-            </section>
+            {data && data.items.length > 0 && (
+                <OpportunityMasterDetail
+                    items={data.items}
+                    filters={filters}
+                    activeRole={activeRole}
+                />
+            )}
+            {data && data.items.length === 0 && (
+                <DataState
+                    variant="detector-enabled-no-findings"
+                    title="No open opportunities"
+                    description="No open opportunities in this window — nothing is trending worse for the current scope."
+                    data-testid="opportunities-empty"
+                />
+            )}
+            {!data && (
+                <DataState
+                    variant="error"
+                    title="Opportunity data unavailable."
+                    message="Opportunities could not be loaded for the current window."
+                    action={<RetryButton />}
+                    data-testid="opportunities-error"
+                />
+            )}
 
-            <section
-                className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-(--card-stroke) bg-card p-5"
-                aria-label="AI automation opportunities"
+            <Notice
+                variant="info"
+                live={false}
+                title="Automation opportunities for AI-assisted work"
+                titleAs="h2"
                 data-testid="improve-ai-automations-crosslink"
+                action={
+                    <Link
+                        href={withFilterParam("/ai/automations", filters, activeRole)}
+                        className="text-xs uppercase tracking-[0.2em] text-(--accent-2) underline-offset-4 hover:underline"
+                    >
+                        {CTA_LABELS.seeAIAutomations} →
+                    </Link>
+                }
             >
-                <div>
-                    <h2 className="font-(--font-display) text-lg">
-                        Automation opportunities for AI-assisted work
-                    </h2>
-                    <p className="mt-1 max-w-2xl text-sm text-(--ink-muted)">
-                        Responsible automation candidates detected on AI-attributed work live in the
-                        AI area, scoped to your current filters.
-                    </p>
-                </div>
-                <Link
-                    href={withFilterParam("/ai/automations", filters, activeRole)}
-                    className="text-xs uppercase tracking-[0.2em] text-(--accent-2) underline-offset-4 hover:underline"
-                >
-                    {CTA_LABELS.seeAIAutomations} →
-                </Link>
-            </section>
+                Responsible automation candidates detected on AI-attributed work live in the AI
+                area, scoped to your current filters.
+            </Notice>
         </div>
     );
 }

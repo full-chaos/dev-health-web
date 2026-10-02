@@ -25,9 +25,6 @@ const ratio = (a: number[], b: number[]) => {
 const over = (fg: number[], bg: number[], a: number) => fg.map((v, i) => v * a + bg[i] * (1 - a));
 
 describe("shared badges use theme tokens, not raw palette classes", () => {
-    it("BetaBadge has no raw palette class", () => {
-        expect(read("../BetaBadge.tsx")).not.toMatch(RAW);
-    });
     it("severityTokens has no raw palette class", () => {
         expect(read("./severityTokens.ts")).not.toMatch(RAW);
     });

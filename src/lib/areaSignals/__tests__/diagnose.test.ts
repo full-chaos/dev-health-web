@@ -186,6 +186,12 @@ beforeEach(() => {
 });
 
 describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
+    it("carries no driver line on any card (only AI Impact has one)", async () => {
+        const signals = await getDiagnoseSignals(defaultMetricFilter);
+        expect(signals.length).toBeGreaterThan(0);
+        expect(signals.filter((s) => s.driver !== undefined)).toEqual([]);
+    });
+
     it("returns all seven Diagnose sub-areas exactly once, flat (no cluster)", async () => {
         const signals = await getDiagnoseSignals(defaultMetricFilter);
         const ids = signals.map((s) => s.id);
