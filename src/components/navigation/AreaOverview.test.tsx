@@ -149,7 +149,7 @@ describe("AreaOverview — summarize + route (no hero/grid duplication)", () => 
 
 describe("AreaOverview note slot", () => {
     it("renders no note unless one is passed (other areas are unchanged)", () => {
-        const signals = [signal("opportunities", "info")];
+        const signals = [signal("opportunities", "neutral")];
         const { rerender } = render(
             <AreaOverview areaId="improve" signals={signals} filters={defaultMetricFilter} />,
         );
