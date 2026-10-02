@@ -3,9 +3,10 @@ import { screen, userEvent, waitFor, within } from "@/test/utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { MetricFilter } from "@/lib/filters/types";
-import type { CockpitSignal } from "@/lib/types";
+import type { CockpitSignal, MetricDelta } from "@/lib/types";
 
 import {
+    RANKED_SIGNALS_FIRST_ROWS,
     RANKED_SIGNALS_NONE,
     RANKED_SIGNALS_NOTE,
     RANKED_SIGNALS_NO_OTHER,
@@ -45,41 +46,91 @@ const makeSignal = (overrides: Partial<CockpitSignal> = {}): CockpitSignal => ({
     ...overrides,
 });
 
-const hero = makeSignal();
-const churn = makeSignal({
-    id: "metric:churn",
-    title: "Code Churn appears up",
-    metric: "churn",
+/** A metric signal, as the API builds one from a served delta. */
+const metric = (key: string, label: string, overrides: Partial<CockpitSignal> = {}) =>
+    makeSignal({
+        id: `metric:${key}`,
+        title: `${label} appears up`,
+        metric: key,
+        evidence_ref: `/api/home/explain/${key}`,
+        ...overrides,
+    });
+
+/** A risk signal about one entity: metric key `compounding_risk`, a current value only. */
+const risk = (entity: string) =>
+    makeSignal({
+        id: `risk:repo:${entity}`,
+        title: `Compounding risk appears elevated for ${entity}`,
+        metric: "compounding_risk",
+        current_value: "63.9 %",
+        prior_value: null,
+        delta: null,
+        direction: "flat",
+        confidence: "low",
+        evidence_ref: null,
+    });
+
+/** A recommendation signal: metric = a rule id, a reference count only. */
+const recommendation = makeSignal({
+    id: "recommendation:review-rotation:team-1",
+    title: "Review rotation appears uneven",
+    metric: "review-rotation",
+    current_value: "3 refs",
+    prior_value: null,
+    delta: null,
+    direction: "flat",
+});
+
+const hero = metric("review_latency", "Review Latency");
+const churn = metric("churn", "Code Churn", {
     current_value: "1,320,441 LOC",
     prior_value: "759,376 LOC",
     delta: "+74%",
-    direction: "up",
     why_it_matters: "Higher churn suggests more rework.",
     recommended_action: "Inspect the files with the most rework.",
-    evidence_ref: "/api/home/explain/churn",
 });
-const throughput = makeSignal({
-    id: "metric:throughput",
+const throughput = metric("throughput", "Throughput", {
     title: "Throughput appears down",
-    metric: "throughput",
     current_value: "181 items",
     prior_value: "384 items",
     delta: "-53%",
     direction: "down",
-    evidence_ref: "/api/home/explain/throughput",
 });
 
+const METRICS: Array<[string, string]> = [
+    ["review_latency", "Review Latency"],
+    ["churn", "Code Churn"],
+    ["throughput", "Throughput"],
+    ["cycle_time", "Cycle Time"],
+    ["deploy_freq", "Deploy Frequency"],
+    ["wip_saturation", "WIP Saturation"],
+    ["ci_success", "CI Success Rate"],
+    ["rework_ratio", "Rework Ratio"],
+    ["blocked_work", "Blocked Work"],
+];
+
 /** The served deltas: the API builds one metric signal per delta, and serves its label here. */
-const deltas = [
-    { metric: "review_latency", label: "Review Latency" },
-    { metric: "churn", label: "Code Churn" },
-    { metric: "throughput", label: "Throughput" },
-].map((d) => ({ ...d, value: 1, unit: "", delta_pct: 1, spark: [] }));
+const deltas: MetricDelta[] = METRICS.map(([key, label]) => ({
+    metric: key,
+    label,
+    value: 1,
+    unit: "",
+    delta_pct: 1,
+    spark: [],
+}));
+
+/** The hero and eight more metric signals, in the served order of METRICS. */
+const nineMetricSignals = METRICS.map(([key, label]) => metric(key, label));
+
+const draw = (signals: CockpitSignal[], served: MetricDelta[] = deltas) =>
+    render(<RankedSignals signals={signals} deltas={served} filters={filters} />);
 
 const cellsOf = (row: HTMLElement) =>
     within(row)
         .getAllByRole("cell")
         .map((cell) => (cell.textContent ?? "").trim());
+
+const labels = () => screen.getAllByTestId("signal-label").map((el) => el.textContent);
 
 afterEach(() => {
     vi.unstubAllGlobals();
@@ -89,7 +140,7 @@ afterEach(() => {
 // The ranked signals table of Home (CHAOS-8063): approved prototype `table(...)`, `app.js:100`.
 describe("RankedSignals table", () => {
     it("is a table with the approved columns and an action column", () => {
-        render(<RankedSignals signals={[hero, churn, throughput]} filters={filters} />);
+        draw([hero, churn, throughput]);
 
         expect(screen.getByRole("heading", { name: "Ranked signals" })).toBeInTheDocument();
         const headers = screen.getAllByRole("columnheader").map((th) => th.textContent);
@@ -97,78 +148,76 @@ describe("RankedSignals table", () => {
         expect(screen.queryByTestId("signal-card")).toBeNull();
     });
 
-    it("lists the signals AFTER the primary one, in the served order", () => {
-        render(
-            <RankedSignals signals={[hero, churn, throughput]} deltas={deltas} filters={filters} />,
-        );
+    it("lists the metric signals AFTER the primary one, in the served order, as served", () => {
+        draw([hero, churn, throughput]);
 
         const rows = screen.getAllByTestId("signal-row");
         expect(rows).toHaveLength(2);
+        // The change is the served string with its own sign: no glyph is added.
         expect(cellsOf(rows[0])).toEqual([
             "Code Churn",
             "1,320,441 LOC",
             "759,376 LOC",
-            "↑ +74%",
+            "+74%",
             "Evidence",
         ]);
         expect(cellsOf(rows[1])).toEqual([
             "Throughput",
             "181 items",
             "384 items",
-            "↓ -53%",
+            "-53%",
             "Evidence",
         ]);
         // The primary signal is the hero above the table, not a row.
         expect(screen.getByTestId("ranked-signals")).not.toHaveTextContent("Review Latency");
     });
 
-    it("names a metric signal with the label the API served for it in deltas", () => {
-        render(
-            <RankedSignals
-                signals={[hero, churn]}
-                deltas={[
-                    {
-                        metric: "churn",
-                        label: "Served Churn Name",
-                        value: 1,
-                        unit: "loc",
-                        delta_pct: 1,
-                        spark: [],
-                    },
-                ]}
-                filters={filters}
-            />,
-        );
-        expect(screen.getByTestId("signal-label").textContent).toBe("Served Churn Name");
+    it("holds only METRIC signals: a risk or a recommendation signal is not a row", () => {
+        draw([hero, risk("payments-api"), churn, recommendation, risk("billing-api"), throughput]);
+
+        expect(labels()).toEqual(["Code Churn", "Throughput"]);
+        const table = screen.getByTestId("ranked-signals");
+        expect(table).not.toHaveTextContent("Compounding risk");
+        expect(table).not.toHaveTextContent("Review rotation");
+        expect(table).not.toHaveTextContent("63.9 %");
     });
 
-    it("keeps the served title, uncut, for a signal about one entity, so two risk rows differ", () => {
-        const risk = (entity: string) =>
-            makeSignal({
-                id: `risk:${entity}`,
-                metric: "compounding_risk",
-                title: `Compounding risk appears high for ${entity}`,
-            });
-        render(
-            <RankedSignals
-                signals={[hero, risk("payments-api"), risk("billing-api")]}
-                deltas={deltas}
-                filters={filters}
-            />,
+    it("tells the kind by the served metric key against the served deltas, not by the title", () => {
+        // A metric signal whose title reads like a risk claim stays a row; a signal whose
+        // metric key is not a served delta is not a row, whatever its title says.
+        const oddTitle = metric("churn", "Code Churn", {
+            title: "Compounding risk appears elevated for payments-api",
+        });
+        const notServed = metric("lead_time", "Lead Time", { title: "Code Churn appears up" });
+        draw([hero, oddTitle, notServed]);
+        expect(labels()).toEqual(["Code Churn"]);
+        expect(screen.getAllByTestId("signal-row")).toHaveLength(1);
+    });
+
+    it("keeps every metric row when the primary signal is a risk signal", () => {
+        draw([risk("payments-api"), hero, churn]);
+        expect(labels()).toEqual(["Review Latency", "Code Churn"]);
+    });
+
+    it("names a metric signal with the label the API served for it in deltas", () => {
+        draw(
+            [hero, churn],
+            [
+                {
+                    metric: "churn",
+                    label: "Served Churn Name",
+                    value: 1,
+                    unit: "loc",
+                    delta_pct: 1,
+                    spark: [],
+                },
+            ],
         );
-        expect(screen.getAllByTestId("signal-label").map((el) => el.textContent)).toEqual([
-            "Compounding risk appears high for payments-api",
-            "Compounding risk appears high for billing-api",
-        ]);
+        expect(labels()).toEqual(["Served Churn Name"]);
     });
 
     it("reads Not reported for a previous value or a change the API did not serve", () => {
-        render(
-            <RankedSignals
-                signals={[hero, { ...churn, prior_value: null, delta: null }]}
-                filters={filters}
-            />,
-        );
+        draw([hero, { ...churn, prior_value: null, delta: null }]);
         const row = screen.getByTestId("signal-row");
         expect(within(row).getByTestId("signal-previous").textContent).toBe("Not reported");
         expect(within(row).getByTestId("signal-delta").textContent).toBe("Not reported");
@@ -177,27 +226,86 @@ describe("RankedSignals table", () => {
     });
 
     it("adds no good or bad colour to the change", () => {
-        render(<RankedSignals signals={[hero, churn, throughput]} filters={filters} />);
+        draw([hero, churn, throughput]);
         for (const delta of screen.getAllByTestId("signal-delta")) {
             expect(delta.className).not.toMatch(/accent|positive|negative|caution/);
         }
         expect(screen.getByText(RANKED_SIGNALS_NOTE)).toBeInTheDocument();
     });
 
-    it("shows one plain line, and no table, when only the primary signal is served", () => {
-        render(<RankedSignals signals={[hero]} filters={filters} />);
+    it("shows one plain line, and no table, when no metric signal follows the primary one", () => {
+        const { unmount } = draw([hero]);
         expect(screen.getByTestId("ranked-signals-empty").textContent).toBe(
             RANKED_SIGNALS_NO_OTHER,
         );
         expect(screen.queryByRole("table")).toBeNull();
+        unmount();
+
+        // Risk signals alone give no row either.
+        draw([hero, risk("payments-api")]);
+        expect(screen.getByTestId("ranked-signals-empty").textContent).toBe(
+            RANKED_SIGNALS_NO_OTHER,
+        );
     });
 
     it("shows a line that implies no clean bill of health when no signal is served", () => {
-        render(<RankedSignals signals={[]} filters={filters} />);
+        draw([]);
         expect(screen.getByTestId("ranked-signals-empty").textContent).toBe(RANKED_SIGNALS_NONE);
         expect(screen.getByTestId("ranked-signals")).not.toHaveTextContent(/healthy|all clear/i);
     });
+});
 
+describe("RankedSignals first five rows and 'Show all signals'", () => {
+    it("shows the first five rows and one control that names the count of all rows", () => {
+        draw(nineMetricSignals);
+
+        expect(RANKED_SIGNALS_FIRST_ROWS).toBe(5);
+        expect(labels()).toEqual([
+            "Code Churn",
+            "Throughput",
+            "Cycle Time",
+            "Deploy Frequency",
+            "WIP Saturation",
+        ]);
+        const toggle = screen.getByTestId("ranked-signals-toggle");
+        // Eight metric rows follow the hero: the count is of served rows, hidden ones included.
+        expect(toggle).toHaveTextContent("Show all signals (8)");
+        expect(toggle).toHaveAttribute("aria-expanded", "false");
+        expect(screen.getByText(RANKED_SIGNALS_NOTE)).toBeInTheDocument();
+    });
+
+    it("expands the rest in place, in the served order, and folds back", async () => {
+        draw(nineMetricSignals);
+        const toggle = screen.getByTestId("ranked-signals-toggle");
+
+        await userEvent.click(toggle);
+        expect(labels()).toEqual(METRICS.slice(1).map(([, label]) => label));
+        expect(toggle).toHaveAttribute("aria-expanded", "true");
+        expect(toggle).toHaveTextContent("Show fewer signals");
+        // In place: every row has its Evidence action, and the note line stays.
+        expect(screen.getAllByTestId("signal-open-evidence")).toHaveLength(8);
+        expect(screen.getByText(RANKED_SIGNALS_NOTE)).toBeInTheDocument();
+
+        await userEvent.click(toggle);
+        expect(screen.getAllByTestId("signal-row")).toHaveLength(5);
+        expect(toggle).toHaveAttribute("aria-expanded", "false");
+    });
+
+    it("has no control when five rows or fewer are served", () => {
+        // The hero and exactly five rows.
+        draw(nineMetricSignals.slice(0, 6));
+        expect(screen.getAllByTestId("signal-row")).toHaveLength(5);
+        expect(screen.queryByTestId("ranked-signals-toggle")).toBeNull();
+    });
+
+    it("counts metric rows only: risk signals do not raise the count or the rows", () => {
+        draw([...nineMetricSignals.slice(0, 6), risk("a"), risk("b"), risk("c")]);
+        expect(screen.getAllByTestId("signal-row")).toHaveLength(5);
+        expect(screen.queryByTestId("ranked-signals-toggle")).toBeNull();
+    });
+});
+
+describe("RankedSignals evidence", () => {
     it("each row's Evidence opens the shared drawer for THAT signal, populated via evidence_ref", async () => {
         vi.stubGlobal(
             "fetch",
@@ -231,7 +339,7 @@ describe("RankedSignals table", () => {
             }),
         );
 
-        render(<RankedSignals signals={[hero, churn, throughput]} filters={filters} />);
+        draw([hero, churn, throughput]);
 
         const buttons = screen.getAllByTestId("signal-open-evidence");
         expect(buttons).toHaveLength(2);
@@ -261,7 +369,7 @@ describe("RankedSignals table", () => {
     });
 
     it("keeps the why and the recommended action out of the page body", () => {
-        render(<RankedSignals signals={[hero, churn]} filters={filters} />);
+        draw([hero, churn]);
         const body = screen.getByTestId("ranked-signals");
         expect(body).not.toHaveTextContent("Higher churn suggests more rework.");
         expect(body).not.toHaveTextContent("Inspect the files with the most rework.");

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ArrowRight } from "lucide-react";
 
 import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
@@ -7,13 +8,13 @@ import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider"
 import { Button } from "@/components/shared/Button";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { Section } from "@/components/ui/Section";
+import { isMetricSignal } from "@/lib/cockpit/signalKinds";
 import { signalMetricLabel } from "@/lib/cockpit/signalLabel";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import type { CockpitSignal, MetricDelta } from "@/lib/types";
 
-import { DIRECTION_GLYPH } from "./severityTokens";
 import { SignalEvidenceIntro } from "./SignalEvidenceIntro";
 
 export type RankedSignalsProps = {
@@ -29,25 +30,39 @@ export type RankedSignalsProps = {
 export const RANKED_SIGNALS_NOTE =
     "Headline comparisons. No universal good/bad inference is added.";
 
-/** Shown in place of the table when the API served no signal after the primary one. */
-export const RANKED_SIGNALS_NO_OTHER = "No other signals in this window.";
+/** Shown in place of the table when the API served no metric signal after the primary one. */
+export const RANKED_SIGNALS_NO_OTHER = "No other metric signals in this window.";
 /** Shown in place of the table when the API served no signal at all. */
 export const RANKED_SIGNALS_NONE = "No signals in this window.";
+
+/** Rows shown before "Show all signals" (the approved table has five). */
+export const RANKED_SIGNALS_FIRST_ROWS = 5;
 
 /**
  * Ranked signals of Home (approved prototype `cockpit()`, `app.js:100`): a table with the columns
  * Signal, Current, Previous and Change, and an "Evidence" action per row.
  *
- * Rows are the signals AFTER the first one, in the served rank order: the first signal is the
- * primary-signal hero above the table. Current, Previous and Change are the served display
- * strings; a missing value reads "Not reported". The Change text carries no good or bad colour.
+ * Rows are the headline METRIC signals after the first signal, in the served rank order: the
+ * first signal is the primary-signal hero above the table. A metric signal is told by a served
+ * field (`isMetricSignal`: its `metric` is one of the served `deltas[].metric`), never by its
+ * title. The signals of the other kinds are not rows of this table: the compounding-risk signals
+ * are the "Compounding risk" row of the Investigation threads.
+ *
+ * The table shows the first five rows. When the API served more, one control under the table
+ * shows the rest in place (no route change, no row left out).
+ *
+ * Current, Previous and Change are the served display strings; a missing value reads "Not
+ * reported". The Change text carries no good or bad colour.
  *
  * Each row's "Evidence" opens the shared evidence drawer for that signal, with the signal's
  * served "why it matters" and "recommended action" first.
  */
 export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsProps) {
     const evidence = useEvidenceDrawer();
-    const rows = signals.slice(1);
+    const [showAll, setShowAll] = useState(false);
+    const rows = signals.slice(1).filter((signal) => isMetricSignal(signal, deltas));
+    const hasMore = rows.length > RANKED_SIGNALS_FIRST_ROWS;
+    const shownRows = showAll ? rows : rows.slice(0, RANKED_SIGNALS_FIRST_ROWS);
     const noRowsLine = signals.length === 0 ? RANKED_SIGNALS_NONE : RANKED_SIGNALS_NO_OTHER;
 
     const columns: DataTableColumn<CockpitSignal>[] = [
@@ -87,10 +102,8 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
             render: (signal) => (
                 <span data-testid="signal-delta" data-direction={signal.direction}>
                     {signal.delta ? (
-                        <>
-                            <span aria-hidden="true">{DIRECTION_GLYPH[signal.direction]} </span>
-                            {signal.delta}
-                        </>
+                        // The served string carries its own sign (approved table: plain text).
+                        signal.delta
                     ) : (
                         <span className="text-(--ink-muted)">{NOT_REPORTED}</span>
                     )}
@@ -109,11 +122,29 @@ export function RankedSignals({ signals, deltas = [], filters }: RankedSignalsPr
                 <DataTable
                     accessibleLabel="Ranked signals"
                     columns={columns}
-                    data={rows}
+                    data={shownRows}
                     rowKeyAction={(signal) => signal.id}
                     rowTestId="signal-row"
                     emptyMessage={noRowsLine}
-                    footerNote={RANKED_SIGNALS_NOTE}
+                    footerNote={
+                        <>
+                            <span>{RANKED_SIGNALS_NOTE}</span>
+                            {hasMore ? (
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="ml-auto"
+                                    data-testid="ranked-signals-toggle"
+                                    aria-expanded={showAll}
+                                    onClick={() => setShowAll((current) => !current)}
+                                >
+                                    {showAll
+                                        ? CTA_LABELS.showFewerSignals
+                                        : `${CTA_LABELS.showAllSignals} (${rows.length})`}
+                                </Button>
+                            ) : null}
+                        </>
+                    }
                     rowActions={(signal) => {
                         const title = scrubIdentifiers(signal.title).text;
                         return (

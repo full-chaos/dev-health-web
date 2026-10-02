@@ -52,7 +52,7 @@ export function EvidenceContextCard({ home }: { home: HomeResponse | null }) {
                         quality ? (
                             <span
                                 data-testid="evidence-context-quality"
-                                className={`rounded-full border px-2 py-0.5 font-medium ${QUALITY_TONE[quality] ?? STATUS_PILL.muted}`}
+                                className={`rounded-full px-2 py-0.5 font-medium ${QUALITY_TONE[quality] ?? STATUS_PILL.muted}`}
                             >
                                 {capitalise(quality)}
                             </span>
