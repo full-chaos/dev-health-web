@@ -1,11 +1,9 @@
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
-import { BackLink } from "@/components/shared/BackLink";
 import { CommitHashDisclosure } from "@/components/shared/CommitHashDisclosure";
-import { PrimaryNav } from "@/components/navigation/PrimaryNav";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { PageHeader } from "@/components/shell/PageHeader";
 import { checkApiHealth } from "@/lib/api/system";
 import { getFlame } from "@/lib/api/visuals";
-import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { RelatedEntitiesPanel } from "@/components/work/RelatedEntitiesPanel";
@@ -156,7 +154,7 @@ function PrDetailSummary({ pr }: { pr: PullRequestDetail }) {
 export default async function PrDetailPage({ params }: PrDetailPageProps) {
     const health = await checkApiHealth();
     if (!health.ok) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     const { pr_id: encodedPrId } = await params;
@@ -169,16 +167,13 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
         .catch((error: unknown) => ({ pr: null, error }));
     if (prResult.error) {
         return (
-            <div className="min-h-screen bg-background text-foreground">
-                <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                    <PrimaryNav filters={defaultMetricFilter} />
-                    <main className="flex min-w-0 flex-1 flex-col gap-8">
-                        <PrHeader />
-                        <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
-                            PR detail could not be loaded from the backend. Try again after the data
-                            service is healthy.
-                        </div>
-                    </main>
+            // Rendered inside the shared app shell: the layout owns the navigation, the
+            // page padding and the `<main>` landmark.
+            <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+                <PrHeader />
+                <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
+                    PR detail could not be loaded from the backend. Try again after the data service
+                    is healthy.
                 </div>
             </div>
         );
@@ -209,82 +204,72 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
         : emptyInvestment(prId);
 
     return (
-        <div className="min-h-screen bg-background text-foreground">
-            <div className="flex w-full flex-col gap-6 px-6 pb-16 pt-10 md:flex-row">
-                <PrimaryNav filters={defaultMetricFilter} />
-                <main className="flex min-w-0 flex-1 flex-col gap-8">
-                    <PrHeader />
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            <PrHeader />
 
-                    {prResult.pr ? (
-                        <PrDetailSummary pr={prResult.pr} />
-                    ) : (
-                        <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
-                            No PR detail found for this id. Check that the URL uses a persisted PR
-                            id such as repo_id#prnumber.
-                        </div>
-                    )}
+            {prResult.pr ? (
+                <PrDetailSummary pr={prResult.pr} />
+            ) : (
+                <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
+                    No PR detail found for this id. Check that the URL uses a persisted PR id such
+                    as repo_id#prnumber.
+                </div>
+            )}
 
-                    {!flame?.entity || !flame.timeline || !flame.frames ? (
-                        <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
-                            Flame data unavailable for this PR.
+            {!flame?.entity || !flame.timeline || !flame.frames ? (
+                <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-6 text-sm text-(--ink-muted)">
+                    Flame data unavailable for this PR.
+                </div>
+            ) : (
+                <section className="rounded-3xl border border-(--card-stroke) bg-(--card) p-6">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h2 className="font-(--font-display) text-xl">
+                                {String(flame.entity.title ?? "PR")}
+                            </h2>
+                            <p className="mt-2 text-xs text-(--ink-muted)">
+                                <ClientTimestamp value={flame.timeline.start} suffix=" – " />
+                                <ClientTimestamp value={flame.timeline.end} />
+                            </p>
                         </div>
-                    ) : (
-                        <section className="rounded-3xl border border-(--card-stroke) bg-(--card) p-6">
-                            <div className="flex flex-wrap items-center justify-between gap-3">
-                                <div>
-                                    <h2 className="font-(--font-display) text-xl">
-                                        {String(flame.entity.title ?? "PR")}
-                                    </h2>
-                                    <p className="mt-2 text-xs text-(--ink-muted)">
-                                        <ClientTimestamp
-                                            value={flame.timeline.start}
-                                            suffix=" – "
-                                        />
-                                        <ClientTimestamp value={flame.timeline.end} />
-                                    </p>
-                                </div>
-                                <div className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                    {String(flame.entity.state ?? "")}
-                                </div>
-                            </div>
-                            <div className="mt-5">
-                                <FlameDiagram
-                                    frames={flame.frames}
-                                    start={flame.timeline.start}
-                                    end={flame.timeline.end}
-                                    height={320}
-                                />
-                            </div>
-                        </section>
-                    )}
-                    <RelatedEntitiesPanel
-                        rootType="PR"
-                        rootId={prId}
-                        drilldown={drilldown}
-                        investment={investment}
-                        relatedEntitiesError={relatedEntitiesError}
-                    />
-                </main>
-            </div>
+                        <div className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                            {String(flame.entity.state ?? "")}
+                        </div>
+                    </div>
+                    <div className="mt-5">
+                        <FlameDiagram
+                            frames={flame.frames}
+                            start={flame.timeline.start}
+                            end={flame.timeline.end}
+                            height={320}
+                        />
+                    </div>
+                </section>
+            )}
+            <RelatedEntitiesPanel
+                rootType="PR"
+                rootId={prId}
+                drilldown={drilldown}
+                investment={investment}
+                relatedEntitiesError={relatedEntitiesError}
+            />
         </div>
     );
 }
 
 function PrHeader() {
     return (
-        <header className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                    Pull Request
-                </p>
-                <h1 className="mt-2 font-(--font-display) text-3xl">PR detail</h1>
-                <p className="mt-2 text-sm text-(--ink-muted)">
-                    Review persisted PR details, reviews, commits, and Work Graph evidence.
-                </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-                <BackLink area="Explore" href="/explore" />
-            </div>
-        </header>
+        <PageHeader
+            title="PR detail"
+            subtitle="Review persisted PR details, reviews, commits, and Work Graph evidence."
+            back={{ href: "/explore", area: "Explore" }}
+        >
+            {/* The trail says "Diagnose"; the label says which artifact this is. */}
+            <span className="w-fit rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
+                Pull Request
+            </span>
+        </PageHeader>
     );
 }

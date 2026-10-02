@@ -5,7 +5,6 @@ import Link from "next/link";
 import { Suspense, useEffect, useRef, type RefObject } from "react";
 
 import fcLogo from "@/assets/fc-logo.png";
-import { BetaBadge } from "@/components/BetaBadge";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { OrgSwitcher, type ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
 import { useModalFocus } from "@/lib/a11y/useModalFocus";
@@ -116,7 +115,6 @@ export function ShellSidebar({
                             </span>
                         </span>
                     </Link>
-                    <BetaBadge />
                 </div>
 
                 <OrgSwitcher
