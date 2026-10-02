@@ -2,16 +2,19 @@
 
 import Link from "next/link";
 
+import { MetricDelta } from "@/components/shared/MetricDelta";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 export type MetricsSummaryRow = {
     metric: string;
     label: string;
-    /** Already formatted current value, or "--" when there is none. */
+    /** Already formatted current value, or "—" when there is none. */
     valueText: string;
-    /** Already formatted delta; null = no prior period. */
-    deltaText: string | null;
+    /** Percent change; null = no prior period. */
+    delta: number | null;
+    /** A rise is bad for this metric (its catalog polarity). */
+    inverseGood: boolean;
     href: string;
 };
 
@@ -44,13 +47,12 @@ export function MetricsSummaryTable({ rows }: { rows: MetricsSummaryRow[] }) {
             header: "Delta",
             render: (row) => (
                 <Link href={row.href} className="block text-(--ink-muted)">
-                    {row.deltaText === null ? (
-                        <span title="No prior period available to compute a change">
-                            No prior period
-                        </span>
-                    ) : (
-                        row.deltaText
-                    )}
+                    <MetricDelta
+                        value={row.delta}
+                        inverseGood={row.inverseGood}
+                        leadingDot={false}
+                        className="text-sm!"
+                    />
                 </Link>
             ),
         },
