@@ -146,3 +146,22 @@ describe("AreaOverview — summarize + route (no hero/grid duplication)", () => 
         expect(routedLink).toHaveAttribute("data-signal-id", "routed");
     });
 });
+
+describe("AreaOverview note slot", () => {
+    it("renders no note unless one is passed (other areas are unchanged)", () => {
+        const signals = [signal("opportunities", "info")];
+        const { rerender } = render(
+            <AreaOverview areaId="improve" signals={signals} filters={defaultMetricFilter} />,
+        );
+        expect(screen.queryByTestId("area-overview-note")).toBeNull();
+        rerender(
+            <AreaOverview
+                areaId="improve"
+                signals={signals}
+                filters={defaultMetricFilter}
+                note={<p>a note</p>}
+            />,
+        );
+        expect(screen.getByTestId("area-overview-note")).toHaveTextContent("a note");
+    });
+});

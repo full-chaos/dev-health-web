@@ -12,6 +12,7 @@ import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { HeatmapPanel } from "@/components/charts/HeatmapPanel";
 import { EvidenceView } from "@/components/work/EvidenceView";
+import { WipSaturationNotice } from "@/components/work/WipSaturationNotice";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
@@ -168,16 +169,11 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
                 />
             </section>
 
-            <p className="-mt-2 text-xs text-(--ink-muted)">
-                WIP Saturation is indexed to a baseline of 100% (work in progress matched to typical
-                throughput). Readings above 100% mean more work is open than the team usually clears
-                in the window &mdash; e.g. 950% reads as ~9.5&times; the baseline, not a data error.
-                Sustained readings far above 100% point to over-commitment, and the metric is
-                intentionally uncapped so that severity stays visible.
-            </p>
+            <WipSaturationNotice />
 
             {/* Quadrant panels */}
-            <section className="grid gap-6">
+            {/* Side by side from 1536 px (the mapping said 1150; at 1280 the zone legend leaves a 90 px plot), stacked below. */}
+            <section className="grid gap-6 2xl:grid-cols-2" data-testid="bottleneck-quadrants">
                 <QuadrantPanel
                     title="WIP × Throughput"
                     description="Operating modes under work in flight and delivery pace."

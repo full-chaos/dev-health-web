@@ -250,6 +250,38 @@ describe("getAISignals — source → AreaSignal mapping", () => {
         expect(signals["ai-impact"].value).toContain("AI-assisted");
     });
 
+    it("names the rework drag that sets the Impact state on the card, from the same number", async () => {
+        // 0.12 -> state low (below 15); the driver shows that same 12%.
+        let signals = byId(await getAISignals(defaultMetricFilter));
+        expect(signals["ai-impact"].driver).toBe("Rework drag 12% · AI-assisted work");
+
+        // 0.38 -> state high; the driver follows the number, not the adoption ratio (40%).
+        mockGraphql.mockImplementation((query) => {
+            if (String(query).includes("AIImpactSummary")) {
+                return Promise.resolve(makeImpact({ reworkDragRate: 0.38 })) as never;
+            }
+            return routeQuery(query) as never;
+        });
+        signals = byId(await getAISignals(defaultMetricFilter));
+        expect(signals["ai-impact"].state).toBe("high");
+        expect(signals["ai-impact"].driver).toBe("Rework drag 38% · AI-assisted work");
+    });
+
+    it("shows no driver when the state did not come from rework drag, and on no other card", async () => {
+        mockGraphql.mockImplementation((query) => {
+            if (String(query).includes("AIImpactSummary")) {
+                return Promise.resolve(makeImpact({ reworkDragRate: null })) as never;
+            }
+            return routeQuery(query) as never;
+        });
+        const signals = byId(await getAISignals(defaultMetricFilter));
+        expect(signals["ai-impact"].state).toBe("neutral");
+        expect(signals["ai-impact"].driver).toBeUndefined();
+        for (const id of ["ai-review-load", "ai-governance-risk", "ai-automations"]) {
+            expect(signals[id].driver, id).toBeUndefined();
+        }
+    });
+
     it("escalates AI impact severity for high rework drag (>= 35 → high)", async () => {
         mockGraphql.mockImplementation((query) => {
             if (String(query).includes("AIImpactSummary")) {

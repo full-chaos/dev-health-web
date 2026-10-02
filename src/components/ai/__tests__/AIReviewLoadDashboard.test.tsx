@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@/test/utils";
+import { fireEvent, render, screen, within } from "@/test/utils";
 import { AIReviewLoadDashboard } from "../AIReviewLoadDashboard";
 import type { AIFilter } from "@/lib/filters/ai";
 
@@ -27,6 +27,10 @@ vi.mock("../AIReviewAmplificationTrend", () => ({
     AIReviewAmplificationTrend: ({ loading }: { loading?: boolean }) => (
         <div data-testid="trend">{loading ? "loading" : "ready"}</div>
     ),
+}));
+
+vi.mock("../AIEvidenceExplorer", () => ({
+    AIEvidenceExplorer: () => <div data-testid="explorer-stub">explorer</div>,
 }));
 
 const filter: AIFilter = { startDate: "2026-04-01", endDate: "2026-05-01" };
@@ -146,5 +150,90 @@ describe("AIReviewLoadDashboard", () => {
         });
         render(<AIReviewLoadDashboard filter={filter} />);
         expect(screen.getByText("AI review load data is not available")).toBeInTheDocument();
+    });
+
+    describe("pins (CHAOS-7770)", () => {
+        function loaded(
+            reviewerConcentration: Record<string, unknown>,
+            missingStates: unknown[] = [],
+        ) {
+            mockUseAIReviewLoad.mockReturnValue({
+                fetching: false,
+                error: undefined,
+                data: {
+                    aiReviewLoad: {
+                        orgId: "org",
+                        startDate: "2026-04-01",
+                        endDate: "2026-05-01",
+                        dataAvailable: true,
+                        byBucket: [],
+                        daily: [],
+                        reviewerConcentration,
+                        missingStates,
+                    },
+                },
+            });
+        }
+
+        it("opens the evidence view for the clicked metric and closes it again", () => {
+            loaded({ dataAvailable: true, reviewerCount: 5, reviewerGini: 0.42 });
+            render(<AIReviewLoadDashboard filter={filter} />);
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+            const buttons = screen.getAllByRole("button", { name: "Open evidence" });
+            expect(buttons).toHaveLength(6);
+
+            fireEvent.click(buttons[0]);
+            const dialog = screen.getByRole("dialog", { name: "Evidence by pull request" });
+            expect(within(dialog).getByText("Pickup latency")).toBeInTheDocument();
+            expect(within(dialog).getByTestId("explorer-stub")).toBeInTheDocument();
+            expect(
+                within(dialog).getByText(/Pick an AI-attributed PR to see its Work Graph evidence/),
+            ).toBeInTheDocument();
+
+            fireEvent.click(within(dialog).getByRole("button", { name: /close/i }));
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+
+            fireEvent.click(screen.getAllByRole("button", { name: "Open evidence" })[5]);
+            expect(
+                within(screen.getByRole("dialog")).getByText("Review amplification"),
+            ).toBeInTheDocument();
+        });
+
+        it("keeps the aggregate-only reviewer concentration card text and test id", () => {
+            loaded({ dataAvailable: true, reviewerCount: 5, reviewerGini: 0.42 });
+            render(<AIReviewLoadDashboard filter={filter} />);
+            const card = screen.getByTestId("ai-reviewer-concentration");
+            expect(card).toHaveTextContent("Aggregate-only");
+            expect(card).toHaveTextContent("Reviewer concentration");
+            expect(card).toHaveTextContent(
+                "Distribution-level review spread only. No reviewer names, ranks, or person-level counts are exposed.",
+            );
+            expect(card).toHaveTextContent("Gini");
+            expect(card).toHaveTextContent("0.42");
+            expect(card).toHaveTextContent("Reviewers");
+        });
+
+        it("shows the missing-data panel (not a zero) when reviewer concentration is unavailable", () => {
+            loaded({ dataAvailable: false, reviewerCount: 0, reviewerGini: null });
+            render(<AIReviewLoadDashboard filter={filter} />);
+            expect(screen.queryByTestId("ai-reviewer-concentration")).not.toBeInTheDocument();
+            expect(screen.getByText("Reviewer concentration")).toBeInTheDocument();
+            expect(
+                screen.getByText(
+                    /Aggregated reviewer distribution buckets only; never individual reviewer leaderboards\./,
+                ),
+            ).toBeInTheDocument();
+        });
+
+        it("shows the error card when the query fails", () => {
+            mockUseAIReviewLoad.mockReturnValue({
+                data: undefined,
+                fetching: false,
+                error: new Error("boom"),
+            });
+            render(<AIReviewLoadDashboard filter={filter} />);
+            expect(screen.getByText("Failed to load AI review load")).toBeInTheDocument();
+            expect(screen.getByText("boom")).toBeInTheDocument();
+        });
     });
 });
