@@ -1,19 +1,15 @@
 import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
+import { getTabSet, tabHref, type TabIdOf } from "@/lib/navigation/tabs";
 
-export type GovernanceRiskView = "overview" | "test-gaps" | "evidence";
+// The tab list lives in the tab registry (`lib/navigation/tabs.ts`); this is its id union.
+export type GovernanceRiskView = TabIdOf<"ai-governance-risk">;
 
-const GOVERNANCE_RISK_TABS: ReadonlyArray<{ id: GovernanceRiskView; label: string; href: string }> =
-    [
-        { id: "overview", label: "Overview", href: "/ai/risk" },
-        { id: "test-gaps", label: "Test Gaps", href: "/ai/risk?view=test-gaps" },
-        // design-lint-disable-next-line cta-from-registry -- "Evidence" is the tab/nav label (CHAOS-2197), not a CTA
-        { id: "evidence", label: "Evidence", href: "/ai/risk?view=evidence" },
-    ];
-
+/** The subview a `?view=` value names; anything unknown is the overview. */
 export function governanceRiskViewFromParam(value: string | undefined): GovernanceRiskView {
-    return value === "test-gaps" || value === "evidence" ? value : "overview";
+    const set = getTabSet("ai-governance-risk");
+    return set.tabs.find((tab) => tab.id === value)?.id ?? set.defaultTabId;
 }
 
 type AIGovernanceRiskTabsProps = {
@@ -28,10 +24,11 @@ type AIGovernanceRiskTabsProps = {
  * Every href keeps the active filter scope via withFilterParam.
  */
 export function AIGovernanceRiskTabs({ view, filters, role }: AIGovernanceRiskTabsProps) {
-    const items: ModeTabItem<GovernanceRiskView>[] = GOVERNANCE_RISK_TABS.map((tab) => ({
+    const set = getTabSet("ai-governance-risk");
+    const items: ModeTabItem<GovernanceRiskView>[] = set.tabs.map((tab) => ({
         id: tab.id,
         label: tab.label,
-        href: withFilterParam(tab.href, filters, role),
+        href: withFilterParam(tabHref(set, tab.id), filters, role),
     }));
 
     return <ModeTabs items={items} activeId={view} ariaLabel="Governance Risk views" />;
