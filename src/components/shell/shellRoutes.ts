@@ -86,6 +86,8 @@ export const SHELL_ROUTES: readonly ShellRoute[] = [
     // Admin: Data Confidence and Settings (personal preferences). No filter state.
     { prefix: "/data-health", filterParam: "none" },
     { prefix: "/settings", filterParam: "none" },
+    // Admin: the platform admin pages (Platform, Platform billing; platform admins only).
+    { prefix: "/superadmin", filterParam: "none" },
 ];
 
 function matchesRoute(pathname: string, route: ShellRoute): boolean {

@@ -47,6 +47,7 @@ describe("shell route registry", () => {
             "/org/admin",
             "/data-health",
             "/settings",
+            "/superadmin",
         ]);
     });
 
@@ -67,7 +68,7 @@ describe("shell route registry", () => {
         expect(isShellRoute("/dashboard-old")).toBe(false);
     });
 
-    it.each(["/demo", "/superadmin", "/superadmin/users", "/settingsx", "/"])(
+    it.each(["/demo", "/superadmins", "/settingsx", "/"])(
         "keeps %s outside the shell",
         (pathname) => {
             expect(isShellRoute(pathname)).toBe(false);
@@ -82,6 +83,8 @@ describe("shell route registry", () => {
             "/data-health",
             "/data-health/identity",
             "/settings",
+            "/superadmin",
+            "/superadmin/billing/plans",
         ]) {
             expect(isShellRoute(pathname), pathname).toBe(true);
             expect(shellRouteForPathname(pathname)?.filterParam, pathname).toBe("none");
@@ -132,6 +135,7 @@ describe("shell route registry", () => {
             "/org/admin",
             "/data-health",
             "/settings",
+            "/superadmin",
         ]);
     });
 
