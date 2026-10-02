@@ -66,4 +66,18 @@ describe("reviewEdges request", () => {
             }),
         ).resolves.toEqual({ edges: [], totalCount: 7 });
     });
+
+    it("sends teamIds, in order, only when there are some (CHAOS-7785)", async () => {
+        const base = { orgId: "org-1", sinceDate: "2026-09-01", untilDate: "2026-09-30" };
+        await getReviewEdgesViaGraphQL({ ...base, teamIds: ["team-b", "team-a"] });
+        expect(graphqlFetchMock.mock.calls[0][1].input.teamIds).toEqual(["team-b", "team-a"]);
+        for (const none of [undefined, null, []]) {
+            graphqlFetchMock.mockClear();
+            await getReviewEdgesViaGraphQL({ ...base, teamIds: none });
+            expect(
+                Object.keys(graphqlFetchMock.mock.calls[0][1].input),
+                String(none),
+            ).not.toContain("teamIds");
+        }
+    });
 });

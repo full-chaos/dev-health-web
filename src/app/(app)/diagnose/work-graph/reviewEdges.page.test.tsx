@@ -66,6 +66,7 @@ describe("work graph page: review edges", () => {
             sinceDate: "2026-09-01",
             untilDate: "2026-09-30",
             repoIds: null,
+            teamIds: null,
         });
     });
 
@@ -89,5 +90,48 @@ describe("work graph page: review edges", () => {
         await render(filterWith({}));
         expect(graphViewProps.mock.calls[0][0].reviewEdges).toBeNull();
         expect(graphViewProps.mock.calls[0][0].reviewEdgesError).toBe("boom");
+    });
+
+    it("sends a team scope's ids, in order and once each, as teamIds (CHAOS-7785)", async () => {
+        await render(filterWith({ scope: { level: "team", ids: ["team-b", "team-a", "team-b"] } }));
+        expect(fetchMock.mock.calls[0][0].teamIds).toEqual(["team-b", "team-a"]);
+        expect(graphViewProps.mock.calls[0][0].reviewEdgesTeamScope).toBe(true);
+    });
+
+    it("sends teamIds together with repoIds when both are set", async () => {
+        await render(
+            filterWith({
+                scope: { level: "team", ids: ["team-a"] },
+                what: { repos: ["repo-a"] },
+            }),
+        );
+        expect(fetchMock.mock.calls[0][0]).toMatchObject({
+            repoIds: ["repo-a"],
+            teamIds: ["team-a"],
+        });
+    });
+
+    it.each(["org", "repo", "developer"] as const)(
+        "sends no teamIds for a %s scope",
+        async (level) => {
+            await render(filterWith({ scope: { level, ids: ["x-1"] } }));
+            expect(fetchMock.mock.calls[0][0].teamIds).toBeNull();
+            expect(graphViewProps.mock.calls[0][0].reviewEdgesTeamScope).toBe(false);
+        },
+    );
+
+    it("sends no teamIds for a team scope with no ids", async () => {
+        await render(filterWith({ scope: { level: "team", ids: [] } }));
+        expect(fetchMock.mock.calls[0][0].teamIds).toBeNull();
+    });
+
+    it("hands the server's totalCount to the view (null when nothing was fetched)", async () => {
+        fetchMock.mockResolvedValue({ edges: [], totalCount: 1820 });
+        await render(filterWith({}));
+        expect(graphViewProps.mock.calls[0][0].reviewEdgesTotalCount).toBe(1820);
+
+        graphViewProps.mockReset();
+        await render(filterWith({}), "overview");
+        expect(graphViewProps.mock.calls[0][0].reviewEdgesTotalCount).toBeNull();
     });
 });

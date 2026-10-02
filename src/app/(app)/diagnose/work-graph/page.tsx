@@ -6,6 +6,7 @@ import { buildWorkGraphTabs } from "./buildTabs";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
 import { getServerEnv } from "@/lib/config";
+import { teamIdsForScope } from "@/lib/filters/capacityScope";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import {
     getReviewEdgesViaGraphQL,
@@ -81,6 +82,8 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
     const orgId = session.user.org_id ?? "";
     const { sinceDate, untilDate } = dateRangeFromFilter(filters.time);
     const repoIds = filters.what?.repos?.length ? filters.what.repos : null;
+    // A team scope narrows the review edges to the repositories the team owns (CHAOS-7785).
+    const teamIds = teamIdsForScope(filters) ?? null;
 
     let reviewEdgesData: ReviewEdgesResult | null = null;
     let reviewEdgesError: string | null = null;
@@ -92,6 +95,7 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
                 sinceDate,
                 untilDate,
                 repoIds,
+                teamIds,
             });
         } catch (err) {
             reviewEdgesError =
@@ -129,6 +133,8 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
                 activeRole={activeRole}
                 activeTab={activeTab as WorkGraphTab}
                 reviewEdges={reviewEdgesData?.edges ?? null}
+                reviewEdgesTotalCount={reviewEdgesData?.totalCount ?? null}
+                reviewEdgesTeamScope={teamIds !== null}
                 reviewEdgesLoading={false}
                 reviewEdgesError={reviewEdgesError}
             />

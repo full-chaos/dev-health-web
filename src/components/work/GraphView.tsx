@@ -56,6 +56,10 @@ type GraphViewProps = {
      * is needed. `null` means "not yet fetched / wrong tab"; `[]` means "no data".
      */
     reviewEdges?: ReviewEdgeRow[] | null;
+    /** Rows the filters match before the server cut (reviewEdges `totalCount`), or null. */
+    reviewEdgesTotalCount?: number | null;
+    /** A team scope is active: the edges are those on the team's repositories. */
+    reviewEdgesTeamScope?: boolean;
     /** Whether the review edges fetch is still in-flight (always false for SSR path). */
     reviewEdgesLoading?: boolean;
     /** Error message from the review edges fetch, or null. */
@@ -228,6 +232,8 @@ export function GraphView({
     activeRole,
     activeTab = "overview",
     reviewEdges = null,
+    reviewEdgesTotalCount = null,
+    reviewEdgesTeamScope = false,
     reviewEdgesLoading = false,
     reviewEdgesError = null,
 }: GraphViewProps) {
@@ -574,6 +580,8 @@ export function GraphView({
         return (
             <ReviewNetworkView
                 edges={reviewEdges}
+                totalCount={reviewEdgesTotalCount}
+                teamScope={reviewEdgesTeamScope}
                 loading={reviewEdgesLoading}
                 error={reviewEdgesError}
             />
