@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { navAreas, isNavChildVisible, type NavArea } from "@/lib/navigation/areas";
 
+import { TAB_SETS, getTabSet, tabHref } from "@/lib/navigation/tabs";
+
 import { filterPaletteEntries, paletteEntries } from "./commandPaletteEntries";
 
 const area = (over: Partial<NavArea> & Pick<NavArea, "id" | "label" | "href">): NavArea =>
@@ -82,7 +84,64 @@ describe("paletteEntries", () => {
             known.add(`${a.href}|${a.label}`);
             for (const c of a.children) known.add(`${c.path}|${c.label}`);
         }
+        // ...and the tab registry's tabs (their links come from `tabHref`).
+        for (const set of TAB_SETS) {
+            for (const tab of set.tabs) known.add(`${tabHref(set, tab.id)}|${tab.label}`);
+        }
         for (const e of entries) expect(known.has(`${e.path}|${e.label}`)).toBe(true);
+    });
+
+    it("lists a destination's tabs after it: the non-default tabs, with the destination and area as the second line", () => {
+        const entries = paletteEntries(navAreas, {});
+        const set = getTabSet("complexity");
+        const flame = entries.find((e) => e.path === "/complexity?tab=flame");
+        expect(flame).toMatchObject({ label: "Flame", areaLabel: "Complexity · Diagnose" });
+        // The default tab is the destination row, not a second row.
+        expect(entries.filter((e) => e.path === "/complexity")).toHaveLength(1);
+        // Order: the destination, then its tabs in registry order.
+        const at = entries.findIndex((e) => e.path === "/complexity");
+        expect(entries.slice(at + 1, at + set.tabs.length).map((e) => e.label)).toEqual(
+            set.tabs.slice(1).map((t) => t.label),
+        );
+        expect(entries.find((e) => e.path === "/cognitive-load?tab=load-drivers")?.label).toBe(
+            "Load Drivers",
+        );
+    });
+
+    it("lists the tabs of a destination only when the sidebar would list the destination", () => {
+        const sets = [
+            {
+                id: "x",
+                areaId: "diagnose",
+                basePath: "/gated",
+                param: "tab",
+                defaultTabId: "a",
+                tabs: [
+                    { id: "a", label: "A" },
+                    { id: "b", label: "B tab" },
+                ],
+            },
+            {
+                id: "y",
+                areaId: "diagnose",
+                basePath: "/hidden",
+                param: "tab",
+                defaultTabId: "a",
+                tabs: [
+                    { id: "a", label: "A" },
+                    { id: "b", label: "Hidden tab" },
+                ],
+            },
+        ] as const;
+        // "/gated" needs a feature; "/hidden" is not in the menu at all.
+        const without = paletteEntries(sample, {}, sets).map((e) => e.label);
+        expect(without).not.toContain("B tab");
+        expect(without).not.toContain("Hidden tab");
+        const withFeature = paletteEntries(sample, { gated_feature: true }, sets).map(
+            (e) => e.label,
+        );
+        expect(withFeature).toContain("B tab");
+        expect(withFeature).not.toContain("Hidden tab");
     });
 
     it("lists no destination twice", () => {
@@ -109,5 +168,15 @@ describe("filterPaletteEntries", () => {
             "Flow",
         ]);
         expect(filterPaletteEntries(entries, "nothing here")).toEqual([]);
+    });
+
+    it("finds a tab by its name or by its destination", () => {
+        const all = paletteEntries(navAreas, {});
+        expect(filterPaletteEntries(all, "flame").map((e) => e.path)).toContain(
+            "/complexity?tab=flame",
+        );
+        expect(filterPaletteEntries(all, "complexity flame").map((e) => e.path)).toEqual([
+            "/complexity?tab=flame",
+        ]);
     });
 });

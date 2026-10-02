@@ -1,4 +1,5 @@
 import { isNavChildVisible, type NavArea } from "@/lib/navigation/areas";
+import { TAB_SETS, tabHref, type TabSet } from "@/lib/navigation/tabs";
 
 export type PaletteEntry = {
     /** Unique row id (also the DOM id suffix). */
@@ -12,12 +13,14 @@ export type PaletteEntry = {
 /**
  * The destinations the palette can open: every area row and every child the sidebar would list
  * (`isNavChildVisible`: shown in the menu and, when it needs a feature, the organization has it).
- * Registry order, labels as the sidebar writes them. Nothing here is invented: no actions, no tabs
- * (the registry holds destinations only), no entry for a hidden or preview route.
+ * Registry order, labels as the sidebar writes them. After a destination come its tabs, from the tab
+ * registry (`lib/navigation/tabs.ts`). Nothing here is invented: no actions, no entry for a hidden or
+ * preview route, no tab of a destination the sidebar would not list.
  */
 export function paletteEntries(
     areas: readonly NavArea[],
     features: Record<string, boolean>,
+    tabSets: readonly TabSet[] = TAB_SETS,
 ): PaletteEntry[] {
     const entries: PaletteEntry[] = [];
     const seen = new Set<string>();
@@ -30,8 +33,20 @@ export function paletteEntries(
     for (const area of areas) {
         add(`area-${area.id}`, area.label, area.label, area.href);
         for (const child of area.children) {
-            if (isNavChildVisible(child, features)) {
-                add(`${area.id}-${child.id}`, child.label, area.label, child.path);
+            if (!isNavChildVisible(child, features)) continue;
+            add(`${area.id}-${child.id}`, child.label, area.label, child.path);
+            // The destination's tabs follow it (the default tab is the destination row itself).
+            for (const set of tabSets) {
+                if (set.areaId !== area.id || set.basePath !== child.path) continue;
+                for (const tab of set.tabs) {
+                    if (tab.id === set.defaultTabId) continue;
+                    add(
+                        `${area.id}-${child.id}-${tab.id}`,
+                        tab.label,
+                        `${child.label} · ${area.label}`,
+                        tabHref(set, tab.id),
+                    );
+                }
             }
         }
     }

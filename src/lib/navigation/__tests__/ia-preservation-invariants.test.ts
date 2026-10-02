@@ -22,6 +22,7 @@ import {
     type NavArea,
     type NavChildRoute,
 } from "../areas";
+import { getTabSet } from "../tabs";
 import { LEGACY_WORK_TAB_REDIRECTS, resolveLegacyWorkRedirect } from "../workPageView";
 import { shellHref } from "@/components/shell/shellHref";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
@@ -278,13 +279,17 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
         if (basePath(path) === "/cognitive-load") {
             expect(routePageExists(path), path).toBe(true);
             expect(cognitiveLoadPageSource).toContain("<ViewSet");
-            expect(cognitiveLoadPageSource).toContain('id: "heatmap"');
+            // The tab list lives in the tab registry (CHAOS-7783); the page renders from it.
+            expect(cognitiveLoadPageSource).toContain('getTabSet("cognitive-load")');
+            expect(getTabSet("cognitive-load").tabs.map((tab) => tab.id)).toContain("heatmap");
             expect(cognitiveLoadPageSource).toContain("<HeatmapView");
         }
         if (basePath(path) === "/complexity") {
             expect(routePageExists(path), path).toBe(true);
             expect(complexityPageSource).toContain("<ViewSet");
-            expect(complexityPageSource).toContain('id: "flame"');
+            // The tab list lives in the tab registry (CHAOS-7783); the page renders from it.
+            expect(complexityPageSource).toContain('getTabSet("complexity")');
+            expect(getTabSet("complexity").tabs.map((tab) => tab.id)).toContain("flame");
             expect(complexityPageSource).toContain("<FlameView");
         }
         if (path === "/plan/capacity") {

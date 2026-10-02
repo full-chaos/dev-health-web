@@ -10,6 +10,7 @@
  */
 
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
+import { getTabSet, tabHref } from "@/lib/navigation/tabs";
 import { ComplexityDashboard } from "@/components/complexity/ComplexityDashboard";
 import type {
     ComplexityPoint,
@@ -130,38 +131,13 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
     const activeTab = typeof tabParam === "string" ? tabParam : "overview";
 
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
-    const tabs: ViewSetItem[] = [
-        {
-            id: "overview",
-            label: "Overview",
-            path: withFilterParam("/complexity", filters, activeRole),
-            navVisible: true,
-        },
-        {
-            id: "flame",
-            label: "Flame",
-            path: withFilterParam("/complexity?tab=flame", filters, activeRole),
-            navVisible: true,
-        },
-        {
-            id: "hotspots",
-            label: "Hotspots",
-            path: withFilterParam("/complexity?tab=hotspots", filters, activeRole),
-            navVisible: true,
-        },
-        {
-            id: "ownership-risk",
-            label: "Ownership Risk",
-            path: withFilterParam("/complexity?tab=ownership-risk", filters, activeRole),
-            navVisible: true,
-        },
-        {
-            id: "churn",
-            label: "Churn",
-            path: withFilterParam("/complexity?tab=churn", filters, activeRole),
-            navVisible: true,
-        },
-    ];
+    const tabSet = getTabSet("complexity");
+    const tabs: ViewSetItem[] = tabSet.tabs.map((tab) => ({
+        id: tab.id,
+        label: tab.label,
+        path: withFilterParam(tabHref(tabSet, tab.id), filters, activeRole),
+        navVisible: true,
+    }));
 
     const orgId = session.user?.org_id ?? "demo-org";
 
