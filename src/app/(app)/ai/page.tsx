@@ -1,7 +1,7 @@
-import { FilterBar } from "@/components/filters/FilterBar";
-import { AreaOverview } from "@/components/navigation/AreaOverview";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
+import { AreaHub } from "@/components/navigation/AreaHub";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 import { checkApiHealth } from "@/lib/api/system";
 import { getAreaSignals } from "@/lib/areaSignals";
 import { getServerEnv } from "@/lib/config";
@@ -12,8 +12,8 @@ type AIWorkflowsPageProps = {
 };
 
 /**
- * `/ai` index — the AI area overview. The shared AreaOverview summarizes and
- * routes to the real AI subviews; preview-only routes stay hidden from default
+ * `/ai` index — the AI area overview. The shared AreaHub groups the real AI subviews
+ * as Signal and Action and routes to them; preview-only routes stay hidden from default
  * navigation until they have distinct views.
  */
 export default async function AIWorkflowsPage({ searchParams }: AIWorkflowsPageProps) {
@@ -33,14 +33,21 @@ export default async function AIWorkflowsPage({ searchParams }: AIWorkflowsPageP
     ]);
 
     if (!health.ok && !isTestMode) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     return (
-        <>
-            <GlobalContextBar filters={filters} />
-            <FilterBar view="ai" />
-            <AreaOverview
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            {/* The area header: it is on the AI overview only. Each AI destination
+                has its own title. */}
+            <PageHeader
+                title="AI"
+                subtitle="What AI appears to change across delivery, review, quality, and governance. Open an evidence-backed view for the selected window."
+            />
+            <ScopeBar view="ai" />
+            <AreaHub
                 areaId="ai"
                 signals={aiSignals}
                 filters={filters}
@@ -48,6 +55,6 @@ export default async function AIWorkflowsPage({ searchParams }: AIWorkflowsPageP
                 title="AI"
                 description="Available AI views summarize impact, review pressure, governance risk, and automation opportunities."
             />
-        </>
+        </div>
     );
 }

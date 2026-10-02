@@ -409,4 +409,13 @@ describe("ShellSidebar — a route with its own `f` encoding (Security)", () => 
         expect(linkParams(/^Home$/).get("role")).toBe("em");
         expect(linkParams(/^Home$/).get("lens")).toBe("pm");
     });
+
+    it("shows no Beta mark in the brand row", () => {
+        navigationMock.pathname = "/dashboard";
+        navigationMock.search = "";
+        renderSidebar();
+
+        expect(within(sidebar()).queryByText(/^beta$/i)).toBeNull();
+        expect(within(sidebar()).getByText("Dev Health")).toBeInTheDocument();
+    });
 });

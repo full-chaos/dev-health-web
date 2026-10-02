@@ -10,6 +10,8 @@
  * genuinely absent for the window. A real zero is still data and is plotted.
  */
 
+import { Notice } from "@/components/ui/Notice";
+import { DataState } from "@/components/ui/DataState";
 import { ChartFrame } from "@/components/charts/ChartFrame";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
@@ -18,6 +20,7 @@ import Link from "next/link";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
+import { withFilterParam } from "@/lib/filters/url";
 export type TrendPoint = { day: string; value: number; label?: string };
 
 export type LoadDriver = { label: string; value: number };
@@ -39,6 +42,108 @@ function emptyDescription(window: WindowLabel, hint: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Page chrome shared by every tab: privacy header, guardrail and state notices.
+// ---------------------------------------------------------------------------
+
+/** The privacy framing of the page, compact, on every tab (text as production). */
+export function PrivacyHeader() {
+    return (
+        <section
+            className="overflow-hidden rounded-(--radius-md) border border-(--card-stroke) bg-(--card-80)"
+            data-testid="cognitive-load-privacy-header"
+        >
+            <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
+                <div className="p-5">
+                    <p className="text-xs font-semibold uppercase tracking-[0.28em] text-(--ink-muted)">
+                        Privacy-first cognitive load
+                    </p>
+                    <h2 className="mt-2 text-xl font-semibold tracking-tight md:text-2xl">
+                        Focus fragmentation, not surveillance.
+                    </h2>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-(--ink-muted)">
+                        This surface uses existing PR, review, work-item, and commit-time rollups to
+                        show where attention is being split. It does not collect IDE, keystroke,
+                        prompt, or session telemetry.
+                    </p>
+                </div>
+                <div className="border-t border-(--card-stroke) bg-(--card-60) p-5 lg:border-l lg:border-t-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
+                        Guardrail
+                    </p>
+                    <div className="mt-3 space-y-2 text-sm text-(--ink-muted)">
+                        <p>
+                            No leaderboards. No peer rankings. Team and repo aggregation comes
+                            first.
+                        </p>
+                        <p>
+                            Single-person views are limited to explicit self-reflection or coaching
+                            context.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    );
+}
+
+/** Person scope that is not the signed-in user: the view is self-only (text as production). */
+export function IndividualGuardrailNotice() {
+    return (
+        <Notice
+            variant="warn"
+            live={false}
+            titleAs="h2"
+            title="Individual cognitive load is self-only."
+            action={
+                <Link
+                    href="/cognitive-load"
+                    className="inline-flex rounded-full border border-(--card-stroke) px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent-2)"
+                >
+                    Return to team/repo view
+                </Link>
+            }
+            data-testid="cognitive-load-individual-guardrail"
+        >
+            <p className="text-xs font-semibold uppercase tracking-[0.24em]">
+                Individual guardrail
+            </p>
+            <p className="mt-2 max-w-3xl leading-6">
+                Person-scoped cognitive-load signals are available only when the selected identity
+                matches the current session. Use team or repo aggregation for coaching, planning,
+                and operational review.
+            </p>
+        </Notice>
+    );
+}
+
+/** The signed-in user looking at their own person scope (text as production). */
+export function SelfReflectionNotice() {
+    return (
+        <Notice
+            variant="info"
+            live={false}
+            title="Self-reflection mode"
+            data-testid="cognitive-load-self-reflection"
+        >
+            Only you can open this individual cognitive-load view. These signals are for reflection
+            on focus pressure, not manager review or peer comparison.
+        </Notice>
+    );
+}
+
+/** The cognitive-load request failed: the error state, not an empty one. */
+export function LoadDataUnavailable({ message }: { message: string }) {
+    return (
+        <DataState
+            variant="error"
+            title="Data unavailable"
+            message={message}
+            data-testid="cognitive-load-data-unavailable"
+        />
+    );
+}
+
+// ---------------------------------------------------------------------------
 // Overview — the at-a-glance KPI grid + aggregation contract.
 // ---------------------------------------------------------------------------
 
@@ -47,15 +152,18 @@ export function OverviewView({
     window,
     filters,
     activeRole,
+    trend,
 }: {
     signals: LoadKpi[] | null;
     window: WindowLabel;
     filters: MetricFilter;
     activeRole?: string;
+    /** Per-day context spread, already fetched for the Context Switching tab (no new query). */
+    trend: TrendPoint[];
 }) {
     return (
         <>
-            <section className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
+            <section className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
@@ -101,52 +209,77 @@ export function OverviewView({
                         </p>
                     </div>
                 ) : (
-                    <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                    <div
+                        className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5"
+                        data-testid="cognitive-load-tiles"
+                    >
                         {signals.map((signal) => (
-                            <article
-                                key={signal.label}
-                                className="rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm"
-                            >
-                                <div className="flex items-start justify-between gap-3">
-                                    <p className="text-xs font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
-                                        {signal.label}
-                                    </p>
-                                    <span className="rounded-full bg-(--accent-2)/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-(--accent-2)">
-                                        {signal.interpretation}
-                                    </span>
-                                </div>
-                                <div className="mt-5 flex items-baseline gap-2">
-                                    <p className="text-4xl font-semibold tabular-nums">
-                                        {signal.value}
-                                    </p>
-                                    <p className={`text-xs font-medium ${signal.deltaTone}`}>
-                                        {signal.delta}
-                                    </p>
-                                </div>
-                                <p className="mt-4 text-sm leading-6 text-(--ink-muted)">
-                                    {signal.description}
-                                </p>
-                            </article>
+                            <LoadTile key={signal.label} signal={signal} />
                         ))}
                     </div>
                 )}
             </section>
 
-            <section className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
-                    Aggregation contract
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-                    Team/repo-first by default
-                </h2>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-(--ink-muted)">
-                    Cognitive-load signals are presented as system pressure: review queues, context
-                    spread, after-hours trend, and weekend trend. They are coaching prompts, not
-                    performance judgments. Open the Context Switching, Focus Pressure, and Load
-                    Drivers tabs to see each signal broken out over the window.
-                </p>
+            <section
+                className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]"
+                data-testid="cognitive-load-overview-lower"
+            >
+                <ContextSwitchingView trend={trend} window={window} />
+                <section className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
+                    <h2 className="text-lg font-semibold tracking-tight">How to read this</h2>
+                    <p className="mt-4 text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
+                        Aggregation contract
+                    </p>
+                    <h3 className="mt-2 text-xl font-semibold tracking-tight">
+                        Team/repo-first by default
+                    </h3>
+                    <p className="mt-3 text-sm leading-6 text-(--ink-muted)">
+                        Cognitive-load signals are presented as system pressure: review queues,
+                        context spread, after-hours trend, and weekend trend. They are coaching
+                        prompts, not performance judgments. Open the Context Switching, Focus
+                        Pressure, and Load Drivers tabs to see each signal broken out over the
+                        window.
+                    </p>
+                    <Link
+                        href={withFilterParam(
+                            "/cognitive-load?tab=load-drivers",
+                            filters,
+                            activeRole,
+                        )}
+                        className="mt-4 inline-flex text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                    >
+                        {CTA_LABELS.exploreLoadDrivers}
+                    </Link>
+                </section>
             </section>
         </>
+    );
+}
+
+/**
+ * One Overview tile, drawn like the shared metric tile (concept `.metric`: label, value,
+ * meta line). The interpretation chip sits in the delta slot, before the period text; both
+ * strings and the delta tone are the production values. Not `MetricCard`: its value is a
+ * number and it has no description line, and the tile must keep production's strings.
+ */
+function LoadTile({ signal }: { signal: LoadKpi }) {
+    return (
+        <article
+            className="min-w-0 rounded-(--radius-md) border border-(--card-stroke) bg-card px-5 py-4.5"
+            data-testid="cognitive-load-tile"
+        >
+            <p className="text-label-caps uppercase text-(--ink-muted)">{signal.label}</p>
+            <p className="mt-2.5 text-[1.75rem] font-semibold leading-tight tabular-nums">
+                {signal.value}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                <span className="rounded-full bg-(--accent-2)/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-(--accent-2)">
+                    {signal.interpretation}
+                </span>
+                <span className={`font-medium ${signal.deltaTone}`}>{signal.delta}</span>
+            </div>
+            <p className="mt-3 text-sm leading-6 text-(--ink-muted)">{signal.description}</p>
+        </article>
     );
 }
 
