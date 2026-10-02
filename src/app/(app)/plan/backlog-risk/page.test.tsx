@@ -413,6 +413,27 @@ describe("ForecastErrorState", () => {
 // ── ForecastContent ───────────────────────────────────────────────────────────
 
 describe("ForecastContent", () => {
+    it("draws four joined tiles, then the two cards as Sections with the prototype descriptions", () => {
+        render(<ForecastContent forecast={makeForecast()} />);
+
+        expect(screen.getByTestId("backlog-tiles")).toHaveAttribute("data-columns", "4");
+        const condition = within(screen.getByTestId("backlog-condition"));
+        expect(
+            condition.getByRole("heading", { level: 2, name: "Backlog condition" }),
+        ).toBeInTheDocument();
+        expect(
+            condition.getByText(
+                "Normal congestion and aging work can coexist; do not flatten the panels into one status.",
+            ),
+        ).toBeInTheDocument();
+        const coverage = within(screen.getByTestId("unestimated-debt-card"));
+        expect(
+            coverage.getByRole("heading", { level: 2, name: "Estimate coverage" }),
+        ).toBeInTheDocument();
+        expect(coverage.getByText("Missing estimates remain explicit.")).toBeInTheDocument();
+        expect(coverage.getAllByTestId("evidence-fact")).toHaveLength(4);
+    });
+
     it("renders the congestion tile with the ratio from the fixture", () => {
         render(
             <ForecastContent
