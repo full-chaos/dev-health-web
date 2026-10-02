@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect } from "react";
 
 import { CockpitEmptyState } from "@/components/home/CockpitEmptyState";
+import { Notice } from "@/components/ui/Notice";
 import { DataState } from "@/components/ui/DataState";
 import {
     deriveSetupSurface,
@@ -102,21 +103,16 @@ export function SetupBanner({ status, orgId }: SetupBannerProps) {
         : PENDING_DESCRIPTION[status.next_action];
 
     return (
-        <section
-            role="status"
+        <Notice
+            variant="info"
+            title={title}
+            action={ctaLink}
             aria-label="Setup status"
             data-testid="setup-banner"
             data-variant={variant}
-            className="flex flex-col gap-3 rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 sm:flex-row sm:items-center sm:justify-between"
         >
-            <div>
-                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">Setup</p>
-                <p className="mt-1 font-(--font-display) text-lg font-semibold text-foreground">
-                    {title}
-                </p>
-                <p className="mt-1 max-w-xl text-sm text-(--ink-muted)">{description}</p>
-            </div>
-            {ctaLink}
-        </section>
+            <p className="text-xs uppercase tracking-[0.15em]">Setup</p>
+            <p className="mt-1 max-w-xl">{description}</p>
+        </Notice>
     );
 }

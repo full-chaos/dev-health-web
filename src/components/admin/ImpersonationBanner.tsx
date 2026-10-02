@@ -10,6 +10,7 @@ import {
     isImpersonationWindow,
     onImpersonationEvent,
 } from "@/lib/impersonation-events";
+import { Notice } from "@/components/ui/Notice";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 export function ImpersonationBanner() {
@@ -75,17 +76,21 @@ export function ImpersonationBanner() {
     };
 
     return (
-        <div className="w-full bg-amber-500 text-black px-4 py-3 text-center shadow-md flex items-center justify-center gap-4 z-[100] relative">
-            <span className="font-medium">
-                Viewing as {session.user.impersonated_email || session.user.impersonated_user_id}
-            </span>
-            <button
-                type="button"
-                onClick={handleStopImpersonation}
-                className="bg-black/10 hover:bg-black/20 text-black px-3 py-1 rounded text-sm font-semibold transition-colors"
-            >
-                {CTA_LABELS.stopImpersonating}
-            </button>
-        </div>
+        <Notice
+            variant="warn"
+            live={false}
+            emphasis="strong"
+            className="relative z-[100] w-full rounded-none border-x-0 border-t-0"
+            title={`Viewing as ${session.user.impersonated_email || session.user.impersonated_user_id}`}
+            action={
+                <button
+                    type="button"
+                    onClick={handleStopImpersonation}
+                    className="rounded bg-black/10 px-3 py-1 text-sm font-semibold text-black transition-colors hover:bg-black/20"
+                >
+                    {CTA_LABELS.stopImpersonating}
+                </button>
+            }
+        />
     );
 }
