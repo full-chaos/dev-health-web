@@ -272,9 +272,9 @@ export default async function TestsPage({ searchParams }: TestsPageProps) {
                         description="No flake data surfaced for this window or scope."
                     />
                 ) : (
-                    <div className="h-64">
-                        <HeatmapChart data={heatmapData} />
-                    </div>
+                    // No fixed-height wrapper: the heatmap sets its own height and has a legend
+                    // under it; a 16rem box let it run out of the card.
+                    <HeatmapChart data={heatmapData} />
                 )}
             </Section>
         </div>
