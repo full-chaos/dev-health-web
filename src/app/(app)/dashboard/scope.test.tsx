@@ -39,7 +39,6 @@ vi.mock("@/lib/auth", () => ({
     auth: vi.fn(async () => ({ user: { org_id: "org-1" } })),
 }));
 
-vi.mock("@/components/home/BackendBanner", () => ({ BackendBanner: () => null }));
 vi.mock("@/components/home/HomeMonitoring", () => ({ HomeMonitoring: () => null }));
 vi.mock("@/components/home/InvestigationThreads", () => ({ InvestigationThreads: () => null }));
 vi.mock("@/components/home/CockpitSummary", () => ({ CockpitSummary: () => null }));

@@ -24,7 +24,6 @@ vi.mock("@/components/ClientTimestamp", () => ({
     ),
 }));
 vi.mock("@/components/ServiceUnavailable", () => ({ ServiceUnavailable: () => null }));
-vi.mock("@/components/home/BackendBanner", () => ({ BackendBanner: () => null }));
 vi.mock("@/components/home/HomeMonitoring", () => ({ HomeMonitoring: () => null }));
 vi.mock("@/components/home/InvestigationThreads", () => ({ InvestigationThreads: () => null }));
 vi.mock("@/components/home/CockpitSummary", () => ({ CockpitSummary: () => null }));

@@ -25,7 +25,6 @@ vi.mock("@/lib/auth", () => ({ auth: vi.fn(async () => ({ user: { org_id: "org-1
 vi.mock("@/components/charts/SparklineChart", () => ({
     SparklineChart: () => <div data-testid="sparkline" />,
 }));
-vi.mock("@/components/home/BackendBanner", () => ({ BackendBanner: () => null }));
 vi.mock("@/components/home/CockpitSummary", () => ({ CockpitSummary: () => null }));
 vi.mock("@/components/home/DataConfidenceIndicator", () => ({
     DataConfidenceIndicator: () => null,

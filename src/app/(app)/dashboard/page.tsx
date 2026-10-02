@@ -1,4 +1,3 @@
-import { BackendBanner } from "@/components/home/BackendBanner";
 import { CockpitSummary } from "@/components/home/CockpitSummary";
 import { RankedSignals } from "@/components/home/RankedSignals";
 import { DataConfidenceIndicator } from "@/components/home/DataConfidenceIndicator";
@@ -18,6 +17,7 @@ import { SetupBanner } from "@/components/onboarding/SetupBanner";
 import { auth } from "@/lib/auth";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { formatCoveragePct } from "@/lib/cockpit/coverage";
+import { formatNumber } from "@/lib/formatters";
 import { buildThreadApiUrl } from "@/lib/cockpit/evidenceRef";
 import type { HomeResponse } from "@/lib/types";
 
@@ -70,6 +70,13 @@ export default async function Home({ searchParams }: HomePageProps) {
         // The shared app shell owns the `<main>` landmark for this route.
         return <ServiceUnavailable landmark={false} />;
     }
+    // The coverage counts of the meta endpoint, as served (key and number). The old header strip
+    // showed the first three; the page evidence drawer lists every one.
+    const coverageCounts = Object.entries(meta?.coverage ?? {}).filter(
+        (entry): entry is [string, number] =>
+            typeof entry[1] === "number" && Number.isFinite(entry[1]),
+    );
+
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
@@ -84,7 +91,9 @@ export default async function Home({ searchParams }: HomePageProps) {
                             title: "Home",
                             apiUrl: buildThreadApiUrl("/api/v1/home", filters),
                             filters,
-                            // The served source coverage of the page: read here, not in the body.
+                            // The served coverage of the page: read here, not in the body. First
+                            // the source coverage of the Home response, then one row per coverage
+                            // count that the meta endpoint served (none when it served none).
                             intro: (
                                 <EvidenceFactList
                                     aria-label="Page data confidence"
@@ -96,6 +105,13 @@ export default async function Home({ searchParams }: HomePageProps) {
                                             home?.data_confidence?.coverage_pct,
                                         )}
                                     />
+                                    {coverageCounts.map(([key, count]) => (
+                                        <EvidenceFact
+                                            key={key}
+                                            label={`Coverage: ${key}`}
+                                            value={formatNumber(count)}
+                                        />
+                                    ))}
                                 </EvidenceFactList>
                             ),
                         }}
@@ -105,8 +121,6 @@ export default async function Home({ searchParams }: HomePageProps) {
                 {lensConfig.framing ? (
                     <p className="text-xs text-(--accent-2)/80">{lensConfig.framing}</p>
                 ) : null}
-                {/* The last sync time is a row of the "Evidence & context" card. */}
-                <BackendBanner meta={meta} />
             </PageHeader>
 
             {setupStatus ? <SetupBanner status={setupStatus} orgId={setupOrgId} /> : null}
