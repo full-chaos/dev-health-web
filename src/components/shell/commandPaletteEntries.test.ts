@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { navAreas, isNavChildVisible, type NavArea } from "@/lib/navigation/areas";
 
-import { TAB_SETS, getTabSet, tabHref } from "@/lib/navigation/tabs";
+import { TAB_SETS, getTabSet, tabHref, type TabSet } from "@/lib/navigation/tabs";
 
 import { filterPaletteEntries, paletteEntries } from "./commandPaletteEntries";
 
@@ -85,7 +85,8 @@ describe("paletteEntries", () => {
             for (const c of a.children) known.add(`${c.path}|${c.label}`);
         }
         // ...and the tab registry's tabs (their links come from `tabHref`).
-        for (const set of TAB_SETS) {
+        const sets: readonly TabSet[] = TAB_SETS;
+        for (const set of sets) {
             for (const tab of set.tabs) known.add(`${tabHref(set, tab.id)}|${tab.label}`);
         }
         for (const e of entries) expect(known.has(`${e.path}|${e.label}`)).toBe(true);

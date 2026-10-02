@@ -5,9 +5,12 @@ import { describe, expect, it } from "vitest";
 import { getAreaById, isNavChildVisible } from "../areas";
 import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 
-import { TAB_SETS, getTabSet, tabHref } from "../tabs";
+import { TAB_SETS, getTabSet, tabHref, type TabSet } from "../tabs";
 
 const appRoot = join(process.cwd(), "src/app/(app)");
+
+// The sets as the general type: loops over every set do not depend on each set's literal type.
+const SETS: readonly TabSet[] = TAB_SETS;
 
 // The tab lists the two pages carried inline before the registry: the registry must say exactly this
 // (same ids, same labels, same order). This is the pin that used to be the page source text.
@@ -63,14 +66,14 @@ describe("tab registry", () => {
     it.each(Object.entries(BEFORE))(
         "holds the %s tabs exactly as the page listed them",
         (id, tabs) => {
-            const set = getTabSet(id as keyof typeof BEFORE);
+            const set: TabSet = getTabSet(id as keyof typeof BEFORE);
             expect(set.tabs.map((tab) => [tab.id, tab.label])).toEqual(tabs);
         },
     );
 
     it("has unique set ids and unique tab ids per set, and a default tab that exists", () => {
-        expect(new Set(TAB_SETS.map((s) => s.id)).size).toBe(TAB_SETS.length);
-        for (const set of TAB_SETS) {
+        expect(new Set(SETS.map((s) => s.id)).size).toBe(SETS.length);
+        for (const set of SETS) {
             const ids = set.tabs.map((t) => t.id);
             expect(new Set(ids).size, set.id).toBe(ids.length);
             expect(ids, set.id).toContain(set.defaultTabId);
@@ -98,7 +101,7 @@ describe("tab registry", () => {
     });
 
     it("names a destination the sidebar lists: every set's destination path is a visible navAreas child", () => {
-        for (const set of TAB_SETS) {
+        for (const set of SETS) {
             const child = getAreaById(set.areaId)?.children.find(
                 (c) => c.path === (set.childPath ?? set.basePath),
             );
@@ -118,7 +121,7 @@ describe("tab registry", () => {
     } as const;
 
     it("route sets give every tab its own route, query sets give none", () => {
-        for (const set of TAB_SETS) {
+        for (const set of SETS) {
             for (const tab of set.tabs) {
                 expect("path" in tab && Boolean(tab.path), `${set.id}/${tab.id}`).toBe(
                     set.param === "route",

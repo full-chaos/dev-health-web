@@ -147,10 +147,22 @@ export type TabIdOf<S extends TabSetId> = Extract<
     { id: S }
 >["tabs"][number]["id"];
 
-export function getTabSet(id: TabSetId): TabSet {
-    const set = TAB_SETS.find((candidate) => candidate.id === id);
-    if (!set) throw new Error(`Unknown tab set: ${id}`);
-    return set;
+type TabSetOf<S extends TabSetId> = Extract<(typeof TAB_SETS)[number], { id: S }>;
+
+// One entry per set, so `getTabSet("metrics")` has the literal type of that set (its tab ids are a
+// union, not `string`). `satisfies` makes the compiler check that each key holds its own set.
+const TAB_SET_BY_ID = {
+    complexity: TAB_SETS[0],
+    "cognitive-load": TAB_SETS[1],
+    landscape: TAB_SETS[2],
+    investment: TAB_SETS[3],
+    "work-graph": TAB_SETS[4],
+    metrics: TAB_SETS[5],
+    testops: TAB_SETS[6],
+} as const satisfies { [S in TabSetId]: TabSetOf<S> };
+
+export function getTabSet<S extends TabSetId>(id: S): (typeof TAB_SET_BY_ID)[S] {
+    return TAB_SET_BY_ID[id];
 }
 
 /** The link of a tab, without the user's state (`withFilterParam` adds it). */
