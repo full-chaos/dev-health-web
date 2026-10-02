@@ -3,6 +3,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SettingsSection } from "@/components/admin/settings/SettingsSection";
 import { listSettingCategories, listSettings } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { Notice } from "@/components/ui/Notice";
 
 export default async function SettingsPage() {
     const { data: categories, error: categoriesError } = await listSettingCategories();
@@ -14,9 +15,9 @@ export default async function SettingsPage() {
                     title="Platform Settings"
                     description="Global platform configuration."
                 />
-                <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-red-500">
+                <Notice variant="danger" live={false}>
                     Error loading settings: {categoriesError}
-                </div>
+                </Notice>
             </div>
         );
     }
