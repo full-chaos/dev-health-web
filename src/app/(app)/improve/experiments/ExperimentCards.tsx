@@ -59,7 +59,6 @@ export function ExperimentCards({ experiments, filters }: ExperimentCardsProps) 
                                     variant="ghost"
                                     size="sm"
                                     icon={<ArrowRight />}
-                                    iconPosition="end"
                                     onClick={() =>
                                         evidence.open({
                                             title: `${getMetricLabel(experiment.metric)} evidence`,
