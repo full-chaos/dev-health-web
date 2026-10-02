@@ -125,6 +125,18 @@ export const TAB_SETS = [
         ],
     },
     {
+        id: "ai-governance-risk",
+        areaId: "ai",
+        basePath: "/ai/risk",
+        param: "view",
+        defaultTabId: "overview",
+        tabs: [
+            { id: "overview", label: "Overview" },
+            { id: "test-gaps", label: "Test Gaps" },
+            { id: "evidence", label: CTA_LABELS.evidence },
+        ],
+    },
+    {
         id: "testops",
         areaId: "govern",
         basePath: "/testops",
@@ -158,7 +170,8 @@ const TAB_SET_BY_ID = {
     investment: TAB_SETS[3],
     "work-graph": TAB_SETS[4],
     metrics: TAB_SETS[5],
-    testops: TAB_SETS[6],
+    "ai-governance-risk": TAB_SETS[6],
+    testops: TAB_SETS[7],
 } as const satisfies { [S in TabSetId]: TabSetOf<S> };
 
 export function getTabSet<S extends TabSetId>(id: S): (typeof TAB_SET_BY_ID)[S] {

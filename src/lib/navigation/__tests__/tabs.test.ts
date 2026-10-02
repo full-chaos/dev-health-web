@@ -3,11 +3,10 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { getAreaById, isNavChildVisible } from "../areas";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 
 import { TAB_SETS, getTabSet, tabHref, type TabSet } from "../tabs";
-
-const appRoot = join(process.cwd(), "src/app/(app)");
 
 // The sets as the general type: loops over every set do not depend on each set's literal type.
 const SETS: readonly TabSet[] = TAB_SETS;
@@ -46,6 +45,11 @@ const BEFORE = {
         ["dora", "DORA"],
         ["flow", "Flow"],
         ["throughput", "Throughput"],
+    ],
+    "ai-governance-risk": [
+        ["overview", "Overview"],
+        ["test-gaps", "Test Gaps"],
+        ["evidence", "Evidence"],
     ],
     testops: [
         ["overview", "Overview"],
@@ -96,6 +100,13 @@ describe("tab registry", () => {
         // Metrics always linked its default tab with the parameter; TestOps tabs are routes.
         expect(tabHref(getTabSet("metrics"), "dora")).toBe("/metrics?tab=dora");
         expect(tabHref(getTabSet("metrics"), "throughput")).toBe("/metrics?tab=throughput");
+        // The Governance Risk subviews use `view`, not `tab`; the e2e spec pins the "Evidence" link name.
+        expect(tabHref(getTabSet("ai-governance-risk"), "overview")).toBe("/ai/risk");
+        expect(tabHref(getTabSet("ai-governance-risk"), "test-gaps")).toBe(
+            "/ai/risk?view=test-gaps",
+        );
+        expect(tabHref(getTabSet("ai-governance-risk"), "evidence")).toBe("/ai/risk?view=evidence");
+        expect(CTA_LABELS.evidence).toBe("Evidence");
         expect(tabHref(getTabSet("testops"), "overview")).toBe("/testops");
         expect(tabHref(getTabSet("testops"), "coverage")).toBe("/testops/coverage");
     });
@@ -111,13 +122,14 @@ describe("tab registry", () => {
     });
 
     const PAGE_FILE = {
-        complexity: "complexity/page.tsx",
-        "cognitive-load": "cognitive-load/page.tsx",
-        landscape: "landscape/page.tsx",
-        investment: "investment/page.tsx",
-        "work-graph": "diagnose/work-graph/buildTabs.ts",
-        metrics: "metrics/page.tsx",
-        testops: "testops/TestOpsTabs.tsx",
+        complexity: "app/(app)/complexity/page.tsx",
+        "cognitive-load": "app/(app)/cognitive-load/page.tsx",
+        landscape: "app/(app)/landscape/page.tsx",
+        investment: "app/(app)/investment/page.tsx",
+        "work-graph": "app/(app)/diagnose/work-graph/buildTabs.ts",
+        metrics: "app/(app)/metrics/page.tsx",
+        "ai-governance-risk": "components/ai/AIGovernanceRiskTabs.tsx",
+        testops: "app/(app)/testops/TestOpsTabs.tsx",
     } as const;
 
     it("route sets give every tab its own route, query sets give none", () => {
@@ -143,7 +155,7 @@ describe("tab registry", () => {
     it.each(Object.keys(PAGE_FILE) as Array<keyof typeof PAGE_FILE>)(
         "%s renders its tabs from the registry and holds no inline list",
         (page) => {
-            const source = readFileSync(join(appRoot, PAGE_FILE[page]), "utf8");
+            const source = readFileSync(join(process.cwd(), "src", PAGE_FILE[page]), "utf8");
             expect(source).toContain(`getTabSet("${page}")`);
             expect(source).toMatch(/tabHref\((tabSet|\w+Tabs|set), (tab\.id|id)\)/);
             // No tab literal of the old inline list is left in the page.
