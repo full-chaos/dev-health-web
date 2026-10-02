@@ -133,4 +133,86 @@ describe("AIImpactEvidenceList", () => {
         expect(screen.queryByTestId("ai-impact-evidence-sparse-page")).not.toBeInTheDocument();
         expect(mockUseAIWorkflowDrilldown).toHaveBeenLastCalledWith(null);
     });
+
+    describe("pins (CHAOS-7769)", () => {
+        const ok = (data: unknown, extra: Record<string, unknown> = {}) =>
+            mockUseAIAttributedPrs.mockReturnValue({
+                data,
+                fetching: false,
+                error: undefined,
+                ...extra,
+            });
+
+        it("keeps the column headers, cell texts and the empty-title and empty-date fallbacks", () => {
+            ok(
+                attributedPrs({
+                    rows: [
+                        {
+                            repoId: "repo-1",
+                            number: 7,
+                            title: null,
+                            kind: "agent_created",
+                            workType: null,
+                            teamId: null,
+                            mergedAt: null,
+                        },
+                    ],
+                }),
+            );
+            render(<AIImpactEvidenceList filter={filter} />);
+            for (const h of ["PR", "Title", "Attribution", "Type", "Repo", "Merged"]) {
+                expect(screen.getByRole("columnheader", { name: h })).toBeInTheDocument();
+            }
+            const row = screen.getByTestId("ai-impact-evidence-row");
+            expect(row).toHaveTextContent("#7");
+            expect(row).toHaveTextContent("(untitled)");
+            expect(row).toHaveTextContent("repo-1");
+            expect(row).toHaveTextContent("Agent-created");
+            expect(row.querySelectorAll("td")[3]).toHaveTextContent("—");
+            expect(row.querySelectorAll("td")[5]).toHaveTextContent("—");
+        });
+
+        it("selecting a row loads its evidence by the row key and marks it selected", () => {
+            ok(attributedPrs());
+            render(<AIImpactEvidenceList filter={filter} />);
+            expect(screen.getByText("Work Graph evidence")).toBeInTheDocument();
+            expect(screen.getByTestId("ai-drilldown-evidence-prompt")).toBeInTheDocument();
+            const row = screen.getByTestId("ai-impact-evidence-row");
+            fireEvent.click(row);
+            const key = row.getAttribute("data-pr-key");
+            expect(key).toBeTruthy();
+            expect(mockUseAIWorkflowDrilldown).toHaveBeenLastCalledWith(key);
+            expect(screen.getByTestId("ai-impact-evidence-row")).toHaveAttribute(
+                "data-pr-key",
+                key,
+            );
+        });
+
+        it("keeps the loading row, the error card and the not-populated state", () => {
+            ok(undefined, { fetching: true });
+            const { unmount } = render(<AIImpactEvidenceList filter={filter} />);
+            expect(screen.getByTestId("ai-impact-evidence-loading")).toHaveTextContent(
+                "Loading AI-attributed pull requests…",
+            );
+            unmount();
+
+            ok(undefined, { error: new Error("boom") });
+            const second = render(<AIImpactEvidenceList filter={filter} />);
+            expect(screen.getByText("Failed to load AI-attributed PRs")).toBeInTheDocument();
+            second.unmount();
+
+            ok(attributedPrs({ dataAvailable: false }));
+            render(<AIImpactEvidenceList filter={filter} />);
+            expect(
+                screen.getByText("AI attribution data has not populated yet"),
+            ).toBeInTheDocument();
+        });
+
+        it("disables Previous on page 1 and Next without more pages", () => {
+            ok(attributedPrs({ hasMore: false }));
+            render(<AIImpactEvidenceList filter={filter} />);
+            expect(screen.getByRole("button", { name: "Previous" })).toBeDisabled();
+            expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+        });
+    });
 });

@@ -26,7 +26,7 @@ function formatValue(value: number | null | undefined, unit: string, precision: 
 function deltaTone(delta: number, inverseGood: boolean) {
     if (delta === 0) return "text-(--ink-muted)";
     const riskyDirection = inverseGood ? delta < 0 : delta > 0;
-    return riskyDirection ? "text-red-600" : "text-emerald-600";
+    return riskyDirection ? "text-(--negative)" : "text-(--positive)";
 }
 
 export function AIComparisonMetricCard({
@@ -50,12 +50,12 @@ export function AIComparisonMetricCard({
 
     return (
         <article
-            className="flex min-h-48 flex-col justify-between rounded-3xl border border-(--card-stroke) bg-card p-5 shadow-sm"
+            className="flex min-h-48 flex-col justify-between rounded-(--radius-md) border border-(--card-stroke) bg-card p-5"
             data-testid="ai-comparison-metric-card"
         >
             <div>
                 <div className="flex items-start justify-between gap-3">
-                    <h3 className="font-(--font-display) text-lg">{title}</h3>
+                    <h3 className="text-h3 font-semibold">{title}</h3>
                     {tooltip && (
                         <button
                             type="button"
@@ -79,18 +79,18 @@ export function AIComparisonMetricCard({
                                     opacity: tooltipVisible ? 1 : 0,
                                     visibility: tooltipVisible ? "visible" : "hidden",
                                 }}
-                                className="absolute top-full right-0 z-10 mt-2 w-56 rounded-lg border border-(--card-stroke) bg-card p-2 text-left text-xs text-foreground shadow-lg transition"
+                                className="absolute top-full right-0 z-10 mt-2 w-56 rounded-(--radius-sm) border border-(--card-stroke) bg-card p-2 text-left text-xs text-foreground shadow-lg transition"
                             >
                                 {tooltip}
                             </span>
                         </button>
                     )}
                 </div>
-                <p className="mt-2 text-sm text-(--ink-muted)">{description}</p>
+                <p className="mt-2 text-xs text-(--ink-muted)">{description}</p>
             </div>
 
             <div className="mt-6">
-                <p className="text-3xl font-semibold tabular-nums text-foreground">
+                <p className="text-[1.75rem] font-semibold leading-tight tabular-nums text-foreground">
                     {loading ? "—" : formatValue(value, unit, precision)}
                 </p>
                 <p
@@ -102,7 +102,7 @@ export function AIComparisonMetricCard({
                     <button
                         type="button"
                         onClick={onDrilldown}
-                        className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-(--accent-positive) hover:underline"
+                        className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-(--accent-2) hover:underline"
                     >
                         {CTA_LABELS.openEvidence}
                     </button>

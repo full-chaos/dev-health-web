@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import { BetaBadge } from "@/components/BetaBadge";
 import fcLogo from "@/assets/fc-logo.png";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -87,7 +86,6 @@ export function MarketingShell({ children }: Readonly<{ children: React.ReactNod
                         <span className="rounded-full border border-(--card-stroke) bg-(--card-70) px-2.5 py-0.5 text-label-caps font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
                             OSS
                         </span>
-                        <BetaBadge />
                     </div>
                 </div>
                 <div className="flex items-center gap-4">

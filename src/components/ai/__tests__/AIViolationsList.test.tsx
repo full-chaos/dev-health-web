@@ -30,4 +30,23 @@ describe("AIViolationsList", () => {
         expect(screen.getByText("human-review-required")).toBeInTheDocument();
         expect(screen.getByText("PR 123")).toBeInTheDocument();
     });
+
+    it("keeps the count, severity word, rule, PR, evidence text and the 8-row cap", () => {
+        const many = Array.from({ length: 10 }, (_, n) => ({
+            ...violation,
+            subjectId: String(100 + n),
+            evidence: `evidence ${n}`,
+        }));
+        render(<AIViolationsList violations={many} />);
+        const list = screen.getByTestId("ai-violations-list");
+        expect(list).toHaveTextContent("Security findings");
+        expect(list).toHaveTextContent(
+            "Recent PR-scoped policy violations associated with AI workflow artifacts.",
+        );
+        expect(screen.getByText("10")).toBeInTheDocument();
+        expect(screen.getAllByText("high")).toHaveLength(8);
+        expect(screen.getByText("PR 100")).toBeInTheDocument();
+        expect(screen.getByText("evidence 7")).toBeInTheDocument();
+        expect(screen.queryByText("PR 108")).not.toBeInTheDocument();
+    });
 });

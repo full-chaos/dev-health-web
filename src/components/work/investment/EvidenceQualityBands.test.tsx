@@ -10,7 +10,13 @@ const swatch = (c: HTMLElement, id: string) =>
 
 describe("EvidenceQualityBands", () => {
     it("shows the unavailable state, not a derived bar, when the distribution is absent or empty", () => {
-        for (const value of [undefined, null, {}, { high: 0, unknown: 0 }]) {
+        const values: Array<Record<string, number> | null | undefined> = [
+            undefined,
+            null,
+            {},
+            { high: 0, unknown: 0 },
+        ];
+        for (const value of values) {
             const { unmount } = render(
                 <EvidenceQualityBands evidenceQualityDistribution={value} />,
             );
