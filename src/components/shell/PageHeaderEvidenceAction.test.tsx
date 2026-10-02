@@ -63,6 +63,18 @@ describe("PageHeaderEvidenceAction", () => {
         expect(icon).toHaveAttribute("aria-hidden", "true");
     });
 
+    it("has the approved ghost look: action colour, no border, sentence case", () => {
+        render(header());
+
+        const action = screen.getByRole("button", { name: "View evidence" });
+        expect(action).toHaveTextContent(/^View evidence$/);
+        const classes = action.className.split(/\s+/);
+        expect(classes).toContain("text-(--accent-2)");
+        expect(classes).toContain("border-transparent");
+        expect(classes).toContain("bg-transparent");
+        expect(classes).not.toContain("uppercase");
+    });
+
     it("opens the shared drawer for the page subject", async () => {
         stubEvidence();
         render(header());

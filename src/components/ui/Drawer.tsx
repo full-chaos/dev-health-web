@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useId, useRef, type ReactNode, type RefObject } from "react";
+import { X } from "lucide-react";
 
 import { useModalFocus } from "@/lib/a11y/useModalFocus";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -26,7 +27,7 @@ type DrawerProps = {
  * no evidence logic; the caller renders the body. Modal dialog: `role="dialog"`, focus moves to
  * Close on open, Tab stays inside, Escape and the backdrop close it (Escape is skipped when an
  * inner menu already handled it), focus returns to the opener, and the page does not scroll
- * behind it.
+ * behind it. The close control is an icon-only button named "Close".
  */
 export function Drawer({
     open,
@@ -94,13 +95,17 @@ export function Drawer({
                             {title}
                         </h2>
                     </div>
+                    {/* Approved prototype `.btn.circle` (app.js:121): an icon-only close control, 35px
+                        square, 6px radius. The accessible name stays "Close". */}
                     <button
                         type="button"
                         ref={closeRef}
                         onClick={onCloseAction}
-                        className="rounded-(--radius-sm) border border-(--card-stroke) px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
+                        aria-label={CTA_LABELS.close}
+                        data-testid="drawer-close"
+                        className="inline-flex h-8.75 w-8.75 shrink-0 items-center justify-center rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface) text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
                     >
-                        {CTA_LABELS.close}
+                        <X aria-hidden="true" className="h-4 w-4" />
                     </button>
                 </header>
                 <div className="flex-1 overflow-y-auto p-6">{children}</div>
