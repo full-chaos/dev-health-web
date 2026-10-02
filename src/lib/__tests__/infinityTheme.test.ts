@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { STATUS_PILL_ALPHA, ZONE_GRADIENT_ALPHA } from "../themeTints";
+import { ZONE_GRADIENT_ALPHA } from "../themeTints";
 import { NODE_TYPE_COLOR_SOURCE } from "../workGraphNodeColors";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
@@ -446,14 +446,15 @@ describe("infinity palette", () => {
 
     // Pin of the whole dark block: CHAOS-7746 left it byte-equal; CHAOS-7892 changed exactly dark series 7
     // and 8 (the diff of this hash is those two lines); CHAOS-8061 added exactly --action and --on-action;
-    // CHAOS-8141 added --accent-wash and --accent-ink and set --accent-text to #ffab66 (4 lines).
+    // CHAOS-8141 added --accent-wash and --accent-ink and set --accent-text to #ffab66 (4 lines);
+    // CHAOS-8171 added the four --*-wash status tokens (comment line + 4 lines); --deemph added (CHAOS-8171 follow-up).
     it("leaves the dark block byte for byte as pinned", () => {
         const block = infinityCss.match(
             /:root\[data-palette="infinity"\]\[data-theme="dark"\] \{([\s\S]*?)\n\}/u,
         );
         expect(block).not.toBeNull();
         expect(createHash("sha256").update(block![1]).digest("hex")).toBe(
-            "e53e8fd9d83e135d93aad30c595399e5b3b05547a9eacddca7a8cb63cf21e997",
+            "0cda353fc32d4a5860b8f680b7b9641c0a855201465bdc35bf47e64c8e2dd7da",
         );
     });
 
@@ -510,14 +511,28 @@ describe("infinity palette", () => {
         },
     );
 
-    it.each(THEMES)("keeps status pill text readable on its own tint (%s)", (theme) => {
-        const t = infinity(theme);
-        // Pills: status token as text on the same token at STATUS_PILL_ALPHA over the card.
-        for (const token of ["--positive", "--caution", "--negative", "--info"]) {
-            const fill = over(t[token], t["--card"], STATUS_PILL_ALPHA);
-            expect(contrast(t[token], fill), `${token} pill`).toBeGreaterThanOrEqual(4.5);
-        }
+    it("defines --deemph as the prototype sparkline stroke", () => {
+        expect(infinity("light")["--deemph"]).toBe("#9aa2a9");
+        expect(infinity("dark")["--deemph"]).toBe("#5f6a72");
     });
+
+    it.each(THEMES)(
+        "keeps status pill and Notice text readable on the status wash (%s)",
+        (theme) => {
+            const t = infinity(theme);
+            // Pills and Notices: status token as text on the status wash token (prototype greenWash etc.),
+            // and the Notice body ink (--ink-muted) on the same wash.
+            for (const k of ["positive", "caution", "negative", "info"]) {
+                const wash = t[`--${k}-wash`];
+                expect(wash, `--${k}-wash is defined`).toBeDefined();
+                expect(contrast(t[`--${k}`], wash), `${k} on wash`).toBeGreaterThanOrEqual(4.5);
+                expect(
+                    contrast(t["--ink-muted"], wash),
+                    `ink-muted on ${k} wash`,
+                ).toBeGreaterThanOrEqual(4.5);
+            }
+        },
+    );
 
     it.each(THEMES)("defines every token the removed palettes defined (%s)", (theme) => {
         const required = [

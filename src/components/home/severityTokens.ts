@@ -78,8 +78,8 @@ export const AREA_STATE_PILL: Record<Exclude<AreaSignalState, "unavailable">, st
     critical: "rounded-full! bg-(--accent-negative)/12 text-(--accent-negative)",
     high: "rounded-full! bg-(--accent-3)/12 text-(--accent-3)",
     medium: "rounded-full! bg-(--accent-2)/12 text-(--accent-2)",
-    low: "rounded-full! bg-(--positive)/12 text-(--positive)",
-    neutral: "rounded-full! bg-(--info)/12 text-(--info)",
+    low: "rounded-full! bg-(--positive-wash) text-(--positive)",
+    neutral: "rounded-full! bg-(--info-wash) text-(--info)",
 };
 
 /** Hero big-value color by state: critical and high take their severity token, others stay ink. */
