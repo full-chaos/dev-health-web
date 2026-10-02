@@ -38,6 +38,12 @@ export type EvidenceRequestSubject = SubjectBase & {
     /** The active lens role. The footer link keeps it. */
     role?: string;
     /**
+     * A return-path hint for the footer link: it is added to that link as the `origin` query
+     * parameter, so the destination can lead back to the opener's view. Without it the link is
+     * the plain destination.
+     */
+    origin?: string;
+    /**
      * Content the opener already has for this subject (for example a signal's served "why it
      * matters" and "recommended action"). Shown first in the body, above the loaded evidence, and
      * also while the request loads or fails. The panel does not change it.
@@ -144,6 +150,7 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
                     metric={subject.metric}
                     filters={subject.filters}
                     role={subject.role}
+                    origin={subject.origin}
                     intro={subject.intro}
                 />
             )}
