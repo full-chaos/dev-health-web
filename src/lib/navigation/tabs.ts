@@ -8,6 +8,8 @@
 // tab is the default: its link has no query value (`/complexity`, not `/complexity?tab=overview`),
 // as the pages always linked it. Labels and ids are exactly what the pages rendered before.
 
+import { CTA_LABELS } from "@/lib/design/cta";
+
 import type { NavAreaId } from "./areas";
 
 export type TabDef = {
@@ -58,9 +60,56 @@ export const TAB_SETS = [
             { id: "load-drivers", label: "Load Drivers" },
         ],
     },
+    {
+        id: "landscape",
+        areaId: "diagnose",
+        basePath: "/landscape",
+        param: "tab",
+        defaultTabId: "overview",
+        tabs: [
+            { id: "overview", label: "Overview" },
+            { id: "teams", label: "Teams" },
+            { id: "repos", label: "Repos" },
+            { id: "ownership", label: "Ownership" },
+            { id: "hotspots", label: "Hotspots" },
+        ],
+    },
+    {
+        id: "investment",
+        areaId: "diagnose",
+        basePath: "/investment",
+        param: "tab",
+        defaultTabId: "overview",
+        tabs: [
+            { id: "overview", label: "Overview" },
+            { id: "allocation", label: "Allocation" },
+            { id: "evidence", label: CTA_LABELS.evidence },
+            { id: "confidence", label: "Confidence" },
+        ],
+    },
+    {
+        id: "work-graph",
+        areaId: "diagnose",
+        basePath: "/diagnose/work-graph",
+        param: "tab",
+        defaultTabId: "overview",
+        tabs: [
+            { id: "overview", label: "Overview" },
+            { id: "dependencies", label: "Dependencies" },
+            { id: "inflow-outflow", label: "Inflow-Outflow" },
+            { id: "review-network", label: "Review Network" },
+            { id: "artifacts", label: "Artifacts" },
+        ],
+    },
 ] as const satisfies readonly TabSet[];
 
 export type TabSetId = (typeof TAB_SETS)[number]["id"];
+
+/** The tab ids of one set, as a union (for a page's `activeTab` type). */
+export type TabIdOf<S extends TabSetId> = Extract<
+    (typeof TAB_SETS)[number],
+    { id: S }
+>["tabs"][number]["id"];
 
 export function getTabSet(id: TabSetId): TabSet {
     const set = TAB_SETS.find((candidate) => candidate.id === id);

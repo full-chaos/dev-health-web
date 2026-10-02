@@ -10,7 +10,8 @@ import { fetchOrNull } from "@/lib/fetchOrNull";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { InvestmentGatedBody } from "./_components/InvestmentGatedBody";
-import { INVESTMENT_TABS, type InvestmentTab } from "@/components/work/investment/types";
+import type { InvestmentTab } from "@/components/work/investment/types";
+import { getTabSet, tabHref } from "@/lib/navigation/tabs";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
@@ -20,13 +21,6 @@ import { ScopeBar } from "@/components/shell/ScopeBar";
 const getMetric = (deltas: MetricDelta[], metric: string) =>
     deltas.find((item) => item.metric === metric) ??
     FALLBACK_DELTAS.find((item) => item.metric === metric);
-
-const INVESTMENT_TAB_LABELS: Record<InvestmentTab, string> = {
-    overview: "Overview",
-    allocation: "Allocation",
-    evidence: "Evidence",
-    confidence: "Confidence",
-};
 
 type InvestmentPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -40,7 +34,8 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
     const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
     const activeOrigin = typeof originParam === "string" ? originParam : undefined;
-    const activeTab: InvestmentTab = INVESTMENT_TABS.includes(tabParam as InvestmentTab)
+    const investmentTabs = getTabSet("investment");
+    const activeTab: InvestmentTab = investmentTabs.tabs.some((tab) => tab.id === tabParam)
         ? (tabParam as InvestmentTab)
         : "overview";
 
@@ -68,15 +63,10 @@ export default async function InvestmentPage({ searchParams }: InvestmentPagePro
     const reworkMetric = getMetric(home?.deltas ?? [], "pr_rework_ratio");
     const reworkThemeAllocation = home?.rework_theme_allocation ?? [];
 
-    const tabs: ViewSetItem[] = INVESTMENT_TABS.map((id) => ({
-        id,
-        label: INVESTMENT_TAB_LABELS[id],
-        path: withFilterParam(
-            id === "overview" ? "/investment" : `/investment?tab=${id}`,
-            filters,
-            activeRole,
-            activeOrigin,
-        ),
+    const tabs: ViewSetItem[] = investmentTabs.tabs.map((tab) => ({
+        id: tab.id,
+        label: tab.label,
+        path: withFilterParam(tabHref(investmentTabs, tab.id), filters, activeRole, activeOrigin),
         navVisible: true,
     }));
 

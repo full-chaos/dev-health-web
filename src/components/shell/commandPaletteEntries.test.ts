@@ -106,6 +106,15 @@ describe("paletteEntries", () => {
         expect(entries.find((e) => e.path === "/cognitive-load?tab=load-drivers")?.label).toBe(
             "Load Drivers",
         );
+        // The Diagnose pages moved onto the registry in part 2.
+        expect(entries.find((e) => e.path === "/investment?tab=allocation")).toMatchObject({
+            label: "Allocation",
+            areaLabel: "Investment · Diagnose",
+        });
+        expect(entries.find((e) => e.path === "/landscape?tab=teams")?.label).toBe("Teams");
+        expect(
+            entries.find((e) => e.path === "/diagnose/work-graph?tab=review-network")?.label,
+        ).toBe("Review Network");
     });
 
     it("lists the tabs of a destination only when the sidebar would list the destination", () => {

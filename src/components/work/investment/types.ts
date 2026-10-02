@@ -1,12 +1,13 @@
+import type { TabIdOf } from "@/lib/navigation/tabs";
+
 import type { InvestmentMixExplanation, WorkUnitInvestment } from "@/lib/types";
 
 /**
- * Canonical Investment tab ids. The `?tab=` query param is validated against
- * this list by the page, and `InvestmentView` branches its body on the union.
- * Defined here (shared module) so the page and the view agree on one type.
+ * Canonical Investment tab ids, from the tab registry (`lib/navigation/tabs.ts`). The `?tab=` query
+ * param is validated against the registry by the page, and `InvestmentView` branches its body on this
+ * union. Defined here (shared module) so the page and the view agree on one type.
  */
-export const INVESTMENT_TABS = ["overview", "allocation", "evidence", "confidence"] as const;
-export type InvestmentTab = (typeof INVESTMENT_TABS)[number];
+export type InvestmentTab = TabIdOf<"investment">;
 
 export type TreemapSelection = {
     key: string;

@@ -1,9 +1,13 @@
 import { withFilterParam } from "@/lib/filters/url";
+import { getTabSet, tabHref } from "@/lib/navigation/tabs";
 import type { ViewSetItem } from "@/components/navigation/ViewSet";
 import type { MetricFilter } from "@/lib/filters/types";
 
+/** The tabs that do not carry the explorer theme scope (see below). */
+const NOT_THEME_AWARE: ReadonlySet<string> = new Set(["review-network"]);
+
 /**
- * Build the Work Graph ViewSet tab items.
+ * Build the Work Graph ViewSet tab items (the tab list is in the tab registry).
  *
  * `withFilterParam` carries the global `f` filter (and `role`) onto each tab
  * href, but NOT the explorer-scoped `graph_theme` / `graph_subcategory`
@@ -37,28 +41,15 @@ export function buildWorkGraphTabs(options: {
     const withGraphScope = (path: string) =>
         graphScopeSuffix ? `${path}${path.includes("?") ? "&" : "?"}${graphScopeSuffix}` : path;
 
-    const tab = (
-        id: string,
-        label: string,
-        tabQuery: string | undefined,
-        themeAware: boolean,
-    ): ViewSetItem => {
-        const base = tabQuery ? `/diagnose/work-graph?tab=${tabQuery}` : "/diagnose/work-graph";
-        const withFilter = withFilterParam(base, filters, activeRole);
+    const set = getTabSet("work-graph");
+    return set.tabs.map((tab): ViewSetItem => {
+        const withFilter = withFilterParam(tabHref(set, tab.id), filters, activeRole);
         return {
-            id,
-            label,
+            id: tab.id,
+            label: tab.label,
             // Only theme-aware tabs carry graph_theme/graph_subcategory.
-            path: themeAware ? withGraphScope(withFilter) : withFilter,
+            path: NOT_THEME_AWARE.has(tab.id) ? withFilter : withGraphScope(withFilter),
             navVisible: true,
         };
-    };
-
-    return [
-        tab("overview", "Overview", undefined, true),
-        tab("dependencies", "Dependencies", "dependencies", true),
-        tab("inflow-outflow", "Inflow-Outflow", "inflow-outflow", true),
-        tab("review-network", "Review Network", "review-network", false),
-        tab("artifacts", "Artifacts", "artifacts", true),
-    ];
+    });
 }
