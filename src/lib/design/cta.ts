@@ -98,6 +98,8 @@ export const CTA_LABELS = {
     metricEvidence: "Metric evidence",
     /** Investment Confidence, "Low-confidence areas" action: the Evidence tab (approved copy, app.js line 74). */
     evidenceDrilldown: "Evidence drilldown",
+    /** Metric evidence page, Context card: back to the Flow tab of the metric (approved copy, app.js line 99). */
+    returnToInvestigation: "Return to investigation",
     aiImpact: "Impact",
     aiReviewLoad: "Review Load",
     aiRisk: "Risk",
