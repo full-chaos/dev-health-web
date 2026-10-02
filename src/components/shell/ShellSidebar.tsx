@@ -126,7 +126,7 @@ export function ShellSidebar({
 
                 <OrgSwitcher onActiveOrganizationChange={onActiveOrganizationChange} />
 
-                <div className="min-h-0 md:flex-1 md:overflow-y-auto">
+                <div className="min-h-0 flex-1 overflow-y-auto">
                     {/* The links read the live query string (filter, role, lens). */}
                     <Suspense fallback={null}>
                         <ShellNav part="main" />
