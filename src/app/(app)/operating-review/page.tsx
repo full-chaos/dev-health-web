@@ -272,7 +272,7 @@ function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
                     ) : null}
 
                     {section.metrics.length ? (
-                        <MetricStrip columns={4} className="mt-4">
+                        <MetricStrip columns={Math.min(section.metrics.length, 5)} className="mt-4">
                             {section.metrics.map((metric) => (
                                 <MetricTile key={metric.key} metric={metric} />
                             ))}
@@ -350,7 +350,7 @@ function MetricTile({ metric }: { metric: OperatingReviewMetric }) {
             hideTrend
             deltaSlot={
                 <>
-                    <span className={`mr-2 ${statusClass(metric.delta.status)}`}>
+                    <span className={`absolute right-4 top-4 ${statusClass(metric.delta.status)}`}>
                         {metric.delta.status}
                     </span>
                     <span>
