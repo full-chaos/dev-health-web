@@ -107,12 +107,14 @@ describe("Quality page — shared metric strip and sections", () => {
         await renderPage();
         const strip = screen.getByTestId("quality-tiles");
         expect(strip).toHaveAttribute("data-columns", "3");
+        // The shared tile draws the number and its unit apart ("3 %").
         for (const [metric, value] of [
-            ["change_failure_rate", "3%"],
-            ["ci_success", "91%"],
-            ["pr_rework_ratio", "12%"],
+            ["change_failure_rate", "3 %"],
+            ["ci_success", "91 %"],
+            ["pr_rework_ratio", "12 %"],
         ]) {
-            expect(within(strip).getByTestId(`quality-tile-${metric}`)).toHaveTextContent(value);
+            const tile = within(strip).getByTestId(`quality-tile-${metric}`);
+            expect(within(tile).getByTestId("metric-value")).toHaveTextContent(value);
         }
     });
 
@@ -124,7 +126,9 @@ describe("Quality page — shared metric strip and sections", () => {
         // The tile's short line stays.
         expect(tile).toHaveTextContent("Pipeline success");
 
-        await userEvent.click(within(tile).getByRole("button", { name: "Open evidence" }));
+        await userEvent.click(
+            within(tile).getByRole("button", { name: "CI Success Rate: Open evidence" }),
+        );
         expect(await screen.findByTestId("evidence-panel")).toBeInTheDocument();
         expect(panelProps.last).toMatchObject({
             metric: "ci_success",
@@ -163,9 +167,11 @@ describe("Quality page — shared metric strip and sections", () => {
         ).toBeInTheDocument();
     });
 
-    it("shows a missing value as '--' (placeholder mode), never 0", async () => {
+    it("shows a missing value as 'Not reported' (placeholder mode), never 0", async () => {
         mockHome.mockResolvedValue({ deltas: [] });
         await renderPage();
-        expect(screen.getByTestId("quality-tile-change_failure_rate")).toHaveTextContent("--");
+        const tile = screen.getByTestId("quality-tile-change_failure_rate");
+        expect(within(tile).getByTestId("metric-value")).toHaveTextContent("Not reported");
+        expect(within(tile).getByTestId("metric-value")).not.toHaveTextContent("0");
     });
 });
