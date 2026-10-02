@@ -388,10 +388,15 @@ function HeatmapCellEvidence({
     return (
         <div data-testid="heatmap-cell-evidence" className="space-y-4">
             {/* The heatmap query serves no source, quality, sync time or identity confidence for
-                a cell. It serves the artifact list; the count shows when the list is loaded. */}
-            <EvidenceProvenanceFacts
-                artifactCount={state.status === "loaded" ? artifacts.length : undefined}
-            />
+                a cell. It serves the artifact list: when the list is loaded, the five rows show
+                with the count. A failed request serves nothing: one line says so. While the
+                request runs, nothing is known yet and the block is not shown. */}
+            {state.status === "loading" ? null : (
+                <EvidenceProvenanceFacts
+                    whenEmpty="line"
+                    artifactCount={state.status === "loaded" ? artifacts.length : undefined}
+                />
+            )}
             <EvidenceFactList aria-label="Cell" testId="evidence-subject-facts">
                 <EvidenceFact
                     label="Value"

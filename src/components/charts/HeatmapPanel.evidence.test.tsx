@@ -134,8 +134,25 @@ describe("HeatmapPanel evidence drawer", () => {
         const drawer = screen.getByRole("dialog");
         expect(await within(drawer).findByText("Unable to load this view")).toBeInTheDocument();
         expect(within(drawer).queryByText(/No artifacts linked to this cell/)).toBeNull();
-        // Not loaded is not "none".
-        expect(fact(drawer, "Artifacts")).toHaveTextContent(/^Not reported$/);
+        // Nothing was served: one line, not five empty rows, and no "None returned".
+        expect(within(drawer).getByTestId("evidence-provenance-not-reported")).toHaveTextContent(
+            "Provenance is not reported for this item.",
+        );
+        expect(within(drawer).queryByTestId("evidence-facts")).toBeNull();
+        expect(within(drawer).queryByText("None returned")).toBeNull();
+    });
+
+    it("shows no provenance block while the cell request runs (nothing is known yet)", async () => {
+        vi.mocked(getHeatmap).mockImplementation(() => new Promise(() => undefined));
+        render(panel());
+        await userEvent.click(screen.getByRole("button", { name: "cell billing Tue" }));
+
+        const drawer = screen.getByRole("dialog");
+        expect(within(drawer).getByText("Loading evidence...")).toBeInTheDocument();
+        expect(within(drawer).queryByTestId("evidence-facts")).toBeNull();
+        expect(within(drawer).queryByTestId("evidence-provenance-not-reported")).toBeNull();
+        // The cell value is served with the grid and shows at once.
+        expect(fact(drawer, "Value")).toHaveTextContent(/^9 risk$/);
     });
 
     it("says so when the cell has no artifacts (an empty list is not a zero)", async () => {
