@@ -120,7 +120,7 @@ describe("Operating Review status chips use theme tokens", () => {
         await renderPage();
 
         const section = screen
-            .getAllByRole("heading", { name: "Delivery movement" })[1]
+            .getByRole("heading", { name: "Delivery movement" })
             .closest("section") as HTMLElement;
         expect(within(section).getByText("1 improved")).toBeInTheDocument();
         expect(within(section).getByText("2 worsened")).toBeInTheDocument();
@@ -128,18 +128,45 @@ describe("Operating Review status chips use theme tokens", () => {
     });
 });
 
-describe("Operating Review AI-workflow highlight uses the info token", () => {
-    it("the agenda card, the section and the callout carry info classes and no raw palette", async () => {
+describe("Operating Review AI-workflow callout is an info notice", () => {
+    it("is a shared info Notice with the four AI links and no raw palette", async () => {
         const { container } = await renderPage();
 
         const callout = screen.getByTestId("operating-review-ai-workflow-callout");
-        expect(callout.className).toContain("border-(--info)/30");
-        expect(callout.className).toContain("bg-(--info)/5");
-        for (const link of within(callout).getAllByRole("link")) {
-            expect(link.className).toContain("border-(--info)/30");
-        }
-        const highlighted = container.querySelectorAll("[class*='border-(--info)/40']");
-        expect(highlighted.length).toBe(2);
+        expect(callout).toHaveAttribute("data-notice-variant", "info");
+        expect(
+            within(callout)
+                .getAllByRole("link")
+                .map((link) => link.getAttribute("href")),
+        ).toEqual(["/ai", "/ai/review-load", "/ai/risk", "/ai/automations"]);
         expect(container.innerHTML).not.toMatch(RAW);
+    });
+
+    it("shows the agenda index as six-card strip with the three counts as pills", async () => {
+        await renderPage();
+
+        const index = within(screen.getByTestId("operating-review-index"));
+        expect(index.getAllByRole("link")).toHaveLength(2);
+        const first = within(index.getAllByRole("link")[0]);
+        expect(first.getByText("Delivery movement")).toBeInTheDocument();
+        expect(first.getByText("1 improved")).toBeInTheDocument();
+        expect(first.getByText("2 worsened")).toBeInTheDocument();
+        expect(first.getByText("3 changed")).toBeInTheDocument();
+        expect(index.getAllByRole("link")[0]).toHaveAttribute("href", "#delivery_movement");
+    });
+
+    it("shows the recommendations as numbered rows, and the served empty text when none", async () => {
+        reviewMock.review = { ...review, recommendations: ["Cut WIP", "Pair on reviews"] };
+        const first = await renderPage();
+        const rows = within(screen.getByTestId("operating-review-recommendations")).getAllByRole(
+            "listitem",
+        );
+        expect(rows.map((row) => row.textContent)).toEqual(["1Cut WIP", "2Pair on reviews"]);
+        first.unmount();
+
+        reviewMock.review = review;
+        await renderPage();
+        expect(screen.getByText("none")).toBeInTheDocument();
+        expect(screen.queryByTestId("operating-review-recommendations")).toBeNull();
     });
 });

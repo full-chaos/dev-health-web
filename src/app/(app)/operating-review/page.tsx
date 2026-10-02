@@ -1,12 +1,16 @@
 import Link from "next/link";
 
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
+import { buttonClassName } from "@/components/shared/Button";
 import { DataState } from "@/components/ui/DataState";
+import { Notice } from "@/components/ui/Notice";
+import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatMetricValue as fmtMetric } from "@/lib/formatters";
 import { getOperatingReviewViaGraphQL } from "@/lib/graphql/operatingReviewFetchers";
@@ -97,16 +101,20 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
-                title="Engineering Operating Review"
+                title="Operating Review"
                 subtitle="A Monday-ready agenda for delivery movement, bottlenecks, risk, reliability, investment, and recommendations."
-                back={{
-                    href: withFilterParam("/plan", filters, undefined, activeOrigin),
-                    area: "Plan",
-                }}
             >
-                <p className="text-sm text-(--ink-muted)">
-                    Each callout compares the selected week against the prior week.
-                </p>
+                <div className="flex flex-wrap items-center gap-3">
+                    <span
+                        data-testid="operating-review-preview-pill"
+                        className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS_PILL.muted}`}
+                    >
+                        Preview
+                    </span>
+                    <p className="text-sm text-(--ink-muted)">
+                        Each callout compares the selected week against the prior week.
+                    </p>
+                </div>
             </PageHeader>
 
             <ScopeBar view="capacity-planning" origin={activeOrigin} />
@@ -199,169 +207,162 @@ async function resolveOperatingReview(
 
 function AllTeamsBadge() {
     return (
-        <section className="rounded-2xl border border-(--card-stroke) bg-(--card-80) px-5 py-3 text-xs text-(--ink-muted)">
+        <Notice variant="info" live={false} data-testid="all-teams-notice">
             Showing the cross-team aggregate{" "}
             <span className="font-medium text-foreground">(All Teams)</span>. Pick a team from the{" "}
             <span className="font-medium text-foreground">Team</span> filter above to scope to one
             or more teams.
-        </section>
+        </Notice>
     );
 }
 
 function SelectedTeamsBadge({ teamIds }: { teamIds: string[] }) {
     return (
-        <section className="rounded-2xl border border-(--card-stroke) bg-(--card-80) px-5 py-3 text-xs text-(--ink-muted)">
+        <Notice variant="info" live={false} data-testid="selected-teams-notice">
             Showing operating review data for{" "}
             <span className="font-medium text-foreground">
                 {teamIds.length} selected {teamIds.length === 1 ? "team" : "teams"}
             </span>
             . The Risk and Reliability sections reflect org-wide signals (repo-scoped,
             team-agnostic) even in filtered mode.
-        </section>
+        </Notice>
     );
 }
 
 function OperatingReviewAgenda({ review }: { review: OperatingReview }) {
     return (
-        <div className="space-y-6">
-            <section className="grid gap-4 lg:grid-cols-5">
+        <div className="flex flex-col gap-6">
+            <nav
+                aria-label="Agenda"
+                data-testid="operating-review-index"
+                className="grid gap-3 md:grid-cols-3 xl:grid-cols-6"
+            >
                 {review.sections.map((section) => (
                     <a
                         key={section.key}
                         href={`#${section.key}`}
-                        className={`rounded-2xl border bg-card p-4 transition hover:border-primary/50 ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-(--info)/40 shadow-sm shadow-(color:--info)/10" : "border-border"}`}
+                        className="flex min-w-0 flex-col gap-3 rounded-(--radius-md) border border-(--card-stroke) bg-card p-4 transition hover:border-(--accent-2)"
                     >
-                        <h2 className="text-base font-semibold">{section.title}</h2>
-                        <p className="mt-2 text-xs text-muted-foreground">
-                            {section.improved.length} improved · {section.worsened.length} worsened
-                            · {section.changed.length} changed
-                        </p>
-                    </a>
-                ))}
-            </section>
-
-            {review.sections.map((section) => (
-                <section
-                    id={section.key}
-                    key={section.key}
-                    className={`rounded-[1.75rem] border bg-card/90 p-6 shadow-sm ${section.key === AI_WORKFLOW_SECTION_KEY ? "border-(--info)/40 shadow-(color:--info)/10" : "border-border"}`}
-                >
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                        <div>
-                            <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-                                {section.title}
-                            </h2>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                                {sectionDescriptions[section.key] ?? "Weekly operating signal."}
-                            </p>
-                        </div>
+                        <span className="text-sm font-semibold">{section.title}</span>
                         <DeltaPill
                             improved={section.improved.length}
                             worsened={section.worsened.length}
                             changed={section.changed.length}
                         />
-                    </div>
+                    </a>
+                ))}
+            </nav>
 
+            {review.sections.map((section) => (
+                <Section
+                    id={section.key}
+                    key={section.key}
+                    title={section.title}
+                    description={sectionDescriptions[section.key] ?? "Weekly operating signal."}
+                    action={
+                        <DeltaPill
+                            improved={section.improved.length}
+                            worsened={section.worsened.length}
+                            changed={section.changed.length}
+                        />
+                    }
+                >
                     {section.key === AI_WORKFLOW_SECTION_KEY ? (
                         <AIWorkflowIntelligenceCallout />
                     ) : null}
 
-                    <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                        {section.metrics.map((metric) => (
-                            <MetricCard key={metric.key} metric={metric} />
-                        ))}
-                    </div>
+                    {section.metrics.length ? (
+                        <MetricStrip columns={4} className="mt-4">
+                            {section.metrics.map((metric) => (
+                                <MetricTile key={metric.key} metric={metric} />
+                            ))}
+                        </MetricStrip>
+                    ) : null}
 
-                    <div className="mt-6 grid gap-4 md:grid-cols-3">
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
                         <CalloutColumn title="Improved" tone="improved" items={section.improved} />
                         <CalloutColumn title="Worsened" tone="worsened" items={section.worsened} />
                         <CalloutColumn title="Changed" tone="changed" items={section.changed} />
                     </div>
-                </section>
+                </Section>
             ))}
 
-            <section className="rounded-[1.75rem] border border-border bg-card/90 p-6 shadow-sm">
-                <h2 className="text-2xl font-semibold tracking-tight">Recommendations</h2>
+            <Section title="Recommendations">
                 {review.recommendations.length ? (
-                    <ul className="mt-4 space-y-3">
-                        {review.recommendations.map((recommendation) => (
+                    <ol
+                        className="flex flex-col gap-2"
+                        data-testid="operating-review-recommendations"
+                    >
+                        {review.recommendations.map((recommendation, index) => (
                             <li
                                 key={recommendation}
-                                className="rounded-2xl border border-border bg-background/70 p-4 text-sm"
+                                className="flex items-start gap-3 rounded-(--radius-sm) bg-background p-3.75 text-sm"
                             >
-                                {recommendation}
+                                <span
+                                    aria-hidden="true"
+                                    className="w-5 shrink-0 font-semibold tabular-nums text-(--ink-muted)"
+                                >
+                                    {index + 1}
+                                </span>
+                                <span>{recommendation}</span>
                             </li>
                         ))}
-                    </ul>
+                    </ol>
                 ) : (
-                    <div className="mt-4 rounded-2xl border border-dashed border-border bg-background/60 p-6 text-sm text-muted-foreground">
+                    <p className="rounded-(--radius-sm) border border-dashed border-(--card-stroke) p-4 text-sm text-(--ink-muted)">
                         {review.recommendationsEmptyState}
-                    </div>
+                    </p>
                 )}
-            </section>
+            </Section>
         </div>
     );
 }
 
 function AIWorkflowIntelligenceCallout() {
     return (
-        <div
-            className="mt-5 rounded-2xl border border-(--info)/30 bg-(--info)/5 p-4"
-            data-testid="operating-review-ai-workflow-callout"
-        >
-            <p className="text-sm text-muted-foreground">
+        <Notice variant="info" live={false} data-testid="operating-review-ai-workflow-callout">
+            <p>
                 Review these signals as operating patterns, not individual performance. Drill into
                 the dedicated AI surfaces when review pressure, quality drag, or automation
                 candidates need evidence-level follow-up.
             </p>
-            <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
-                <Link
-                    className="rounded-full border border-(--info)/30 bg-background/60 px-3 py-1 text-foreground"
-                    href="/ai"
-                >
-                    {CTA_LABELS.aiImpact}
-                </Link>
-                <Link
-                    className="rounded-full border border-(--info)/30 bg-background/60 px-3 py-1 text-foreground"
-                    href="/ai/review-load"
-                >
-                    {CTA_LABELS.aiReviewLoad}
-                </Link>
-                <Link
-                    className="rounded-full border border-(--info)/30 bg-background/60 px-3 py-1 text-foreground"
-                    href="/ai/risk"
-                >
-                    {CTA_LABELS.aiRisk}
-                </Link>
-                <Link
-                    className="rounded-full border border-(--info)/30 bg-background/60 px-3 py-1 text-foreground"
-                    href="/ai/automations"
-                >
-                    {CTA_LABELS.aiAutomations}
-                </Link>
+            <div className="mt-3 flex flex-wrap gap-2">
+                {[
+                    ["/ai", CTA_LABELS.aiImpact],
+                    ["/ai/review-load", CTA_LABELS.aiReviewLoad],
+                    ["/ai/risk", CTA_LABELS.aiRisk],
+                    ["/ai/automations", CTA_LABELS.aiAutomations],
+                ].map(([href, label]) => (
+                    <Link key={href} className={buttonClassName("secondary", "sm")} href={href}>
+                        {label}
+                    </Link>
+                ))}
             </div>
-        </div>
+        </Notice>
     );
 }
 
-function MetricCard({ metric }: { metric: OperatingReviewMetric }) {
+function MetricTile({ metric }: { metric: OperatingReviewMetric }) {
     return (
-        <div className="rounded-2xl border border-border bg-background/70 p-4">
-            <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-medium text-muted-foreground">{metric.label}</p>
-                <span className={statusClass(metric.delta.status)}>{metric.delta.status}</span>
-            </div>
-            <div className="mt-3 text-2xl font-semibold tracking-tight">
-                {fmtMetric(metric.value, metric.unit)}
-            </div>
-            <p className="mt-2 text-xs text-muted-foreground">
-                Prior: {fmtMetric(metric.delta.priorValue, metric.unit)} · Δ{" "}
-                {formatSigned(metric.delta.absolute, metric.unit)}
-                {metric.delta.percent === null || metric.delta.percent === undefined
-                    ? ""
-                    : ` (${formatSigned(metric.delta.percent, "%")})`}
-            </p>
-        </div>
+        <MetricCard
+            label={metric.label}
+            valueText={fmtMetric(metric.value, metric.unit)}
+            hideTrend
+            deltaSlot={
+                <>
+                    <span className={`mr-2 ${statusClass(metric.delta.status)}`}>
+                        {metric.delta.status}
+                    </span>
+                    <span>
+                        Prior: {fmtMetric(metric.delta.priorValue, metric.unit)} · Δ{" "}
+                        {formatSigned(metric.delta.absolute, metric.unit)}
+                        {metric.delta.percent === null || metric.delta.percent === undefined
+                            ? ""
+                            : ` (${formatSigned(metric.delta.percent, "%")})`}
+                    </span>
+                </>
+            }
+        />
     );
 }
 
@@ -393,7 +394,7 @@ function CalloutColumn({
     items: string[];
 }) {
     return (
-        <div className="rounded-2xl border border-border bg-background/60 p-4">
+        <div className="rounded-(--radius-sm) bg-background p-3.75">
             <h3 className="text-sm font-semibold">{title}</h3>
             {items.length ? (
                 <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
