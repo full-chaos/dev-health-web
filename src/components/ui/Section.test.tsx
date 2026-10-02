@@ -45,4 +45,14 @@ describe("Section", () => {
         );
         expect(screen.getByTestId("s")).toHaveClass("extra");
     });
+
+    it("pins the approved padding (21px) and the head-to-body gap (17px)", () => {
+        render(
+            <Section title="T" data-testid="s">
+                <p>b</p>
+            </Section>,
+        );
+        expect(screen.getByTestId("s")).toHaveClass("p-5.25", "rounded-(--radius-md)");
+        expect(screen.getByText("b").parentElement).toHaveClass("mt-4.25");
+    });
 });
