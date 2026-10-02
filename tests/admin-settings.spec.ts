@@ -25,9 +25,15 @@ async function waitForSettledToast(page: Page, message: RegExp) {
 test("settings page renders all sections", async ({ page }) => {
     await page.goto("/org/admin/settings");
 
-    await expect(page.getByText("System configuration and management.")).toBeVisible();
+    // The Admin pages are in the shared app shell (CHAOS-7591, AD-1 option A): the shell sidebar
+    // lists Admin's destinations with Organization current, and the page has the Organization
+    // tab row. The old admin sidebar and its item descriptions are gone.
+    await expect(
+        page.getByTestId("nav-children-admin").getByRole("link", { name: "Organization" }),
+    ).toHaveAttribute("aria-current", "page");
+    await expect(page.getByRole("tablist", { name: "Organization views" })).toBeVisible();
+    // "Overview" is not in this list: it is now the first Organization tab.
     for (const description of [
-        "Overview",
         "Org members",
         "Workspace settings",
         "Connected sources",
@@ -66,12 +72,14 @@ test("settings notifications settle below Account without obscuring responsive a
         await expect(pageTitle).toBeInViewport();
 
         if (viewport.name === "mobile") {
-            const navigationControl = page.locator('[aria-controls="admin-navigation-panel"]');
-            await expect(navigationControl).toHaveAccessibleName("Show admin navigation");
+            // The shell's slide-over replaces the admin sidebar's own mobile panel (CHAOS-7591).
+            const navigationControl = page.locator('[aria-controls="primary-navigation-panel"]');
+            await expect(navigationControl).toHaveAccessibleName("Show navigation");
             await navigationControl.focus();
             await page.keyboard.press("Enter");
             await expect(navigationControl).toHaveAttribute("aria-expanded", "true");
-            await expect(navigationControl).toHaveAccessibleName("Hide admin navigation");
+            await expect(navigationControl).toHaveAccessibleName("Hide navigation");
+            await expect(page.getByTestId("nav-children-admin")).toBeVisible();
             await page.screenshot({
                 path: testInfo.outputPath("admin-navigation-open-mobile.png"),
                 fullPage: true,
