@@ -74,7 +74,17 @@ function rules(css: string): Rule[] {
     return out;
 }
 
-const escapeClass = (name: string) => `.${name.replace(/[:/.%[\]()]/g, "\\$&")}`;
+/** The class selector of a class name: every CSS selector character escaped, the backslash too. */
+const escapeClass = (name: string) => `.${name.replace(/[\\:/.%[\]()]/g, "\\$&")}`;
+
+describe("escapeClass", () => {
+    it("escapes every CSS selector character of a class name, the backslash included", () => {
+        expect(escapeClass("dark:bg-white/10")).toBe(".dark\\:bg-white\\/10");
+        expect(escapeClass("w-[1.5%]")).toBe(".w-\\[1\\.5\\%\\]");
+        // A backslash in the name is escaped too, so it cannot change the meaning of the next character.
+        expect(escapeClass("a\\:b")).toBe(".a\\\\\\:b");
+    });
+});
 
 describe("the dark variant (CHAOS-7788)", () => {
     const classes = darkClassesInSource();
