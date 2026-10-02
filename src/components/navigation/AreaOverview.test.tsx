@@ -270,6 +270,21 @@ describe("AreaOverview — hero action text comes from the destination (prototyp
         expect(screen.getAllByTestId("area-overview-grid")[0].children.length).toBe(2);
     });
 
+    it("leaves the Govern hero a whole-hero link with no button (the href match does not add CTAs elsewhere)", () => {
+        render(
+            <AreaOverview
+                areaId="govern"
+                signals={[signal("coverage", "critical", { href: "/testops/coverage" })]}
+                filters={defaultMetricFilter}
+            />,
+        );
+        const hero = screen.getByTestId("area-overview-hero");
+        expect(within(hero).getByTestId("area-signal-hero-link")).toBeInTheDocument();
+        expect(
+            within(hero).queryByRole("link", { name: /Review opportunities|Inspect code/ }),
+        ).toBeNull();
+    });
+
     it("keeps the whole-hero link, no button, for a destination without prototype copy", () => {
         render(
             <AreaOverview
