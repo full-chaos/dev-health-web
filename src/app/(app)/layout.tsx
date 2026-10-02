@@ -25,8 +25,7 @@ export default async function AppLayout({
     const entitlements = entitlementResult?.data;
     const hasValidEntitlements = entitlements?.is_valid === true;
 
-    // `AppShell` picks the chrome from the pathname: the shared app shell for a
-    // route in the shell registry, the legacy account bar for every other route.
+    // `AppShell` renders the shared app shell around every authed page.
     const authenticatedShell = (
         <div className="min-h-screen bg-[image:var(--app-gradient)] bg-fixed">
             {/* One "Evidence & Context" drawer for every authed page: a page header action, a

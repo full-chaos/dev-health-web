@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { type ComponentProps, useRef, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -31,10 +31,13 @@ vi.mock("next-auth/react", () => ({
     signOut: vi.fn(),
 }));
 
-function renderSidebar(features: Record<string, boolean> = {}) {
+function renderSidebar(
+    features: Record<string, boolean> = {},
+    organization?: ComponentProps<typeof ShellSidebar>["organization"],
+) {
     return render(
         <AdminTierProvider tier="community" features={features}>
-            <ShellSidebar />
+            <ShellSidebar organization={organization} />
         </AdminTierProvider>,
     );
 }
@@ -543,5 +546,77 @@ describe("ShellSidebar — a route with its own `f` encoding (Security)", () => 
 
         expect(within(sidebar()).queryByText(/^beta$/i)).toBeNull();
         expect(within(sidebar()).getByText("Dev Health")).toBeInTheDocument();
+        // Prototype `.brand` / `.brand-sub`: a 17px weight-650 name, a 9px wide-tracked sub-line.
+        const name = within(sidebar()).getByText("Full Chaos");
+        expect(name.className).toContain("font-bold");
+        expect(name.className).toContain("tracking-tight");
+        const sub = within(sidebar()).getByText("Dev Health");
+        expect(sub.className).toContain("tracking-[0.17em]");
+        expect(sub.className).toContain("uppercase");
+    });
+
+    it("draws an icon on every area row and a chevron only where the area has destinations", () => {
+        navigationMock.pathname = "/investment";
+        navigationMock.search = "";
+        renderSidebar();
+
+        const nav = within(sidebar()).getByRole("navigation", { name: "Primary areas" });
+        const links = within(nav).getAllByRole("link", {
+            name: /^(Home|Diagnose|Plan|Improve|Govern|AI)/,
+        });
+        expect(links.length).toBeGreaterThanOrEqual(5);
+        for (const link of links) {
+            expect(link.querySelector("svg"), link.textContent ?? "").not.toBeNull();
+        }
+        // Home has no destinations: no chevron. The open area shows down, the others right.
+        expect(within(sidebar()).queryByTestId("nav-chevron-cockpit")).toBeNull();
+        expect(
+            within(sidebar()).getByTestId("nav-chevron-diagnose").getAttribute("class"),
+        ).toContain("lucide-chevron-down");
+        expect(within(sidebar()).getByTestId("nav-chevron-plan").getAttribute("class")).toContain(
+            "lucide-chevron-right",
+        );
+    });
+
+    it("draws the open group's children on a guide line, with 36px rows", () => {
+        navigationMock.pathname = "/investment";
+        navigationMock.search = "";
+        renderSidebar();
+
+        const children = within(sidebar()).getByTestId("nav-children-diagnose");
+        expect(children.className).toContain("border-l");
+        expect(children.className).toContain("border-(--card-stroke)");
+        const current = within(children).getByRole("link", { name: "Investment" });
+        expect(current).toHaveAttribute("aria-current", "page");
+        expect(current.className).toContain("min-h-9");
+        // The fill must be visible on the light sidebar, so it is --surface2, not --surface-raised.
+        expect(current.className).toContain("bg-(--surface2)");
+        expect(current.className).toContain("before:bg-(image:--ember-vertical)");
+    });
+
+    it("shows the data line under the account name at the bottom, not in the organization card", () => {
+        renderSidebar({}, { name: "Test", hasData: true, lastMetricsAt: "2026-10-02T12:00:00Z" });
+
+        const detail = within(sidebar()).getByTestId("account-detail");
+        expect(detail).toHaveTextContent(/^Data through /);
+        expect(detail.previousElementSibling).toHaveTextContent("admin");
+        const avatar = detail.closest("button")?.querySelector("div");
+        expect(avatar?.className).toContain("bg-(image:--ember)");
+        expect(avatar?.className).toContain("text-(--on-ember)");
+    });
+
+    it("shows no data line while the organization is loading", () => {
+        renderSidebar({}, undefined);
+        expect(within(sidebar()).queryByTestId("account-detail")).toBeNull();
+    });
+
+    it("fills the sidebar with --sidebar (prototype `.app-sidebar`), not the card surface", () => {
+        renderSidebar();
+        const rail = sidebar();
+        expect(rail.className).toContain("md:bg-(--sidebar)");
+        const panel = rail.querySelector("#primary-navigation-panel") as HTMLElement;
+        expect(panel.className).toContain("bg-(--sidebar)");
+        expect(rail.className).not.toContain("bg-(--surface)");
+        expect(panel.className).not.toContain("bg-(--surface)");
     });
 });

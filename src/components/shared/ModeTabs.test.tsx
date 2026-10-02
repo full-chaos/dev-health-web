@@ -48,4 +48,20 @@ describe("ModeTabs", () => {
         render(<ModeTabs items={items} activeId="a" ariaLabel="Work views" />);
         expect(screen.getByRole("navigation", { name: "Work views" })).toBeInTheDocument();
     });
+
+    it("draws the prototype tab row: sentence case, current tab heavier with a gradient underline", () => {
+        render(<ModeTabs items={items} activeId="a" ariaLabel="Test tabs" />);
+        const current = screen.getByText("Alpha").closest("a") as HTMLElement;
+        const other = screen.getByText("Gamma").closest("a") as HTMLElement;
+        for (const tab of [current, other]) {
+            expect(tab.className).not.toContain("uppercase");
+            expect(tab.className).not.toContain("tracking-");
+            expect(tab.className).toContain("text-[0.8125rem]");
+        }
+        expect(current.className).toContain("font-bold");
+        expect(current.className).toContain("bg-(image:--ember)");
+        expect(current.className).not.toContain("border-(--accent)");
+        expect(other.className).not.toContain("bg-(image:--ember)");
+        expect(screen.getByRole("navigation", { name: "Test tabs" }).className).toContain("gap-6");
+    });
 });

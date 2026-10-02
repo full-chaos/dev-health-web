@@ -21,8 +21,8 @@ type ShellMobileBarProps = {
 /**
  * Top bar of a shell route below the `md` breakpoint (the desktop top bar is hidden there):
  * the menu button that opens the slide-over navigation (concept `.mobile-menu`), the brand,
- * the light / dark toggle and the account menu. It replaces the account bar on shell routes;
- * routes outside the shell registry keep `LegacyAccountBar`.
+ * the light / dark toggle and the account menu.
+ * It is the top bar of every authed route.
  */
 export function ShellMobileBar({ open, onToggle, controlRef }: ShellMobileBarProps) {
     return (
