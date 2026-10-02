@@ -100,14 +100,14 @@ export function UserTable({ users }: UserTableProps) {
                             <span
                                 className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
                                     user.is_active
-                                        ? "bg-green-500/10 text-green-500"
-                                        : "bg-red-500/10 text-red-500"
+                                        ? "bg-(--positive)/12 text-(--positive)"
+                                        : "bg-(--negative)/12 text-(--negative)"
                                 }`}
                             >
                                 {user.is_active ? "active" : "inactive"}
                             </span>
                             {user.is_verified && (
-                                <span className="inline-flex items-center rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-medium text-blue-500">
+                                <span className="inline-flex items-center rounded-full bg-(--info)/12 px-2.5 py-0.5 text-xs font-medium text-(--info)">
                                     verified
                                 </span>
                             )}
@@ -121,7 +121,7 @@ export function UserTable({ users }: UserTableProps) {
                     className: "px-6 py-4",
                     render: (user) =>
                         user.is_superuser ? (
-                            <span className="inline-flex items-center rounded-full bg-purple-500/10 px-2.5 py-0.5 text-xs font-medium text-purple-500">
+                            <span className="inline-flex items-center rounded-full bg-(--info)/12 px-2.5 py-0.5 text-xs font-medium text-(--info)">
                                 superuser
                             </span>
                         ) : null,
@@ -148,7 +148,7 @@ export function UserTable({ users }: UserTableProps) {
                                     type="button"
                                     onClick={() => handleImpersonate(user.id)}
                                     disabled={impersonatingId === user.id}
-                                    className="text-amber-500 hover:underline disabled:opacity-50"
+                                    className="text-(--caution) hover:underline disabled:opacity-50"
                                 >
                                     {impersonatingId === user.id
                                         ? "Impersonating..."
