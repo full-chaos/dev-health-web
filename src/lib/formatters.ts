@@ -78,16 +78,28 @@ export const formatDelta = (value: number) => {
  * The number of a metric value as text, with the digits its unit gets. The ONE place that
  * decides the digits: `formatMetricValue` (joined string) and `formatMetricParts` (number and
  * unit apart) both read it, so the two can never show different numbers for one value.
+ *
+ * Rule: hours and percent keep one decimal below 10 and none from 10 (0.3 hours, 4.2%, 13 hours,
+ * 42%); days and minutes keep one decimal; LOC is compact; other units keep at most one decimal.
+ * A served value that is not 0 never shows as 0: when the digits cannot show it, it is "<0.1"
+ * (">-0.1" below zero). A served 0 shows 0.
  */
-const formatMetricNumber = (value: number, unit: string) => {
-    if (unit === "%") {
-        return formatNumber(value, { maximumFractionDigits: 0 });
+const formatMetricNumber = (served: number, unit: string) => {
+    // A served -0 is 0: it never prints as "-0".
+    const value = served === 0 ? 0 : served;
+    const text = formatMetricDigits(value, unit);
+    if (value !== 0 && /^-?0$/.test(text)) {
+        return value > 0 ? "<0.1" : ">-0.1";
+    }
+    return text;
+};
+
+const formatMetricDigits = (value: number, unit: string) => {
+    if (unit === "%" || unit === "hours") {
+        return formatNumber(value, { maximumFractionDigits: Math.abs(value) < 10 ? 1 : 0 });
     }
     if (unit === "days") {
         return formatNumber(value, { maximumFractionDigits: 1 });
-    }
-    if (unit === "hours") {
-        return formatNumber(value, { maximumFractionDigits: 0 });
     }
     if (unit === "loc") {
         return formatNumber(value, { notation: "compact" });

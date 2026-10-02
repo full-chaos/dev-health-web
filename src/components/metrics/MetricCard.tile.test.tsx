@@ -69,6 +69,19 @@ describe("MetricCard tile as the approved prototype: value with a small unit", (
     });
 });
 
+describe("MetricCard small served values", () => {
+    it("shows a served 0.3 hours as 0.3 hours, not 0", () => {
+        render(<MetricCard label="Review Latency" value={0.3} unit="hours" />);
+        expect(screen.getByTestId("metric-value").firstElementChild).toHaveTextContent(/^0\.3$/);
+        expect(screen.getByTestId("metric-unit")).toHaveTextContent(/^hours$/);
+    });
+
+    it("shows a served value too small for one decimal as <0.1, not 0", () => {
+        render(<MetricCard label="Change Failure Rate" value={0.04} unit="%" />);
+        expect(screen.getByTestId("metric-value").firstElementChild).toHaveTextContent(/^<0\.1$/);
+    });
+});
+
 describe("MetricCard tile as the approved prototype: meta line", () => {
     const meta = () => screen.getByTestId("metric-meta");
 
