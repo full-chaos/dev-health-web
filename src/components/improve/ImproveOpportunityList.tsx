@@ -5,6 +5,7 @@ import { ArrowRight, Info, OctagonAlert, TriangleAlert } from "lucide-react";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { Button } from "@/components/shared/Button";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { DataState } from "@/components/ui/DataState";
 import type { ImproveOpportunity } from "@/lib/graphql/__generated__/types";
 import { resolveEntityLabel } from "@/lib/labels/entityLabel";
@@ -99,7 +100,7 @@ function RowEvidenceButton({ item }: { item: ImproveOpportunity }) {
                 })
             }
         >
-            Evidence
+            {CTA_LABELS.evidence}
         </Button>
     );
 }
