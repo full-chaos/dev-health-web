@@ -70,7 +70,6 @@ const ALLOWLIST: Record<string, number> = {
     "components/evidence/EvidenceContext.tsx": 6,
     "components/evidence/EvidencePanel.tsx": 2,
     "components/feature-flags/ConfidenceBadge.tsx": 9,
-    "components/feature-flags/FeatureFlagTable.tsx": 4,
     "components/navigation/OrgSwitcher.tsx": 1,
     "components/risk/CompoundingRiskDashboard.tsx": 12,
     "components/security/KpiTile.tsx": 2,
