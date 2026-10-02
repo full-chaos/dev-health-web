@@ -76,8 +76,8 @@ describe("client banners", () => {
             src("components/admin/integrations/customer-push/CreateCustomerPushSourceForm.tsx"),
         ).toContain('title="One-active-owner conflict"');
     });
-    it("the forecast error card keeps its heading and is a page-load notice", () => {
-        const s = src("components/capacity/ForecastCard.tsx");
+    it("the forecast error notice keeps its heading and is a page-load notice", () => {
+        const s = src("components/work/CapacityView.tsx");
         expect(s).toMatch(
             /<Notice variant="danger" live=\{false\} titleAs="h3" title="Forecast Unavailable"/u,
         );
