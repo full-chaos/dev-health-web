@@ -93,7 +93,7 @@ export default function ContextFabricUseCasesPage() {
         <>
             <section className="mx-auto max-w-7xl px-6 pb-20 pt-16 sm:pt-24">
                 <div className="mx-auto max-w-4xl text-center">
-                    <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">
+                    <p className="text-xs uppercase tracking-[0.2em] text-(--accent-text)">
                         Context Fabric use cases
                     </p>
                     <h1 className="mt-6 font-(--font-display) text-4xl leading-tight sm:text-5xl lg:text-6xl">
@@ -125,7 +125,7 @@ export default function ContextFabricUseCasesPage() {
             <section className="mx-auto max-w-7xl px-6 pb-24">
                 <div className="rounded-[2rem] border border-(--card-stroke) bg-(--card-80) p-6 sm:p-10">
                     <div className="max-w-3xl">
-                        <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">
+                        <p className="text-xs uppercase tracking-[0.2em] text-(--accent-text)">
                             A familiar day-to-day example
                         </p>
                         <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
@@ -155,7 +155,7 @@ export default function ContextFabricUseCasesPage() {
                             </p>
                             {ACTUAL_STATE.map((signal) => (
                                 <div key={signal} className="flex items-center gap-3 text-sm">
-                                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-(--accent)/10 text-(--accent)">
+                                    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-(--accent)/10 text-(--accent-text)">
                                         <CheckIcon />
                                     </span>
                                     <span>{signal}</span>
@@ -164,7 +164,7 @@ export default function ContextFabricUseCasesPage() {
                         </div>
 
                         <div className="rounded-3xl border border-(--accent)/40 bg-(--accent)/10 p-6">
-                            <p className="text-xs uppercase tracking-[0.16em] text-(--accent)">
+                            <p className="text-xs uppercase tracking-[0.16em] text-(--accent-text)">
                                 Context Fabric
                             </p>
                             <p className="mt-5 font-(--font-display) text-2xl">
@@ -221,7 +221,7 @@ export default function ContextFabricUseCasesPage() {
             <section className="mx-auto max-w-7xl px-6 pb-24">
                 <div className="grid gap-8 rounded-[2rem] border border-(--card-stroke) bg-(--card-80) p-7 sm:p-10 lg:grid-cols-[0.85fr_1.15fr] lg:items-center">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.2em] text-(--accent)">
+                        <p className="text-xs uppercase tracking-[0.2em] text-(--accent-text)">
                             Evidence-backed by design
                         </p>
                         <h2 className="mt-4 font-(--font-display) text-3xl sm:text-4xl">
