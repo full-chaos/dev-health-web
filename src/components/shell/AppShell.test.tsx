@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -273,4 +275,23 @@ describe("AppShell — every authed route renders in the shell", () => {
             expect(screen.queryByRole("navigation", { name: "Account" })).toBeNull();
         },
     );
+
+    it("defines --ribbon once, with the prototype stops, outside the pinned theme blocks", () => {
+        const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8").replace(
+            /\s+/g,
+            " ",
+        );
+        expect(css).toMatch(/--ribbon: linear-gradient\( ?90deg, #f92c00 0%[^;]*#01718d 100% ?\);/);
+    });
+
+    it("draws the 2px ribbon along the top edge with the --ribbon token, as the prototype does", () => {
+        renderFrame(<ShellPage />);
+        const ribbon = screen.getByTestId("shell-ribbon");
+        expect(ribbon).toHaveAttribute("aria-hidden", "true");
+        expect(ribbon.className).toContain("h-0.5");
+        expect(ribbon.className).toContain("fixed");
+        // Over the top bar (z-30), under the slide-over, drawers and dialogs (z-40/z-50).
+        expect(ribbon.className).toContain("z-35");
+        expect(ribbon.className).toContain("bg-(image:--ribbon)");
+    });
 });
