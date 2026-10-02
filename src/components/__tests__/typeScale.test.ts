@@ -9,7 +9,9 @@ const start = css.indexOf("--text-display:");
 const theme = css.slice(css.lastIndexOf("@theme", start), css.indexOf("\n}\n", start));
 
 const token = (name: string): string | undefined =>
-    new RegExp(`${name.replace(/[-]/g, "\\-")}:\\s*([^;]+);`).exec(theme)?.[1].trim();
+    new RegExp(`${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}:\\s*([^;]+);`)
+        .exec(theme)?.[1]
+        .trim();
 
 const SCALE: Array<[string, string, string, string?, string?]> = [
     // name, size, weight, letter-spacing, line-height
