@@ -196,44 +196,54 @@ describe("breadcrumbs — production page source guards (codex round 2: prior te
         },
     );
 
-    const directPassthroughPages = [
-        { path: "ai/automations/page.tsx", route: "/ai/automations" },
-        { path: "ai/impact/page.tsx", route: "/ai/impact" },
-        { path: "ai/review-load/page.tsx", route: "/ai/review-load" },
+    // Pages in the shared app shell have no in-page trail. The top bar renders
+    // the one trail from navTrailForPathname(pathname) itself (see
+    // ShellTopBar.test.tsx and each page's shell.test.tsx), so a page cannot
+    // double-append a crumb: it passes no breadcrumbs at all.
+    const pagesWithNoInPageTrail = [
+        "improve/automations/page.tsx",
+        "ai/impact/page.tsx",
+        "ai/impact/evidence/page.tsx",
+        "ai/review-load/page.tsx",
+        "ai/automations/page.tsx",
+        "ai/risk/page.tsx",
+        "ai/attribution/page.tsx",
     ];
 
-    it.each(directPassthroughPages)(
-        "$path: passes navTrailForPathname($route) straight through as breadcrumbs",
-        ({ path, route }) => {
-            const source = readPageSource(path);
-            expect(source).toContain(`breadcrumbs={navTrailForPathname("${route}")}`);
-        },
-    );
-
-    it("improve/automations/page.tsx: has no in-page trail, so it cannot double-append a crumb", () => {
-        // The page is in the shared app shell. The top bar renders the one trail
-        // from navTrailForPathname(pathname) itself (see ShellTopBar.test.tsx and
-        // improve/automations/shell.test.tsx), so the page passes no breadcrumbs.
-        const source = readPageSource("improve/automations/page.tsx");
+    it.each(pagesWithNoInPageTrail)("%s: has no in-page trail", (relativePath) => {
+        const source = readPageSource(relativePath);
         expect(source).not.toContain("breadcrumbs=");
         expect(source).not.toContain("<Breadcrumbs");
         expect(source).not.toContain("navTrailForPathname");
+        expect(source).not.toContain("AIPageHeader");
     });
 
-    it("ai/risk/page.tsx: sub-tab breadcrumb uses slice(0, -1) + withFilterParam for the parent link", () => {
+    it("ai/risk/page.tsx: the view tabs keep the filter and the role on the way back to the overview", () => {
+        // The in-page trail had a filter-preserving "Governance Risk" crumb on a
+        // sub-view. The page is in the shared app shell now: the tab row is the
+        // way between the views, and it gets the filter and the role.
         const source = readPageSource("ai/risk/page.tsx");
-        expect(source).toContain('navTrailForPathname("/ai/risk").slice(0, -1)');
-        expect(source).toContain('withFilterParam("/ai/risk", filters, activeRole)');
+        expect(source).toContain(
+            "<AIGovernanceRiskTabs view={view} filters={filters} role={activeRole} />",
+        );
     });
 
-    it("ai/impact/evidence/page.tsx: parent breadcrumb uses slice(0, -1) + withFilterParam", () => {
+    it("ai/impact/evidence/page.tsx: the return link to Impact keeps the filter and the role", () => {
+        // The in-page trail had a filter-preserving "Impact" crumb. The page is in
+        // the shared app shell now: its "Back to Impact" link is that return path.
         const source = readPageSource("ai/impact/evidence/page.tsx");
-        expect(source).toContain('navTrailForPathname("/ai/impact").slice(0, -1)');
         expect(source).toContain('withFilterParam("/ai/impact", filters, role)');
+        expect(source).toContain('area: "Impact"');
     });
 
-    it("ai/attribution/page.tsx is deliberately NOT in the fixed-pages list (navVisible: false child, area-only trail)", () => {
+    it("ai/attribution/page.tsx: a hidden child returns to the AI overview by its back link, with the filter and the role", () => {
+        // Its trail is the area only (navVisible: false child), with no link. The
+        // in-page trail made the "AI" crumb a link with an href fallback; the
+        // page is in the shared app shell now and has "Back to AI" instead.
         const source = readPageSource("ai/attribution/page.tsx");
-        expect(source).toContain('c.href ?? "/');
+        expect(source).not.toContain('c.href ?? "/');
+        expect(source).toContain(
+            'back={{ href: withFilterParam("/ai", filters, role), area: "AI" }}',
+        );
     });
 });

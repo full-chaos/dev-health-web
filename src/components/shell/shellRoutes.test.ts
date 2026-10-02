@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { SHELL_ROUTES, isShellRoute, shellRouteForPathname } from "./shellRoutes";
 
 describe("shell route registry", () => {
-    it("registers the Home and the migrated Diagnose, Govern, Plan and Improve routes", () => {
+    it("registers the Home and the migrated Diagnose, Govern, Plan, Improve and AI routes", () => {
         expect(SHELL_ROUTES.map((route) => route.prefix)).toEqual([
             "/dashboard",
             "/diagnose",
@@ -32,6 +32,16 @@ describe("shell route registry", () => {
             "/opportunities",
             "/improve/experiments",
             "/improve/automations",
+            "/ai",
+            "/ai/impact",
+            "/ai/impact/evidence",
+            "/ai/review-load",
+            "/ai/automations",
+            "/ai/risk",
+            "/ai/attribution",
+            "/prs",
+            "/issues",
+            "/deployments",
         ]);
     });
 
@@ -52,7 +62,7 @@ describe("shell route registry", () => {
         expect(isShellRoute("/dashboard-old")).toBe(false);
     });
 
-    it.each(["/capacity", "/reports", "/org/admin", "/superadmin", "/settings", "/ai/impact", "/"])(
+    it.each(["/demo", "/reports", "/org/admin", "/superadmin", "/settings", "/reports/1", "/"])(
         "keeps %s outside the shell",
         (pathname) => {
             expect(isShellRoute(pathname)).toBe(false);
@@ -82,7 +92,18 @@ describe("shell route registry", () => {
         expect(shellRouteForPathname("/security")?.filterParam).toBe("page");
         expect(shellRouteForPathname("/security/repos/repo-1")?.filterParam).toBe("page");
         expect(
-            SHELL_ROUTES.filter((route) => route.filterParam).map((route) => route.prefix),
+            SHELL_ROUTES.filter((route) => route.filterParam === "page").map(
+                (route) => route.prefix,
+            ),
         ).toEqual(["/security"]);
+    });
+
+    it("marks the artifact detail routes as routes with no filter state, and no other route", () => {
+        expect(shellRouteForPathname("/prs/repo-1:42")?.filterParam).toBe("none");
+        expect(
+            SHELL_ROUTES.filter((route) => route.filterParam === "none").map(
+                (route) => route.prefix,
+            ),
+        ).toEqual(["/prs", "/issues", "/deployments"]);
     });
 });

@@ -10,7 +10,7 @@ export type Crumb = {
 /**
  * Reusable location trail (section → page → tab) so users always know where
  * they are inside the authenticated app. Shared across (app) routes via the
- * page-header components (AIPageHeader, AdminHeader) rather than re-invented
+ * page-header components (AdminHeader) and the shell top bar rather than re-invented
  * per page.
  *
  * Rendering rules:

@@ -94,6 +94,14 @@ describe("resolveScopeBarConfig — default `f`", () => {
         expect(resolveScopeBarConfig("metrics", "flow").writeDefaultFilter).toBe(true);
     });
 
+    it("the AI view keeps the lock, the default `f` and the work filter, as its filter bar had them", () => {
+        const config = resolveScopeBarConfig("ai");
+
+        expect(config.resolvedScopeLock).toBe("team");
+        expect(config.writeDefaultFilter).toBe(true);
+        expect(config.resolvedVisibility).toMatchObject({ developer: false, workType: true });
+    });
+
     it("does not write it with pageFilters: false", () => {
         expect(resolveScopeBarConfig("home", undefined, false).writeDefaultFilter).toBe(false);
         expect(resolveScopeBarConfig(undefined, undefined, false).writeDefaultFilter).toBe(false);
