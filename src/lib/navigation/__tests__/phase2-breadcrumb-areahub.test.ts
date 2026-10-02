@@ -208,6 +208,8 @@ describe("breadcrumbs — production page source guards (codex round 2: prior te
         "ai/automations/page.tsx",
         "ai/risk/page.tsx",
         "ai/attribution/page.tsx",
+        // The Admin dashboard had the trail "Home / Admin" (CHAOS-7591).
+        "org/admin/page.tsx",
     ];
 
     it.each(pagesWithNoInPageTrail)("%s: has no in-page trail", (relativePath) => {

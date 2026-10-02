@@ -1,31 +1,40 @@
+"use client";
+
 import React from "react";
-import { Breadcrumbs, type Crumb } from "@/components/Breadcrumbs";
+
+import { PageHeader } from "@/components/shell/PageHeader";
+import { STATUS_PILL } from "@/lib/statusPill";
+
+import { AdminTabs, useAdminNav } from "./AdminTabs";
 
 type AdminHeaderProps = {
     title: string;
     description?: string;
+    /** Page actions (right-aligned). */
     children?: React.ReactNode;
-    /** Location trail (section → page). Rendered above the title. */
-    breadcrumbs?: Crumb[];
 };
 
-export function AdminHeader({ title, description, children, breadcrumbs }: AdminHeaderProps) {
-    const headerClassName = children
-        ? "mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between lg:pr-36"
-        : "mb-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between";
+/**
+ * The header of an Admin page: the shared `PageHeader` (title, description, actions), the
+ * "Platform Admin" pill for a platform admin, and the tab row of the page's Admin destination
+ * (AD-1 option A). The trail and the eyebrow come from the shell; there is no in-page trail.
+ * On a page outside the Admin tab routes (the platform admin pages) the tab row renders nothing.
+ */
+export function AdminHeader({ title, description, children }: AdminHeaderProps) {
+    const { isPlatformAdmin } = useAdminNav();
 
     return (
-        <header className={headerClassName}>
-            <div>
-                {breadcrumbs && breadcrumbs.length > 0 ? (
-                    <div className="mb-3">
-                        <Breadcrumbs items={breadcrumbs} />
-                    </div>
+        <div className="flex flex-col gap-4">
+            <PageHeader title={title} subtitle={description} actions={children}>
+                {isPlatformAdmin ? (
+                    <span
+                        className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-label-caps font-medium uppercase ${STATUS_PILL.info}`}
+                    >
+                        Platform Admin
+                    </span>
                 ) : null}
-                <h1 className="font-(--font-display) text-2xl font-bold">{title}</h1>
-                {description && <p className="mt-1 text-sm text-(--ink-muted)">{description}</p>}
-            </div>
-            {children && <div className="flex items-center gap-3">{children}</div>}
-        </header>
+            </PageHeader>
+            <AdminTabs />
+        </div>
     );
 }
