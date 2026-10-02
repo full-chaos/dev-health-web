@@ -57,7 +57,7 @@ export function MeterRows({ rows, max, unit, "aria-label": ariaLabel, testId }: 
         <ul
             data-testid={testId ?? "meter-rows"}
             aria-label={ariaLabel}
-            className="grid grid-cols-[minmax(96px,auto)_minmax(80px,1fr)_auto] items-center gap-x-3.5 gap-y-2.75 text-xs"
+            className="grid grid-cols-[minmax(6rem,auto)_minmax(5rem,1fr)_auto] items-center gap-x-3.5 gap-y-2.75 text-xs"
         >
             {rows.map((row) => {
                 const reported = row.value !== null;
