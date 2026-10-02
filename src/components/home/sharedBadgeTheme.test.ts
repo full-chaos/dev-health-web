@@ -47,9 +47,9 @@ describe("shared badges use theme tokens, not raw palette classes", () => {
 });
 
 describe("area severity pill: Low and Info carry a wash (CHAOS-8189)", () => {
-    it("low uses the positive wash, neutral (Info) the info wash, no card fill", () => {
-        expect(AREA_STATE_PILL.low).toContain("bg-(--positive)/12");
-        expect(AREA_STATE_PILL.neutral).toContain("bg-(--info)/12");
+    it("low uses the positive wash token, neutral (Info) the info wash token, no card fill", () => {
+        expect(AREA_STATE_PILL.low).toContain("bg-(--positive-wash)");
+        expect(AREA_STATE_PILL.neutral).toContain("bg-(--info-wash)");
         expect(AREA_STATE_PILL.low).not.toContain("card-70");
         expect(AREA_STATE_PILL.neutral).not.toContain("card-70");
     });
