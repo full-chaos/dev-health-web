@@ -303,17 +303,16 @@ test.describe("Context Fabric production entitlement boundary", () => {
             await page.setViewportSize(viewport);
             await gotoWithSessionReady(page, "/superadmin/context-fabric/validation");
 
-            const accountNavigation = page.getByRole("navigation", { name: "Account" });
+            // The page is in the shared app shell (CHAOS-7967): the account control is in the
+            // sidebar from `md` up and in the mobile bar below it. The legacy account bar (navigation
+            // "Account", z-index 40) is gone; the menu still opens on top of the page content.
             const accountControl = page.getByRole("button", { name: "Account options" });
-            await expect(accountNavigation).toBeVisible();
-            expect(
-                await accountNavigation.evaluate((element) =>
-                    element.parentElement ? getComputedStyle(element.parentElement).zIndex : "",
-                ),
-            ).toBe("40");
-            const accountNavigationBottomBeforeOpen = await accountNavigation.evaluate(
-                (element) => element.getBoundingClientRect().bottom,
+            await expect(accountControl).toBeVisible();
+            const menuId = await accountControl.getAttribute("aria-controls");
+            expect(menuId).toBe(
+                viewport.width >= 768 ? "account-options-sidebar" : "account-options",
             );
+            const controlBoxBeforeOpen = await accountControl.boundingBox();
             await accountControl.focus();
             await page.keyboard.press("Enter");
 
@@ -328,17 +327,17 @@ test.describe("Context Fabric production entitlement boundary", () => {
             await expect(adminPanel).toBeVisible();
             await expect(signOut).toBeVisible();
             await expect(reportIssue).toBeVisible();
-            const accountNavigationBottomAfterOpen = await accountNavigation.evaluate(
-                (element) => element.getBoundingClientRect().bottom,
-            );
-            const pageHeadingTop = await page
-                .getByRole("heading", { name: "Context Fabric Validation", level: 1 })
-                .evaluate((element) => element.getBoundingClientRect().top);
-            expect(accountNavigationBottomAfterOpen).toBe(accountNavigationBottomBeforeOpen);
-            const menu = page.locator("#account-options");
+            // Opening the menu does not move the control.
+            expect(await accountControl.boundingBox()).toEqual(controlBoxBeforeOpen);
+            const menu = page.locator(`#${menuId}`);
             await expect(menu).toBeVisible();
-            const menuTop = await menu.evaluate((element) => element.getBoundingClientRect().top);
-            expect(menuTop).toBeLessThan(pageHeadingTop);
+            const menuBox = await menu.boundingBox();
+            expect(menuBox).not.toBeNull();
+            // The whole menu is in the viewport.
+            expect(menuBox!.x).toBeGreaterThanOrEqual(0);
+            expect(menuBox!.y).toBeGreaterThanOrEqual(0);
+            expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(viewport.width);
+            expect(menuBox!.y + menuBox!.height).toBeLessThanOrEqual(viewport.height);
             for (const menuItem of [platformAdmin, preferences, adminPanel, signOut, reportIssue]) {
                 expect(
                     await menuItem.evaluate((element) => {

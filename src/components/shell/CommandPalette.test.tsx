@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { AdminNavProvider } from "@/components/admin/AdminTabs";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { encodeFilterParam } from "@/lib/filters/encode";
@@ -44,6 +45,25 @@ beforeEach(() => {
 });
 
 describe("CommandPalette", () => {
+    it("offers the platform admin destinations only to a platform admin (CHAOS-7967)", () => {
+        const { unmount } = setup();
+        press({ key: "k", metaKey: true });
+        expect(within(palette()).queryByRole("option", { name: /^Platform billing/ })).toBeNull();
+        unmount();
+
+        render(
+            <AdminTierProvider tier="community" features={{}}>
+                <AdminNavProvider isPlatformAdmin>
+                    <CommandPalette />
+                </AdminNavProvider>
+            </AdminTierProvider>,
+        );
+        press({ key: "k", metaKey: true });
+        expect(
+            within(palette()).getByRole("option", { name: /^Platform billing/ }),
+        ).toBeInTheDocument();
+    });
+
     it("is closed until asked: a trigger button, no dialog", () => {
         setup();
         expect(screen.getByTestId("command-palette-trigger")).toHaveTextContent(

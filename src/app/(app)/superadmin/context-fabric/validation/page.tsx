@@ -1,3 +1,4 @@
+import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ContextPacketGatedBody } from "@/app/(app)/agent-context/context-packet/_components/ContextPacketGatedBody";
 import {
     CONTROLLED_PACKET_STATES,
@@ -50,16 +51,10 @@ export default async function ContextFabricValidationPage({
 
     return (
         <div className="space-y-6">
-            <header>
-                <p className="text-label-caps text-(--ink-muted)">Platform administration</p>
-                <h1 className="mt-2 text-h1 font-semibold text-foreground">
-                    Context Fabric Validation
-                </h1>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-(--ink-muted)">
-                    Validate scoped context retrieval independently from Ask Dev conversations and
-                    model configuration.
-                </p>
-            </header>
+            <AdminHeader
+                title="Context Fabric Validation"
+                description="Validate scoped context retrieval independently from Ask Dev conversations and model configuration."
+            />
             <ContextPacketGatedBody
                 enabled
                 controlledState={controlledStateFrom(params.state, testMode)}

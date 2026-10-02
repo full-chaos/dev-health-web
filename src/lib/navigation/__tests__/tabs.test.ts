@@ -143,7 +143,9 @@ describe("tab registry", () => {
                 (c) => c.path === (set.childPath ?? set.basePath),
             );
             expect(child, set.id).toBeDefined();
-            expect(isNavChildVisible(child!, {}), set.id).toBe(true);
+            // A platform admin sees every destination; the platform sets' destinations need it.
+            expect(isNavChildVisible(child!, {}, { isPlatformAdmin: true }), set.id).toBe(true);
+            expect(isNavChildVisible(child!, {}), set.id).toBe(!set.id.startsWith("platform"));
         }
     });
 
@@ -197,6 +199,29 @@ describe("tab registry", () => {
         expect(set.tabs.every((t) => !("requiredFeature" in t))).toBe(true);
     });
 
+    it("keeps the 13 rows of the old platform admin sidebar as the Platform and Platform billing tabs", () => {
+        // `SuperadminSidebar.tsx` (deleted, CHAOS-7967) listed these rows; "Dashboard" is "Overview".
+        const before = [
+            ["Dashboard", "/superadmin"],
+            ["Organizations", "/superadmin/orgs"],
+            ["Users", "/superadmin/users"],
+            ["Licensing", "/superadmin/licensing"],
+            ["Product Telemetry", "/superadmin/product-telemetry"],
+            ["Context Fabric Validation", "/superadmin/context-fabric/validation"],
+            ["Audit Log", "/superadmin/audit"],
+            ["Settings", "/superadmin/settings"],
+            ["Billing Plans", "/superadmin/billing/plans"],
+            ["Invoices", "/superadmin/billing/invoices"],
+            ["Subscriptions", "/superadmin/billing/subscriptions"],
+            ["Refunds", "/superadmin/billing/refunds"],
+            ["Billing Audit", "/superadmin/billing/audit"],
+        ];
+        const tabs = [...getTabSet("platform").tabs, ...getTabSet("platform-billing").tabs];
+        expect(tabs.map((t) => [t.label, t.path])).toEqual(
+            before.map(([label, path]) => [label === "Dashboard" ? "Overview" : label, path]),
+        );
+    });
+
     it("keeps every page of the old admin sidebar, with its route and its entitlement key", () => {
         const adminTabs = [getTabSet("admin-organization"), getTabSet("admin-connections")].flatMap(
             (set): TabSet["tabs"][number][] => [...set.tabs],
@@ -234,7 +259,10 @@ describe("tab registry", () => {
         expect(at("/data-health")).toBe("data-confidence/overview");
         expect(at("/data-health/identity")).toBe("data-confidence/identity");
         expect(at("/settings")).toBeUndefined();
-        expect(at("/superadmin/users")).toBeUndefined();
+        expect(at("/superadmin/users")).toBe("platform/users");
+        expect(at("/superadmin/licensing/o1")).toBe("platform/licensing");
+        expect(at("/superadmin/billing/refunds")).toBe("platform-billing/refunds");
+        expect(at("/superadmin/billing")).toBe("platform/overview");
     });
 
     it("a route tab's path selects the destination of its set in the sidebar", () => {

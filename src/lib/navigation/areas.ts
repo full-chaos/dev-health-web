@@ -71,6 +71,11 @@ export type NavChildRoute = {
     /** Rendered in the sidebar only when true. Preview routes stay false. */
     navVisible: boolean;
     requiredFeature?: string;
+    /**
+     * Listed only for a platform admin (superuser): the platform admin pages. The route keeps its
+     * own server guard (`requireSuperuser`); this only decides whether the row is shown.
+     */
+    platformAdminOnly?: boolean;
     /** Phantom/not-yet-built route held for reference; never rendered. */
     preview?: boolean;
     /**
@@ -679,8 +684,9 @@ export const navAreas: readonly NavArea[] = [
         label: "Admin",
         href: "/org/admin",
         placement: "utility",
-        // `/data-health` (Data Confidence) is an Admin destination outside `/org/admin`.
-        ownedPathPrefixes: ["/org/admin", "/settings", "/data-health"],
+        // `/data-health` (Data Confidence), `/settings` and the platform admin pages (`/superadmin`)
+        // are Admin destinations outside `/org/admin`.
+        ownedPathPrefixes: ["/org/admin", "/settings", "/data-health", "/superadmin"],
         legacyActiveIds: ["admin", "settings", "data-health"],
         hubItems: [],
         children: [
@@ -711,6 +717,23 @@ export const navAreas: readonly NavArea[] = [
                 label: "Settings",
                 path: "/settings",
                 navVisible: true,
+            },
+            {
+                // The platform admin pages (CHAOS-7967): platform admins only. Its tabs are routes
+                // under `/superadmin`; Platform billing owns the longer `/superadmin/billing`.
+                id: "platform",
+                label: "Platform",
+                path: "/superadmin",
+                navVisible: true,
+                platformAdminOnly: true,
+            },
+            {
+                id: "platform-billing",
+                label: "Platform billing",
+                path: "/superadmin/billing/plans",
+                navVisible: true,
+                platformAdminOnly: true,
+                ownedPaths: ["/superadmin/billing"],
             },
             {
                 id: "billing",
@@ -764,18 +787,27 @@ export function selectedAreaIdForPathname(
     return undefined;
 }
 
+/** Who looks at the navigation, as far as it decides which rows are listed. */
+export type NavViewer = {
+    /** A platform admin (superuser) also sees the `platformAdminOnly` rows. */
+    isPlatformAdmin?: boolean;
+};
+
 /**
- * True when a child destination is listed in the sidebar: it is `navVisible`
- * and, when it names a `requiredFeature`, the organization has that feature
- * (A2c). A hidden child keeps its route; only the menu row is absent.
+ * True when a child destination is listed in the sidebar: it is `navVisible`,
+ * when it names a `requiredFeature` the organization has that feature (A2c),
+ * and when it is `platformAdminOnly` the viewer is a platform admin. A hidden
+ * child keeps its route; only the menu row is absent.
  */
 export function isNavChildVisible(
     child: NavChildRoute,
     features: Record<string, boolean>,
+    viewer: NavViewer = {},
 ): boolean {
     return (
         child.navVisible &&
-        (child.requiredFeature === undefined || features[child.requiredFeature] === true)
+        (child.requiredFeature === undefined || features[child.requiredFeature] === true) &&
+        (!child.platformAdminOnly || viewer.isPlatformAdmin === true)
     );
 }
 

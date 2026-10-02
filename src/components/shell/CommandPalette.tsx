@@ -14,6 +14,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 
+import { useAdminNav } from "@/components/admin/AdminTabs";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { Dialog } from "@/components/ui/Dialog";
 import { navAreas } from "@/lib/navigation/areas";
@@ -38,12 +39,16 @@ function Palette({ onClose }: { onClose: () => void }) {
     const router = useRouter();
     const params = useShellNavParams(pathname);
     const { features } = useAdminTier();
+    const { isPlatformAdmin } = useAdminNav();
     const inputRef = useRef<HTMLInputElement>(null);
     const listId = useId();
     const [query, setQuery] = useState("");
     const [active, setActive] = useState(0);
 
-    const entries = useMemo(() => paletteEntries(navAreas, features), [features]);
+    const entries = useMemo(
+        () => paletteEntries(navAreas, features, undefined, { isPlatformAdmin }),
+        [features, isPlatformAdmin],
+    );
     const results = useMemo(() => filterPaletteEntries(entries, query), [entries, query]);
     const current = results[Math.min(active, results.length - 1)];
 
