@@ -86,6 +86,28 @@ describe("/explore today", () => {
         expect(screen.getByText(/^Range: \d+d$/)).toBeInTheDocument();
     });
 
+    it("an old URL that carries the removed filters shows chips only for the filters a query reads (CHAOS-7799)", async () => {
+        const f = Buffer.from(
+            JSON.stringify({
+                time: { range_days: 30, compare_days: 30 },
+                scope: { level: "team", ids: ["alpha"] },
+                who: { developers: ["ana@example.com"], roles: ["reviewer"] },
+                what: { repos: ["org/api"], artifacts: ["pr"] },
+                why: { work_category: ["feature"], issue_type: ["bug"] },
+                how: { flow_stage: ["review"], blocked: true },
+            }),
+            "utf-8",
+        ).toString("base64url");
+        await renderExplore({ f });
+
+        for (const chip of ["Devs: ana@example.com", "Repos: org/api", "Work type: feature"]) {
+            expect(screen.getByText(chip), chip).toBeInTheDocument();
+        }
+        for (const gone of [/^Roles:/, /^Artifacts:/, /^Issue type:/, /^Flow:/, /^Blocked only/]) {
+            expect(screen.queryByText(gone), String(gone)).toBeNull();
+        }
+    });
+
     it("the Debug filters block is gone", async () => {
         const { container } = await renderExplore();
         expect(screen.queryByText("Debug filters")).toBeNull();

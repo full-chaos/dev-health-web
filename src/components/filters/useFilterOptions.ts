@@ -33,8 +33,6 @@ export function useFilterOptions(): FilterOptions {
                     services: payload.services ?? [],
                     developers: payload.developers ?? [],
                     work_category: payload.work_category ?? [],
-                    issue_type: payload.issue_type ?? [],
-                    flow_stage: payload.flow_stage ?? [],
                 });
             })
             .catch((err) => {

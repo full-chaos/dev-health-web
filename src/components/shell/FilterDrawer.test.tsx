@@ -20,7 +20,7 @@ const DEFAULT_F =
 
 const HOME: ScopeBarClientProps = {
     view: "home",
-    resolvedVisibility: { developer: true, workType: true, flowStage: false },
+    resolvedVisibility: { developer: true, workType: true },
     resolvedScopeLock: "team",
 };
 

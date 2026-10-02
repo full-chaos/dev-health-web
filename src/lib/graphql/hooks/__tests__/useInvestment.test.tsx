@@ -27,8 +27,8 @@ const baseFilters: MetricFilter = {
     time: { range_days: 30, compare_days: 30 },
     who: { developers: [] },
     what: { repos: [] },
-    why: { work_category: [], issue_type: [] },
-    how: { flow_stage: [] },
+    why: { work_category: [] },
+    how: {},
 };
 
 describe("useWorkItemTeamAttributions (CHAOS-7069)", () => {

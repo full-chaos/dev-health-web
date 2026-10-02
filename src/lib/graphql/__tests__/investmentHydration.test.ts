@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { decodeFilter } from "@/lib/filters/encode";
 import type { MetricFilter } from "@/lib/filters/types";
 import { buildInvestmentMixVariables } from "../investmentHydration";
 
@@ -67,18 +68,31 @@ describe("buildInvestmentMixVariables", () => {
             baseFilters({
                 who: { developers: ["alice@example.com"] },
                 what: { repos: ["repo-a"] },
-                why: { work_category: ["roadmap"], issue_type: ["bug"] },
-                how: { flow_stage: ["in_progress"] },
+                why: { work_category: ["roadmap"] },
             }),
             "org-1",
         );
         expect(vars.batch.filters?.who).toEqual({ developers: ["alice@example.com"] });
         expect(vars.batch.filters?.what).toEqual({ repos: ["repo-a"] });
-        expect(vars.batch.filters?.why).toEqual({
-            workCategory: ["roadmap"],
-            issueType: ["bug"],
-        });
-        expect(vars.batch.filters?.how).toEqual({ flowStage: ["in_progress"] });
+        expect(vars.batch.filters?.why).toEqual({ workCategory: ["roadmap"] });
+        expect(vars.batch.filters?.how).toBeUndefined();
+    });
+
+    it("sends no issue type and no flow stage from an old URL that carries them (CHAOS-7799)", () => {
+        const oldUrl = Buffer.from(
+            JSON.stringify({
+                time: { range_days: 30, compare_days: 30 },
+                scope: { level: "team", ids: ["alpha"] },
+                who: {},
+                what: {},
+                why: { work_category: ["roadmap"], issue_type: ["bug"] },
+                how: { flow_stage: ["in_progress"], blocked: true },
+            }),
+            "utf-8",
+        ).toString("base64url");
+        const vars = buildInvestmentMixVariables(decodeFilter(oldUrl), "org-1");
+        expect(vars.batch.filters?.why).toEqual({ workCategory: ["roadmap"] });
+        expect(vars.batch.filters?.how).toBeUndefined();
     });
 
     it("produces a stable shape suitable as an urql cache key", () => {

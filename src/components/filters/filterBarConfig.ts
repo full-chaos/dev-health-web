@@ -20,8 +20,7 @@ export type FilterBarView =
     | "risk-compounding"
     | "ai";
 
-export type UnreadFilter =
-    "developers" | "roles" | "workCategory" | "flowStage" | "blocked" | "artifacts" | "issueType";
+export type UnreadFilter = "developers" | "workCategory";
 
 export type FilterVisibility = {
     scope?: boolean;
@@ -35,7 +34,6 @@ export type FilterVisibility = {
      * left in an old URL is neither shown as a pill nor counted as active. Unset = all are read.
      */
     unreadFilters?: UnreadFilter[];
-    flowStage?: boolean;
     date?: boolean;
 };
 
@@ -52,7 +50,6 @@ const DEFAULT_VISIBILITY: FilterVisibility = {
     repo: true,
     developer: true,
     workType: true,
-    flowStage: false,
     date: true,
 };
 
@@ -61,7 +58,6 @@ const METRICS_DEFAULT_VISIBILITY: FilterVisibility = {
     repo: true,
     developer: true,
     workType: false,
-    flowStage: false,
     date: true,
 };
 
@@ -70,7 +66,6 @@ const QUALITY_TESTOPS_VISIBILITY: FilterVisibility = {
     repo: true,
     developer: false,
     workType: false,
-    flowStage: false,
     date: true,
 };
 
@@ -79,7 +74,6 @@ const METRICS_FLOW_VISIBILITY: FilterVisibility = {
     repo: true,
     developer: true,
     workType: false,
-    flowStage: true,
     date: true,
 };
 
@@ -88,7 +82,6 @@ const WORK_VISIBILITY: FilterVisibility = {
     repo: false,
     developer: false,
     workType: true,
-    flowStage: false,
     date: true,
 };
 
@@ -97,7 +90,6 @@ const PEOPLE_VISIBILITY: FilterVisibility = {
     repo: false,
     developer: true,
     workType: false,
-    flowStage: false,
     date: true,
 };
 
@@ -106,7 +98,6 @@ const CODE_VISIBILITY: FilterVisibility = {
     repo: true,
     developer: true,
     workType: false,
-    flowStage: false,
     date: true,
 };
 
@@ -115,7 +106,6 @@ const EXPLORE_VISIBILITY: FilterVisibility = {
     repo: true,
     developer: true,
     workType: true,
-    flowStage: true,
     date: true,
 };
 
@@ -126,7 +116,6 @@ const CAPACITY_PLANNING_VISIBILITY: FilterVisibility = {
     repo: false,
     developer: false,
     workType: false,
-    flowStage: false,
     date: true,
 };
 
@@ -136,7 +125,6 @@ const COMPLEXITY_VISIBILITY: FilterVisibility = {
     repo: true,
     developer: false,
     workType: false,
-    flowStage: false,
     date: true,
 };
 
@@ -150,7 +138,6 @@ const COGNITIVE_LOAD_VISIBILITY: FilterVisibility = {
     repo: true,
     developer: false,
     workType: false,
-    flowStage: false,
     date: true,
 };
 
@@ -161,7 +148,6 @@ const RISK_COMPOUNDING_VISIBILITY: FilterVisibility = {
     repo: true,
     developer: false,
     workType: false,
-    flowStage: false,
     date: true,
 };
 
@@ -175,8 +161,7 @@ const AI_VISIBILITY: FilterVisibility = {
     developer: false,
     workType: true,
     workTypeSingle: true,
-    unreadFilters: ["developers", "roles", "flowStage", "blocked", "artifacts", "issueType"],
-    flowStage: false,
+    unreadFilters: ["developers"],
     date: true,
 };
 
@@ -211,7 +196,6 @@ const resolveViewVisibility = (view?: FilterBarView, tab?: string): FilterVisibi
             repo: false,
             developer: false,
             workType: false,
-            flowStage: false,
             date: false,
         };
     }
@@ -234,26 +218,14 @@ const resolveViewVisibility = (view?: FilterBarView, tab?: string): FilterVisibi
 };
 
 /**
- * Filters NO reader uses, on every view (CHAOS-7795, CHAOS-7796). "Reader" = the Go query API, the
- * Python API (canary / shadow routing) and the web client. Traced:
- * - `what.artifacts`: only printed as a chip on the explore page.
- * - `who.roles`, `how.blocked`, `how.flow_stage`, `why.issue_type`: not applied by any query. Go
- *   `analytics/filtertranslation.go:151` ("never translated"), `analytics/filters.go:23-32` only
- *   makes a flow matrix REJECT; Python `api/graphql/sql/filter_translation.py` has no branch for
- *   them, `compiler.py:283-286` is the same rejection, `loaders/analytics_loader.py:99-113` builds a
- *   cache key. Web: the investment fetchers send flow stage and issue type
- *   (`investmentFetchers.ts:82-88`) and both backends drop them; the explore page prints them.
- */
-const NEVER_READ: UnreadFilter[] = ["artifacts", "roles", "flowStage", "blocked", "issueType"];
-
-/**
- * Per view, the filters its queries do not read, besides `NEVER_READ`. `developers` are applied
- * only by the investment queries (Go `analytics/investment.go:546`, `filtertranslation.go:202`;
+ * Per view, the filters its queries do not read (CHAOS-7796). Roles, artifacts, issue type, flow
+ * stage and blocked are no longer in the model: no reader applied them (CHAOS-7799). `developers`
+ * are applied only by the investment queries (Go `analytics/investment.go:546`, `filtertranslation.go:202`;
  * Python `filter_translation.py:246-264`) and used client-side by the People search
  * (`PeopleSearch.tsx:56`). The work category is applied by the home path (repos + work category:
  * `home/scopefilter.go:122,180`) and the investment queries; views whose pages call neither read
- * scope, repo and dates only. A view that is not traced (no `view`, feature flags) gets
- * `NEVER_READ` alone.
+ * scope, repo and dates only. A view that is not traced (no `view`,
+ * feature flags) reads both.
  */
 const VIEW_UNREAD: Partial<Record<FilterBarView, UnreadFilter[]>> = {
     home: ["developers"],
@@ -278,7 +250,6 @@ const VIEW_UNREAD: Partial<Record<FilterBarView, UnreadFilter[]>> = {
 export const resolveVisibility = (view?: FilterBarView, tab?: string): FilterVisibility => {
     const visibility = resolveViewVisibility(view, tab);
     const unread = new Set<UnreadFilter>([
-        ...NEVER_READ,
         ...((view && VIEW_UNREAD[view]) ?? []),
         ...(visibility.unreadFilters ?? []),
     ]);
@@ -292,15 +263,8 @@ export const resolveVisibility = (view?: FilterBarView, tab?: string): FilterVis
  */
 export const maskUnreadControls = (visibility: FilterVisibility): FilterVisibility => ({
     ...visibility,
-    developer:
-        visibility.developer &&
-        (isFilterRead(visibility, "developers") || isFilterRead(visibility, "roles")),
-    workType:
-        visibility.workType &&
-        (isFilterRead(visibility, "workCategory") || isFilterRead(visibility, "issueType")),
-    flowStage:
-        visibility.flowStage &&
-        (isFilterRead(visibility, "flowStage") || isFilterRead(visibility, "blocked")),
+    developer: visibility.developer && isFilterRead(visibility, "developers"),
+    workType: visibility.workType && isFilterRead(visibility, "workCategory"),
 });
 
 export const resolveScopeLock = (view?: FilterBarView): MetricFilter["scope"]["level"] | null => {

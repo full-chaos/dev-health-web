@@ -50,14 +50,14 @@ const STABLE: GoldenCase[] = [
     {
         name: "every dimension filled",
         encoded:
-            "eyJob3ciOnsiYmxvY2tlZCI6dHJ1ZSwiZmxvd19zdGFnZSI6WyJyZXZpZXciXX0sInNjb3BlIjp7ImlkcyI6WyJwbGF0Zm9ybSJdLCJsZXZlbCI6InRlYW0ifSwidGltZSI6eyJjb21wYXJlX2RheXMiOjMwLCJyYW5nZV9kYXlzIjozMH0sIndoYXQiOnsiYXJ0aWZhY3RzIjpbInByIiwiaXNzdWUiXSwicmVwb3MiOlsib3JnL2FwaSIsIm9yZy93ZWIiXX0sIndobyI6eyJkZXZlbG9wZXJzIjpbImFuYUBleGFtcGxlLmNvbSIsImJvQGV4YW1wbGUuY29tIl0sInJvbGVzIjpbInJldmlld2VyIl19LCJ3aHkiOnsiaXNzdWVfdHlwZSI6WyJidWciXSwid29ya19jYXRlZ29yeSI6WyJmZWF0dXJlIl19fQ",
+            "eyJob3ciOnt9LCJzY29wZSI6eyJpZHMiOlsicGxhdGZvcm0iXSwibGV2ZWwiOiJ0ZWFtIn0sInRpbWUiOnsiY29tcGFyZV9kYXlzIjozMCwicmFuZ2VfZGF5cyI6MzB9LCJ3aGF0Ijp7InJlcG9zIjpbIm9yZy9hcGkiLCJvcmcvd2ViIl19LCJ3aG8iOnsiZGV2ZWxvcGVycyI6WyJhbmFAZXhhbXBsZS5jb20iLCJib0BleGFtcGxlLmNvbSJdfSwid2h5Ijp7IndvcmtfY2F0ZWdvcnkiOlsiZmVhdHVyZSJdfX0",
         decoded: {
             time: { range_days: 30, compare_days: 30 },
             scope: { level: "team", ids: ["platform"] },
-            who: { developers: ["ana@example.com", "bo@example.com"], roles: ["reviewer"] },
-            what: { repos: ["org/api", "org/web"], artifacts: ["pr", "issue"] },
-            why: { work_category: ["feature"], issue_type: ["bug"] },
-            how: { flow_stage: ["review"], blocked: true },
+            who: { developers: ["ana@example.com", "bo@example.com"] },
+            what: { repos: ["org/api", "org/web"] },
+            why: { work_category: ["feature"] },
+            how: {},
         },
     },
     {
@@ -76,6 +76,28 @@ describe("filter param `f` — values written by the encoder", () => {
     it.each(STABLE)("writes the same string again for $name", ({ encoded, decoded }) => {
         expect(encodeFilterParam(decoded)).toBe(encoded);
         expect(encodeFilterParam(decodeFilter(encoded))).toBe(encoded);
+    });
+});
+
+describe("filter param `f` — a link saved before CHAOS-7799", () => {
+    // Written by the encoder while roles, artifacts, issue type, flow stage and blocked still existed.
+    const OLD_EVERY_DIMENSION =
+        "eyJob3ciOnsiYmxvY2tlZCI6dHJ1ZSwiZmxvd19zdGFnZSI6WyJyZXZpZXciXX0sInNjb3BlIjp7ImlkcyI6WyJwbGF0Zm9ybSJdLCJsZXZlbCI6InRlYW0ifSwidGltZSI6eyJjb21wYXJlX2RheXMiOjMwLCJyYW5nZV9kYXlzIjozMH0sIndoYXQiOnsiYXJ0aWZhY3RzIjpbInByIiwiaXNzdWUiXSwicmVwb3MiOlsib3JnL2FwaSIsIm9yZy93ZWIiXX0sIndobyI6eyJkZXZlbG9wZXJzIjpbImFuYUBleGFtcGxlLmNvbSIsImJvQGV4YW1wbGUuY29tIl0sInJvbGVzIjpbInJldmlld2VyIl19LCJ3aHkiOnsiaXNzdWVfdHlwZSI6WyJidWciXSwid29ya19jYXRlZ29yeSI6WyJmZWF0dXJlIl19fQ";
+
+    it("decodes to the filter without the five, and re-encodes without them", () => {
+        const decoded = decodeFilter(OLD_EVERY_DIMENSION);
+
+        expect(decoded).toEqual({
+            time: { range_days: 30, compare_days: 30 },
+            scope: { level: "team", ids: ["platform"] },
+            who: { developers: ["ana@example.com", "bo@example.com"] },
+            what: { repos: ["org/api", "org/web"] },
+            why: { work_category: ["feature"] },
+            how: {},
+        });
+        expect(encodeFilterParam(decoded)).toBe(
+            STABLE.find((c) => c.name === "every dimension filled")?.encoded,
+        );
     });
 });
 
@@ -103,7 +125,7 @@ describe("filter param `f` — values from other writers", () => {
         });
     });
 
-    it("reads a value whose keys are not in the encoder's order, and re-encodes it in that order", () => {
+    it("reads a value whose keys are not in the encoder's order, and re-encodes it in that order (CHAOS-7799: the dropped `roles` key is gone)", () => {
         const encoded =
             "eyJ3aG8iOnsicm9sZXMiOlsiYXV0aG9yIl19LCJ0aW1lIjp7ImNvbXBhcmVfZGF5cyI6NywicmFuZ2VfZGF5cyI6N30sInNjb3BlIjp7ImlkcyI6W10sImxldmVsIjoib3JnIn0sIndoYXQiOnt9LCJ3aHkiOnt9LCJob3ciOnt9fQ";
         const decoded = decodeFilter(encoded);
@@ -111,7 +133,7 @@ describe("filter param `f` — values from other writers", () => {
         expect(decoded).toEqual({
             time: { range_days: 7, compare_days: 7 },
             scope: { level: "org", ids: [] },
-            who: { roles: ["author"] },
+            who: {},
             what: {},
             why: {},
             how: {},

@@ -12,24 +12,19 @@ export type ScopeFilter = {
 
 export type WhoFilter = {
     developers?: string[];
-    roles?: string[];
 };
 
 export type WhatFilter = {
     repos?: string[];
     services?: string[];
-    artifacts?: Array<"pr" | "issue" | "commit" | "pipeline">;
 };
 
 export type WhyFilter = {
     work_category?: string[];
-    issue_type?: string[];
     initiative?: string[];
 };
 
 export type HowFilter = {
-    flow_stage?: string[];
-    blocked?: boolean;
     wip_state?: string[];
 };
 

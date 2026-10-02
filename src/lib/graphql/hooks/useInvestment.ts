@@ -55,14 +55,9 @@ function translateFilters(filters: MetricFilter): FilterInput {
         },
         who: filters.who.developers?.length ? { developers: filters.who.developers } : undefined,
         what: filters.what.repos?.length ? { repos: filters.what.repos } : undefined,
-        why:
-            filters.why.work_category?.length || filters.why.issue_type?.length
-                ? {
-                      workCategory: filters.why.work_category,
-                      issueType: filters.why.issue_type,
-                  }
-                : undefined,
-        how: filters.how.flow_stage?.length ? { flowStage: filters.how.flow_stage } : undefined,
+        why: filters.why.work_category?.length
+            ? { workCategory: filters.why.work_category }
+            : undefined,
     };
 }
 
