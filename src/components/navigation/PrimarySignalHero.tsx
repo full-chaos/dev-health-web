@@ -41,7 +41,7 @@ export function PrimarySignalHero({ signal, filters, role }: PrimarySignalHeroPr
             data-signal-id={signal.id}
             data-state={signal.state}
             data-emphasized="true"
-            className={`flex flex-wrap items-center justify-between gap-6 rounded-(--radius-md) border border-l-3 border-(--card-stroke) bg-(--card) p-6 ${HERO_EDGE[signal.state]}`}
+            className={`flex flex-wrap items-center justify-between gap-5.5 rounded-(--radius-md) border border-l-3 border-(--card-stroke) bg-(--card) p-6.25 ${HERO_EDGE[signal.state]}`}
         >
             <div className="min-w-0">
                 <div className="flex items-center gap-2.5">

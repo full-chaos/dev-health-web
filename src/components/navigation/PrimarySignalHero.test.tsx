@@ -45,4 +45,10 @@ describe("PrimarySignalHero", () => {
         );
         expect(screen.getByTestId("area-signal-driver")).toHaveTextContent("Rework drag 12%");
     });
+
+    it("pins the approved padding (25px), gap (22px) and 3px severity edge", () => {
+        render(<PrimarySignalHero signal={base} filters={defaultMetricFilter} />);
+        const root = screen.getByTestId("area-signal-card");
+        expect(root).toHaveClass("p-6.25", "gap-5.5", "border-l-3", "border-l-(--accent-negative)");
+    });
 });
