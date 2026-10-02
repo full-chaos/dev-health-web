@@ -67,7 +67,8 @@ const expectDeveloperFilter = async (page: Page, expected: string) => {
 
 test.describe("filter propagation", () => {
     test("primary area routes retain filter param", async ({ page }) => {
-        await page.goto("/dashboard");
+        // Developers is offered only where a query reads it: Investment (CHAOS-7796).
+        await page.goto("/investment");
         const initialFilter = await waitForFilterParam(page);
         const updatedFilter = await updateDeveloperFilter(
             page,
@@ -97,7 +98,7 @@ test.describe("filter propagation", () => {
     });
 
     test("diagnose child routes retain filter param", async ({ page }) => {
-        await page.goto("/dashboard");
+        await page.goto("/investment");
         const initialFilter = await waitForFilterParam(page);
         const updatedFilter = await updateDeveloperFilter(
             page,
@@ -130,7 +131,7 @@ test.describe("filter propagation", () => {
     });
 
     test("filter change updates URL and persists across nav", async ({ page }) => {
-        await page.goto("/metrics?tab=dora");
+        await page.goto("/investment");
         const initialFilter = await waitForFilterParam(page);
         const updatedFilter = await updateDeveloperFilter(
             page,
