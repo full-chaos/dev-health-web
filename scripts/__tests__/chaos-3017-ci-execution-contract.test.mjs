@@ -29,11 +29,11 @@ const GENERAL_TIERS = [
     },
     {
         commands: [
-            "audit --audit-level=high --prod",
             "codegen:check",
             `graphql:wire-parity:check --ops-root ${path.join(ROOT, "dev-health-ops-main")}`,
             "lint",
             "typecheck",
+            "audit --audit-level=high --prod",
         ],
         jobId: "quality",
         packageScripts: {
@@ -155,6 +155,14 @@ describe("CHAOS-3017 executable CI boundaries", () => {
             }
         },
     );
+
+    it("runs lint and typecheck before the dependency audit, so a red audit cannot hide them", () => {
+        const failed = recordHarnessPackageCommands(["quality"], { failScript: "audit" });
+        expect(failed.result.status).toBe(42);
+        expect(failed.commands.at(-1)).toBe("audit --audit-level=high --prod");
+        expect(failed.commands).toContain("lint");
+        expect(failed.commands).toContain("typecheck");
+    });
 
     it("keeps aggregate CI unit execution independent of the test:unit alias", () => {
         const scripts = JSON.parse(contents(PACKAGE_JSON)).scripts;
