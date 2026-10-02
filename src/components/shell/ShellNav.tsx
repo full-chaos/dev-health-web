@@ -84,7 +84,7 @@ export function ShellNav({ areas = navAreas }: ShellNavProps) {
                 key={child.id}
                 href={shellHref(child.path, params)}
                 aria-current={isActive ? "page" : undefined}
-                className={`relative flex items-center rounded-(--radius-sm) px-3 py-1.5 text-sm transition ${ROW_FOCUS} ${
+                className={`relative flex min-h-9 items-center rounded-(--radius-sm) px-2.5 py-1.5 text-[0.8125rem] transition ${ROW_FOCUS} ${
                     isActive ? ROW_SELECTED : `${idleInk} ${ROW_IDLE}`
                 }`}
             >
@@ -139,7 +139,7 @@ export function ShellNav({ areas = navAreas }: ShellNavProps) {
 
                 {visibleChildren.length > 0 ? (
                     <div
-                        className="mb-2 ml-4 mt-1 flex flex-col gap-0.5 border-l border-(--border) pl-2"
+                        className="mb-2 ml-5 mt-1 flex flex-col gap-0.5 border-l border-(--card-stroke) pl-2.5"
                         data-testid={`nav-children-${area.id}`}
                     >
                         {visibleChildren.map((child) => renderChild(child, activeChild?.id))}

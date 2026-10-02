@@ -69,6 +69,11 @@ describe("OrgSwitcher", () => {
 
         const select = await screen.findByLabelText(/organization/i);
         expect(screen.getByText(/no data yet/i)).toBeInTheDocument();
+        // Prototype `.workspace`: an initials mark, the name in the select, one line under it.
+        expect(screen.getByTestId("org-mark")).toHaveTextContent("EO");
+        expect(screen.getByRole("option", { name: "Data Org" })).toBeInTheDocument();
+        expect(select.className).toContain("border-0");
+        expect(screen.getByText("Organization")).toHaveClass("sr-only");
 
         fireEvent.change(select, { target: { value: "org-data" } });
 

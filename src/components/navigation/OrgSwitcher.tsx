@@ -53,14 +53,26 @@ type OrgSwitcherProps = {
     onActiveOrganizationChange?: (organization: ActiveOrganizationData | null) => void;
 };
 
-// The workspace card of the shared app shell (its organization card). The old "panel" look of
+// The workspace card of the shared app shell, drawn as the prototype's `.workspace`: a bordered
+// initials mark, the organization name (the select), and one line under it. The old "panel" look of
 // the page navigation and the admin sidebar went with them (CHAOS-7751, CHAOS-7965).
 const CLASSES = {
-    container: "rounded-(--radius-sm) border border-(--border) bg-(--surface-raised) p-3",
-    label: "text-label-caps uppercase text-(--text-muted)",
-    select: "mt-2 w-full rounded-(--radius-sm) border border-(--border) bg-(--surface) px-3 py-2 text-sm text-(--text-primary) outline-none transition focus:border-(--accent-2) disabled:opacity-60",
-    note: "mt-2 text-xs text-(--text-secondary)",
+    container: "flex items-center gap-2.5 rounded-(--radius-sm) bg-(--surface-raised) p-2.5",
+    mark: "grid size-8 shrink-0 place-items-center rounded-(--radius-sm) border border-(--border) bg-(--surface) text-xs font-semibold text-(--text-secondary)",
+    label: "sr-only",
+    select: "w-full min-w-0 cursor-pointer truncate rounded-(--radius-sm) border-0 bg-transparent p-0 text-[0.8125rem] font-semibold text-(--text-primary) outline-none transition focus-visible:ring-2 focus-visible:ring-(--accent-2) disabled:cursor-default disabled:opacity-100",
+    note: "mt-0.5 text-[0.6875rem] leading-snug text-(--text-muted)",
 } as const;
+
+/** Up to two initials of an organization name, for the workspace mark. */
+function initialsOf(name: string | undefined): string {
+    const words = (name ?? "").trim().split(/\s+/u).filter(Boolean);
+    if (words.length === 0) return "–";
+    return words
+        .slice(0, 2)
+        .map((word) => Array.from(word)[0]?.toUpperCase() ?? "")
+        .join("");
+}
 
 export function OrgSwitcher({ onActiveOrganizationChange }: OrgSwitcherProps = {}) {
     const classes = CLASSES;
@@ -151,28 +163,35 @@ export function OrgSwitcher({ onActiveOrganizationChange }: OrgSwitcherProps = {
 
     return (
         <div className={classes.container}>
-            <label htmlFor="org-switcher" className={classes.label}>
-                {canSwitchOrganizations ? "Organization" : "Current organization"}
-            </label>
-            <select
-                id="org-switcher"
-                value={activeOrgId}
-                disabled={isPending || !canSwitchOrganizations}
-                onChange={(event) => switchOrg(event.target.value)}
-                className={classes.select}
-                aria-describedby="org-switcher-data"
-            >
-                {state.organizations.map((org) => (
-                    <option key={org.id} value={org.id}>
-                        {org.name} {org.has_data ? "• data" : "• empty"}
-                    </option>
-                ))}
-            </select>
-            <p id="org-switcher-data" className={classes.note}>
-                {activeOrg ? dataLabel(activeOrg) : "Choose the organization used for dashboards."}
-                {!canSwitchOrganizations ? " · Only organization on this account" : null}
-            </p>
-            {error ? <p className="mt-2 text-xs text-(--negative)">{error}</p> : null}
+            <span aria-hidden="true" data-testid="org-mark" className={classes.mark}>
+                {initialsOf(activeOrg?.name)}
+            </span>
+            <div className="min-w-0 flex-1">
+                <label htmlFor="org-switcher" className={classes.label}>
+                    {canSwitchOrganizations ? "Organization" : "Current organization"}
+                </label>
+                <select
+                    id="org-switcher"
+                    value={activeOrgId}
+                    disabled={isPending || !canSwitchOrganizations}
+                    onChange={(event) => switchOrg(event.target.value)}
+                    className={classes.select}
+                    aria-describedby="org-switcher-data"
+                >
+                    {state.organizations.map((org) => (
+                        <option key={org.id} value={org.id}>
+                            {org.name}
+                        </option>
+                    ))}
+                </select>
+                <p id="org-switcher-data" className={classes.note}>
+                    {activeOrg
+                        ? dataLabel(activeOrg)
+                        : "Choose the organization used for dashboards."}
+                    {!canSwitchOrganizations ? " · Only organization on this account" : null}
+                </p>
+                {error ? <p className="mt-1 text-xs text-(--negative)">{error}</p> : null}
+            </div>
         </div>
     );
 }

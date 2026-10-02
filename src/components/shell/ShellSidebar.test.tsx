@@ -574,4 +574,18 @@ describe("ShellSidebar — a route with its own `f` encoding (Security)", () => 
             "lucide-chevron-right",
         );
     });
+
+    it("draws the open group's children on a guide line, with 36px rows", () => {
+        navigationMock.pathname = "/investment";
+        navigationMock.search = "";
+        renderSidebar();
+
+        const children = within(sidebar()).getByTestId("nav-children-diagnose");
+        expect(children.className).toContain("border-l");
+        expect(children.className).toContain("border-(--card-stroke)");
+        const current = within(children).getByRole("link", { name: "Investment" });
+        expect(current).toHaveAttribute("aria-current", "page");
+        expect(current.className).toContain("min-h-9");
+        expect(current.className).toContain("before:bg-(--accent)");
+    });
 });
