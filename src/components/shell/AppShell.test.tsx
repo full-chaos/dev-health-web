@@ -290,6 +290,8 @@ describe("AppShell — every authed route renders in the shell", () => {
         expect(ribbon).toHaveAttribute("aria-hidden", "true");
         expect(ribbon.className).toContain("h-0.5");
         expect(ribbon.className).toContain("fixed");
+        // Over the top bar (z-30), under the slide-over, drawers and dialogs (z-40/z-50).
+        expect(ribbon.className).toContain("z-35");
         expect(ribbon.className).toContain("bg-(image:--ribbon)");
     });
 });
