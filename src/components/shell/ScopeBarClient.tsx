@@ -43,6 +43,9 @@ const LABEL_CLASS = SCOPE_BAR_LABEL_CLASS;
  * The one scope bar of a page: organization, team, repository and window in one
  * row, with the advanced filters in a drawer. It replaces the global context bar
  * plus the page filter bar on pages in the shared app shell.
+ *
+ * No lens control: it stays hidden until lens-driven prioritization works across
+ * surfaces (CHAOS-2253). The `lens` and `role` URL params are still honored.
  */
 export function ScopeBarClient({
     view,

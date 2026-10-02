@@ -42,6 +42,8 @@ describe("shell route registry", () => {
             "/prs",
             "/issues",
             "/deployments",
+            "/reports",
+            "/reports",
         ]);
     });
 
@@ -62,12 +64,17 @@ describe("shell route registry", () => {
         expect(isShellRoute("/dashboard-old")).toBe(false);
     });
 
-    it.each(["/demo", "/reports", "/org/admin", "/superadmin", "/settings", "/reports/1", "/"])(
-        "keeps %s outside the shell",
-        (pathname) => {
-            expect(isShellRoute(pathname)).toBe(false);
-        },
-    );
+    it.each([
+        "/demo",
+        "/data-health",
+        "/org/admin",
+        "/superadmin",
+        "/settings",
+        "/org/admin/users",
+        "/",
+    ])("keeps %s outside the shell", (pathname) => {
+        expect(isShellRoute(pathname)).toBe(false);
+    });
 
     it("treats a missing pathname as outside the shell", () => {
         expect(isShellRoute(null)).toBe(false);
@@ -104,6 +111,12 @@ describe("shell route registry", () => {
             SHELL_ROUTES.filter((route) => route.filterParam === "none").map(
                 (route) => route.prefix,
             ),
-        ).toEqual(["/prs", "/issues", "/deployments"]);
+        ).toEqual(["/prs", "/issues", "/deployments", "/reports"]);
+    });
+
+    it("gives Report Center its own entry and its descendants the no-filter entry: the first equal-length match wins", () => {
+        expect(shellRouteForPathname("/reports")).toEqual({ prefix: "/reports", exact: true });
+        expect(shellRouteForPathname("/reports/new")?.filterParam).toBe("none");
+        expect(shellRouteForPathname("/reports/abc-123")?.filterParam).toBe("none");
     });
 });

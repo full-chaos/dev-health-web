@@ -399,19 +399,21 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
     });
 });
 
-describe("IA preservation invariant #8 — Lens present in global context bar", () => {
-    const globalContextBarClientSource = readFileSync(
-        join(process.cwd(), "src/components/navigation/GlobalContextBarClient.tsx"),
-        "utf8",
+describe("IA preservation invariant #8 — Lens present in the scope bar", () => {
+    // The scope bar replaced the global context bar (CHAOS-7751 deleted it).
+    const scopeBarSources = ["ScopeBarClient.tsx", "ScopeBarFrame.tsx"].map((file) =>
+        readFileSync(join(process.cwd(), "src/components/shell", file), "utf8"),
     );
     const lensSelectorSource = readFileSync(
         join(process.cwd(), "src/components/navigation/LensSelector.tsx"),
         "utf8",
     );
 
-    it("GlobalContextBarClient keeps LensSelector hidden until CHAOS-2253", () => {
-        expect(globalContextBarClientSource).not.toContain("<LensSelector");
-        expect(globalContextBarClientSource).toContain("CHAOS-2253");
+    it("the scope bar keeps LensSelector hidden until CHAOS-2253", () => {
+        for (const source of scopeBarSources) {
+            expect(source).not.toContain("<LensSelector");
+        }
+        expect(scopeBarSources[0]).toContain("CHAOS-2253");
     });
 
     it("LensSelector has a data-testid for test discoverability", () => {
