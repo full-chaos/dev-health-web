@@ -4,6 +4,8 @@ import Link from "next/link";
 
 import { DonutChart } from "@/components/charts/DonutChart";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
+import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
 import { useAIComparison, useAIImpactSummary } from "@/lib/graphql/hooks/useAIImpact";
@@ -20,6 +22,11 @@ import {
     formatPercent,
     safeRatio,
 } from "./utils";
+
+/** A served 0-1 ratio as a percent number for the tile; a missing ratio stays missing ("Not reported"). */
+function ratioPercent(ratio?: number | null): number | undefined {
+    return ratio == null || Number.isNaN(ratio) ? undefined : ratio * 100;
+}
 
 type AIImpactDashboardProps = {
     filter: AIFilter;
@@ -71,24 +78,38 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
 
     return (
         <div className="flex flex-col gap-6" data-testid="ai-impact-dashboard">
-            <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
-                <StatTile
+            <MetricStrip data-testid="ai-impact-stat-tiles">
+                <MetricCard
                     label="AI-assisted work share"
-                    value={formatPercent(summary?.aiAssistedPrRatio)}
-                    note={`${summary?.aiAssistedPrs ?? 0} of ${summary?.totalPrs ?? 0} PRs lean AI-assisted.`}
+                    value={ratioPercent(summary?.aiAssistedPrRatio)}
+                    unit="%"
+                    deltaSlot={<></>}
+                    hideTrend
+                    caption={
+                        summary?.aiAssistedPrs != null && summary?.totalPrs != null
+                            ? `${summary.aiAssistedPrs} of ${summary.totalPrs} PRs lean AI-assisted.`
+                            : undefined
+                    }
                 />
-                <StatTile
+                <MetricCard
                     label="Agent-created work share"
-                    value={String(summary?.agentCreatedPrs ?? 0)}
-                    note={`${formatPercent(safeRatio(summary?.agentCreatedPrs, summary?.totalPrs))} of PRs appear agent-created.`}
+                    value={summary?.agentCreatedPrs ?? undefined}
+                    deltaSlot={<></>}
+                    hideTrend
+                    caption={
+                        safeRatio(summary?.agentCreatedPrs, summary?.totalPrs) != null
+                            ? `${formatPercent(safeRatio(summary?.agentCreatedPrs, summary?.totalPrs))} of PRs appear agent-created.`
+                            : undefined
+                    }
                 />
-                <StatTile
+                <MetricCard
                     label="Unknown attribution"
-                    value={String(summary?.unknownPrs ?? 0)}
-                    note="Kept visible so data coverage gaps stay inspectable."
-                    dashed
+                    value={summary?.unknownPrs ?? undefined}
+                    deltaSlot={<></>}
+                    hideTrend
+                    caption="Kept visible so data coverage gaps stay inspectable."
                 />
-            </div>
+            </MetricStrip>
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                 <AIPanelCard
@@ -298,31 +319,6 @@ function DashboardSkeleton() {
                     className="h-40 animate-pulse rounded-(--radius-md) bg-(--card-80) motion-reduce:animate-none"
                 />
             ))}
-        </div>
-    );
-}
-
-function StatTile({
-    label,
-    value,
-    note,
-    dashed = false,
-}: {
-    label: string;
-    value: string;
-    note: string;
-    /** The "unknown" treatment: a dashed outline, so a coverage gap never looks like a result. */
-    dashed?: boolean;
-}) {
-    return (
-        <div
-            className={`min-h-31 rounded-(--radius-md) border bg-card px-5 py-4.5 ${dashed ? "border-dashed" : ""} border-(--card-stroke)`}
-        >
-            <p className="text-label-caps uppercase text-(--ink-muted)">{label}</p>
-            <p className="mt-2.5 text-[1.75rem] font-semibold leading-tight tabular-nums">
-                {value}
-            </p>
-            <p className="mt-2 text-xs text-(--ink-muted)">{note}</p>
         </div>
     );
 }
