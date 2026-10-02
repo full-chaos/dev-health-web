@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AiImpactBucketRow } from "@/lib/graphql/__generated__/types";
+import { orderTimeseriesPoints } from "@/components/charts/timeseriesData";
 import { agentCreatedTrend } from "../utils";
 
 // CHAOS-7983: the Impact agent-created trend. Today (before `day` exists on the API) the x label is
@@ -41,8 +42,8 @@ describe("agentCreatedTrend with day", () => {
                 row("agent_created", 6, { day: "2026-08-12" }),
             ]),
         ).toEqual([
-            { day: "Aug 1", value: 4 },
-            { day: "Aug 12", value: 6 },
+            { day: "2026-08-01", label: "Aug 1", value: 4 },
+            { day: "2026-08-12", label: "Aug 12", value: 6 },
         ]);
     });
 
@@ -53,14 +54,14 @@ describe("agentCreatedTrend with day", () => {
                 row("agent_created", 6, { day: "2026-08-02" }),
             ]),
         ).toEqual([
-            { day: "Aug 2", value: 4 },
-            { day: "Aug 2", value: 6 },
+            { day: "2026-08-02", label: "Aug 2", value: 4 },
+            { day: "2026-08-02", label: "Aug 2", value: 6 },
         ]);
     });
 
     it("reads the date as a UTC calendar day, whatever the viewer's time zone", () => {
         expect(agentCreatedTrend([row("agent_created", 1, { day: "2026-03-01" })])).toEqual([
-            { day: "Mar 1", value: 1 },
+            { day: "2026-03-01", label: "Mar 1", value: 1 },
         ]);
     });
 
@@ -71,8 +72,17 @@ describe("agentCreatedTrend with day", () => {
                 row("agent_created", 5),
             ]),
         ).toEqual([
-            { day: "Aug 1", value: 4 },
+            { day: "2026-08-01", label: "Aug 1", value: 4 },
             { day: "2", value: 5 },
         ]);
+    });
+
+    it("sorts into date order through the chart: ISO is the sort key, the short date only the label", () => {
+        const points = agentCreatedTrend([
+            row("agent_created", 1, { day: "2026-08-11" }),
+            row("agent_created", 2, { day: "2026-08-02" }),
+        ]);
+        const { categories } = orderTimeseriesPoints(points);
+        expect(categories).toEqual(["Aug 2", "Aug 11"]);
     });
 });
