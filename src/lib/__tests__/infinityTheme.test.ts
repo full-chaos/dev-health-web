@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { STATUS_PILL_ALPHA, ZONE_GRADIENT_ALPHA } from "../themeTints";
@@ -241,13 +242,118 @@ describe("infinity palette", () => {
     );
 
     it("pins the muted ink values: light as before, dark one notch lighter", () => {
-        expect(infinity("light")["--text-muted"]).toBe("#5c6269");
-        expect(infinity("light")["--ink-muted"]).toBe("#5c6269");
+        // CHAOS-7746: light muted ink one notch darker so it reads on warm cards and tints.
+        expect(infinity("light")["--text-muted"]).toBe("#585e65");
+        expect(infinity("light")["--ink-muted"]).toBe("#585e65");
         const dark = infinity("dark");
         // Every `text-(--accent-text)` renders the same color as the `text-(--accent)` it replaced.
         expect(dark["--accent-text"]).toBe(dark["--accent"]);
         expect(dark["--ink-muted"]).toBe("#a7afb5");
         expect(dark["--text-muted"]).toBe("#8b959c");
+    });
+
+    // CHAOS-7746: text pairs that measured 4.05 to 4.49 in the light sweep (surfaces are the measured
+    // composites) plus every own-family tint of the token, 5 to 20 percent over card and page.
+    const rgbHex = (r: number, g: number, b: number) =>
+        `#${[r, g, b].map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+    const light7746 = () => {
+        const t = infinity("light");
+        const tints = (token: string, alphas: number[]) =>
+            alphas.flatMap((a) => [
+                over(t[token], t["--card"], a),
+                over(t[token], t["--background"], a),
+            ]);
+        const everyTint = [
+            "--positive",
+            "--info",
+            "--caution",
+            "--negative",
+            "--accent",
+            "--accent-2",
+        ].flatMap((token) => tints(token, [0.05, 0.1, 0.12, 0.15]));
+        return {
+            t,
+            checks: [
+                {
+                    token: "--accent-2",
+                    surfaces: [
+                        rgbHex(229, 223, 214),
+                        rgbHex(215, 228, 225),
+                        rgbHex(222, 236, 239),
+                        t["--card"],
+                        t["--background"],
+                        ...tints("--accent-2", [0.05, 0.1, 0.12, 0.2]),
+                    ],
+                },
+                {
+                    token: "--positive",
+                    surfaces: [
+                        rgbHex(215, 228, 225),
+                        rgbHex(217, 231, 226),
+                        rgbHex(222, 235, 231),
+                        t["--card"],
+                        t["--background"],
+                        ...tints("--positive", [0.05, 0.1, 0.12, 0.15, 0.2]),
+                    ],
+                },
+                ...["--caution", "--accent-3"].map((token) => ({
+                    token,
+                    surfaces: [
+                        rgbHex(227, 214, 194),
+                        rgbHex(230, 217, 199),
+                        t["--card"],
+                        t["--background"],
+                        ...tints("--caution", [0.05, 0.1, 0.12, 0.15, 0.2]),
+                    ],
+                })),
+                ...["--ink-muted", "--text-muted"].map((token) => ({
+                    token,
+                    surfaces: [
+                        rgbHex(219, 214, 207),
+                        rgbHex(232, 216, 215),
+                        t["--card"],
+                        t["--background"],
+                        ...everyTint,
+                    ],
+                })),
+            ],
+        };
+    };
+
+    it("keeps the five light text tokens at 4.5:1 on the measured surfaces and every own tint", () => {
+        const { t, checks } = light7746();
+        for (const { token, surfaces } of checks) {
+            for (const surface of surfaces) {
+                expect(
+                    contrast(t[token], surface),
+                    `${token} on ${surface}`,
+                ).toBeGreaterThanOrEqual(4.5);
+            }
+        }
+    });
+
+    it("pins the CHAOS-7746 light picks and keeps accent-2 equal to info, accent-3 to caution", () => {
+        const light = infinity("light");
+        expect(light["--accent-2"]).toBe("#03627d");
+        expect(light["--info"]).toBe("#03627d");
+        expect(light["--positive"]).toBe("#18664d");
+        expect(light["--caution"]).toBe("#7d4f00");
+        expect(light["--accent-3"]).toBe("#7d4f00");
+        // Chart colors are not touched by this ticket (series 3, 7 and 8 are CHAOS-7892).
+        expect(light["--chart-color-1"]).toBe("#0087a9");
+        expect(light["--chart-color-3"]).toBe("#a30a06");
+        expect(light["--chart-color-7"]).toBe("#8a5700");
+        expect(light["--chart-color-8"]).toBe("#a61708");
+    });
+
+    it("leaves the dark block byte for byte as it was", () => {
+        const block = infinityCss.match(
+            /:root\[data-palette="infinity"\]\[data-theme="dark"\] \{([\s\S]*?)\n\}/u,
+        );
+        expect(block).not.toBeNull();
+        expect(createHash("sha256").update(block![1]).digest("hex")).toBe(
+            "d9e2daaa1aa2a4d8ce08f865f7981e001e962d76e35e855961a8721cc42469a6",
+        );
     });
 
     it.each(THEMES)(

@@ -2,14 +2,12 @@ import type {
     DrilldownResponse,
     InvestmentResponse,
     InvestmentMixExplanation,
-    SankeyMode,
     SankeyResponse,
     WorkUnitInvestment,
     WorkUnitExplanation,
 } from "@/lib/types";
 import type { MetricFilter } from "@/lib/filters/types";
 import { encodeFilterParam } from "@/lib/filters/encode";
-import { applyWindowToFilters } from "@/lib/filters/time";
 import { apiClient } from "@/lib/apiClient";
 import {
     getInvestmentViaGraphQL,
@@ -54,29 +52,6 @@ export async function explainInvestmentMix(params: {
             f: encodeFilterParam(normalized),
             llm_provider: params.llm_provider ?? "auto",
         },
-    );
-}
-
-export async function getSankey(params: {
-    mode: SankeyMode;
-    filters: MetricFilter;
-    context?: { entity_id?: string; entity_label?: string };
-    window_start?: string;
-    window_end?: string;
-}) {
-    const normalized = normalizeFilters(params.filters);
-    const withWindow = applyWindowToFilters(normalized, params.window_start, params.window_end);
-    return postJson<SankeyResponse>(
-        "/api/v1/sankey",
-        {
-            mode: params.mode,
-            filters: withWindow,
-            context: params.context,
-            window_start: params.window_start,
-            window_end: params.window_end,
-        },
-        60,
-        { mode: params.mode, f: encodeFilterParam(withWindow) },
     );
 }
 
