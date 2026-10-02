@@ -8,6 +8,8 @@ import { RankedSignals } from "@/components/home/RankedSignals";
 import { ThreadRow } from "@/components/home/ThreadRow";
 import { AiWorkflowCallout } from "@/components/home/AiWorkflowCallout";
 import { DataConfidenceIndicator } from "@/components/home/DataConfidenceIndicator";
+import { EvidenceContextCard } from "@/components/home/EvidenceContextCard";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
@@ -20,9 +22,9 @@ import { SetupBanner } from "@/components/onboarding/SetupBanner";
 import { auth } from "@/lib/auth";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { isAiDominant } from "@/lib/cockpit/aiGate";
+import { formatCoveragePct } from "@/lib/cockpit/coverage";
 import { buildThreadApiUrl } from "@/lib/cockpit/evidenceRef";
 import type { HomeResponse } from "@/lib/types";
 
@@ -99,8 +101,6 @@ export default async function Home({ searchParams }: HomePageProps) {
         // The shared app shell owns the `<main>` landmark for this route.
         return <ServiceUnavailable landmark={false} />;
     }
-    const lastUpdatedAt =
-        home?.freshness.latest_successful_sync_at ?? home?.freshness.last_ingested_at ?? null;
     // Reorder Monitoring Views based on active lens (cockpit surface priority).
     const viewPriority: Record<string, string[]> = {
         ic: ["flow", "throughput", "dora"],
@@ -130,6 +130,20 @@ export default async function Home({ searchParams }: HomePageProps) {
                             title: "Home",
                             apiUrl: buildThreadApiUrl("/api/v1/home", filters),
                             filters,
+                            // The served source coverage of the page: read here, not in the body.
+                            intro: (
+                                <EvidenceFactList
+                                    aria-label="Page data confidence"
+                                    testId="home-evidence-coverage"
+                                >
+                                    <EvidenceFact
+                                        label="Coverage"
+                                        value={formatCoveragePct(
+                                            home?.data_confidence?.coverage_pct,
+                                        )}
+                                    />
+                                </EvidenceFactList>
+                            ),
                         }}
                     />
                 }
@@ -137,27 +151,32 @@ export default async function Home({ searchParams }: HomePageProps) {
                 {lensConfig.framing ? (
                     <p className="text-xs text-(--accent-2)/80">{lensConfig.framing}</p>
                 ) : null}
-                <div className="flex items-center justify-between">
-                    <BackendBanner meta={meta} />
-                    <p className="text-body font-medium text-(--text-secondary)">
-                        <ClientTimestamp value={lastUpdatedAt} prefix="Last updated: " />
-                    </p>
-                </div>
+                {/* The last sync time is a row of the "Evidence & context" card. */}
+                <BackendBanner meta={meta} />
             </PageHeader>
 
             {setupStatus ? <SetupBanner status={setupStatus} orgId={setupOrgId} /> : null}
 
             <ScopeBar view="home" />
 
-            {/* Minimal freshness indicator only — no integration status UI */}
+            {/* Approved Home layout (prototype `cockpit()`): confidence banner, primary-signal
+                hero, then the ranked signals table beside the "Evidence & context" card. */}
+            <div className="flex min-w-0 flex-col gap-4.5" data-testid="home-primary">
+                {home?.data_confidence ? (
+                    <DataConfidenceIndicator confidence={home.data_confidence} />
+                ) : null}
 
-            {home?.data_confidence && <DataConfidenceIndicator confidence={home.data_confidence} />}
+                <CockpitSummary home={home} filters={filters} />
 
-            <CockpitSummary home={home} filters={filters} />
-
-            {home?.signals && home.signals.length > 0 ? (
-                <RankedSignals signals={home.signals} filters={filters} />
-            ) : null}
+                <div className="grid gap-4.5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+                    <RankedSignals
+                        signals={home?.signals ?? []}
+                        deltas={home?.deltas}
+                        filters={filters}
+                    />
+                    <EvidenceContextCard home={home} />
+                </div>
+            </div>
 
             {aiDominant ? (
                 <AiWorkflowCallout filters={filters} activeRole={activeRole} prominent />
