@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 
 import type { AIFilter } from "@/lib/filters/ai";
 import type { AiAttributedPr } from "@/lib/graphql/__generated__/types";
+import { STATUS_PILL } from "@/lib/statusPill";
 import { prWorkflowRootId } from "@/lib/ai/workflowRootId";
 import {
     useAIAttributedPrs,
@@ -152,7 +153,7 @@ export function EvidencePanel({ selected }: { selected: AiAttributedPr | null })
     if (error) {
         return (
             <p
-                className="rounded-2xl border border-(--accent-negative)/30 bg-red-500/5 px-4 py-3 text-sm text-red-600"
+                className={`rounded-2xl border px-4 py-3 text-sm ${STATUS_PILL.negative}`}
                 data-testid="ai-drilldown-evidence-error"
             >
                 Evidence unavailable: {error.message}
@@ -176,7 +177,9 @@ export function EvidencePanel({ selected }: { selected: AiAttributedPr | null })
                     {drilldown.nodes.length} nodes · {drilldown.edges.length} edges
                 </span>
                 {drilldown.partial && (
-                    <span className="rounded-full bg-amber-500/10 px-2 py-0.5 font-semibold text-amber-600">
+                    <span
+                        className={`rounded-full px-2 py-0.5 font-semibold ${STATUS_PILL.caution}`}
+                    >
                         partial
                     </span>
                 )}
@@ -272,7 +275,7 @@ export function AIEvidenceExplorer({ filter }: AIEvidenceExplorerProps) {
             <div className="mt-4">
                 {error ? (
                     <p
-                        className="rounded-2xl border border-(--accent-negative)/30 bg-red-500/5 px-4 py-3 text-sm text-red-600"
+                        className={`rounded-2xl border px-4 py-3 text-sm ${STATUS_PILL.negative}`}
                         data-testid="ai-drilldown-error"
                     >
                         Failed to load AI-attributed PRs: {error.message}

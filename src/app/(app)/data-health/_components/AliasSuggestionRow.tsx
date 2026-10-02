@@ -68,7 +68,7 @@ export function AliasSuggestionRow({ suggestion }: { suggestion: AliasSuggestion
                 </div>
                 <button
                     onClick={handleConfirm}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition"
+                    className="px-4 py-2 text-sm font-medium text-background bg-(--accent-2) rounded-lg hover:bg-(--accent-2)/90 transition"
                 >
                     {CTA_LABELS.confirmMapping}
                 </button>

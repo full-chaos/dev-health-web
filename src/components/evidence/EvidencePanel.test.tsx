@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from "@/test/utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { STATUS_PILL } from "@/lib/statusPill";
 import { EvidencePanel } from "./EvidencePanel";
 import type { MetricFilter } from "@/lib/filters/types";
 
@@ -165,6 +166,8 @@ describe("EvidencePanel", () => {
 
         await waitFor(() => expect(screen.getByText(/Partial evidence/i)).toBeInTheDocument());
         expect(screen.getByText(/No contributing artifacts were returned/i)).toBeInTheDocument();
+        // CHAOS-7883: the note uses the caution status token, not a raw amber class.
+        expect(screen.getByText(/Partial evidence/i).className).toContain(STATUS_PILL.caution);
     });
 
     it("uses the explain POST data path when an evidence URL points at explain", async () => {
