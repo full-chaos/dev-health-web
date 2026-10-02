@@ -29,7 +29,7 @@ export function OpportunityMasterDetail({
     const current = items[Math.min(selected, items.length - 1)];
 
     return (
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="grid gap-4 lg:grid-cols-[295px_minmax(0,1fr)]">
             <Section
                 aria-label="Open opportunities"
                 data-testid="opportunity-list"
