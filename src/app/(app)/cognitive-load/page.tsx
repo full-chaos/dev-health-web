@@ -1,4 +1,5 @@
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
+import { getTabSet, tabHref } from "@/lib/navigation/tabs";
 import { HeatmapView } from "@/components/work/HeatmapView";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { requireSession } from "@/lib/auth";
@@ -70,38 +71,13 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
     const activeTab = typeof tabParam === "string" ? tabParam : "overview";
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
     const scopeId = filters.scope.ids[0] ?? "";
-    const tabs: ViewSetItem[] = [
-        {
-            id: "overview",
-            label: "Overview",
-            path: withFilterParam("/cognitive-load", filters, activeRole),
-            navVisible: true,
-        },
-        {
-            id: "heatmap",
-            label: "Heatmap",
-            path: withFilterParam("/cognitive-load?tab=heatmap", filters, activeRole),
-            navVisible: true,
-        },
-        {
-            id: "context-switching",
-            label: "Context Switching",
-            path: withFilterParam("/cognitive-load?tab=context-switching", filters, activeRole),
-            navVisible: true,
-        },
-        {
-            id: "focus-pressure",
-            label: "Focus Pressure",
-            path: withFilterParam("/cognitive-load?tab=focus-pressure", filters, activeRole),
-            navVisible: true,
-        },
-        {
-            id: "load-drivers",
-            label: "Load Drivers",
-            path: withFilterParam("/cognitive-load?tab=load-drivers", filters, activeRole),
-            navVisible: true,
-        },
-    ];
+    const tabSet = getTabSet("cognitive-load");
+    const tabs: ViewSetItem[] = tabSet.tabs.map((tab) => ({
+        id: tab.id,
+        label: tab.label,
+        path: withFilterParam(tabHref(tabSet, tab.id), filters, activeRole),
+        navVisible: true,
+    }));
     const isDeveloperScope = filters.scope.level === "developer";
     const selectedDeveloperId = isDeveloperScope ? filters.scope.ids[0] : undefined;
     const effectiveSelfId =
