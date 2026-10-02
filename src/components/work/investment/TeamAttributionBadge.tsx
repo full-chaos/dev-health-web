@@ -2,6 +2,7 @@ import {
     describeAttributionProvenance,
     type AttributionTone,
 } from "@/lib/investment/teamAttribution";
+import { STATUS_PILL } from "@/lib/statusPill";
 import type {
     TeamAttributionConfidence,
     TeamAttributionSource,
@@ -17,9 +18,9 @@ import type {
  */
 
 const TONE_STYLES: Record<AttributionTone, string> = {
-    trusted: "border-green-500/30 bg-green-500/10 text-green-500",
-    derived: "border-sky-500/30 bg-sky-500/10 text-sky-400",
-    weak: "border-amber-500/30 bg-amber-500/10 text-amber-400",
+    trusted: STATUS_PILL.positive,
+    derived: STATUS_PILL.info,
+    weak: STATUS_PILL.caution,
     // Distinct, muted, dashed treatment — a backstop guess, not team truth.
     fallback: "border-dashed border-(--card-stroke) bg-(--card-70) text-(--ink-muted)",
     none: "border-(--card-stroke) bg-(--card-70) text-(--ink-muted)",

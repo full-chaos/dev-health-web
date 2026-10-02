@@ -23,10 +23,10 @@ describe("SourceBadge", () => {
         expect(screen.getByText("custom_feed")).toBeInTheDocument();
     });
 
-    it("applies the neutral slate palette", () => {
+    it("applies the neutral muted pill", () => {
         render(<SourceBadge source="dependabot" />);
         const badge = screen.getByText("Dependabot");
-        expect(badge.className).toContain("bg-slate-100");
-        expect(badge.className).toContain("text-slate-700");
+        expect(badge.className).toContain("bg-(--card-stroke)");
+        expect(badge.className).toContain("text-(--ink-muted)");
     });
 });

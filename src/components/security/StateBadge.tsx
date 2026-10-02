@@ -1,3 +1,4 @@
+import { STATUS_PILL } from "@/lib/statusPill";
 import type { SecurityState } from "@/lib/filters/security";
 
 type StateTone = "warn" | "success" | "muted";
@@ -12,9 +13,9 @@ const STATE_TONE: Record<SecurityState, StateTone> = {
 };
 
 const TONE_CLASSES: Record<StateTone, string> = {
-    warn: "bg-amber-100 text-amber-800",
-    success: "bg-emerald-100 text-emerald-800",
-    muted: "bg-slate-100 text-slate-500",
+    warn: STATUS_PILL.caution,
+    success: STATUS_PILL.positive,
+    muted: STATUS_PILL.muted,
 };
 
 const STATE_LABELS: Record<SecurityState, string> = {
