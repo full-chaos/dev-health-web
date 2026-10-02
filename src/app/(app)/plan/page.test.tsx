@@ -76,10 +76,11 @@ describe("Plan overview — what the page shows (pins)", () => {
         expect(screen.getByText("Open items")).toBeInTheDocument();
         expect(screen.queryByText("Delivery confidence")).toBeNull();
         expect(screen.getAllByText("51").length).toBeGreaterThan(0);
-        expect(screen.getByText("1 weeks")).toBeInTheDocument();
+        expect(screen.getByText("1 week")).toBeInTheDocument();
+        expect(screen.queryByText("1 weeks")).toBeNull();
         expect(screen.getByText("2 weeks")).toBeInTheDocument();
         expect(screen.getByText("4 weeks")).toBeInTheDocument();
-        expect(screen.getAllByText("Weeks to complete backlog")).toHaveLength(3);
+        expect(screen.getAllByText("throughput-based")).toHaveLength(3);
         expect(screen.getByText("Derived from current filters")).toBeInTheDocument();
         // The four tiles are one joined strip, one column per tile.
         const strip = screen.getByTestId("plan-tiles");
@@ -139,6 +140,31 @@ describe("Plan overview — what the page shows (pins)", () => {
         expect(facts[2]).toHaveTextContent("0/weekNormal");
     });
 
+    it("names the incident check 'Incident burden' (prototype) whatever label the API serves", async () => {
+        mockForecast.mockResolvedValue(
+            forecast({ incidentLoad: overlay("incident_load", "Incident load", 0, 10) }),
+        );
+        await renderPage();
+
+        const labels = within(screen.getByTestId("risk-facts"))
+            .getAllByTestId("evidence-fact")
+            .map((row) => row.querySelector("dt")?.textContent);
+        expect(labels).toContain("Incident burden");
+        expect(labels).not.toContain("Incident load");
+    });
+
+    it("labels the tiles P50 / P75 / P90 forecast and says '1 week' for exactly one", async () => {
+        mockForecast.mockResolvedValue(forecast());
+        await renderPage();
+
+        const tiles = screen.getAllByTestId("percentile-tile");
+        expect(tiles.map((tile) => within(tile).getByText(/forecast$/).textContent)).toEqual([
+            "P50 forecast",
+            "P75 forecast",
+            "P90 forecast",
+        ]);
+    });
+
     it("shows the prototype's No elevated risk inset with the served thresholds when calm", async () => {
         mockForecast.mockResolvedValue(forecast());
         await renderPage();
@@ -148,7 +174,7 @@ describe("Plan overview — what the page shows (pins)", () => {
             within(inset).getByRole("heading", { name: "No elevated risk" }),
         ).toBeInTheDocument();
         expect(inset).toHaveTextContent(
-            "Captured checks: WIP threshold 1.25×, review threshold 48 hours, incident threshold 10 per week.",
+            "Checks: WIP threshold 1.25×, review threshold 48 hours, incident threshold 10 per week.",
         );
     });
 
