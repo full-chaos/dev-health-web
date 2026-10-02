@@ -120,23 +120,9 @@ describe("Diagnose overview layout (approved prototype diagnoseHub, CHAOS-8065)"
         expect(actions.getByRole("button", { name: "View evidence" })).toBeInTheDocument();
     });
 
-    it("View evidence opens the shared drawer for the primary signal's metric, with scope and role", async () => {
-        getDiagnoseSignalsMock.mockResolvedValue([COMPLEXITY, CODE]);
-        await draw({ role: "em", range_days: "90" });
-        expect(screen.queryByTestId("evidence-panel")).toBeNull();
-
-        fireEvent.click(screen.getByRole("button", { name: "View evidence" }));
-
-        expect(screen.getByTestId("evidence-panel")).toBeInTheDocument();
-        const props = evidencePanelSpy.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-        expect(props).toMatchObject({ title: "Code churn", metric: "churn", role: "em" });
-        expect((props.filters as { time: { range_days: number } }).time.range_days).toBe(90);
-    });
-
-    it("View evidence lists the page's signals when the primary signal has no home metric", async () => {
+    it("View evidence explains the page: every served signal in body order, no explain metric", async () => {
         getDiagnoseSignalsMock.mockResolvedValue([
             COMPLEXITY,
-            { ...CODE, state: "low" },
             signal({
                 id: "landscape",
                 label: "Landscape",
@@ -144,18 +130,35 @@ describe("Diagnose overview layout (approved prototype diagnoseHub, CHAOS-8065)"
                 value: "",
                 state: "unavailable",
             }),
+            CODE,
+        ]);
+        await draw({ role: "em", range_days: "90" });
+
+        fireEvent.click(screen.getByRole("button", { name: "View evidence" }));
+
+        // The page brings its own body: the drawer loads no metric, also when the hero is Code.
+        expect(screen.queryByTestId("evidence-panel")).toBeNull();
+        expect(evidencePanelSpy).not.toHaveBeenCalled();
+        const drawer = within(screen.getByRole("dialog"));
+        expect(drawer.getByText("Diagnostic sub-areas, ordered by severity.")).toBeInTheDocument();
+        expect(drawer.getAllByTestId("evidence-fact").map((row) => row.textContent)).toEqual([
+            "Code · Code churn1,320,441 · Critical",
+            "Complexity · Avg complexity121.3 · High",
+            "Landscape · Bus factorNot reported",
+        ]);
+    });
+
+    it("View evidence lists the page when no signal has data (never an invented metric)", async () => {
+        getDiagnoseSignalsMock.mockResolvedValue([
+            signal({ id: "code", label: "Code", value: "", state: "unavailable" }),
         ]);
         await draw();
 
         fireEvent.click(screen.getByRole("button", { name: "View evidence" }));
 
-        expect(screen.queryByTestId("evidence-panel")).toBeNull();
-        const drawer = within(screen.getByRole("dialog"));
-        expect(drawer.getByText("Diagnostic sub-areas, ordered by severity.")).toBeInTheDocument();
-        expect(drawer.getAllByTestId("evidence-fact").map((row) => row.textContent)).toEqual([
-            "Complexity · Avg complexity121.3 · High",
-            "Code · Code churn1,320,441 · Low",
-            "Landscape · Bus factorNot reported",
-        ]);
+        expect(evidencePanelSpy).not.toHaveBeenCalled();
+        const row = within(screen.getByRole("dialog")).getByTestId("evidence-fact");
+        expect(row).toHaveAttribute("data-reported", "false");
+        expect(row).toHaveTextContent("Not reported");
     });
 });

@@ -1,5 +1,5 @@
 import { AreaOverview } from "@/components/navigation/AreaOverview";
-import { diagnoseEvidenceSubject } from "./diagnoseEvidence";
+import { areaOverviewEvidenceSubject } from "@/components/navigation/areaOverviewEvidence";
 import { DiagnoseQuestions } from "./DiagnoseQuestions";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -44,9 +44,13 @@ export default async function DiagnosePage({ searchParams }: DiagnosePageProps) 
                 title="Diagnose"
                 subtitle="Investigate flow, investment, landscape, work graph, complexity, cognitive load, bottlenecks, and code."
                 actions={
-                    // The page subject is the primary signal (the hero's severity rule).
+                    // The subject is the page: every served signal, in body order.
                     <PageHeaderEvidenceAction
-                        subject={diagnoseEvidenceSubject(diagnoseSignals, filters, activeRole)}
+                        subject={areaOverviewEvidenceSubject(
+                            "Diagnose",
+                            diagnoseSignals,
+                            "Diagnostic sub-areas, ordered by severity.",
+                        )}
                     />
                 }
             />
