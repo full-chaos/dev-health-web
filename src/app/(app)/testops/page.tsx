@@ -1,4 +1,5 @@
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -128,7 +129,7 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
                 </p>
             </section>
 
-            <section className="grid gap-4 lg:grid-cols-3">
+            <MetricStrip>
                 {measures.map(({ id, ts }) => {
                     const def = TESTOPS_MEASURES[id];
                     if (!def) return null;
@@ -153,7 +154,7 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
                         />
                     );
                 })}
-            </section>
+            </MetricStrip>
         </div>
     );
 }
