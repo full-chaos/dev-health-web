@@ -19,7 +19,11 @@ const {
     listFeatureFlagsMock: vi.fn(),
 }));
 
-vi.mock("next/navigation", () => ({ notFound: vi.fn() }));
+// AdminHeader renders the shared PageHeader, which reads the pathname (CHAOS-7965).
+vi.mock("next/navigation", () => ({
+    notFound: vi.fn(),
+    usePathname: () => "/superadmin/licensing/org-1",
+}));
 vi.mock("@/lib/admin/server", () => ({
     getOrganization: getOrganizationMock,
     getOrgEntitlements: getOrgEntitlementsMock,
