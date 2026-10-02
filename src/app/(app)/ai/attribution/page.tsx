@@ -1,12 +1,11 @@
 import { AIAttributionDashboard } from "@/components/ai/AIAttributionDashboard";
-import { AIPageHeader } from "@/components/ai/AIPageHeader";
-import { FilterBar } from "@/components/filters/FilterBar";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { metricFilterToAIFilter } from "@/lib/filters/ai";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { navTrailForPathname } from "@/lib/navigation/areas";
+import { withFilterParam } from "@/lib/filters/url";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 
 type AIAttributionPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -21,34 +20,26 @@ export default async function AIAttributionPage({ searchParams }: AIAttributionP
     const params = (await searchParams) ?? {};
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
+    const role = Array.isArray(params.role) ? params.role[0] : params.role;
     const aiFilter = metricFilterToAIFilter(filters);
     const health = await checkApiHealth();
 
     if (!health.ok) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     return (
-        <>
-            <AIPageHeader
-                eyebrow="AI"
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            <PageHeader
                 title="Attribution"
-                breadcrumbs={[
-                    ...navTrailForPathname("/ai/attribution").map((c) => ({
-                        ...c,
-                        href: c.href ?? "/ai",
-                    })),
-                    { label: "Attribution" },
-                ]}
-            >
-                How work in this window appears to split across AI-assisted, AI-reviewed,
-                agent-created, and unknown-signal kinds, with the persisted evidence behind every
-                bucket.
-            </AIPageHeader>
+                subtitle="How work in this window appears to split across AI-assisted, AI-reviewed, agent-created, and unknown-signal kinds, with the persisted evidence behind every bucket."
+                back={{ href: withFilterParam("/ai", filters, role), area: "AI" }}
+            />
 
-            <GlobalContextBar filters={filters} />
-            <FilterBar view="ai" />
+            <ScopeBar view="ai" pageFilters={false} />
             <AIAttributionDashboard filter={aiFilter} />
-        </>
+        </div>
     );
 }

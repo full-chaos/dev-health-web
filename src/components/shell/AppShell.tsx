@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 import type { ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 import { LegacyAccountBar } from "./LegacyAccountBar";
-import { ShellOrganizationProvider, ShellProvider } from "./ShellContext";
+import { ShellMobileBar } from "./ShellMobileBar";
+import { ShellOrganizationProvider } from "./ShellContext";
 import { ShellSidebar } from "./ShellSidebar";
 import { shellStatusFromOrganization, type ShellStatus } from "./ShellStatusChip";
 import { ShellTopBar } from "./ShellTopBar";
@@ -43,6 +44,22 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
     const handleActiveOrganizationChange = useCallback((next: ActiveOrganizationData | null) => {
         setOrganization(next);
     }, []);
+    // Below `md` the navigation is a slide-over. It is open for the path it was opened on, so a
+    // navigation closes it without an effect; the menu button lives in the mobile bar.
+    const [navOpenedAt, setNavOpenedAt] = useState<string | null>(null);
+    const mobileOpen = navOpenedAt !== null && navOpenedAt === pathname;
+    const menuControlRef = useRef<HTMLButtonElement>(null);
+    const closeMobileNav = useCallback(() => setNavOpenedAt(null), []);
+    useEffect(() => {
+        // Growing past `md` while it is open: the sidebar is a static column again.
+        const query = window.matchMedia?.("(min-width: 768px)");
+        if (!query) return;
+        const onChange = (event: MediaQueryListEvent) => {
+            if (event.matches) setNavOpenedAt(null);
+        };
+        query.addEventListener("change", onChange);
+        return () => query.removeEventListener("change", onChange);
+    }, []);
     const dataStatus: ShellStatus =
         organization === undefined
             ? { kind: "loading" }
@@ -59,7 +76,7 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
     }
 
     return (
-        <ShellProvider>
+        <>
             <a
                 href="#main-content"
                 className="sr-only rounded-(--radius-sm) bg-(--surface) px-4 py-2 text-sm font-medium text-(--text-primary) focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
@@ -67,11 +84,18 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
                 {CTA_LABELS.skipToMainContent}
             </a>
             {banners}
-            <div className="md:hidden">
-                <LegacyAccountBar />
-            </div>
+            <ShellMobileBar
+                open={mobileOpen}
+                onToggle={() => setNavOpenedAt(mobileOpen ? null : pathname)}
+                controlRef={menuControlRef}
+            />
             <div className="flex flex-col md:flex-row" data-testid="app-shell">
-                <ShellSidebar onActiveOrganizationChange={handleActiveOrganizationChange} />
+                <ShellSidebar
+                    onActiveOrganizationChange={handleActiveOrganizationChange}
+                    mobileOpen={mobileOpen}
+                    onMobileClose={closeMobileNav}
+                    mobileControlRef={menuControlRef}
+                />
                 <div className="flex min-w-0 flex-1 flex-col">
                     <ShellTopBar status={dataStatus} themeToggle={themeToggle} />
                     <main
@@ -85,6 +109,6 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
                     </main>
                 </div>
             </div>
-        </ShellProvider>
+        </>
     );
 }

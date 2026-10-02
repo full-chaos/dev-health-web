@@ -5,9 +5,9 @@
  * A pathname that matches a registered prefix renders inside the shared shell
  * (sidebar, top bar, one `<main>`). Every other authed route keeps the legacy
  * chrome unchanged: the account bar from the layout plus the page's own
- * `PrimaryNav`. Page migrations add their prefix here and remove the page-level
- * navigation in the same change. When every authed route is registered, this
- * file and the legacy branch of `AppShell` are deleted.
+ * navigation (the Admin sidebar). Page migrations add their prefix here and
+ * remove the page-level navigation in the same change. When every authed route
+ * is registered, this file and the legacy branch of `AppShell` are deleted.
  */
 export type ShellRoute = {
     /** Route prefix. Matches the exact path and its descendants. */
@@ -17,17 +17,18 @@ export type ShellRoute = {
     /**
      * Keeps a page's production link behaviour: navigation links always carry a
      * resolved `role` (lens first, then `role`, then the default role), as the
-     * page's own `PrimaryNav` did. Without it, `role` is carried only when the
+     * page's old navigation (`PrimaryNav`) did. Without it, `role` is carried only when the
      * URL has it.
      */
     defaultRole?: boolean;
     /**
      * `"page"`: the `f` param of this route is the page's own encoding, not a
-     * metric filter (the Security pages keep a Security filter there). The
-     * navigation links then carry the default metric filter, as the page's own
-     * `PrimaryNav` did, and never the page's `f`.
+     * metric filter (the Security pages keep a Security filter there).
+     * `"none"`: the route has no filter state (an artifact detail page reads no
+     * query param). On both the navigation links carry the default metric
+     * filter, as the page's old navigation did, and never a filter from the URL.
      */
-    filterParam?: "page";
+    filterParam?: "page" | "none";
 };
 
 export const SHELL_ROUTES: readonly ShellRoute[] = [
@@ -62,6 +63,23 @@ export const SHELL_ROUTES: readonly ShellRoute[] = [
     { prefix: "/opportunities" },
     { prefix: "/improve/experiments" },
     { prefix: "/improve/automations" },
+    // AI
+    { prefix: "/ai", exact: true },
+    { prefix: "/ai/impact", exact: true },
+    { prefix: "/ai/impact/evidence" },
+    { prefix: "/ai/review-load" },
+    { prefix: "/ai/automations" },
+    { prefix: "/ai/risk" },
+    { prefix: "/ai/attribution" },
+    // Artifact detail pages (Diagnose owns them; no filter state)
+    { prefix: "/prs", filterParam: "none" },
+    { prefix: "/issues", filterParam: "none" },
+    { prefix: "/deployments", filterParam: "none" },
+    // Reports (Report Center: links carry the filter of the URL)
+    { prefix: "/reports", exact: true },
+    // Its descendants (Create Report, report detail): no filter state. On an
+    // equal prefix length the first entry wins, so `/reports` keeps the entry above.
+    { prefix: "/reports", filterParam: "none" },
 ];
 
 function matchesRoute(pathname: string, route: ShellRoute): boolean {

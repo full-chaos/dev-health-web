@@ -2,41 +2,40 @@
 
 import { useMemo } from "react";
 
-import { ForecastCard } from "@/components/capacity/ForecastCard";
+import { ForecastInputsCard } from "@/components/capacity/ForecastInputsCard";
+import { ForecastNotices } from "@/components/capacity/ForecastNotices";
+import { ForecastTiles } from "@/components/capacity/ForecastTiles";
 import { ConfidenceBandChart } from "@/components/charts/ConfidenceBandChart";
 import { ThroughputHistogram } from "@/components/charts/ThroughputHistogram";
+import { DataState } from "@/components/ui/DataState";
+import { Notice } from "@/components/ui/Notice";
 import { useCapacityForecast } from "@/lib/graphql/hooks";
 import { useOrgId } from "@/lib/graphql/provider";
 import type { MetricFilter } from "@/lib/filters/types";
+
+import { capacityForecastInput } from "./capacityInput";
 
 type CapacityViewProps = {
     filters: MetricFilter;
     orgId?: string;
 };
 
+const CARD = "rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6";
+
 export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
     const contextOrgId = useOrgId();
     const orgId = propOrgId || contextOrgId || "";
-    const teamId =
-        filters.scope.level === "team" && filters.scope.ids.length > 0
-            ? filters.scope.ids[0]
-            : undefined;
-
-    const historyDays = filters.time.range_days ?? 90;
 
     const {
         data: queryData,
-        loading: queryLoading,
-        error: queryError,
-        refetch,
+        loading: isLoading,
+        error,
     } = useCapacityForecast({
         orgId,
-        input: { teamId, historyDays },
+        input: capacityForecastInput(filters),
     });
 
     const forecast = queryData;
-    const isLoading = queryLoading;
-    const error = queryError;
 
     const chartData = useMemo(() => {
         if (!forecast) return null;
@@ -54,30 +53,39 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h2 className="text-xl font-semibold text-foreground">Completion Forecast</h2>
-                    <p className="mt-1 text-sm text-(--ink-muted)">
+            {isLoading ? (
+                <div
+                    data-testid="forecast-loading"
+                    className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 animate-pulse"
+                >
+                    {[0, 1, 2, 3].map((index) => (
+                        <div key={index} className={`${CARD} h-28`} />
+                    ))}
+                </div>
+            ) : error ? (
+                <Notice variant="danger" live={false} titleAs="h3" title="Forecast Unavailable">
+                    {error.message}
+                </Notice>
+            ) : forecast ? (
+                <>
+                    <ForecastNotices forecast={forecast} />
+                    <ForecastTiles forecast={forecast} />
+                </>
+            ) : (
+                <DataState
+                    variant="insufficient-confidence"
+                    title="No Forecast Available"
+                    description="Insufficient throughput history to generate a forecast. Need at least 14 days of data."
+                    data-testid="forecast-empty"
+                />
+            )}
+
+            <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+                <div className={CARD}>
+                    <h3 className="text-sm font-medium text-foreground">Completion projection</h3>
+                    <p className="mb-4 mt-1 text-sm text-(--text-muted)">
                         Monte Carlo forecast for work completion
                     </p>
-                </div>
-                <button
-                    type="button"
-                    onClick={() => refetch()}
-                    disabled={isLoading}
-                    className="rounded-lg border border-(--card-stroke) bg-card px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-80) disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    {isLoading ? "Computing..." : "Refresh Forecast"}
-                </button>
-            </div>
-
-            <div className="grid gap-6 lg:grid-cols-[380px_1fr]">
-                <ForecastCard forecast={forecast} loading={isLoading} error={error} />
-
-                <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
-                    <h3 className="text-sm font-medium text-foreground mb-4">
-                        Completion Projection
-                    </h3>
                     {chartData ? (
                         <>
                             <ConfidenceBandChart
@@ -91,29 +99,31 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                                 throughputMean={chartData.throughputMean}
                                 height={320}
                             />
-                            <p className="mt-2 text-xs text-(--ink-muted)">
+                            <p className="mt-2 text-xs text-(--text-muted)">
                                 Line = backlog burned at the mean throughput; markers = the
                                 forecast&apos;s P50 / P85 / P95 days. No distribution is drawn.
                             </p>
                         </>
                     ) : isLoading ? (
                         <div className="flex h-80 items-center justify-center">
-                            <div className="animate-pulse text-sm text-(--ink-muted)">
+                            <div className="animate-pulse text-sm text-(--text-muted)">
                                 Loading chart...
                             </div>
                         </div>
                     ) : (
-                        <div className="flex h-80 items-center justify-center text-sm text-(--ink-muted)">
+                        <div className="flex h-80 items-center justify-center text-sm text-(--text-muted)">
                             No forecast data available
                         </div>
                     )}
                 </div>
+
+                {forecast ? <ForecastInputsCard forecast={forecast} /> : null}
             </div>
 
             {forecast && (
                 <div className="grid gap-6 lg:grid-cols-2">
-                    <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
-                        <h3 className="text-sm font-medium text-foreground mb-4">
+                    <div className={CARD}>
+                        <h3 className="mb-4 text-sm font-medium text-foreground">
                             Throughput Distribution
                         </h3>
                         <ThroughputHistogram
@@ -121,37 +131,31 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                             throughputStddev={forecast.throughputStddev}
                             height={200}
                         />
-                        <p className="mt-3 text-xs text-(--ink-muted)">
+                        <p className="mt-3 text-xs text-(--text-muted)">
                             Based on {forecast.historyDays} days of historical data
                         </p>
                     </div>
 
-                    <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
-                        <h3 className="text-sm font-medium text-foreground mb-3">
+                    <div className={CARD}>
+                        <h3 className="mb-3 text-sm font-medium text-foreground">
                             How to Interpret
                         </h3>
-                        <div className="grid gap-3 text-sm text-(--ink-muted)">
+                        <div className="grid gap-3 text-sm text-(--text-muted)">
                             <div>
-                                <span className="font-medium text-green-600 dark:text-green-400">
-                                    P50 (50%)
-                                </span>
+                                <span className="font-medium text-foreground">P50 (50%)</span>
                                 <p className="mt-0.5 text-xs">
                                     Optimistic estimate. Half of simulations complete by this date.
                                 </p>
                             </div>
                             <div>
-                                <span className="font-medium text-amber-600 dark:text-amber-400">
-                                    P85 (85%)
-                                </span>
+                                <span className="font-medium text-foreground">P85 (85%)</span>
                                 <p className="mt-0.5 text-xs">
                                     Recommended target. 85% confidence provides buffer for
                                     variability.
                                 </p>
                             </div>
                             <div>
-                                <span className="font-medium text-red-600 dark:text-red-400">
-                                    P95 (95%)
-                                </span>
+                                <span className="font-medium text-foreground">P95 (95%)</span>
                                 <p className="mt-0.5 text-xs">
                                     Conservative estimate. Use for commitments with low risk
                                     tolerance.

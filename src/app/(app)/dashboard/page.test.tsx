@@ -33,7 +33,6 @@ vi.mock("@/components/home/DataConfidenceIndicator", () => ({
 vi.mock("@/components/home/InvestmentPreview", () => ({ InvestmentPreview: () => null }));
 vi.mock("@/components/home/RankedSignals", () => ({ RankedSignals: () => null }));
 vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => null }));
-vi.mock("@/components/navigation/PrimaryNav", () => ({ PrimaryNav: () => null }));
 vi.mock("@/components/onboarding/SetupBanner", () => ({ SetupBanner: () => null }));
 
 const HOME_DATA: HomeResponse = {

@@ -12,9 +12,6 @@ vi.mock("next/navigation", () => ({
     useSearchParams: () => new URLSearchParams(),
 }));
 
-// Not under test here — the report/run-history refresh behavior is.
-vi.mock("@/components/navigation/PrimaryNav", () => ({ PrimaryNav: () => null }));
-
 const mockFetchSavedReport = vi.fn();
 const mockFetchReportRuns = vi.fn();
 const mockTriggerReport = vi.fn();

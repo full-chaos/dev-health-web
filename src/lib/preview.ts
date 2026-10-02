@@ -1,7 +1,7 @@
 /**
  * Single source of truth for "is this feature a preview / not-yet-general
  * destination". Centralizing this lets navigation (PrimaryNav), page headers
- * (AIPageHeader / AdminHeader), and feature surfaces agree on one answer
+ * (PageHeader / AdminHeader), and feature surfaces agree on one answer
  * instead of each re-deciding via scattered copy or ad-hoc flags.
  *
  * A preview feature is one whose underlying signal is not yet generally

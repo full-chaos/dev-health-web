@@ -12,26 +12,18 @@
  * confident-looking AI label.
  */
 
+// Concept: an outline pill with a dot in the bucket's color (the same color as its slice in the
+// Impact donut); Unknown is dashed and carries no color, so it never reads as a confident label.
+const PILL = "border-(--card-stroke) bg-transparent text-foreground";
 const BUCKET_TREATMENTS = {
-    ai_assisted: {
-        label: "AI-assisted",
-        className: "border-sky-500/30 bg-sky-500/10 text-sky-400",
-    },
-    ai_review: {
-        label: "AI-reviewed",
-        className: "border-teal-500/30 bg-teal-500/10 text-teal-500",
-    },
-    agent_created: {
-        label: "Agent-created",
-        className: "border-violet-500/30 bg-violet-500/10 text-violet-400",
-    },
-    human: {
-        label: "Human",
-        className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-500",
-    },
+    ai_assisted: { label: "AI-assisted", className: PILL, dot: "bg-(--chart-color-1)" },
+    ai_review: { label: "AI-reviewed", className: PILL, dot: "bg-(--chart-color-2)" },
+    agent_created: { label: "Agent-created", className: PILL, dot: "bg-(--chart-color-6)" },
+    human: { label: "Human", className: PILL, dot: "bg-(--ink-muted)" },
     unknown: {
         label: "Unknown attribution",
-        className: "border-(--card-stroke) bg-background/60 text-(--ink-muted)",
+        className: "border-dashed border-(--card-stroke) bg-transparent text-(--ink-muted)",
+        dot: "border border-dashed border-(--ink-muted) bg-transparent",
     },
 } as const;
 
@@ -100,8 +92,13 @@ export function AIAttributionBadge({
         <span
             title={tooltipParts.join(" · ")}
             data-testid="ai-attribution-badge"
-            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em] ${treatment.className} ${className ?? ""}`.trim()}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-label-caps font-semibold uppercase ${treatment.className} ${className ?? ""}`.trim()}
         >
+            <span
+                aria-hidden="true"
+                data-testid="ai-attribution-dot"
+                className={`h-1.5 w-1.5 shrink-0 rounded-full ${treatment.dot}`}
+            />
             {treatment.label}
             {tool ? (
                 <span className="font-normal normal-case tracking-normal">· {tool}</span>
