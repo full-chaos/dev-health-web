@@ -609,4 +609,14 @@ describe("ShellSidebar — a route with its own `f` encoding (Security)", () => 
         renderSidebar({}, undefined);
         expect(within(sidebar()).queryByTestId("account-detail")).toBeNull();
     });
+
+    it("fills the sidebar with --sidebar (prototype `.app-sidebar`), not the card surface", () => {
+        renderSidebar();
+        const rail = sidebar();
+        expect(rail.className).toContain("md:bg-(--sidebar)");
+        const panel = rail.querySelector("#primary-navigation-panel") as HTMLElement;
+        expect(panel.className).toContain("bg-(--sidebar)");
+        expect(rail.className).not.toContain("bg-(--surface)");
+        expect(panel.className).not.toContain("bg-(--surface)");
+    });
 });
