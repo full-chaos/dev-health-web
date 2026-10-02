@@ -1,5 +1,6 @@
 "use client";
 
+import { Moon, Sun } from "lucide-react";
 import { useEffect, useSyncExternalStore } from "react";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { isServer, getLocalStorage } from "@/lib/env";
@@ -64,18 +65,19 @@ export function ThemeToggle() {
     }, []);
 
     const isLight = theme === "light";
+    // The icon and the label name the theme a click switches TO (prototype app.js:41).
+    const Icon = isLight ? Moon : Sun;
 
     return (
         <button
             type="button"
-            aria-pressed={isLight}
-            aria-label={CTA_LABELS.themeSwitchLight}
+            aria-label={isLight ? CTA_LABELS.themeSwitchToDark : CTA_LABELS.themeSwitchToLight}
             data-testid="theme-toggle"
+            data-theme-current={theme}
             onClick={() => applyTheme(isLight ? "dark" : "light")}
-            className="inline-flex h-8 items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-70) px-3 text-label-caps font-semibold uppercase tracking-[0.2em] text-foreground transition-colors hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-(--card-stroke) bg-(--card-70) text-foreground transition-colors hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
         >
-            <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-(--accent)" />
-            <span aria-hidden="true">{isLight ? "Light" : "Dark"}</span>
+            <Icon aria-hidden="true" strokeWidth={1.65} className="h-4 w-4" />
         </button>
     );
 }
