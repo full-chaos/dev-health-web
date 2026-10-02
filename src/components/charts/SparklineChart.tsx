@@ -34,6 +34,22 @@ type SparklineChartProps = {
     tone?: "default" | "bad";
 };
 
+/**
+ * Value range of the `tile` variant: from the lowest to the highest served point, as the prototype
+ * `spark()` stretches a series, so the mark shows the SHAPE of the series (it has no axis to read
+ * a magnitude from). A flat series (lowest = highest) gets one unit above and below, so it is a
+ * line through the middle. Gaps (null) are not points. With no point at all there is no range.
+ */
+export function tileSparkRange(
+    data: ReadonlyArray<number | null>,
+): { min: number; max: number } | null {
+    const points = data.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    if (points.length === 0) return null;
+    const lo = Math.min(...points);
+    const hi = Math.max(...points);
+    return lo === hi ? { min: lo - 1, max: hi + 1 } : { min: lo, max: hi };
+}
+
 /** `tile` variant marks. The prototype draws them in a 100x36 box shown at 87x31. */
 export const TILE_SPARK = {
     lineWidth: 1.5,
@@ -103,6 +119,8 @@ export function SparklineChart({
     const chartColors = useChartColors();
     const chartTokens = useChartTokens();
     const isTile = variant === "tile";
+    // Tile: min..max of the series (shape). Default: the value axis as before (it includes 0).
+    const tileRange = isTile ? tileSparkRange(data) : null;
     const tileDotColor =
         (tone === "bad" ? chartTokens.negative : chartColors[0]) ?? chartTheme.muted;
     const dotSize = pointSymbolSize(data);
@@ -140,6 +158,7 @@ export function SparklineChart({
                 },
                 yAxis: {
                     type: "value",
+                    ...(tileRange ?? {}),
                     axisLabel: { show: false },
                     splitLine: { show: false },
                 },

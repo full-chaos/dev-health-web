@@ -47,6 +47,9 @@ it with either a **real period-over-period delta** or an **explicit labeled stat
   not serve shows **"Not reported"** (muted), never `--` and never `0`; a served `0` shows
   `0`. A metric with no series to plot says **"No trend yet"** in the meta line; no flat line
   is drawn for it.
+- The sparkline of a `MetricCard` shows the SHAPE of the series: it runs from the lowest to
+  the highest served point (a flat series is a line through the middle). It has no axis, so
+  it is never read for a magnitude; the number of the tile carries the value.
 - The meta line of a `MetricCard` reads `<delta> · <note>`. The note is the caller's
   `caption`; the tile adds no note of its own, because it cannot know what a caller's delta
   compares with (a previous window, or the first and last bucket of a series).
