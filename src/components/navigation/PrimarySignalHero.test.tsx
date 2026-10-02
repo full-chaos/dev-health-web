@@ -22,9 +22,23 @@ describe("PrimarySignalHero", () => {
         expect(screen.getByTestId("area-signal-value")).toHaveTextContent("5");
         expect(screen.getByText("Open criticals")).toBeInTheDocument();
         expect(screen.getByTestId("area-signal-badge")).toHaveTextContent(/critical/i);
-        const cta = screen.getByRole("link", { name: "Open Security" });
+        const link = screen.getByRole("link", { name: "Security" });
+        expect(link.getAttribute("href")).toContain("/security");
+        expect(screen.getAllByRole("link")).toHaveLength(1);
+    });
+
+    it("draws the caller's action text as the one primary link, and no overlay link", () => {
+        render(
+            <PrimarySignalHero
+                signal={base}
+                filters={defaultMetricFilter}
+                actionLabel="Inspect code"
+            />,
+        );
+        const cta = screen.getByRole("link", { name: "Inspect code" });
         expect(cta.getAttribute("href")).toContain("/security");
         expect(screen.getAllByRole("link")).toHaveLength(1);
+        expect(screen.queryByTestId("area-signal-hero-link")).toBeNull();
     });
 
     it("never invents a value: no value node when none is served", () => {

@@ -167,10 +167,10 @@ describe("AreaOverview note slot", () => {
 });
 
 describe("AreaOverview — hero action, group heads, no eyebrow", () => {
-    it("draws the hero with one primary link into the sub-area", () => {
+    it("makes the whole hero one link into the sub-area (no invented action text)", () => {
         renderOverview([signal("crit", "critical"), signal("high", "high")]);
         const hero = screen.getByTestId("area-overview-hero");
-        expect(within(hero).getByRole("link", { name: "Open crit" })).toHaveAttribute(
+        expect(within(hero).getByRole("link", { name: "crit" })).toHaveAttribute(
             "href",
             expect.stringContaining("/crit"),
         );

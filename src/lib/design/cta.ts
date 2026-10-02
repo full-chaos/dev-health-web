@@ -23,8 +23,6 @@ export const CTA_LABELS = {
     skipToMainContent: "Skip to main content",
     /** Open the evidence trail behind a signal / metric / work unit. */
     openEvidence: "Open evidence",
-    /** Lead word of the primary-signal hero action: "Open <sub-area>". */
-    openSignal: "Open",
     generateContext: "Generate context",
     markContextIncorrect: "Mark context as incorrect",
     markContextStale: "Mark context as stale",

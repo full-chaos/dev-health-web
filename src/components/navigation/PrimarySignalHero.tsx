@@ -4,7 +4,6 @@ import { ArrowRight } from "lucide-react";
 import { AREA_STATE_BADGE, AREA_STATE_LABEL } from "@/components/home/severityTokens";
 import { buttonClassName } from "@/components/shared/Button";
 import type { AreaSignal } from "@/lib/areaSignals/types";
-import { CTA_LABELS } from "@/lib/design/cta";
 import { withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
 
@@ -23,17 +22,23 @@ type PrimarySignalHeroProps = {
     signal: AreaSignal & { state: Exclude<AreaSignal["state"], "unavailable"> };
     filters: MetricFilter;
     role?: string;
+    /**
+     * Visible action text, supplied by the caller from the approved prototype copy for that view
+     * (for example "Inspect code"). Without it the whole hero is the link (no invented copy).
+     */
+    actionLabel?: string;
 };
 
 /**
  * Shared primary-signal hero (prototype `hero()`): severity badge and "Primary signal" eyebrow,
  * the sub-area name, an optional caption, the headline value exactly as served, its metric name,
- * and one primary action into the sub-area.
+ * and one primary action into the sub-area when the caller supplies the prototype action text;
+ * otherwise the whole hero links there.
  *
  * Presentational. It shows the served `value`, `metricLabel` and `driver` and picks nothing:
  * the caller chooses the signal (existing severity rule).
  */
-export function PrimarySignalHero({ signal, filters, role }: PrimarySignalHeroProps) {
+export function PrimarySignalHero({ signal, filters, role, actionLabel }: PrimarySignalHeroProps) {
     const href = withFilterParam(signal.href, filters, role);
     return (
         <div
@@ -41,8 +46,16 @@ export function PrimarySignalHero({ signal, filters, role }: PrimarySignalHeroPr
             data-signal-id={signal.id}
             data-state={signal.state}
             data-emphasized="true"
-            className={`flex flex-wrap items-center justify-between gap-5.5 rounded-(--radius-md) border border-l-3 border-(--card-stroke) bg-(--card) p-6.25 ${HERO_EDGE[signal.state]}`}
+            className={`relative flex flex-wrap items-center justify-between gap-5.5 rounded-(--radius-md) border border-l-3 border-(--card-stroke) bg-(--card) p-6.25 ${HERO_EDGE[signal.state]}`}
         >
+            {actionLabel ? null : (
+                <Link
+                    href={href}
+                    aria-label={signal.label}
+                    data-testid="area-signal-hero-link"
+                    className="absolute inset-0 rounded-(--radius-md)"
+                />
+            )}
             <div className="min-w-0">
                 <div className="flex items-center gap-2.5">
                     <span
@@ -77,10 +90,12 @@ export function PrimarySignalHero({ signal, filters, role }: PrimarySignalHeroPr
                     </span>
                 ) : null}
                 <span className="text-xs text-(--ink-muted)">{signal.metricLabel}</span>
-                <Link href={href} className={buttonClassName("primary", "md", "mt-3")}>
-                    {CTA_LABELS.openSignal} {signal.label}
-                    <ArrowRight aria-hidden="true" className="h-4 w-4" />
-                </Link>
+                {actionLabel ? (
+                    <Link href={href} className={buttonClassName("primary", "md", "mt-3")}>
+                        {actionLabel}
+                        <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                    </Link>
+                ) : null}
             </div>
         </div>
     );
