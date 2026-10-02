@@ -46,6 +46,12 @@ function CountDelta({ delta }: { delta: number }) {
 
 const PILL_ICON = { negative: OctagonAlert, caution: TriangleAlert } as const;
 
+/**
+ * The strip draws the seams and the outer border; a tile inside its testid wrapper (kept for the
+ * e2e tests) drops its own border and radius, as the strip does for its direct children.
+ */
+const IN_STRIP = "h-full rounded-none! border-0!";
+
 /** A severity pill on the tile: icon + word, so color is never the only signal (MAPPING S4). */
 function SeverityPill({ label, tone }: { label: string; tone: "negative" | "caution" }) {
     const Icon = PILL_ICON[tone];
@@ -109,7 +115,7 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                                 )
                             }
                             hideTrend
-                            className="h-full"
+                            className={IN_STRIP}
                         />
                     )}
                 </div>
@@ -130,7 +136,7 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                                 )
                             }
                             hideTrend
-                            className="h-full"
+                            className={IN_STRIP}
                         />
                     )}
                 </div>
@@ -151,7 +157,7 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                                 )
                             }
                             hideTrend
-                            className="h-full"
+                            className={IN_STRIP}
                         />
                     )}
                 </div>
@@ -166,7 +172,7 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                             valueText={mttfValue}
                             deltaSlot={false}
                             hideTrend
-                            className="h-full"
+                            className={IN_STRIP}
                         />
                     )}
                 </div>
