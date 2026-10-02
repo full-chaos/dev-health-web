@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { act, render, screen } from "@/test/utils";
+import { act, render, screen, within } from "@/test/utils";
 import SingleReportPage from "./page";
 import { ReportStatus } from "@/lib/reports/types";
 import type { ReportRun, SavedReport } from "@/lib/reports/types";
@@ -157,5 +157,63 @@ describe("SingleReportPage — one h1 with a rendered report (CHAOS-7788)", () =
         const h1s = container.querySelectorAll("h1");
         expect(h1s).toHaveLength(1);
         expect(h1s[0]).toHaveTextContent("Weekly DORA");
+    });
+});
+
+describe("SingleReportPage — design R9-R16 (CHAOS-8096)", () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+        mockFetchSavedReport.mockResolvedValue(REPORT);
+        mockFetchReportRuns.mockResolvedValue({
+            items: [run({ renderedMarkdown: "Text.", startedAt: "2026-09-29T12:00:00.000Z" })],
+            total: 1,
+        });
+    });
+
+    it("labels the rendered report as AI-generated, with the served run date", async () => {
+        render(<SingleReportPage />);
+
+        const label = await screen.findByTestId("ai-report-label");
+        expect(label).toHaveTextContent("AI-generated report");
+        expect(
+            screen.getByText(`Run of ${new Date("2026-09-29T12:00:00.000Z").toLocaleDateString()}`),
+        ).toBeInTheDocument();
+    });
+
+    it("shows 'Not reported' for a configuration value the report does not carry", async () => {
+        render(<SingleReportPage />);
+
+        await screen.findByTestId("ai-report-label");
+        expect(screen.queryByText("Not set")).toBeNull();
+        expect(screen.getAllByText("Not reported").length).toBeGreaterThanOrEqual(3);
+    });
+
+    it("opens the delete confirmation as a panel with the report name and Cancel closes it", async () => {
+        render(<SingleReportPage />);
+
+        await screen.findByTestId("ai-report-label");
+        await act(async () => {
+            screen.getByRole("button", { name: "Delete" }).click();
+        });
+        const panel = screen.getByTestId("delete-panel");
+        expect(panel).toHaveTextContent("Weekly DORA");
+        expect(panel).toHaveTextContent("This action cannot be undone.");
+
+        await act(async () => {
+            within(panel).getByRole("button", { name: "Cancel" }).click();
+        });
+        expect(screen.queryByTestId("delete-panel")).toBeNull();
+    });
+
+    it("shows the not-found state as an empty panel with a link back", async () => {
+        mockFetchSavedReport.mockResolvedValue(null);
+        render(<SingleReportPage />);
+
+        expect(await screen.findByText("Report not found.")).toBeInTheDocument();
+        expect(screen.getByTestId("data-state-no-findings")).toBeInTheDocument();
+        expect(screen.getByRole("link", { name: "Back to Reports" })).toHaveAttribute(
+            "href",
+            "/reports",
+        );
     });
 });
