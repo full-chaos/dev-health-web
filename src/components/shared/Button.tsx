@@ -11,6 +11,12 @@ const SIZES: Record<ButtonSize, string> = {
     md: "px-4 py-2 text-xs",
 };
 
+/** Circle icon button: fixed square, no horizontal padding (prototype `.btn.circle`). */
+const ICON_ONLY_SIZES: Record<ButtonSize, string> = {
+    sm: "h-7 w-7 p-0",
+    md: "h-9 w-9 p-0",
+};
+
 const VARIANTS: Record<ButtonVariant, string> = {
     primary: "border border-(--accent-2) bg-(--accent-2) text-white hover:bg-(--accent-2)/90",
     secondary:
@@ -32,27 +38,60 @@ export function buttonClassName(
     variant: ButtonVariant = "secondary",
     size: ButtonSize = "md",
     className = "",
+    iconOnly = false,
 ): string {
-    return `${BASE} ${SIZES[size]} ${VARIANTS[variant]} ${className}`.trim();
+    const sizing = iconOnly ? ICON_ONLY_SIZES[size] : SIZES[size];
+    return `${BASE} ${sizing} ${VARIANTS[variant]} ${className}`.trim();
 }
 
-export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonBaseProps = ButtonHTMLAttributes<HTMLButtonElement> & {
     variant?: ButtonVariant;
     size?: ButtonSize;
-    children: ReactNode;
+    /** Decorative icon element (for example a lucide icon). Rendered `aria-hidden`. */
+    icon?: ReactNode;
+    /** Which side of the label the icon sits on. Default `start`. */
+    iconPosition?: "start" | "end";
 };
 
-export function Button({
-    variant = "secondary",
-    size = "md",
-    className,
-    type = "button",
-    children,
-    ...rest
-}: ButtonProps) {
+/**
+ * Either a labelled button (children, optional icon) or an icon-only circle button.
+ * The icon-only form requires an `aria-label` because it has no visible text.
+ */
+export type ButtonProps =
+    | (ButtonBaseProps & { iconOnly?: false; children: ReactNode })
+    | (ButtonBaseProps & {
+          iconOnly: true;
+          icon: ReactNode;
+          "aria-label": string;
+          children?: never;
+      });
+
+export function Button(props: ButtonProps) {
+    const {
+        variant = "secondary",
+        size = "md",
+        className,
+        type = "button",
+        icon,
+        iconPosition = "start",
+        iconOnly = false,
+        children,
+        ...rest
+    } = props;
+    const iconNode = icon ? (
+        <span aria-hidden="true" className="inline-flex shrink-0 [&>svg]:h-4 [&>svg]:w-4">
+            {icon}
+        </span>
+    ) : null;
     return (
-        <button type={type} className={buttonClassName(variant, size, className)} {...rest}>
-            {children}
+        <button
+            type={type}
+            className={buttonClassName(variant, size, className, iconOnly)}
+            {...rest}
+        >
+            {iconPosition === "start" ? iconNode : null}
+            {iconOnly ? null : children}
+            {iconPosition === "end" ? iconNode : null}
         </button>
     );
 }
