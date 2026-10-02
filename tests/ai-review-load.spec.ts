@@ -56,7 +56,7 @@ test.describe("AI Review Load dashboard", () => {
         await expect(page.getByText(/Average pushes after the first review/i)).toBeVisible();
     });
 
-    test("open-evidence button opens the PR selector modal (CHAOS-1739)", async ({ page }) => {
+    test("open-evidence button opens the PR selector drawer (CHAOS-1739)", async ({ page }) => {
         await page.goto(`/ai/review-load?f=${populatedFilter}`);
 
         const dashboard = page.getByTestId("ai-review-load-dashboard");
@@ -65,10 +65,11 @@ test.describe("AI Review Load dashboard", () => {
             .first()
             .click();
 
-        const dialog = page.getByTestId("ai-drilldown-modal");
+        // The shared Drawer (A8) replaced the centred modal; same dialog, same body.
+        const dialog = page.getByTestId("ai-drilldown-drawer");
         await expect(dialog).toBeVisible();
 
-        // The modal is the real selector now: search input + PR table + evidence
+        // The drawer holds the real selector now: search input + PR table + evidence
         // prompt. The old placeholder copy that leaked resolver names is gone.
         await expect(
             dialog.getByRole("heading", { name: "Evidence by pull request" }),
