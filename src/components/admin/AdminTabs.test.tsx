@@ -122,9 +122,21 @@ describe("AdminTabs (AD-1 option A)", () => {
         ).toBeNull();
     });
 
+    it("shows the Data Confidence row on a data health page (CHAOS-7966)", () => {
+        renderAt("/data-health/mapping", { isPlatformAdmin: true });
+        const row = screen.getByRole("tablist", { name: "Data Confidence views" });
+        expect(tabNames(row)).toEqual(["Overview", "Connectors", "Identity", "Mapping"]);
+        expect(within(row).getByRole("tab", { name: "Mapping" })).toHaveAttribute(
+            "aria-selected",
+            "true",
+        );
+        expect(screen.queryByRole("link", { name: "Platform Admin" })).toBeNull();
+    });
+
     it("renders nothing outside the Admin tab routes", () => {
         const { container } = renderAt("/superadmin/users");
         expect(container).toBeEmptyDOMElement();
         expect(renderAt("/testops/pipelines").container).toBeEmptyDOMElement();
+        expect(renderAt("/settings").container).toBeEmptyDOMElement();
     });
 });

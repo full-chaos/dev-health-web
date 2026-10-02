@@ -45,6 +45,8 @@ describe("shell route registry", () => {
             "/reports",
             "/reports",
             "/org/admin",
+            "/data-health",
+            "/settings",
         ]);
     });
 
@@ -65,7 +67,7 @@ describe("shell route registry", () => {
         expect(isShellRoute("/dashboard-old")).toBe(false);
     });
 
-    it.each(["/demo", "/data-health", "/superadmin", "/superadmin/users", "/settings", "/"])(
+    it.each(["/demo", "/superadmin", "/superadmin/users", "/settingsx", "/"])(
         "keeps %s outside the shell",
         (pathname) => {
             expect(isShellRoute(pathname)).toBe(false);
@@ -73,7 +75,14 @@ describe("shell route registry", () => {
     );
 
     it("puts the Admin pages in the shell with no filter state (CHAOS-7591)", () => {
-        for (const pathname of ["/org/admin", "/org/admin/users/new", "/org/admin/sync/c1"]) {
+        for (const pathname of [
+            "/org/admin",
+            "/org/admin/users/new",
+            "/org/admin/sync/c1",
+            "/data-health",
+            "/data-health/identity",
+            "/settings",
+        ]) {
             expect(isShellRoute(pathname), pathname).toBe(true);
             expect(shellRouteForPathname(pathname)?.filterParam, pathname).toBe("none");
         }
@@ -115,7 +124,15 @@ describe("shell route registry", () => {
             SHELL_ROUTES.filter((route) => route.filterParam === "none").map(
                 (route) => route.prefix,
             ),
-        ).toEqual(["/prs", "/issues", "/deployments", "/reports", "/org/admin"]);
+        ).toEqual([
+            "/prs",
+            "/issues",
+            "/deployments",
+            "/reports",
+            "/org/admin",
+            "/data-health",
+            "/settings",
+        ]);
     });
 
     it("gives Report Center its own entry and its descendants the no-filter entry: the first equal-length match wins", () => {

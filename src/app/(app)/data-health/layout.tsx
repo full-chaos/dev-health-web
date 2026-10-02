@@ -10,13 +10,11 @@ export default async function DataHealthLayout({ children }: { children: React.R
     const tier = entitlements?.data?.tier ?? "community";
     const features = entitlements?.data?.features ?? {};
 
+    // Rendered inside the shared app shell: the shell owns the navigation, the page padding and
+    // the `<main>` landmark. Each page's header brings the Data Confidence tab row.
     return (
-        <div className="min-h-screen">
-            <div className="flex w-full flex-col gap-6 px-6 pb-20 pt-10">
-                <AdminTierProvider tier={tier} features={features}>
-                    <main className="flex min-w-0 flex-1 flex-col gap-10">{children}</main>
-                </AdminTierProvider>
-            </div>
-        </div>
+        <AdminTierProvider tier={tier} features={features}>
+            <div className="flex min-w-0 flex-1 flex-col gap-10">{children}</div>
+        </AdminTierProvider>
     );
 }

@@ -272,7 +272,7 @@ describe("AppShell — the status chip states what the organization card knows",
 
 describe("AppShell — a route outside the registry keeps today's chrome", () => {
     beforeEach(() => {
-        navigationMock.pathname = "/settings";
+        navigationMock.pathname = "/demo";
     });
 
     it("renders no shell part: no sidebar, no top bar, no skip link, no shell main", () => {
@@ -328,7 +328,7 @@ describe("AppShell — a route outside the registry keeps today's chrome", () =>
         ]);
     });
 
-    it.each(["/superadmin/users", "/superadmin", "/settings", "/data-health", "/dashboards"])(
+    it.each(["/superadmin/users", "/superadmin", "/demo", "/dashboards"])(
         "keeps %s on the legacy chrome",
         (pathname) => {
             navigationMock.pathname = pathname;

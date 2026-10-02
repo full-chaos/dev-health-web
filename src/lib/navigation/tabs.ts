@@ -206,6 +206,21 @@ export const TAB_SETS = [
             { id: "providers", label: "Providers", path: "/org/admin/integrations" },
         ],
     },
+    // Data Confidence (AD-1 option A): the overview and its three sub-pages, which had no
+    // navigation (design MAPPING-CHAOS-7630 §3).
+    {
+        id: "data-confidence",
+        areaId: "admin",
+        basePath: "/data-health",
+        param: "route",
+        defaultTabId: "overview",
+        tabs: [
+            { id: "overview", label: "Overview", path: "/data-health" },
+            { id: "connectors", label: "Connectors", path: "/data-health/connectors" },
+            { id: "identity", label: "Identity", path: "/data-health/identity" },
+            { id: "mapping", label: "Mapping", path: "/data-health/mapping" },
+        ],
+    },
 ] as const satisfies readonly TabSet[];
 
 export type TabSetId = (typeof TAB_SETS)[number]["id"];
@@ -231,6 +246,7 @@ const TAB_SET_BY_ID = {
     testops: TAB_SETS[7],
     "admin-organization": TAB_SETS[8],
     "admin-connections": TAB_SETS[9],
+    "data-confidence": TAB_SETS[10],
 } as const satisfies { [S in TabSetId]: TabSetOf<S> };
 
 export function getTabSet<S extends TabSetId>(id: S): (typeof TAB_SET_BY_ID)[S] {

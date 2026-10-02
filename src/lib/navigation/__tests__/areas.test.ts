@@ -348,6 +348,11 @@ describe("selectedChildForPathname — active child (A10: exactly one)", () => {
         ["/org/admin/sync/c1/runs/r1", "connections"],
         ["/org/admin/integrations", "connections"],
         ["/org/admin/integrations/github/sync", "connections"],
+        ["/data-health", "data-confidence"],
+        ["/data-health/connectors", "data-confidence"],
+        ["/data-health/identity", "data-confidence"],
+        ["/data-health/mapping", "data-confidence"],
+        ["/settings", "settings"],
     ])("selects the Admin destination of %s: %s", (pathname, childId) => {
         expect(selectedChildForPathname(areaById("admin"), pathname)?.id).toBe(childId);
     });
