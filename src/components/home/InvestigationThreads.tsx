@@ -6,6 +6,7 @@ import { ArrowRight } from "lucide-react";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { Button, buttonClassName } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
+import { riskSignalsLine } from "@/lib/cockpit/riskLine";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
@@ -24,6 +25,9 @@ type InvestigationThreadsProps = {
 /** Title of the fourth row, and of the drawer it opens. */
 export const LONG_FORM_TITLE = "Recent events & limiting factors";
 
+/** Line of the "Compounding risk" row when the API served no risk signal. */
+export const COMPOUNDING_RISK_PLAIN_LINE = "Compounding risk signals.";
+
 /** Section description (approved prototype text, without the words about its static capture). */
 export const THREADS_DESCRIPTION =
     "Compact reading order; the long-form sections remain one click away.";
@@ -34,8 +38,9 @@ export const THREADS_DESCRIPTION =
  *
  * - Key shifts: the evidence page for the page's scope and window.
  * - Investment mix: the Investment view.
- * - Compounding risk: the Compounding Risk view. Home has no served number for this row, so the
- *   row shows none.
+ * - Compounding risk: the Compounding Risk view. Its line names the served risk signals (their
+ *   served values and served confidence words, `riskSignalsLine`); with no served risk signal
+ *   the row keeps its plain line and shows no number.
  * - Recent events & limiting factors: opens the shared evidence drawer with the long-form
  *   sections (`HomeLongForm`): Notable shifts, Investigation threads, Limiting factor, Recent
  *   events. Its line is the served limiting-factor claim.
@@ -64,14 +69,15 @@ export function InvestigationThreads({ home, filters, activeRole }: Investigatio
         {
             id: "compounding-risk",
             title: "Compounding risk",
-            // The destination's own description (navigation areas). No number: none is served here.
-            summary: "Compounding risk signals.",
+            // The served risk signals as text. With none served: the destination's own
+            // description (navigation areas), and no number.
+            summary: riskSignalsLine(home?.signals) ?? COMPOUNDING_RISK_PLAIN_LINE,
             href: withFilterParam("/risk/compounding", filters, activeRole),
         },
     ];
 
     const row = "flex items-center justify-between gap-4 px-4.75 py-4.5";
-    const heading = "text-[0.8125rem] font-semibold text-foreground";
+    const heading = "text-sm font-semibold text-foreground";
     const line = "mt-1 text-xs text-(--ink-muted)";
 
     return (
@@ -80,7 +86,7 @@ export function InvestigationThreads({ home, filters, activeRole }: Investigatio
             description={THREADS_DESCRIPTION}
             data-testid="investigation-threads"
         >
-            <div className="divide-y divide-(--card-stroke) overflow-hidden rounded-(--radius-md) border border-(--card-stroke)">
+            <div className="divide-y divide-(--card-stroke)">
                 {linkRows.map((item) => (
                     <div key={item.id} data-testid={`thread-row-${item.id}`} className={row}>
                         <div className="min-w-0">

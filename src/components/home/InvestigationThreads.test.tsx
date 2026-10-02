@@ -6,7 +6,12 @@ import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { HomeResponse } from "@/lib/types";
 
-import { InvestigationThreads, LONG_FORM_TITLE, THREADS_DESCRIPTION } from "./InvestigationThreads";
+import {
+    COMPOUNDING_RISK_PLAIN_LINE,
+    InvestigationThreads,
+    LONG_FORM_TITLE,
+    THREADS_DESCRIPTION,
+} from "./InvestigationThreads";
 
 vi.mock("next/navigation", () => ({
     useSearchParams: () => new URLSearchParams(),
@@ -150,9 +155,52 @@ describe("InvestigationThreads rows", () => {
         expect(block).not.toHaveTextContent("Review latency rose.");
     });
 
-    it("the Compounding risk row shows no number: Home has no served value for it", () => {
+    it("the Compounding risk row keeps its plain line, with no number, when no risk signal is served", () => {
         draw();
-        expect(screen.getByTestId("thread-row-compounding-risk").textContent).not.toMatch(/\d/);
+        const row = screen.getByTestId("thread-row-compounding-risk");
+        expect(row).toHaveTextContent(COMPOUNDING_RISK_PLAIN_LINE);
+        expect(row.textContent).not.toMatch(/\d/);
+    });
+
+    it("the Compounding risk row names the served risk signals: served values and served confidence words", () => {
+        const risk = (id: string, current_value: string) => ({
+            id,
+            title: `Compounding risk appears elevated for ${id}`,
+            metric: "compounding_risk",
+            current_value,
+            prior_value: null,
+            delta: null,
+            direction: "flat",
+            severity: "medium",
+            confidence: "low",
+            affected_scope: "repos",
+            evidence_count: 1,
+            why_it_matters: "w",
+            recommended_action: "a",
+            category: "durability",
+        });
+        draw({
+            ...HOME,
+            signals: [
+                { ...risk("m", "1.4 days"), metric: "cycle_time" },
+                risk("a", "63.9 %"),
+                risk("b", "63.9 %"),
+                risk("c", "50.0 %"),
+                risk("d", "50.0 %"),
+            ],
+        } as HomeResponse);
+        const row = screen.getByTestId("thread-row-compounding-risk");
+        expect(row).toHaveTextContent(
+            "Risk signals: 63.9 %, 63.9 %, 50.0 %, and 1 more, each with low confidence.",
+        );
+        // The metric signal's value is not a risk value; the entity names are not in the line.
+        expect(row).not.toHaveTextContent("1.4 days");
+        expect(row).not.toHaveTextContent("appears elevated");
+        // The row's one action still goes to the Compounding Risk view.
+        expect(screen.getByRole("link", { name: "Inspect: Compounding risk" })).toHaveAttribute(
+            "href",
+            withFilterParam("/risk/compounding", filters, "em"),
+        );
     });
 
     it("the fourth row's line is the served limiting-factor claim, then the constraint claim, then the waiting text", () => {
