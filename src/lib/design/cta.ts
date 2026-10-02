@@ -15,6 +15,8 @@
 export const CTA_LABELS = {
     /** Return to the Dev Health cockpit from global brand navigation. */
     devHealthCockpit: "Full Chaos Dev Health home",
+    /** Cognitive Load overview: jump to the Load Drivers tab. */
+    exploreLoadDrivers: "Explore load drivers",
     /** Light / dark theme switch (pressed = light). */
     themeSwitchLight: "Light theme",
     /** Keyboard skip link: move focus past the app shell to the page content. */
@@ -29,6 +31,10 @@ export const CTA_LABELS = {
     inspectConfidence: "Inspect confidence",
     /** Inspect the associations (edges) linked to an entity. */
     inspectAssociations: "Inspect associations",
+    /** Landscape investigation: the throughput flame breakdown (was a second "Inspect associations"). */
+    inspectThroughputBreakdown: "Inspect throughput breakdown",
+    /** Landscape investigation: the code-hotspots flame (was a second "Inspect associations"). */
+    inspectCodeHotspots: "Inspect code hotspots",
     /** Open the Work Graph Artifacts tab (the table form of the graph's entities). */
     browseArtifacts: "Browse artifacts",
     /** Open a single artifact (flame diagram, PR, deployment, …). */
@@ -89,6 +95,12 @@ export const CTA_LABELS = {
     /** From an opportunity to the experiments derived from it. */
     exploreExperiments: "Explore experiments",
     checkDataConnections: "Check data connections",
+    /** Open the Plan / Completion Forecast destination (Plan overview). */
+    completionForecast: "Completion Forecast",
+    /** Plan overview destination: the Completion Forecast page. */
+    forecastCompletion: "Forecast completion",
+    /** Plan overview destination: the Backlog Risk page. */
+    inspectBacklogRisk: "Inspect backlog risk",
     flameDiagram: "Flame Diagram",
     landscape: "Landscape",
     week: "Week",
