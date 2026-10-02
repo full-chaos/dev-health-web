@@ -11,8 +11,8 @@ type SuggestedActionsProps = {
 };
 
 /**
- * The next steps for the subject: the actions the API served, else the fixed suggestions of the
- * metric's definition. One plain section of rows, as the other sections of the drawer.
+ * The next steps that the API served for the subject (for example the experiments of a served
+ * constraint or opportunity). One plain section of rows, shown only when actions are served.
  */
 export function SuggestedActions({ actions }: SuggestedActionsProps) {
     if (!actions || actions.length === 0) return null;

@@ -183,13 +183,8 @@ const normalizeInvestmentEvidence = (
         why_it_matters:
             "Investment mix context explains where effort is actually being spent, using persisted WorkUnit distributions.",
         evidence,
-        actions: [
-            {
-                id: "inspect-investment-mix",
-                label: "Inspect the investment mix and compare it with current priorities.",
-                type: "process",
-            },
-        ],
+        // The Investment response serves no action, so the drawer shows none.
+        actions: [],
         // The Investment response serves no source name and no quality word for this block.
         provenance: { partial: evidence.length === 0 },
     };
@@ -403,7 +398,9 @@ export function EvidencePanel({
                                 ...(item.meta ? { meta: safeNarrative(item.meta) } : {}),
                             }));
 
-                        const actions = result.actions || definition?.suggestedActions || [];
+                        // Served actions only. The metric definition's fixed suggestions are not
+                        // served data and are not in the approved drawer.
+                        const actions = result.actions || [];
 
                         // Served fields only: the web names no source and grades no quality. A
                         // field the API did not serve reads "Not reported" in its row.

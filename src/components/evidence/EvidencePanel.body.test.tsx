@@ -371,6 +371,62 @@ describe("drawer body as the approved prototype", () => {
     });
 });
 
+describe("Recommended next steps: served actions only", () => {
+    it("shows no next steps for an explain payload that serves no action (no definition fallback)", async () => {
+        mockGetExplainData.mockResolvedValue(EXPLAIN);
+        drawMetric();
+        await loaded();
+        expect(screen.queryByTestId("evidence-next-steps")).toBeNull();
+        expect(screen.getByRole("dialog")).not.toHaveTextContent("Recommended next steps");
+    });
+
+    it("shows the served actions as plain rows in one plain section", async () => {
+        mockGetExplainData.mockResolvedValue({
+            ...EXPLAIN,
+            actions: [
+                { id: "a1", label: "Cap reviews per person.", type: "experiment" },
+                { id: "a2", label: "Rebalance review rotation.", type: "process" },
+            ],
+        });
+        drawMetric();
+        await loaded();
+        const section = within(screen.getByTestId("evidence-next-steps"));
+        expect(
+            section.getByRole("heading", { name: "Recommended next steps" }),
+        ).toBeInTheDocument();
+        expect(section.getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+            "Cap reviews per person.",
+            "Rebalance review rotation.",
+        ]);
+    });
+
+    it("keeps the served experiments of the Home constraint as next steps", async () => {
+        drawFetched("/api/v1/home?range_days=90", {
+            ...HOME,
+            constraint: { ...HOME.constraint, experiments: ["Set WIP limits per team."] },
+        });
+        await loaded();
+        expect(screen.getByTestId("evidence-next-steps")).toHaveTextContent(
+            "Set WIP limits per team.",
+        );
+    });
+
+    it("keeps the served experiments of an Opportunities payload, and adds none to an Investment payload", async () => {
+        const { unmount } = drawFetched("/api/v1/opportunities?range_days=90", OPPORTUNITIES);
+        await loaded();
+        expect(screen.getByTestId("evidence-next-steps")).toHaveTextContent(
+            "Cap reviews per person.",
+        );
+        unmount();
+        drawFetched("/api/v1/investment?range_days=90", INVESTMENT);
+        await loaded();
+        expect(screen.queryByTestId("evidence-next-steps")).toBeNull();
+        expect(screen.getByRole("dialog")).not.toHaveTextContent(
+            "Inspect the investment mix and compare it with current priorities.",
+        );
+    });
+});
+
 describe("the origin hint of a request subject", () => {
     const originOf = async () => {
         const link = await screen.findByRole("link", { name: /Open evidence/ });
