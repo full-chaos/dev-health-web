@@ -5,7 +5,7 @@ import type { CSSProperties } from "react";
 import { LineChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
-import { useChartTheme } from "./chartTheme";
+import { useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
 import { buildTooltip, dotRing, lineMark, pointSymbolSize } from "./chartConventions";
 import { echarts } from "@/lib/echartsInit";
 import { formatNumber } from "@/lib/formatters";
@@ -20,7 +20,43 @@ type SparklineChartProps = {
     width?: number | string;
     className?: string;
     style?: CSSProperties;
+    /**
+     * `tile`: the trend mark of a metric tile, as the approved prototype draws it: a thin
+     * de-emphasised line with straight segments over a faint area, and a small unringed end dot
+     * that carries the tone. Default: the standalone sparkline (smoothed, ringed end dot).
+     */
+    variant?: "default" | "tile";
+    /**
+     * `tile` variant only: the tone of the dots (end dot and isolated points). `default` is the
+     * first series color; `bad` (the tile's delta is a regression) is the negative status color.
+     * The line and the area stay in the muted ink in both.
+     */
+    tone?: "default" | "bad";
 };
+
+/**
+ * Value range of the `tile` variant: from the lowest to the highest served point, as the prototype
+ * `spark()` stretches a series, so the mark shows the SHAPE of the series (it has no axis to read
+ * a magnitude from). A flat series (lowest = highest) gets one unit above and below, so it is a
+ * line through the middle. Gaps (null) are not points. With no point at all there is no range.
+ */
+export function tileSparkRange(
+    data: ReadonlyArray<number | null>,
+): { min: number; max: number } | null {
+    const points = data.filter((v): v is number => typeof v === "number" && Number.isFinite(v));
+    if (points.length === 0) return null;
+    const lo = Math.min(...points);
+    const hi = Math.max(...points);
+    return lo === hi ? { min: lo - 1, max: hi + 1 } : { min: lo, max: hi };
+}
+
+/** `tile` variant marks. The prototype draws them in a 100x36 box shown at 87x31. */
+export const TILE_SPARK = {
+    lineWidth: 1.5,
+    areaOpacity: 0.14,
+    dotSize: 5,
+    grid: { left: 3, right: 5, top: 4, bottom: 4 },
+} as const;
 
 type SparklineTooltipParam = {
     axisValue?: string | number;
@@ -76,8 +112,18 @@ export function SparklineChart({
     width = "100%",
     className,
     style,
+    variant = "default",
+    tone = "default",
 }: SparklineChartProps) {
     const chartTheme = useChartTheme();
+    const chartColors = useChartColors();
+    const chartTokens = useChartTokens();
+    const isTile = variant === "tile";
+    // Tile: min..max of the series (shape). Default: the value axis as before (it includes 0).
+    const tileRange = isTile ? tileSparkRange(data) : null;
+    const tileDotColor =
+        (tone === "bad" ? chartTokens.negative : chartColors[0]) ?? chartTheme.muted;
+    const dotSize = pointSymbolSize(data);
     const xCategories = categories ?? data.map((_, index) => index + 1);
 
     const mergedStyle: CSSProperties = {
@@ -101,7 +147,7 @@ export function SparklineChart({
                         return `${first?.marker ?? ""}${label}: ${value}`;
                     },
                 }),
-                grid: { left: 8, right: 8, top: 10, bottom: 10 },
+                grid: isTile ? TILE_SPARK.grid : { left: 8, right: 8, top: 10, bottom: 10 },
                 xAxis: {
                     type: "category",
                     data: xCategories,
@@ -112,6 +158,7 @@ export function SparklineChart({
                 },
                 yAxis: {
                     type: "value",
+                    ...(tileRange ?? {}),
                     axisLabel: { show: false },
                     splitLine: { show: false },
                 },
@@ -119,17 +166,27 @@ export function SparklineChart({
                     {
                         type: "line",
                         data,
-                        smooth: true,
+                        smooth: !isTile,
                         symbol: "circle",
                         // A dot only on the last point and on isolated points (see chartConventions).
                         // ECharts' default `showAllSymbol: "auto"` hides symbols between label ticks on a dense
                         // category axis, which can hide the end dot; `pointSymbolSize` already limits the dots.
                         showAllSymbol: true,
-                        symbolSize: pointSymbolSize(data),
-                        lineStyle: lineMark,
-                        areaStyle: { opacity: 0.15 },
+                        symbolSize: isTile
+                            ? (value: unknown, params: { dataIndex: number }) =>
+                                  dotSize(value, params) > 0 ? TILE_SPARK.dotSize : 0
+                            : dotSize,
+                        // The line and the area stay in the muted ink; only the dots take the tone.
+                        lineStyle: isTile
+                            ? { ...lineMark, width: TILE_SPARK.lineWidth, color: chartTheme.muted }
+                            : lineMark,
+                        areaStyle: isTile
+                            ? { opacity: TILE_SPARK.areaOpacity, color: chartTheme.muted }
+                            : { opacity: 0.15 },
                         emphasis: { scale: true },
-                        itemStyle: { color: chartTheme.muted, ...dotRing(chartTheme) },
+                        itemStyle: isTile
+                            ? { color: tileDotColor }
+                            : { color: chartTheme.muted, ...dotRing(chartTheme) },
                     },
                 ],
             }}

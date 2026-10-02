@@ -27,10 +27,11 @@ test(
         await expect(primarySignal).toHaveText("Open evidence");
         await primarySignal.click();
 
-        // Panel should open with evidence - look for the canonical evidence link
-        const exploreLink = page.getByRole("link", {
-            name: "Open evidence ↗",
-        });
+        // The drawer opens; its footer link leads to the evidence page. CHAOS-8187: the arrow is an
+        // icon before the text, so the link's name is the text only.
+        const exploreLink = page
+            .getByRole("dialog", { name: "Evidence & Context" })
+            .getByRole("link", { name: "Open evidence", exact: true });
         await expect(exploreLink).toBeVisible();
         await exploreLink.click();
 

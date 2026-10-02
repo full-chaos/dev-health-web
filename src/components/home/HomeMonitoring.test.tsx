@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { formatMetricValue } from "@/lib/formatters";
+import { formatMetricParts } from "@/lib/formatters";
 import type { MetricFilter } from "@/lib/filters/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { render, screen, within } from "@/test/utils";
@@ -123,7 +123,11 @@ describe("HomeMonitoring tiles", () => {
             const served = DELTAS.find((d) => d.metric === metric) as MetricDelta;
             const el = tile(metric);
             expect(el).toHaveTextContent(served.label);
-            expect(el).toHaveTextContent(formatMetricValue(served.value, served.unit));
+            // The tile shows the number and its unit apart (the shared tile's face).
+            const parts = formatMetricParts(served.value, served.unit);
+            expect(within(el).getByTestId("metric-value")).toHaveTextContent(
+                `${parts.value} ${parts.unit}`,
+            );
             expect(el).toHaveTextContent(`${Math.abs(served.delta_pct)}%`);
             expect(el).toHaveTextContent(MONITORING_TILE_NOTE);
             // The served spark points reach the tile's trend slot.
@@ -148,12 +152,11 @@ describe("HomeMonitoring tiles", () => {
                 delta("throughput", "Throughput", 14, "items", 12),
             ]),
         );
-        const tone = (metric: string) =>
-            tile(metric).querySelector("span.inline-flex") as HTMLElement;
+        const tone = (metric: string) => within(tile(metric)).getByTestId("metric-delta");
         expect(tone("cycle_time")).toHaveClass("text-(--accent-negative)");
         expect(tone("throughput")).toHaveClass("text-(--positive)");
-        // The sign and the arrow are text, so the tone is never the only signal.
-        expect(tone("cycle_time").textContent).toBe("↑ +12%");
+        // The sign is text, so the tone is never the only signal.
+        expect(tone("cycle_time").textContent).toBe("+12%");
     });
 
     it("a metric the API did not serve reads Not reported: no value, no change, no link", () => {

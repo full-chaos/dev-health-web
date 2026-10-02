@@ -15,7 +15,6 @@ import {
 import { ProviderBadge } from "@/components/admin/identities/ProviderBadge";
 import { CustomerPushStatusBadge } from "@/components/admin/integrations/customer-push/CustomerPushStatusBadge";
 import { STATUS_PILL } from "../statusPill";
-import { STATUS_PILL_ALPHA } from "../themeTints";
 
 const RAW =
     /\b(?:text|bg|border)-(?:red|orange|amber|yellow|green|emerald|sky|blue|slate|gray)-\d{2,3}/u;
@@ -89,14 +88,12 @@ const ratio = (a: number[], b: number[]) => {
     return (hi + 0.05) / (lo + 0.05);
 };
 
-describe("status pill contrast (token text on its fill over the card)", () => {
+describe("status pill contrast (token text on its wash token)", () => {
     for (const theme of ["light", "dark"] as const) {
         it(`status tones reach 4.5:1 in ${theme}`, () => {
             const t = tokens(theme);
             for (const k of ["--positive", "--negative", "--caution", "--info"]) {
-                const fill = rgb(t["--card"]).map(
-                    (v, i) => rgb(t[k])[i] * STATUS_PILL_ALPHA + v * (1 - STATUS_PILL_ALPHA),
-                );
+                const fill = rgb(t[`${k}-wash`]);
                 expect(ratio(rgb(t[k]), fill), `${k} ${theme}`).toBeGreaterThanOrEqual(4.5);
             }
         });

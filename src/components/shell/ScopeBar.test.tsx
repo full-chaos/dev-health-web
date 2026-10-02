@@ -86,7 +86,7 @@ describe("ScopeBar — one row", () => {
             within(windowGroup)
                 .getAllByRole("button")
                 .find((button) => button.getAttribute("aria-pressed") === "true")?.className,
-        ).toContain("bg-(--accent)/15");
+        ).toContain("bg-(--accent-wash)");
         expect(windowGroup.className).not.toContain("border");
         expect(row().querySelectorAll("span.w-px")).toHaveLength(3);
         const filters = inRow.getByRole("button", { name: "Filters" });
