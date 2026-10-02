@@ -145,7 +145,7 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
     afterEach(() => cleanup());
 
     describe("section landmarks", () => {
-        it("renders the two section cards (h2) and the active allocation view's sub-head (h3)", () => {
+        it("renders the two section cards (h2) and the active allocation view, with no sub-head above the chart", () => {
             render(<InvestmentCharts {...baseProps()} />);
             expect(
                 screen.getByRole("heading", { level: 2, name: "Allocation paths" }),
@@ -156,17 +156,15 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
                     name: "Investment mix",
                 }),
             ).toBeInTheDocument();
+            expect(screen.getByTestId("team-category-sankey")).toBeInTheDocument();
+            // No legacy sub-head above the chart: the segments row names the view.
             expect(
-                screen.getByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
-            ).toBeInTheDocument();
-            // one Sankey at a time: the destination heading appears after the switch
-            expect(
-                screen.queryByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
-            ).not.toBeInTheDocument();
+                screen.queryByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
+            ).toBeNull();
+            // one Sankey at a time: the destination view appears after the switch
+            expect(screen.queryByTestId("repo-team-sankey")).not.toBeInTheDocument();
             showDestinationView();
-            expect(
-                screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
-            ).toBeInTheDocument();
+            expect(screen.getByTestId("repo-team-sankey")).toBeInTheDocument();
         });
     });
 
@@ -307,9 +305,7 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
                 />,
             );
             showDestinationView();
-            expect(
-                screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
-            ).toBeInTheDocument();
+            expect(screen.getByTestId("repo-team-sankey")).toBeInTheDocument();
         });
 
         it("renders the unavailable DataState (no Sankey) when repoTeamFlowFailed is true", () => {
@@ -338,9 +334,7 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
                 }),
             ).toBeInTheDocument();
             // flows heading (the first view; the other is behind the switch)
-            expect(
-                screen.getByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
-            ).toBeInTheDocument();
+            expect(screen.getByTestId("team-category-sankey")).toBeInTheDocument();
         });
 
         it('section="mix" renders only the mix section (no flows sankeys)', () => {
@@ -353,12 +347,8 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
                 }),
             ).toBeInTheDocument();
             // flow headings are NOT present
-            expect(
-                screen.queryByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
-            ).not.toBeInTheDocument();
-            expect(
-                screen.queryByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
-            ).not.toBeInTheDocument();
+            expect(screen.queryByTestId("team-category-sankey")).not.toBeInTheDocument();
+            expect(screen.queryByTestId("repo-team-sankey")).not.toBeInTheDocument();
         });
 
         it('section="flows" renders only the flows section (no mix heading)', () => {
@@ -371,13 +361,9 @@ describe("InvestmentCharts (safety net for CHAOS-1227 split)", () => {
                 }),
             ).not.toBeInTheDocument();
             // the flows section IS present: its first view, and the second behind the switch
-            expect(
-                screen.getByRole("heading", { level: 3, name: /team.*theme.*repo/i }),
-            ).toBeInTheDocument();
+            expect(screen.getByTestId("team-category-sankey")).toBeInTheDocument();
             showDestinationView();
-            expect(
-                screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i }),
-            ).toBeInTheDocument();
+            expect(screen.getByTestId("repo-team-sankey")).toBeInTheDocument();
         });
     });
 });

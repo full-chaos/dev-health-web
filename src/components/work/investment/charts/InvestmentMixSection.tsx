@@ -15,6 +15,7 @@ import { useChartTheme } from "@/components/charts/chartTheme";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { buttonClassName } from "@/components/shared/Button";
+import { MeterRows } from "@/components/ui/MeterRows";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -202,8 +203,8 @@ export function InvestmentMixSection({
                         data-testid="mix-selection-work-graph"
                         className={buttonClassName("secondary", "md", "w-full")}
                     >
-                        {CTA_LABELS.openWorkGraph}
                         <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+                        {CTA_LABELS.openWorkGraph}
                     </Link>
                 ) : undefined,
                 onClose: () => setTreemapSelection(null),
@@ -354,7 +355,10 @@ export function InvestmentMixSection({
                 ) : !investmentMix || mixThemes.length === 0 ? (
                     <p className="text-sm text-(--ink-muted)">No investment mix available.</p>
                 ) : (
-                    <div className="grid gap-4 md:grid-cols-[1.15fr_0.85fr] md:items-start">
+                    <div
+                        data-testid="mix-sunburst-state"
+                        className="grid gap-4.5 md:grid-cols-2 md:items-center"
+                    >
                         <InvestmentMixSunburst
                             themeDistribution={investmentMix.theme_distribution}
                             subcategoryDistribution={investmentMix.subcategory_distribution}
@@ -367,102 +371,75 @@ export function InvestmentMixSection({
                             onThemeClickAction={handleThemeClick}
                             onSubcategoryClickAction={handleSubcategoryClick}
                         />
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-                            <div className="flex items-center justify-between">
-                                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                    {focusTheme ? "Subcategory breakdown" : "Themes"}
+                        {/* Prototype `sunburstChart` side: plain meter rows (`bars()`), share of the
+                            mix per theme with the theme colour; a theme row drills into its
+                            subcategories (share of the theme). */}
+                        <div
+                            data-testid="mix-sunburst-panel"
+                            className="flex min-w-0 flex-col gap-3 md:self-center"
+                        >
+                            {focusTheme ? (
+                                <p className="text-xs text-(--ink-muted)">
+                                    {titleCase(focusTheme)}: share of the theme
                                 </p>
-                                {focusTheme && (
-                                    <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                        {titleCase(focusTheme)}
-                                    </span>
-                                )}
-                            </div>
-                            {focusedWorkGraphUrl && (
-                                <Link
-                                    href={focusedWorkGraphUrl}
-                                    className="mt-3 flex items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-xs uppercase tracking-[0.2em] text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
-                                >
-                                    <span>{CTA_LABELS.openWorkGraph}</span>
-                                    <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">
-                                        ↗
-                                    </span>
-                                </Link>
-                            )}
-                            <div className="mt-3 space-y-2 text-sm">
-                                {focusTheme ? (
-                                    focusedThemeSubcategories.length ? (
-                                        focusedThemeSubcategories.map((entry) => {
+                            ) : null}
+                            {focusTheme ? (
+                                focusedThemeSubcategories.length ? (
+                                    <MeterRows
+                                        aria-label={`${titleCase(focusTheme)} subcategories`}
+                                        testId="mix-subcategory-meter-rows"
+                                        max={100}
+                                        rows={focusedThemeSubcategories.map((entry) => {
                                             const pctOfTheme = focusedThemeTotalValue
                                                 ? (entry.value / focusedThemeTotalValue) * 100
                                                 : 0;
-                                            return (
-                                                <button
-                                                    key={entry.key}
-                                                    type="button"
-                                                    onClick={() =>
-                                                        handleSubcategoryClick(entry.key)
-                                                    }
-                                                    className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
-                                                >
-                                                    <div className="min-w-0">
-                                                        <div className="truncate text-sm text-foreground">
-                                                            {formatSubcategoryLabel(
-                                                                entry.key,
-                                                                false,
-                                                            )}
-                                                        </div>
-                                                        <div className="mt-1 text-xs text-(--ink-muted)">
-                                                            {formatNumber(entry.value)}{" "}
-                                                            {investmentMix.unit ?? effortUnit}
-                                                        </div>
-                                                        <div className="text-xs text-(--accent-2)">
-                                                            {formatNumber(pctOfTheme, {
-                                                                maximumFractionDigits: 1,
-                                                            })}
-                                                            % of theme
-                                                        </div>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })
-                                    ) : (
-                                        <p className="text-sm text-(--ink-muted)">
-                                            No subcategories observed for this theme.
-                                        </p>
-                                    )
+                                            return {
+                                                key: entry.key,
+                                                label: formatSubcategoryLabel(entry.key, false),
+                                                title: formatSubcategoryLabel(entry.key, true),
+                                                value: pctOfTheme,
+                                                display: `${formatNumber(pctOfTheme, { maximumFractionDigits: 1 })}%`,
+                                                color: themeColorMap.get(focusTheme),
+                                                onSelect: () => handleSubcategoryClick(entry.key),
+                                                selected: focusSubcategory === entry.key,
+                                            };
+                                        })}
+                                    />
                                 ) : (
-                                    mixThemes.slice(0, 8).map((entry) => {
+                                    <p className="text-sm text-(--ink-muted)">
+                                        No subcategories observed for this theme.
+                                    </p>
+                                )
+                            ) : (
+                                <MeterRows
+                                    aria-label="Themes"
+                                    testId="mix-theme-meter-rows"
+                                    max={100}
+                                    rows={mixThemes.slice(0, 8).map((entry) => {
                                         const pct = mixTotalValue
                                             ? (entry.value / mixTotalValue) * 100
                                             : 0;
-                                        return (
-                                            <button
-                                                key={entry.key}
-                                                type="button"
-                                                onClick={() => handleThemeClick(entry.key)}
-                                                className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
-                                            >
-                                                <div className="min-w-0">
-                                                    <div className="truncate text-sm text-foreground">
-                                                        {titleCase(entry.key)}
-                                                    </div>
-                                                    <div className="mt-1 text-xs text-(--ink-muted)">
-                                                        {formatNumber(entry.value)}{" "}
-                                                        {investmentMix.unit ?? effortUnit}
-                                                    </div>
-                                                    <div className="text-xs text-(--accent-2)">
-                                                        {formatNumber(pct, {
-                                                            maximumFractionDigits: 1,
-                                                        })}
-                                                        % of total
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        );
-                                    })
-                                )}
-                            </div>
+                                        return {
+                                            key: entry.key,
+                                            label: titleCase(entry.key),
+                                            value: pct,
+                                            display: `${formatNumber(pct, { maximumFractionDigits: 1 })}%`,
+                                            color: themeColorMap.get(entry.key),
+                                            onSelect: () => handleThemeClick(entry.key),
+                                        };
+                                    })}
+                                />
+                            )}
+                            {focusedWorkGraphUrl ? (
+                                <Link
+                                    href={focusedWorkGraphUrl}
+                                    data-testid="mix-sunburst-work-graph"
+                                    className={buttonClassName("ghost", "sm", "self-start")}
+                                >
+                                    <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+                                    {CTA_LABELS.openWorkGraph}
+                                </Link>
+                            ) : null}
                         </div>
                     </div>
                 )}
