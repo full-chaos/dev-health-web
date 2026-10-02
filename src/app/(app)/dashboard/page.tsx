@@ -1,14 +1,10 @@
-import Link from "next/link";
-
 import { BackendBanner } from "@/components/home/BackendBanner";
-import { CockpitClient } from "@/components/home/CockpitClient";
-import { InvestmentPreview } from "@/components/home/InvestmentPreview";
 import { CockpitSummary } from "@/components/home/CockpitSummary";
 import { RankedSignals } from "@/components/home/RankedSignals";
-import { ThreadRow } from "@/components/home/ThreadRow";
-import { AiWorkflowCallout } from "@/components/home/AiWorkflowCallout";
 import { DataConfidenceIndicator } from "@/components/home/DataConfidenceIndicator";
 import { EvidenceContextCard } from "@/components/home/EvidenceContextCard";
+import { HomeMonitoring } from "@/components/home/HomeMonitoring";
+import { InvestigationThreads } from "@/components/home/InvestigationThreads";
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -21,36 +17,9 @@ import { getSetupStatus } from "@/lib/admin/server";
 import { SetupBanner } from "@/components/onboarding/SetupBanner";
 import { auth } from "@/lib/auth";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { CTA_LABELS } from "@/lib/design/cta";
-import { isAiDominant } from "@/lib/cockpit/aiGate";
 import { formatCoveragePct } from "@/lib/cockpit/coverage";
 import { buildThreadApiUrl } from "@/lib/cockpit/evidenceRef";
 import type { HomeResponse } from "@/lib/types";
-
-const MONITORING_VIEWS = [
-    {
-        id: "dora",
-        label: "DORA",
-        description: "Release speed and stability.",
-        focus: "Deploy frequency, cycle time, failure rate.",
-        href: "/metrics?tab=dora",
-    },
-    {
-        id: "flow",
-        label: "Flow",
-        description: "Idea to merge insight.",
-        focus: "Review latency, throughput, WIP.",
-        href: "/metrics?tab=flow",
-    },
-    {
-        id: "throughput",
-        label: "Throughput",
-        description: "Delivery volume and pacing.",
-        focus: "Throughput, WIP saturation, blocked work.",
-        href: "/metrics?tab=throughput",
-    },
-];
 
 const loadHome = async (
     filters: Parameters<typeof getHomeDataViaGraphQL>[0],
@@ -101,21 +70,6 @@ export default async function Home({ searchParams }: HomePageProps) {
         // The shared app shell owns the `<main>` landmark for this route.
         return <ServiceUnavailable landmark={false} />;
     }
-    // Reorder Monitoring Views based on active lens (cockpit surface priority).
-    const viewPriority: Record<string, string[]> = {
-        ic: ["flow", "throughput", "dora"],
-        em: ["flow", "throughput", "dora"],
-        pm: ["flow", "throughput", "dora"],
-        leadership: ["throughput", "dora", "flow"],
-        neutral: ["flow", "throughput", "dora"],
-    };
-    const prioritizedViews = [...MONITORING_VIEWS].sort((a, b) => {
-        const priority = viewPriority[activeLensId] ?? viewPriority.neutral;
-        return priority.indexOf(a.id) - priority.indexOf(b.id);
-    });
-
-    const aiDominant = isAiDominant({ signals: home?.signals ?? null });
-
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
@@ -160,7 +114,8 @@ export default async function Home({ searchParams }: HomePageProps) {
             <ScopeBar view="home" />
 
             {/* Approved Home layout (prototype `cockpit()`): confidence banner, primary-signal
-                hero, then the ranked signals table beside the "Evidence & context" card. */}
+                hero, the ranked signals table beside the "Evidence & context" card, Monitoring,
+                then Investigation threads. Nothing else is a body block. */}
             <div className="flex min-w-0 flex-col gap-4.5" data-testid="home-primary">
                 {home?.data_confidence ? (
                     <DataConfidenceIndicator confidence={home.data_confidence} />
@@ -176,89 +131,16 @@ export default async function Home({ searchParams }: HomePageProps) {
                     />
                     <EvidenceContextCard home={home} />
                 </div>
+
+                <HomeMonitoring
+                    home={home}
+                    filters={filters}
+                    activeRole={activeRole}
+                    lensId={activeLensId}
+                />
+
+                <InvestigationThreads home={home} filters={filters} activeRole={activeRole} />
             </div>
-
-            {aiDominant ? (
-                <AiWorkflowCallout filters={filters} activeRole={activeRole} prominent />
-            ) : null}
-
-            <section className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card) p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <p className="text-label-caps uppercase text-(--ink-muted)">
-                            Monitoring views
-                        </p>
-                        <p className="mt-1 text-sm text-(--ink-muted)">
-                            Tabs for steady trend monitoring.
-                        </p>
-                    </div>
-                    <Link
-                        href={withFilterParam("/metrics?tab=dora", filters, activeRole)}
-                        className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                    >
-                        {CTA_LABELS.openMetrics}
-                    </Link>
-                </div>
-                <div className="mt-4 grid gap-3.5 md:grid-cols-3">
-                    {prioritizedViews.map((view) => (
-                        <Link
-                            key={view.id}
-                            href={withFilterParam(view.href, filters, activeRole)}
-                            className="group rounded-(--radius-md) border border-(--card-stroke) bg-background px-5 py-4.5 transition hover:-translate-y-0.5 hover:border-(--accent)"
-                        >
-                            <div className="flex items-center justify-between text-label-caps uppercase text-(--ink-muted)">
-                                <span>{view.label}</span>
-                                <span className="text-(--accent-2)">Open</span>
-                            </div>
-                            <p className="mt-2 text-sm font-semibold text-foreground">
-                                {view.description}
-                            </p>
-                            <p className="mt-2 text-xs text-(--ink-muted)">{view.focus}</p>
-                        </Link>
-                    ))}
-                </div>
-            </section>
-
-            <CockpitClient home={home} filters={filters} activeRole={activeRole}>
-                <ThreadRow
-                    id="investment-mix"
-                    title="Investment mix"
-                    summary="Work allocation snapshot for the selected window."
-                    deferred={
-                        <div className="mt-4">
-                            <InvestmentPreview filters={filters} />
-                        </div>
-                    }
-                >
-                    <div className="flex flex-wrap gap-4 text-xs uppercase tracking-[0.2em]">
-                        <Link
-                            href={withFilterParam("/work", filters, activeRole)}
-                            className="text-(--accent-2)"
-                        >
-                            {CTA_LABELS.openWorkView}
-                        </Link>
-                        <Link
-                            href={buildExploreUrl({
-                                metric: "throughput",
-                                filters,
-                                role: activeRole,
-                            })}
-                            className="text-(--accent-2)"
-                        >
-                            {CTA_LABELS.openEvidence}
-                        </Link>
-                    </div>
-                </ThreadRow>
-                {aiDominant ? null : (
-                    <div className="px-5 py-4">
-                        <AiWorkflowCallout
-                            filters={filters}
-                            activeRole={activeRole}
-                            prominent={false}
-                        />
-                    </div>
-                )}
-            </CockpitClient>
         </div>
     );
 }

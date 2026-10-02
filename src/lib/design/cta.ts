@@ -86,6 +86,8 @@ export const CTA_LABELS = {
     /** Open the Investment view (allocation tab from the Diagnose overview). */
     openInvestment: "Open Investment",
     openMetrics: "Open metrics",
+    /** Row action of the Home investigation threads (approved copy, app.js line 100). */
+    inspect: "Inspect",
     openWorkView: "Open Work view",
     evidence: "Evidence",
     aiImpact: "Impact",
