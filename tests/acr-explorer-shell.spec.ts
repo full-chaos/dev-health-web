@@ -99,10 +99,18 @@ test.describe("Context Fabric Validation", () => {
                 level: 1,
             }),
         ).toBeVisible();
-        await expect(page.getByRole("link", { name: /Context Fabric Validation/ })).toHaveAttribute(
-            "aria-current",
-            "page",
-        );
+        // The page is in the shared app shell (CHAOS-7967): its platform navigation is the Admin →
+        // Platform destination in the sidebar and the Platform tab row under the page header.
+        await expect(
+            page
+                .getByTestId("nav-children-admin")
+                .getByRole("link", { name: "Platform", exact: true }),
+        ).toHaveAttribute("aria-current", "page");
+        await expect(
+            page
+                .getByRole("tablist", { name: "Platform views" })
+                .getByRole("tab", { name: "Context Fabric Validation", exact: true }),
+        ).toHaveAttribute("aria-current", "page");
         await expect(page.getByRole("heading", { name: "Pressure", level: 2 })).toBeVisible();
         await expect(page.getByText("Context Fabric status")).toBeVisible();
         await expect(
@@ -151,18 +159,20 @@ test.describe("Context Fabric Validation", () => {
     test("puts mobile platform navigation before validation content at 375px", async ({ page }) => {
         await page.setViewportSize({ width: 375, height: 812 });
         const health = await openExplorer(page);
-        const validationLink = page.getByRole("link", { name: /Context Fabric Validation/ });
-        const validationHeading = page.getByRole("heading", {
-            name: "Context Fabric Validation",
-            exact: true,
-            level: 1,
-        });
-        const [navigationBox, headingBox] = await Promise.all([
-            validationLink.boundingBox(),
-            validationHeading.boundingBox(),
+        // In the shared app shell (CHAOS-7967) the sidebar is a slide-over below `md`; the platform
+        // navigation on the page is the Platform tab row under the header, before the content.
+        const validationTab = page
+            .getByRole("tablist", { name: "Platform views" })
+            .getByRole("tab", { name: "Context Fabric Validation", exact: true });
+        await expect(validationTab).toHaveAttribute("aria-current", "page");
+        const validationContent = page.getByRole("heading", { name: "Pressure", level: 2 });
+        await expect(validationContent).toBeVisible();
+        const [navigationBox, contentBox] = await Promise.all([
+            validationTab.boundingBox(),
+            validationContent.boundingBox(),
         ]);
 
-        expect(navigationBox?.y).toBeLessThan(headingBox?.y ?? Number.POSITIVE_INFINITY);
+        expect(navigationBox?.y).toBeLessThan(contentBox?.y ?? Number.POSITIVE_INFINITY);
         await expectHealthyExplorer(health);
     });
 
