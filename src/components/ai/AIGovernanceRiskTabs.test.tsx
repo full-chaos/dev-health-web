@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@/test/utils";
 import { AIGovernanceRiskTabs, governanceRiskViewFromParam } from "./AIGovernanceRiskTabs";
 import type { MetricFilter } from "@/lib/filters/types";
+import { getTabSet } from "@/lib/navigation/tabs";
 
 vi.mock("next/link", () => ({
     default: ({
@@ -42,7 +43,36 @@ describe("governanceRiskViewFromParam", () => {
     });
 });
 
+describe("governanceRiskViewFromParam over the registry", () => {
+    it("accepts exactly the registry's tab ids and nothing else", () => {
+        for (const tab of getTabSet("ai-governance-risk").tabs) {
+            expect(governanceRiskViewFromParam(tab.id), tab.id).toBe(tab.id);
+        }
+        expect(governanceRiskViewFromParam("")).toBe("overview");
+        expect(governanceRiskViewFromParam("tab")).toBe("overview");
+    });
+});
+
 describe("AIGovernanceRiskTabs", () => {
+    it("renders the registry's tabs in order with the same labels and links", () => {
+        render(<AIGovernanceRiskTabs view="overview" filters={filters} />);
+
+        const links = screen.getByRole("navigation", { name: "Governance Risk views" });
+        const rendered = Array.from(links.querySelectorAll("a")).map((a) => [
+            a.textContent,
+            new URL(a.getAttribute("href") ?? "", "https://app.example").pathname +
+                new URL(a.getAttribute("href") ?? "", "https://app.example").searchParams
+                    .getAll("view")
+                    .map((v) => `?view=${v}`)
+                    .join(""),
+        ]);
+        expect(rendered).toEqual([
+            ["Overview", "/ai/risk"],
+            ["Test Gaps", "/ai/risk?view=test-gaps"],
+            ["Evidence", "/ai/risk?view=evidence"],
+        ]);
+    });
+
     it("renders the three tabs with the active view marked", () => {
         render(<AIGovernanceRiskTabs view="test-gaps" filters={filters} />);
 

@@ -1,6 +1,6 @@
-/** AIDrilldownModal component tests — CHAOS-1739. */
+/** AIEvidenceExplorer component tests (moved from the retired AIDrilldownModal tests; CHAOS-1739, CHAOS-7775). */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, userEvent, within } from "@/test/utils";
+import { cleanup, render, screen, userEvent, within } from "@/test/utils";
 
 const { mockUseAIAttributedPrs, mockUseDrilldown } = vi.hoisted(() => ({
     mockUseAIAttributedPrs: vi.fn(),
@@ -12,7 +12,7 @@ vi.mock("@/lib/graphql/hooks/useAIReviewRisk", () => ({
     useAIWorkflowDrilldownForPr: mockUseDrilldown,
 }));
 
-import { AIDrilldownModal } from "./AIDrilldownModal";
+import { AIEvidenceExplorer } from "./AIEvidenceExplorer";
 import type { AIFilter } from "@/lib/filters/ai";
 
 const filter: AIFilter = {
@@ -32,7 +32,7 @@ function emptyEvidence() {
     };
 }
 
-describe("AIDrilldownModal", () => {
+describe("AIEvidenceExplorer", () => {
     beforeEach(() => {
         mockUseAIAttributedPrs.mockReset();
         mockUseDrilldown.mockReset();
@@ -49,15 +49,8 @@ describe("AIDrilldownModal", () => {
             error: undefined,
         });
 
-        render(
-            <AIDrilldownModal
-                metric="Change request rate"
-                filter={filter}
-                onClose={() => undefined}
-            />,
-        );
+        render(<AIEvidenceExplorer filter={filter} />);
 
-        expect(screen.getByText(/Change request rate/i)).toBeInTheDocument();
         expect(screen.getByTestId("ai-drilldown-empty")).toBeInTheDocument();
         expect(screen.getByTestId("ai-drilldown-evidence-prompt")).toBeInTheDocument();
     });
@@ -69,13 +62,7 @@ describe("AIDrilldownModal", () => {
             error: undefined,
         });
 
-        render(
-            <AIDrilldownModal
-                metric="Change request rate"
-                filter={filter}
-                onClose={() => undefined}
-            />,
-        );
+        render(<AIEvidenceExplorer filter={filter} />);
 
         expect(screen.getByTestId("ai-evidence-unavailable")).toBeInTheDocument();
         expect(screen.queryByTestId("ai-drilldown-empty")).not.toBeInTheDocument();
@@ -89,9 +76,7 @@ describe("AIDrilldownModal", () => {
             error: undefined,
         });
 
-        render(
-            <AIDrilldownModal metric="Pickup latency" filter={filter} onClose={() => undefined} />,
-        );
+        render(<AIEvidenceExplorer filter={filter} />);
 
         expect(screen.getByTestId("ai-drilldown-loading")).toBeInTheDocument();
     });
@@ -127,13 +112,7 @@ describe("AIDrilldownModal", () => {
             error: undefined,
         });
 
-        render(
-            <AIDrilldownModal
-                metric="Review comments per PR"
-                filter={filter}
-                onClose={() => undefined}
-            />,
-        );
+        render(<AIEvidenceExplorer filter={filter} />);
 
         expect(screen.getByText("Add feature flag")).toBeInTheDocument();
         expect(screen.getByText("Refactor auth")).toBeInTheDocument();
@@ -192,7 +171,7 @@ describe("AIDrilldownModal", () => {
             },
         });
 
-        render(<AIDrilldownModal metric="Rework rate" filter={filter} onClose={() => undefined} />);
+        render(<AIEvidenceExplorer filter={filter} />);
 
         const row = screen.getByTestId("ai-drilldown-table");
         await userEvent.click(within(row).getByText("Add feature flag"));
@@ -212,26 +191,11 @@ describe("AIDrilldownModal", () => {
             error: { message: "ClickHouse unavailable" },
         });
 
-        render(
-            <AIDrilldownModal metric="Incident rate" filter={filter} onClose={() => undefined} />,
-        );
+        render(<AIEvidenceExplorer filter={filter} />);
 
         expect(screen.getByTestId("ai-drilldown-error")).toHaveTextContent(
             /ClickHouse unavailable/,
         );
-    });
-
-    it("invokes onClose when the close button is clicked", () => {
-        const onClose = vi.fn();
-        mockUseAIAttributedPrs.mockReturnValue({
-            data: { rows: [], total: 0, hasMore: false, dataAvailable: true },
-            fetching: false,
-            error: undefined,
-        });
-
-        render(<AIDrilldownModal metric="Pickup latency" filter={filter} onClose={onClose} />);
-        fireEvent.click(screen.getByRole("button", { name: /close/i }));
-        expect(onClose).toHaveBeenCalled();
     });
 
     it("filters PR rows by the search input", async () => {
@@ -265,13 +229,7 @@ describe("AIDrilldownModal", () => {
             error: undefined,
         });
 
-        render(
-            <AIDrilldownModal
-                metric="Approval friction"
-                filter={filter}
-                onClose={() => undefined}
-            />,
-        );
+        render(<AIEvidenceExplorer filter={filter} />);
 
         await userEvent.type(screen.getByTestId("ai-drilldown-search"), "logger");
 
@@ -286,16 +244,9 @@ describe("AIDrilldownModal", () => {
             error: undefined,
         });
 
-        render(
-            <AIDrilldownModal
-                metric="Change request rate"
-                filter={filter}
-                onClose={() => undefined}
-            />,
-        );
+        render(<AIEvidenceExplorer filter={filter} />);
 
-        const modal = screen.getByTestId("ai-drilldown-modal");
-        const text = modal.textContent ?? "";
+        const text = document.body.textContent ?? "";
         expect(text).not.toMatch(/aiWorkflowDrilldown/);
         expect(text).not.toMatch(/rootType/);
         expect(text).not.toMatch(/fabricat/i);

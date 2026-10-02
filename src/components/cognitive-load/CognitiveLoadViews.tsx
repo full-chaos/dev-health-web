@@ -17,6 +17,7 @@ import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { orderTimeseriesPoints } from "@/components/charts/timeseriesData";
 import Link from "next/link";
+import { MetricCard } from "@/components/metrics/MetricCard";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -214,7 +215,26 @@ export function OverviewView({
                         data-testid="cognitive-load-tiles"
                     >
                         {signals.map((signal) => (
-                            <LoadTile key={signal.label} signal={signal} />
+                            <MetricCard
+                                key={signal.label}
+                                as="article"
+                                testId="cognitive-load-tile"
+                                label={signal.label}
+                                valueText={signal.value}
+                                // The chip and the period text are the page's own strings and tone class.
+                                deltaSlot={
+                                    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                                        <span className="rounded-full bg-(--accent-2)/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-(--accent-2)">
+                                            {signal.interpretation}
+                                        </span>
+                                        <span className={`font-medium ${signal.deltaTone}`}>
+                                            {signal.delta}
+                                        </span>
+                                    </span>
+                                }
+                                description={signal.description}
+                                hideTrend
+                            />
                         ))}
                     </div>
                 )}
@@ -253,33 +273,6 @@ export function OverviewView({
                 </section>
             </section>
         </>
-    );
-}
-
-/**
- * One Overview tile, drawn like the shared metric tile (concept `.metric`: label, value,
- * meta line). The interpretation chip sits in the delta slot, before the period text; both
- * strings and the delta tone are the production values. Not `MetricCard`: its value is a
- * number and it has no description line, and the tile must keep production's strings.
- */
-function LoadTile({ signal }: { signal: LoadKpi }) {
-    return (
-        <article
-            className="min-w-0 rounded-(--radius-md) border border-(--card-stroke) bg-card px-5 py-4.5"
-            data-testid="cognitive-load-tile"
-        >
-            <p className="text-label-caps uppercase text-(--ink-muted)">{signal.label}</p>
-            <p className="mt-2.5 text-[1.75rem] font-semibold leading-tight tabular-nums">
-                {signal.value}
-            </p>
-            <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-                <span className="rounded-full bg-(--accent-2)/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-(--accent-2)">
-                    {signal.interpretation}
-                </span>
-                <span className={`font-medium ${signal.deltaTone}`}>{signal.delta}</span>
-            </div>
-            <p className="mt-3 text-sm leading-6 text-(--ink-muted)">{signal.description}</p>
-        </article>
     );
 }
 

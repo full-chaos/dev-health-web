@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@/test/utils";
+import { fireEvent, render, screen, within } from "@/test/utils";
 import { AIRiskDashboard } from "../AIRiskDashboard";
 import type { AIFilter } from "@/lib/filters/ai";
 
@@ -26,6 +26,10 @@ vi.mock("@/lib/graphql/hooks/useAIReviewRisk", async (importOriginal) => {
         useAIGovernanceSummary: mockUseAIGovernanceSummary,
     };
 });
+
+vi.mock("../AIEvidenceExplorer", () => ({
+    AIEvidenceExplorer: () => <div data-testid="explorer-stub" />,
+}));
 
 const filter: AIFilter = { startDate: "2026-04-01", endDate: "2026-05-01" };
 
@@ -243,5 +247,39 @@ describe("AIRiskDashboard", () => {
         });
         render(<AIRiskDashboard filter={filter} />);
         expect(screen.getByText("AI risk data is not available")).toBeInTheDocument();
+    });
+
+    describe("pins (CHAOS-7775)", () => {
+        it("opens the evidence view for the clicked metric and closes it again", () => {
+            mockUseAIRiskBreakdown.mockReturnValue({
+                fetching: false,
+                error: undefined,
+                data: {
+                    aiRiskBreakdown: {
+                        dataAvailable: true,
+                        byBucket: [],
+                        hotspotOverlap: [],
+                        complexityOverlap: [],
+                        missingStates: [],
+                    },
+                    aiComparison: { delta: {} },
+                },
+            });
+            render(<AIRiskDashboard filter={filter} />);
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+            const buttons = screen.getAllByRole("button", { name: "Open evidence" });
+            expect(buttons).toHaveLength(4);
+
+            fireEvent.click(buttons[2]);
+            const dialog = screen.getByRole("dialog", { name: "Evidence by pull request" });
+            expect(within(dialog).getByText("Test gap rate")).toBeInTheDocument();
+            expect(within(dialog).getByTestId("explorer-stub")).toBeInTheDocument();
+            expect(
+                within(dialog).getByText(/Pick an AI-attributed PR to see its Work Graph evidence/),
+            ).toBeInTheDocument();
+
+            fireEvent.click(within(dialog).getByRole("button", { name: /close/i }));
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
     });
 });
