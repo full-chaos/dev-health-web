@@ -478,7 +478,7 @@ export default function SingleReportPage() {
                     title="Delete Report"
                     description={`Are you sure you want to delete \u201c${report.name}\u201d? This action cannot be undone.`}
                     data-testid="delete-panel"
-                    className="border-l-[3px] border-l-(--negative)"
+                    className="border-l-4 border-l-(--negative)"
                     action={
                         <div className="flex gap-2">
                             <Button
