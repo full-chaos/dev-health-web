@@ -262,6 +262,7 @@ export const iaPreservationBaseline = {
     // this list against an INDEPENDENT filesystem scan of redirect-only route files.
     legacyAliasRoutes: [
         { route: "/team-flow", redirectsTo: "/metrics?tab=flow" },
+        { route: "/capacity", redirectsTo: "/plan/capacity" },
         { route: "/capacity-planning", redirectsTo: "/plan/capacity" },
         { route: "/plan/delivery-forecast", redirectsTo: "/plan" },
         { route: "/explore/landscape", redirectsTo: "/landscape" },
