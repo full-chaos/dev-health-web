@@ -406,6 +406,7 @@ function HotspotEvidence({ row }: { row: HotspotRow }) {
         <EvidenceFactList aria-label="File">
             <EvidenceFact
                 label="File"
+                stacked
                 value={<span className="break-all font-mono font-medium">{row.filePath}</span>}
             />
             <EvidenceFact label="Repo" value={row.repoName || undefined} />

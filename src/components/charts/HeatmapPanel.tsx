@@ -375,7 +375,8 @@ function HeatmapCellEvidence({
             <EvidenceFactList aria-label="Cell">
                 <EvidenceFact
                     label="Value"
-                    value={`${formatNumber(cell.value)}${unit ? ` ${unit}` : ""}`}
+                    // The same precision as the chart tooltip, so the drawer and the cell agree.
+                    value={`${formatNumber(cell.value, { maximumFractionDigits: 2 })}${unit ? ` ${unit}` : ""}`}
                 />
                 <EvidenceFact
                     label="Artifacts"

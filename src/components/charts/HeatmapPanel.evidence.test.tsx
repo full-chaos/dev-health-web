@@ -50,7 +50,7 @@ const request = {
 const grid: HeatmapResponse = {
     axes: { x: ["Mon", "Tue"], y: ["auth", "billing"] },
     cells: [
-        { x: "Mon", y: "auth", value: 1 },
+        { x: "Mon", y: "auth", value: 0.04 },
         { x: "Tue", y: "billing", value: 9 },
     ],
     legend: { unit: "risk", scale: "linear" },
@@ -145,6 +145,8 @@ describe("HeatmapPanel evidence drawer", () => {
 
         const drawer = screen.getByRole("dialog");
         await waitFor(() => expect(fact(drawer, "Artifacts")).toHaveTextContent(/^None returned$/));
+        // A small served value keeps the chart tooltip's precision; it is not rounded to 0.
+        expect(fact(drawer, "Value")).toHaveTextContent(/^0\.04 risk$/);
         expect(
             within(drawer).getByText("No artifacts linked to this cell in the selected window."),
         ).toBeInTheDocument();
