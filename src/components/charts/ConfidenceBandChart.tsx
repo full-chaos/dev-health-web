@@ -3,10 +3,11 @@
 import type { CSSProperties } from "react";
 import { useMemo } from "react";
 
+import type { LineSeriesOption } from "echarts";
 import { LineChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
-import { useChartTheme } from "./chartTheme";
+import { useChartColors, useChartTheme } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 
 echarts.use([LineChart]);
@@ -16,6 +17,10 @@ type ConfidenceBandChartProps = {
     p50Days: number;
     p85Days: number;
     p95Days: number;
+    /** Dates of the three percentile completions (ISO), shown on the markers. */
+    p50Date?: string;
+    p85Date?: string;
+    p95Date?: string;
     throughputMean: number;
     mode?: "burndown" | "burnup";
     height?: number | string;
@@ -45,6 +50,22 @@ function generateProjection(
     return result;
 }
 
+const formatMarkerDate = (value: string | undefined): string | null => {
+    if (!value) return null;
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+
+/** "P85 · Oct 1 · 3 days": percentile, completion date when known, days. */
+export const markerLabel = (name: string, date: string | undefined, days: number): string =>
+    [name, formatMarkerDate(date), `${days} ${days === 1 ? "day" : "days"}`]
+        .filter(Boolean)
+        .join(" · ");
+
+/** Vertical room one marker label row needs, so the three labels never overlap. */
+const LABEL_ROW = 14;
+
 function generateDayLabels(days: number): string[] {
     const labels: string[] = [];
     for (let d = 0; d <= days; d++) {
@@ -62,6 +83,9 @@ export function ConfidenceBandChart({
     p50Days,
     p85Days,
     p95Days,
+    p50Date,
+    p85Date,
+    p95Date,
     throughputMean,
     mode = "burndown",
     height = 320,
@@ -70,6 +94,8 @@ export function ConfidenceBandChart({
     style,
 }: ConfidenceBandChartProps) {
     const chartTheme = useChartTheme();
+    // One hue, ordinal by percentile (strength), in the first series token.
+    const tide = useChartColors()[0] ?? chartTheme.accent1;
     const mergedStyle: CSSProperties = { height, width, ...style };
 
     const maxDays = Math.max(p95Days, 1);
@@ -102,6 +128,74 @@ export function ConfidenceBandChart({
         });
     }, [dayLabels, p95Days, projection, mode, backlogSize]);
 
+    // The percentile markers: dashed vertical lines with a label (percentile, date, days) and a
+    // dot on the burn line. They belong INSIDE a series: ECharts ignores a top-level markLine.
+    const marks = useMemo((): Pick<LineSeriesOption, "markLine" | "markPoint"> => {
+        const points = lowVariance
+            ? [{ name: "Low variance", day: p50Days, date: p50Date }]
+            : [
+                  { name: "P50", day: p50Days, date: p50Date },
+                  { name: "P85", day: p85Days, date: p85Date },
+                  { name: "P95", day: p95Days, date: p95Date },
+              ];
+        return {
+            markLine: {
+                silent: true,
+                symbol: ["none", "none"] as ["none", "none"],
+                data: points.map((point, index) => ({
+                    xAxis: dayLabels[Math.min(point.day, dayLabels.length - 1)],
+                    // the recommended P85 is the heavier line
+                    lineStyle: {
+                        type: "dashed" as const,
+                        color: tide,
+                        width: point.name === "P85" ? 2 : 1,
+                    },
+                    label: {
+                        show: true,
+                        formatter: markerLabel(point.name, point.date, point.day),
+                        position: "end" as const,
+                        // a label near the right edge is right-aligned so it is never clipped
+                        align: (point.day >= maxDays * 0.85 ? "right" : "center") as
+                            "right" | "center",
+                        // one row per percentile, so the three labels never collide
+                        offset: [0, -index * LABEL_ROW] as [number, number],
+                        color: chartTheme.text,
+                        fontSize: 11,
+                        fontWeight: point.name === "P85" ? 700 : 500,
+                    },
+                })),
+            },
+            markPoint: {
+                silent: true,
+                symbol: "circle",
+                symbolSize: 9,
+                itemStyle: { color: tide, borderColor: chartTheme.background, borderWidth: 2 },
+                label: { show: false },
+                data: points.map((point) => ({
+                    name: point.name,
+                    coord: [
+                        dayLabels[Math.min(point.day, dayLabels.length - 1)],
+                        projection[Math.min(point.day, projection.length - 1)] ?? 0,
+                    ],
+                })),
+            },
+        };
+    }, [
+        chartTheme.background,
+        chartTheme.text,
+        dayLabels,
+        lowVariance,
+        maxDays,
+        p50Date,
+        p50Days,
+        p85Date,
+        p85Days,
+        p95Date,
+        p95Days,
+        projection,
+        tide,
+    ]);
+
     const option = useMemo(
         () => ({
             tooltip: {
@@ -119,13 +213,13 @@ export function ConfidenceBandChart({
 
                     let completionInfo = "";
                     if (lowVariance && dayIndex === p50Days) {
-                        completionInfo = `<div style="color: ${chartTheme.accent1}; margin-top: 4px;">Low variance completion point</div>`;
+                        completionInfo = `<div style="color: ${tide}; margin-top: 4px;">Low variance completion point</div>`;
                     } else if (dayIndex === p50Days) {
-                        completionInfo = `<div style="color: ${chartTheme.accent1}; margin-top: 4px;">P50 completion point</div>`;
+                        completionInfo = `<div style="color: ${tide}; margin-top: 4px;">P50 completion point</div>`;
                     } else if (dayIndex === p85Days) {
-                        completionInfo = `<div style="color: ${chartTheme.accent2}; margin-top: 4px;">P85 completion point (recommended)</div>`;
+                        completionInfo = `<div style="color: ${tide}; margin-top: 4px;">P85 completion point (recommended)</div>`;
                     } else if (dayIndex === p95Days) {
-                        completionInfo = `<div style="color: ${chartTheme.accent3}; margin-top: 4px;">P95 completion point (conservative)</div>`;
+                        completionInfo = `<div style="color: ${tide}; margin-top: 4px;">P95 completion point (conservative)</div>`;
                     }
 
                     return `
@@ -147,10 +241,11 @@ export function ConfidenceBandChart({
                 itemWidth: 12,
                 itemHeight: 8,
             },
+            // room above the plot for the staggered marker labels (one row per percentile)
             grid: {
                 left: 48,
                 right: 24,
-                top: 24,
+                top: 24 + (lowVariance ? 0 : 2) * LABEL_ROW,
                 bottom: 48,
             },
             xAxis: {
@@ -172,8 +267,9 @@ export function ConfidenceBandChart({
                 nameTextStyle: { color: chartTheme.muted, fontSize: 11 },
                 axisLine: { show: false },
                 axisTick: { show: false },
+                // hairline, solid
                 splitLine: {
-                    lineStyle: { color: chartTheme.grid, type: "dashed" as const },
+                    lineStyle: { color: chartTheme.grid, type: "solid" as const, width: 1 },
                 },
                 axisLabel: { color: chartTheme.muted, fontSize: 10 },
                 min: 0,
@@ -186,12 +282,14 @@ export function ConfidenceBandChart({
                           type: "line" as const,
                           data: p50Band,
                           smooth: true,
-                          lineStyle: { width: 2, color: chartTheme.accent1 },
+                          lineStyle: { width: 2, color: tide },
                           showSymbol: false,
+                          itemStyle: { color: tide },
                           areaStyle: {
                               opacity: 0.3,
-                              color: chartTheme.accent1,
+                              color: tide,
                           },
+                          ...marks,
                           z: 3,
                       },
                   ]
@@ -203,9 +301,10 @@ export function ConfidenceBandChart({
                           smooth: true,
                           lineStyle: { width: 0 },
                           showSymbol: false,
+                          itemStyle: { color: tide },
                           areaStyle: {
                               opacity: 0.15,
-                              color: chartTheme.accent3,
+                              color: tide,
                           },
                           z: 1,
                       },
@@ -216,9 +315,10 @@ export function ConfidenceBandChart({
                           smooth: true,
                           lineStyle: { width: 0 },
                           showSymbol: false,
+                          itemStyle: { color: tide },
                           areaStyle: {
                               opacity: 0.25,
-                              color: chartTheme.accent2,
+                              color: tide,
                           },
                           z: 2,
                       },
@@ -227,30 +327,22 @@ export function ConfidenceBandChart({
                           type: "line" as const,
                           data: p50Band,
                           smooth: true,
-                          lineStyle: { width: 2, color: chartTheme.accent1 },
+                          lineStyle: { width: 2, color: tide },
                           showSymbol: false,
+                          itemStyle: { color: tide },
                           areaStyle: {
                               opacity: 0.35,
-                              color: chartTheme.accent1,
+                              color: tide,
                           },
+                          ...marks,
                           z: 3,
                       },
                   ],
-            markLine: {
-                silent: true,
-                symbol: ["none", "none"],
-                lineStyle: { type: "dashed" as const, color: chartTheme.muted },
-                data: lowVariance
-                    ? [{ xAxis: p50Days, label: { show: false } }]
-                    : [
-                          { xAxis: p50Days, label: { show: false } },
-                          { xAxis: p85Days, label: { show: false } },
-                          { xAxis: p95Days, label: { show: false } },
-                      ],
-            },
         }),
         [
             chartTheme,
+            marks,
+            tide,
             dayLabels,
             maxDays,
             mode,
