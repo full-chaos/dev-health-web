@@ -38,8 +38,7 @@ export function resolveScopeBarConfig(
     pageFilters = true,
 ): ScopeBarConfig {
     const base = resolveVisibility(view, tab);
-    const hasPageFilters =
-        pageFilters && Boolean(base.developer || base.workType || base.flowStage);
+    const hasPageFilters = pageFilters && Boolean(base.developer || base.workType);
 
     return {
         resolvedVisibility: maskUnreadControls({
@@ -47,7 +46,7 @@ export function resolveScopeBarConfig(
             scope: false,
             date: false,
             repo: false,
-            ...(hasPageFilters ? {} : { developer: false, workType: false, flowStage: false }),
+            ...(hasPageFilters ? {} : { developer: false, workType: false }),
         }),
         resolvedScopeLock: hasPageFilters ? resolveScopeLock(view) : null,
         writeDefaultFilter: hasPageFilters,

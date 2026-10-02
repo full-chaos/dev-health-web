@@ -59,18 +59,14 @@ export function ScopeBarClient({
 }: ScopeBarClientProps) {
     const {
         allowAdvanced,
-        artifacts,
         barRef,
         developers,
         filters,
-        flowStage,
-        issueType,
         openMenu,
         options,
         peopleQuery,
         repos,
         resetFilters,
-        roles,
         selectRepos,
         selectTeams,
         setOpenMenu,
@@ -97,7 +93,6 @@ export function ScopeBarClient({
     const organization = useShellOrganization();
     const orgLabel = orgName ?? organization?.name ?? SCOPE_BAR_ORG_FALLBACK;
     const isOrgScope = filters.scope.level === "org";
-    const blocked = filters.how.blocked ?? false;
 
     const [filtersMode, setFiltersMode] = useState<"drawer" | "inline" | null>(null);
     const filtersButtonRef = useRef<HTMLButtonElement>(null);
@@ -129,12 +124,7 @@ export function ScopeBarClient({
     // Filters that live in the drawer. Team, repository and window are in the row.
     const activeFilterCount =
         (isFilterRead(visibility, "developers") ? developers.length : 0) +
-        (isFilterRead(visibility, "roles") ? roles.length : 0) +
-        (isFilterRead(visibility, "workCategory") ? workCategory.length : 0) +
-        (isFilterRead(visibility, "issueType") ? issueType.length : 0) +
-        (isFilterRead(visibility, "flowStage") ? flowStage.length : 0) +
-        (isFilterRead(visibility, "artifacts") ? artifacts.length : 0) +
-        (blocked && isFilterRead(visibility, "blocked") ? 1 : 0);
+        (isFilterRead(visibility, "workCategory") ? workCategory.length : 0);
     const filtersButtonName =
         activeFilterCount > 0
             ? `${CTA_LABELS.filters}, ${activeFilterCount} active`
@@ -143,7 +133,7 @@ export function ScopeBarClient({
     // The People view has no filter drawer (as its filter bar had no panel): it
     // has the person search in the row.
     const hasDrawerFilters = Boolean(
-        allowAdvanced && (visibility.developer || visibility.workType || visibility.flowStage),
+        allowAdvanced && (visibility.developer || visibility.workType),
     );
 
     // The page filters with a list of options. They are in the drawer; a view
@@ -180,24 +170,6 @@ export function ScopeBarClient({
                         updateFilters({
                             ...filters,
                             why: { ...filters.why, work_category: next },
-                        })
-                    }
-                    openMenu={openMenu}
-                    setOpenMenu={setOpenMenu}
-                    toggleValue={toggleValue}
-                />
-            ) : null}
-            {visibility.flowStage && isFilterRead(visibility, "flowStage") ? (
-                <QuickFilterMenu
-                    active={flowStage}
-                    emptyLabel="All"
-                    items={options.flow_stage}
-                    label="Flow"
-                    menuKey="flow"
-                    onChange={(next) =>
-                        updateFilters({
-                            ...filters,
-                            how: { ...filters.how, flow_stage: next },
                         })
                     }
                     openMenu={openMenu}
@@ -334,30 +306,8 @@ export function ScopeBarClient({
                     {activeFilterCount > 0 || repos.length > 0 ? (
                         <div className="mt-3">
                             <ActiveFilterPills
-                                artifacts={artifacts}
-                                blocked={blocked}
                                 developers={developers}
-                                flowStage={flowStage}
-                                issueType={issueType}
                                 unread={visibility.unreadFilters}
-                                onClearArtifact={(value) =>
-                                    updateFilters({
-                                        ...filters,
-                                        what: {
-                                            ...filters.what,
-                                            artifacts: toggleValue(
-                                                artifacts,
-                                                value,
-                                            ) as MetricFilter["what"]["artifacts"],
-                                        },
-                                    })
-                                }
-                                onClearBlocked={() =>
-                                    updateFilters({
-                                        ...filters,
-                                        how: { ...filters.how, blocked: false },
-                                    })
-                                }
                                 onClearDeveloper={(value) =>
                                     updateFilters({
                                         ...filters,
@@ -367,34 +317,10 @@ export function ScopeBarClient({
                                         },
                                     })
                                 }
-                                onClearFlowStage={(value) =>
-                                    updateFilters({
-                                        ...filters,
-                                        how: {
-                                            ...filters.how,
-                                            flow_stage: toggleValue(flowStage, value),
-                                        },
-                                    })
-                                }
-                                onClearIssueType={(value) =>
-                                    updateFilters({
-                                        ...filters,
-                                        why: {
-                                            ...filters.why,
-                                            issue_type: toggleValue(issueType, value),
-                                        },
-                                    })
-                                }
                                 onClearRepo={(value) =>
                                     updateFilters({
                                         ...filters,
                                         what: { ...filters.what, repos: toggleValue(repos, value) },
-                                    })
-                                }
-                                onClearRole={(value) =>
-                                    updateFilters({
-                                        ...filters,
-                                        who: { ...filters.who, roles: toggleValue(roles, value) },
                                     })
                                 }
                                 onClearWorkCategory={(value) =>
@@ -409,7 +335,6 @@ export function ScopeBarClient({
                                     })
                                 }
                                 repos={repos}
-                                roles={roles}
                                 workCategory={workCategory}
                             />
                         </div>
@@ -426,14 +351,9 @@ export function ScopeBarClient({
                                 {pageFilterMenus}
                             </div>
                             <AdvancedFiltersPanel
-                                artifacts={artifacts}
-                                blocked={blocked}
                                 developers={developers}
                                 filters={filters}
-                                flowStage={flowStage}
-                                issueType={issueType}
                                 repos={repos}
-                                roles={roles}
                                 singleColumn={filtersMode === "drawer"}
                                 updateFilters={updateFilters}
                                 visibility={visibility}

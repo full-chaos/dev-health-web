@@ -15,9 +15,8 @@ describe("resolveVisibility (pure)", () => {
             repo: true,
             developer: true,
             workType: true,
-            flowStage: false,
             date: true,
-            unreadFilters: ["artifacts", "roles", "flowStage", "blocked", "issueType"],
+            unreadFilters: [],
         });
     });
 
@@ -25,14 +24,12 @@ describe("resolveVisibility (pure)", () => {
         const v = resolveVisibility("metrics");
         expect(v.repo).toBe(true);
         expect(v.developer).toBe(true);
-        expect(v.flowStage).toBe(false);
         expect(v.workType).toBe(false);
     });
 
-    it("returns METRICS_FLOW visibility for view=metrics tab=flow (developer + flowStage enabled)", () => {
+    it("returns METRICS_FLOW visibility for view=metrics tab=flow (developer enabled, no flow stage control: CHAOS-7799)", () => {
         const v = resolveVisibility("metrics", "flow");
         expect(v.developer).toBe(true);
-        expect(v.flowStage).toBe(true);
     });
 
     it("hides repo for view=work and view=investment (WORK_VISIBILITY)", () => {
@@ -55,7 +52,6 @@ describe("resolveVisibility (pure)", () => {
         expect(v.repo).toBe(true);
         expect(v.developer).toBe(true);
         expect(v.workType).toBe(true);
-        expect(v.flowStage).toBe(true);
         expect(v.date).toBe(true);
     });
 
@@ -65,7 +61,6 @@ describe("resolveVisibility (pure)", () => {
         expect(v.repo).toBe(false);
         expect(v.developer).toBe(false);
         expect(v.workType).toBe(false);
-        expect(v.flowStage).toBe(false);
         expect(v.date).toBe(false);
     });
 
@@ -85,13 +80,12 @@ describe("resolveVisibility (pure)", () => {
         expect(v.workType).toBe(false);
     });
 
-    it("enables repo for view=cognitive-load, still hides developer/workType/flowStage (CHAOS-2386)", () => {
+    it("enables repo for view=cognitive-load, still hides developer/workType (CHAOS-2386)", () => {
         const v = resolveVisibility("cognitive-load");
         expect(v.scope).toBe(true);
         expect(v.repo).toBe(true);
         expect(v.developer).toBe(false);
         expect(v.workType).toBe(false);
-        expect(v.flowStage).toBe(false);
         expect(v.date).toBe(true);
     });
 });

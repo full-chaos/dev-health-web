@@ -112,11 +112,4 @@ describe("MetricFilter shape", () => {
             true,
         );
     });
-
-    it("how.flow_stage defaults to undefined or an array", () => {
-        const decoded = decodeFilter(null);
-        expect(decoded.how.flow_stage === undefined || Array.isArray(decoded.how.flow_stage)).toBe(
-            true,
-        );
-    });
 });

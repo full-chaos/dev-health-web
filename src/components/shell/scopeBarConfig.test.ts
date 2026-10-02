@@ -32,7 +32,7 @@ const ALL_VIEWS: FilterBarView[] = [
 /** The page filter bar rendered only for a view with a page filter. */
 const filterBarRendered = (view: FilterBarView, tab?: string) => {
     const visibility = resolveVisibility(view, tab);
-    return Boolean(visibility.developer || visibility.workType || visibility.flowStage);
+    return Boolean(visibility.developer || visibility.workType);
 };
 
 describe("resolveScopeBarConfig — scope lock", () => {
@@ -120,15 +120,13 @@ describe("resolveScopeBarConfig — visibility", () => {
 
     it("keeps the page filters of a view", () => {
         // Only the controls a reader uses are offered (CHAOS-7796): the home path reads the work
-        // category, not the developers; nothing reads the flow stage.
+        // category, not the developers.
         expect(resolveScopeBarConfig("home").resolvedVisibility).toMatchObject({
             developer: false,
             workType: true,
-            flowStage: false,
         });
         expect(resolveScopeBarConfig("metrics", "flow").resolvedVisibility).toMatchObject({
             developer: false,
-            flowStage: false,
         });
         // Hiding a control does not change whether the view has page filters.
         expect(resolveScopeBarConfig("home").resolvedScopeLock).toBe("team");
@@ -146,7 +144,6 @@ describe("resolveScopeBarConfig — pageFilters: false", () => {
         expect(config.resolvedVisibility).toMatchObject({
             developer: false,
             workType: false,
-            flowStage: false,
         });
     });
 
@@ -159,32 +156,13 @@ describe("resolveScopeBarConfig — pageFilters: false", () => {
         expect(config.resolvedVisibility).toMatchObject({
             developer: false,
             workType: false,
-            flowStage: false,
         });
     });
 });
 
 describe("resolveScopeBarConfig — AI pages (CHAOS-7744)", () => {
-    it("lists the URL filters no AI query reads: developers, roles, flow stage, blocked, artifacts and issue type", () => {
-        expect([...(resolveVisibility("ai").unreadFilters ?? [])].sort()).toEqual([
-            "artifacts",
-            "blocked",
-            "developers",
-            "flowStage",
-            "issueType",
-            "roles",
-        ]);
-    });
-
-    it("does not offer the Issue type filter on an AI page: no AI query reads it", () => {
-        expect(resolveScopeBarConfig("ai").resolvedVisibility.unreadFilters).toContain("issueType");
-        expect(resolveVisibility("ai").unreadFilters).toContain("issueType");
-    });
-
-    it("keeps the Issue type filter wherever it is offered today", () => {
-        for (const view of ALL_VIEWS.filter((v) => v !== "ai")) {
-            expect(resolveVisibility(view).unreadFilters, view).toContain("issueType");
-        }
+    it("lists the URL filters no AI query reads: developers", () => {
+        expect(resolveVisibility("ai").unreadFilters).toEqual(["developers"]);
     });
 
     it("keeps the Work control on an AI page: the AIScopeInput queries read it", () => {
@@ -204,21 +182,24 @@ describe("resolveScopeBarConfig — Work is single-select on AI pages (CHAOS-778
     });
 });
 
-describe("resolveVisibility — artifacts are read by no view (CHAOS-7795)", () => {
-    it("lists artifacts as unread on every view, with and without a tab", () => {
-        for (const view of ALL_VIEWS) {
-            expect(resolveVisibility(view).unreadFilters, view).toContain("artifacts");
-            expect(resolveScopeBarConfig(view).resolvedVisibility.unreadFilters, view).toContain(
-                "artifacts",
-            );
+describe("resolveVisibility — roles, artifacts, issue type, flow stage and blocked are gone (CHAOS-7799)", () => {
+    it("the unread vocabulary has only developers and workCategory, on every view and tab", () => {
+        const allowed = new Set(["developers", "workCategory"]);
+        for (const view of [...ALL_VIEWS, undefined]) {
+            for (const tab of [undefined, "flow"]) {
+                const unread = resolveVisibility(view, tab).unreadFilters ?? [];
+                expect(
+                    unread.filter((f) => !allowed.has(f)),
+                    `${view} ${tab}`,
+                ).toEqual([]);
+            }
         }
-        expect(resolveVisibility(undefined).unreadFilters).toContain("artifacts");
-        expect(resolveVisibility("metrics", "flow").unreadFilters).toContain("artifacts");
     });
 
-    it("lists artifacts once, also on the AI view", () => {
-        const ai = resolveVisibility("ai").unreadFilters ?? [];
-        expect(ai.filter((f) => f === "artifacts")).toHaveLength(1);
+    it("no view has a flow stage control any more", () => {
+        for (const view of [...ALL_VIEWS, undefined]) {
+            expect(resolveVisibility(view, "flow"), String(view)).not.toHaveProperty("flowStage");
+        }
     });
 });
 
@@ -228,7 +209,7 @@ describe("resolveVisibility — artifacts are read by no view (CHAOS-7795)", () 
  * `filterBarConfig.ts` and the PR.
  */
 describe("resolveVisibility — the filters each view's readers do not use (CHAOS-7796)", () => {
-    const ALWAYS = ["artifacts", "blocked", "flowStage", "issueType", "roles"];
+    const ALWAYS: string[] = [];
     const TABLE: Record<string, string[]> = {
         home: ["developers"],
         metrics: ["developers"],
@@ -267,13 +248,13 @@ describe("resolveVisibility — the filters each view's readers do not use (CHAO
         expect(resolveVisibility("people").unreadFilters).not.toContain("developers");
     });
 
-    it("a view not traced (no view) gets the never-read list only", () => {
-        expect([...(resolveVisibility(undefined).unreadFilters ?? [])].sort()).toEqual(ALWAYS);
+    it("a view not traced (no view) reads both", () => {
+        expect(resolveVisibility(undefined).unreadFilters).toEqual([]);
     });
 });
 
 describe("maskUnreadControls — only the controls a reader uses are offered (CHAOS-7796)", () => {
-    it("hides the Developer control where developers and roles are unread, keeps the Work control where it is read", () => {
+    it("hides the Developer control where developers are unread, keeps the Work control where it is read", () => {
         const home = resolveScopeBarConfig("home").resolvedVisibility;
         expect(home.developer).toBe(false);
         expect(home.workType).toBe(true);
@@ -283,7 +264,6 @@ describe("maskUnreadControls — only the controls a reader uses are offered (CH
         expect(resolveScopeBarConfig("landscape").resolvedVisibility).toMatchObject({
             developer: false,
             workType: false,
-            flowStage: false,
         });
     });
 });

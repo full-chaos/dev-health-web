@@ -2,27 +2,19 @@ import { useState } from "react";
 
 type WhoSectionProps = {
     developers: string[];
-    roles: string[];
     toDeveloperList: (value: string) => string[];
-    toList: (value: string) => string[];
     toValue: (value?: string[]) => string;
     updateDevelopers: (nextValues: string[]) => void;
-    updateRoles: (nextValues: string[]) => void;
     /** Default true. False where no reader uses the filter (see `filterBarConfig`). */
     showDevelopers?: boolean;
-    showRoles?: boolean;
 };
 
 export function WhoSection({
     developers,
-    roles,
     toDeveloperList,
-    toList,
     toValue,
     updateDevelopers,
-    updateRoles,
     showDevelopers = true,
-    showRoles = true,
 }: WhoSectionProps) {
     const [developerDraft, setDeveloperDraft] = useState("");
     const [developerEditing, setDeveloperEditing] = useState(false);
@@ -54,17 +46,6 @@ export function WhoSection({
                                 setDeveloperDraft(toValue(toDeveloperList(developerDraft)));
                                 setDeveloperEditing(false);
                             }}
-                        />
-                    </label>
-                )}
-                {showRoles && (
-                    <label className="flex flex-col gap-2">
-                        <span className="text-xs text-(--ink-muted)">Roles</span>
-                        <input
-                            className="rounded-xl border border-(--card-stroke) bg-(--card-60) px-3 py-2"
-                            placeholder="maintainer, reviewer"
-                            value={toValue(roles)}
-                            onChange={(event) => updateRoles(toList(event.target.value))}
                         />
                     </label>
                 )}

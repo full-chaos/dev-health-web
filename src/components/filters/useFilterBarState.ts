@@ -227,12 +227,8 @@ export function useFilterBarState({
     }, [scopeLevel, options]);
 
     const developers = filters.who.developers ?? [];
-    const roles = filters.who.roles ?? [];
     const repos = filters.what.repos ?? [];
-    const artifacts = filters.what.artifacts ?? [];
     const workCategory = filters.why.work_category ?? [];
-    const issueType = filters.why.issue_type ?? [];
-    const flowStage = filters.how.flow_stage ?? [];
 
     const scopeLabel = scopeLabelMap[scopeLevel] ?? "Team";
     const scopeEmptyLabel = scopeLevel === "team" ? "All Teams" : "All";
@@ -259,7 +255,6 @@ export function useFilterBarState({
 
     return {
         allowAdvanced,
-        artifacts,
         barRef,
         copyFilters,
         dateValue,
@@ -267,16 +262,13 @@ export function useFilterBarState({
         effectiveScopeIds,
         endDate,
         filters,
-        flowStage,
         handleDatePreset,
         isCustomDateRange,
-        issueType,
         openMenu,
         options,
         peopleQuery,
         repos,
         resetFilters,
-        roles,
         scopeEmptyLabel,
         scopeLabel,
         scopeLevel,

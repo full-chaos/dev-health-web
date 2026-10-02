@@ -13,8 +13,6 @@ export type FilterOptions = {
     services: string[];
     developers: string[];
     work_category: string[];
-    issue_type: string[];
-    flow_stage: string[];
 };
 
 export const EMPTY_FILTER_OPTIONS: FilterOptions = {
@@ -23,8 +21,6 @@ export const EMPTY_FILTER_OPTIONS: FilterOptions = {
     services: [],
     developers: [],
     work_category: [],
-    issue_type: [],
-    flow_stage: [],
 };
 
 export const toList = (value: string) =>

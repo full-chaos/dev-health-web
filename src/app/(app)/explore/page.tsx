@@ -164,12 +164,8 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
     const breakdownParam = Array.isArray(params.breakdown) ? params.breakdown[0] : params.breakdown;
 
     const developers = filters.who.developers ?? [];
-    const roles = filters.who.roles ?? [];
     const repos = filters.what.repos ?? [];
-    const artifacts = filters.what.artifacts ?? [];
     const workCategory = filters.why.work_category ?? [];
-    const issueType = filters.why.issue_type ?? [];
-    const flowStage = filters.how.flow_stage ?? [];
 
     const chips = [
         `Scope: ${filters.scope.level}`,
@@ -177,16 +173,11 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
         `Range: ${filters.time.range_days}d`,
         `Compare: ${filters.time.compare_days}d`,
         developers.length ? `Devs: ${developers.join(", ")}` : null,
-        roles.length ? `Roles: ${roles.join(", ")}` : null,
         repos.length ? `Repos: ${repos.join(", ")}` : null,
-        artifacts.length ? `Artifacts: ${artifacts.join(", ")}` : null,
         workCategory.length ? `Work type: ${workCategory.join(", ")}` : null,
-        issueType.length ? `Issue type: ${issueType.join(", ")}` : null,
         categoryParam ? `Category: ${categoryParam}` : null,
         streamParam ? `Stream: ${streamParam}` : null,
         breakdownParam ? `Breakdown: ${breakdownParam}` : null,
-        flowStage.length ? `Flow: ${flowStage.join(", ")}` : null,
-        filters.how.blocked ? "Blocked only" : null,
     ].filter(Boolean) as string[];
 
     const drivers = (data?.drivers ?? []).slice(0, 5);

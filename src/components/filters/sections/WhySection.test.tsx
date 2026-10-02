@@ -8,33 +8,32 @@ import { ActiveFilterPills } from "./ActiveFilterPills";
 import { WhySection } from "./WhySection";
 
 const base = {
-    issueType: [] as string[],
     toList: (value: string) => value.split(","),
     toValue: (value?: string[]) => (value ?? []).join(","),
-    updateIssueType: vi.fn(),
     updateWorkCategory: vi.fn(),
     workCategory: [] as string[],
 };
 
-describe("WhySection (CHAOS-7744)", () => {
-    it("shows Work category and Issue type by default", () => {
-        render(<WhySection {...base} />);
-        expect(screen.getByText("Work category")).toBeInTheDocument();
-        expect(screen.getByText("Issue type")).toBeInTheDocument();
-    });
+// CHAOS-7799: no query reads roles, artifacts, issue type, flow stage or blocked, so the drawer
+// has no input for them on any view.
+const REMOVED_LABELS = ["Roles", "Artifacts", "Issue type", "Flow stage", "Blocked only"];
 
-    it("hides Issue type when the view does not read it, and keeps Work category", () => {
-        render(<WhySection {...base} showIssueType={false} />);
+describe("WhySection", () => {
+    it("shows Work category and no Issue type", () => {
+        render(<WhySection {...base} />);
         expect(screen.getByText("Work category")).toBeInTheDocument();
         expect(screen.queryByText("Issue type")).toBeNull();
     });
+
+    it("hides Work category when the view does not read it", () => {
+        render(<WhySection {...base} showWorkCategory={false} />);
+        expect(screen.queryByText("Work category")).toBeNull();
+    });
 });
 
-describe("AdvancedFiltersPanel — Issue type follows the view's visibility", () => {
+describe("AdvancedFiltersPanel — only filters a query reads (CHAOS-7799)", () => {
     const panel = (visibility: FilterVisibility) => (
         <AdvancedFiltersPanel
-            artifacts={[]}
-            blocked={false}
             developers={[]}
             filters={
                 {
@@ -46,127 +45,55 @@ describe("AdvancedFiltersPanel — Issue type follows the view's visibility", ()
                     how: {},
                 } as never
             }
-            flowStage={[]}
-            issueType={[]}
             repos={[]}
-            roles={[]}
             updateFilters={vi.fn()}
             visibility={visibility}
             workCategory={[]}
         />
     );
 
-    it("an AI view shows the Why section without Issue type", () => {
-        render(panel({ workType: true, unreadFilters: ["issueType"] }));
-        expect(screen.getByText("Work category")).toBeInTheDocument();
-        expect(screen.queryByText("Issue type")).toBeNull();
+    it("offers Developers, Repos and Work category and none of the five removed inputs", () => {
+        render(panel({ developer: true, repo: true, workType: true }));
+        for (const offered of ["Developers", "Repos", "Work category"]) {
+            expect(screen.getByText(offered), offered).toBeInTheDocument();
+        }
+        for (const removed of REMOVED_LABELS) {
+            expect(screen.queryByText(removed), removed).toBeNull();
+        }
+        expect(screen.queryByText("How")).toBeNull();
     });
 
-    it("another view keeps Issue type", () => {
-        render(panel({ workType: true }));
-        expect(screen.getByText("Issue type")).toBeInTheDocument();
+    it("an AI view shows the Why section and no Developers input", () => {
+        render(panel({ developer: true, workType: true, unreadFilters: ["developers"] }));
+        expect(screen.getByText("Work category")).toBeInTheDocument();
+        expect(screen.queryByText("Developers")).toBeNull();
     });
 });
 
-describe("ActiveFilterPills — Issue type pill follows the view's visibility (CHAOS-7744)", () => {
-    const pills = (showIssueType?: boolean) => (
+describe("ActiveFilterPills (CHAOS-7744, CHAOS-7799)", () => {
+    const pills = (unread?: Array<"developers" | "workCategory">) => (
         <ActiveFilterPills
-            artifacts={[]}
-            blocked={false}
-            developers={[]}
-            flowStage={[]}
-            issueType={["bug"]}
-            onClearArtifact={vi.fn()}
-            onClearBlocked={vi.fn()}
+            developers={["ana@example.com"]}
             onClearDeveloper={vi.fn()}
-            onClearFlowStage={vi.fn()}
-            onClearIssueType={vi.fn()}
             onClearRepo={vi.fn()}
-            onClearRole={vi.fn()}
             onClearWorkCategory={vi.fn()}
-            repos={[]}
-            roles={[]}
-            unread={showIssueType === false ? ["issueType"] : undefined}
+            repos={["org/api"]}
+            unread={unread}
             workCategory={["feature"]}
         />
     );
 
-    it("shows the pill by default", () => {
+    it("shows repo, developer and work category pills by default", () => {
         render(pills());
-        expect(screen.getByText("bug")).toBeInTheDocument();
-    });
-
-    it("hides the pill where no query reads the issue type, and keeps the others", () => {
-        render(pills(false));
-        expect(screen.queryByText("bug")).toBeNull();
-        expect(screen.getByText("feature")).toBeInTheDocument();
-    });
-
-    it("hides every pill of a filter the view does not read", () => {
-        render(
-            <ActiveFilterPills
-                artifacts={["pr"]}
-                blocked
-                developers={["ana@example.com"]}
-                flowStage={["review"]}
-                issueType={["bug"]}
-                onClearArtifact={vi.fn()}
-                onClearBlocked={vi.fn()}
-                onClearDeveloper={vi.fn()}
-                onClearFlowStage={vi.fn()}
-                onClearIssueType={vi.fn()}
-                onClearRepo={vi.fn()}
-                onClearRole={vi.fn()}
-                onClearWorkCategory={vi.fn()}
-                repos={["org/api"]}
-                roles={["reviewer"]}
-                unread={["developers", "roles", "flowStage", "blocked", "artifacts", "issueType"]}
-                workCategory={["feature"]}
-            />,
-        );
-        for (const hidden of ["ana@example.com", "reviewer", "review", "Blocked", "pr", "bug"]) {
-            expect(screen.queryByText(hidden), hidden).toBeNull();
+        for (const shown of ["org/api", "ana@example.com", "feature"]) {
+            expect(screen.getByText(shown), shown).toBeInTheDocument();
         }
-        // Repo and work category are read by the AI queries.
+    });
+
+    it("hides every pill of a filter the view does not read, and keeps the others", () => {
+        render(pills(["developers"]));
+        expect(screen.queryByText("ana@example.com")).toBeNull();
         expect(screen.getByText("org/api")).toBeInTheDocument();
         expect(screen.getByText("feature")).toBeInTheDocument();
-    });
-});
-
-describe("AdvancedFiltersPanel — Artifacts input follows the view's visibility (CHAOS-7795)", () => {
-    const panel = (visibility: FilterVisibility) => (
-        <AdvancedFiltersPanel
-            artifacts={[]}
-            blocked={false}
-            developers={[]}
-            filters={
-                {
-                    scope: { level: "org", ids: [] },
-                    time: { range_days: 30 },
-                    who: {},
-                    what: {},
-                    why: {},
-                    how: {},
-                } as never
-            }
-            flowStage={[]}
-            issueType={[]}
-            repos={[]}
-            roles={[]}
-            updateFilters={vi.fn()}
-            visibility={visibility}
-            workCategory={[]}
-        />
-    );
-
-    it("hides Artifacts where no query reads it and keeps Repos", () => {
-        render(panel({ repo: true, unreadFilters: ["artifacts"] }));
-        expect(screen.getByText("Repos")).toBeInTheDocument();
-        expect(screen.queryByText("Artifacts")).toBeNull();
-    });
-
-    it("keeps Artifacts when the list does not say so", () => {
-        render(panel({ repo: true }));
-        expect(screen.getByText("Artifacts")).toBeInTheDocument();
     });
 });

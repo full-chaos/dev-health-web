@@ -38,6 +38,21 @@ export const encodeFilter = (filters: MetricFilter) => {
     return toBase64Url(serialized);
 };
 
+/**
+ * Filters no query reads (CHAOS-7799): `who.roles`, `what.artifacts`, `why.issue_type`,
+ * `how.flow_stage`, `how.blocked`. A URL written before they were removed may still carry them;
+ * they are parsed and dropped here, so they neither error nor come back on the next encode.
+ */
+const NEVER_READ_KEYS = ["roles", "artifacts", "issue_type", "flow_stage", "blocked"];
+
+const withoutNeverRead = <T extends object>(group: T): T => {
+    const rest: Record<string, unknown> = { ...group };
+    for (const key of NEVER_READ_KEYS) {
+        delete rest[key];
+    }
+    return rest as T;
+};
+
 export const decodeFilter = (encoded?: string | null): MetricFilter => {
     if (!encoded) {
         return defaultMetricFilter;
@@ -50,10 +65,10 @@ export const decodeFilter = (encoded?: string | null): MetricFilter => {
             ...parsed,
             time: { ...defaultMetricFilter.time, ...parsed.time },
             scope: { ...defaultMetricFilter.scope, ...parsed.scope },
-            who: { ...defaultMetricFilter.who, ...parsed.who },
-            what: { ...defaultMetricFilter.what, ...parsed.what },
-            why: { ...defaultMetricFilter.why, ...parsed.why },
-            how: { ...defaultMetricFilter.how, ...parsed.how },
+            who: withoutNeverRead({ ...defaultMetricFilter.who, ...parsed.who }),
+            what: withoutNeverRead({ ...defaultMetricFilter.what, ...parsed.what }),
+            why: withoutNeverRead({ ...defaultMetricFilter.why, ...parsed.why }),
+            how: withoutNeverRead({ ...defaultMetricFilter.how, ...parsed.how }),
         };
     } catch {
         return defaultMetricFilter;

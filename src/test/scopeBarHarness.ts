@@ -38,6 +38,4 @@ export const FILTER_OPTIONS = {
     services: [],
     developers: ["ana@example.com", "bo@example.com"],
     work_category: ["feature", "maintenance"],
-    issue_type: ["bug"],
-    flow_stage: ["review"],
 };

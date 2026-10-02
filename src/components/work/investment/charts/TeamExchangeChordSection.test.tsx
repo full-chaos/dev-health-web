@@ -77,8 +77,8 @@ describe("TeamExchangeChordSection", () => {
                     time: { range_days: 30, compare_days: 30 },
                     who: { developers: [] },
                     what: { repos: [] },
-                    why: { work_category: [], issue_type: [] },
-                    how: { flow_stage: [] },
+                    why: { work_category: [] },
+                    how: {},
                 }}
                 dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
                 effortUnit="hours"
@@ -103,8 +103,8 @@ describe("TeamExchangeChordSection", () => {
                     time: { range_days: 30, compare_days: 30 },
                     who: { developers: [] },
                     what: { repos: [] },
-                    why: { work_category: [], issue_type: [] },
-                    how: { flow_stage: [] },
+                    why: { work_category: [] },
+                    how: {},
                 }}
                 dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
                 effortUnit="hours"
@@ -130,8 +130,8 @@ describe("TeamExchangeChordSection", () => {
                     time: { range_days: 30, compare_days: 30 },
                     who: { developers: [] },
                     what: { repos: [] },
-                    why: { work_category: [], issue_type: [] },
-                    how: { flow_stage: [] },
+                    why: { work_category: [] },
+                    how: {},
                 }}
                 dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
                 effortUnit="hours"
@@ -156,8 +156,8 @@ describe("TeamExchangeChordSection", () => {
                     time: { range_days: 30, compare_days: 30 },
                     who: { developers: [] },
                     what: { repos: [] },
-                    why: { work_category: [], issue_type: [] },
-                    how: { flow_stage: [] },
+                    why: { work_category: [] },
+                    how: {},
                 }}
                 dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
                 effortUnit="hours"
@@ -179,8 +179,8 @@ describe("TeamExchangeChordSection", () => {
                     time: { range_days: 30, compare_days: 30 },
                     who: { developers: [] },
                     what: { repos: [] },
-                    why: { work_category: [], issue_type: [] },
-                    how: { flow_stage: [] },
+                    why: { work_category: [] },
+                    how: {},
                 }}
                 dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
                 effortUnit="hours"
@@ -200,8 +200,8 @@ describe("TeamExchangeChordSection", () => {
                     time: { range_days: 30, compare_days: 30 },
                     who: { developers: [] },
                     what: { repos: [] },
-                    why: { work_category: [], issue_type: [] },
-                    how: { flow_stage: [] },
+                    why: { work_category: [] },
+                    how: {},
                 }}
                 dateRange={{ startDate: "2026-04-01", endDate: "2026-04-30" }}
                 effortUnit="hours"
@@ -254,8 +254,8 @@ describe("TeamExchangeChordSection", () => {
         time: { range_days: 30, compare_days: 30 },
         who: { developers: [] },
         what: { repos: [] },
-        why: { work_category: [], issue_type: [] },
-        how: { flow_stage: [] },
+        why: { work_category: [] },
+        how: {},
     };
 
     it("says only one team has effort when every edge is a self-edge", () => {

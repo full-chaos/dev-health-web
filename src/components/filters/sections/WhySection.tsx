@@ -1,24 +1,17 @@
 type WhySectionProps = {
-    issueType: string[];
     toList: (value: string) => string[];
     toValue: (value?: string[]) => string;
-    updateIssueType: (nextValues: string[]) => void;
     updateWorkCategory: (nextValues: string[]) => void;
     workCategory: string[];
-    /** Default true. False on a view whose queries do not read the issue type (the AI pages). */
-    showIssueType?: boolean;
     /** Default true. False where no reader uses the work category. */
     showWorkCategory?: boolean;
 };
 
 export function WhySection({
-    issueType,
     toList,
     toValue,
-    updateIssueType,
     updateWorkCategory,
     workCategory,
-    showIssueType = true,
     showWorkCategory = true,
 }: WhySectionProps) {
     return (
@@ -35,17 +28,6 @@ export function WhySection({
                             placeholder="feature, maintenance"
                             value={toValue(workCategory)}
                             onChange={(event) => updateWorkCategory(toList(event.target.value))}
-                        />
-                    </label>
-                )}
-                {showIssueType && (
-                    <label className="flex flex-col gap-2">
-                        <span className="text-xs text-(--ink-muted)">Issue type</span>
-                        <input
-                            className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
-                            placeholder="bug, story"
-                            value={toValue(issueType)}
-                            onChange={(event) => updateIssueType(toList(event.target.value))}
                         />
                     </label>
                 )}
