@@ -381,6 +381,17 @@ describe("Plan overview — page pass", () => {
         for (const pill of pills) expect(pill.querySelector("svg")).not.toBeNull();
     });
 
+    it("draws the arrow before the label on the three buttons (prototype btn())", async () => {
+        mockForecast.mockResolvedValue(forecast());
+        await renderPage();
+
+        for (const name of ["Completion Forecast", "Forecast completion", "Inspect backlog risk"]) {
+            const link = screen.getByRole("link", { name });
+            expect(link.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+            expect(link.lastChild?.nodeType).toBe(Node.TEXT_NODE);
+        }
+    });
+
     it("ends with the Planning destinations card", async () => {
         mockForecast.mockResolvedValue(forecast());
         await renderPage();
