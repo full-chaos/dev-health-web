@@ -146,4 +146,21 @@ describe("ReviewNetworkView restyle", () => {
         render(<ReviewNetworkView edges={null} loading error={null} />);
         expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
     });
+
+    it("today's description and empty-state texts, and no count notice (pins before CHAOS-7732's web follow-up)", () => {
+        const { unmount } = render(
+            <ReviewNetworkView edges={pairs} loading={false} error={null} />,
+        );
+        expect(screen.getByTestId("review-network-panel")).toHaveTextContent(
+            "Reviewer→author collaboration pairs from code review activity, ranked by review count.",
+        );
+        expect(screen.queryByTestId("review-network-count-notice")).toBeNull();
+        unmount();
+        render(<ReviewNetworkView edges={[]} loading={false} error={null} />);
+        expect(
+            screen.getByText(
+                "No reviewer→author activity was recorded in this scope and window. Widen the date range or remove repo filters to see data.",
+            ),
+        ).toBeInTheDocument();
+    });
 });
