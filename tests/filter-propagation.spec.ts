@@ -124,9 +124,10 @@ test.describe("filter propagation", () => {
     });
 
     test("filter change updates URL and persists across nav", async ({ page }) => {
-        // Not /investment: its page, scope bar included, sits behind the `investment_view` entitlement
-        // (UpgradeGate), so an org without it has no Filters button there.
-        await page.goto("/bottleneck");
+        // /dashboard, as the other two specs: the view CI proves. Not /investment: its page, scope bar
+        // included, sits behind the `investment_view` entitlement (UpgradeGate), so an org without it
+        // has no Filters button there.
+        await page.goto("/dashboard");
         const initialFilter = await waitForFilterParam(page);
         const updatedFilter = await updateWorkCategoryFilter(page, "feature", initialFilter);
         expect(updatedFilter).not.toBe(initialFilter);
