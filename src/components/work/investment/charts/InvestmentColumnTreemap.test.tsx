@@ -204,6 +204,15 @@ describe("InvestmentColumnTreemap (approved prototype treemapChart)", () => {
         );
     });
 
+    it("marks a selected column head in the selection color (orange text token), never the action color", () => {
+        draw({ selectedKey: "theme:quality" });
+        const head = screen.getAllByTestId("column-treemap-head")[1];
+        expect(head).toHaveAttribute("aria-pressed", "true");
+        // Orange text is the --accent-text token (selection); --accent is never used for text.
+        expect(head.className).toContain("aria-pressed:text-(--accent-text)");
+        expect(head.className).not.toMatch(/text-\(--accent\)/);
+    });
+
     it("marks the selected node as pressed, and only that one", () => {
         draw({ selectedKey: "subcategory:quality.bugfix" });
         const pressed = screen
