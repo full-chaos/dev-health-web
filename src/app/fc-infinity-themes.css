@@ -24,6 +24,9 @@
     --accent-text: #b1361a;
     --accent-1: #d6421f;
     --accent-2: #03627d;
+    /* Filled action (primary button): approved `--blue` with white text. */
+    --action: #037493;
+    --on-action: #ffffff;
     --accent-3: #7d4f00;
     --accent-negative: #a61708;
     --accent-highlight: #f06a00;
@@ -85,6 +88,8 @@
     --accent-text: #f47b20;
     --accent-1: #f47b20;
     --accent-2: #4fd3df;
+    --action: #0a7f9c;
+    --on-action: #ffffff;
     --accent-3: #f2b84b;
     --accent-negative: #ff8266;
     --accent-highlight: #ffab66;
