@@ -511,6 +511,11 @@ describe("infinity palette", () => {
         },
     );
 
+    it("defines --deemph as the prototype sparkline stroke", () => {
+        expect(infinity("light")["--deemph"]).toBe("#9aa2a9");
+        expect(infinity("dark")["--deemph"]).toBe("#5f6a72");
+    });
+
     it.each(THEMES)(
         "keeps status pill and Notice text readable on the status wash (%s)",
         (theme) => {
