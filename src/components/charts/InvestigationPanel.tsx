@@ -84,13 +84,13 @@ export function InvestigationPanel({
             },
             {
                 id: "throughput",
-                label: "Inspect associations",
+                label: CTA_LABELS.inspectThroughputBreakdown,
                 href: throughputFlameHref,
                 type: "delivery",
             },
             {
                 id: "hotspots",
-                label: "Inspect associations",
+                label: CTA_LABELS.inspectCodeHotspots,
                 href: hotspotsFlameHref,
                 type: "churn",
             },
@@ -150,14 +150,6 @@ export function InvestigationPanel({
                         <p className="text-label-caps uppercase tracking-[0.2em] text-(--ink-muted)">
                             Summary
                         </p>
-                        <div className="flex gap-1">
-                            <span className="px-1.5 py-0.5 rounded bg-(--accent-2)/10 text-label-caps text-(--accent-2) border border-(--accent-2)/20 uppercase tracking-tighter">
-                                WIP concentration
-                            </span>
-                            <span className="px-1.5 py-0.5 rounded bg-(--accent-2)/10 text-label-caps text-(--accent-2) border border-(--accent-2)/20 uppercase tracking-tighter">
-                                Flow constraint
-                            </span>
-                        </div>
                     </div>
                     <p className="text-sm leading-relaxed text-foreground">
                         <span className="font-semibold text-(--accent-2)">
