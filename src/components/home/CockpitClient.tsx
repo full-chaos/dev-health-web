@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 import Link from "next/link";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
+import { buildThreadApiUrl } from "@/lib/cockpit/evidenceRef";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { MetricDelta } from "@/components/shared/MetricDelta";
@@ -29,22 +30,6 @@ const THREAD_API_TARGETS: Record<string, string> = {
     measure: "/api/v1/home",
     align: "/api/v1/investment",
     execute: "/api/v1/opportunities",
-};
-
-const buildThreadApiUrl = (path: string, filters: MetricFilter, thread: string) => {
-    const params = new URLSearchParams({
-        scope_type: filters.scope.level,
-        range_days: String(filters.time.range_days),
-        compare_days: String(filters.time.compare_days),
-        thread,
-    });
-
-    const [scopeId] = filters.scope.ids;
-    if (scopeId) params.set("scope_id", scopeId);
-    if (filters.time.start_date) params.set("start_date", filters.time.start_date);
-    if (filters.time.end_date) params.set("end_date", filters.time.end_date);
-
-    return `${path}?${params.toString()}`;
 };
 
 const getThreadEvidenceTarget = (
