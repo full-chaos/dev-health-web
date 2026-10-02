@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { getExplainData } from "@/lib/api/home";
 import { ValidationErrors } from "@/lib/constants/errors";
 import { logger } from "@/lib/logger";
@@ -327,6 +327,8 @@ export type EvidencePanelProps = {
     filters: MetricFilter;
     /** The active lens role. It is kept in the footer link (Explore and the other destinations). */
     role?: string;
+    /** The opener's own content for the subject. Shown first, in every state (loading, error, data). */
+    intro?: ReactNode;
 };
 
 export function EvidencePanel({
@@ -337,6 +339,7 @@ export function EvidencePanel({
     metric,
     filters,
     role,
+    intro,
 }: EvidencePanelProps) {
     const [data, setData] = useState<EvidencePanelData | null>(null);
     const [loading, setLoading] = useState(false);
@@ -485,6 +488,7 @@ export function EvidencePanel({
             }
         >
             <>
+                {intro ? <div data-testid="evidence-intro">{intro}</div> : null}
                 {loading ? (
                     <div className="space-y-4 animate-pulse">
                         <div className="h-24 bg-(--card-70) rounded-2xl" />

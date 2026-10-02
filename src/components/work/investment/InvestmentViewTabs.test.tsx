@@ -164,7 +164,7 @@ describe("InvestmentView — Confidence tab", () => {
 
         expect(screen.getByText("PR Rework Ratio")).toBeInTheDocument();
         // The tile shows the number and its unit as two elements.
-        expect(screen.getByTestId("metric-value")).toHaveTextContent(/^96%$/);
+        expect(screen.getByTestId("metric-value")).toHaveTextContent(/^96 %$/);
         expect(screen.getByTestId("metric-unit")).toHaveTextContent(/^%$/);
         expect(screen.getByText(/\+4%/)).toBeInTheDocument();
         expect(screen.getByTestId("sparkline")).toBeInTheDocument();

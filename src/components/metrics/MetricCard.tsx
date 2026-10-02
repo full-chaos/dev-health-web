@@ -187,6 +187,8 @@ export function MetricCard({
                 ) : parts ? (
                     <>
                         <span>{parts.value}</span>
+                        {/* A real space, so the text reads "1.5 days" when copied or read aloud; the flex gap draws it. */}
+                        {parts.unit ? " " : null}
                         {parts.unit ? (
                             <span
                                 data-testid="metric-unit"

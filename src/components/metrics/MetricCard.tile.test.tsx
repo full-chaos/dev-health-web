@@ -37,6 +37,8 @@ describe("MetricCard tile as the approved prototype: value with a small unit", (
         expect(unit).toHaveTextContent(/^days$/);
         expect(unit).toHaveClass("text-xs", "font-normal", "text-(--ink-muted)");
         expect(value).toContainElement(unit);
+        // The text reads "1.5 days" (a real space; the flex gap draws it).
+        expect(value.textContent).toBe("1.5 days");
         // The joined short form ("1.5d") is gone from the tile face.
         expect(screen.queryByText("1.5d")).toBeNull();
     });
@@ -47,7 +49,7 @@ describe("MetricCard tile as the approved prototype: value with a small unit", (
         expect(screen.getByTestId("metric-unit")).toHaveTextContent(/^%$/);
         unmount();
         render(<MetricCard label="Flags" value={12} unit="" />);
-        expect(screen.getByTestId("metric-value")).toHaveTextContent(/^12$/);
+        expect(screen.getByTestId("metric-value").textContent).toBe("12");
         expect(screen.queryByTestId("metric-unit")).toBeNull();
     });
 

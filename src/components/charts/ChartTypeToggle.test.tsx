@@ -38,10 +38,11 @@ describe("ChartTypeToggle", () => {
         expect(screen.getByRole("radio", { name: /sunburst/i })).toBeInTheDocument();
         expect(screen.getAllByRole("radio", { name: /sankey/i }).length).toBeGreaterThan(0);
         expect(screen.getByRole("radio", { name: /heatmap/i })).toBeInTheDocument();
-        expect(screen.getByRole("radio", { name: /treemap/i })).toHaveClass(
-            "bg-[color-mix(in_srgb,var(--accent-2)_55%,black)]",
-        );
-        expect(screen.getByRole("radio", { name: /treemap/i })).toHaveClass("text-white");
+        // Orange marks the selection: wash and ink, never a teal fill (CHAOS-8141).
+        const selected = screen.getByRole("radio", { name: /treemap/i });
+        expect(selected).toHaveClass("bg-(--accent-wash)");
+        expect(selected).toHaveClass("text-(--accent-ink)");
+        expect(selected.className).not.toContain("--accent-2");
 
         await user.click(screen.getByRole("radio", { name: /chord/i }));
         expect(onChange).toHaveBeenCalledWith("chord");

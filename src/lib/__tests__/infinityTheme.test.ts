@@ -347,8 +347,8 @@ describe("infinity palette", () => {
         expect(infinity("light")["--text-muted"]).toBe("#585e65");
         expect(infinity("light")["--ink-muted"]).toBe("#585e65");
         const dark = infinity("dark");
-        // Every `text-(--accent-text)` renders the same color as the `text-(--accent)` it replaced.
-        expect(dark["--accent-text"]).toBe(dark["--accent"]);
+        // CHAOS-8141: dark orange text is the prototype's --accentInk #ffab66 (6.79:1 on the card), not the flat accent.
+        expect(dark["--accent-text"]).toBe("#ffab66");
         expect(dark["--ink-muted"]).toBe("#a7afb5");
         expect(dark["--text-muted"]).toBe("#8b959c");
     });
@@ -445,14 +445,15 @@ describe("infinity palette", () => {
     });
 
     // Pin of the whole dark block: CHAOS-7746 left it byte-equal; CHAOS-7892 changed exactly dark series 7
-    // and 8 (the diff of this hash is those two lines); CHAOS-8061 added exactly --action and --on-action.
+    // and 8 (the diff of this hash is those two lines); CHAOS-8061 added exactly --action and --on-action;
+    // CHAOS-8141 added --accent-wash and --accent-ink and set --accent-text to #ffab66 (4 lines).
     it("leaves the dark block byte for byte as pinned", () => {
         const block = infinityCss.match(
             /:root\[data-palette="infinity"\]\[data-theme="dark"\] \{([\s\S]*?)\n\}/u,
         );
         expect(block).not.toBeNull();
         expect(createHash("sha256").update(block![1]).digest("hex")).toBe(
-            "707b55afde652aaf21438818ecef86ac92f194a717bf86856aa0b6312a2c169a",
+            "e53e8fd9d83e135d93aad30c595399e5b3b05547a9eacddca7a8cb63cf21e997",
         );
     });
 
@@ -603,5 +604,58 @@ describe("infinity palette", () => {
             storage,
         );
         expect(dataset.palette).toBe("infinity");
+    });
+});
+
+// CHAOS-8141: selected-control tokens from the approved prototype (theme.css:18 --accentWash/--accentInk,
+// dark-tokens.css:5), with the web's AA ink where the prototype value fails 4.5:1.
+describe("infinity selected-control tokens (CHAOS-8141)", () => {
+    it.each([
+        ["light", "#ffe9da", "#b1361a"],
+        ["dark", "#3a2110", "#ffab66"],
+    ] as const)("pins the wash and ink and keeps the ink readable (%s)", (theme, wash, ink) => {
+        const t = infinity(theme);
+        expect(t["--accent-wash"]).toBe(wash);
+        expect(t["--accent-ink"]).toBe(ink);
+        expect(t["--accent-ink"]).toBe(t["--accent-text"]);
+        expect(
+            contrast(t["--accent-ink"], t["--accent-wash"]),
+            "ink on wash",
+        ).toBeGreaterThanOrEqual(4.5);
+        expect(contrast(t["--accent-wash"], t["--card"]), "wash vs card").toBeGreaterThanOrEqual(
+            1.05,
+        );
+    });
+
+    it.each(THEMES)(
+        "keeps the dark and light orange text at 4.5:1 on card and page (%s)",
+        (theme) => {
+            const t = infinity(theme);
+            for (const surface of [t["--card"], t["--background"]]) {
+                expect(contrast(t["--accent-text"], surface)).toBeGreaterThanOrEqual(4.5);
+            }
+        },
+    );
+});
+
+describe("global rules from the approved prototype (CHAOS-8141)", () => {
+    const rule = (selector: string) => {
+        const start = globalsCss.indexOf(`\n${selector} {`);
+        expect(start, selector).toBeGreaterThanOrEqual(0);
+        return globalsCss.slice(start, globalsCss.indexOf("\n}", start));
+    };
+
+    it("draws the global focus ring in the action teal, not the selection orange", () => {
+        // Prototype style.css:157 `button:focus-visible{outline:2px solid var(--blueInk)}`.
+        expect(rule(":focus-visible")).toContain("outline: 2px solid var(--accent-2)");
+        expect(rule(".primary-nav-group-button:focus-visible")).toContain("var(--accent-2)");
+        expect(rule(".primary-nav-group-button:focus-visible")).not.toContain("var(--accent)");
+    });
+
+    it("prints metric-hero values in plain ink, with no gradient text", () => {
+        // Prototype theme.css:62 `.metric-value{font-variant-numeric:normal}` plain ink.
+        const hero = rule(".metric-hero");
+        expect(hero).toContain("color: var(--text-primary)");
+        expect(hero).not.toMatch(/gradient|background-clip|text-fill-color/u);
     });
 });
