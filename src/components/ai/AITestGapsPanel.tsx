@@ -1,6 +1,7 @@
 "use client";
 
 import { ErrorCard } from "@/components/ui/ErrorCard";
+import { Notice } from "@/components/ui/Notice";
 import type { AIFilter } from "@/lib/filters/ai";
 import type { AiRiskBreakdownRow } from "@/lib/graphql/__generated__/types";
 import { findBucketRow, useAIRiskBreakdown } from "@/lib/graphql/hooks/useAIReviewRisk";
@@ -55,15 +56,15 @@ export function AITestGapsPanel({ filter }: AITestGapsPanelProps) {
                     loading={risk.fetching}
                 />
                 <section
-                    className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                    className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-5"
                     data-testid="ai-test-gap-baseline"
                 >
-                    <h3 className="font-(--font-display) text-lg">Baseline test gap rate</h3>
+                    <h3 className="text-h3 font-semibold">Baseline test gap rate</h3>
                     <p className="mt-2 text-sm text-(--ink-muted)">
                         The same signal for non-AI-attributed work in the selected range, for honest
                         side-by-side context.
                     </p>
-                    <p className="mt-6 text-3xl font-semibold tabular-nums">
+                    <p className="mt-6 text-[1.75rem] font-semibold leading-tight tabular-nums">
                         {risk.fetching
                             ? "—"
                             : comparison?.baselineSide?.testGapRate == null
@@ -72,25 +73,27 @@ export function AITestGapsPanel({ filter }: AITestGapsPanelProps) {
                     </p>
                 </section>
                 <section
-                    className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                    className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-5"
                     data-testid="ai-test-gap-prs"
                 >
-                    <h3 className="font-(--font-display) text-lg">PRs with test gaps</h3>
+                    <h3 className="text-h3 font-semibold">PRs with test gaps</h3>
                     <p className="mt-2 text-sm text-(--ink-muted)">
                         AI-attributed pull requests counted toward the gap rate, out of{" "}
                         {risk.fetching ? "—" : (aiBucket?.prsTotal ?? 0)} AI-attributed PRs in
                         range.
                     </p>
-                    <p className="mt-6 text-3xl font-semibold tabular-nums">
+                    <p className="mt-6 text-[1.75rem] font-semibold leading-tight tabular-nums">
                         {risk.fetching ? "—" : (aiBucket?.testGapPrs ?? 0)}
                     </p>
                 </section>
             </div>
 
-            <p className="text-sm text-(--ink-muted)" data-testid="ai-test-gap-evidence-note">
-                Per-PR test-gap evidence is not available yet — these counts are aggregate-only
-                until the underlying signal links individual pull requests.
-            </p>
+            <Notice variant="info" live={false}>
+                <p data-testid="ai-test-gap-evidence-note">
+                    Per-PR test-gap evidence is not available yet — these counts are aggregate-only
+                    until the underlying signal links individual pull requests.
+                </p>
+            </Notice>
         </div>
     );
 }
