@@ -85,9 +85,9 @@ describe("the dark variant (CHAOS-7788)", () => {
     });
 
     it("finds the dark classes the app uses", () => {
-        // The scan is not empty: the report body and the integrations icon use these.
+        // The scan is not empty: the report body uses this one (the palette slices
+        // remove the raw-palette `dark:` pairs one by one).
         expect(classes).toContain("dark:prose-invert");
-        expect(classes).toContain("dark:text-gray-100");
     });
 
     it("applies every dark class under the app's dark theme, not the OS color scheme", () => {

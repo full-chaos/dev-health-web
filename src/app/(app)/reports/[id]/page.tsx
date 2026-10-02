@@ -7,8 +7,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { RefreshControl } from "@/components/admin/RefreshControl";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { MarkdownRenderer } from "@/components/reports/MarkdownRenderer";
+import { StatusBadge } from "@/components/reports/StatusBadge";
 import { logger } from "@/lib/logger";
-import { ReportStatus, SavedReport, ReportRun } from "@/lib/reports/types";
+import { SavedReport, ReportRun } from "@/lib/reports/types";
 import {
     fetchSavedReport,
     fetchReportRuns,
@@ -19,50 +20,13 @@ import {
 } from "@/lib/reports/fetchers";
 import { publicEnv } from "@/lib/config";
 import { backToArea, CTA_LABELS } from "@/lib/design/cta";
+import { STATUS_PILL } from "@/lib/statusPill";
 
 type ReportParameters = {
     scope?: string;
     dateRange?: string;
     metrics?: string[];
 };
-
-function StatusBadge({ status }: { status?: string }) {
-    if (!status)
-        return (
-            <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-label-caps uppercase tracking-wider text-(--ink-muted)">
-                Never run
-            </span>
-        );
-
-    switch (status) {
-        case ReportStatus.SUCCESS:
-            return (
-                <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-label-caps uppercase tracking-wider text-green-500">
-                    Success
-                </span>
-            );
-        case ReportStatus.FAILED:
-            return (
-                <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-label-caps uppercase tracking-wider text-red-500">
-                    Failed
-                </span>
-            );
-        case ReportStatus.RUNNING:
-            return (
-                <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-label-caps uppercase tracking-wider text-blue-500">
-                    Running
-                </span>
-            );
-        case ReportStatus.PENDING:
-            return (
-                <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-label-caps uppercase tracking-wider text-yellow-500">
-                    Pending
-                </span>
-            );
-        default:
-            return null;
-    }
-}
 
 function RenderedReportAndConfig({
     report,
@@ -393,7 +357,7 @@ export default function SingleReportPage() {
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             {error && (
-                <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-500">
+                <div className={`rounded-xl border px-4 py-3 text-sm ${STATUS_PILL.negative}`}>
                     {error}
                 </div>
             )}
@@ -422,7 +386,7 @@ export default function SingleReportPage() {
                             <button
                                 type="button"
                                 onClick={() => setShowDeleteConfirm(true)}
-                                className="rounded-full border border-red-500/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-red-500 hover:bg-red-500/10 transition-colors"
+                                className="rounded-full border border-(--negative)/30 px-4 py-2 text-xs uppercase tracking-[0.2em] text-(--negative) hover:bg-(--negative)/10 transition-colors"
                             >
                                 {CTA_LABELS.delete}
                             </button>
@@ -510,8 +474,8 @@ export default function SingleReportPage() {
             )}
 
             {showDeleteConfirm && (
-                <div className="rounded-3xl border border-red-500/30 bg-red-500/5 p-6">
-                    <h2 className="font-(--font-display) text-lg text-red-500 mb-2">
+                <div className="rounded-3xl border border-(--negative)/30 bg-(--negative)/5 p-6">
+                    <h2 className="font-(--font-display) text-lg text-(--negative) mb-2">
                         Delete Report
                     </h2>
                     <p className="text-sm text-(--ink-muted) mb-4">
@@ -523,7 +487,7 @@ export default function SingleReportPage() {
                             type="button"
                             onClick={handleDeleteConfirm}
                             disabled={isDeleting}
-                            className="rounded-full bg-red-500 px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-white hover:bg-red-600 transition-colors disabled:opacity-50"
+                            className="rounded-full bg-(--negative) px-4 py-1.5 text-xs uppercase tracking-[0.2em] text-(--accent-foreground) hover:bg-(--negative)/90 transition-colors disabled:opacity-50"
                         >
                             {isDeleting ? "Deleting..." : CTA_LABELS.delete}
                         </button>
