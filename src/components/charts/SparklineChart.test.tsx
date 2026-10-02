@@ -1,9 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render } from "@/test/utils";
 
+import type { EChartsOption } from "echarts";
+import { SVGRenderer } from "echarts/renderers";
+import { echarts } from "@/lib/echartsInit";
+
 import {
     SparklineChart,
     TILE_SPARK,
+    tileSparkRange,
     formatSparklineTooltipDate,
     formatSparklineTooltipValue,
 } from "./SparklineChart";
@@ -123,7 +128,11 @@ describe("SparklineChart tile variant (the trend mark of a metric tile)", () => 
         itemStyle: { color: string; borderColor?: string; borderWidth?: number };
     };
     const option = () =>
-        (chartSpy.mock.calls.at(-1)?.[0] as { option: { grid: unknown; series: Series[] } }).option;
+        (
+            chartSpy.mock.calls.at(-1)?.[0] as {
+                option: { grid: unknown; series: Series[]; yAxis: Record<string, unknown> };
+            }
+        ).option;
     const sizes = (n: number) =>
         Array.from({ length: n }, (_, i) => option().series[0].symbolSize(null, { dataIndex: i }));
 
@@ -181,5 +190,76 @@ describe("SparklineChart tile variant (the trend mark of a metric tile)", () => 
         expect(series.itemStyle).toEqual({ color: "#666", borderColor: "#fff", borderWidth: 2 });
         expect(sizes(3)).toEqual([0, 0, 8]);
         expect(option().grid).toEqual({ left: 8, right: 8, top: 10, bottom: 10 });
+    });
+
+    it("scales the tile from the lowest to the highest served point (shape, not magnitude)", () => {
+        render(<SparklineChart variant="tile" data={[86, 88, 85]} categories={["a", "b", "c"]} />);
+        expect(option().yAxis).toMatchObject({ type: "value", min: 85, max: 88 });
+    });
+
+    it("draws a flat series as a line through the middle", () => {
+        render(<SparklineChart variant="tile" data={[60, 60, 60]} categories={["a", "b", "c"]} />);
+        expect(option().yAxis).toMatchObject({ min: 59, max: 61 });
+    });
+
+    it("leaves gaps out of the range, and a single point is only the dot", () => {
+        render(
+            <SparklineChart
+                variant="tile"
+                data={[null, 5, null, 7]}
+                categories={["a", "b", "c", "d"]}
+            />,
+        );
+        expect(option().yAxis).toMatchObject({ min: 5, max: 7 });
+        chartSpy.mockClear();
+        render(<SparklineChart variant="tile" data={[4]} categories={["a"]} />);
+        expect(option().yAxis).toMatchObject({ min: 3, max: 5 });
+        expect(sizes(1)).toEqual([5]);
+    });
+
+    it("the default variant keeps its axis: no min and no max (it includes 0)", () => {
+        render(<SparklineChart data={[86, 88, 85]} categories={["a", "b", "c"]} />);
+        expect(option().yAxis).not.toHaveProperty("min");
+        expect(option().yAxis).not.toHaveProperty("max");
+    });
+
+    it("drawn for real at 87x31, the tile line reaches the top and the bottom of its plot", () => {
+        render(<SparklineChart variant="tile" data={[86, 88, 85]} categories={["a", "b", "c"]} />);
+        echarts.use([SVGRenderer]);
+        const chart = echarts.init(null, null, {
+            renderer: "svg",
+            ssr: true,
+            width: 87,
+            height: 31,
+        });
+        chart.setOption(chartSpy.mock.calls.at(-1)?.[0].option as EChartsOption);
+        const svg = chart.renderToSVGString();
+        chart.dispose();
+        // The line is the unfilled path in the muted ink; read its y values.
+        const line = [
+            ...svg.matchAll(/<path d="([^"]+)"[^>]*fill="none"[^>]*stroke="#666"/g),
+        ][0]?.[1];
+        expect(line).toBeTruthy();
+        const ys = [...(line ?? "").matchAll(/[ML]\s*[-\d.]+[ ,]([-\d.]+)/g)].map((m) =>
+            Number(m[1]),
+        );
+        expect(ys).toHaveLength(3);
+        // Plot box: top 4, bottom 31 - 4 = 27. 88 is at the top, 85 at the bottom.
+        expect(Math.min(...ys)).toBeCloseTo(4, 0);
+        expect(Math.max(...ys)).toBeCloseTo(27, 0);
+    });
+});
+
+describe("tileSparkRange", () => {
+    it("is null with no served point", () => {
+        expect(tileSparkRange([])).toBeNull();
+        expect(tileSparkRange([null, null])).toBeNull();
+        expect(tileSparkRange([Number.NaN])).toBeNull();
+    });
+
+    it("is min..max of the served points; a flat series gets one unit each side", () => {
+        expect(tileSparkRange([3, null, 9, 4])).toEqual({ min: 3, max: 9 });
+        expect(tileSparkRange([0, 0])).toEqual({ min: -1, max: 1 });
+        expect(tileSparkRange([-2, 5])).toEqual({ min: -2, max: 5 });
     });
 });
