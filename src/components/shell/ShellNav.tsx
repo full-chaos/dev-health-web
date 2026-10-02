@@ -63,9 +63,15 @@ const ROW_IDLE = "hover:bg-(--surface2)/60 hover:text-(--text-primary)";
 type ShellNavProps = {
     /** The navigation registry. Defaults to the app's `navAreas`. */
     areas?: readonly NavArea[];
+    /**
+     * Which block to draw. The sidebar draws "main" inside its scroll region and
+     * "utility" (Reports, Admin) below it, held at the bottom above the account
+     * block. "all" draws both (default).
+     */
+    part?: "all" | "main" | "utility";
 };
 
-export function ShellNav({ areas = navAreas }: ShellNavProps) {
+export function ShellNav({ areas = navAreas, part = "all" }: ShellNavProps) {
     const pathname = usePathname() ?? "";
     const params = useShellNavParams(pathname);
     const { features } = useAdminTier();
@@ -151,15 +157,21 @@ export function ShellNav({ areas = navAreas }: ShellNavProps) {
 
     return (
         <>
-            <nav aria-label="Primary areas" className="flex flex-col gap-1">
-                {mainAreas.map((area) => renderArea(area))}
-            </nav>
-            <nav
-                aria-label="Reports and admin"
-                className="mt-3 flex flex-col gap-1 border-t border-(--border) pt-3"
-            >
-                {utilityAreas.map((area) => renderArea(area))}
-            </nav>
+            {part !== "utility" && (
+                <nav aria-label="Primary areas" className="flex flex-col gap-1">
+                    {mainAreas.map((area) => renderArea(area))}
+                </nav>
+            )}
+            {part !== "main" && (
+                <nav
+                    aria-label="Reports and admin"
+                    className={`flex flex-col gap-1 border-t border-(--border) pt-3 ${
+                        part === "all" ? "mt-3" : ""
+                    }`}
+                >
+                    {utilityAreas.map((area) => renderArea(area))}
+                </nav>
+            )}
         </>
     );
 }

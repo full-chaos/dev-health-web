@@ -39,6 +39,12 @@ describe("ShellTopBar — location trail from the nav config (A6)", () => {
         expect(screen.getByTestId("shell-top-bar").tagName).toBe("HEADER");
     });
 
+    it("is 66px high, as the prototype top bar", () => {
+        render(<ShellTopBar status={LOADING} />);
+
+        expect(screen.getByTestId("shell-top-bar")).toHaveClass("h-(--shell-topbar-h)");
+    });
+
     it("shows the area as the current crumb on an area with no child (Home)", () => {
         render(<ShellTopBar status={LOADING} />);
 
