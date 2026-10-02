@@ -107,6 +107,13 @@ describe("paletteEntries", () => {
         expect(entries.find((e) => e.path === "/cognitive-load?tab=load-drivers")?.label).toBe(
             "Load Drivers",
         );
+        // AI Governance Risk: the `view` tabs, second line names the destination and the area.
+        expect(entries.find((e) => e.path === "/ai/risk?view=test-gaps")).toMatchObject({
+            label: "Test Gaps",
+            areaLabel: "Governance Risk · AI",
+        });
+        expect(entries.find((e) => e.path === "/ai/risk?view=evidence")?.label).toBe("Evidence");
+        expect(entries.filter((e) => e.path === "/ai/risk")).toHaveLength(1);
         // Metrics: the sidebar's Flow row is itself a tab; DORA and Throughput are added, Flow not twice.
         expect(entries.find((e) => e.path === "/metrics?tab=dora")).toMatchObject({
             label: "DORA",

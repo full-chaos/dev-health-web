@@ -216,8 +216,8 @@ type AIEvidenceExplorerProps = {
  * PR-evidence explorer: a searchable AI-attributed PR table paired with the
  * Work Graph evidence (nodes + edges with provenance) for the selected PR.
  *
- * Shared body between {@link AIDrilldownModal} (metric drilldowns) and the
- * Governance Risk → Evidence tab, so both surfaces stay behaviourally
+ * Shared body between the metric drilldown Drawers (Review Load, Governance Risk
+ * Overview) and the Governance Risk → Evidence tab, so both surfaces stay behaviourally
  * identical, including their honest loading / empty / error states.
  */
 export function AIEvidenceExplorer({ filter }: AIEvidenceExplorerProps) {

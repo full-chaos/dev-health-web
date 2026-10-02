@@ -54,7 +54,6 @@ describe("CTA registry (Part D)", () => {
             dismissAll: "Dismiss All",
             approve: "Approve",
             dismiss: "Dismiss",
-            closeEvidenceDrilldown: "Close evidence drilldown",
             createAccount: "Create account",
             termsOfService: "Terms of Service",
             privacyPolicy: "Privacy Policy",

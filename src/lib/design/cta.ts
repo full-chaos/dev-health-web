@@ -305,7 +305,6 @@ export const CTA_LABELS = {
     dismissAll: "Dismiss All",
     approve: "Approve",
     dismiss: "Dismiss",
-    closeEvidenceDrilldown: "Close evidence drilldown",
     createAccount: "Create account",
     termsOfService: "Terms of Service",
     privacyPolicy: "Privacy Policy",
