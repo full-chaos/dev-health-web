@@ -52,6 +52,14 @@ describe("OpportunityMasterDetail", () => {
         ).toBeInTheDocument();
     });
 
+    it("uses the prototype's 295px list column beside a flexible detail", () => {
+        const { container } = render(<OpportunityMasterDetail items={items} filters={filters} />);
+
+        expect((container.firstElementChild as HTMLElement).className).toContain(
+            "lg:grid-cols-[295px_minmax(0,1fr)]",
+        );
+    });
+
     it("puts an arrow on every row and marks the selected row", () => {
         render(<OpportunityMasterDetail items={items} filters={filters} />);
 
