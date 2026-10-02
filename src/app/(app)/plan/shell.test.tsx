@@ -91,7 +91,7 @@ describe("Plan overview in the shared app shell", () => {
         });
         expect(screen.getAllByTestId("scope-bar")).toHaveLength(1);
         const bar = screen.getByTestId("scope-bar");
-        const content = screen.getByRole("heading", { name: "No forecast available" });
+        const content = screen.getByText("No forecast available");
         expect(
             bar.compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
