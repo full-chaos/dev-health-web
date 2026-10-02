@@ -13,7 +13,9 @@ describe("Plan route placement", () => {
         expect(source).toContain("getThroughputForecastViaGraphQL");
         expect(source).toContain("Open items");
         expect(source).toContain("Rolling throughput");
-        expect(source).toContain("Primary risk callout");
+        // The primary risk is folded into the Risk checks inset, not a stand-alone callout.
+        expect(source).toContain("forecast.primaryRisk.label");
+        expect(source).not.toContain("Primary risk callout");
         expect(source).not.toContain("AreaOverview");
     });
 
