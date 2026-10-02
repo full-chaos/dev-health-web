@@ -80,7 +80,7 @@ export function ScopeBarClient({
         updateFilters,
         updatePeopleQuery,
         visibility,
-        workCategory,
+        workCategory: workCategoryInUrl,
     } = useScopeBarState({
         view,
         tab,
@@ -88,6 +88,11 @@ export function ScopeBarClient({
         resolvedScopeLock,
         writeDefaultFilter,
     });
+    // Where the queries take one work type (the AI pages), only the first value of an old URL is in
+    // effect: it is the one shown, counted and sent.
+    const workCategory = visibility.workTypeSingle
+        ? workCategoryInUrl.slice(0, 1)
+        : workCategoryInUrl;
 
     const organization = useShellOrganization();
     const orgLabel = orgName ?? organization?.name ?? SCOPE_BAR_ORG_FALLBACK;
@@ -168,6 +173,7 @@ export function ScopeBarClient({
                     active={workCategory}
                     emptyLabel="All"
                     items={options.work_category}
+                    single={visibility.workTypeSingle}
                     label="Work"
                     menuKey="work"
                     onChange={(next) =>
@@ -396,7 +402,9 @@ export function ScopeBarClient({
                                         ...filters,
                                         why: {
                                             ...filters.why,
-                                            work_category: toggleValue(workCategory, value),
+                                            work_category: visibility.workTypeSingle
+                                                ? []
+                                                : toggleValue(workCategory, value),
                                         },
                                     })
                                 }

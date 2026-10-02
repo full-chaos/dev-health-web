@@ -15,6 +15,8 @@ type QuickFilterMenuProps = {
     value?: string;
     /** The selection is fixed: the trigger does not open the menu. */
     disabled?: boolean;
+    /** One value at most (radios). See `OptionList`. */
+    single?: boolean;
 };
 
 export function QuickFilterMenu({
@@ -30,6 +32,7 @@ export function QuickFilterMenu({
     variant = "accent",
     value,
     disabled,
+    single,
 }: QuickFilterMenuProps) {
     const isActive = active.length > 0;
 
@@ -56,6 +59,7 @@ export function QuickFilterMenu({
                             items={items}
                             onChange={onChange}
                             selected={active}
+                            single={single}
                             toggleValue={toggleValue}
                         />
                     </div>

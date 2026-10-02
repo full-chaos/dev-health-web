@@ -28,6 +28,8 @@ export type FilterVisibility = {
     repo?: boolean;
     developer?: boolean;
     workType?: boolean;
+    /** The view's queries take ONE work type (the AI `AIScopeInput.workType` is a single string): the Work control is single-select. */
+    workTypeSingle?: boolean;
     /**
      * URL filters this view's queries do not read: the drawer does not offer them, and a value
      * left in an old URL is neither shown as a pill nor counted as active. Unset = all are read.
@@ -172,6 +174,7 @@ const AI_VISIBILITY: FilterVisibility = {
     repo: true,
     developer: false,
     workType: true,
+    workTypeSingle: true,
     unreadFilters: ["developers", "roles", "flowStage", "blocked", "artifacts", "issueType"],
     flowStage: false,
     date: true,

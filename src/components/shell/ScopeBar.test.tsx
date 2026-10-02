@@ -685,6 +685,45 @@ describe("ScopeBar — the AI view: first load as the two old bars had it", () =
         expect(screen.getByRole("button", { name: "Filters, 9 active" })).toBeInTheDocument();
     });
 
+    // `{"why":{"work_category":["feature","maintenance"]}}` on the default team / 14d filter.
+    const TWO_CATEGORIES_F =
+        "eyJob3ciOnt9LCJzY29wZSI6eyJpZHMiOltdLCJsZXZlbCI6InRlYW0ifSwidGltZSI6eyJjb21wYXJlX2RheXMiOjE0LCJyYW5nZV9kYXlzIjoxNH0sIndoYXQiOnt9LCJ3aG8iOnt9LCJ3aHkiOnsid29ya19jYXRlZ29yeSI6WyJmZWF0dXJlIiwibWFpbnRlbmFuY2UiXX19";
+
+    it("shows and counts one work category when an old URL holds several: only the first is read (CHAOS-7784)", () => {
+        scopeBarUrl.reset(`f=${TWO_CATEGORIES_F}`);
+        render(<ScopeBar view="ai" />);
+
+        const bar = within(screen.getByTestId("scope-bar"));
+        expect(bar.getByText("feature")).toBeInTheDocument();
+        expect(bar.queryByText("maintenance")).toBeNull();
+        expect(screen.getByRole("button", { name: "Filters, 1 active" })).toBeInTheDocument();
+    });
+
+    it("the Work menu replaces the category instead of adding one", async () => {
+        const user = userEvent.setup();
+        scopeBarUrl.reset(`f=${TWO_CATEGORIES_F}`);
+        render(<ScopeBar view="ai" />);
+
+        await user.click(screen.getByRole("button", { name: /^Filters/ }));
+        const drawer = await screen.findByTestId("filter-drawer");
+        await user.click(within(drawer).getByRole("button", { name: /^Work/ }));
+        await user.click(screen.getByRole("radio", { name: "maintenance" }));
+
+        await waitFor(() =>
+            expect(scopeBarUrl.lastFilter().why.work_category).toEqual(["maintenance"]),
+        );
+    });
+
+    it("the pill clears the category", async () => {
+        const user = userEvent.setup();
+        scopeBarUrl.reset(`f=${TWO_CATEGORIES_F}`);
+        render(<ScopeBar view="ai" />);
+
+        await user.click(screen.getByRole("button", { name: "Remove Work filter" }));
+
+        await waitFor(() => expect(scopeBarUrl.lastFilter().why.work_category).toEqual([]));
+    });
+
     it("has the Filters drawer with the Work filter and no Developer filter", async () => {
         const user = userEvent.setup();
         render(<ScopeBar view="ai" />);
