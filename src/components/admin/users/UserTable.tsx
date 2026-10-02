@@ -110,7 +110,7 @@ export function UserTable({ users }: UserTableProps) {
             render: (user) => (
                 <Link
                     href={`/org/admin/users/${user.id}/edit`}
-                    className="text-(--accent) hover:underline"
+                    className="text-(--accent-2) hover:underline"
                 >
                     {CTA_LABELS.edit}
                 </Link>

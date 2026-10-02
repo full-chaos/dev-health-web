@@ -535,7 +535,7 @@ export function EvidencePanel({
                 <footer className="border-t border-(--card-stroke) bg-(--card-90) p-6">
                     <Link
                         href={exploreUrl}
-                        className="flex w-full items-center justify-center rounded-xl border border-(--accent)/20 bg-(--accent)/10 px-4 py-3 text-sm font-medium text-(--accent) transition-colors hover:bg-(--accent)/20"
+                        className="flex w-full items-center justify-center rounded-xl border border-(--accent-2)/20 bg-(--accent-2)/10 px-4 py-3 text-sm font-medium text-(--info) transition-colors hover:bg-(--accent-2)/20"
                     >
                         {CTA_LABELS.openEvidence} ↗
                     </Link>

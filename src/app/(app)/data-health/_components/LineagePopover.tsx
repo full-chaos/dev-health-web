@@ -22,7 +22,7 @@ export function LineagePopover({ metricId }: { metricId: string }) {
     return (
         <div className="relative z-20 group inline-block ml-2 cursor-help">
             <svg
-                className="w-4 h-4 text-(--ink-muted) hover:text-(--accent)"
+                className="w-4 h-4 text-(--ink-muted) hover:text-(--accent-2)"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
