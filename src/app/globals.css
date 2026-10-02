@@ -27,6 +27,12 @@
         #009aac 82%,
         #01718d 100%
     );
+    /* The orange-red to amber gradient of the selection marks (prototype theme.css `--ember`). */
+    --ember: linear-gradient(100deg, #f92c00, #ff7900 55%, #ffad08);
+    /* The same stops, top to bottom: the left marker of the current nav row (theme.css `.selected:before`). */
+    --ember-vertical: linear-gradient(180deg, #f92c00, #ff7900 60%, #ffaf00);
+    /* Dark ink on the ember gradient (the avatar). */
+    --on-ember: #15171a;
     color-scheme: light;
     --background: #fffbfe;
     --foreground: #1c1b1f;
@@ -364,4 +370,12 @@ html [data-sonner-toaster][data-sonner-theme] {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+}
+
+/* Selected-row fill of the sidebar (prototype `--surface2`): visible on the light sidebar. */
+:root[data-palette="infinity"][data-theme="light"] {
+    --surface2: #e8ecee;
+}
+:root[data-palette="infinity"][data-theme="dark"] {
+    --surface2: #1f272c;
 }

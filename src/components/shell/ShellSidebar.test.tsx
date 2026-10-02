@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { type ComponentProps, useRef, useState } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -31,10 +31,13 @@ vi.mock("next-auth/react", () => ({
     signOut: vi.fn(),
 }));
 
-function renderSidebar(features: Record<string, boolean> = {}) {
+function renderSidebar(
+    features: Record<string, boolean> = {},
+    organization?: ComponentProps<typeof ShellSidebar>["organization"],
+) {
     return render(
         <AdminTierProvider tier="community" features={features}>
-            <ShellSidebar />
+            <ShellSidebar organization={organization} />
         </AdminTierProvider>,
     );
 }
@@ -586,6 +589,24 @@ describe("ShellSidebar — a route with its own `f` encoding (Security)", () => 
         const current = within(children).getByRole("link", { name: "Investment" });
         expect(current).toHaveAttribute("aria-current", "page");
         expect(current.className).toContain("min-h-9");
-        expect(current.className).toContain("before:bg-(--accent)");
+        // The fill must be visible on the light sidebar, so it is --surface2, not --surface-raised.
+        expect(current.className).toContain("bg-(--surface2)");
+        expect(current.className).toContain("before:bg-(image:--ember-vertical)");
+    });
+
+    it("shows the data line under the account name at the bottom, not in the organization card", () => {
+        renderSidebar({}, { name: "Test", hasData: true, lastMetricsAt: "2026-10-02T12:00:00Z" });
+
+        const detail = within(sidebar()).getByTestId("account-detail");
+        expect(detail).toHaveTextContent(/^Data through /);
+        expect(detail.previousElementSibling).toHaveTextContent("admin");
+        const avatar = detail.closest("button")?.querySelector("div");
+        expect(avatar?.className).toContain("bg-(image:--ember)");
+        expect(avatar?.className).toContain("text-(--on-ember)");
+    });
+
+    it("shows no data line while the organization is loading", () => {
+        renderSidebar({}, undefined);
+        expect(within(sidebar()).queryByTestId("account-detail")).toBeNull();
     });
 });

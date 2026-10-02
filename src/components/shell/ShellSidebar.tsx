@@ -6,7 +6,11 @@ import { Suspense, useEffect, useRef, type RefObject } from "react";
 
 import fcLogo from "@/assets/fc-logo.png";
 import { UserMenu } from "@/components/auth/UserMenu";
-import { OrgSwitcher, type ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
+import {
+    OrgSwitcher,
+    describeOrganizationData,
+    type ActiveOrganizationData,
+} from "@/components/navigation/OrgSwitcher";
 import { useModalFocus } from "@/lib/a11y/useModalFocus";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -26,6 +30,8 @@ import { ShellNav } from "./ShellNav";
  * hidden here.
  */
 type ShellSidebarProps = {
+    /** The active organization the card loaded (`undefined`: loading, `null`: not known). */
+    organization?: ActiveOrganizationData | null;
     /** Receives the active organization's data state from the organization card. */
     onActiveOrganizationChange?: (organization: ActiveOrganizationData | null) => void;
     /** Below `md`: the slide-over is open. The shell owns the state (the button is in the mobile bar). */
@@ -36,6 +42,7 @@ type ShellSidebarProps = {
 };
 
 export function ShellSidebar({
+    organization,
     onActiveOrganizationChange,
     mobileOpen = false,
     onMobileClose,
@@ -127,7 +134,7 @@ export function ShellSidebar({
                 </div>
 
                 <div className="hidden border-t border-(--border) pt-3 md:block">
-                    <UserMenu placement="sidebar" />
+                    <UserMenu placement="sidebar" detail={describeOrganizationData(organization)} />
                 </div>
             </div>
         </aside>

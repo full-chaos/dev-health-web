@@ -57,8 +57,8 @@ export const AREA_ICONS: Record<NavArea["id"], LucideIcon> = {
 const ROW_FOCUS =
     "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/60";
 const ROW_SELECTED =
-    "bg-(--surface-raised) font-semibold text-(--text-primary) before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-(--radius-pill) before:bg-(--accent)";
-const ROW_IDLE = "hover:bg-(--surface-raised)/60 hover:text-(--text-primary)";
+    "bg-(--surface2) font-semibold text-(--text-primary) before:absolute before:inset-y-2 before:left-0 before:w-[3px] before:rounded-(--radius-pill) before:bg-(image:--ember-vertical)";
+const ROW_IDLE = "hover:bg-(--surface2)/60 hover:text-(--text-primary)";
 
 type ShellNavProps = {
     /** The navigation registry. Defaults to the app's `navAreas`. */

@@ -31,10 +31,18 @@ type SwitchOrgResponse = {
     };
 };
 
-function dataLabel(org: OrganizationOption) {
-    if (!org.has_data) return "No data yet";
-    if (!org.last_metrics_at) return "Has data";
-    return `Data through ${new Date(org.last_metrics_at).toLocaleDateString()}`;
+/**
+ * The data line of the account block: what the active organization's data state is. `undefined`
+ * (not loaded yet) shows nothing; `null` (not known) says so and is never read as "no data".
+ */
+export function describeOrganizationData(
+    organization: ActiveOrganizationData | null | undefined,
+): string | null {
+    if (organization === undefined) return null;
+    if (organization === null) return "Data status unavailable";
+    if (!organization.hasData) return "No data yet";
+    if (!organization.lastMetricsAt) return "Has data";
+    return `Data through ${new Date(organization.lastMetricsAt).toLocaleDateString()}`;
 }
 
 /** Data state of the active organization, as the switcher shows it. */
@@ -185,10 +193,9 @@ export function OrgSwitcher({ onActiveOrganizationChange }: OrgSwitcherProps = {
                     ))}
                 </select>
                 <p id="org-switcher-data" className={classes.note}>
-                    {activeOrg
-                        ? dataLabel(activeOrg)
-                        : "Choose the organization used for dashboards."}
-                    {!canSwitchOrganizations ? " · Only organization on this account" : null}
+                    {canSwitchOrganizations
+                        ? "Organization workspace"
+                        : "Organization workspace · only one on this account"}
                 </p>
                 {error ? <p className="mt-1 text-xs text-(--negative)">{error}</p> : null}
             </div>
