@@ -350,24 +350,20 @@ describe("ComplexityDashboard", () => {
         );
     });
 
-    it("starts the row drawer with the five provenance rows, 'Not reported' for each (the hotspots query serves none)", async () => {
-        const hotspots = [makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py" })];
+    it("shows one muted provenance line in the row drawer, not five empty rows (the hotspots query serves none)", async () => {
+        const hotspots = [
+            makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py", blameConcentration: 0.5 }),
+        ];
         render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
         await userEvent.click(screen.getByRole("button", { name: "Open evidence" }));
 
-        const rows = within(within(screen.getByRole("dialog")).getByTestId("evidence-facts"))
-            .getAllByTestId("evidence-fact")
-            .map((row) => [
-                row.querySelector("dt")?.textContent,
-                row.querySelector("dd")?.textContent,
-            ]);
-        expect(rows).toEqual([
-            ["Source", "Not reported"],
-            ["Data quality", "Not reported"],
-            ["Last sync", "Not reported"],
-            ["Identity confidence", "Not reported"],
-            ["Artifacts", "Not reported"],
-        ]);
+        const drawer = screen.getByRole("dialog");
+        expect(within(drawer).getByTestId("evidence-provenance-not-reported")).toHaveTextContent(
+            "Provenance is not reported for this item.",
+        );
+        expect(within(drawer).queryByTestId("evidence-facts")).toBeNull();
+        expect(within(drawer).queryByText("Not reported")).toBeNull();
+        expect(within(drawer).getByTestId("evidence-subject-facts")).toBeInTheDocument();
     });
 
     it("Escape closes the row drawer and focus returns to the row's Evidence button", async () => {

@@ -409,8 +409,8 @@ function HotspotEvidence({ row }: { row: HotspotRow }) {
     return (
         <div className="space-y-4">
             {/* The hotspots query serves no source, quality, sync time, identity confidence or
-                artifact list for a file row. */}
-            <EvidenceProvenanceFacts />
+                artifact list for a file row: one line says so, in place of five empty rows. */}
+            <EvidenceProvenanceFacts whenEmpty="line" />
             <EvidenceFactList aria-label="File" testId="evidence-subject-facts">
                 <EvidenceFact
                     label="File"
