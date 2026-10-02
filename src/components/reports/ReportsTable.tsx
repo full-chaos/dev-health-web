@@ -55,6 +55,20 @@ const COLUMNS: readonly DataTableColumn<SavedReport>[] = [
         header: "Status",
         render: (report) => <StatusBadge status={report.lastRunStatus} />,
     },
+    {
+        key: "open",
+        header: <span className="sr-only">Open</span>,
+        className: "px-3 py-3.25 text-right",
+        render: (report) => (
+            <Link
+                href={reportHref(report.id)}
+                aria-label={`Open ${report.name}`}
+                className="inline-flex text-(--accent-2)"
+            >
+                <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            </Link>
+        ),
+    },
 ];
 
 export function ReportsTable({ reports }: { reports: readonly SavedReport[] }) {
@@ -64,15 +78,6 @@ export function ReportsTable({ reports }: { reports: readonly SavedReport[] }) {
             columns={COLUMNS}
             data={reports}
             rowKeyAction={(report) => report.id}
-            rowActions={(report) => (
-                <Link
-                    href={reportHref(report.id)}
-                    aria-label={`Open ${report.name}`}
-                    className="inline-flex text-(--accent-2)"
-                >
-                    <ArrowRight aria-hidden="true" className="h-4 w-4" />
-                </Link>
-            )}
             footerNote={`${reports.length} saved ${reports.length === 1 ? "report" : "reports"}`}
             emptyMessage="No saved reports yet."
             rowTestId="report-row"
