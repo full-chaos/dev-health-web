@@ -1,7 +1,9 @@
 import { AreaOverview } from "@/components/navigation/AreaOverview";
+import { diagnoseEvidenceSubject } from "./diagnoseEvidence";
 import { DiagnoseQuestions } from "./DiagnoseQuestions";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { getDiagnoseSignals } from "@/lib/areaSignals/diagnose";
 import { checkApiHealth } from "@/lib/api/system";
@@ -40,7 +42,13 @@ export default async function DiagnosePage({ searchParams }: DiagnosePageProps) 
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
                 title="Diagnose"
-                subtitle="Investigate flow, investment, landscape, work graph, complexity, cognitive load, bottlenecks, and code from one durable area."
+                subtitle="Investigate flow, investment, landscape, work graph, complexity, cognitive load, bottlenecks, and code."
+                actions={
+                    // The page subject is the primary signal (the hero's severity rule).
+                    <PageHeaderEvidenceAction
+                        subject={diagnoseEvidenceSubject(diagnoseSignals, filters, activeRole)}
+                    />
+                }
             />
 
             <ScopeBar view="work" origin={activeOrigin} />
@@ -50,7 +58,6 @@ export default async function DiagnosePage({ searchParams }: DiagnosePageProps) 
                 signals={diagnoseSignals}
                 filters={filters}
                 role={activeRole}
-                description="Diagnostic sub-areas, ordered by severity."
             />
 
             <DiagnoseQuestions filters={filters} role={activeRole} />

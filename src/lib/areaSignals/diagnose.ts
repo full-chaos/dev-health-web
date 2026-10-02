@@ -54,6 +54,7 @@ import { logger } from "@/lib/logger";
 import { deriveState } from "./deriveState";
 import type { SeverityThresholds } from "./deriveState";
 import type { AreaSignal, AreaSignalState } from "./types";
+import { DIAGNOSE_HOME_METRIC } from "./diagnoseHomeMetric";
 
 // ── Provisional Complexity thresholds (CHAOS-2074) ────────────────────────────
 //
@@ -317,8 +318,8 @@ export async function getDiagnoseSignals(
     // ── Metrics (/metrics) ────────────────────────────────────────────────────
     // Home REST deltas[metric=deploy_freq] value; RETURNED severity from
     // signals[metric=deploy_freq].severity.
-    const deploySignal = homeSignalByMetric(homeData?.signals, "deploy_freq");
-    const deployDelta = homeDeltaValue(homeData?.deltas, "deploy_freq");
+    const deploySignal = homeSignalByMetric(homeData?.signals, DIAGNOSE_HOME_METRIC.flow);
+    const deployDelta = homeDeltaValue(homeData?.deltas, DIAGNOSE_HOME_METRIC.flow);
     push(
         "flow",
         deploySignal
@@ -332,8 +333,8 @@ export async function getDiagnoseSignals(
     // ── Code (/code) ──────────────────────────────────────────────────────────
     // Home REST deltas[metric=churn] value; RETURNED severity from
     // signals[metric=churn].severity.
-    const churnSignal = homeSignalByMetric(homeData?.signals, "churn");
-    const churnDelta = homeDeltaValue(homeData?.deltas, "churn");
+    const churnSignal = homeSignalByMetric(homeData?.signals, DIAGNOSE_HOME_METRIC.code);
+    const churnDelta = homeDeltaValue(homeData?.deltas, DIAGNOSE_HOME_METRIC.code);
     push(
         "code",
         churnSignal
@@ -428,8 +429,8 @@ export async function getDiagnoseSignals(
     // ── Bottlenecks (/bottleneck) ─────────────────────────────────────────────
     // Home REST deltas[metric=wip_saturation] value; RETURNED severity from
     // signals[metric=wip_saturation].severity.
-    const wipSignal = homeSignalByMetric(homeData?.signals, "wip_saturation");
-    const wipDelta = homeDeltaValue(homeData?.deltas, "wip_saturation");
+    const wipSignal = homeSignalByMetric(homeData?.signals, DIAGNOSE_HOME_METRIC.bottleneck);
+    const wipDelta = homeDeltaValue(homeData?.deltas, DIAGNOSE_HOME_METRIC.bottleneck);
     push(
         "bottleneck",
         wipSignal
