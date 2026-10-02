@@ -5,7 +5,8 @@ import { Children, isValidElement, type CSSProperties, type ReactNode } from "re
  * 5 tiles give 5 columns, 4 give 4, 3 give 3. Under the `lg` breakpoint it falls
  * back to two columns so tiles stay readable.
  *
- * Layout only. Tiles keep their own look and data logic (`MetricCard`).
+ * Joined strip as the approved `.metrics`: 1px seams, one outer border and radius; the tiles lose
+ * their own border and radius. Data logic stays in each tile (`MetricCard`).
  * `columns` overrides the count when the caller needs a fixed grid.
  */
 export type MetricStripProps = {
@@ -29,7 +30,7 @@ export function MetricStrip({
             data-testid={testId}
             data-columns={cols}
             style={{ "--cols": cols } as CSSProperties}
-            className={`grid grid-cols-2 gap-4 lg:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))] ${className}`.trim()}
+            className={`grid grid-cols-2 gap-px overflow-hidden rounded-(--radius-md) border border-(--card-stroke) bg-(--card-stroke) [&>*]:rounded-none [&>*]:border-0 lg:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))] ${className}`.trim()}
         >
             {tiles}
         </div>

@@ -42,4 +42,14 @@ describe("MetricStrip", () => {
         expect(cls).toContain("grid-cols-2");
         expect(cls).toContain("lg:[grid-template-columns:repeat(var(--cols),minmax(0,1fr))]");
     });
+
+    it("joins the tiles with 1px seams and strips their own border and radius", () => {
+        render(<MetricStrip data-testid="strip">{tiles(3)}</MetricStrip>);
+        const cls = screen.getByTestId("strip").className;
+        expect(cls).toContain("gap-px");
+        expect(cls).toContain("overflow-hidden");
+        expect(cls).toContain("[&>*]:rounded-none");
+        expect(cls).toContain("[&>*]:border-0");
+        expect(cls).not.toContain("gap-4");
+    });
 });
