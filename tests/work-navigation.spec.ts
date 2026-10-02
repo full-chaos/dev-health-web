@@ -57,7 +57,7 @@ test.describe("Diagnose navigation", () => {
             children.getByRole("link", { name: "Flow", exact: true }),
             /\/metrics(?:[?#].*)?$/,
         );
-        await expect(page.getByRole("heading", { name: "Monitoring view" })).toBeVisible();
+        await expect(page.getByRole("heading", { level: 1, name: "Flow" })).toBeVisible();
 
         await page.goto("/diagnose");
         await clickUntilUrl(
