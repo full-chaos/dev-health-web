@@ -34,7 +34,12 @@ import WorkGraphPage from "./page";
 
 const filterWith = (patch: Partial<MetricFilter>): MetricFilter => ({
     ...defaultMetricFilter,
-    time: { range_days: 30, start_date: "2026-09-01", end_date: "2026-09-30" },
+    time: {
+        ...defaultMetricFilter.time,
+        range_days: 30,
+        start_date: "2026-09-01",
+        end_date: "2026-09-30",
+    },
     ...patch,
 });
 
