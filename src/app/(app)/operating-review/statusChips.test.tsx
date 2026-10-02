@@ -24,6 +24,8 @@ vi.mock("@/lib/graphql/operatingReviewFetchers", () => ({
     getOperatingReviewViaGraphQL: vi.fn(async () => reviewMock.review),
 }));
 
+import { balancedColumns } from "@/lib/operatingReviewColumns";
+
 import OperatingReviewPage from "./page";
 
 // CHAOS-7884: the Operating Review chips and the AI-workflow highlight use theme
@@ -68,6 +70,19 @@ const review = {
         },
     ],
 } as unknown as OperatingReview;
+
+async function renderFiveCardSection() {
+    reviewMock.review = {
+        ...review,
+        sections: [
+            {
+                ...review.sections[0],
+                metrics: Array.from({ length: 5 }, (_, i) => metric(`f${i}`, "changed")),
+            },
+        ],
+    } as unknown as OperatingReview;
+    return renderPage();
+}
 
 const parts = (tone: StatusPillTone) => {
     const [, fill, text] = STATUS_PILL[tone].split(" ");
@@ -163,18 +178,24 @@ describe("Operating Review AI-workflow callout is an info notice", () => {
         const columns = [...container.querySelectorAll("[data-columns]")].map((el) =>
             el.getAttribute("data-columns"),
         );
-        expect(columns).toEqual(["3", "4", "5"]);
-        expect(container.querySelectorAll("[data-testid='metric-strip-filler']")).toHaveLength(4);
+        // 6 metrics are two rows of 3, not 5 + 1 with empty cells.
+        expect(columns).toEqual(["3", "4", "3"]);
+        expect(container.querySelectorAll("[data-testid='metric-strip-filler']")).toHaveLength(0);
         // The status pill sits at the top right of its tile (design picture).
         const chip = screen.getAllByText("changed", { selector: "span" })[0];
         expect(chip.className).toContain("absolute");
         expect(chip.className).toContain("right-4");
-        // A 5+ card row keeps the pill in the flow, so it cannot cover a long label.
-        const crowded = screen
-            .getAllByText("changed", { selector: "span" })
-            .filter((el) => el.closest("[data-columns='5']"));
+        // A row of 5 keeps the pill in the flow, so it cannot cover a long label.
+        const five = (await renderFiveCardSection()).container;
+        const crowded = [...five.querySelectorAll("[data-columns='5'] span")].filter(
+            (el) => el.textContent === "changed",
+        );
         expect(crowded.length).toBeGreaterThan(0);
         for (const el of crowded) expect(el.className).not.toContain("absolute");
+    });
+
+    it("balances rows: 3 -> 3, 4 -> 4, 5 -> 5, 6 -> 3, 7 -> 4, 8 -> 4", () => {
+        expect([3, 4, 5, 6, 7, 8, 10].map(balancedColumns)).toEqual([3, 4, 5, 3, 4, 4, 5]);
     });
 
     it("shows the agenda index as six-card strip with the three counts as pills", async () => {
