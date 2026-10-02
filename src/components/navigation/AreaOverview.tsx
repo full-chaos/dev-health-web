@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { MetricFilter } from "@/lib/filters/types";
 import { getAreaById, type NavAreaId } from "@/lib/navigation/areas";
 import type { AreaSignal } from "@/lib/areaSignals/types";
@@ -36,6 +38,8 @@ type AreaOverviewProps = {
     title?: string;
     /** Optional one-line description under the eyebrow. */
     description?: string;
+    /** Optional static note under the cards (for example how two destinations differ). */
+    note?: ReactNode;
 };
 
 export function AreaOverview({
@@ -45,6 +49,7 @@ export function AreaOverview({
     role,
     title,
     description,
+    note,
 }: AreaOverviewProps) {
     const area = getAreaById(areaId);
     if (!area) return null;
@@ -107,6 +112,8 @@ export function AreaOverview({
                     ))}
                 </div>
             ) : null}
+
+            {note ? <div data-testid="area-overview-note">{note}</div> : null}
         </section>
     );
 }

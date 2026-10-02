@@ -88,6 +88,12 @@ export const CTA_LABELS = {
     aiAutomations: "Automations",
     /** Navigate to the AI Automations workflow from a cross-panel CTA. */
     seeAIAutomations: "See AI Automations",
+    /** Open the shared evidence drawer for an opportunity or experiment metric. */
+    viewMetricEvidence: "View metric evidence",
+    /** Review the evidence behind a suggested experiment (opens the shared drawer). */
+    reviewEvidence: "Review evidence",
+    /** From an opportunity to the experiments derived from it. */
+    exploreExperiments: "Explore experiments",
     checkDataConnections: "Check data connections",
     /** Open the Plan / Completion Forecast destination (Plan overview). */
     completionForecast: "Completion Forecast",
