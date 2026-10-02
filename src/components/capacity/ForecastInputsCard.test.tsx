@@ -36,4 +36,29 @@ describe("ForecastInputsCard", () => {
         expect(screen.queryByText("Scope")).toBeNull();
         expect(screen.queryByText(/0b1f6a52/)).toBeNull();
     });
+
+    it("says how many teams for several, never All Teams (a null teamId is not all teams)", () => {
+        render(<ForecastInputsCard forecast={forecast({ teamId: null })} teamCount={3} />);
+
+        expect(screen.getByText("3 teams")).toBeInTheDocument();
+        expect(screen.queryByText("All Teams")).toBeNull();
+    });
+
+    it("keeps All Teams for no team, no label for one team, and the work scope first", () => {
+        const none = render(<ForecastInputsCard forecast={forecast()} teamCount={0} />);
+        expect(screen.getByText("All Teams")).toBeInTheDocument();
+        none.unmount();
+
+        const one = render(
+            <ForecastInputsCard forecast={forecast({ teamId: "t" })} teamCount={1} />,
+        );
+        expect(screen.queryByText("Scope")).toBeNull();
+        one.unmount();
+
+        render(
+            <ForecastInputsCard forecast={forecast({ workScopeId: "Project X" })} teamCount={3} />,
+        );
+        expect(screen.getByText("Project X")).toBeInTheDocument();
+        expect(screen.queryByText("3 teams")).toBeNull();
+    });
 });

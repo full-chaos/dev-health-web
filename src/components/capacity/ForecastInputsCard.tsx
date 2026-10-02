@@ -10,18 +10,27 @@ function Row({ label, value }: { label: string; value: string }) {
 }
 
 /**
- * The scope label: a work scope, else "All Teams". A team scope has no label:
- * the scope bar already shows it, and a raw team id is not customer copy.
+ * The scope label: a work scope, else the team count for several teams, else
+ * "All Teams". One team has no label: the scope bar already shows it, and a raw
+ * team id is not customer copy. Several teams come back with no teamId, and a
+ * null teamId does not mean all teams, so the selected count is the label.
  */
-function scopeLabel(forecast: CapacityForecast): string | null {
+function scopeLabel(forecast: CapacityForecast, teamCount: number): string | null {
     if (forecast.workScopeId) return forecast.workScopeId;
+    if (teamCount > 1) return `${teamCount} teams`;
     if (forecast.teamId) return null;
     return "All Teams";
 }
 
 /** What the forecast was computed from: scope, throughput, history and the remaining items. */
-export function ForecastInputsCard({ forecast }: { forecast: CapacityForecast }) {
-    const scope = scopeLabel(forecast);
+export function ForecastInputsCard({
+    forecast,
+    teamCount = 0,
+}: {
+    forecast: CapacityForecast;
+    teamCount?: number;
+}) {
+    const scope = scopeLabel(forecast, teamCount);
     return (
         <div
             data-testid="forecast-inputs"

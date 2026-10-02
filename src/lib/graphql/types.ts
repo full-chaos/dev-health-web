@@ -343,7 +343,9 @@ export interface BusFactorQueryResponse {
 // ==== Capacity Planning Types ====
 
 export interface CapacityForecastInput {
+    /** Deprecated in the schema; send teamIds. */
     teamId?: string;
+    teamIds?: string[];
     workScopeId?: string;
     targetItems?: number;
     targetDate?: string;
@@ -362,7 +364,7 @@ export interface CapacityForecastFilterInput {
 export interface CapacityForecast {
     forecastId: string;
     computedAt: string;
-    teamId?: string;
+    teamId?: string | null;
     workScopeId?: string;
     backlogSize: number;
     targetItems?: number;
