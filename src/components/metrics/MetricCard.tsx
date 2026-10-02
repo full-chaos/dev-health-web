@@ -44,6 +44,17 @@ type MetricCardProps = {
     noTrendLabel?: string;
     /** Root element; the Metrics page tiles are `article`s. */
     as?: "div" | "article";
+    /**
+     * Opt-in, for tiles whose value is already a string (Cognitive Load). Shown as the value in
+     * place of `value`; a missing value is then the caller's own string, not "--".
+     */
+    valueText?: string;
+    /** Opt-in. A muted description line after the meta row. */
+    description?: string;
+    /** Opt-in. No trend slot at all: no sparkline and no "No trend yet" text. */
+    hideTrend?: boolean;
+    /** Opt-in. `data-testid` on the root element. */
+    testId?: string;
 };
 
 export function MetricCard({
@@ -63,13 +74,18 @@ export function MetricCard({
     evidenceHref,
     noTrendLabel = "No trend yet",
     as: Root = "div",
+    valueText,
+    description,
+    hideTrend,
+    testId,
 }: MetricCardProps) {
     const sparkValues = spark?.map((point) => point.value) ?? [];
     const sparkLabels = spark?.map((point) => point.ts) ?? [];
     // Only a real destination earns the clickable affordance + "Open evidence" cue.
     const captionText = caption ?? (href ? CTA_LABELS.openEvidence : null);
     const hasSpark = sparkValues.filter((v) => v !== null).length > 1;
-    const hasValue = value !== undefined && value !== null;
+    const numericValue = value !== undefined && value !== null ? value : null;
+    const hasValue = valueText !== undefined || numericValue !== null;
     // Concept `.metric` (theme.css min-height 124, style.css padding 18px 20px,
     // theme.css radius 10). Tiles stay in each page's grid.
     const cardClassName = `group relative min-h-31 min-w-0 rounded-(--radius-md) border border-(--card-stroke) bg-card px-5 py-4.5 ${
@@ -89,7 +105,8 @@ export function MetricCard({
                     hasValue ? "text-foreground" : "text-(--ink-muted)"
                 }`}
             >
-                {hasValue ? formatMetricValue(value, unit ?? "") : "--"}
+                {valueText ??
+                    (numericValue !== null ? formatMetricValue(numericValue, unit ?? "") : "--")}
             </p>
             {/* Concept `.metric-meta`: `delta · note` as running text; the dot sits only between the two. */}
             <div className={`mt-2 text-xs text-(--ink-muted) ${hasSpark ? "max-w-[55%]" : ""}`}>
@@ -119,22 +136,32 @@ export function MetricCard({
                     </>
                 ) : null}
             </div>
+            {description ? (
+                <p
+                    data-testid="metric-description"
+                    className="mt-3 text-sm leading-6 text-(--ink-muted)"
+                >
+                    {description}
+                </p>
+            ) : null}
             {/* Concept `.metric .spark` (87x31, bottom-right). End dot, weight and tone: CHAOS-7602. */}
             {/* With a footer link the slot sits from the top, so the two never overlap. */}
-            <div
-                className={`absolute right-4 h-7.75 w-21.75 ${evidenceHref ? "top-15" : "bottom-6.5"}`}
-            >
-                {hasSpark ? (
-                    <SparklineChart data={sparkValues} categories={sparkLabels} height={31} />
-                ) : (
-                    <span
-                        title="Not enough data points to plot a trend yet"
-                        className="flex h-full items-center justify-end text-label-caps uppercase text-(--ink-muted)"
-                    >
-                        {noTrendLabel}
-                    </span>
-                )}
-            </div>
+            {hideTrend ? null : (
+                <div
+                    className={`absolute right-4 h-7.75 w-21.75 ${evidenceHref ? "top-15" : "bottom-6.5"}`}
+                >
+                    {hasSpark ? (
+                        <SparklineChart data={sparkValues} categories={sparkLabels} height={31} />
+                    ) : (
+                        <span
+                            title="Not enough data points to plot a trend yet"
+                            className="flex h-full items-center justify-end text-label-caps uppercase text-(--ink-muted)"
+                        >
+                            {noTrendLabel}
+                        </span>
+                    )}
+                </div>
+            )}
             {evidenceHref && (
                 <a
                     href={evidenceHref}
@@ -147,11 +174,15 @@ export function MetricCard({
     );
 
     if (!href) {
-        return <Root className={cardClassName}>{body}</Root>;
+        return (
+            <Root className={cardClassName} data-testid={testId}>
+                {body}
+            </Root>
+        );
     }
 
     return (
-        <Root className={cardClassName}>
+        <Root className={cardClassName} data-testid={testId}>
             <Link
                 href={href}
                 className="absolute inset-0 z-10 rounded-(--radius-md)"
