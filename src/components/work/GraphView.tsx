@@ -4,7 +4,12 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-import { WorkGraphExplorer, WorkGraphLegend } from "@/components/charts/WorkGraphExplorer";
+import {
+    WorkGraphExplorer,
+    WorkGraphLayerToggles,
+    WorkGraphLegend,
+} from "@/components/charts/WorkGraphExplorer";
+import { Notice } from "@/components/ui/Notice";
 import { DataState } from "@/components/ui/DataState";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { useWorkGraphEdges, useWorkGraphFlow, useWorkGraphArtifacts } from "@/lib/graphql/hooks";
@@ -19,7 +24,7 @@ import type {
 import type { ReviewEdgeRow } from "@/lib/graphql/reviewEdgesFetchers";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { buildExploreUrl } from "@/lib/filters/url";
+import { withFilterParam } from "@/lib/filters/url";
 import { useOrgId } from "@/lib/graphql/provider";
 import { formatNumber } from "@/lib/formatters";
 import {
@@ -233,6 +238,22 @@ export function GraphView({
     const [subcategory, setSubcategory] = useState(searchState.subcategory);
     const [connectionSliceId, setConnectionSliceId] = useState(searchState.connectionSliceId);
     const [isLegendCollapsed, setIsLegendCollapsed] = useState(true);
+    // Layer visibility (Release / Feature flag): page state, shown in the Graph context card
+    // and obeyed by both explorer modes.
+    const [hiddenNodeTypes, setHiddenNodeTypes] = useState<ReadonlySet<WorkGraphNodeType>>(
+        () => new Set(),
+    );
+    const toggleNodeType = useCallback((nodeType: WorkGraphNodeType) => {
+        setHiddenNodeTypes((current) => {
+            const next = new Set(current);
+            if (next.has(nodeType)) {
+                next.delete(nodeType);
+            } else {
+                next.add(nodeType);
+            }
+            return next;
+        });
+    }, []);
     const graphHeight = 580;
 
     // Theme/subcategory are authoritative server-side filters (CHAOS-2431), so
@@ -577,10 +598,22 @@ export function GraphView({
             ? `No dependency links between work items${themeFilterSuffix} in this scope and window.`
             : `No ${activeConnectionSlice.label} relationships${themeFilterSuffix} in the active connection slice. Try switching Connection type to ${CONNECTION_SLICES[1].label} to inspect PRs, commits, and files.`;
 
+    // Graph context facts: only what the page can name. A fact with no value is "unavailable".
+    const { start_date: windowStart, end_date: windowEnd, range_days: windowDays } = filters.time;
+    const windowLabel =
+        windowStart && windowEnd
+            ? `${windowStart} to ${windowEnd}`
+            : windowDays
+              ? `${formatNumber(windowDays)} days`
+              : "unavailable";
+    const edgesShownLabel = loading
+        ? "unavailable"
+        : hiddenEdgeCount > 0
+          ? `${formatNumber(displayEdges.length)} of ${formatNumber(tabEdges.length)}`
+          : formatNumber(displayEdges.length);
+
     return (
-        <div
-            className={`grid gap-4 2xl:items-start ${isLegendCollapsed ? "2xl:grid-cols-[minmax(0,1fr)_3.25rem]" : "2xl:grid-cols-[minmax(0,1fr)_17rem]"}`}
-        >
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
             <div className="order-1 min-w-0 space-y-4">
                 <div className="bg-card rounded-lg border border-(--card-stroke) p-4">
                     <div className="mb-4 flex items-center justify-between gap-4">
@@ -589,16 +622,6 @@ export function GraphView({
                             <p className="text-sm text-(--ink-muted)">{tabDescription[graphTab]}</p>
                         </div>
                         <div className="flex items-center gap-4">
-                            <Link
-                                href={buildExploreUrl({
-                                    metric: "throughput",
-                                    filters,
-                                    role: activeRole,
-                                })}
-                                className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                            >
-                                {CTA_LABELS.openEvidence}
-                            </Link>
                             <div className="text-xs text-(--ink-muted)">
                                 {loading ? "Loading..." : `${formatNumber(tabEdges.length)} edges`}
                             </div>
@@ -681,7 +704,7 @@ export function GraphView({
                     )}
 
                     {(hiddenEdgeCount > 0 || totalCount > edges.length) && (
-                        <div className="mb-4 rounded-xl bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+                        <Notice variant="warn" live={false} className="mb-4">
                             Showing {formatNumber(displayEdges.length)} edges for browser
                             responsiveness
                             {hiddenEdgeCount > 0
@@ -691,7 +714,7 @@ export function GraphView({
                                 ? `; ${formatNumber(totalCount - edges.length)} additional backend edges are available through narrower filters`
                                 : ""}
                             .
-                        </div>
+                        </Notice>
                     )}
 
                     {error && (
@@ -720,6 +743,8 @@ export function GraphView({
                                 height={graphHeight}
                                 className="p-2"
                                 onNodeClickAction={handleNodeClick}
+                                hiddenNodeTypes={hiddenNodeTypes}
+                                onToggleNodeTypeAction={toggleNodeType}
                                 selectedNodeId={
                                     selectedNode
                                         ? `${selectedNode.type}:${selectedNode.id}`
@@ -728,6 +753,18 @@ export function GraphView({
                             />
                         </div>
                     )}
+
+                    {/* Legend under the graph (collapsible). */}
+                    <div
+                        className={`mt-4 rounded-2xl border border-(--card-stroke) bg-card transition-all ${isLegendCollapsed ? "p-2" : "p-3.5"}`}
+                        data-testid="work-graph-legend-panel"
+                    >
+                        <WorkGraphLegend
+                            orientation="row"
+                            collapsed={isLegendCollapsed}
+                            onToggleAction={() => setIsLegendCollapsed((collapsed) => !collapsed)}
+                        />
+                    </div>
                 </div>
 
                 {selectedNode && nodeDetails && (
@@ -740,16 +777,64 @@ export function GraphView({
                 )}
             </div>
 
-            <div className="order-2 2xl:sticky 2xl:top-4">
-                <div
-                    className={`rounded-2xl border border-(--card-stroke) bg-card transition-all ${isLegendCollapsed ? "p-2" : "p-3.5"}`}
-                >
-                    <WorkGraphLegend
-                        collapsed={isLegendCollapsed}
-                        onToggleAction={() => setIsLegendCollapsed((collapsed) => !collapsed)}
+            <aside
+                className="order-2 rounded-2xl border border-(--card-stroke) bg-card p-4 xl:sticky xl:top-4"
+                aria-label="Graph context"
+                data-testid="graph-context"
+            >
+                <h3 className="text-lg font-medium">Graph context</h3>
+                <dl className="mt-3">
+                    {[
+                        ["Window", windowLabel, "context-window"],
+                        ...(showConnectionSelector
+                            ? [
+                                  [
+                                      "Connection type",
+                                      activeConnectionSlice.label,
+                                      "context-connection",
+                                  ],
+                              ]
+                            : []),
+                        ["Edges shown", edgesShownLabel, "context-edges"],
+                    ].map(([label, value, testId]) => (
+                        <div
+                            key={testId}
+                            className="flex items-baseline justify-between gap-3 border-b border-(--card-stroke) py-2 text-sm"
+                        >
+                            <dt className="text-(--ink-muted)">{label}</dt>
+                            <dd
+                                className="text-right font-medium tabular-nums"
+                                data-testid={testId}
+                            >
+                                {value}
+                            </dd>
+                        </div>
+                    ))}
+                </dl>
+                <div className="mt-4">
+                    <h4 className="text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
+                        Layer visibility
+                    </h4>
+                    <WorkGraphLayerToggles
+                        hiddenNodeTypes={hiddenNodeTypes}
+                        onToggleAction={toggleNodeType}
                     />
                 </div>
-            </div>
+                <p className="mt-4 text-xs text-(--ink-muted)">
+                    Select a relationship to inspect its evidence. Use the artifact table when a
+                    table is clearer than a graph.
+                </p>
+                <Link
+                    href={withFilterParam(
+                        "/diagnose/work-graph?tab=artifacts",
+                        filters,
+                        activeRole,
+                    )}
+                    className="mt-4 inline-block text-xs uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
+                >
+                    {CTA_LABELS.browseArtifacts}
+                </Link>
+            </aside>
         </div>
     );
 }

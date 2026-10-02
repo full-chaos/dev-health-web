@@ -29,6 +29,8 @@ export const CTA_LABELS = {
     inspectConfidence: "Inspect confidence",
     /** Inspect the associations (edges) linked to an entity. */
     inspectAssociations: "Inspect associations",
+    /** Open the Work Graph Artifacts tab (the table form of the graph's entities). */
+    browseArtifacts: "Browse artifacts",
     /** Open a single artifact (flame diagram, PR, deployment, …). */
     openArtifact: "Open artifact",
     /** Open the server-approved provenance URI for a sanitized evidence record. */
