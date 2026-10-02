@@ -24,7 +24,6 @@ const ALLOWLIST: Record<string, number> = {
     "app/(app)/people/[person_id]/page.tsx": 5,
     "app/(app)/people/page.tsx": 3,
     "app/(app)/plan/backlog-risk/_components.tsx": 4,
-    "app/(app)/plan/page.tsx": 6,
     "app/(app)/reports/[id]/page.tsx": 19,
     "app/(app)/reports/new/page.tsx": 3,
     "components/ai/AIAttributionBadge.tsx": 12,
