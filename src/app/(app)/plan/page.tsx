@@ -11,6 +11,10 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { formatNumber } from "@/lib/formatters";
 import { getThroughputForecastViaGraphQL } from "@/lib/graphql/capacityFetchers";
 import type { ThroughputForecast, ThroughputRiskOverlay } from "@/lib/graphql/types";
+import {
+    PageFactsEvidenceAction,
+    type PageFact,
+} from "@/components/evidence/PageFactsEvidenceAction";
 import { Inset } from "@/components/capacity/Inset";
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { MetricCard } from "@/components/metrics/MetricCard";
@@ -101,6 +105,28 @@ function RiskInset({ forecast }: { forecast: ThroughputForecast }) {
     );
 }
 
+/** The page's served values for the evidence drawer, as the page shows them. No new number. */
+function overviewFacts(forecast: ThroughputForecast): PageFact[] {
+    const risk = (r: ThroughputRiskOverlay) =>
+        `${riskValue(r)} · ${r.active ? "Elevated" : "Normal"}`;
+    const weeks = (v: number | null | undefined) =>
+        typeof v === "number" ? formatWeeks(v) : undefined;
+    return [
+        { label: "Open items", value: formatNumber(forecast.backlogSize) },
+        { label: "P50 forecast", value: weeks(forecast.p50Weeks) },
+        { label: "P75 forecast", value: weeks(forecast.p75Weeks) },
+        { label: "P90 forecast", value: weeks(forecast.p90Weeks) },
+        ...forecast.rollingWindows.map((window) => ({
+            label: `Rolling throughput · ${window.windowWeeks}w`,
+            value: `${formatNumber(window.meanWeeklyThroughput, { maximumFractionDigits: 1 })} items/week`,
+        })),
+        { label: "WIP congestion", value: risk(forecast.wipCongestion) },
+        { label: "Review bottleneck", value: risk(forecast.reviewBottleneck) },
+        { label: "Incident burden", value: risk(forecast.incidentLoad) },
+        { label: "History", value: forecast.insufficientHistory ? "Limited" : undefined },
+    ];
+}
+
 function EmptyForecastState({ scopeLabel }: { scopeLabel: string | null }) {
     // A team scope has no label here: the scope bar already shows it, and a raw
     // team id is not customer copy.
@@ -177,6 +203,14 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
                 title="Overview"
+                actions={
+                    forecast ? (
+                        <PageFactsEvidenceAction
+                            title="Plan overview"
+                            facts={overviewFacts(forecast)}
+                        />
+                    ) : undefined
+                }
                 subtitle="Forecast — not a commitment. Uses rolling 4/8/12-week throughput and risk overlays. Backlog and scope are derived from the filter bar."
             />
 
