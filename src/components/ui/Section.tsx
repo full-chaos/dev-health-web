@@ -29,7 +29,7 @@ export function Section({
 }: SectionProps) {
     return (
         <section
-            className={`min-w-0 rounded-(--radius-md) border border-(--card-stroke) bg-card p-5 ${className}`.trim()}
+            className={`min-w-0 rounded-(--radius-md) border border-(--card-stroke) bg-card p-5.25 ${className}`.trim()}
             {...rest}
         >
             <div className="flex items-start justify-between gap-4">
@@ -41,7 +41,7 @@ export function Section({
                 </div>
                 {action ? <div className="shrink-0">{action}</div> : null}
             </div>
-            {children ? <div className="mt-4">{children}</div> : null}
+            {children ? <div className="mt-4.25">{children}</div> : null}
         </section>
     );
 }
