@@ -29,3 +29,50 @@ describe("agentCreatedTrend", () => {
         expect(agentCreatedTrend([])).toEqual([]);
     });
 });
+
+// CHAOS-7983 (A2): with the `day` the API now returns, the label is the calendar date. One point per
+// row is kept (rows are per repository, team and bucket, so a date can repeat): no per-day sum.
+describe("agentCreatedTrend with day", () => {
+    it("labels each point by its date, in the order the rows arrive", () => {
+        expect(
+            agentCreatedTrend([
+                row("agent_created", 4, { day: "2026-08-01" }),
+                row("human", 9, { day: "2026-08-01" }),
+                row("agent_created", 6, { day: "2026-08-12" }),
+            ]),
+        ).toEqual([
+            { day: "Aug 1", value: 4 },
+            { day: "Aug 12", value: 6 },
+        ]);
+    });
+
+    it("keeps two rows of the same date as two points, never a sum", () => {
+        expect(
+            agentCreatedTrend([
+                row("agent_created", 4, { day: "2026-08-02" }),
+                row("agent_created", 6, { day: "2026-08-02" }),
+            ]),
+        ).toEqual([
+            { day: "Aug 2", value: 4 },
+            { day: "Aug 2", value: 6 },
+        ]);
+    });
+
+    it("reads the date as a UTC calendar day, whatever the viewer's time zone", () => {
+        expect(agentCreatedTrend([row("agent_created", 1, { day: "2026-03-01" })])).toEqual([
+            { day: "Mar 1", value: 1 },
+        ]);
+    });
+
+    it("falls back to the row index for a row without a day, never to a made-up date", () => {
+        expect(
+            agentCreatedTrend([
+                row("agent_created", 4, { day: "2026-08-01" }),
+                row("agent_created", 5),
+            ]),
+        ).toEqual([
+            { day: "Aug 1", value: 4 },
+            { day: "2", value: 5 },
+        ]);
+    });
+});
