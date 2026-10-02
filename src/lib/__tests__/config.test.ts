@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { getServerEnv, publicEnv } from "../config";
@@ -31,6 +34,14 @@ describe("config.publicEnv", () => {
         process.env.NEXT_PUBLIC_BETA = "true";
         expect(publicEnv).not.toHaveProperty("NEXT_PUBLIC_BETA");
         delete process.env.NEXT_PUBLIC_BETA;
+    });
+
+    it("the .env.example template no longer mentions the retired NEXT_PUBLIC_BETA key", () => {
+        // Only a yes/no is kept: the template is read for the key name, nothing is printed.
+        const mentioned = readFileSync(join(process.cwd(), ".env.example"), "utf-8").includes(
+            "NEXT_PUBLIC_BETA",
+        );
+        expect(mentioned).toBe(false);
     });
 
     let snap: Snapshot;
