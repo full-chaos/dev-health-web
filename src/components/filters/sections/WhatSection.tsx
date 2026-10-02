@@ -5,6 +5,8 @@ type WhatSectionProps = {
     toValue: (value?: string[]) => string;
     updateArtifacts: (nextValues: string[]) => void;
     updateRepos: (nextValues: string[]) => void;
+    /** Default true. False where no query reads artifacts (every view today). */
+    showArtifacts?: boolean;
 };
 
 export function WhatSection({
@@ -14,6 +16,7 @@ export function WhatSection({
     toValue,
     updateArtifacts,
     updateRepos,
+    showArtifacts = true,
 }: WhatSectionProps) {
     return (
         <details className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
@@ -30,15 +33,17 @@ export function WhatSection({
                         onChange={(event) => updateRepos(toList(event.target.value))}
                     />
                 </label>
-                <label className="flex flex-col gap-2">
-                    <span className="text-xs text-(--ink-muted)">Artifacts</span>
-                    <input
-                        className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
-                        placeholder="pr, issue"
-                        value={toValue(artifacts)}
-                        onChange={(event) => updateArtifacts(toList(event.target.value))}
-                    />
-                </label>
+                {showArtifacts && (
+                    <label className="flex flex-col gap-2">
+                        <span className="text-xs text-(--ink-muted)">Artifacts</span>
+                        <input
+                            className="rounded-xl border border-(--card-stroke) bg-card px-3 py-2"
+                            placeholder="pr, issue"
+                            value={toValue(artifacts)}
+                            onChange={(event) => updateArtifacts(toList(event.target.value))}
+                        />
+                    </label>
+                )}
             </div>
         </details>
     );

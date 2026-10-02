@@ -3,6 +3,7 @@ import Link from "next/link";
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { MetricEvidenceCards } from "@/components/metrics/MetricEvidenceCards";
+import { MetricsSummaryTable } from "@/components/metrics/MetricsSummaryTable";
 import { ModeTabs, type ModeTabItem } from "@/components/shared/ModeTabs";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
@@ -14,7 +15,8 @@ import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
-import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
+import { FALLBACK_DELTAS, metricInverseGood } from "@/lib/metrics/catalog";
+import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 import type { MetricDelta } from "@/lib/types";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
@@ -24,60 +26,6 @@ import { ScopeBar } from "@/components/shell/ScopeBar";
 type MetricsPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
-
-type QuadrantType = "churn_throughput" | "cycle_throughput" | "wip_throughput";
-
-type MetricTab = {
-    id: string;
-    label: string;
-    description: string;
-    metrics: string[];
-    highlight: string;
-    quadrant: {
-        type: QuadrantType;
-        title: string;
-        description: string;
-    };
-};
-
-const METRIC_TABS: MetricTab[] = [
-    {
-        id: "dora",
-        label: "DORA",
-        description: "Release speed and stability.",
-        metrics: ["deploy_freq", "cycle_time", "change_failure_rate", "review_latency"],
-        highlight: "deploy_freq",
-        quadrant: {
-            type: "churn_throughput",
-            title: "Churn × Throughput landscape",
-            description: "Operating modes under change volume and delivery pace.",
-        },
-    },
-    {
-        id: "flow",
-        label: "Flow",
-        description: "From idea to merge.",
-        metrics: ["cycle_time", "review_latency", "throughput", "wip_saturation"],
-        highlight: "cycle_time",
-        quadrant: {
-            type: "cycle_throughput",
-            title: "Cycle Time × Throughput landscape",
-            description: "Coordination debt and delivery efficiency.",
-        },
-    },
-    {
-        id: "throughput",
-        label: "Throughput",
-        description: "Delivery volume and pacing.",
-        metrics: ["throughput", "deploy_freq", "wip_saturation", "blocked_work"],
-        highlight: "throughput",
-        quadrant: {
-            type: "wip_throughput",
-            title: "WIP × Throughput landscape",
-            description: "Work-in-progress saturation and delivery capacity.",
-        },
-    },
-];
 
 const getMetric = (deltas: MetricDelta[], metric: string) =>
     deltas.find((item) => item.metric === metric) ??
@@ -149,7 +97,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
-            <PageHeader title="Monitoring view" subtitle="Trends over the selected window.">
+            <PageHeader title="Flow" subtitle="Trends over the selected window.">
                 <p className="text-sm text-(--ink-muted)">Open a metric to investigate.</p>
             </PageHeader>
 
@@ -165,45 +113,21 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 }))}
             />
 
-            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                            {activeTab.label} monitoring
-                        </p>
-                        <p className="mt-1 text-sm text-(--ink-muted)">{activeTab.description}</p>
-                    </div>
-                    <Link
-                        href={buildExploreUrl({
-                            metric: activeTab.highlight,
-                            filters,
-                            role: activeRole,
-                        })}
-                        className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                        title={`Open evidence for ${highlightLabel}`}
-                    >
-                        {CTA_LABELS.openEvidence}
-                    </Link>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                    {activeTab.metrics.map((metric) => {
-                        const data = getMetric(deltas, metric);
-                        return (
-                            <Link
-                                key={`chip-${metric}`}
-                                href={buildExploreUrl({
-                                    metric,
-                                    filters,
-                                    role: activeRole,
-                                })}
-                                className="rounded-full border border-(--card-stroke) bg-(--card) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted) transition hover:text-foreground"
-                            >
-                                {data?.label ?? metric}
-                            </Link>
-                        );
+            <p className="text-sm text-(--ink-muted)">{activeTab.description}</p>
+
+            <div className="-mb-4 flex justify-end">
+                <Link
+                    href={buildExploreUrl({
+                        metric: activeTab.highlight,
+                        filters,
+                        role: activeRole,
                     })}
-                </div>
-            </section>
+                    className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                    title={`Open evidence for ${highlightLabel}`}
+                >
+                    {CTA_LABELS.openEvidence}
+                </Link>
+            </div>
 
             <MetricEvidenceCards
                 metrics={activeTab.metrics}
@@ -337,59 +261,23 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                         Active window
                     </span>
                 </div>
-                <div className="mt-4 overflow-auto">
-                    <table className="min-w-full border-collapse text-sm">
-                        <thead className="text-left text-(--ink-muted)">
-                            <tr>
-                                <th className="border-b border-(--card-stroke) pb-2">Metric</th>
-                                <th className="border-b border-(--card-stroke) pb-2">Current</th>
-                                <th className="border-b border-(--card-stroke) pb-2">Delta</th>
-                                <th className="border-b border-(--card-stroke) pb-2">Explore</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {activeTab.metrics.map((metric) => {
-                                const data = getMetric(deltas, metric);
-                                const href = buildExploreUrl({
-                                    metric,
-                                    filters,
-                                    role: activeRole,
-                                });
-                                return (
-                                    <tr key={metric} className="border-b border-(--card-stroke)">
-                                        <td className="py-3 pr-4 font-medium">
-                                            <Link href={href} className="block">
-                                                {data?.label ?? metric}
-                                            </Link>
-                                        </td>
-                                        <td className="py-3 pr-4 text-(--ink-muted)">
-                                            <Link href={href} className="block">
-                                                {placeholderDeltas || !data
-                                                    ? "--"
-                                                    : formatMetricValue(data.value, data.unit)}
-                                            </Link>
-                                        </td>
-                                        <td className="py-3 pr-4 text-(--ink-muted)">
-                                            <Link href={href} className="block">
-                                                {placeholderDeltas || !data ? (
-                                                    <span title="No prior period available to compute a change">
-                                                        No prior period
-                                                    </span>
-                                                ) : (
-                                                    formatDelta(data.delta_pct)
-                                                )}
-                                            </Link>
-                                        </td>
-                                        <td className="py-3 text-xs uppercase tracking-[0.2em] text-(--accent-2)">
-                                            <Link href={href} className="block">
-                                                {CTA_LABELS.openEvidence}
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                <div className="mt-4">
+                    <MetricsSummaryTable
+                        rows={activeTab.metrics.map((metric) => {
+                            const data = getMetric(deltas, metric);
+                            return {
+                                metric,
+                                label: data?.label ?? metric,
+                                valueText:
+                                    placeholderDeltas || !data
+                                        ? "—"
+                                        : formatMetricValue(data.value, data.unit),
+                                delta: placeholderDeltas || !data ? null : data.delta_pct,
+                                inverseGood: metricInverseGood(metric),
+                                href: buildExploreUrl({ metric, filters, role: activeRole }),
+                            };
+                        })}
+                    />
                 </div>
             </section>
         </div>

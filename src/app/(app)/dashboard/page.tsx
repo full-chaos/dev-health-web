@@ -5,6 +5,7 @@ import { CockpitClient } from "@/components/home/CockpitClient";
 import { InvestmentPreview } from "@/components/home/InvestmentPreview";
 import { CockpitSummary } from "@/components/home/CockpitSummary";
 import { RankedSignals } from "@/components/home/RankedSignals";
+import { ThreadRow } from "@/components/home/ThreadRow";
 import { AiWorkflowCallout } from "@/components/home/AiWorkflowCallout";
 import { DataConfidenceIndicator } from "@/components/home/DataConfidenceIndicator";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -146,12 +147,14 @@ export default async function Home({ searchParams }: HomePageProps) {
                 <RankedSignals signals={home.signals} filters={filters} />
             ) : null}
 
-            <AiWorkflowCallout filters={filters} activeRole={activeRole} prominent={aiDominant} />
+            {aiDominant ? (
+                <AiWorkflowCallout filters={filters} activeRole={activeRole} prominent />
+            ) : null}
 
-            <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+            <section className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card) p-5">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                        <p className="text-label-caps uppercase text-(--ink-muted)">
                             Monitoring views
                         </p>
                         <p className="mt-1 text-sm text-(--ink-muted)">
@@ -165,14 +168,14 @@ export default async function Home({ searchParams }: HomePageProps) {
                         {CTA_LABELS.openMetrics}
                     </Link>
                 </div>
-                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                <div className="mt-4 grid gap-3.5 md:grid-cols-3">
                     {prioritizedViews.map((view) => (
                         <Link
                             key={view.id}
                             href={withFilterParam(view.href, filters, activeRole)}
-                            className="group rounded-2xl border border-(--card-stroke) bg-(--card) px-4 py-3 transition hover:-translate-y-1"
+                            className="group rounded-(--radius-md) border border-(--card-stroke) bg-background px-5 py-4.5 transition hover:-translate-y-0.5 hover:border-(--accent)"
                         >
-                            <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                            <div className="flex items-center justify-between text-label-caps uppercase text-(--ink-muted)">
                                 <span>{view.label}</span>
                                 <span className="text-(--accent-2)">Open</span>
                             </div>
@@ -185,15 +188,18 @@ export default async function Home({ searchParams }: HomePageProps) {
                 </div>
             </section>
 
-            <CockpitClient home={home} filters={filters} activeRole={activeRole} />
-
-            <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-                <div>
-                    <h3 className="font-(--font-display) text-xl">Investment mix</h3>
-                    <p className="mt-2 text-sm text-(--ink-muted)">
-                        Work allocation snapshot for the selected window.
-                    </p>
-                    <div className="mt-4 flex flex-wrap gap-4 text-xs uppercase tracking-[0.2em]">
+            <CockpitClient home={home} filters={filters} activeRole={activeRole}>
+                <ThreadRow
+                    id="investment-mix"
+                    title="Investment mix"
+                    summary="Work allocation snapshot for the selected window."
+                    deferred={
+                        <div className="mt-4">
+                            <InvestmentPreview filters={filters} />
+                        </div>
+                    }
+                >
+                    <div className="flex flex-wrap gap-4 text-xs uppercase tracking-[0.2em]">
                         <Link
                             href={withFilterParam("/work", filters, activeRole)}
                             className="text-(--accent-2)"
@@ -211,9 +217,17 @@ export default async function Home({ searchParams }: HomePageProps) {
                             {CTA_LABELS.openEvidence}
                         </Link>
                     </div>
-                </div>
-                <InvestmentPreview filters={filters} />
-            </section>
+                </ThreadRow>
+                {aiDominant ? null : (
+                    <div className="px-5 py-4">
+                        <AiWorkflowCallout
+                            filters={filters}
+                            activeRole={activeRole}
+                            prominent={false}
+                        />
+                    </div>
+                )}
+            </CockpitClient>
         </div>
     );
 }

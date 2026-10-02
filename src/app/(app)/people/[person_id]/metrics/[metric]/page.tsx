@@ -14,28 +14,9 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { getRangeParams, withRangeParams } from "@/lib/people/query";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
+import { Notice } from "@/components/ui/Notice";
+import { PersonEvidenceTable } from "@/components/people/PersonEvidenceTable";
 import { PageHeader } from "@/components/shell/PageHeader";
-
-const getItemTitle = (item: Record<string, unknown>, index: number) => {
-    const title =
-        item.title ??
-        item.name ??
-        item.work_item_id ??
-        item.number ??
-        item.id ??
-        `Item ${index + 1}`;
-    return String(title);
-};
-
-const getItemHref = (item: Record<string, unknown>, fallback: string) => {
-    const candidates = [item.url, item.link, item.html_url, item.web_url, item.api_url];
-    for (const candidate of candidates) {
-        if (typeof candidate === "string" && candidate.length) {
-            return candidate;
-        }
-    }
-    return fallback;
-};
 
 const getEvidenceTypeFromLink = (link?: string) => {
     if (!link) {
@@ -221,15 +202,15 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
             </PageHeader>
 
             {!health.ok && (
-                <div className="rounded-3xl border border-dashed border-amber-400/80 bg-amber-50/80 px-4 py-3 text-sm text-amber-900">
+                <Notice variant="warn" live={false}>
                     Data service unavailable. Evidence will refresh once the API is back.
-                </div>
+                </Notice>
             )}
 
             <PersonRangeBar rangeDays={range_days} />
 
             <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card-80) p-6">
                     <h2 className="font-(--font-display) text-xl">Definition</h2>
                     <p className="mt-2 text-sm text-(--ink-muted)">
                         {definitionSummary ??
@@ -245,7 +226,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                             {definitionEntries.map(([key, value]) => (
                                 <div
                                     key={key}
-                                    className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-card px-3 py-2"
+                                    className="flex items-center justify-between rounded-(--radius-sm) border border-(--card-stroke) bg-card px-3 py-2"
                                 >
                                     <span className="uppercase tracking-[0.2em]">
                                         {key.replace(/[_-]+/g, " ")}
@@ -259,7 +240,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                     )}
                 </div>
 
-                <div className="rounded-3xl border border-(--card-stroke) bg-card p-6">
+                <div className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-6">
                     <div className="flex items-center justify-between">
                         <h2 className="font-(--font-display) text-xl">Timeseries</h2>
                         <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -270,7 +251,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                         {timeseries.length ? (
                             <TimeseriesChart data={timeseries} height={240} />
                         ) : (
-                            <div className="flex h-60 items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
+                            <div className="flex h-60 items-center justify-center rounded-(--radius-md) border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
                                 Timeseries data unavailable.
                             </div>
                         )}
@@ -312,7 +293,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                     return (
                         <div
                             key={group.id}
-                            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                            className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-5"
                         >
                             <div className="flex items-center justify-between">
                                 <h2 className="font-(--font-display) text-xl">{group.label}</h2>
@@ -334,7 +315,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                         }
                                     />
                                 ) : (
-                                    <div className="flex h-56 items-center justify-center rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
+                                    <div className="flex h-56 items-center justify-center rounded-(--radius-md) border border-dashed border-(--card-stroke) bg-(--card-60) text-sm text-(--ink-muted)">
                                         No breakdown data.
                                     </div>
                                 )}
@@ -343,7 +324,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                 {group.items.map((item) => (
                                     <div
                                         key={`${group.id}-${item.label ?? "unknown"}-${item.value}`}
-                                        className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
+                                        className="flex items-center justify-between rounded-(--radius-sm) border border-(--card-stroke) bg-(--card-70) px-3 py-2"
                                     >
                                         {group.isEntity ? (
                                             <EntityLabel id={item.label} />
@@ -362,7 +343,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
             </section>
 
             <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
-                <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+                <div className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-5">
                     <div className="flex items-center justify-between">
                         <h2 className="font-(--font-display) text-xl">Associations</h2>
                         <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -377,7 +358,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                 return (
                                     <div
                                         key={`${driver.text}-${driver.link}`}
-                                        className="rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-3"
+                                        className="rounded-(--radius-sm) border border-(--card-stroke) bg-(--card-70) px-4 py-3"
                                     >
                                         <p className="text-sm text-foreground">{driver.text}</p>
                                         {href && (
@@ -392,14 +373,14 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                                 );
                             })
                         ) : (
-                            <p className="rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
+                            <p className="rounded-(--radius-sm) border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
                                 Association statements will appear once data is ingested.
                             </p>
                         )}
                     </div>
                 </div>
 
-                <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
+                <div className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card-80) p-5">
                     <div className="flex items-center justify-between">
                         <h2 className="font-(--font-display) text-xl">{CTA_LABELS.evidence}</h2>
                         <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
@@ -430,48 +411,11 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                     </div>
                     {evidenceType && (
                         <div className="mt-4 overflow-auto text-xs">
-                            <table className="min-w-full border-collapse">
-                                <thead className="text-left text-(--ink-muted)">
-                                    <tr>
-                                        <th className="border-b border-(--card-stroke) pb-2">
-                                            Item
-                                        </th>
-                                        <th className="border-b border-(--card-stroke) pb-2">
-                                            Details
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {(drilldown?.items ?? []).map((item, index) => {
-                                        const fallbackHref = evidenceHref(evidenceType);
-                                        const href = getItemHref(item, fallbackHref);
-                                        const itemKey = JSON.stringify(item);
-                                        return (
-                                            <tr
-                                                key={itemKey}
-                                                className="border-b border-(--card-stroke)"
-                                            >
-                                                <td className="py-2 pr-4 font-medium">
-                                                    <a
-                                                        href={href}
-                                                        className="block text-foreground"
-                                                    >
-                                                        <EntityLabel
-                                                            variant="text"
-                                                            id={getItemTitle(item, index)}
-                                                        />
-                                                    </a>
-                                                </td>
-                                                <td className="py-2 text-(--ink-muted)">
-                                                    <a href={href} className="block">
-                                                        {JSON.stringify(item)}
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                            <PersonEvidenceTable
+                                type={evidenceType}
+                                items={drilldown?.items ?? []}
+                                fallbackHref={evidenceHref(evidenceType)}
+                            />
                             {!drilldown?.items?.length && (
                                 <p className="mt-3 text-sm text-(--ink-muted)">
                                     Evidence rows will appear once data is ingested.
@@ -480,7 +424,7 @@ export default async function PersonMetricPage({ params, searchParams }: PersonM
                         </div>
                     )}
                     {!evidenceType && (
-                        <div className="mt-4 rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
+                        <div className="mt-4 rounded-(--radius-sm) border border-dashed border-(--card-stroke) bg-(--card-60) px-4 py-3 text-sm text-(--ink-muted)">
                             Choose PRs or Issues to review evidence.
                         </div>
                     )}

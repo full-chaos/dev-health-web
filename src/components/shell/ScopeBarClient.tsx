@@ -2,7 +2,7 @@
 
 import { type ReactNode, useRef, useState } from "react";
 
-import { type FilterBarClientProps } from "@/components/filters/filterBarConfig";
+import { isFilterRead, type FilterBarClientProps } from "@/components/filters/filterBarConfig";
 import { formatSelection, toggleValue } from "@/components/filters/filterBarUtils";
 import { ActiveFilterPills } from "@/components/filters/sections/ActiveFilterPills";
 import { AdvancedFiltersPanel } from "@/components/filters/sections/AdvancedFiltersPanel";
@@ -80,7 +80,7 @@ export function ScopeBarClient({
         updateFilters,
         updatePeopleQuery,
         visibility,
-        workCategory,
+        workCategory: workCategoryInUrl,
     } = useScopeBarState({
         view,
         tab,
@@ -88,6 +88,11 @@ export function ScopeBarClient({
         resolvedScopeLock,
         writeDefaultFilter,
     });
+    // Where the queries take one work type (the AI pages), only the first value of an old URL is in
+    // effect: it is the one shown, counted and sent.
+    const workCategory = visibility.workTypeSingle
+        ? workCategoryInUrl.slice(0, 1)
+        : workCategoryInUrl;
 
     const organization = useShellOrganization();
     const orgLabel = orgName ?? organization?.name ?? SCOPE_BAR_ORG_FALLBACK;
@@ -123,13 +128,13 @@ export function ScopeBarClient({
 
     // Filters that live in the drawer. Team, repository and window are in the row.
     const activeFilterCount =
-        developers.length +
-        roles.length +
+        (isFilterRead(visibility, "developers") ? developers.length : 0) +
+        (isFilterRead(visibility, "roles") ? roles.length : 0) +
         workCategory.length +
-        issueType.length +
-        flowStage.length +
-        artifacts.length +
-        (blocked ? 1 : 0);
+        (isFilterRead(visibility, "issueType") ? issueType.length : 0) +
+        (isFilterRead(visibility, "flowStage") ? flowStage.length : 0) +
+        (isFilterRead(visibility, "artifacts") ? artifacts.length : 0) +
+        (blocked && isFilterRead(visibility, "blocked") ? 1 : 0);
     const filtersButtonName =
         activeFilterCount > 0
             ? `${CTA_LABELS.filters}, ${activeFilterCount} active`
@@ -168,6 +173,7 @@ export function ScopeBarClient({
                     active={workCategory}
                     emptyLabel="All"
                     items={options.work_category}
+                    single={visibility.workTypeSingle}
                     label="Work"
                     menuKey="work"
                     onChange={(next) =>
@@ -333,6 +339,7 @@ export function ScopeBarClient({
                                 developers={developers}
                                 flowStage={flowStage}
                                 issueType={issueType}
+                                unread={visibility.unreadFilters}
                                 onClearArtifact={(value) =>
                                     updateFilters({
                                         ...filters,
@@ -395,7 +402,9 @@ export function ScopeBarClient({
                                         ...filters,
                                         why: {
                                             ...filters.why,
-                                            work_category: toggleValue(workCategory, value),
+                                            work_category: visibility.workTypeSingle
+                                                ? []
+                                                : toggleValue(workCategory, value),
                                         },
                                     })
                                 }

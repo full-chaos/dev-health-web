@@ -129,15 +129,15 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
             <div className="grid gap-4 lg:grid-cols-3">
                 {hotspotRow ? (
                     <section
-                        className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                        className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-5"
                         data-testid="ai-hotspot-overlap"
                     >
-                        <h3 className="font-(--font-display) text-lg">Hotspot file overlap</h3>
+                        <h3 className="text-h3 font-semibold">Hotspot file overlap</h3>
                         <p className="mt-2 text-sm text-(--ink-muted)">
                             Share of AI-attributed PRs that touch top-decile-risk files in the
                             selected window.
                         </p>
-                        <p className="mt-6 text-3xl font-semibold tabular-nums">
+                        <p className="mt-6 text-[1.75rem] font-semibold leading-tight tabular-nums">
                             {hotspotRow.hotspotOverlapRate != null
                                 ? formatPercent(hotspotRow.hotspotOverlapRate * 100)
                                 : "—"}
@@ -166,17 +166,15 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
                 )}
                 {complexityRow ? (
                     <section
-                        className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                        className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-5"
                         data-testid="ai-complexity-overlap"
                     >
-                        <h3 className="font-(--font-display) text-lg">
-                            High-complexity file overlap
-                        </h3>
+                        <h3 className="text-h3 font-semibold">High-complexity file overlap</h3>
                         <p className="mt-2 text-sm text-(--ink-muted)">
                             Share of AI-attributed PRs that touch high-complexity files in the
                             selected window.
                         </p>
-                        <p className="mt-6 text-3xl font-semibold tabular-nums">
+                        <p className="mt-6 text-[1.75rem] font-semibold leading-tight tabular-nums">
                             {complexityRow.complexityOverlapRate != null
                                 ? formatPercent(complexityRow.complexityOverlapRate * 100)
                                 : "—"}
@@ -201,15 +199,15 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
                     />
                 )}
                 <section
-                    className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                    className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-5"
                     data-testid="ai-linked-incidents"
                 >
-                    <h3 className="font-(--font-display) text-lg">Linked incidents</h3>
+                    <h3 className="text-h3 font-semibold">Linked incidents</h3>
                     <p className="mt-2 text-sm text-(--ink-muted)">
                         Summary count from AI-attributed PR incident rollups. Open evidence on any
                         tile to inspect Work Graph edges per PR.
                     </p>
-                    <p className="mt-6 text-3xl font-semibold tabular-nums">
+                    <p className="mt-6 text-[1.75rem] font-semibold leading-tight tabular-nums">
                         {risk.fetching ? "—" : (aiBucket?.incidentsCount ?? 0)}
                     </p>
                 </section>
@@ -218,7 +216,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
             <AIViolationsList violations={violations} loading={governance.fetching} />
 
             {governance.error && (
-                <p className="rounded-2xl border border-(--accent-negative)/30 bg-red-500/5 px-4 py-3 text-sm text-red-600">
+                <p className="rounded-(--radius-md) border border-(--accent-negative)/30 bg-red-500/5 px-4 py-3 text-sm text-red-600">
                     Governance findings unavailable: {governance.error.message}
                 </p>
             )}

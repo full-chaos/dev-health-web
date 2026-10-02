@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Breadcrumbs } from "@/components/Breadcrumbs";
 import { navTrailForPathname } from "@/lib/navigation/areas";
 
+import { CommandPalette } from "./CommandPalette";
 import { shellHref } from "./shellHref";
 import { ShellStatusChip, type ShellStatus } from "./ShellStatusChip";
 import { useShellNavParams } from "./useShellNavParams";
@@ -53,6 +54,7 @@ export function ShellTopBar({ status, themeToggle }: ShellTopBarProps) {
                 </Suspense>
             </div>
             <div className="flex shrink-0 items-center gap-3">
+                <CommandPalette />
                 <ShellStatusChip status={status} />
                 <div data-slot="theme-toggle" className="flex items-center empty:hidden">
                     {themeToggle}
