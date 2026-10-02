@@ -84,8 +84,6 @@ export default async function GovernPage({ searchParams }: GovernPageProps) {
                 signals={governSignals}
                 filters={filters}
                 role={activeRole}
-                title="Related workflows"
-                description="Quality and risk sub-areas, ordered by severity."
             />
         </div>
     );

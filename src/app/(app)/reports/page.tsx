@@ -1,9 +1,11 @@
 import Link from "next/link";
+import { Plus } from "lucide-react";
 
 import { StatusBadge } from "@/components/reports/StatusBadge";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { fetchSavedReports } from "@/lib/reports/fetchers";
 import { getServerEnv } from "@/lib/config";
+import { buttonClassName } from "@/components/shared/Button";
 import { PageHeader } from "@/components/shell/PageHeader";
 
 // The page reads no query param: the saved reports do not depend on the scope
@@ -24,10 +26,8 @@ export default async function ReportsPage() {
                 title="Report Center"
                 subtitle="Create, manage, and schedule AI-generated reports."
                 actions={
-                    <Link
-                        href="/reports/new"
-                        className="rounded-full bg-(--accent) px-4 py-2 text-xs uppercase tracking-[0.2em] text-white hover:bg-(--accent-hover) transition-colors"
-                    >
+                    <Link href="/reports/new" className={buttonClassName("primary", "md")}>
+                        <Plus aria-hidden="true" className="h-4 w-4" />
                         {CTA_LABELS.newReport}
                     </Link>
                 }
