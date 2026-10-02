@@ -145,6 +145,77 @@ describe("compareRegistry", () => {
     });
 });
 
+// CHAOS-8000 dual accept / CHAOS-7977: registrydump lists a text an operation accepted BEFORE its current one
+// as an extra entry with `legacy: true`, AFTER the current entry. The gate compares the CURRENT document with the
+// wire form; a legacy entry must neither replace it nor count as another operation.
+describe("compareRegistry with legacy entries", () => {
+    const legacyOf = (entry) => ({
+        ...entry,
+        const_name: `registered${entry.operation}V1Document`,
+        document: "query Old { old }",
+        digest: sha256Trim("query Old { old }"),
+        legacy: true,
+    });
+
+    it("keeps the CURRENT digest when a legacy entry of the same operation comes AFTER it", () => {
+        const entries = correctGoEntries();
+        const current = entries.find((e) => e.operation === "capacityForecast");
+        const { rows, errors } = compareRegistry(
+            [...entries, legacyOf(current)],
+            OPERATION_MANIFEST,
+        );
+
+        expect(errors).toEqual([]);
+        const row = rows.find((r) => r.operation === "capacityForecast");
+        expect(row.match).toBe(true);
+        expect(row.goDigest).toBe(current.digest);
+        expect(rows).toHaveLength(Object.keys(OPERATION_MANIFEST).length);
+    });
+
+    it("keeps the CURRENT digest when the legacy entry comes BEFORE it", () => {
+        const entries = correctGoEntries();
+        const current = entries.find((e) => e.operation === "capacityForecast");
+        const { rows, errors } = compareRegistry(
+            [legacyOf(current), ...entries],
+            OPERATION_MANIFEST,
+        );
+        expect(errors).toEqual([]);
+        expect(rows.find((r) => r.operation === "capacityForecast").match).toBe(true);
+    });
+
+    it("still catches a wrong CURRENT digest when a legacy entry is present", () => {
+        const entries = correctGoEntries();
+        const current = entries.find((e) => e.operation === "capacityForecast");
+        const wrong = { ...current, digest: sha256Trim("query Wrong { wrong }") };
+        const others = entries.filter((e) => e !== current);
+        const { rows } = compareRegistry([...others, wrong, legacyOf(current)], OPERATION_MANIFEST);
+        expect(rows.find((r) => r.operation === "capacityForecast").match).toBe(false);
+    });
+
+    it("an operation with ONLY a legacy entry is not registered: it is the manifest-only error", () => {
+        const entries = correctGoEntries();
+        const current = entries.find((e) => e.operation === "capacityForecast");
+        const others = entries.filter((e) => e !== current);
+        const { errors } = compareRegistry([...others, legacyOf(current)], OPERATION_MANIFEST);
+        expect(errors.join("\n")).toContain("capacityForecast");
+        expect(errors.join("\n")).toContain("does not register");
+    });
+
+    it.each([false, "true", 1, null])(
+        "refuses a legacy value that is not exactly true (%j)",
+        (value) => {
+            const entries = correctGoEntries();
+            const current = entries.find((e) => e.operation === "capacityForecast");
+            const { errors } = compareRegistry(
+                [...entries, { ...legacyOf(current), legacy: value }],
+                OPERATION_MANIFEST,
+            );
+            expect(errors.join("\n")).toContain("legacy");
+            expect(errors.join("\n")).toContain("capacityForecast");
+        },
+    );
+});
+
 describe("wireForm", () => {
     it("reproduces CHAOS-4696's own reported print()-only wire digest as an intermediate (regression pin)", () => {
         // This is the digest CHAOS-4696 itself reported for featureFlags

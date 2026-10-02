@@ -204,6 +204,12 @@ export interface RegistryEntry {
     document: string;
     const_name: string;
     digest: string;
+    /**
+     * Present, and exactly `true`, only on a text the operation accepted BEFORE its current one (CHAOS-8000 dual
+     * accept). registrydump lists it AFTER the current entry of the same operation. It is accepted by query-api
+     * but is not what this gate compares: the gate compares the CURRENT document with the wire form.
+     */
+    legacy?: boolean;
 }
 
 /** sha256(trimmed text), hex — the exact algorithm the ops repo's digest.Document (internal/queryapi/digest) implements. */
@@ -305,7 +311,22 @@ export function compareRegistry(
     manifest: Record<string, string>,
 ): { rows: ParityRow[]; errors: string[] } {
     const errors: string[] = [];
-    const goByOperation = new Map(goEntries.map((entry) => [entry.operation, entry]));
+    // A legacy entry is a second text of an operation, not a second operation, and it must not replace the
+    // current entry (a Map built from every entry is last-wins, and registrydump lists the legacy one last).
+    // The marker is exactly `true` or absent: anything else is a malformed registrydump output, said loudly.
+    const currentEntries: RegistryEntry[] = [];
+    for (const entry of goEntries) {
+        if (Object.hasOwn(entry, "legacy")) {
+            if (entry.legacy !== true) {
+                errors.push(
+                    `registrydump's entry for operation "${entry.operation}" has legacy=${JSON.stringify(entry.legacy)}: a legacy text is marked with exactly true, and a current one has no legacy key -- the ops checkout at --ops-root and this gate disagree about the format.`,
+                );
+            }
+            continue;
+        }
+        currentEntries.push(entry);
+    }
+    const goByOperation = new Map(currentEntries.map((entry) => [entry.operation, entry]));
 
     // Own-property membership: `op in manifest` also matches inherited
     // Object.prototype names (toString, constructor, ...), which would hide an
