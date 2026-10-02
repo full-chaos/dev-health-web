@@ -75,9 +75,9 @@ export function ThemeToggle() {
             data-testid="theme-toggle"
             data-theme-current={theme}
             onClick={() => applyTheme(isLight ? "dark" : "light")}
-            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-(--card-stroke) bg-(--card-70) text-foreground transition-colors hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
+            className="inline-flex h-[35px] w-[35px] shrink-0 items-center justify-center rounded-md border border-(--card-stroke) bg-(--card-70) text-foreground transition-colors hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
         >
-            <Icon aria-hidden="true" strokeWidth={1.65} className="h-4 w-4" />
+            <Icon aria-hidden="true" strokeWidth={1.65} className="h-[18px] w-[18px]" />
         </button>
     );
 }
