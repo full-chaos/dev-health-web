@@ -169,3 +169,15 @@ describe("Notice danger", () => {
         }
     });
 });
+
+describe("Notice has a wash and no coloured border (prototype .notice)", () => {
+    it.each(["info", "warn", "good", "danger"] as const)(
+        "%s draws a transparent border",
+        (variant) => {
+            render(<Notice variant={variant}>x</Notice>);
+            const el = screen.getByRole(variant === "danger" ? "alert" : "status");
+            expect(el).toHaveClass("border-transparent");
+            expect(el.className).not.toMatch(/border-\[color-mix/u);
+        },
+    );
+});

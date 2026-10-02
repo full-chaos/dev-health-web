@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { STATUS_PILL_ALPHA } from "@/lib/themeTints";
-import { SEVERITY_BADGE, CONFIDENCE_DOT, CONFIDENCE_TEXT } from "./severityTokens";
+import { AREA_STATE_PILL, SEVERITY_BADGE, CONFIDENCE_DOT, CONFIDENCE_TEXT } from "./severityTokens";
 
 const read = (p: string) => readFileSync(new URL(p, import.meta.url), "utf8");
 const themes = read("../../app/fc-infinity-themes.css");
@@ -44,4 +44,13 @@ describe("shared badges use theme tokens, not raw palette classes", () => {
             }
         });
     }
+});
+
+describe("area severity pill: Low and Info carry a wash (CHAOS-8189)", () => {
+    it("low uses the positive wash, neutral (Info) the info wash, no card fill", () => {
+        expect(AREA_STATE_PILL.low).toContain("bg-(--positive)/12");
+        expect(AREA_STATE_PILL.neutral).toContain("bg-(--info)/12");
+        expect(AREA_STATE_PILL.low).not.toContain("card-70");
+        expect(AREA_STATE_PILL.neutral).not.toContain("card-70");
+    });
 });
