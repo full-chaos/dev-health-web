@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { NavChildRoute } from "@/lib/navigation/areas";
+import { TAB_ACTIVE, TAB_BASE, TAB_CONTAINER, TAB_INACTIVE } from "@/components/shared/ModeTabs";
 
 export type ViewSetItem = Pick<
     NavChildRoute,
@@ -14,16 +15,6 @@ type ViewSetProps = {
     ariaLabel?: string;
     className?: string;
 };
-
-const TAB_CONTAINER =
-    "flex items-center gap-1 overflow-x-auto whitespace-nowrap border-b border-(--card-stroke) px-1 scrollbar-hide";
-
-const TAB_BASE =
-    "-mb-px flex items-center gap-1.5 border-b-2 px-3.5 py-3 text-[10px] uppercase tracking-[0.18em] transition-all";
-
-const TAB_ACTIVE = "border-(--accent) text-foreground font-semibold";
-const TAB_INACTIVE =
-    "border-transparent text-(--ink-muted) hover:border-(--card-stroke) hover:text-foreground";
 
 const VERTICAL_CONTAINER = "mt-1 ml-3 flex flex-col gap-0.5 border-l border-(--card-stroke) pl-2";
 
