@@ -97,6 +97,8 @@ export const CTA_LABELS = {
     checkDataConnections: "Check data connections",
     /** Open the Plan / Completion Forecast destination (Plan overview). */
     completionForecast: "Completion Forecast",
+    /** Recompute the Completion Forecast (page header action). */
+    refreshForecast: "Refresh Forecast",
     /** Plan overview destination: the Completion Forecast page. */
     forecastCompletion: "Forecast completion",
     /** Plan overview destination: the Backlog Risk page. */
