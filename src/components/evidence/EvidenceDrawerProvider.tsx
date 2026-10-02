@@ -37,6 +37,12 @@ export type EvidenceRequestSubject = SubjectBase & {
     filters: MetricFilter;
     /** The active lens role. The footer link keeps it. */
     role?: string;
+    /**
+     * Content the opener already has for this subject (for example a signal's served "why it
+     * matters" and "recommended action"). Shown first in the body, above the loaded evidence, and
+     * also while the request loads or fails. The panel does not change it.
+     */
+    intro?: ReactNode;
 };
 
 /**
@@ -138,6 +144,7 @@ export function EvidenceDrawerProvider({ children }: { children: ReactNode }) {
                     metric={subject.metric}
                     filters={subject.filters}
                     role={subject.role}
+                    intro={subject.intro}
                 />
             )}
         </EvidenceDrawerContext.Provider>

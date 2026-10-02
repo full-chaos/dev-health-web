@@ -21,9 +21,11 @@ test(
         });
         const startFilter = new URL(page.url()).searchParams.get("f");
 
-        // Open the evidence panel from the top ranked signal
-        const firstSignal = page.getByTestId("signal-open-evidence").first();
-        await firstSignal.click();
+        // Open the evidence drawer from the top ranked signal: it is the primary-signal hero,
+        // and its one action is "Open evidence". The other signals are rows of the table below.
+        const primarySignal = page.getByTestId("cockpit-top-change-evidence");
+        await expect(primarySignal).toHaveText("Open evidence");
+        await primarySignal.click();
 
         // Panel should open with evidence - look for the canonical evidence link
         const exploreLink = page.getByRole("link", {
