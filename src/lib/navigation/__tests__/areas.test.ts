@@ -226,6 +226,30 @@ describe("getAreaById", () => {
     });
 });
 
+describe("Govern overview cards — the approved groups (QUALITY, RISK)", () => {
+    const hubItems = areaById("govern").hubItems;
+
+    it("groups TestOps and Quality under Quality, and the risk destinations under Risk, in the approved order", () => {
+        const idsOf = (cluster: string) =>
+            hubItems.filter((item) => item.cluster === cluster).map((item) => item.id);
+        expect(idsOf("Quality")).toEqual(["testops", "quality"]);
+        expect(idsOf("Risk")).toEqual([
+            "security",
+            "risk",
+            "risk-compounding",
+            "incident-correlation",
+            "feature-flags",
+        ]);
+        expect(
+            hubItems.every((item) => item.cluster === "Quality" || item.cluster === "Risk"),
+        ).toBe(true);
+    });
+
+    it("draws no Govern card secondary: Feature Flags is a normal Risk card", () => {
+        expect(hubItems.filter((item) => item.demoted === true).map((item) => item.id)).toEqual([]);
+    });
+});
+
 describe("selectedChildForPathname — active child (A10: exactly one)", () => {
     const cases: Array<{
         areaId: NavAreaId;

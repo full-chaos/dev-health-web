@@ -474,14 +474,9 @@ export const navAreas: readonly NavArea[] = [
                 cluster: "Risk",
                 metricLabel: "Release confidence",
             },
-            {
-                id: "incident-correlation",
-                label: "Incident Correlation",
-                href: "/incident-correlation",
-                description: "Incidents correlated to changes.",
-                cluster: "Risk",
-                metricLabel: "Change failure rate",
-            },
+            // Order inside Risk = the approved Govern overview (Delivery Risk, Compounding Risk,
+            // Incident Correlation, Feature Flags). The cards sort by severity; this order
+            // decides only between cards of equal severity.
             {
                 id: "risk-compounding",
                 label: "Compounding Risk",
@@ -491,14 +486,21 @@ export const navAreas: readonly NavArea[] = [
                 metricLabel: "Worst risk score",
             },
             {
+                id: "incident-correlation",
+                label: "Incident Correlation",
+                href: "/incident-correlation",
+                description: "Incidents correlated to changes.",
+                cluster: "Risk",
+                metricLabel: "Change failure rate",
+            },
+            {
+                // A normal card in Risk: the approved overview does not draw it secondary.
                 id: "feature-flags",
                 label: "Feature Flags",
                 href: "/feature-flags",
                 description: "Flag lifecycle and debt.",
                 cluster: "Risk",
                 metricLabel: "Active flags",
-                // R4: low-value single surface — render secondary, not equal billing.
-                demoted: true,
             },
         ],
         children: [
