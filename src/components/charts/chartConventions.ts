@@ -14,15 +14,21 @@ type TooltipOptions = {
     formatter?: TooltipComponentOption["formatter"];
     /** Draw the time-series crosshair (muted, 1px, solid). Bars keep ECharts' default pointer. */
     crosshair?: boolean;
+    /** `item` for pies and other charts without an axis; default `axis`. */
+    trigger?: "axis" | "item";
+    /** Keep the tooltip inside the chart box (default true; a chart that never confined passes false). */
+    confine?: boolean;
+    /** Tooltip text size when the chart sets one; otherwise ECharts' default. */
+    fontSize?: number;
 };
 
 /** The one tooltip: surface background, hairline border, text token. Identity is the marker swatch. */
 export const buildTooltip = (theme: ChartTheme, options: TooltipOptions = {}) => ({
-    trigger: "axis" as const,
-    confine: true,
+    trigger: options.trigger ?? ("axis" as const),
+    confine: options.confine ?? true,
     backgroundColor: theme.background,
     borderColor: theme.stroke,
-    textStyle: { color: theme.text },
+    textStyle: { color: theme.text, ...(options.fontSize ? { fontSize: options.fontSize } : {}) },
     ...(options.crosshair
         ? {
               axisPointer: {
@@ -75,6 +81,23 @@ export const pointSymbolSize = (values: ReadonlyArray<unknown>) => {
     const shown = visibleSymbolIndexes(values);
     return (_value: unknown, params: { dataIndex: number }): number =>
         shown.has(params.dataIndex) ? END_DOT_SIZE : 0;
+};
+
+/**
+ * Data items carrying the per-point symbol size and ring, for charts with a legend: the series keeps its
+ * own static `symbolSize` and no ring (so the legend glyph is unchanged); only the points are sized 0 or
+ * `END_DOT_SIZE`, and a shown dot is ringed in the surface color.
+ */
+export const withPointSymbols = <T extends number | null | undefined>(
+    values: ReadonlyArray<T>,
+    theme: ChartTheme,
+) => {
+    const shown = visibleSymbolIndexes(values);
+    return values.map((value, index) =>
+        shown.has(index)
+            ? { value, symbolSize: END_DOT_SIZE, itemStyle: dotRing(theme) }
+            : { value, symbolSize: 0 },
+    );
 };
 
 /** A bottom legend in muted text for two or more series; none for one. */
