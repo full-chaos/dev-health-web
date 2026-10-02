@@ -33,7 +33,8 @@ test(
         await flowLink.click();
 
         await expect(page).toHaveURL(/\/metrics\?tab=flow/);
-        await expect(page.getByRole("heading", { name: "Monitoring view" })).toBeVisible();
-        await expect(page.getByText("Flow monitoring")).toBeVisible();
+        // The page title is "Flow" and the active tab's description sits under the tabs.
+        await expect(page.getByRole("heading", { level: 1, name: "Flow" })).toBeVisible();
+        await expect(page.getByText("From idea to merge.")).toBeVisible();
     },
 );
