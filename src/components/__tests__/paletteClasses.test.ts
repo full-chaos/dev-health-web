@@ -13,17 +13,11 @@ const RAW =
     /\b(?:text|bg|border|ring|from|via|to|fill|stroke|divide|outline|shadow|accent|decoration)-(?:red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|neutral|stone)-\d{2,3}\b/gu;
 
 const ALLOWLIST: Record<string, number> = {
-    "app/(app)/data-health/_components/AliasSuggestionRow.tsx": 2,
     "app/(app)/operating-review/page.tsx": 28,
     // 6 provider brand-mark hits (Admin page pass) + 3 in one red banner (Notice danger).
     "app/(app)/org/admin/integrations/page.tsx": 6,
     "app/(app)/reports/[id]/page.tsx": 19,
     "app/(app)/reports/new/page.tsx": 3,
-    "components/ai/AIEvidenceExplorer.tsx": 6,
-    "components/ai/AIOpportunityList.tsx": 2,
-    "components/ai/AIRiskDashboard.tsx": 2,
-    "components/evidence/EvidenceContext.tsx": 6,
-    "components/evidence/EvidencePanel.tsx": 2,
     "components/work/GraphView.tsx": 11,
     "components/work/investment/ConfidencePanel.tsx": 8,
     "components/work/investment/InvestmentExplainer.tsx": 8,

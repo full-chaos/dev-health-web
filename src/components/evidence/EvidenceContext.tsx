@@ -1,6 +1,7 @@
 "use client";
 
 import { useActiveRole } from "@/lib/lensContext.client";
+import { STATUS_PILL } from "@/lib/statusPill";
 import { getRoleConfig } from "@/lib/roleContext";
 
 type EvidenceData = {
@@ -20,9 +21,9 @@ export function EvidenceContext({ data }: EvidenceContextProps) {
 
     const trendTone =
         data.trend === "up"
-            ? "border-green-400/20 bg-green-400/10 text-green-300"
+            ? STATUS_PILL.positive
             : data.trend === "down"
-              ? "border-red-400/20 bg-red-400/10 text-red-300"
+              ? STATUS_PILL.negative
               : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted)";
     const trendIcon = data.trend === "up" ? "↗" : data.trend === "down" ? "↘" : "→";
 

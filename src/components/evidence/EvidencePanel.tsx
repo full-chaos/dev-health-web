@@ -14,6 +14,7 @@ import { Drawer } from "@/components/ui/Drawer";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { STATUS_PILL } from "@/lib/statusPill";
 import { getMetricDefinition } from "@/lib/metrics/definitions";
 import { formatNumber, formatPercent as formatDisplayPercent } from "@/lib/formatters";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
@@ -545,7 +546,7 @@ function EvidenceProvenanceStrip({ provenance }: { provenance?: EvidenceProvenan
                 />
             </div>
             {provenance?.partial && (
-                <p className="rounded-xl bg-amber-500/10 px-3 py-2 text-amber-300">
+                <p className={`rounded-xl px-3 py-2 ${STATUS_PILL.caution}`}>
                     Partial evidence: the backend did not return a complete artifact list for this
                     selection.
                 </p>
