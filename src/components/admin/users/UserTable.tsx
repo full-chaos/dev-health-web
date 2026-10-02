@@ -74,7 +74,7 @@ export function UserTable({ users }: UserTableProps) {
             headerClassName: "px-6 py-4 font-medium",
             className: "px-6 py-4",
             render: (user) => (
-                <span className="inline-flex items-center rounded-full bg-(--accent)/10 px-2.5 py-0.5 text-xs font-medium text-(--accent)">
+                <span className="inline-flex items-center rounded-full bg-(--accent)/10 px-2.5 py-0.5 text-xs font-medium text-(--accent-text)">
                     {user.auth_provider}
                 </span>
             ),

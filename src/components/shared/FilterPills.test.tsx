@@ -54,7 +54,7 @@ describe("FilterPills", () => {
         const active = screen.getByRole("radio", { name: "Month" }).closest("label");
         expect(active).toHaveClass("border-(--accent)");
         expect(active).toHaveClass("bg-(--accent)/15");
-        expect(active).toHaveClass("text-(--accent)");
+        expect(active).toHaveClass("text-(--accent-text)");
         expect(active?.className).not.toContain("--accent-2");
     });
 

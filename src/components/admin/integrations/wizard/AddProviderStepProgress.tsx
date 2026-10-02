@@ -35,7 +35,7 @@ export function AddProviderStepProgress({
                             aria-current={isCurrent ? "step" : undefined}
                             className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
                                 isCurrent
-                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent)"
+                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
                                     : isVisited
                                       ? "border-(--card-stroke) text-foreground hover:bg-(--card-70)"
                                       : "cursor-not-allowed border-(--card-stroke) text-(--ink-muted) opacity-50"

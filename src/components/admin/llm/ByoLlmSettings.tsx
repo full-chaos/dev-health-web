@@ -448,7 +448,7 @@ export function ByoLlmSettings({
                 <h2 className="mb-6 text-h2 text-(--text-primary)">BYO LLM</h2>
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center">
                     <div className="mx-auto max-w-md space-y-4">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-(--accent)">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-(--accent-text)">
                             {locked.reason === "not_licensed"
                                 ? `${BYO_REQUIRED_TIER_LABEL} Plan Feature`
                                 : "Feature Disabled"}
