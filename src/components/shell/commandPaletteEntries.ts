@@ -37,14 +37,17 @@ export function paletteEntries(
             add(`${area.id}-${child.id}`, child.label, area.label, child.path);
             // The destination's tabs follow it (the default tab is the destination row itself).
             for (const set of tabSets) {
-                if (set.areaId !== area.id || set.basePath !== child.path) continue;
+                if (set.areaId !== area.id || (set.childPath ?? set.basePath) !== child.path)
+                    continue;
                 for (const tab of set.tabs) {
-                    if (tab.id === set.defaultTabId) continue;
+                    const href = tabHref(set, tab.id);
+                    // The tab that is the destination row itself is not listed twice.
+                    if (href === child.path) continue;
                     add(
                         `${area.id}-${child.id}-${tab.id}`,
                         tab.label,
                         `${child.label} · ${area.label}`,
-                        tabHref(set, tab.id),
+                        href,
                     );
                 }
             }

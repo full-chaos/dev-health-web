@@ -3,9 +3,14 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { getAreaById, isNavChildVisible } from "../areas";
-import { TAB_SETS, getTabSet, tabHref } from "../tabs";
+import { METRIC_TABS } from "@/lib/metrics/metricTabs";
+
+import { TAB_SETS, getTabSet, tabHref, type TabSet } from "../tabs";
 
 const appRoot = join(process.cwd(), "src/app/(app)");
+
+// The sets as the general type: loops over every set do not depend on each set's literal type.
+const SETS: readonly TabSet[] = TAB_SETS;
 
 // The tab lists the two pages carried inline before the registry: the registry must say exactly this
 // (same ids, same labels, same order). This is the pin that used to be the page source text.
@@ -37,6 +42,17 @@ const BEFORE = {
         ["evidence", "Evidence"],
         ["confidence", "Confidence"],
     ],
+    metrics: [
+        ["dora", "DORA"],
+        ["flow", "Flow"],
+        ["throughput", "Throughput"],
+    ],
+    testops: [
+        ["overview", "Overview"],
+        ["pipelines", "Pipelines"],
+        ["tests", "Tests"],
+        ["coverage", "Coverage"],
+    ],
     "work-graph": [
         ["overview", "Overview"],
         ["dependencies", "Dependencies"],
@@ -50,14 +66,14 @@ describe("tab registry", () => {
     it.each(Object.entries(BEFORE))(
         "holds the %s tabs exactly as the page listed them",
         (id, tabs) => {
-            const set = getTabSet(id as keyof typeof BEFORE);
+            const set: TabSet = getTabSet(id as keyof typeof BEFORE);
             expect(set.tabs.map((tab) => [tab.id, tab.label])).toEqual(tabs);
         },
     );
 
     it("has unique set ids and unique tab ids per set, and a default tab that exists", () => {
-        expect(new Set(TAB_SETS.map((s) => s.id)).size).toBe(TAB_SETS.length);
-        for (const set of TAB_SETS) {
+        expect(new Set(SETS.map((s) => s.id)).size).toBe(SETS.length);
+        for (const set of SETS) {
             const ids = set.tabs.map((t) => t.id);
             expect(new Set(ids).size, set.id).toBe(ids.length);
             expect(ids, set.id).toContain(set.defaultTabId);
@@ -77,11 +93,18 @@ describe("tab registry", () => {
         expect(tabHref(getTabSet("work-graph"), "inflow-outflow")).toBe(
             "/diagnose/work-graph?tab=inflow-outflow",
         );
+        // Metrics always linked its default tab with the parameter; TestOps tabs are routes.
+        expect(tabHref(getTabSet("metrics"), "dora")).toBe("/metrics?tab=dora");
+        expect(tabHref(getTabSet("metrics"), "throughput")).toBe("/metrics?tab=throughput");
+        expect(tabHref(getTabSet("testops"), "overview")).toBe("/testops");
+        expect(tabHref(getTabSet("testops"), "coverage")).toBe("/testops/coverage");
     });
 
-    it("names a destination the sidebar lists: every set's base path is a visible navAreas child", () => {
-        for (const set of TAB_SETS) {
-            const child = getAreaById(set.areaId)?.children.find((c) => c.path === set.basePath);
+    it("names a destination the sidebar lists: every set's destination path is a visible navAreas child", () => {
+        for (const set of SETS) {
+            const child = getAreaById(set.areaId)?.children.find(
+                (c) => c.path === (set.childPath ?? set.basePath),
+            );
             expect(child, set.id).toBeDefined();
             expect(isNavChildVisible(child!, {}), set.id).toBe(true);
         }
@@ -93,7 +116,29 @@ describe("tab registry", () => {
         landscape: "landscape/page.tsx",
         investment: "investment/page.tsx",
         "work-graph": "diagnose/work-graph/buildTabs.ts",
+        metrics: "metrics/page.tsx",
+        testops: "testops/TestOpsTabs.tsx",
     } as const;
+
+    it("route sets give every tab its own route, query sets give none", () => {
+        for (const set of SETS) {
+            for (const tab of set.tabs) {
+                expect("path" in tab && Boolean(tab.path), `${set.id}/${tab.id}`).toBe(
+                    set.param === "route",
+                );
+            }
+        }
+    });
+
+    it("the Metrics data is keyed by exactly the registry's tab ids, in registry order", () => {
+        expect(METRIC_TABS.map((tab) => tab.id)).toEqual(
+            getTabSet("metrics").tabs.map((tab) => tab.id),
+        );
+        for (const tab of METRIC_TABS) {
+            expect(tab.metrics.length, tab.id).toBeGreaterThan(0);
+            expect(tab.highlight, tab.id).toBeTruthy();
+        }
+    });
 
     it.each(Object.keys(PAGE_FILE) as Array<keyof typeof PAGE_FILE>)(
         "%s renders its tabs from the registry and holds no inline list",

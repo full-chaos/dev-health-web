@@ -1,10 +1,10 @@
 // The tabs of the Metrics page: which metrics each shows and its landscape. Kept out of the page
 // file so a test can check that every metric on a tab has a catalog polarity.
+import { getTabSet, type TabIdOf } from "@/lib/navigation/tabs";
+
 export type QuadrantType = "churn_throughput" | "cycle_throughput" | "wip_throughput";
 
-export type MetricTab = {
-    id: string;
-    label: string;
+export type MetricTabData = {
     description: string;
     metrics: string[];
     highlight: string;
@@ -15,10 +15,8 @@ export type MetricTab = {
     };
 };
 
-export const METRIC_TABS: MetricTab[] = [
-    {
-        id: "dora",
-        label: "DORA",
+const METRIC_TAB_DATA: Record<TabIdOf<"metrics">, MetricTabData> = {
+    dora: {
         description: "Release speed and stability.",
         metrics: ["deploy_freq", "cycle_time", "change_failure_rate", "review_latency"],
         highlight: "deploy_freq",
@@ -28,9 +26,7 @@ export const METRIC_TABS: MetricTab[] = [
             description: "Operating modes under change volume and delivery pace.",
         },
     },
-    {
-        id: "flow",
-        label: "Flow",
+    flow: {
         description: "From idea to merge.",
         metrics: ["cycle_time", "review_latency", "throughput", "wip_saturation"],
         highlight: "cycle_time",
@@ -40,9 +36,7 @@ export const METRIC_TABS: MetricTab[] = [
             description: "Coordination debt and delivery efficiency.",
         },
     },
-    {
-        id: "throughput",
-        label: "Throughput",
+    throughput: {
         description: "Delivery volume and pacing.",
         metrics: ["throughput", "deploy_freq", "wip_saturation", "blocked_work"],
         highlight: "throughput",
@@ -52,4 +46,13 @@ export const METRIC_TABS: MetricTab[] = [
             description: "Work-in-progress saturation and delivery capacity.",
         },
     },
-];
+};
+
+export type MetricTab = MetricTabData & { id: TabIdOf<"metrics">; label: string };
+
+/** The Metrics tabs: the id, label and order come from the tab registry, the data from above. */
+export const METRIC_TABS: MetricTab[] = getTabSet("metrics").tabs.map((tab) => ({
+    id: tab.id,
+    label: tab.label,
+    ...METRIC_TAB_DATA[tab.id],
+}));
