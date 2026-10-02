@@ -213,3 +213,126 @@
     --hero-gradient: none;
     --app-gradient: none;
 }
+
+/* ============================================================
+ * PALETTE: infinity
+ *
+ * Redesign concept theme. Ember (orange) marks the CURRENT SELECTION,
+ * tide (teal) marks actions, links and data, silver carries structure.
+ * Chart series run in a fixed order: tide, amber, scarlet, aqua, flame.
+ * Investment theme colors are fixed by entity, never by rank.
+ * Values are literal hex so the contrast and colorblind test can read them.
+ * ============================================================ */
+:root[data-palette="infinity"][data-theme="light"] {
+    color-scheme: light;
+    --background: #f1f3f4;
+    --foreground: #15171a;
+    --ink-muted: #656c73;
+    --accent: #d6421f;
+    --accent-foreground: #ffffff;
+    --accent-1: #d6421f;
+    --accent-2: #037493;
+    --accent-3: #8a5700;
+    --accent-negative: #a61708;
+    --accent-highlight: #f06a00;
+    --card: #fdfdfc;
+    --card-stroke: #dde1e4;
+    --surface: #fdfdfc;
+    --surface-raised: #fdfdfc;
+    --border: #dde1e4;
+    --text-primary: #15171a;
+    --text-secondary: #4b535b;
+    --text-muted: #656c73;
+    --chart-grid: #e4e7e9;
+    --chart-text: #15171a;
+    --chart-muted: #656c73;
+    --chart-color-1: #0087a9;
+    --chart-color-2: #c88600;
+    --chart-color-3: #a30a06;
+    --chart-color-4: #00a2b8;
+    --chart-color-5: #f06a00;
+    --chart-color-6: #075a72;
+    --chart-color-7: #8a5700;
+    --chart-color-8: #a61708;
+    --chart-color-9: #656c73;
+    --chart-color-10: #2f353b;
+    --theme-feature: var(--chart-color-5);
+    --theme-quality: var(--chart-color-4);
+    --theme-risk: var(--chart-color-2);
+    --theme-maintenance: var(--chart-color-3);
+    --theme-operational: var(--chart-color-1);
+    --seq-0: #e6eaec;
+    --seq-1: #b9e0e8;
+    --seq-2: #7fc9d8;
+    --seq-3: #3aabc2;
+    --seq-4: #04809f;
+    --seq-5: #075a72;
+    --quadrant-zone-1: #0087a9;
+    --quadrant-zone-2: #188810;
+    --quadrant-zone-3: #c88600;
+    --quadrant-zone-4: #a30a06;
+    --positive: #1c785a;
+    --caution: #8a5700;
+    --negative: #a61708;
+    --info: #03657f;
+    --accent-ai: #074757;
+    --hero-gradient: none;
+    --app-gradient: none;
+}
+
+:root[data-palette="infinity"][data-theme="dark"] {
+    color-scheme: dark;
+    --background: #0e1316;
+    --foreground: #f1f3f4;
+    --ink-muted: #a7afb5;
+    --accent: #f47b20;
+    --accent-foreground: #15171a;
+    --accent-1: #f47b20;
+    --accent-2: #4fd3df;
+    --accent-3: #f2b84b;
+    --accent-negative: #ff8266;
+    --accent-highlight: #ffab66;
+    --card: #161c20;
+    --card-stroke: #28323a;
+    --surface: #161c20;
+    --surface-raised: #1f272c;
+    --border: #28323a;
+    --text-primary: #f1f3f4;
+    --text-secondary: #a7afb5;
+    --text-muted: #808990;
+    --chart-grid: #232c32;
+    --chart-text: #f1f3f4;
+    --chart-muted: #a7afb5;
+    --chart-color-1: #0b8fb0;
+    --chart-color-2: #c98500;
+    --chart-color-3: #da2100;
+    --chart-color-4: #02a2bc;
+    --chart-color-5: #e8650a;
+    --chart-color-6: #4fd3df;
+    --chart-color-7: #f2b84b;
+    --chart-color-8: #ff8266;
+    --chart-color-9: #808990;
+    --chart-color-10: #a7afb5;
+    --theme-feature: var(--chart-color-5);
+    --theme-quality: var(--chart-color-4);
+    --theme-risk: var(--chart-color-2);
+    --theme-maintenance: var(--chart-color-3);
+    --theme-operational: var(--chart-color-1);
+    --seq-0: #1c252a;
+    --seq-1: #17566a;
+    --seq-2: #0b7691;
+    --seq-3: #0b97b6;
+    --seq-4: #22b9cd;
+    --seq-5: #8fe6ea;
+    --quadrant-zone-1: #0b8fb0;
+    --quadrant-zone-2: #63cfa6;
+    --quadrant-zone-3: #c98500;
+    --quadrant-zone-4: #da2100;
+    --positive: #63cfa6;
+    --caution: #f2b84b;
+    --negative: #ff8266;
+    --info: #4fd3df;
+    --accent-ai: #4fd3df;
+    --hero-gradient: none;
+    --app-gradient: none;
+}

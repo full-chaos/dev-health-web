@@ -15,6 +15,7 @@ type Palette =
     | "fullchaos-infinity-knot-redux"
     | "fullchaos-infinity-ember"
     | "fullchaos-infinity-tide"
+    | "infinity"
     | "flat";
 type Listener = () => void;
 
@@ -47,6 +48,7 @@ const normalizePalette = (value: string | null): Palette | null => {
         value === "fullchaos-infinity-knot-redux" ||
         value === "fullchaos-infinity-ember" ||
         value === "fullchaos-infinity-tide" ||
+        value === "infinity" ||
         value === "flat"
         ? value
         : null;
