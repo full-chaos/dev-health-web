@@ -217,3 +217,14 @@ describe("SingleReportPage — design R9-R16 (CHAOS-8096)", () => {
         );
     });
 });
+
+describe("SingleReportPage — scope label (CHAOS-8096)", () => {
+    it("shows the form's option name for the stored scope key", async () => {
+        mockFetchSavedReport.mockResolvedValue({ ...REPORT, parameters: { scope: "org" } });
+        mockFetchReportRuns.mockResolvedValue({ items: [], total: 0 });
+        render(<SingleReportPage />);
+
+        expect(await screen.findByText("Organization")).toBeInTheDocument();
+        expect(screen.queryByText("org")).toBeNull();
+    });
+});

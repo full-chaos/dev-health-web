@@ -88,7 +88,7 @@ function RenderedReportAndConfig({
             <div className="space-y-6">
                 <Section title="Configuration">
                     <dl className="text-sm">
-                        <FactRow label="Scope" value={params.scope || "Not reported"} capitalize />
+                        <FactRow label="Scope" value={scopeLabel(params.scope)} />
                         <FactRow
                             label="Date Range"
                             value={params.dateRange?.replace(/_/g, " ") || "Not reported"}
@@ -141,6 +141,18 @@ function RenderedReportAndConfig({
             </div>
         </div>
     );
+}
+
+// The create form stores the scope as `org` / `team` / `repo`; show the form's own option names.
+const SCOPE_LABELS: Record<string, string> = {
+    org: "Organization",
+    team: "Team",
+    repo: "Repository",
+};
+
+function scopeLabel(scope?: string): string {
+    if (!scope) return "Not reported";
+    return SCOPE_LABELS[scope] ?? scope;
 }
 
 function FactRow({
@@ -484,7 +496,7 @@ export default function SingleReportPage() {
                             <Button
                                 onClick={handleDeleteConfirm}
                                 disabled={isDeleting}
-                                className="border-(--negative) bg-(--negative) text-(--accent-foreground) hover:brightness-110"
+                                className="border-(--negative) bg-(--negative) text-(--on-action) hover:brightness-110"
                                 icon={<Trash2 className="h-3.5 w-3.5" />}
                             >
                                 {isDeleting ? "Deleting..." : CTA_LABELS.delete}
