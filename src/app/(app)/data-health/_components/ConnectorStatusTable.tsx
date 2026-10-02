@@ -59,6 +59,7 @@ export function ConnectorStatusTable({ data, isPending }: ConnectorStatusTablePr
         {
             key: "rowsIngested",
             header: "Rows Ingested",
+            numeric: true,
             render: (row) => <span className="text-sm text-(--ink-muted)">{row.rowsIngested}</span>,
         },
         {
