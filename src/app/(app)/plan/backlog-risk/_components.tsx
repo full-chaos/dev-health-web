@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 import { CircleCheck, TriangleAlert } from "lucide-react";
 
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import type { PageFact } from "@/components/evidence/PageFactsEvidenceAction";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { DataState } from "@/components/ui/DataState";
@@ -295,6 +296,38 @@ export function PopulationNotice({
             {formatNumber(estimateCoverage.backlogSize)}. The two populations are not reconciled.
         </Notice>
     );
+}
+
+// ── Evidence ──────────────────────────────────────────────────────────────────
+
+/** The page's served values for the evidence drawer, as the tiles and cards show them. No new number. */
+export function backlogFacts(forecast: ThroughputForecast): PageFact[] {
+    const { wipCongestion, staleWip, estimateCoverage } = forecast;
+    const p90 = staleWip?.p90AgeHours;
+    const p50 = staleWip?.p50AgeHours;
+    const ratio = estimateCoverage?.ratio;
+    return [
+        {
+            label: "WIP congestion",
+            value: `${formatCongestion(wipCongestion.value)} · ${wipCongestion.active ? "Elevated" : "Normal"}`,
+        },
+        { label: "Open items · WIP panel", value: formatNumber(forecast.backlogSize) },
+        { label: "P90 work age", value: p90 == null ? undefined : formatAgeHours(p90) },
+        { label: "Median work age", value: p50 == null ? undefined : formatAgeHours(p50) },
+        { label: "Coverage", value: ratio == null ? undefined : formatRatioAsPercent(ratio) },
+        {
+            label: "Estimated",
+            value: estimateCoverage ? formatNumber(estimateCoverage.estimatedCount) : undefined,
+        },
+        {
+            label: "Unestimated",
+            value: estimateCoverage ? formatNumber(estimateCoverage.unestimatedCount) : undefined,
+        },
+        {
+            label: "Open backlog · estimates panel",
+            value: estimateCoverage ? formatNumber(estimateCoverage.backlogSize) : undefined,
+        },
+    ];
 }
 
 // ── ForecastContent ───────────────────────────────────────────────────────────

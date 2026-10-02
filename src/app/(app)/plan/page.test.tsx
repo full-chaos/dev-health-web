@@ -3,7 +3,10 @@ import { render, screen, within } from "@testing-library/react";
 
 import { STATUS_PILL } from "@/lib/statusPill";
 
-const { mockForecast } = vi.hoisted(() => ({ mockForecast: vi.fn() }));
+const { mockForecast, evidenceSubject } = vi.hoisted(() => ({
+    mockForecast: vi.fn(),
+    evidenceSubject: { current: null as null | { title: string; content: unknown } },
+}));
 
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({ ok: true }) }));
 vi.mock("@/lib/auth", () => ({
@@ -13,7 +16,18 @@ vi.mock("@/lib/graphql/capacityFetchers", () => ({
     getThroughputForecastViaGraphQL: mockForecast,
 }));
 vi.mock("@/components/shell/PageHeader", () => ({
-    PageHeader: ({ title }: { title: string }) => <h1>{title}</h1>,
+    PageHeader: ({ title, actions }: { title: string; actions?: React.ReactNode }) => (
+        <>
+            <h1>{title}</h1>
+            <div data-testid="page-actions">{actions}</div>
+        </>
+    ),
+}));
+vi.mock("@/components/shell/PageHeaderEvidenceAction", () => ({
+    PageHeaderEvidenceAction: ({ subject }: { subject: { title: string; content: unknown } }) => {
+        evidenceSubject.current = subject;
+        return <button type="button" data-testid="view-evidence" />;
+    },
 }));
 vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => <div data-testid="scope-bar" /> }));
 vi.mock("@/components/charts/VerticalBarChart", () => ({
@@ -65,7 +79,10 @@ async function renderPage(searchParams: Record<string, string> = {}) {
     return render(await PlanPage({ searchParams: Promise.resolve(searchParams) }));
 }
 
-beforeEach(() => mockForecast.mockReset());
+beforeEach(() => {
+    mockForecast.mockReset();
+    evidenceSubject.current = null;
+});
 
 describe("Plan overview — what the page shows (pins)", () => {
     it("shows the open items, P50 / P75 / P90 in weeks and the caption", async () => {
@@ -218,6 +235,33 @@ describe("Plan overview — what the page shows (pins)", () => {
         ).toBeInTheDocument();
         expect(screen.getByTestId("plan-empty-forecast")).toBeInTheDocument();
         expect(screen.queryByText("Delivery confidence")).toBeNull();
+    });
+});
+
+describe("Plan overview — View evidence", () => {
+    it("adds a View evidence action whose subject lists the page's served values, 'Not reported' for a missing one", async () => {
+        mockForecast.mockResolvedValue(forecast({ p75Weeks: null }));
+        await renderPage();
+
+        const drawer = render(evidenceSubject.current?.content as React.ReactElement);
+        const rows = within(drawer.container)
+            .getAllByTestId("evidence-fact")
+            .map((row) => [
+                row.querySelector("dt")?.textContent,
+                row.querySelector("dd")?.textContent,
+            ]);
+        expect(rows).toContainEqual(["Open items", "51"]);
+        expect(rows).toContainEqual(["P50 forecast", "1 week"]);
+        expect(rows).toContainEqual(["P75 forecast", "Not reported"]);
+        expect(rows).toContainEqual(["Rolling throughput · 4w", "12 items/week"]);
+        expect(rows).toContainEqual(["WIP congestion", "0.69× · Normal"]);
+    });
+
+    it("has no View evidence action when there is no forecast", async () => {
+        mockForecast.mockResolvedValue(null);
+        await renderPage();
+
+        expect(screen.queryByTestId("view-evidence")).toBeNull();
     });
 });
 
