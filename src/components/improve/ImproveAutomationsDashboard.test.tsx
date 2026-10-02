@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import userEvent from "@testing-library/user-event";
 
 import { ImproveAutomationsDashboard } from "./ImproveAutomationsDashboard";
@@ -86,7 +87,9 @@ describe("ImproveAutomationsDashboard", () => {
         expect(row.getByTestId("detection-threshold")).toHaveTextContent("Not reported");
         expect(row.getByText(/threshold: 48 h/)).toBeInTheDocument();
         expect(row.getByText("Add a second reviewer rota")).toBeInTheDocument();
-        expect(row.getByText("review_latency · cycle_time")).toBeInTheDocument();
+        // The raw references are not in the row any more: they are in the drawer (next test).
+        expect(row.queryByText("review_latency · cycle_time")).toBeNull();
+        expect(row.getByRole("button", { name: /Evidence/ })).toBeInTheDocument();
     });
 
     it("draws the tiles as one joined strip and the candidates as a Section with a ghost AI link", () => {
@@ -106,6 +109,37 @@ describe("ImproveAutomationsDashboard", () => {
         expect(panel.getByTestId("improve-automations-head-link").className).toContain(
             "text-(--accent-2)",
         );
+    });
+
+    it("opens the shared drawer from the row's Evidence button with the detection and each reference as fact rows", async () => {
+        hook.mockReturnValue(result());
+        render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
+
+        await userEvent.click(screen.getByTestId("detection-evidence-button"));
+
+        const rows = within(await screen.findByTestId("detection-evidence-facts"))
+            .getAllByTestId("evidence-fact")
+            .map((row) => [
+                row.querySelector("dt")?.textContent,
+                row.querySelector("dd")?.textContent,
+            ]);
+        expect(rows).toContainEqual(["Signal", "High review latency"]);
+        expect(rows).toContainEqual(["Severity", "high"]);
+        expect(rows).toContainEqual(["Recommended", "Add a second reviewer rota"]);
+        expect(rows).toContainEqual(["Evidence reference 1", "review_latency"]);
+        expect(rows).toContainEqual(["Evidence reference 2", "cycle_time"]);
+    });
+
+    it("says 'Not reported' for a detection with no evidence references", async () => {
+        hook.mockReturnValue(result({ opportunities: [item({ evidenceRefs: [] })] }));
+        render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
+
+        await userEvent.click(screen.getByTestId("detection-evidence-button"));
+
+        const row = within(await screen.findByTestId("detection-evidence-facts"))
+            .getByText("Evidence references")
+            .closest("[data-testid='evidence-fact']");
+        expect(row).toHaveTextContent("Not reported");
     });
 
     it("writes severity as a word with an icon", () => {

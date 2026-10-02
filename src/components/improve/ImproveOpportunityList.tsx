@@ -1,7 +1,10 @@
 "use client";
 
-import { Info, OctagonAlert, TriangleAlert } from "lucide-react";
+import { ArrowRight, Info, OctagonAlert, TriangleAlert } from "lucide-react";
 
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import { Button } from "@/components/shared/Button";
 import { DataState } from "@/components/ui/DataState";
 import type { ImproveOpportunity } from "@/lib/graphql/__generated__/types";
 import { resolveEntityLabel } from "@/lib/labels/entityLabel";
@@ -47,6 +50,57 @@ function EntityCell({ item }: { item: ImproveOpportunity }) {
             <span className="text-(--ink-muted)">{item.entityType} </span>
             {entity.resolved ? entity.label : `${entity.short ?? entity.label} · Unresolved`}
         </span>
+    );
+}
+
+/** The row's served fields in the shared drawer: the detection, then each evidence reference. */
+function RowEvidenceButton({ item }: { item: ImproveOpportunity }) {
+    const evidence = useEvidenceDrawer();
+    const entity = resolveEntityLabel(item.entityId, { unresolvedFallback: "Unresolved" });
+    const entityText = `${item.entityType} ${
+        entity.resolved ? entity.label : `${entity.short ?? entity.label} · Unresolved`
+    }`;
+    return (
+        <Button
+            variant="ghost"
+            size="sm"
+            icon={<ArrowRight />}
+            iconPosition="start"
+            data-testid="detection-evidence-button"
+            aria-label={`Evidence for ${kindLabel(item.kind)}`}
+            onClick={() =>
+                evidence.open({
+                    title: kindLabel(item.kind),
+                    content: (
+                        <EvidenceFactList aria-label="Detection" testId="detection-evidence-facts">
+                            <EvidenceFact label="Signal" value={kindLabel(item.kind)} />
+                            <EvidenceFact label="Captured entity" value={entityText} />
+                            <EvidenceFact label="Severity" value={item.severity} />
+                            <EvidenceFact label="Detail" value={item.rationale} stacked />
+                            <EvidenceFact
+                                label="Recommended"
+                                value={item.recommendedAction}
+                                stacked
+                            />
+                            {item.evidenceRefs.length > 0 ? (
+                                item.evidenceRefs.map((ref, index) => (
+                                    <EvidenceFact
+                                        key={`${ref}-${index}`}
+                                        label={`Evidence reference ${index + 1}`}
+                                        value={ref}
+                                        stacked
+                                    />
+                                ))
+                            ) : (
+                                <EvidenceFact label="Evidence references" />
+                            )}
+                        </EvidenceFactList>
+                    ),
+                })
+            }
+        >
+            Evidence
+        </Button>
     );
 }
 
@@ -135,8 +189,8 @@ export function ImproveOpportunityList({
                             <td className="px-3 py-3 text-(--ink-muted)">
                                 {item.recommendedAction}
                             </td>
-                            <td className="px-3 py-3 text-xs text-(--ink-muted)">
-                                {item.evidenceRefs.join(" · ")}
+                            <td className="px-3 py-3">
+                                <RowEvidenceButton item={item} />
                             </td>
                         </tr>
                     ))}
