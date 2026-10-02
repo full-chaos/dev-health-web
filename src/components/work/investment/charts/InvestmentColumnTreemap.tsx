@@ -187,7 +187,7 @@ export function InvestmentColumnTreemap({
                                 aria-label={description}
                                 title={description}
                                 onClick={() => select(theme, [theme.name])}
-                                className="mb-1.5 block min-w-0 rounded-sm px-0.5 text-left text-xs leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) aria-pressed:text-(--accent)"
+                                className="mb-1.5 block min-w-0 rounded-sm px-0.5 text-left text-xs leading-tight focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) aria-pressed:text-(--accent-text)"
                             >
                                 <span className="block truncate font-medium text-foreground">
                                     {theme.name}
