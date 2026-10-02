@@ -11,7 +11,7 @@ describe("Plan route placement", () => {
         const source = readRoute("plan");
 
         expect(source).toContain("getThroughputForecastViaGraphQL");
-        expect(source).toContain("Delivery confidence");
+        expect(source).toContain("Open items");
         expect(source).toContain("Rolling throughput");
         expect(source).toContain("Primary risk callout");
         expect(source).not.toContain("AreaOverview");

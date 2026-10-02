@@ -39,6 +39,11 @@ describe("shell route registry", () => {
             "/ai/automations",
             "/ai/risk",
             "/ai/attribution",
+            "/prs",
+            "/issues",
+            "/deployments",
+            "/reports",
+            "/reports",
         ]);
     });
 
@@ -59,12 +64,17 @@ describe("shell route registry", () => {
         expect(isShellRoute("/dashboard-old")).toBe(false);
     });
 
-    it.each(["/capacity", "/reports", "/org/admin", "/superadmin", "/settings", "/prs/1", "/"])(
-        "keeps %s outside the shell",
-        (pathname) => {
-            expect(isShellRoute(pathname)).toBe(false);
-        },
-    );
+    it.each([
+        "/demo",
+        "/data-health",
+        "/org/admin",
+        "/superadmin",
+        "/settings",
+        "/org/admin/users",
+        "/",
+    ])("keeps %s outside the shell", (pathname) => {
+        expect(isShellRoute(pathname)).toBe(false);
+    });
 
     it("treats a missing pathname as outside the shell", () => {
         expect(isShellRoute(null)).toBe(false);
@@ -89,7 +99,24 @@ describe("shell route registry", () => {
         expect(shellRouteForPathname("/security")?.filterParam).toBe("page");
         expect(shellRouteForPathname("/security/repos/repo-1")?.filterParam).toBe("page");
         expect(
-            SHELL_ROUTES.filter((route) => route.filterParam).map((route) => route.prefix),
+            SHELL_ROUTES.filter((route) => route.filterParam === "page").map(
+                (route) => route.prefix,
+            ),
         ).toEqual(["/security"]);
+    });
+
+    it("marks the artifact detail routes as routes with no filter state, and no other route", () => {
+        expect(shellRouteForPathname("/prs/repo-1:42")?.filterParam).toBe("none");
+        expect(
+            SHELL_ROUTES.filter((route) => route.filterParam === "none").map(
+                (route) => route.prefix,
+            ),
+        ).toEqual(["/prs", "/issues", "/deployments", "/reports"]);
+    });
+
+    it("gives Report Center its own entry and its descendants the no-filter entry: the first equal-length match wins", () => {
+        expect(shellRouteForPathname("/reports")).toEqual({ prefix: "/reports", exact: true });
+        expect(shellRouteForPathname("/reports/new")?.filterParam).toBe("none");
+        expect(shellRouteForPathname("/reports/abc-123")?.filterParam).toBe("none");
     });
 });

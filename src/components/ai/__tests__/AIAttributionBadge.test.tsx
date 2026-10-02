@@ -68,3 +68,53 @@ describe("attributionBucketForKind", () => {
         },
     );
 });
+
+describe("AIAttributionBadge pinned markup facts (CHAOS-7763, shared cards)", () => {
+    it("has its test id and a tooltip with the label, the tool and the confidence", () => {
+        render(<AIAttributionBadge bucket="AI_ASSISTED" tool="copilot" confidence={0.82} />);
+        const badge = screen.getByTestId("ai-attribution-badge");
+        expect(badge).toHaveAttribute("title", "AI-assisted · Tool: copilot · Confidence: 82%");
+    });
+
+    it("every bucket has its own label in the visible text", () => {
+        for (const [bucket, label] of [
+            ["ai_assisted", "AI-assisted"],
+            ["ai_review", "AI-reviewed"],
+            ["agent_created", "Agent-created"],
+            ["human", "Human"],
+            ["unknown", "Unknown attribution"],
+        ] as const) {
+            const { unmount } = render(<AIAttributionBadge bucket={bucket} />);
+            expect(screen.getByTestId("ai-attribution-badge")).toHaveTextContent(label);
+            unmount();
+        }
+    });
+});
+
+describe("AIAttributionBadge look (CHAOS-7763)", () => {
+    it("is an outline pill with a dot; Unknown is dashed and its dot is not filled", () => {
+        const { unmount } = render(<AIAttributionBadge bucket="ai_assisted" />);
+        const pill = screen.getByTestId("ai-attribution-badge");
+        expect(pill.className).toContain("border");
+        expect(pill.className).not.toContain("border-dashed");
+        expect(screen.getByTestId("ai-attribution-dot").className).toContain(
+            "bg-(--chart-color-1)",
+        );
+        unmount();
+        render(<AIAttributionBadge bucket="something-new" />);
+        expect(screen.getByTestId("ai-attribution-badge").className).toContain("border-dashed");
+        expect(screen.getByTestId("ai-attribution-dot").className).toContain("border-dashed");
+        // The word still says it, so the dot color is never the only signal.
+        expect(screen.getByTestId("ai-attribution-badge")).toHaveTextContent("Unknown attribution");
+    });
+
+    it("each known bucket has its own dot color", () => {
+        const dots = new Set<string>();
+        for (const b of ["ai_assisted", "ai_review", "agent_created", "human"]) {
+            const { unmount } = render(<AIAttributionBadge bucket={b} />);
+            dots.add(screen.getByTestId("ai-attribution-dot").className);
+            unmount();
+        }
+        expect(dots.size).toBe(4);
+    });
+});
