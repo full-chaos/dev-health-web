@@ -70,7 +70,8 @@ describe("ShellSidebar — landmarks and structure", () => {
         const primary = screen.getByRole("navigation", { name: "Primary areas" });
         const utility = screen.getByRole("navigation", { name: "Reports and admin" });
         const scroll = primary.parentElement as HTMLElement;
-        expect(scroll).toHaveClass("md:flex-1", "md:overflow-y-auto");
+        // Not `md:` only: in the slide-over the main rows scroll inside this wrapper too, so they never spill over Reports / Admin.
+        expect(scroll).toHaveClass("min-h-0", "flex-1", "overflow-y-auto");
         expect(scroll).not.toContainElement(utility);
         expect(screen.getByTestId("shell-utility-nav")).toContainElement(utility);
         const account = screen.getByRole("button", { name: "Account options" });
