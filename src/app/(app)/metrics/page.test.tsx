@@ -304,26 +304,37 @@ describe("/metrics in the approved prototype layout (CHAOS-8066)", () => {
             contributors.getByText("Where the impact concentrates in this window."),
         ).toBeInTheDocument();
 
-        // Bars only: the legacy link rows under each chart are gone (they live in the drawer).
+        // Meter rows only: no axis chart, and the legacy link rows under each chart are gone
+        // (they live in the drawer).
         expect(within(cards).queryAllByRole("link")).toHaveLength(0);
-        expect(within(cards).getAllByTestId("bar-chart")).toHaveLength(2);
+        expect(barSpy).not.toHaveBeenCalled();
+        expect(associations.getByRole("list", { name: "Likely associations" })).toBeInTheDocument();
+        expect(
+            contributors.getByRole("list", { name: "Primary contributors" }),
+        ).toBeInTheDocument();
     });
 
-    it("association bars are drawn as production draws them: |delta| and the served contributor values, no added format", async () => {
+    it("association meter rows: the fill is |delta| as production draws it; the value is the served signed change with its unit", async () => {
         await renderTab("flow");
-        const associationBars = barSpy.mock.calls[0][0] as Record<string, unknown>;
-        expect(associationBars).toMatchObject({
-            categories: ["repo-alpha", "repo-beta"],
-            values: [20, 10],
-        });
-        // No value format on the chart: an all-zero set would repeat axis labels ("0% 0% 1% 1%").
-        expect(associationBars.valueFormat).toBeUndefined();
-        const contributorBars = barSpy.mock.calls[1][0] as Record<string, unknown>;
-        expect(contributorBars).toMatchObject({ categories: ["repo-gamma"], values: [7] });
-        expect(contributorBars.valueFormat).toBeUndefined();
+        const rows = within(screen.getByTestId("association-meter-rows")).getAllByTestId(
+            "meter-row",
+        );
+        expect(rows.map((row) => row.textContent)).toEqual(["repo-alpha-20%", "repo-beta+10%"]);
+        const fills = rows.map((row) => within(row).getByTestId("meter-fill").style.width);
+        // |−20| is the largest, so it fills the track; |+10| fills half.
+        expect(fills).toEqual(["100%", "50%"]);
     });
 
-    it("data notes: the unit and no causal conclusion under the associations; the served unit under the contributors", async () => {
+    it("contributor meter rows: the served values with the served unit; the unit note is gone", async () => {
+        await renderTab("flow");
+        const rows = within(screen.getByTestId("contributor-meter-rows")).getAllByTestId(
+            "meter-row",
+        );
+        expect(rows.map((row) => row.textContent)).toEqual(["repo-gamma7d"]);
+        expect(within(rows[0]).getByTestId("meter-fill").style.width).toBe("100%");
+    });
+
+    it("data note: the unit and no causal conclusion under the associations only", async () => {
         await renderTab("flow");
         const [associations, contributors] = Array.from(
             screen.getByTestId("association-cards").querySelectorAll(":scope > section"),
@@ -331,9 +342,8 @@ describe("/metrics in the approved prototype layout (CHAOS-8066)", () => {
         expect(associations.getByTestId("data-note")).toHaveTextContent(
             "Association values are percent change in the selected window; no causal conclusion is added.",
         );
-        expect(contributors.getByTestId("data-note")).toHaveTextContent(
-            "Cycle Time per contributor, in days.",
-        );
+        expect(contributors.queryByTestId("data-note")).toBeNull();
+        expect(screen.queryByText(/per contributor, in/)).toBeNull();
         expect(screen.queryByText(/Preview of the selected window/)).toBeNull();
     });
 
@@ -364,11 +374,11 @@ describe("/metrics in the approved prototype layout (CHAOS-8066)", () => {
         }
     });
 
-    it("empty explain data: both cards say so and draw no bars and no unit note", async () => {
+    it("empty explain data: both cards say so and draw no meter rows and no unit note", async () => {
         explainOverride.value = { ...explain, drivers: [], contributors: [] };
         try {
             await renderTab("flow");
-            expect(screen.queryAllByTestId("bar-chart")).toHaveLength(0);
+            expect(screen.queryAllByTestId("meter-row")).toHaveLength(0);
             expect(
                 screen.getByText("Association detail will appear once data is ingested."),
             ).toBeInTheDocument();

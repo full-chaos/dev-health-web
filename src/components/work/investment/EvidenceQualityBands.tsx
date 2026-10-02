@@ -1,6 +1,7 @@
 "use client";
 
 import { DataState } from "@/components/ui/DataState";
+import { MeterRows } from "@/components/ui/MeterRows";
 import { formatNumber } from "@/lib/formatters";
 import { EVIDENCE_QUALITY_BANDS } from "./types";
 
@@ -21,7 +22,7 @@ type EvidenceQualityBandsProps = {
  * Evidence-quality band distribution driven by the persisted aggregate
  * `evidence_quality_distribution` from the investment mix.
  *
- * The bar and legend both reflect the server-computed distribution, not a
+ * The band and the meter rows both reflect the server-computed distribution, not a
  * client-side count of workUnits (which is capped at 200 and may be partial).
  * When the persisted distribution is absent, an honest-unavailable DataState
  * is shown rather than synthesising a misleading encoding.
@@ -79,26 +80,22 @@ export function EvidenceQualityBands({ evidenceQualityDistribution }: EvidenceQu
                     );
                 })}
             </div>
-            <dl className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {segments.map((segment) => {
+            {/* Prototype `investmentConfidence()`: the band, then meter rows (`bars()`), one per band
+                with its share of the work units. */}
+            <MeterRows
+                aria-label="Evidence quality bands"
+                testId="evidence-quality-meter-rows"
+                max={100}
+                rows={segments.map((segment) => {
                     const pct = segment.share * 100;
-                    return (
-                        <div
-                            key={segment.id}
-                            className="flex items-center gap-2 text-xs text-(--ink-muted)"
-                        >
-                            <span
-                                data-swatch={segment.id}
-                                className={`h-2.5 w-2.5 shrink-0 rounded-full ${segment.swatchClass}`}
-                            />
-                            <dt className="min-w-0 truncate">{segment.label}</dt>
-                            <dd className="ml-auto font-mono text-(--ink)">
-                                {formatNumber(pct, { maximumFractionDigits: 0 })}%
-                            </dd>
-                        </div>
-                    );
+                    return {
+                        key: segment.id,
+                        label: segment.label,
+                        value: pct,
+                        display: `${formatNumber(pct, { maximumFractionDigits: 0 })}%`,
+                    };
                 })}
-            </dl>
+            />
         </div>
     );
 }

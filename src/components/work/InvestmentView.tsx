@@ -499,7 +499,6 @@ export function InvestmentView({
                     )}
                 >
                     <InvestmentExplainer
-                        embedded
                         mixExplanation={data.mixExplanation}
                         mixExplainKey={data.mixExplainKey}
                         isExplainingMix={data.isExplainingMix}

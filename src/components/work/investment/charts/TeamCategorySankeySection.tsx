@@ -1,6 +1,5 @@
 import { useCallback, useMemo } from "react";
 import { SankeyChart } from "@/components/charts/SankeyChart";
-import { formatNumber } from "@/lib/formatters";
 import {
     COVERAGE_UNAVAILABLE_REASON,
     isUnassignedLabel,
@@ -9,6 +8,7 @@ import {
     TOP_N_REPOS,
     UNASSIGNED_TEAM_LABEL,
 } from "@/lib/investment";
+import { THEME_LABELS, titleCase } from "@/lib/investment/transforms";
 import { computeSankeyMetrics, filterSankeyToTeam } from "@/lib/sankey";
 import {
     computeSelectedPath,
@@ -41,6 +41,7 @@ export type TeamCategorySankeySectionProps = {
         value: string | null | ((current: string | null) => string | null),
     ) => void;
     setFocusSubcategory: (value: string | null) => void;
+    /** Kept for the callers; the sub-line that named the path depth is gone (the chart shows it). */
     showSubcategories: boolean;
     effortUnit: string;
     teamCategoryFlow: SankeyResponse | null | undefined;
@@ -57,6 +58,9 @@ export type TeamCategorySankeySectionProps = {
 
 const KIND_CHIP_LABEL = { team: "Team", theme: "Theme", subcategory: "Subcategory", repo: "Repo" };
 
+/** A theme as the page names it ("Feature Delivery"), never the raw key ("feature_delivery"). */
+const themeLabel = (key: string) => THEME_LABELS[key] ?? titleCase(key);
+
 export function TeamCategorySankeySection({
     filters,
     focusedTeam,
@@ -64,7 +68,6 @@ export function TeamCategorySankeySection({
     selectedCategory,
     setSelectedCategory,
     setFocusSubcategory,
-    showSubcategories,
     effortUnit,
     teamCategoryFlow,
     baselineSankeyFlow,
@@ -165,51 +168,6 @@ export function TeamCategorySankeySection({
     // renders as "unavailable"; a produced 0 renders as 0%.
     const sankeyCoverage = useMemo(() => readFlowCoverage(sankeyFlow), [sankeyFlow]);
     const coverageUnavailable = sankeyCoverage.team === null || sankeyCoverage.repo === null;
-    const formatCoverage = (value: number | null) =>
-        value === null ? "unavailable" : `${formatNumber(value * 100)}%`;
-
-    const categoryShareSummary = useMemo(() => {
-        if (!sankeyFlow || !sankeyFlow.links.length) return [];
-        const targetGroup = showSubcategories ? "subcategory" : "category";
-        const groupNames = new Set(
-            sankeyFlow.nodes.filter((node) => node.group === targetGroup).map((node) => node.name),
-        );
-        if (!groupNames.size) return [];
-        const totals = new Map<string, number>();
-        let total = 0;
-        sankeyFlow.links.forEach((link) => {
-            if (!groupNames.has(link.target)) return;
-            totals.set(link.target, (totals.get(link.target) ?? 0) + link.value);
-            total += link.value;
-        });
-        if (total === 0) {
-            sankeyFlow.links.forEach((link) => {
-                if (!groupNames.has(link.source)) return;
-                totals.set(link.source, (totals.get(link.source) ?? 0) + link.value);
-                total += link.value;
-            });
-        }
-        return Array.from(totals.entries())
-            .map(([name, value]) => ({
-                name,
-                value,
-                share: total > 0 ? (value / total) * 100 : 0,
-            }))
-            .sort((a, b) => b.value - a.value);
-    }, [sankeyFlow, showSubcategories]);
-
-    const isSingleTeamScope = filters.scope.level === "team" && filters.scope.ids.length === 1;
-    const summaryLimit = showSubcategories ? 3 : isSingleTeamScope ? 1 : 3;
-    const topCategorySummary = useMemo(
-        () => categoryShareSummary.slice(0, summaryLimit),
-        [categoryShareSummary, summaryLimit],
-    );
-    const topSummaryLabel = showSubcategories
-        ? "Top subcategories:"
-        : isSingleTeamScope
-          ? "Top theme:"
-          : "Top themes:";
-
     const handleTeamFocus = useCallback(
         (teamName: string) => {
             if (!teamName || teamName === UNASSIGNED_TEAM_LABEL) {
@@ -334,103 +292,54 @@ export function TeamCategorySankeySection({
 
     return (
         <div className="min-w-0" data-testid="team-category-sankey">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-                <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-3">
-                        <h3 className="text-sm font-semibold text-foreground">
-                            Team &rarr; Theme &rarr; Repo
-                        </h3>
-                        <div className="flex flex-wrap items-center gap-3 text-xs text-(--ink-muted)">
-                            <span>
-                                Team coverage:{" "}
-                                <strong className="text-(--ink)">
-                                    {formatCoverage(sankeyCoverage.team)}
-                                </strong>
-                            </span>
-                            <span>
-                                Repo coverage:{" "}
-                                <strong className="text-(--ink)">
-                                    {formatCoverage(sankeyCoverage.repo)}
-                                </strong>
-                            </span>
-                        </div>
-                    </div>
-                    <p className="mt-1 text-xs text-(--ink-muted)">
-                        {showSubcategories
-                            ? "Team to Theme to Subcategory to Repo"
-                            : "Team to Theme to Repo"}
-                    </p>
-                    {(focusedTeam || selectedCategory || selectedEntity) && (
-                        <div className="mt-3 flex flex-wrap items-center gap-2">
-                            {focusedTeam && (
-                                <button
-                                    type="button"
-                                    onClick={() => setFocusedTeam(null)}
-                                    className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
-                                >
-                                    Drilldown: Team = {focusedTeam}
-                                    <span className="text-xs">x</span>
-                                </button>
-                            )}
-                            {selectedCategory && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setSelectedCategory(null);
-                                        setFocusSubcategory(null);
-                                    }}
-                                    className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
-                                >
-                                    Drilldown: Theme = {selectedCategory}
-                                    <span className="text-xs">x</span>
-                                </button>
-                            )}
-                            {selectedEntity && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        onSelectEntity(null);
-                                        if (selectedEntity.kind === "subcategory") {
-                                            setFocusSubcategory(null);
-                                        }
-                                    }}
-                                    className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
-                                >
-                                    Selected: {KIND_CHIP_LABEL[selectedEntity.kind]} ={" "}
-                                    {stripSankeyPrefix(selectedEntity.name)}
-                                    <span className="text-xs">x</span>
-                                </button>
-                            )}
-                        </div>
+            {/* No summary block above the chart (prototype `allocation()`): the coverage values are
+                in the tiles and the attribution note is in the aside. Only the drill chips stay. */}
+            {(focusedTeam || selectedCategory || selectedEntity) && (
+                <div
+                    data-testid="allocation-drill-chips"
+                    className="mb-3 flex flex-wrap items-center gap-2"
+                >
+                    {focusedTeam && (
+                        <button
+                            type="button"
+                            onClick={() => setFocusedTeam(null)}
+                            className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
+                        >
+                            Drilldown: Team = {focusedTeam}
+                            <span className="text-xs">x</span>
+                        </button>
                     )}
-                </div>
-                <div className="flex flex-col items-start gap-2 text-xs text-(--ink-muted)">
                     {selectedCategory && (
-                        <span>
-                            Theme focus:{" "}
-                            <strong className="text-(--ink)">{selectedCategory}</strong>
-                        </span>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSelectedCategory(null);
+                                setFocusSubcategory(null);
+                            }}
+                            className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
+                        >
+                            Drilldown: Theme = {themeLabel(selectedCategory)}
+                            <span className="text-xs">x</span>
+                        </button>
                     )}
-                    {topCategorySummary.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span>{topSummaryLabel}</span>
-                            {topCategorySummary.map((entry) => (
-                                <span
-                                    key={entry.name}
-                                    className="rounded-full border border-(--card-stroke) px-2 py-0.5 text-xs"
-                                >
-                                    {entry.name}{" "}
-                                    {formatNumber(entry.share, { maximumFractionDigits: 0 })}%
-                                </span>
-                            ))}
-                        </div>
+                    {selectedEntity && (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                onSelectEntity(null);
+                                if (selectedEntity.kind === "subcategory") {
+                                    setFocusSubcategory(null);
+                                }
+                            }}
+                            className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
+                        >
+                            Selected: {KIND_CHIP_LABEL[selectedEntity.kind]} ={" "}
+                            {stripSankeyPrefix(selectedEntity.name)}
+                            <span className="text-xs">x</span>
+                        </button>
                     )}
                 </div>
-            </div>
-            <div className="mb-4 mt-2 border-l-2 border-(--card-stroke) py-1 pl-3 text-xs leading-relaxed text-(--ink-muted)">
-                This view shows where effort appears to land across teams, themes, and repos for the
-                selected window. Allocation reflects attribution, not dependency or impact.
-            </div>
+            )}
             <div className="mt-0">
                 {isSankeyLoading ? (
                     <p className="text-sm text-(--ink-muted)">Loading allocation data...</p>

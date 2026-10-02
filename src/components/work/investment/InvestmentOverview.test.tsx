@@ -4,7 +4,7 @@ import { fireEvent } from "@testing-library/react";
 import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import { screen, cleanup, within } from "@/test/utils";
 import type { MetricFilter } from "@/lib/filters/types";
-import type { MetricDelta, WorkUnitInvestment } from "@/lib/types";
+import type { WorkUnitInvestment } from "@/lib/types";
 import type { UseInvestmentDataResult } from "./useInvestmentData";
 
 const { useInvestmentDataMock, workUnitAttributionRef } = vi.hoisted(() => ({
@@ -196,13 +196,28 @@ describe("overview: context card", () => {
         useInvestmentDataMock.mockReset();
     });
 
-    it("holds the evidence-quality line, the coverage facts and the AI block in one card", () => {
+    it("holds the evidence-quality line, the coverage facts and the AI block in one card; the AI block is collapsed", () => {
         overview({ mixExplanation: explained() as never, mixExplainKey: "k" });
         const card = screen.getByTestId("read-with-context");
         expect(card).toHaveTextContent("Read this with context");
         expect(card).toHaveTextContent("Evidence quality");
+        // Collapsed by default: only the ghost toggle shows (the prototype card has no AI block).
+        const toggle = within(card).getByRole("button", { name: "Show AI explanation" });
+        expect(toggle).toHaveAttribute("aria-expanded", "false");
+        expect(toggle.className).toContain("border-transparent");
+        expect(card).not.toHaveTextContent("What this investment mix indicates");
+        expect(screen.queryByTestId("ai-generated-label")).toBeNull();
+
+        fireEvent.click(toggle);
+        expect(within(card).getByRole("button", { name: "Hide AI explanation" })).toHaveAttribute(
+            "aria-expanded",
+            "true",
+        );
         expect(card).toHaveTextContent("What this investment mix indicates");
         expect(screen.getByTestId("ai-generated-label")).toHaveTextContent("AI-generated");
+        // Regenerate is a ghost button inside the opened block.
+        const regenerate = within(card).getByRole("button", { name: "Regenerate" });
+        expect(regenerate.className).toContain("border-transparent");
     });
 
     it("quality line: level, caveat pill for low, mean in the Confidence tab's own format", () => {

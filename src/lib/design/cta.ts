@@ -104,6 +104,16 @@ export const CTA_LABELS = {
     evidenceDrilldown: "Evidence drilldown",
     /** Metric evidence page, Context card: back to the Flow tab of the metric (approved copy, app.js line 99). */
     returnToInvestigation: "Return to investigation",
+    /** Investment Allocation, selected-path aside: the Evidence tab (approved copy, app.js line 71). */
+    inspectAllocationEvidence: "Inspect allocation evidence",
+    /** Investment "Read this with context": open the collapsed AI explanation. */
+    showAiExplanation: "Show AI explanation",
+    /** Investment "Read this with context": collapse the AI explanation again. */
+    hideAiExplanation: "Hide AI explanation",
+    /** Investment AI explanation: ask for a new explanation of the same window. */
+    regenerate: "Regenerate",
+    /** Investment AI explanation: shown on the Regenerate button while the request runs. */
+    generating: "Generating...",
     aiImpact: "Impact",
     aiReviewLoad: "Review Load",
     aiRisk: "Risk",
