@@ -191,6 +191,16 @@ describe("ShellTopBar — prototype order", () => {
     });
 });
 
+describe("ShellTopBar — surface", () => {
+    it("is the surface at 92% with an 8px blur, as the prototype `.topbar` (theme.css:59)", () => {
+        render(<ShellTopBar status={LOADING} />);
+        const bar = screen.getByTestId("shell-top-bar");
+        expect(bar.className).toContain("bg-(--surface)/92");
+        expect(bar.className).toContain("backdrop-blur-sm");
+        expect(bar.className).toContain("border-b");
+    });
+});
+
 describe("shellStatusFromOrganization — unknown is its own state", () => {
     it("is synced for an organization with data and a real timestamp", () => {
         expect(
