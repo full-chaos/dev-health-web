@@ -10,6 +10,8 @@ import {
     useState,
 } from "react";
 
+import { Copy } from "lucide-react";
+
 import { formatSelection, toggleValue } from "@/components/filters/filterBarUtils";
 import { QuickFilterMenu } from "@/components/filters/sections/QuickFilterMenu";
 import { Button } from "@/components/shared/Button";
@@ -142,10 +144,11 @@ export function ScopeBarCard({
 
                 <div className="ml-auto flex flex-wrap items-center gap-2">
                     {actions}
-                    <Button variant="secondary" onClick={onReset}>
-                        {CTA_LABELS.resetFilters}
+                    {/* Prototype `scopebar()`: Reset is ghost small, Copy link small with the copy icon. */}
+                    <Button variant="ghost" size="sm" onClick={onReset}>
+                        {CTA_LABELS.reset}
                     </Button>
-                    <Button variant="secondary" onClick={copyLink}>
+                    <Button variant="secondary" size="sm" icon={<Copy />} onClick={copyLink}>
                         {CTA_LABELS.copyLink}
                     </Button>
                 </div>
