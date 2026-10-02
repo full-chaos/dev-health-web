@@ -1,6 +1,10 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import AppLayout from "./layout";
 
@@ -136,5 +140,36 @@ describe("AppLayout entitlement wiring", () => {
             limits: {},
             tier: "community",
         });
+    });
+});
+
+describe("AppLayout shared evidence drawer", () => {
+    function Opener() {
+        const evidence = useEvidenceDrawer();
+        return (
+            <button
+                type="button"
+                onClick={() => evidence.open({ title: "Cycle Time", filters: defaultMetricFilter })}
+            >
+                Open evidence for the page
+            </button>
+        );
+    }
+
+    beforeEach(() => {
+        requireSessionMock.mockResolvedValue({ user: { id: "user-1", org_id: "org-1" } });
+        getOrgEntitlementsMock.mockResolvedValue({ error: "not needed for this test" });
+    });
+
+    it("gives every authed page the one 'Evidence & Context' drawer", async () => {
+        // The page calls the hook with no provider of its own: the layout must supply it.
+        render(await AppLayout({ children: <Opener /> }));
+        expect(screen.queryByRole("dialog")).toBeNull();
+
+        await userEvent.click(screen.getByRole("button", { name: "Open evidence for the page" }));
+
+        const dialog = screen.getByRole("dialog", { name: "Evidence & Context" });
+        expect(dialog).toHaveTextContent("Cycle Time");
+        expect(screen.getAllByRole("dialog")).toHaveLength(1);
     });
 });

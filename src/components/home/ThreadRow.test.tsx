@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { fireEvent, screen } from "@/test/utils";
 import { describe, expect, it } from "vitest";
 
 import { CockpitClient } from "./CockpitClient";

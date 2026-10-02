@@ -4,7 +4,7 @@ vi.mock("@/components/charts/SparklineChart", () => ({
     SparklineChart: () => <div data-testid="sparkline" />,
 }));
 const panelProps = vi.hoisted(() => ({ last: null as null | Record<string, unknown> }));
-vi.mock("@/components/evidence", () => ({
+vi.mock("@/components/evidence/EvidencePanel", () => ({
     EvidencePanel: (props: Record<string, unknown>) => {
         panelProps.last = props;
         return null;
@@ -12,7 +12,8 @@ vi.mock("@/components/evidence", () => ({
 }));
 
 import { MetricEvidenceCards } from "./MetricEvidenceCards";
-import { render, screen, userEvent, within } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { screen, userEvent, within } from "@/test/utils";
 import { buildExploreUrl } from "@/lib/filters/url";
 
 const deltas = [
@@ -182,9 +183,15 @@ describe("MetricEvidenceCards pinned behaviour (CHAOS-7705, before merging into 
         const links = screen.getAllByRole("link", { name: "Open evidence" });
         expect(links).toHaveLength(4);
         expect(links[0]).toHaveAttribute("href", buildExploreUrl({ metric: "a", filters }));
-        expect(panelProps.last?.isOpen).toBe(false);
+        // The shared drawer mounts no panel until a tile opens it.
+        expect(panelProps.last).toBeNull();
         await userEvent.click(screen.getAllByRole("button", { name: "Open evidence" })[1]);
-        expect(panelProps.last).toMatchObject({ isOpen: true, title: "Down", metric: "b" });
+        expect(panelProps.last).toMatchObject({
+            isOpen: true,
+            title: "Down",
+            metric: "b",
+            filters,
+        });
     });
 
     it("passes the role into the Explore link", () => {

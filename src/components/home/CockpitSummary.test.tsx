@@ -1,4 +1,5 @@
-import { render, screen } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { screen } from "@/test/utils";
 import { describe, expect, it, vi } from "vitest";
 
 import type { MetricFilter } from "@/lib/filters/types";
@@ -7,6 +8,7 @@ import type { CockpitSignal, HomeResponse } from "@/lib/types";
 import { CockpitSummary } from "./CockpitSummary";
 
 vi.mock("next/navigation", () => ({
+    usePathname: () => "/dashboard",
     useSearchParams: () => new URLSearchParams(),
 }));
 

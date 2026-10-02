@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
 
-import { EvidencePanel } from "@/components/evidence/EvidencePanel";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { Notice } from "@/components/ui/Notice";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
@@ -32,7 +31,7 @@ export const metricFromEvidenceLink = (link: string | undefined): string | undef
 
 /** The selected opportunity: rationale, next steps and the evidence drawer. */
 export function OpportunityCard({ card, filters, activeRole }: OpportunityCardProps) {
-    const [drawerOpen, setDrawerOpen] = useState(false);
+    const evidence = useEvidenceDrawer();
     const [first, ...more] = card.evidence_links;
     const metric = metricFromEvidenceLink(first);
     // The backend words every title "Reduce <metric>", also where a rise is good (open point).
@@ -82,7 +81,9 @@ export function OpportunityCard({ card, filters, activeRole }: OpportunityCardPr
                     {first ? (
                         <button
                             type="button"
-                            onClick={() => setDrawerOpen(true)}
+                            onClick={() =>
+                                evidence.open({ title: card.title, apiUrl: first, filters })
+                            }
                             className="rounded-xl bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-foreground) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/60"
                         >
                             {CTA_LABELS.viewMetricEvidence}
@@ -119,14 +120,6 @@ export function OpportunityCard({ card, filters, activeRole }: OpportunityCardPr
                     </div>
                 )}
             </div>
-
-            <EvidencePanel
-                isOpen={drawerOpen}
-                onCloseAction={() => setDrawerOpen(false)}
-                title={card.title}
-                apiUrl={first}
-                filters={filters}
-            />
         </div>
     );
 }
