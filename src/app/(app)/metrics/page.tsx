@@ -17,6 +17,7 @@ import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
 import { FALLBACK_DELTAS, metricInverseGood } from "@/lib/metrics/catalog";
 import { METRIC_TABS } from "@/lib/metrics/metricTabs";
+import { getTabSet, tabHref } from "@/lib/navigation/tabs";
 import type { MetricDelta } from "@/lib/types";
 import { EntityLabel } from "@/components/labels/EntityLabel";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
@@ -40,6 +41,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
     const tabParam = Array.isArray(params.tab) ? params.tab[0] : params.tab;
+    const metricsTabs = getTabSet("metrics");
     const activeTab = METRIC_TABS.find((tab) => tab.id === tabParam) ?? METRIC_TABS[0];
 
     const quadrantScope: "org" | "team" | "repo" | "developer" =
@@ -109,7 +111,7 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                 items={METRIC_TABS.map((tab): ModeTabItem => ({
                     id: tab.id,
                     label: tab.label,
-                    href: withFilterParam(`/metrics?tab=${tab.id}`, filters, activeRole),
+                    href: withFilterParam(tabHref(metricsTabs, tab.id), filters, activeRole),
                 }))}
             />
 

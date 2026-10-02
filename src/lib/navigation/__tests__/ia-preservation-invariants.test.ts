@@ -228,9 +228,12 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
             expect(tabsSource, "TestOpsTabs should render the ViewSet as tabs").toContain(
                 'orientation="tabs"',
             );
-            expect(tabsSource, `${tab.path} should include a ${tab.label} tab item`).toContain(
-                `id: "${tab.id}"`,
-            );
+            // The tab list lives in the tab registry (CHAOS-7783); TestOpsTabs renders it.
+            expect(tabsSource).toContain('getTabSet("testops")');
+            expect(
+                getTabSet("testops").tabs.find((item) => item.id === tab.id),
+                `${tab.path} should include a ${tab.label} tab item`,
+            ).toMatchObject({ id: tab.id, label: tab.label, path: tab.path });
             expect(source, `${tab.path} should render its real content`).toContain(
                 tab.contentGuard,
             );
@@ -254,7 +257,9 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
         expect(routePageExists(path), path).toBe(true);
 
         if (basePath(path) === "/metrics") {
-            expect(metricsPageSource).toContain(`id: "${contentNeedle}"`);
+            // The tab list lives in the tab registry (CHAOS-7783); the page renders it.
+            expect(getTabSet("metrics").tabs.map((tab) => tab.id)).toContain(contentNeedle);
+            expect(metricsPageSource).toContain('getTabSet("metrics")');
         }
         if (path === "/investment") {
             expect(investmentPageSource).toContain(`<${contentNeedle}`);
@@ -468,10 +473,12 @@ describe("IA preservation invariant #3 — no dead investigation deep-links", ()
                     metricsPageSource,
                     `metrics page must resolve ?tab from the query for ${entry.href}`,
                 ).toContain("tab.id === tabParam");
+                // The tab list lives in the tab registry (CHAOS-7783); the page renders it.
                 expect(
-                    metricsPageSource,
+                    getTabSet("metrics").tabs.map((item) => item.id),
                     `metrics page must define the "${entry.expectedTab}" tab for ${entry.href}`,
-                ).toContain(`id: "${entry.expectedTab}"`);
+                ).toContain(entry.expectedTab);
+                expect(metricsPageSource).toContain('getTabSet("metrics")');
             }
         },
     );

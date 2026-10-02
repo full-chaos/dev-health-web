@@ -16,6 +16,8 @@ export type TabDef = {
     /** The value of the query parameter (and the `ViewSet` item id). */
     id: string;
     label: string;
+    /** Route sets only (`param: "route"`): the tab's own route. */
+    path?: string;
 };
 
 export type TabSet = {
@@ -24,10 +26,17 @@ export type TabSet = {
     areaId: NavAreaId;
     /** The destination's route: a `navAreas` child path. */
     basePath: string;
-    /** The query parameter that carries the active tab. */
-    param: "tab" | "view";
+    /** The query parameter that carries the active tab, or `route`: each tab is its own route. */
+    param: "tab" | "view" | "route";
+    /**
+     * The `navAreas` child path when it differs from `basePath` (Metrics: the sidebar's Flow row is
+     * `/metrics?tab=flow`). The palette matches the destination by this path.
+     */
+    childPath?: string;
     /** The id of the default tab: no query value in its link. */
     defaultTabId: string;
+    /** Keep the default tab's query value in its link (Metrics always linked `?tab=dora`). */
+    explicitDefault?: boolean;
     tabs: readonly TabDef[];
 };
 
@@ -101,6 +110,33 @@ export const TAB_SETS = [
             { id: "artifacts", label: "Artifacts" },
         ],
     },
+    {
+        id: "metrics",
+        areaId: "diagnose",
+        basePath: "/metrics",
+        childPath: "/metrics?tab=flow",
+        param: "tab",
+        defaultTabId: "dora",
+        explicitDefault: true,
+        tabs: [
+            { id: "dora", label: "DORA" },
+            { id: "flow", label: "Flow" },
+            { id: "throughput", label: "Throughput" },
+        ],
+    },
+    {
+        id: "testops",
+        areaId: "govern",
+        basePath: "/testops",
+        param: "route",
+        defaultTabId: "overview",
+        tabs: [
+            { id: "overview", label: "Overview", path: "/testops" },
+            { id: "pipelines", label: "Pipelines", path: "/testops/pipelines" },
+            { id: "tests", label: "Tests", path: "/testops/tests" },
+            { id: "coverage", label: "Coverage", path: "/testops/coverage" },
+        ],
+    },
 ] as const satisfies readonly TabSet[];
 
 export type TabSetId = (typeof TAB_SETS)[number]["id"];
@@ -119,7 +155,12 @@ export function getTabSet(id: TabSetId): TabSet {
 
 /** The link of a tab, without the user's state (`withFilterParam` adds it). */
 export function tabHref(set: TabSet, tabId: string): string {
-    return tabId === set.defaultTabId
+    if (set.param === "route") {
+        const path = set.tabs.find((tab) => tab.id === tabId)?.path;
+        if (!path) throw new Error(`Tab ${tabId} of ${set.id} has no route`);
+        return path;
+    }
+    return tabId === set.defaultTabId && !set.explicitDefault
         ? set.basePath
         : `${set.basePath}?${set.param}=${encodeURIComponent(tabId)}`;
 }

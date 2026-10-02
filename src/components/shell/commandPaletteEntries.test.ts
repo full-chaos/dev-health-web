@@ -45,7 +45,7 @@ const sample: NavArea[] = [
 
 describe("paletteEntries", () => {
     it("lists areas and visible children in registry order, with the area as the second line", () => {
-        const entries = paletteEntries(sample, {});
+        const entries = paletteEntries(sample, {}, []);
         expect(entries.map((e) => [e.label, e.areaLabel, e.path])).toEqual([
             ["Diagnose", "Diagnose", "/diagnose"],
             ["Flow", "Diagnose", "/metrics?tab=flow"],
@@ -106,6 +106,19 @@ describe("paletteEntries", () => {
         expect(entries.find((e) => e.path === "/cognitive-load?tab=load-drivers")?.label).toBe(
             "Load Drivers",
         );
+        // Metrics: the sidebar's Flow row is itself a tab; DORA and Throughput are added, Flow not twice.
+        expect(entries.find((e) => e.path === "/metrics?tab=dora")).toMatchObject({
+            label: "DORA",
+            areaLabel: "Flow · Diagnose",
+        });
+        expect(entries.find((e) => e.path === "/metrics?tab=throughput")?.label).toBe("Throughput");
+        expect(entries.filter((e) => e.path === "/metrics?tab=flow")).toHaveLength(1);
+        // TestOps: route tabs, listed after the TestOps destination (Overview is the destination row).
+        expect(entries.find((e) => e.path === "/testops/pipelines")).toMatchObject({
+            label: "Pipelines",
+            areaLabel: "TestOps · Govern",
+        });
+        expect(entries.filter((e) => e.path === "/testops")).toHaveLength(1);
         // The Diagnose pages moved onto the registry in part 2.
         expect(entries.find((e) => e.path === "/investment?tab=allocation")).toMatchObject({
             label: "Allocation",
@@ -161,7 +174,7 @@ describe("paletteEntries", () => {
 });
 
 describe("filterPaletteEntries", () => {
-    const entries = paletteEntries(sample, {});
+    const entries = paletteEntries(sample, {}, []);
 
     it("returns everything for an empty query", () => {
         expect(filterPaletteEntries(entries, "  ")).toEqual(entries);
