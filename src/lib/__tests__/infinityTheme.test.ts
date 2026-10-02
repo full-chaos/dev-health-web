@@ -216,12 +216,26 @@ describe("infinity palette", () => {
         }
     });
 
-    it.each(THEMES)("defines every token the existing palettes define (%s)", (theme) => {
-        const required = new Set<string>([
-            ...Object.keys(getBlock(globalsCss, "fullchaos-infinity-knot-redux", theme)),
-            ...Object.keys(getBlock(infinityCss, "fullchaos-infinity-ember", theme)),
-            ...Object.keys(getBlock(infinityCss, "fullchaos-infinity-tide", theme)),
-            // Role tokens that globals.css derives for every palette.
+    it.each(THEMES)("defines every token the removed palettes defined (%s)", (theme) => {
+        const required = [
+            "--background",
+            "--foreground",
+            "--ink-muted",
+            "--accent",
+            "--accent-foreground",
+            "--accent-1",
+            "--accent-2",
+            "--accent-3",
+            "--accent-negative",
+            "--accent-highlight",
+            "--card",
+            "--card-stroke",
+            "--chart-grid",
+            "--chart-text",
+            "--chart-muted",
+            ...Array.from({ length: 10 }, (_, i) => `--chart-color-${i + 1}`),
+            "--hero-gradient",
+            "--app-gradient",
             "--surface",
             "--surface-raised",
             "--border",
@@ -233,21 +247,56 @@ describe("infinity palette", () => {
             "--negative",
             "--info",
             "--accent-ai",
-        ]);
+        ];
         const defined = new Set(Object.keys(infinity(theme)));
-        const missing = [...required].filter((name) => !defined.has(name));
-        expect(missing).toEqual([]);
+        expect(required.filter((name) => !defined.has(name))).toEqual([]);
     });
 
-    it("is registered in the palette allow-lists and is not the default", () => {
-        const themeInit = read("../../../public/theme-init.js");
+    it("ships no other palette block", () => {
+        const names = new Set(
+            [...infinityCss.matchAll(/data-palette="([^"]+)"/gu)].map((m) => m[1]),
+        );
+        expect([...names]).toEqual(["infinity"]);
+        expect(globalsCss).not.toMatch(/data-palette="(?!infinity")[^"]+"\]\[data-theme/u);
+    });
+
+    it("is the default and the only palette the runtime sets", () => {
+        expect(read("../../app/layout.tsx")).toContain('data-palette="infinity"');
         const toggle = read("../../components/ThemeToggle.tsx");
         const prefs = read("../../components/settings/PreferencesSettings.tsx");
-        expect(themeInit).toContain('normalizedPalette === "infinity"');
-        expect(toggle).toContain('value === "infinity"');
-        expect(prefs).toContain('"infinity",');
-        expect(read("../../app/layout.tsx")).toContain(
-            'data-palette="fullchaos-infinity-knot-redux"',
+        expect(toggle).not.toMatch(/palette/iu);
+        expect(prefs).not.toMatch(/palette/iu);
+    });
+
+    it.each(["fullchaos-infinity-knot-redux", "material", "tailwind", "garbage", null, "infinity"])(
+        "theme-init resolves a stored palette of %s to infinity before paint",
+        (stored) => {
+            const dataset: Record<string, string> = { palette: "fullchaos-infinity-knot-redux" };
+            const doc = { documentElement: { dataset, style: {} as Record<string, string> } };
+            const storage = {
+                getItem: (key: string) => (key === "palette" ? stored : "dark"),
+            };
+            new Function("document", "localStorage", read("../../../public/theme-init.js"))(
+                doc,
+                storage,
+            );
+            expect(dataset.palette).toBe("infinity");
+            expect(dataset.theme).toBe("dark");
+        },
+    );
+
+    it("theme-init still sets infinity when storage throws", () => {
+        const dataset: Record<string, string> = {};
+        const doc = { documentElement: { dataset, style: {} as Record<string, string> } };
+        const storage = {
+            getItem: () => {
+                throw new Error("blocked");
+            },
+        };
+        new Function("document", "localStorage", read("../../../public/theme-init.js"))(
+            doc,
+            storage,
         );
+        expect(dataset.palette).toBe("infinity");
     });
 });

@@ -88,7 +88,7 @@ export default function RootLayout({
         <html
             lang="en"
             data-theme="dark"
-            data-palette="fullchaos-infinity-knot-redux"
+            data-palette="infinity"
             style={{ colorScheme: "dark" }}
             suppressHydrationWarning
         >

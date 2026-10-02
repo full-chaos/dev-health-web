@@ -50,9 +50,9 @@ Use tokens only. **No hardcoded hex or px in components**, if a value is missing
 
 ### Locked decisions (CHAOS-2107, V1 token foundation)
 
-- **D1 — accent = orange (resolved).** The canonical palette is `fullchaos-infinity-knot-redux` (the app default in `src/app/layout.tsx`); its `--accent` (`#f47b20` dark / `#e04520` light) is the product realization of the Penpot `#F97316` accent. Blue-accent palettes (`fullchaos`, `echarts`, `material`) remain opt-in variants; they inherit the same semantic role tokens, so restyles must reference roles, never a literal orange.
+- **D1 — accent = orange (resolved).** `infinity` is the only palette and the app default (`src/app/layout.tsx`). Orange (ember) marks the CURRENT SELECTION (nav item, tab, window chip, segment): `--accent` is `#f47b20` dark / `#d6421f` light. Teal (tide) marks actions, links and data (`--accent-2`, chart series); silver carries structure. Restyles must reference role tokens, never a literal orange. The legacy palettes (`fullchaos`, `echarts`, `material`, cosmic, knot, flat, ember, tide) were removed in CHAOS-7583.
 - **D2 — radius scale locked (resolved).** One scale only: `--radius-sm` 6 / `--radius-md` 10 / `--radius-lg` 16 / `--radius-pill` 999. The Penpot card radius of 24 snaps to `--radius-lg` (16); no `xl` token is added.
-- **Token inventory (defined in `src/app/globals.css`, all palettes):** color roles `--surface`, `--surface-raised`, `--border` (dark runs dimmer than `--card-stroke` per CHAOS-2067; bright strokes reserved for `--card-stroke-active`), `--text-primary`, `--text-secondary`, `--text-muted`, `--accent-foreground` (the contrasting text color for solid accent controls), status `--positive` / `--caution` / `--negative` / `--info`, `--accent-ai`; typography utilities `text-display` 32/40, `text-h1` 24/32, `text-h2` 18/26, `text-h3` 15/22, `text-body` 14/22, `text-label-caps` 11/16 (+0.08em tracking); spacing `--space-card` 24 / `--space-card-sm` 16 on the 4px base scale; notification placement `--toast-offset-top` / `--toast-offset-inline` and Sonner surface roles `--toast-surface` / `--toast-border` / `--toast-title` / `--toast-description`; radius + elevation (`--elevation-card`, `--elevation-drawer`) as above.
+- **Token inventory (defined in `src/app/globals.css`, `src/app/fc-infinity-themes.css`):** color roles `--surface`, `--surface-raised`, `--border` (dark runs dimmer than `--card-stroke` per CHAOS-2067; bright strokes reserved for `--card-stroke-active`), `--text-primary`, `--text-secondary`, `--text-muted`, `--accent-foreground` (the contrasting text color for solid accent controls), status `--positive` / `--caution` / `--negative` / `--info`, `--accent-ai`; typography utilities `text-display` 32/40, `text-h1` 24/32, `text-h2` 18/26, `text-h3` 15/22, `text-body` 14/22, `text-label-caps` 11/16 (+0.08em tracking); spacing `--space-card` 24 / `--space-card-sm` 16 on the 4px base scale; notification placement `--toast-offset-top` / `--toast-offset-inline` and Sonner surface roles `--toast-surface` / `--toast-border` / `--toast-title` / `--toast-description`; radius + elevation (`--elevation-card`, `--elevation-drawer`) as above.
 
 ## Part D: CTA vocabulary registry (typed constants)
 
@@ -95,18 +95,18 @@ The platform uses **Tailwind CSS v4** via `@tailwindcss/postcss`.
 Appearance is controlled by two HTML attributes on the `<html>` element:
 
 1. **`data-theme`**: Controls the color mode (`light` or `dark`).
-2. **`data-palette`**: Controls the color scheme (`fullchaos`, `material`, `echarts`, `fullchaos-cosmic-train`, `fullchaos-cosmic-nebula`, `fullchaos-infinity-knot`, `fullchaos-infinity-knot-redux`, `flat`).
+2. **`data-palette`**: Always `infinity`, the only palette. A stored legacy palette name resolves to `infinity`.
 
 #### Default State
 
 The default configuration is:
 
 - `data-theme="dark"`
-- `data-palette="fullchaos-infinity-knot-redux"`
+- `data-palette="infinity"`
 
 #### Initialization
 
-To prevent Flash of Unstyled Content (FOUC), a blocking script in `src/app/layout.tsx` reads `localStorage` and applies the saved theme/palette before the first paint.
+To prevent Flash of Unstyled Content (FOUC), a blocking script in `src/app/layout.tsx` `public/theme-init.js` reads `localStorage`, applies the saved theme and forces the `infinity` palette before the first paint.
 
 ### Tailwind v4 Configuration
 
@@ -179,7 +179,3 @@ The system relies on CSS custom properties (variables) defined in `globals.css`.
 | `src/app/globals.css` | Canonical source for theme variables and Tailwind v4 configuration. |
 | `src/app/layout.tsx`  | Applies default attributes and contains the FOUC-prevention script. |
 | `postcss.config.mjs`  | Configures the PostCSS pipeline for Tailwind v4.                    |
-
-### Theme Variants
-
-For palette-specific guidance, see [`fullchaos-cosmic-train-theme.md`](./fullchaos-cosmic-train-theme.md) for the `fullchaos-cosmic-train` variant and [`fullchaos-infinity-knot-theme.md`](./fullchaos-infinity-knot-theme.md) for the image-inspired `fullchaos-infinity-knot` palette.

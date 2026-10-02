@@ -29,63 +29,17 @@ describe("PreferencesSettings", () => {
 
         storage.clear();
         document.documentElement.dataset.theme = "dark";
-        document.documentElement.dataset.palette = "fullchaos-infinity-knot-redux";
+        document.documentElement.dataset.palette = "infinity";
         document.documentElement.style.colorScheme = "dark";
     });
 
-    it("shows the infinity knot palette in preferences", () => {
+    it("offers no palette chooser", () => {
         render(<PreferencesSettings />);
 
-        expect(screen.getByRole("button", { name: "Infinity Knot" })).toBeInTheDocument();
-    });
-
-    it("shows the infinity knot redux palette in preferences", () => {
-        render(<PreferencesSettings />);
-
-        expect(screen.getByRole("button", { name: "Infinity Knot Redux" })).toBeInTheDocument();
-    });
-
-    it("shows the cosmic nebula palette in preferences", () => {
-        render(<PreferencesSettings />);
-
-        expect(screen.getByRole("button", { name: "Cosmic Nebula" })).toBeInTheDocument();
-    });
-
-    it("keeps experimental FC Infinity palettes out of preferences", () => {
-        render(<PreferencesSettings />);
-
-        expect(screen.queryByRole("button", { name: "FC Infinity Ember" })).not.toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: "FC Infinity Tide" })).not.toBeInTheDocument();
-    });
-
-    it("applies the infinity knot palette from preferences", async () => {
-        const user = userEvent.setup();
-        render(<PreferencesSettings />);
-
-        await user.click(screen.getByRole("button", { name: "Infinity Knot" }));
-
-        expect(document.documentElement.dataset.palette).toBe("fullchaos-infinity-knot");
-        expect(localStorage.getItem("palette")).toBe("fullchaos-infinity-knot");
-    });
-
-    it("applies the infinity knot redux palette from preferences", async () => {
-        const user = userEvent.setup();
-        render(<PreferencesSettings />);
-
-        await user.click(screen.getByRole("button", { name: "Infinity Knot Redux" }));
-
-        expect(document.documentElement.dataset.palette).toBe("fullchaos-infinity-knot-redux");
-        expect(localStorage.getItem("palette")).toBe("fullchaos-infinity-knot-redux");
-    });
-
-    it("applies the cosmic nebula palette from preferences", async () => {
-        const user = userEvent.setup();
-        render(<PreferencesSettings />);
-
-        await user.click(screen.getByRole("button", { name: "Cosmic Nebula" }));
-
-        expect(document.documentElement.dataset.palette).toBe("fullchaos-cosmic-nebula");
-        expect(localStorage.getItem("palette")).toBe("fullchaos-cosmic-nebula");
+        expect(screen.queryByText("Color Palette")).not.toBeInTheDocument();
+        expect(
+            screen.queryByRole("button", { name: "Infinity Knot Redux" }),
+        ).not.toBeInTheDocument();
     });
 
     it("persists the product telemetry opt-out preference", async () => {

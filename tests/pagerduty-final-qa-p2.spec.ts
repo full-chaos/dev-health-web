@@ -234,18 +234,9 @@ test("P1 toast styles map Sonner status properties to semantic tokens", async ({
     expect(toastStyles.statusIcon).toMatchObject({ color: "var(--toast-status-icon)" });
 });
 
-test("P1 accent controls meet WCAG AA contrast across every palette", async ({ page }) => {
+test("P1 accent controls meet WCAG AA contrast on the infinity palette", async ({ page }) => {
     await page.goto("/org/admin/integrations/pagerduty");
-    const palettes = [
-        "material",
-        "echarts",
-        "fullchaos",
-        "fullchaos-cosmic-train",
-        "fullchaos-infinity-knot",
-        "fullchaos-infinity-knot-redux",
-        "fullchaos-cosmic-nebula",
-        "flat",
-    ];
+    const palettes = ["infinity"];
 
     for (const palette of palettes) {
         for (const theme of ["light", "dark"]) {

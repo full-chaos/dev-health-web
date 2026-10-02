@@ -35,20 +35,20 @@ const LEVEL_META: Record<
 > = {
     high: {
         label: "High confidence",
-        dot: "bg-(--accent-3)",
-        chip: "border-(--accent-3)/40 text-(--accent-3)",
+        dot: "bg-(--positive)",
+        chip: "border-(--positive)/40 text-(--positive)",
         blurb: "Most sources this view relies on are connected and recent.",
     },
     medium: {
         label: "Medium confidence",
-        dot: "bg-amber-400",
-        chip: "border-amber-400/50 text-amber-500",
+        dot: "bg-(--caution)",
+        chip: "border-(--caution)/50 text-(--caution)",
         blurb: "Some sources are missing or sparse — read trends, not point values.",
     },
     low: {
         label: "Low confidence",
-        dot: "bg-(--accent-negative)",
-        chip: "border-(--accent-negative)/40 text-(--accent-negative)",
+        dot: "bg-(--negative)",
+        chip: "border-(--negative)/40 text-(--negative)",
         blurb: "Coverage is limited — this view may not reflect the full picture.",
     },
 };
