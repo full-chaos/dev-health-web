@@ -51,7 +51,7 @@ export default async function ReportsPage() {
                     />
                 ) : reports.length === 0 ? (
                     <DataState
-                        variant="no-findings"
+                        variant="detector-enabled-no-findings"
                         title="No saved reports yet"
                         description="Create your first report to get started."
                         action={
