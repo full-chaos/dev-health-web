@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useRef, useState } from "react";
-import { BetaBadge } from "@/components/BetaBadge";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
 import { OrgSwitcher } from "@/components/navigation/OrgSwitcher";
 import { useInShell } from "@/components/shell/ShellContext";
@@ -152,7 +151,7 @@ export function PrimaryNav({ filters, active, role }: PrimaryNavProps) {
                 >
                     <div>
                         <p className="mt-2 font-(--font-display) text-lg font-semibold flex items-center gap-2">
-                            Home <BetaBadge />
+                            Home
                         </p>
                         <p className="mt-1 text-xs text-(--ink-muted)">
                             Observe patterns, drill into evidence.
