@@ -22,7 +22,7 @@ import { ShellNav } from "./ShellNav";
  *
  * From `md` up it is a fixed-height column. Below `md` it is a slide-over
  * (concept `.app-sidebar.open`): off canvas until the menu button of the mobile
- * bar opens it from the left, `w-60` wide (the desktop sidebar width, which is the
+ * bar opens it from the left, `w-[226px]` wide (the desktop sidebar width, which is the
  * concept's `--sidebarW`), over a backdrop. While open it is a modal dialog:
  * focus moves in, Tab stays inside, Escape or a backdrop click closes it, focus
  * returns to the menu button, a link click closes it and the page behind does
@@ -71,7 +71,7 @@ export function ShellSidebar({
     return (
         <aside
             data-testid="shell-sidebar"
-            className="md:sticky md:top-0 md:h-dvh md:w-60 md:shrink-0 md:border-r md:border-(--border) md:bg-(--sidebar)"
+            className="md:sticky md:top-0 md:h-dvh md:w-[226px] md:shrink-0 md:border-r md:border-(--border) md:bg-(--sidebar)"
         >
             {mobileOpen && (
                 <div
@@ -92,7 +92,7 @@ export function ShellSidebar({
                 onClick={(event) => {
                     if ((event.target as HTMLElement).closest("a[href]")) close();
                 }}
-                className={`flex flex-col gap-4 overflow-y-auto border-r border-(--border) bg-(--sidebar) p-4 focus:outline-none max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:w-60 max-md:max-w-[86vw] max-md:shadow-xl max-md:transition-[transform,visibility] max-md:duration-200 motion-reduce:transition-none ${
+                className={`flex flex-col gap-4 overflow-y-auto border-r border-(--border) bg-(--sidebar) p-4 focus:outline-none max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:w-[226px] max-md:max-w-[86vw] max-md:shadow-xl max-md:transition-[transform,visibility] max-md:duration-200 motion-reduce:transition-none ${
                     mobileOpen
                         ? "max-md:visible max-md:translate-x-0"
                         : "max-md:invisible max-md:-translate-x-full"
@@ -129,7 +129,14 @@ export function ShellSidebar({
                 <div className="min-h-0 md:flex-1 md:overflow-y-auto">
                     {/* The links read the live query string (filter, role, lens). */}
                     <Suspense fallback={null}>
-                        <ShellNav />
+                        <ShellNav part="main" />
+                    </Suspense>
+                </div>
+
+                {/* Reports and Admin: held at the bottom, above the account block, outside the scroll region. */}
+                <div data-testid="shell-utility-nav" className="shrink-0">
+                    <Suspense fallback={null}>
+                        <ShellNav part="utility" />
                     </Suspense>
                 </div>
 

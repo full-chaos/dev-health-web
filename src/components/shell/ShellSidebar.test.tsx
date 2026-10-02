@@ -64,6 +64,21 @@ beforeEach(() => {
 });
 
 describe("ShellSidebar — landmarks and structure", () => {
+    it("holds Reports and Admin at the bottom: outside the scroll region of the main navigation, before the account block", () => {
+        renderSidebar();
+
+        const primary = screen.getByRole("navigation", { name: "Primary areas" });
+        const utility = screen.getByRole("navigation", { name: "Reports and admin" });
+        const scroll = primary.parentElement as HTMLElement;
+        expect(scroll).toHaveClass("md:flex-1", "md:overflow-y-auto");
+        expect(scroll).not.toContainElement(utility);
+        expect(screen.getByTestId("shell-utility-nav")).toContainElement(utility);
+        const account = screen.getByRole("button", { name: "Account options" });
+        expect(
+            utility.compareDocumentPosition(account) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
     it("is one complementary landmark that holds the brand, both navigations and the account block", () => {
         renderSidebar();
 
@@ -211,12 +226,12 @@ describe("ShellSidebar — mobile slide-over (CHAOS-7592)", () => {
         const panel = document.getElementById("primary-navigation-panel") as HTMLElement;
 
         expect(panel).toHaveClass("md:flex", "md:h-full", "md:overflow-visible", "md:border-0");
-        expect(sidebar()).toHaveClass("md:sticky", "md:h-dvh", "md:w-60", "md:shrink-0");
+        expect(sidebar()).toHaveClass("md:sticky", "md:h-dvh", "md:w-[226px]", "md:shrink-0");
         const unprefixedFixed = panel.className
             .split(/\s+/u)
             .filter((c) => c === "fixed" || c === "z-50");
         expect(unprefixedFixed).toEqual([]);
-        expect(panel).toHaveClass("max-md:w-60");
+        expect(panel).toHaveClass("max-md:w-[226px]");
     });
 
     it("has no slide transition for people who ask for reduced motion", () => {
