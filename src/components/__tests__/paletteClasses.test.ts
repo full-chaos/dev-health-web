@@ -100,7 +100,6 @@ const ALLOWLIST: Record<string, number> = {
     "components/security/KpiTile.tsx": 2,
     "components/settings/SettingsSection.tsx": 8,
     "components/testops/PrTestOpsSummary.tsx": 19,
-    "components/ui/Notice.tsx": 2,
     "components/work/CapacityView.tsx": 6,
     "components/work/GraphView.tsx": 13,
     "components/work/investment/ConfidencePanel.tsx": 8,
