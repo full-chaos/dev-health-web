@@ -82,6 +82,21 @@ describe("Drawer", () => {
         expect(screen.getByRole("dialog").className).toContain("sm:w-195");
     });
 
+    it("has an icon-only close control: no visible text, a decorative icon, the name 'Close'", () => {
+        render(
+            <Drawer open onCloseAction={() => {}} title="T">
+                <p>body</p>
+            </Drawer>,
+        );
+        const close = screen.getByRole("button", { name: "Close" });
+        expect(close).toHaveAttribute("aria-label", "Close");
+        expect(close.textContent).toBe("");
+        expect(close.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+        // Approved prototype `.btn.circle`: a 35px square.
+        expect(close.className).toContain("h-8.75");
+        expect(close.className).toContain("w-8.75");
+    });
+
     it("moves focus to Close on open and returns it to the opener on close", async () => {
         render(<Harness />);
         const opener = screen.getByRole("button", { name: "Open evidence" });

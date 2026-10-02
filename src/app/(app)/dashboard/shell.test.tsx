@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 import { AppShell } from "@/components/shell/AppShell";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getSetupStatus } from "@/lib/admin/server";
@@ -49,7 +50,9 @@ vi.mock("@/components/onboarding/SetupBanner", () => ({ SetupBanner: () => null 
 function renderInShell(page: React.ReactNode) {
     return render(
         <AdminTierProvider tier="community" features={{}}>
-            <AppShell>{page}</AppShell>
+            <EvidenceDrawerProvider>
+                <AppShell>{page}</AppShell>
+            </EvidenceDrawerProvider>
         </AdminTierProvider>,
     );
 }

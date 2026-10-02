@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 import { AppShell } from "@/components/shell/AppShell";
 
 import ExperimentsPage from "./page";
@@ -51,9 +52,11 @@ vi.mock("@/lib/config", async (importOriginal) => ({
 async function renderPage() {
     return render(
         <AdminTierProvider tier="community" features={{}}>
-            <AppShell>
-                {await ExperimentsPage({ searchParams: Promise.resolve({ role: "em" }) })}
-            </AppShell>
+            <EvidenceDrawerProvider>
+                <AppShell>
+                    {await ExperimentsPage({ searchParams: Promise.resolve({ role: "em" }) })}
+                </AppShell>
+            </EvidenceDrawerProvider>
         </AdminTierProvider>,
     );
 }

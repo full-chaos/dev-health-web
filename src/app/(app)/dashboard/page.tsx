@@ -10,6 +10,7 @@ import { AiWorkflowCallout } from "@/components/home/AiWorkflowCallout";
 import { DataConfidenceIndicator } from "@/components/home/DataConfidenceIndicator";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { getLensFromSearchParams, getLensConfig, DEFAULT_ROLE } from "@/lib/lensContext";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
@@ -22,6 +23,7 @@ import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { isAiDominant } from "@/lib/cockpit/aiGate";
+import { buildThreadApiUrl } from "@/lib/cockpit/evidenceRef";
 import type { HomeResponse } from "@/lib/types";
 
 const MONITORING_VIEWS = [
@@ -121,6 +123,16 @@ export default async function Home({ searchParams }: HomePageProps) {
             <PageHeader
                 title="Home"
                 subtitle={<>System patterns over the last {filters.time.range_days} days.</>}
+                actions={
+                    // The page subject is the Home payload itself, for the page's scope and window.
+                    <PageHeaderEvidenceAction
+                        subject={{
+                            title: "Home",
+                            apiUrl: buildThreadApiUrl("/api/v1/home", filters),
+                            filters,
+                        }}
+                    />
+                }
             >
                 {lensConfig.framing ? (
                     <p className="text-xs text-(--accent-2)/80">{lensConfig.framing}</p>

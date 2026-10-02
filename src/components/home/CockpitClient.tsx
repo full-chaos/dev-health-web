@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import Link from "next/link";
-import { EvidencePanel } from "@/components/evidence";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
+import { buildThreadApiUrl } from "@/lib/cockpit/evidenceRef";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { MetricDelta } from "@/components/shared/MetricDelta";
@@ -31,22 +32,6 @@ const THREAD_API_TARGETS: Record<string, string> = {
     execute: "/api/v1/opportunities",
 };
 
-const buildThreadApiUrl = (path: string, filters: MetricFilter, thread: string) => {
-    const params = new URLSearchParams({
-        scope_type: filters.scope.level,
-        range_days: String(filters.time.range_days),
-        compare_days: String(filters.time.compare_days),
-        thread,
-    });
-
-    const [scopeId] = filters.scope.ids;
-    if (scopeId) params.set("scope_id", scopeId);
-    if (filters.time.start_date) params.set("start_date", filters.time.start_date);
-    if (filters.time.end_date) params.set("end_date", filters.time.end_date);
-
-    return `${path}?${params.toString()}`;
-};
-
 const getThreadEvidenceTarget = (
     key: string,
     tile: HomeResponse["tiles"][string],
@@ -66,26 +51,10 @@ const getThreadEvidenceTarget = (
 };
 
 export function CockpitClient({ home, filters, activeRole, children }: CockpitClientProps) {
-    const [panelState, setPanelState] = useState<{
-        isOpen: boolean;
-        title: string;
-        apiUrl?: string;
-        metric?: string;
-    }>({
-        isOpen: false,
-        title: "",
-    });
+    const evidence = useEvidenceDrawer();
 
     const openPanel = (title: string, params: { apiUrl?: string; metric?: string }) => {
-        setPanelState({
-            isOpen: true,
-            title,
-            ...params,
-        });
-    };
-
-    const closePanel = () => {
-        setPanelState((prev) => ({ ...prev, isOpen: false }));
+        evidence.open({ title, ...params, filters });
     };
 
     const rawDeltas = home?.deltas ?? [];
@@ -97,15 +66,6 @@ export function CockpitClient({ home, filters, activeRole, children }: CockpitCl
 
     return (
         <>
-            <EvidencePanel
-                isOpen={panelState.isOpen}
-                onCloseAction={closePanel}
-                title={panelState.title}
-                apiUrl={panelState.apiUrl}
-                metric={panelState.metric}
-                filters={filters}
-            />
-
             {/* Key Shifts — role-aware delta row (CHAOS-2094) */}
             <section
                 className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card) p-5"
