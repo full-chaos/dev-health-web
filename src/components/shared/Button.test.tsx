@@ -41,15 +41,20 @@ describe("Button", () => {
 
     it("pins the variant colors", () => {
         const primary = buttonClassName("primary");
-        expect(primary).toContain("bg-(--accent-2)");
-        expect(primary).toContain("text-white");
+        expect(primary).toContain("bg-(--action)");
+        expect(primary).toContain("text-(--on-action)");
         const secondary = buttonClassName("secondary");
         expect(secondary).toContain("bg-(--card)");
         expect(secondary).toContain("border-(--card-stroke)");
         const ghost = buttonClassName("ghost");
         expect(ghost).toContain("border-transparent");
         expect(ghost).toContain("bg-transparent");
-        expect(ghost).toContain("text-(--accent-text)");
+        expect(ghost).toContain("text-(--accent-2)");
+        expect(ghost).not.toContain("accent-text");
+        // Teal marks actions; orange only marks the current selection.
+        for (const v of ["primary", "secondary", "ghost"] as const) {
+            expect(buttonClassName(v)).not.toMatch(/(?:text|bg|border)-\(--accent(?:-text|-1)?\)/);
+        }
     });
 
     it("renders a start icon before the label, hidden from assistive tech", () => {
