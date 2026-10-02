@@ -64,9 +64,8 @@ export function ImproveAutomationsDashboard({
                 <MetricCard
                     label="Detected signals"
                     value={ready ? result?.totalCount : undefined}
-                    caption="This window"
                     hideTrend
-                    deltaUnavailableLabel="No data"
+                    deltaSlot={<span>{ready ? "This window" : "No data"}</span>}
                 />
                 {ready
                     ? [...kindCounts.entries()].map(([kind, count]) => (
@@ -74,8 +73,8 @@ export function ImproveAutomationsDashboard({
                               key={kind}
                               label={kindLabel(kind)}
                               value={count}
-                              caption="In the list"
                               hideTrend
+                              deltaSlot={<span>In the list</span>}
                           />
                       ))
                     : null}

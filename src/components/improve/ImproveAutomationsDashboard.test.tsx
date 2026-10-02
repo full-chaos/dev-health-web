@@ -97,6 +97,8 @@ describe("ImproveAutomationsDashboard", () => {
             "data-columns",
             "2",
         );
+        // A count has no prior period to compare: no "No prior period" noise on the tiles.
+        expect(tiles().queryByText(/No prior period/)).toBeNull();
         const panel = within(screen.getByTestId("improve-automations-flow-panel"));
         expect(
             panel.getByRole("heading", { level: 2, name: "Automation candidates" }),
