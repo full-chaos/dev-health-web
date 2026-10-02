@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost";
 export type ButtonSize = "sm" | "md";
@@ -6,7 +6,7 @@ export type ButtonSize = "sm" | "md";
 // Approved prototype `.btn` (style.css + theme.css): sentence case, 6px radius, weight 550, 7px
 // icon gap, 35px high (28px small), 13px text (12px small). Theme tokens only.
 const BASE =
-    "inline-flex items-center justify-center gap-1.75 whitespace-nowrap rounded-sm border font-[550] no-underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex items-center justify-center gap-1.75 whitespace-nowrap rounded-sm border font-[550] no-underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) disabled:cursor-not-allowed disabled:opacity-50";
 
 const SIZES: Record<ButtonSize, string> = {
     sm: "min-h-7 px-2.25 py-1.25 text-xs",
@@ -50,6 +50,8 @@ export function buttonClassName(
 type ButtonBaseProps = ButtonHTMLAttributes<HTMLButtonElement> & {
     variant?: ButtonVariant;
     size?: ButtonSize;
+    /** React 19 passes `ref` as a prop; it reaches the `<button>` through the rest spread. */
+    ref?: Ref<HTMLButtonElement>;
     /** Decorative icon element (for example a lucide icon). Rendered `aria-hidden`. */
     icon?: ReactNode;
     /** Which side of the label the icon sits on. Default `start`. */

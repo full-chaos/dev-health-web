@@ -125,7 +125,7 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
         <div className="flex min-w-0 flex-1 flex-col gap-8">
             <PageHeader
                 title="TestOps"
-                subtitle="Pipeline, test, and coverage operations in one durable destination."
+                subtitle="Pipeline, test, and coverage operations in one destination."
                 actions={
                     <PageHeaderEvidenceAction
                         subject={testOpsEvidenceSubject("TestOps overview", tiles)}
