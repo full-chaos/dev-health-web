@@ -14,13 +14,13 @@ import Link from "next/link";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getQuadrantDefinition, getZoneOverlay } from "@/lib/quadrantZones";
+import { useChartTheme, useChartTokens } from "./chartTheme";
 import { trackTelemetryEvent } from "@/lib/telemetry";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
 import { QuadrantChart } from "./QuadrantChart";
 import { InvestigationPanel } from "./InvestigationPanel";
 
-const ANNOTATION_COLOR = "rgba(148, 163, 184, 0.2)";
 const overlayKeyFor = (type: "zone" | "annotation", id: string | number) => `${type}:${id}`;
 
 const rgbaPattern = /rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/i;
@@ -69,7 +69,7 @@ const buildLegendSwatchStyle = (color: string): CSSProperties => ({
     background: `radial-gradient(circle at 35% 35%, ${withAlpha(
         color,
         0.4,
-    )}, ${withAlpha(color, 0.14)} 60%, rgba(0, 0, 0, 0) 100%)`,
+    )}, ${withAlpha(color, 0.14)} 60%, transparent 100%)`,
     borderColor: withAlpha(color, 0.45),
     boxShadow: `0 0 12px ${withAlpha(color, 0.3)}`,
 });
@@ -130,16 +130,18 @@ export function QuadrantPanel({
     const dialogRef = useRef<HTMLDivElement>(null);
     const closeBtnRef = useRef<HTMLButtonElement>(null);
     const hasOpenedRef = useRef(false);
+    const { zones: zoneColors } = useChartTokens();
+    const annotationSwatchColor = useChartTheme().muted;
     const zoneOverlay = useMemo(() => {
         if (!scopedData) {
             return null;
         }
-        const scopedOverlay = getZoneOverlay(scopedData);
+        const scopedOverlay = getZoneOverlay(scopedData, zoneColors);
         if (!scopedOverlay && isPersonScope && data) {
-            return getZoneOverlay(data);
+            return getZoneOverlay(data, zoneColors);
         }
         return scopedOverlay;
-    }, [data, isPersonScope, scopedData]);
+    }, [data, isPersonScope, scopedData, zoneColors]);
     const quadrantDefinition = useMemo(
         () => (scopedData ? getQuadrantDefinition(scopedData.axes) : null),
         [scopedData],
@@ -179,13 +181,13 @@ export function QuadrantPanel({
                     description: annotation.type
                         ? formatAnnotationType(annotation.type)
                         : "Annotation",
-                    color: ANNOTATION_COLOR,
+                    color: annotationSwatchColor,
                     overlayKey: overlayKeyFor("annotation", index),
                 })),
             );
         }
         return items;
-    }, [scopedData, showZoneOverlay, zoneOverlay]);
+    }, [scopedData, showZoneOverlay, zoneOverlay, annotationSwatchColor]);
     const selectablePoints = useMemo(() => {
         if (!scopedData?.points?.length) {
             return [];

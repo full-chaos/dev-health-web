@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 import { buildQuadrantOption } from "@/components/charts/QuadrantChart";
 import type { ChartTheme } from "@/components/charts/chartTheme";
+import { getZoneOverlay } from "@/lib/quadrantZones";
+import { ZONE_GRADIENT_ALPHA } from "@/lib/themeTints";
 
 const chartTheme: ChartTheme = {
     text: "#111111",
@@ -221,5 +223,79 @@ describe("buildQuadrantOption", () => {
         expect(ids).toEqual(["bravo"]);
         const serialized = JSON.stringify(option);
         expect(serialized).not.toMatch(/Alpha|Charlie/);
+    });
+
+    it("draws each zone as production does, with only the hue taken from the theme", () => {
+        const points: QuadrantPoint[] = [1, 2, 3, 4, 5, 6].map((n) => ({
+            entity_id: `e${n}`,
+            entity_label: `E${n}`,
+            x: n * 10,
+            y: n * 5,
+            window_start: "2024-01-01",
+            window_end: "2024-01-14",
+            evidence_link: "/api/v1/explain?metric=throughput",
+        }));
+        const data = buildData(points);
+        const zoneColors = ["#0000ff", "#00ff00", "#ffff00", "#ff0000"];
+        const overlay = getZoneOverlay(data, zoneColors);
+        expect(overlay?.zones.map((zone) => zone.color).sort()).toEqual([...zoneColors].sort());
+
+        const option = buildQuadrantOption({
+            data,
+            chartTheme,
+            colors: chartColors,
+            scopeType: "org",
+            zoneOverlay: overlay,
+            showZoneOverlay: true,
+        });
+        const markArea = getScatterSeries(option)
+            .map((item) => (item as { markArea?: { data?: unknown[] } }).markArea)
+            .find(Boolean);
+        type ZoneStyle = {
+            color: {
+                type: string;
+                x: number;
+                y: number;
+                r: number;
+                colorStops: Array<{ offset: number; color: string }>;
+            };
+            opacity: number;
+            borderWidth: number;
+            borderType: string;
+            borderColor: string;
+            borderRadius: number;
+            shadowBlur: number;
+            shadowColor: string;
+        };
+        const styles = (markArea?.data ?? []).map(
+            (pair) => (pair as [{ itemStyle: ZoneStyle }, unknown])[0].itemStyle,
+        );
+        expect(styles).toHaveLength(4);
+        const rgba = (hex: string, alpha: number) => {
+            const [r, g, b] = [1, 3, 5].map((i) => Number.parseInt(hex.slice(i, i + 2), 16));
+            return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+        };
+        const hues = new Set(zoneColors);
+        for (const style of styles) {
+            const hue = [...hues].find(
+                (hex) => style.color.colorStops[0].color === rgba(hex, ZONE_GRADIENT_ALPHA.peak),
+            );
+            expect(hue, "gradient peak uses a zone token hue").toBeDefined();
+            expect(style.color).toMatchObject({ type: "radial", x: 0.45, y: 0.4, r: 0.95 });
+            expect(style.color.colorStops).toEqual([
+                { offset: 0, color: rgba(hue!, ZONE_GRADIENT_ALPHA.peak) },
+                { offset: 0.6, color: rgba(hue!, ZONE_GRADIENT_ALPHA.mid) },
+                { offset: 1, color: rgba(hue!, ZONE_GRADIENT_ALPHA.edge) },
+            ]);
+            expect(style).toMatchObject({
+                opacity: 0.92,
+                borderWidth: 1,
+                borderType: "dashed",
+                borderColor: rgba(hue!, 0.32),
+                borderRadius: 32,
+                shadowBlur: 20,
+                shadowColor: rgba(hue!, 0.22),
+            });
+        }
     });
 });

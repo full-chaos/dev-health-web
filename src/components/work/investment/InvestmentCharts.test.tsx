@@ -19,19 +19,24 @@ const { treemapSpy, sankeySpy, sunburstSpy } = vi.hoisted(() => ({
     sunburstSpy: vi.fn(),
 }));
 
-vi.mock("@/components/charts/chartTheme", () => ({
-    useChartTheme: () => ({
-        text: "#111827",
-        grid: "#e5e7eb",
-        muted: "#6b7280",
-        background: "#ffffff",
-        stroke: "#d1d5db",
-        accent1: "#2563eb",
-        accent2: "#7c3aed",
-        accent3: "#ef4444",
-    }),
-    useChartColors: () => ["#2563eb", "#14b8a6", "#f97316", "#a855f7", "#ec4899"],
-}));
+vi.mock("@/components/charts/chartTheme", async (importOriginal) => {
+    const actual = await importOriginal<typeof import("@/components/charts/chartTheme")>();
+    return {
+        ...actual,
+        useChartTokens: () => actual.fallbackTokens,
+        useChartTheme: () => ({
+            text: "#111827",
+            grid: "#e5e7eb",
+            muted: "#6b7280",
+            background: "#ffffff",
+            stroke: "#d1d5db",
+            accent1: "#2563eb",
+            accent2: "#7c3aed",
+            accent3: "#ef4444",
+        }),
+        useChartColors: () => ["#2563eb", "#14b8a6", "#f97316", "#a855f7", "#ec4899"],
+    };
+});
 
 vi.mock("@/components/charts/TreemapChart", async () => {
     const actual = await vi.importActual<typeof import("@/components/charts/TreemapChart")>(

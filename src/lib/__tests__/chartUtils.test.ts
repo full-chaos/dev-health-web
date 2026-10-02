@@ -7,7 +7,6 @@ import {
     buildTooltipHtml,
     buildPathString,
     createAreaGradient,
-    GRADIENT_COLORS,
 } from "@/lib/chartUtils";
 
 describe("chartUtils", () => {
@@ -216,22 +215,6 @@ describe("chartUtils", () => {
             expect(gradient.colorStops[0].color).toBe("rgba(255, 0, 0, 0.8)");
             expect(gradient.colorStops[1].offset).toBe(1);
             expect(gradient.colorStops[1].color).toBe("rgba(255, 0, 0, 0.1)");
-        });
-    });
-
-    describe("GRADIENT_COLORS", () => {
-        it("has predefined gradient colors", () => {
-            expect(GRADIENT_COLORS.planned).toBeDefined();
-            expect(GRADIENT_COLORS.unplanned).toBeDefined();
-            expect(GRADIENT_COLORS.rework).toBeDefined();
-            expect(GRADIENT_COLORS.abandonment).toBeDefined();
-        });
-
-        it("has start and end colors for each type", () => {
-            Object.values(GRADIENT_COLORS).forEach((gradient) => {
-                expect(gradient.start).toMatch(/^rgba\(/);
-                expect(gradient.end).toMatch(/^rgba\(/);
-            });
         });
     });
 });

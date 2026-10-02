@@ -11,6 +11,7 @@ import type {
 import { ScatterChart } from "echarts/charts";
 
 import type { ZoneOverlay } from "@/lib/quadrantZones";
+import { ZONE_GRADIENT_ALPHA } from "@/lib/themeTints";
 import { chartEntityLabel } from "@/lib/labels/entityLabel";
 import type { QuadrantPoint, QuadrantResponse } from "@/lib/types";
 
@@ -81,15 +82,18 @@ const withAlpha = (color: string, alpha: number) => {
     return `rgba(${red}, ${green}, ${blue}, ${nextAlpha})`;
 };
 
+// Zone drawing is production's: a radial gradient of the zone hue, a dashed outline and a
+// glow. Only the hue comes from the theme (`--quadrant-zone-N`); the alphas are the ones the
+// theme test checks.
 const buildZoneGradient = (color: string) => ({
     type: "radial" as const,
     x: 0.45,
     y: 0.4,
     r: 0.95,
     colorStops: [
-        { offset: 0, color: withAlpha(color, 0.2) },
-        { offset: 0.6, color: withAlpha(color, 0.12) },
-        { offset: 1, color: withAlpha(color, 0) },
+        { offset: 0, color: withAlpha(color, ZONE_GRADIENT_ALPHA.peak) },
+        { offset: 0.6, color: withAlpha(color, ZONE_GRADIENT_ALPHA.mid) },
+        { offset: 1, color: withAlpha(color, ZONE_GRADIENT_ALPHA.edge) },
     ],
 });
 
@@ -200,7 +204,7 @@ export const buildQuadrantOption = ({
 
     const showInterpretation = Boolean(showZoneOverlay);
     const activeZoneOverlay = showInterpretation ? zoneOverlay : null;
-    const annotationColor = "rgba(148, 163, 184, 0.2)";
+    const annotationColor = withAlpha(chartTheme.muted, 0.2);
     const annotationAreas: MarkAreaComponentOption["data"] = showInterpretation
         ? (data.annotations ?? []).map((annotation, index) => {
               const isActive = highlightOverlayKey === `annotation:${index}`;
@@ -349,7 +353,7 @@ export const buildQuadrantOption = ({
                           symbol: "circle",
                           symbolSize: 14,
                           itemStyle: {
-                              color: colors[0] ?? "#2563eb",
+                              color: colors[0] ?? chartTheme.accent2,
                           },
                           label: {
                               show: true,

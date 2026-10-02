@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 
 import { Chart } from "@/components/charts/Chart";
-import { useChartTheme } from "@/components/charts/chartTheme";
+import { type ChartTokens, useChartTheme, useChartTokens } from "@/components/charts/chartTheme";
 import { SkeletonLine } from "@/components/ui/Skeleton";
 import type { SeverityBucketData } from "./types";
 
@@ -15,13 +15,16 @@ const SEVERITY_ORDER: SeverityBucketData["severity"][] = [
     "unknown",
 ];
 
-const SEVERITY_COLORS: Record<SeverityBucketData["severity"], string> = {
-    critical: "#dc2626", // red-600
-    high: "#f97316", // orange-500
-    medium: "#fbbf24", // amber-400
-    low: "#94a3b8", // slate-400
-    unknown: "#cbd5e1", // slate-300
-};
+const severityColors = (
+    tokens: ChartTokens,
+    mutedColor: string,
+): Record<SeverityBucketData["severity"], string> => ({
+    critical: tokens.negative,
+    high: tokens.accentHighlight,
+    medium: tokens.caution,
+    low: tokens.info,
+    unknown: mutedColor,
+});
 
 type SeverityStackedBarProps = {
     buckets: SeverityBucketData[];
@@ -30,13 +33,15 @@ type SeverityStackedBarProps = {
 
 export function SeverityStackedBar({ buckets, loading }: SeverityStackedBarProps) {
     const chartTheme = useChartTheme();
+    const tokens = useChartTokens();
 
     const option = useMemo(() => {
+        const colorBySeverity = severityColors(tokens, chartTheme.muted);
         const byKey = new Map(buckets.map((b) => [b.severity, b.count]));
         const ordered = SEVERITY_ORDER.map((sev) => ({
             severity: sev,
             count: byKey.get(sev) ?? 0,
-            color: SEVERITY_COLORS[sev],
+            color: colorBySeverity[sev],
         }));
 
         return {
@@ -76,7 +81,7 @@ export function SeverityStackedBar({ buckets, loading }: SeverityStackedBarProps
                 },
             ],
         };
-    }, [buckets, chartTheme]);
+    }, [buckets, chartTheme, tokens]);
 
     if (loading) {
         return <SkeletonLine height="h-48" />;
