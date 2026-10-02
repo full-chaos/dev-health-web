@@ -80,6 +80,7 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
             />
             <div className="flex flex-col md:flex-row" data-testid="app-shell">
                 <ShellSidebar
+                    organization={organization}
                     onActiveOrganizationChange={handleActiveOrganizationChange}
                     mobileOpen={mobileOpen}
                     onMobileClose={closeMobileNav}
