@@ -107,10 +107,10 @@ export function ShellSidebar({
                             priority
                         />
                         <span className="flex min-w-0 flex-col leading-tight">
-                            <span className="text-h3 font-semibold text-(--text-primary)">
+                            <span className="text-[1.0625rem] font-[650] tracking-tight text-(--text-primary)">
                                 Full Chaos
                             </span>
-                            <span className="text-label-caps uppercase text-(--text-muted)">
+                            <span className="mt-0.5 text-[0.5625rem] font-semibold uppercase tracking-[0.17em] text-(--text-muted)">
                                 Dev Health
                             </span>
                         </span>

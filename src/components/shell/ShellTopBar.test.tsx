@@ -165,6 +165,32 @@ describe("ShellTopBar — theme toggle slot", () => {
     });
 });
 
+describe("ShellTopBar — prototype order", () => {
+    it("puts the breadcrumb first, then the search, then the status and the toggle on the right", () => {
+        const { container } = render(
+            <ShellTopBar status={LOADING} themeToggle={<button type="button">Toggle</button>} />,
+        );
+        const bar = container.querySelector("[data-testid='shell-top-bar']") as HTMLElement;
+        const kids = Array.from(bar.children);
+        expect(kids).toHaveLength(3);
+        expect(kids[0].querySelector("[data-testid='breadcrumbs']")).not.toBeNull();
+        expect(kids[1]).toBe(screen.getByTestId("command-palette-trigger"));
+        expect(kids[2].className).toContain("ml-auto");
+        expect(kids[2]).toContainElement(screen.getByRole("button", { name: "Toggle" }));
+        expect(kids[2].querySelector("[data-testid='shell-status-chip']")).not.toBeNull();
+    });
+
+    it("draws the search as a wide, 36px, 6px-radius field with the key hint at its right", () => {
+        render(<ShellTopBar status={LOADING} />);
+        const trigger = screen.getByTestId("command-palette-trigger");
+        expect(trigger.className).toContain("flex-1");
+        expect(trigger.className).toContain("max-w-95");
+        expect(trigger.className).toContain("h-9");
+        expect(trigger.className).toContain("rounded-md");
+        expect(trigger.querySelector("kbd")?.className).toContain("ml-auto");
+    });
+});
+
 describe("shellStatusFromOrganization — unknown is its own state", () => {
     it("is synced for an organization with data and a real timestamp", () => {
         expect(

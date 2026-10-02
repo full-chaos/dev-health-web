@@ -543,6 +543,13 @@ describe("ShellSidebar — a route with its own `f` encoding (Security)", () => 
 
         expect(within(sidebar()).queryByText(/^beta$/i)).toBeNull();
         expect(within(sidebar()).getByText("Dev Health")).toBeInTheDocument();
+        // Prototype `.brand` / `.brand-sub`: a 17px weight-650 name, a 9px wide-tracked sub-line.
+        const name = within(sidebar()).getByText("Full Chaos");
+        expect(name.className).toContain("font-[650]");
+        expect(name.className).toContain("tracking-tight");
+        const sub = within(sidebar()).getByText("Dev Health");
+        expect(sub.className).toContain("tracking-[0.17em]");
+        expect(sub.className).toContain("uppercase");
     });
 
     it("draws an icon on every area row and a chevron only where the area has destinations", () => {

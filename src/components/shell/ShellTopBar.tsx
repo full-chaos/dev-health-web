@@ -47,14 +47,15 @@ export function ShellTopBar({ status, themeToggle }: ShellTopBarProps) {
             data-testid="shell-top-bar"
             className="sticky top-0 z-30 hidden min-h-14 items-center gap-4 border-b border-(--border) bg-(--surface) px-6 md:flex"
         >
-            <div className="min-w-0 flex-1">
+            <div className="min-w-48 shrink-0">
                 {/* The links read the live query string; the bare trail is the fallback. */}
                 <Suspense fallback={<Breadcrumbs items={navTrailForPathname(pathname)} />}>
                     <ShellTrail pathname={pathname} />
                 </Suspense>
             </div>
-            <div className="flex shrink-0 items-center gap-3">
-                <CommandPalette />
+            {/* Prototype `.topbar`: breadcrumb, then the search, then the status and the toggle. */}
+            <CommandPalette />
+            <div className="ml-auto flex shrink-0 items-center gap-3">
                 <ShellStatusChip status={status} />
                 <div data-slot="theme-toggle" className="flex items-center empty:hidden">
                     {themeToggle}

@@ -65,6 +65,12 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
             >
                 {CTA_LABELS.skipToMainContent}
             </a>
+            {/* Prototype `body::before`: a 2px orange-to-teal line along the top edge. */}
+            <div
+                aria-hidden="true"
+                data-testid="shell-ribbon"
+                className="pointer-events-none fixed inset-x-0 top-0 z-70 h-0.5 bg-(image:--ribbon)"
+            />
             {banners}
             <ShellMobileBar
                 open={mobileOpen}
