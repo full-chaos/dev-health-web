@@ -226,12 +226,17 @@ describe("ShellSidebar — mobile slide-over (CHAOS-7592)", () => {
         const panel = document.getElementById("primary-navigation-panel") as HTMLElement;
 
         expect(panel).toHaveClass("md:flex", "md:h-full", "md:overflow-visible", "md:border-0");
-        expect(sidebar()).toHaveClass("md:sticky", "md:h-dvh", "md:w-[226px]", "md:shrink-0");
+        expect(sidebar()).toHaveClass(
+            "md:sticky",
+            "md:h-dvh",
+            "md:w-(--shell-sidebar-w)",
+            "md:shrink-0",
+        );
         const unprefixedFixed = panel.className
             .split(/\s+/u)
             .filter((c) => c === "fixed" || c === "z-50");
         expect(unprefixedFixed).toEqual([]);
-        expect(panel).toHaveClass("max-md:w-[226px]");
+        expect(panel).toHaveClass("max-md:w-(--shell-sidebar-w)");
     });
 
     it("has no slide transition for people who ask for reduced motion", () => {
