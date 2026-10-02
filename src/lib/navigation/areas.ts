@@ -23,6 +23,7 @@
 // flat always-on list, and only for routes that resolve to a real page.
 
 import type { Crumb } from "@/components/Breadcrumbs";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export type NavAreaId =
     "cockpit" | "diagnose" | "plan" | "improve" | "govern" | "ai" | "reports" | "admin";
@@ -50,6 +51,11 @@ export type NavAreaHubItem = {
      * within its cluster rather than at equal billing.
      */
     demoted?: boolean;
+    /**
+     * Visible action text of the primary-signal hero when this destination is the hero subject.
+     * Set only where the approved prototype gives the text; without it the whole hero is one link.
+     */
+    heroCta?: string;
 };
 
 /**
@@ -196,6 +202,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "code",
                 label: "Code",
                 href: "/code",
+                heroCta: CTA_LABELS.inspectCode,
                 description: "Code health and ownership.",
                 metricLabel: "Code churn",
             },
@@ -357,6 +364,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "opportunities",
                 label: "Opportunities",
                 href: "/opportunities",
+                heroCta: CTA_LABELS.reviewOpportunities,
                 description: "Evidence-linked improvement opportunities.",
                 metricLabel: "Opportunities data",
             },
