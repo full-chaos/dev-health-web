@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, within } from "@/test/utils";
 
 import { AreaOverview } from "./AreaOverview";
+import { getAreaById } from "@/lib/navigation/areas";
 import type { AreaSignal, AreaSignalState } from "@/lib/areaSignals/types";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
@@ -220,5 +221,43 @@ describe("AreaOverview — hero action, group heads, no eyebrow", () => {
         renderOverview([signal("a", "critical"), signal("b", "high"), signal("c", "low")]);
         expect(screen.queryByTestId("area-overview-cluster")).toBeNull();
         expect(screen.getAllByTestId("area-overview-grid")).toHaveLength(1);
+    });
+});
+
+describe("AreaOverview — hero action text comes from the destination (prototype copy)", () => {
+    it("pins the two prototype labels on the registry (app.js 97 and 108)", () => {
+        const label = (area: "diagnose" | "improve", id: string) =>
+            getAreaById(area)?.hubItems.find((i) => i.id === id)?.heroCta;
+        expect(label("diagnose", "code")).toBe("Inspect code");
+        expect(label("improve", "opportunities")).toBe("Review opportunities");
+    });
+
+    it("draws the Code hero with the visible button and no overlay link", () => {
+        render(
+            <AreaOverview
+                areaId="diagnose"
+                signals={[signal("code", "critical", { href: "/code" })]}
+                filters={defaultMetricFilter}
+            />,
+        );
+        const hero = screen.getByTestId("area-overview-hero");
+        expect(within(hero).getByRole("link", { name: "Inspect code" })).toHaveAttribute(
+            "href",
+            expect.stringContaining("/code"),
+        );
+        expect(within(hero).queryByTestId("area-signal-hero-link")).toBeNull();
+    });
+
+    it("keeps the whole-hero link, no button, for a destination without prototype copy", () => {
+        render(
+            <AreaOverview
+                areaId="diagnose"
+                signals={[signal("flow", "critical", { href: "/flow" })]}
+                filters={defaultMetricFilter}
+            />,
+        );
+        const hero = screen.getByTestId("area-overview-hero");
+        expect(within(hero).getByTestId("area-signal-hero-link")).toBeInTheDocument();
+        expect(within(hero).queryByRole("link", { name: "Inspect code" })).toBeNull();
     });
 });

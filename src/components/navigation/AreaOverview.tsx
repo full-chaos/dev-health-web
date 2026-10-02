@@ -115,6 +115,7 @@ export function AreaOverview({
                         }
                         filters={filters}
                         role={role}
+                        actionLabel={area.hubItems.find((item) => item.id === hero.id)?.heroCta}
                     />
                 </div>
             ) : null}
