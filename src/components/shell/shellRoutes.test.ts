@@ -3,8 +3,28 @@ import { describe, expect, it } from "vitest";
 import { SHELL_ROUTES, isShellRoute, shellRouteForPathname } from "./shellRoutes";
 
 describe("shell route registry", () => {
-    it("registers the Cockpit and nothing else in this change", () => {
-        expect(SHELL_ROUTES.map((route) => route.prefix)).toEqual(["/dashboard"]);
+    it("registers the Cockpit and the migrated Diagnose routes", () => {
+        expect(SHELL_ROUTES.map((route) => route.prefix)).toEqual([
+            "/dashboard",
+            "/diagnose",
+            "/diagnose/work-graph",
+            "/metrics",
+            "/explore",
+            "/investment",
+            "/landscape",
+            "/code",
+            "/complexity",
+            "/bottleneck",
+            "/cognitive-load",
+            "/people",
+        ]);
+    });
+
+    it("matches an exact route only on its own path", () => {
+        const routes = [{ prefix: "/diagnose", exact: true }];
+        expect(isShellRoute("/diagnose", routes)).toBe(true);
+        expect(isShellRoute("/diagnose/work-graph", routes)).toBe(false);
+        expect(isShellRoute("/diagnoses", routes)).toBe(false);
     });
 
     it("matches a registered prefix and its descendants", () => {
@@ -17,7 +37,7 @@ describe("shell route registry", () => {
         expect(isShellRoute("/dashboard-old")).toBe(false);
     });
 
-    it.each(["/diagnose", "/org/admin", "/superadmin", "/settings", "/ai/impact", "/"])(
+    it.each(["/plan", "/govern", "/org/admin", "/superadmin", "/settings", "/ai/impact", "/"])(
         "keeps %s outside the shell",
         (pathname) => {
             expect(isShellRoute(pathname)).toBe(false);

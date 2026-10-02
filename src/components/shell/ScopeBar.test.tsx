@@ -6,6 +6,7 @@ import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
 
 import { ShellOrganizationProvider } from "./ShellContext";
+import { ScopeBar } from "./ScopeBar";
 import { ScopeBarClient, type ScopeBarClientProps } from "./ScopeBarClient";
 import { FILTER_OPTIONS, scopeBarUrl } from "@/test/scopeBarHarness";
 
@@ -321,4 +322,267 @@ describe("ScopeBar — Copy link", () => {
             expect(screen.queryByTestId("scope-bar-copy-fallback")).toBeNull();
         },
     );
+});
+
+describe("ScopeBar — People view", () => {
+    const PEOPLE: ScopeBarClientProps = {
+        view: "people",
+        resolvedVisibility: { developer: true, workType: false, flowStage: false },
+        resolvedScopeLock: "team",
+    };
+
+    it("has the person search in the row and no filter drawer", () => {
+        render(<ScopeBarClient {...PEOPLE} />);
+
+        expect(within(row()).getByRole("textbox", { name: "Search" })).toHaveAttribute(
+            "placeholder",
+            "Name or handle",
+        );
+        expect(screen.queryByRole("button", { name: /^Filters/ })).toBeNull();
+        expect(within(row()).getByRole("button", { name: /^Team/ })).toBeInTheDocument();
+    });
+
+    it("writes the search to `q` and keeps `f`", async () => {
+        const user = userEvent.setup();
+        scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}&role=em`);
+        render(<ScopeBarClient {...PEOPLE} />);
+
+        await user.type(screen.getByRole("textbox", { name: "Search" }), "an");
+
+        const params = scopeBarUrl.lastParams();
+        expect(params.get("q")).toBe("an");
+        expect(params.get("f")).toBe(ALL_DIMENSIONS_F);
+        expect(params.get("role")).toBe("em");
+    });
+
+    it("shows the search from the URL, and Reset clears it with the filters", async () => {
+        const user = userEvent.setup();
+        scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}&q=ana`);
+        render(<ScopeBarClient {...PEOPLE} />);
+        expect(screen.getByRole("textbox", { name: "Search" })).toHaveValue("ana");
+
+        await user.click(screen.getByRole("button", { name: "Reset filters" }));
+
+        expect(scopeBarUrl.lastParams().has("q")).toBe(false);
+        expect(scopeBarUrl.lastParams().get("f")).toBe(DEFAULT_F);
+    });
+
+    it("keeps the Developer menu in the row, where the People filter bar had it", async () => {
+        const user = userEvent.setup();
+        render(<ScopeBarClient {...PEOPLE} />);
+
+        await user.click(within(row()).getByRole("button", { name: /^Developer/ }));
+        await user.click(screen.getByRole("checkbox", { name: "ana@example.com" }));
+
+        expect(scopeBarUrl.lastFilter().who.developers).toEqual(["ana@example.com"]);
+        // The choice is visible as a pill, and it can be cleared there.
+        await user.click(screen.getByRole("button", { name: "Remove Dev filter" }));
+        expect(scopeBarUrl.lastFilter().who.developers).toEqual([]);
+    });
+
+    it("keeps the page filter menus out of the row on a view that has the drawer", () => {
+        renderBar();
+
+        expect(within(row()).queryByRole("button", { name: /^Developer/ })).toBeNull();
+        expect(within(row()).queryByRole("button", { name: /^Work/ })).toBeNull();
+    });
+
+    it("has no person search on another view", () => {
+        renderBar();
+
+        expect(screen.queryByRole("textbox", { name: "Search" })).toBeNull();
+    });
+});
+
+describe("ScopeBar — a view with no page filter (Complexity, Cognitive Load)", () => {
+    it.each(["complexity", "cognitive-load"] as const)(
+        "%s: the organization can be selected and stays selected, as with the global context bar",
+        async (view) => {
+            const user = userEvent.setup();
+            render(<ScopeBar view={view} orgName="Test" />);
+            const organization = screen.getByRole("button", { name: "Test" });
+            expect(organization).toHaveAttribute("aria-pressed", "false");
+
+            await user.click(organization);
+
+            await waitFor(() => expect(organization).toHaveAttribute("aria-pressed", "true"));
+            // One write: no scope lock puts the team level back.
+            expect(scopeBarUrl.replace).toHaveBeenCalledTimes(1);
+            expect(scopeBarUrl.lastFilter().scope).toEqual({ level: "org", ids: [] });
+        },
+    );
+
+    it("has no Filters button and no page filter menu", () => {
+        render(<ScopeBar view="complexity" />);
+
+        expect(screen.queryByRole("button", { name: /^Filters/ })).toBeNull();
+        expect(screen.queryByRole("button", { name: /^Developer/ })).toBeNull();
+        expect(screen.queryByRole("button", { name: /^Work/ })).toBeNull();
+        expect(within(row()).getByRole("button", { name: /^Team/ })).toBeInTheDocument();
+        expect(within(row()).getByRole("button", { name: "Reset filters" })).toBeInTheDocument();
+    });
+
+    it("keeps an organization scope from the URL: it is not changed to the team level", () => {
+        const orgScope = encodeFilterParam({
+            ...defaultMetricFilter,
+            scope: { level: "org", ids: [] },
+        });
+        scopeBarUrl.reset(`f=${orgScope}`);
+        render(<ScopeBar view="cognitive-load" orgName="Test" />);
+
+        expect(screen.getByRole("button", { name: "Test" })).toHaveAttribute(
+            "aria-pressed",
+            "true",
+        );
+        expect(scopeBarUrl.replace).not.toHaveBeenCalled();
+    });
+
+    it.each(["complexity", "cognitive-load"] as const)(
+        "%s: writes nothing on first load with no `f`, and the organization is selected",
+        async (view) => {
+            scopeBarUrl.reset("role=em");
+            render(<ScopeBar view={view} orgName="Test" />);
+
+            expect(screen.getByRole("button", { name: "Test" })).toHaveAttribute(
+                "aria-pressed",
+                "true",
+            );
+            expect(within(row()).getByRole("button", { name: /^Team/ })).toHaveTextContent("All");
+            // The default `f` is written in an effect: give it time to run.
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            expect(scopeBarUrl.replace).not.toHaveBeenCalled();
+        },
+    );
+
+    it("reads the scope from the query params when the URL has no `f`, as the page does", () => {
+        scopeBarUrl.reset("scope_type=team&scope_id=platform&range_days=30");
+        render(<ScopeBar view="complexity" orgName="Test" />);
+
+        expect(screen.getByRole("button", { name: "Test" })).toHaveAttribute(
+            "aria-pressed",
+            "false",
+        );
+        expect(within(row()).getByRole("button", { name: /^Team/ })).toHaveTextContent("platform");
+        expect(
+            within(screen.getByRole("group", { name: "Window" })).getByRole("button", {
+                name: "30d",
+            }),
+        ).toHaveAttribute("aria-pressed", "true");
+        expect(scopeBarUrl.replace).not.toHaveBeenCalled();
+    });
+
+    it("a window change with no `f` writes the organization scope with the new window, as the global context bar did", async () => {
+        const user = userEvent.setup();
+        scopeBarUrl.reset("role=em");
+        render(<ScopeBar view="complexity" />);
+
+        await user.click(screen.getByRole("button", { name: "90d" }));
+
+        expect(scopeBarUrl.replace).toHaveBeenCalledTimes(1);
+        expect(scopeBarUrl.lastFilter().scope).toEqual({ level: "org", ids: [] });
+        expect(scopeBarUrl.lastFilter().time).toEqual({ range_days: 90, compare_days: 90 });
+        expect(scopeBarUrl.lastParams().get("role")).toBe("em");
+    });
+
+    it("reset goes back to the first-load state: no `f`, the organization selected, other params kept", async () => {
+        const user = userEvent.setup();
+        scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}&role=em`);
+        render(<ScopeBar view="complexity" orgName="Test" />);
+        expect(screen.getByRole("button", { name: "Test" })).toHaveAttribute(
+            "aria-pressed",
+            "false",
+        );
+
+        await user.click(screen.getByRole("button", { name: "Reset filters" }));
+
+        expect(scopeBarUrl.lastParams().has("f")).toBe(false);
+        expect(scopeBarUrl.lastParams().get("role")).toBe("em");
+        expect(screen.getByRole("button", { name: "Test" })).toHaveAttribute(
+            "aria-pressed",
+            "true",
+        );
+    });
+
+    it("shows the default `f` from the navigation as it is: team level, no team", () => {
+        render(<ScopeBar view="complexity" orgName="Test" />);
+
+        expect(screen.getByRole("button", { name: "Test" })).toHaveAttribute(
+            "aria-pressed",
+            "false",
+        );
+        expect(scopeBarUrl.replace).not.toHaveBeenCalled();
+    });
+});
+
+describe("ScopeBar — a view with page filters keeps the team lock", () => {
+    it("the Cockpit view: an organization click ends at the team level", async () => {
+        const user = userEvent.setup();
+        render(<ScopeBar view="home" orgName="Test" />);
+
+        await user.click(screen.getByRole("button", { name: "Test" }));
+
+        await waitFor(() =>
+            expect(scopeBarUrl.lastFilter().scope).toEqual({ level: "team", ids: [] }),
+        );
+        expect(screen.getByRole("button", { name: "Filters" })).toBeInTheDocument();
+    });
+
+    it("the Cockpit view: adds the default `f` when the URL has none", () => {
+        scopeBarUrl.reset("role=em");
+        render(<ScopeBar view="home" />);
+
+        expect(scopeBarUrl.lastParams().get("f")).toBe(DEFAULT_F);
+        expect(scopeBarUrl.lastParams().get("role")).toBe("em");
+    });
+
+    it("the Cockpit view: reset writes the default `f`", async () => {
+        const user = userEvent.setup();
+        scopeBarUrl.reset(`f=${ALL_DIMENSIONS_F}`);
+        render(<ScopeBar view="home" />);
+
+        await user.click(screen.getByRole("button", { name: "Reset filters" }));
+
+        expect(scopeBarUrl.lastParams().get("f")).toBe(DEFAULT_F);
+    });
+});
+
+describe("ScopeBar — pageFilters={false}", () => {
+    it("has the scope row and the actions, with no Filters button and no page filter menu", () => {
+        render(<ScopeBar pageFilters={false} orgName="Test" />);
+
+        const inRow = within(row());
+        expect(inRow.getByRole("button", { name: "Test" })).toBeInTheDocument();
+        expect(inRow.getByRole("button", { name: /^Team/ })).toBeInTheDocument();
+        expect(inRow.getByRole("button", { name: /^Repo/ })).toBeInTheDocument();
+        expect(inRow.getByRole("group", { name: "Window" })).toBeInTheDocument();
+        expect(inRow.getByRole("button", { name: "Reset filters" })).toBeInTheDocument();
+        expect(inRow.getByRole("button", { name: "Copy link" })).toBeInTheDocument();
+        expect(screen.queryByRole("button", { name: /^Filters/ })).toBeNull();
+        expect(screen.queryByRole("button", { name: /^Developer/ })).toBeNull();
+        expect(screen.queryByRole("button", { name: /^Work/ })).toBeNull();
+    });
+
+    it("does not lock the scope, also for a view that has the lock by default", async () => {
+        const user = userEvent.setup();
+        render(<ScopeBar view="home" pageFilters={false} orgName="Test" />);
+        const organization = screen.getByRole("button", { name: "Test" });
+
+        await user.click(organization);
+
+        await waitFor(() => expect(organization).toHaveAttribute("aria-pressed", "true"));
+        expect(scopeBarUrl.replace).toHaveBeenCalledTimes(1);
+        expect(scopeBarUrl.lastFilter().scope).toEqual({ level: "org", ids: [] });
+    });
+
+    it("writes nothing on first load with no `f`, and the organization is selected", async () => {
+        scopeBarUrl.reset("");
+        render(<ScopeBar pageFilters={false} orgName="Test" />);
+
+        expect(screen.getByRole("button", { name: "Test" })).toHaveAttribute(
+            "aria-pressed",
+            "true",
+        );
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        expect(scopeBarUrl.replace).not.toHaveBeenCalled();
+    });
 });
