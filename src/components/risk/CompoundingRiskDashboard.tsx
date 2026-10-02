@@ -21,6 +21,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import type { MetricFilter } from "@/lib/filters/types";
 import { withFilterParam } from "@/lib/filters/url";
+import { Section } from "@/components/ui/Section";
 import { STATUS_PILL, type StatusPillTone } from "@/lib/statusPill";
 
 import { BreakoutSegment } from "./BreakoutSegment";
@@ -452,7 +453,8 @@ export function CompoundingRiskDashboard({
             <section className="overflow-hidden rounded-(--radius-lg) border border-(--border) bg-(--surface)">
                 <div className="grid gap-0 lg:grid-cols-[1.15fr_0.85fr]">
                     <div className="p-8">
-                        <h2 className="text-3xl font-semibold tracking-tight md:text-5xl">
+                        {/* The hero sentence on the type scale (MAPPING C2), not a display size. */}
+                        <h2 className="text-h1 font-semibold" data-testid="compounding-hero-title">
                             Where change pressure is compounding risk.
                         </h2>
                         <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted) md:text-base">
@@ -498,34 +500,28 @@ export function CompoundingRiskDashboard({
             </section>
 
             {headline && (
-                <section
-                    className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6"
-                    data-testid="component-breakdown"
-                >
-                    <div className="flex items-center justify-between gap-3">
-                        <h2 className="text-lg font-semibold tracking-tight">
-                            Component breakdown
-                        </h2>
-                        <p className="text-xs text-(--ink-muted)">
+                <Section
+                    title="Component breakdown"
+                    description="Each bar shows the normalized [0, 1] contribution; the raw input value is printed beneath. Weights persist with the row."
+                    action={
+                        <p
+                            className="text-xs text-(--ink-muted)"
+                            data-testid="component-breakdown-thresholds"
+                        >
                             thresholds: elevated ≥ {headline.thresholds.elevated.toFixed(2)} · high
                             ≥ {headline.thresholds.high.toFixed(2)}
                         </p>
-                    </div>
-                    <p className="mt-2 text-sm leading-6 text-(--ink-muted)">
-                        Each bar shows the normalized [0, 1] contribution; the raw input value is
-                        printed beneath. Weights persist with the row.
-                    </p>
-                    <div className="mt-5">
-                        <ComponentBars row={headline} />
-                    </div>
-                </section>
+                    }
+                    data-testid="component-breakdown"
+                >
+                    <ComponentBars row={headline} />
+                </Section>
             )}
 
-            <section>
-                <div className="mb-3 flex items-baseline justify-between">
-                    <h2 className="text-lg font-semibold tracking-tight">
-                        {breakout === "team" ? "By team" : "By repo"}
-                    </h2>
+            <Section
+                title={breakout === "team" ? "By team" : "By repo"}
+                data-testid="compounding-scope-table"
+                action={
                     <div className="flex items-center gap-4">
                         <p className="text-xs text-(--ink-muted)">
                             sorted by score · {rows.length} {breakout}
@@ -533,9 +529,10 @@ export function CompoundingRiskDashboard({
                         </p>
                         <BreakoutSegment breakout={breakout} />
                     </div>
-                </div>
+                }
+            >
                 <ScopeTable rows={rows} breakout={breakout} />
-            </section>
+            </Section>
         </div>
     );
 }
