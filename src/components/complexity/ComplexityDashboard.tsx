@@ -29,7 +29,11 @@ import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/ch
 import { TreemapChart } from "@/components/charts/TreemapChart";
 import type { TreemapNode } from "@/components/charts/TreemapChart";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
-import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import {
+    EvidenceFact,
+    EvidenceFactList,
+    EvidenceProvenanceFacts,
+} from "@/components/evidence/EvidenceFacts";
 import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
@@ -403,28 +407,33 @@ function EvidenceCell({ row }: { row: HotspotRow }) {
 /** The drawer body for one file row: the values the hotspots query served for it. */
 function HotspotEvidence({ row }: { row: HotspotRow }) {
     return (
-        <EvidenceFactList aria-label="File">
-            <EvidenceFact
-                label="File"
-                stacked
-                value={<span className="break-all font-mono font-medium">{row.filePath}</span>}
-            />
-            <EvidenceFact label="Repo" value={row.repoName || undefined} />
-            <EvidenceFact
-                label="Risk score"
-                value={formatNumber(row.riskScore, { maximumFractionDigits: 3 })}
-            />
-            <EvidenceFact label="Cyclomatic avg" value={formatNumber(row.cyclomaticAvg)} />
-            <EvidenceFact label="Churn LOC 30d" value={formatNumber(row.churnLoc30d)} />
-            <EvidenceFact
-                label="Owner concentration"
-                value={
-                    row.blameConcentration === null
-                        ? undefined
-                        : `${Math.round(row.blameConcentration * 100)}%`
-                }
-            />
-        </EvidenceFactList>
+        <div className="space-y-4">
+            {/* The hotspots query serves no source, quality, sync time, identity confidence or
+                artifact list for a file row. */}
+            <EvidenceProvenanceFacts />
+            <EvidenceFactList aria-label="File" testId="evidence-subject-facts">
+                <EvidenceFact
+                    label="File"
+                    stacked
+                    value={<span className="break-all font-mono font-medium">{row.filePath}</span>}
+                />
+                <EvidenceFact label="Repo" value={row.repoName || undefined} />
+                <EvidenceFact
+                    label="Risk score"
+                    value={formatNumber(row.riskScore, { maximumFractionDigits: 3 })}
+                />
+                <EvidenceFact label="Cyclomatic avg" value={formatNumber(row.cyclomaticAvg)} />
+                <EvidenceFact label="Churn LOC 30d" value={formatNumber(row.churnLoc30d)} />
+                <EvidenceFact
+                    label="Owner concentration"
+                    value={
+                        row.blameConcentration === null
+                            ? undefined
+                            : `${Math.round(row.blameConcentration * 100)}%`
+                    }
+                />
+            </EvidenceFactList>
+        </div>
     );
 }
 

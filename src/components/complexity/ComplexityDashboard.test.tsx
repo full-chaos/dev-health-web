@@ -328,7 +328,7 @@ describe("ComplexityDashboard", () => {
         const drawer = screen.getByRole("dialog", { name: "Evidence & Context" });
         expect(within(drawer).getByTestId("evidence-subject")).toHaveTextContent("a.py");
         const facts = Object.fromEntries(
-            within(drawer)
+            within(within(drawer).getByTestId("evidence-subject-facts"))
                 .getAllByTestId("evidence-fact")
                 .map((row) => [
                     row.querySelector("dt")?.textContent,
@@ -348,6 +348,44 @@ describe("ComplexityDashboard", () => {
             "href",
             "/code?file=src/app/a.py",
         );
+    });
+
+    it("starts the row drawer with the five provenance rows, 'Not reported' for each (the hotspots query serves none)", async () => {
+        const hotspots = [makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py" })];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
+        await userEvent.click(screen.getByRole("button", { name: "Open evidence" }));
+
+        const rows = within(within(screen.getByRole("dialog")).getByTestId("evidence-facts"))
+            .getAllByTestId("evidence-fact")
+            .map((row) => [
+                row.querySelector("dt")?.textContent,
+                row.querySelector("dd")?.textContent,
+            ]);
+        expect(rows).toEqual([
+            ["Source", "Not reported"],
+            ["Data quality", "Not reported"],
+            ["Last sync", "Not reported"],
+            ["Identity confidence", "Not reported"],
+            ["Artifacts", "Not reported"],
+        ]);
+    });
+
+    it("Escape closes the row drawer and focus returns to the row's Evidence button", async () => {
+        const hotspots = [
+            makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py" }),
+            makeHotspot("b.py", 0.8, { evidenceUrl: "/code?file=b.py" }),
+        ];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
+        const opener = within(screen.getAllByTestId("hotspot-row")[1]).getByRole("button", {
+            name: "Open evidence",
+        });
+        await userEvent.click(opener);
+        expect(screen.getByTestId("evidence-subject")).toHaveTextContent("b.py");
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(opener).toHaveFocus();
     });
 
     it("shows 'Not reported' in the drawer for an owner concentration the query did not serve", async () => {
