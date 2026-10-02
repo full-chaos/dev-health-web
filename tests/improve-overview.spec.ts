@@ -35,7 +35,7 @@ test.describe("Improve Overview landing", () => {
         // The hero is the synthesized worst-opportunity lead, not the Opportunities card.
         const heroCard = hero.getByTestId("area-signal-card");
         await expect(heroCard).toHaveAttribute("data-signal-id", "improve-top-signal");
-        await expect(hero.getByText("Top signal")).toBeVisible();
+        await expect(hero.getByText("Primary signal")).toBeVisible();
         await expect(hero.getByRole("heading", { name: /^Reduce / })).toBeVisible();
 
         // A SHORT signed-delta value, not a long rainbow phrase.
@@ -43,7 +43,11 @@ test.describe("Improve Overview landing", () => {
 
         // The hero must NOT just be "Opportunities", and it routes to a real opportunity.
         await expect(heroCard).not.toHaveAttribute("data-signal-id", "opportunities");
-        await expect(heroCard).toHaveAttribute("href", /\/opportunities/);
+        // The hero is one link into the sub-area (no action text is set for this signal).
+        await expect(hero.getByTestId("area-signal-hero-link")).toHaveAttribute(
+            "href",
+            /\/opportunities/,
+        );
     });
 
     test("drops Opportunities to a workflow card with a short value + secondary evidence line", async ({
