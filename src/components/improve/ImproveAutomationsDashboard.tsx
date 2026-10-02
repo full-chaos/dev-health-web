@@ -91,8 +91,8 @@ export function ImproveAutomationsDashboard({
                         className={buttonClassName("ghost", "sm")}
                         data-testid="improve-automations-head-link"
                     >
-                        {CTA_LABELS.seeAIAutomations}
                         <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                        {CTA_LABELS.seeAIAutomations}
                     </Link>
                 }
             >

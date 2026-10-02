@@ -106,6 +106,11 @@ describe("ImproveAutomationsDashboard", () => {
         expect(
             panel.getByRole("heading", { level: 2, name: "Automation candidates" }),
         ).toBeInTheDocument();
+        expect(
+            panel
+                .getByTestId("improve-automations-head-link")
+                .firstElementChild?.tagName.toLowerCase(),
+        ).toBe("svg");
         expect(panel.getByTestId("improve-automations-head-link").className).toContain(
             "text-(--accent-2)",
         );
