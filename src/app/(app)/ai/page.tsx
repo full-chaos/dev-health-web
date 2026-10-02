@@ -1,4 +1,4 @@
-import { AreaOverview } from "@/components/navigation/AreaOverview";
+import { AreaHub } from "@/components/navigation/AreaHub";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
@@ -12,8 +12,8 @@ type AIWorkflowsPageProps = {
 };
 
 /**
- * `/ai` index — the AI area overview. The shared AreaOverview summarizes and
- * routes to the real AI subviews; preview-only routes stay hidden from default
+ * `/ai` index — the AI area overview. The shared AreaHub groups the real AI subviews
+ * as Signal and Action and routes to them; preview-only routes stay hidden from default
  * navigation until they have distinct views.
  */
 export default async function AIWorkflowsPage({ searchParams }: AIWorkflowsPageProps) {
@@ -47,7 +47,7 @@ export default async function AIWorkflowsPage({ searchParams }: AIWorkflowsPageP
                 subtitle="What AI appears to change across delivery, review, quality, and governance. Open an evidence-backed view for the selected window."
             />
             <ScopeBar view="ai" />
-            <AreaOverview
+            <AreaHub
                 areaId="ai"
                 signals={aiSignals}
                 filters={filters}

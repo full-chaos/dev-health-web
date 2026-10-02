@@ -131,16 +131,53 @@ describe("AppShell — a route in the registry gets the shared shell", () => {
         ).toBeTruthy();
     });
 
-    it("keeps the account bar for the size below md and the account block in the sidebar, with different menu ids", () => {
+    it("has the mobile bar below md (menu button, brand, theme toggle, account) and the account block in the sidebar, with different menu ids", () => {
         renderFrame(<ShellPage />);
 
-        const accountBar = screen.getByRole("navigation", { name: "Account" });
-        expect(accountBar.closest("div.md\\:hidden")).not.toBeNull();
+        const bar = screen.getByTestId("shell-mobile-bar");
+        expect(bar).toHaveClass("md:hidden");
+        expect(within(bar).getByRole("button", { name: "Show navigation" })).toHaveAttribute(
+            "aria-controls",
+            "primary-navigation-panel",
+        );
+        expect(within(bar).getByRole("link", { name: /home/i })).toHaveAttribute(
+            "href",
+            "/dashboard",
+        );
+        expect(within(bar).getByTestId("theme-toggle")).toBeInTheDocument();
         const controls = screen.getAllByRole("button", { name: "Account options" });
         expect(controls.map((control) => control.getAttribute("aria-controls")).sort()).toEqual([
             "account-options",
             "account-options-sidebar",
         ]);
+        // The legacy account bar is not rendered on a shell route.
+        expect(screen.queryByRole("navigation", { name: "Account" })).toBeNull();
+    });
+
+    it("opens the slide-over from the menu button and closes it when the route changes", async () => {
+        const user = userEvent.setup();
+        const view = renderFrame(<ShellPage />);
+
+        await user.click(screen.getByRole("button", { name: "Show navigation" }));
+        expect(screen.getByRole("dialog", { name: "Navigation" })).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "Hide navigation" })).toHaveAttribute(
+            "aria-expanded",
+            "true",
+        );
+
+        navigationMock.pathname = "/dashboard/other";
+        view.rerender(
+            <AdminTierProvider tier="community" features={{}}>
+                <AppShell banners={<div data-testid="banners">Banner</div>}>
+                    <ShellPage />
+                </AppShell>
+            </AdminTierProvider>,
+        );
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(screen.getByRole("button", { name: "Show navigation" })).toHaveAttribute(
+            "aria-expanded",
+            "false",
+        );
     });
 });
 

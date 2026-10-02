@@ -12,7 +12,8 @@ import {
     valueDelta,
 } from "@/lib/graphql/hooks/useAIReviewRisk";
 import { AIComparisonMetricCard } from "./AIComparisonMetricCard";
-import { AIDrilldownModal } from "./AIDrilldownModal";
+import { Drawer } from "@/components/ui/Drawer";
+import { AIEvidenceExplorer } from "./AIEvidenceExplorer";
 import { AIMissingDataPanel } from "./AIMissingDataPanel";
 import { AIReviewAmplificationTrend } from "./AIReviewAmplificationTrend";
 
@@ -115,31 +116,27 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
                 />
                 {reviewLoad?.reviewerConcentration.dataAvailable ? (
                     <section
-                        className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+                        className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-5"
                         data-testid="ai-reviewer-concentration"
                     >
-                        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-(--ink-muted)">
+                        <p className="text-label-caps uppercase text-(--ink-muted)">
                             Aggregate-only
                         </p>
-                        <h3 className="mt-2 font-(--font-display) text-lg">
-                            Reviewer concentration
-                        </h3>
+                        <h3 className="mt-2 text-h3 font-semibold">Reviewer concentration</h3>
                         <p className="mt-2 text-sm text-(--ink-muted)">
                             Distribution-level review spread only. No reviewer names, ranks, or
                             person-level counts are exposed.
                         </p>
                         <div className="mt-5 grid grid-cols-2 gap-3">
-                            <div className="rounded-2xl bg-background/60 px-3 py-3">
-                                <p className="text-xs uppercase tracking-[0.12em] text-(--ink-muted)">
-                                    Gini
-                                </p>
+                            <div className="rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-3">
+                                <p className="text-label-caps uppercase text-(--ink-muted)">Gini</p>
                                 <p className="mt-1 text-2xl font-semibold tabular-nums">
                                     {reviewLoad.reviewerConcentration.reviewerGini?.toFixed(2) ??
                                         "—"}
                                 </p>
                             </div>
-                            <div className="rounded-2xl bg-background/60 px-3 py-3">
-                                <p className="text-xs uppercase tracking-[0.12em] text-(--ink-muted)">
+                            <div className="rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-3">
+                                <p className="text-label-caps uppercase text-(--ink-muted)">
                                     Reviewers
                                 </p>
                                 <p className="mt-1 text-2xl font-semibold tabular-nums">
@@ -173,13 +170,22 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
 
             <AIReviewAmplificationTrend daily={reviewLoad?.daily ?? []} loading={fetching} />
 
-            {drilldownMetric && (
-                <AIDrilldownModal
-                    metric={drilldownMetric}
-                    filter={filter}
-                    onClose={() => setDrilldownMetric(null)}
-                />
-            )}
+            {/* A8: the shared Drawer replaces the centred modal on this page. The body is the same PR
+                explorer; the modal component stays for the Governance Risk page. */}
+            <Drawer
+                open={drilldownMetric !== null}
+                onCloseAction={() => setDrilldownMetric(null)}
+                eyebrow={drilldownMetric ?? undefined}
+                title="Evidence by pull request"
+                size="wide"
+                data-testid="ai-drilldown-drawer"
+            >
+                <p className="text-sm text-(--ink-muted)">
+                    Pick an AI-attributed PR to see its Work Graph evidence. Filtered to the current
+                    dashboard range, repo, and work type.
+                </p>
+                <AIEvidenceExplorer filter={filter} />
+            </Drawer>
         </div>
     );
 }

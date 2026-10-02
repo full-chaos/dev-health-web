@@ -21,6 +21,7 @@ describe("OverviewView", () => {
                 window={{ sinceDate: "2026-05-01", untilDate: "2026-05-31" }}
                 filters={filters}
                 activeRole="engineer"
+                trend={[]}
             />,
         );
 

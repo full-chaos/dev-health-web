@@ -1,4 +1,5 @@
 import { AreaOverview } from "@/components/navigation/AreaOverview";
+import { Notice } from "@/components/ui/Notice";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { getAreaSignals } from "@/lib/areaSignals";
@@ -49,6 +50,12 @@ export default async function ImprovePage({ searchParams }: ImprovePageProps) {
                 role={activeRole}
                 title="Related workflows"
                 description="Improvement workflows, ordered by severity."
+                note={
+                    <Notice variant="info" live={false} data-testid="improve-destinations-note">
+                        Improvement Automations and AI Automations are separate destinations.
+                        Neither becomes an automatic action simply because a suggestion appears.
+                    </Notice>
+                }
             />
         </div>
     );
