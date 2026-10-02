@@ -26,7 +26,8 @@ const missingDataFilter = encodeFilter({
     time: { range_days: 30, compare_days: 30 },
 });
 
-const aiTabStrip = (page: Page) => page.getByRole("navigation", { name: "AI views" });
+// The AI destinations are the sidebar children of the AI area (shared app shell).
+const aiChildren = (page: Page) => page.getByTestId("nav-children-ai");
 const riskTabStrip = (page: Page) =>
     page.getByRole("navigation", { name: "Governance Risk views" });
 
@@ -99,10 +100,10 @@ test.describe("AI area journey (CHAOS-2213)", () => {
 
         // Hub → Impact. The hub cards render sample-populated links in test
         // mode (asserted in the populated-hub test above); navigate via the
-        // AI tab strip, the canonical entry point this journey exercises.
+        // sidebar children of the AI area, the canonical entry point this journey exercises.
         await clickUntilUrl(
             page,
-            aiTabStrip(page).getByRole("link", { name: /^Impact$/ }),
+            aiChildren(page).getByRole("link", { name: /^Impact$/ }),
             /\/ai\/impact/,
         );
         await expect(page.getByTestId("ai-impact-dashboard")).toBeVisible();
@@ -153,7 +154,7 @@ test.describe("AI area journey (CHAOS-2213)", () => {
         // Review Load: the real Wave-2 metrics replace the old proxies (CHAOS-2194).
         await clickUntilUrl(
             page,
-            aiTabStrip(page).getByRole("link", { name: /^Review Load$/ }),
+            aiChildren(page).getByRole("link", { name: /^Review Load$/ }),
             /\/ai\/review-load/,
         );
         const reviewLoad = page.getByTestId("ai-review-load-dashboard");
@@ -164,7 +165,7 @@ test.describe("AI area journey (CHAOS-2213)", () => {
         // Governance Risk: Overview tab active by default.
         await clickUntilUrl(
             page,
-            aiTabStrip(page).getByRole("link", { name: /^Governance Risk$/ }),
+            aiChildren(page).getByRole("link", { name: /^Governance Risk$/ }),
             /\/ai\/risk/,
         );
         await expect(page.getByTestId("ai-risk-dashboard")).toBeVisible();
@@ -195,7 +196,7 @@ test.describe("AI area journey (CHAOS-2213)", () => {
         // rendered through the uniform kind eyebrow.
         await clickUntilUrl(
             page,
-            aiTabStrip(page).getByRole("link", { name: /^Automations$/ }),
+            aiChildren(page).getByRole("link", { name: /^Automations$/ }),
             /\/ai\/automations/,
         );
         const automations = page.getByTestId("ai-automations-dashboard");

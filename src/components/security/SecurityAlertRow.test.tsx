@@ -18,6 +18,14 @@ function TableWrapper({ children }: { children: ReactNode }) {
     );
 }
 
+function renderRow(alert: SecurityAlertRowData) {
+    return render(
+        <TableWrapper>
+            <SecurityAlertRow alert={alert} />
+        </TableWrapper>,
+    );
+}
+
 function makeAlert(overrides: Partial<SecurityAlertRowData> = {}): SecurityAlertRowData {
     return {
         alertId: "alert-1",
@@ -46,7 +54,7 @@ describe("SecurityAlertRow", () => {
     afterEach(() => cleanup());
 
     it("renders severity, source, state, and package chip", () => {
-        render(<SecurityAlertRow alert={makeAlert()} />, { wrapper: TableWrapper });
+        renderRow(makeAlert());
 
         expect(screen.getByText("High")).toBeInTheDocument();
         expect(screen.getByText("Dependabot")).toBeInTheDocument();
@@ -56,15 +64,13 @@ describe("SecurityAlertRow", () => {
     });
 
     it("renders the CVE id as a chip when packageName is absent", () => {
-        render(<SecurityAlertRow alert={makeAlert({ packageName: null as unknown as string })} />, {
-            wrapper: TableWrapper,
-        });
+        renderRow(makeAlert({ packageName: null as unknown as string }));
 
         expect(screen.getByText("CVE-2024-0001")).toBeInTheDocument();
     });
 
     it("has the provider page as a real link in the title cell, reachable by keyboard", async () => {
-        render(<SecurityAlertRow alert={makeAlert()} />, { wrapper: TableWrapper });
+        renderRow(makeAlert());
 
         const link = screen.getByRole("link", { name: /Prototype pollution/i });
         expect(link).toHaveAttribute("href", "https://github.com/org/repo-a/security/dependabot/1");
@@ -81,7 +87,7 @@ describe("SecurityAlertRow", () => {
     });
 
     it("has no click handler that opens a window, and no link nested in another", async () => {
-        render(<SecurityAlertRow alert={makeAlert()} />, { wrapper: TableWrapper });
+        renderRow(makeAlert());
 
         await userEvent.click(screen.getByRole("link", { name: /Prototype pollution/i }));
         expect(openSpy).not.toHaveBeenCalled();
@@ -92,9 +98,7 @@ describe("SecurityAlertRow", () => {
     });
 
     it("does not wrap in a link when url is not present", () => {
-        render(<SecurityAlertRow alert={makeAlert({ url: null as unknown as string })} />, {
-            wrapper: TableWrapper,
-        });
+        renderRow(makeAlert({ url: null as unknown as string }));
 
         expect(
             screen.queryByRole("link", { name: /Prototype pollution/i }),
@@ -103,12 +107,7 @@ describe("SecurityAlertRow", () => {
     });
 
     it("shows 'just now' for a freshly created alert", () => {
-        render(
-            <SecurityAlertRow
-                alert={makeAlert({ createdAt: new Date(Date.now() - 30_000).toISOString() })}
-            />,
-            { wrapper: TableWrapper },
-        );
+        renderRow(makeAlert({ createdAt: new Date(Date.now() - 30_000).toISOString() }));
 
         expect(screen.getByText(/just now/i)).toBeInTheDocument();
     });
