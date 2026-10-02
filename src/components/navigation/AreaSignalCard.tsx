@@ -176,7 +176,7 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                     {/* Approved `.signal small`: the metric name sits below the value as link text with an arrow. */}
                     <p
                         data-testid="area-signal-metric"
-                        className="mt-1 text-xs text-(--accent-text) group-hover:underline"
+                        className="mt-1 text-xs text-(--accent-2) group-hover:underline"
                     >
                         {signal.metricLabel} <span aria-hidden="true">→</span>
                     </p>

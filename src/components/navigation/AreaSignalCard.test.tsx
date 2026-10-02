@@ -164,6 +164,7 @@ describe("AreaSignalCard approved look (CHAOS-8062)", () => {
         const metric = screen.getByTestId("area-signal-metric");
         expect(metric).toHaveTextContent("Line coverage →");
         expect(metric.className).not.toMatch(/uppercase|tracking-/);
+        expect(metric).toHaveClass("text-(--accent-2)");
         expect(
             value.compareDocumentPosition(metric) & Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
