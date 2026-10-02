@@ -93,14 +93,23 @@ test.describe("AI Impact PR evidence", () => {
         await list.getByRole("button", { name: "Next" }).click();
         await expect(list.getByTestId("ai-impact-evidence-row")).toHaveCount(5);
 
-        // Narrow the scope through the FilterBar's Work menu — a CLIENT-side
-        // navigation (router.replace), so the list component instance survives
-        // with its local pagination state. The filtered set has only 3 rows; a
-        // stale offset of 25 would render the sparse-page failure state. The
-        // list must reset to page 1 and show the rows instead.
-        const filterBar = page.getByTestId("filter-bar");
-        await filterBar.getByRole("button", { name: /^Work/ }).click();
-        await filterBar.getByRole("checkbox", { name: "feature" }).check();
+        // Narrow the scope through the Work filter, which is in the Filters
+        // drawer of the scope bar — a CLIENT-side navigation (router.replace), so
+        // the list component instance survives with its local pagination state.
+        // The filtered set has only 3 rows; a stale offset of 25 would render the
+        // sparse-page failure state. The list must reset to page 1 and show the
+        // rows instead.
+        await page
+            .getByTestId("scope-bar")
+            .getByRole("button", { name: /^Filters/ })
+            .click();
+        const filters = page.getByRole("dialog", { name: "Filters" });
+        await filters.getByRole("button", { name: /^Work/ }).click();
+        await filters.getByRole("checkbox", { name: "feature" }).check();
+        // Escape closes the open menu, then the drawer.
+        await page.keyboard.press("Escape");
+        await page.keyboard.press("Escape");
+        await expect(filters).toBeHidden();
 
         await expect(list.getByTestId("ai-impact-evidence-row")).toHaveCount(3);
         await expect(list.getByTestId("ai-impact-evidence-sparse-page")).toHaveCount(0);

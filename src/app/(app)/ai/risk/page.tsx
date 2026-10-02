@@ -5,15 +5,12 @@ import {
 } from "@/components/ai/AIGovernanceRiskTabs";
 import { AIRiskDashboard } from "@/components/ai/AIRiskDashboard";
 import { AITestGapsPanel } from "@/components/ai/AITestGapsPanel";
-import { AIPageHeader } from "@/components/ai/AIPageHeader";
-import { FilterBar } from "@/components/filters/FilterBar";
-import { GlobalContextBar } from "@/components/navigation/GlobalContextBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { metricFilterToAIFilter } from "@/lib/filters/ai";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { withFilterParam } from "@/lib/filters/url";
-import { navTrailForPathname } from "@/lib/navigation/areas";
+import { PageHeader } from "@/components/shell/PageHeader";
+import { ScopeBar } from "@/components/shell/ScopeBar";
 
 type AIRiskPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -28,11 +25,6 @@ const VIEW_LEDES = {
         "The Work Graph evidence trail behind AI governance signals, explorable per AI-attributed pull request.",
 } as const;
 
-const VIEW_CRUMBS = {
-    "test-gaps": "Test Gaps",
-    evidence: "Evidence",
-} as const;
-
 export default async function AIRiskPage({ searchParams }: AIRiskPageProps) {
     const params = (await searchParams) ?? {};
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
@@ -45,41 +37,19 @@ export default async function AIRiskPage({ searchParams }: AIRiskPageProps) {
     const health = await checkApiHealth();
 
     if (!health.ok) {
-        return <ServiceUnavailable />;
+        return <ServiceUnavailable landmark={false} />;
     }
 
     return (
-        <>
-            <AIPageHeader
-                eyebrow="AI"
-                title="Governance Risk"
-                breadcrumbs={
-                    view === "overview"
-                        ? navTrailForPathname("/ai/risk")
-                        : [
-                              // On a sub-tab the area→child trail's "Governance Risk"
-                              // crumb becomes a link back to the overview, with the
-                              // active view as the final (current) crumb. Preserve the
-                              // active filter scope on that link the same way the
-                              // in-page tabs do (AIGovernanceRiskTabs), so the
-                              // breadcrumb doesn't silently reset it.
-                              ...navTrailForPathname("/ai/risk").slice(0, -1),
-                              {
-                                  label: "Governance Risk",
-                                  href: withFilterParam("/ai/risk", filters, activeRole),
-                              },
-                              { label: VIEW_CRUMBS[view] },
-                          ]
-                }
-            >
-                {VIEW_LEDES[view]}
-            </AIPageHeader>
-            <GlobalContextBar filters={filters} />
-            <FilterBar view="ai" />
+        // Rendered inside the shared app shell: the layout owns the navigation, the
+        // page padding and the `<main>` landmark.
+        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+            <PageHeader title="Governance Risk" subtitle={VIEW_LEDES[view]} />
+            <ScopeBar view="ai" />
             <AIGovernanceRiskTabs view={view} filters={filters} role={activeRole} />
             {view === "overview" && <AIRiskDashboard filter={aiFilter} />}
             {view === "test-gaps" && <AITestGapsPanel filter={aiFilter} />}
             {view === "evidence" && <AIEvidencePanel filter={aiFilter} />}
-        </>
+        </div>
     );
 }

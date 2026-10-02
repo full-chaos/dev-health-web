@@ -153,6 +153,10 @@ export const navAreas: readonly NavArea[] = [
             "/bottleneck",
             "/explore",
             "/agent-context",
+            // Artifact detail pages opened from Explore, the heatmaps and the Work Graph.
+            "/prs",
+            "/issues",
+            "/deployments",
         ],
         legacyActiveIds: [
             "work",
@@ -280,7 +284,7 @@ export const navAreas: readonly NavArea[] = [
         label: "Plan",
         href: "/plan",
         placement: "main",
-        ownedPathPrefixes: ["/plan", "/capacity-planning", "/operating-review"],
+        ownedPathPrefixes: ["/plan", "/capacity", "/capacity-planning", "/operating-review"],
         legacyActiveIds: [
             "capacity-planning",
             "delivery-forecast",
@@ -779,12 +783,12 @@ function ownedPathsFor(child: NavChildRoute): readonly string[] {
 
 /**
  * Resolve the single active CHILD within an area (A10: exactly one selected).
- * Only `navVisible` children are considered; the longest owned-path match wins,
+ * Only a `navVisible` child is ever returned; the longest owned-path match wins,
  * so a cluster child (e.g. Tests · Quality · Coverage) lights up across every
  * path it fronts (`/quality`, `/testops/tests`, `/testops/coverage`) while a
  * more specific sibling (Pipelines `/testops/pipelines`) still beats the
- * area Overview (`/testops`). Returns `undefined` when no child owns the path
- * (the area row is selected, but no child is).
+ * area Overview (`/testops`). Returns `undefined` when no child owns the path,
+ * or when a hidden child owns it (the area row is selected, but no child is).
  */
 export function selectedChildForPathname(
     area: NavArea,
@@ -792,8 +796,11 @@ export function selectedChildForPathname(
 ): NavChildRoute | undefined {
     let selected: { child: NavChildRoute; score: number } | undefined;
 
+    // A hidden child (`navVisible: false`) takes part in the longest match, so
+    // that a visible child with a shorter prefix does not claim its route: on
+    // `/ai/attribution` the Overview child (`/ai`) is not the current page. When
+    // a hidden child owns the path, no child is selected and the area row is.
     for (const child of area.children) {
-        if (!child.navVisible) continue;
         for (const owned of ownedPathsFor(child)) {
             const matches = child.exact ? pathname === owned : pathMatchesPrefix(pathname, owned);
             if (matches && owned.length > (selected?.score ?? -1)) {
@@ -802,7 +809,7 @@ export function selectedChildForPathname(
         }
     }
 
-    return selected?.child;
+    return selected?.child.navVisible ? selected.child : undefined;
 }
 
 /**

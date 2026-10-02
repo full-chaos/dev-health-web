@@ -36,6 +36,14 @@ describe("ContextPacketExplorer", () => {
         expect(screen.getByText("Coverage is complete.")).toBeInTheDocument();
     });
 
+    it("marks the form as hydrated once its handlers are attached (CHAOS-7649)", () => {
+        render(<ContextPacketExplorer controlledState="sample" />);
+
+        // `tests/acr-explorer-shell.spec.ts` waits for this before the first click: a click that
+        // lands before hydration submits the form natively and never reaches `submitContext`.
+        expect(screen.getByTestId("context-packet-form")).toHaveAttribute("data-hydrated", "true");
+    });
+
     it("completes a sample request and restores focus to the generated packet", async () => {
         const user = userEvent.setup();
         render(<ContextPacketExplorer controlledState="sample" />);

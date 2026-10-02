@@ -55,11 +55,27 @@ export function formatSigned(value?: number | null, suffix = ""): string {
     return `${sign}${value.toFixed(1)}${suffix}`;
 }
 
+/**
+ * One fixed color per attribution bucket, shared by the Impact donut and the attribution badge
+ * (`AIAttributionBadge`: its dot uses the same chart colors). Human and Unknown use the muted ink.
+ */
+const BUCKET_COLOR: Record<string, { colorIndex?: number; muted?: boolean }> = {
+    ai_assisted: { colorIndex: 1 },
+    ai_review: { colorIndex: 2 },
+    agent_created: { colorIndex: 6 },
+    human: { muted: true },
+    unknown: { muted: true },
+};
+
 export function assistedWorkShareRows(rows: AiImpactBucketTotals[]) {
     const assistedBuckets = new Set<string>(AI_BUCKETS.map(bucketKey));
     return rows
         .filter((row) => assistedBuckets.has(bucketKey(row.bucket)))
-        .map((row) => ({ name: bucketLabel(row.bucket), value: row.prsTotal }));
+        .map((row) => ({
+            name: bucketLabel(row.bucket),
+            value: row.prsTotal,
+            ...BUCKET_COLOR[bucketKey(row.bucket)],
+        }));
 }
 
 export function agentCreatedTrend(rows: AiImpactBucketRow[]) {

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { DonutChart } from "@/components/charts/DonutChart";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { DataState } from "@/components/ui/DataState";
+import { Notice } from "@/components/ui/Notice";
 import { useAIComparison, useAIImpactSummary } from "@/lib/graphql/hooks/useAIImpact";
 import type { AIFilter } from "@/lib/filters/ai";
 import { bucketEquals } from "@/lib/ai/buckets";
@@ -70,42 +71,23 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
 
     return (
         <div className="flex flex-col gap-6" data-testid="ai-impact-dashboard">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                    <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                        AI-assisted work share
-                    </p>
-                    <p className="mt-2 text-4xl font-semibold tabular-nums">
-                        {formatPercent(summary?.aiAssistedPrRatio)}
-                    </p>
-                    <p className="mt-2 text-sm text-(--ink-muted)">
-                        {summary?.aiAssistedPrs ?? 0} of {summary?.totalPrs ?? 0} PRs lean
-                        AI-assisted.
-                    </p>
-                </div>
-                <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                    <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                        Agent-created work share
-                    </p>
-                    <p className="mt-2 text-4xl font-semibold tabular-nums">
-                        {summary?.agentCreatedPrs ?? 0}
-                    </p>
-                    <p className="mt-2 text-sm text-(--ink-muted)">
-                        {formatPercent(safeRatio(summary?.agentCreatedPrs, summary?.totalPrs))} of
-                        PRs appear agent-created.
-                    </p>
-                </div>
-                <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                    <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                        Unknown attribution
-                    </p>
-                    <p className="mt-2 text-4xl font-semibold tabular-nums">
-                        {summary?.unknownPrs ?? 0}
-                    </p>
-                    <p className="mt-2 text-sm text-(--ink-muted)">
-                        Kept visible so data coverage gaps stay inspectable.
-                    </p>
-                </div>
+            <div className="grid grid-cols-1 gap-3.5 md:grid-cols-3">
+                <StatTile
+                    label="AI-assisted work share"
+                    value={formatPercent(summary?.aiAssistedPrRatio)}
+                    note={`${summary?.aiAssistedPrs ?? 0} of ${summary?.totalPrs ?? 0} PRs lean AI-assisted.`}
+                />
+                <StatTile
+                    label="Agent-created work share"
+                    value={String(summary?.agentCreatedPrs ?? 0)}
+                    note={`${formatPercent(safeRatio(summary?.agentCreatedPrs, summary?.totalPrs))} of PRs appear agent-created.`}
+                />
+                <StatTile
+                    label="Unknown attribution"
+                    value={String(summary?.unknownPrs ?? 0)}
+                    note="Kept visible so data coverage gaps stay inspectable."
+                    dashed
+                />
             </div>
 
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
@@ -114,7 +96,7 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
                     description="PR attribution mix across human, assisted, review, agent, and unknown buckets."
                 >
                     {donutRows.length ? (
-                        <DonutChart data={donutRows} height={260} />
+                        <DonutChart data={donutRows} height={260} legendPercent />
                     ) : (
                         <DataState variant="detector-enabled-no-findings" compact />
                     )}
@@ -126,7 +108,7 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
                 >
                     <div className="flex items-end justify-between gap-4">
                         <div>
-                            <p className="text-4xl font-semibold tabular-nums">
+                            <p className="text-[1.75rem] font-semibold leading-tight tabular-nums">
                                 {agentBucket?.agentCreatedPrCount ?? summary?.agentCreatedPrs ?? 0}
                             </p>
                             <p className="text-sm text-(--ink-muted)">agent-created PRs</p>
@@ -235,27 +217,29 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
                         />
                     )}
                 </AIPanelCard>
-
-                <AIPanelCard
-                    title="Best-fit automation opportunities"
-                    description="Candidate patterns for responsible automation now have a dedicated workflow."
-                >
-                    <div className="flex flex-col gap-3 text-sm text-(--ink-muted)">
-                        <p>
-                            Automation candidates moved out of the Impact dashboard so leverage
-                            diagnostics and candidate triage can evolve independently.
-                        </p>
-                        <Link
-                            className="font-medium text-(--accent-2) underline-offset-4 hover:underline"
-                            href="/ai/automations"
-                        >
-                            {CTA_LABELS.seeAIAutomations} →
-                        </Link>
-                    </div>
-                </AIPanelCard>
             </div>
 
-            <p className="text-xs text-(--ink-muted)">
+            <Notice
+                variant="info"
+                live={false}
+                title="Best-fit automation opportunities"
+                action={
+                    <Link
+                        className="font-medium text-(--accent-2) underline-offset-4 hover:underline"
+                        href="/ai/automations"
+                    >
+                        {CTA_LABELS.seeAIAutomations} →
+                    </Link>
+                }
+            >
+                <p>Candidate patterns for responsible automation now have a dedicated workflow.</p>
+                <p className="mt-1">
+                    Automation candidates moved out of the Impact dashboard so leverage diagnostics
+                    and candidate triage can evolve independently.
+                </p>
+            </Notice>
+
+            <p className="flex items-start gap-1.5 text-xs text-(--ink-muted)">
                 Last computed {summary?.computedAt ?? "not yet available"}. Copy uses system-health
                 language: values suggest patterns and should be interpreted with local context.
             </p>
@@ -283,7 +267,7 @@ function ScopeRollupList({ label, rows }: { label: string; rows: ScopeRollupRow[
     }
     return (
         <div>
-            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">{label}</p>
+            <p className="text-label-caps uppercase text-(--ink-muted)">{label}</p>
             <ul className="mt-2 space-y-1.5">
                 {rows.slice(0, ROLLUP_LIMIT).map((row) => (
                     <li
@@ -309,8 +293,36 @@ function DashboardSkeleton() {
     return (
         <div className="grid gap-4 md:grid-cols-3" data-testid="ai-impact-loading">
             {Array.from({ length: 6 }).map((_, index) => (
-                <div key={index} className="h-40 animate-pulse rounded-3xl bg-(--card-80)" />
+                <div
+                    key={index}
+                    className="h-40 animate-pulse rounded-(--radius-md) bg-(--card-80) motion-reduce:animate-none"
+                />
             ))}
+        </div>
+    );
+}
+
+function StatTile({
+    label,
+    value,
+    note,
+    dashed = false,
+}: {
+    label: string;
+    value: string;
+    note: string;
+    /** The "unknown" treatment: a dashed outline, so a coverage gap never looks like a result. */
+    dashed?: boolean;
+}) {
+    return (
+        <div
+            className={`min-h-31 rounded-(--radius-md) border bg-card px-5 py-4.5 ${dashed ? "border-dashed" : ""} border-(--card-stroke)`}
+        >
+            <p className="text-label-caps uppercase text-(--ink-muted)">{label}</p>
+            <p className="mt-2.5 text-[1.75rem] font-semibold leading-tight tabular-nums">
+                {value}
+            </p>
+            <p className="mt-2 text-xs text-(--ink-muted)">{note}</p>
         </div>
     );
 }

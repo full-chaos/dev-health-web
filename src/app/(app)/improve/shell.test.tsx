@@ -38,7 +38,7 @@ vi.mock("@/components/shell/ScopeBar", () => ({
 vi.mock("@/components/navigation/AreaOverview", () => ({
     AreaOverview: (props: Record<string, unknown>) => {
         areaOverviewSpy(props);
-        return <div data-testid="area-overview" />;
+        return <div data-testid="area-overview">{props.note as React.ReactNode}</div>;
     },
 }));
 vi.mock("@/lib/areaSignals", () => ({ getAreaSignals: vi.fn().mockResolvedValue([]) }));
@@ -118,6 +118,14 @@ describe("Improve overview in the shared app shell", () => {
 
         expect(areaOverviewSpy).toHaveBeenCalledWith(
             expect.objectContaining({ areaId: "improve", filters: FILTERS, role: "em" }),
+        );
+    });
+
+    it("passes the note on the two automation destinations to the overview", async () => {
+        await renderPage();
+
+        expect(screen.getByTestId("improve-destinations-note")).toHaveTextContent(
+            "Improvement Automations and AI Automations are separate destinations. Neither becomes an automatic action simply because a suggestion appears.",
         );
     });
 });
