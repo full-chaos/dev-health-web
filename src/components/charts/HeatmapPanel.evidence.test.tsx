@@ -152,6 +152,48 @@ describe("HeatmapPanel evidence drawer", () => {
         ).toBeInTheDocument();
     });
 
+    it("starts the cell drawer with the five provenance rows: only the artifact count is served", async () => {
+        vi.mocked(getHeatmap).mockResolvedValue(
+            cellResponse([{ path: "src/billing/invoice.ts", value: 4 }]),
+        );
+        render(panel());
+        await userEvent.click(screen.getByRole("button", { name: "cell billing Tue" }));
+        const drawer = screen.getByRole("dialog");
+        await within(drawer).findByText("invoice.ts");
+
+        const rows = within(within(drawer).getByTestId("evidence-facts"))
+            .getAllByTestId("evidence-fact")
+            .map((row) => [
+                row.querySelector("dt")?.textContent,
+                row.querySelector("dd")?.textContent,
+            ]);
+        expect(rows).toEqual([
+            ["Source", "Not reported"],
+            ["Data quality", "Not reported"],
+            ["Last sync", "Not reported"],
+            ["Identity confidence", "Not reported"],
+            ["Artifacts", "1 artifact"],
+        ]);
+    });
+
+    it("Escape closes the drawer and focus returns to the chart region (a cell is a mark on the canvas)", async () => {
+        vi.mocked(getHeatmap).mockResolvedValue(cellResponse([]));
+        render(panel());
+        const region = screen.getByTestId("heatmap-chart-region");
+        expect(region).toHaveAttribute("tabindex", "-1");
+        expect(region).toHaveAccessibleName("Hotspot concentration chart");
+        // A real cell is a mark on a canvas; the stand-in must not keep focus itself.
+        const cell = screen.getByRole("button", { name: "cell billing Tue" });
+        await userEvent.click(cell);
+        cell.blur();
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(region).toHaveFocus();
+    });
+
     it("loads again for another cell, with that cell's coordinates", async () => {
         vi.mocked(getHeatmap).mockResolvedValue(cellResponse([]));
         render(panel());

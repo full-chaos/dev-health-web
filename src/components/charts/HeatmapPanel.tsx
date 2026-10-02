@@ -1,11 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
-import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import {
+    EvidenceFact,
+    EvidenceFactList,
+    EvidenceProvenanceFacts,
+} from "@/components/evidence/EvidenceFacts";
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import { getHeatmap } from "@/lib/api/visuals";
 import { resolveEntityLabel } from "@/lib/labels/entityLabel";
@@ -176,12 +180,16 @@ export function HeatmapPanel({
     const data = initialData;
     const unit = data?.legend.unit;
 
+    // A cell is a mark on the chart canvas, not a focusable element: when the drawer closes, focus
+    // goes back to the chart region.
+    const chartRegionRef = useRef<HTMLDivElement>(null);
     // A cell opens the shared evidence drawer; the drawer body loads the cell's artifacts.
     const handleCellSelect = useCallback(
         (cell: HeatmapCell) => {
             evidenceDrawer.open({
                 title: `${cell.y} · ${cell.x}`,
                 content: <HeatmapCellEvidence request={request} cell={cell} unit={unit} />,
+                returnFocusRef: chartRegionRef,
             });
         },
         [evidenceDrawer, request, unit],
@@ -224,7 +232,14 @@ export function HeatmapPanel({
                     {data.legend.unit}
                 </div>
             </div>
-            <div className="mt-4">
+            <div
+                ref={chartRegionRef}
+                tabIndex={-1}
+                role="group"
+                aria-label={`${title} chart`}
+                data-testid="heatmap-chart-region"
+                className="mt-4"
+            >
                 {isFlat ? (
                     <div
                         data-testid="heatmap-flat-state"
@@ -372,21 +387,16 @@ function HeatmapCellEvidence({
 
     return (
         <div data-testid="heatmap-cell-evidence" className="space-y-4">
-            <EvidenceFactList aria-label="Cell">
+            {/* The heatmap query serves no source, quality, sync time or identity confidence for
+                a cell. It serves the artifact list; the count shows when the list is loaded. */}
+            <EvidenceProvenanceFacts
+                artifactCount={state.status === "loaded" ? artifacts.length : undefined}
+            />
+            <EvidenceFactList aria-label="Cell" testId="evidence-subject-facts">
                 <EvidenceFact
                     label="Value"
                     // The same precision as the chart tooltip, so the drawer and the cell agree.
                     value={`${formatNumber(cell.value, { maximumFractionDigits: 2 })}${unit ? ` ${unit}` : ""}`}
-                />
-                <EvidenceFact
-                    label="Artifacts"
-                    value={
-                        state.status !== "loaded"
-                            ? undefined
-                            : artifacts.length > 0
-                              ? `${artifacts.length} ${artifacts.length === 1 ? "artifact" : "artifacts"}`
-                              : "None returned"
-                    }
                 />
             </EvidenceFactList>
 
