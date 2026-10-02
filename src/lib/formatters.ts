@@ -74,15 +74,20 @@ export const formatDelta = (value: number) => {
     return `${sign}${formatNumber(Math.abs(rounded), { maximumFractionDigits: 0 })}%`;
 };
 
-export const formatMetricValue = (value: number, unit: string) => {
+/**
+ * The number of a metric value as text, with the digits its unit gets. The ONE place that
+ * decides the digits: `formatMetricValue` (joined string) and `formatMetricParts` (number and
+ * unit apart) both read it, so the two can never show different numbers for one value.
+ */
+const formatMetricNumber = (value: number, unit: string) => {
     if (unit === "%") {
-        return formatPercent(value);
+        return formatNumber(value, { maximumFractionDigits: 0 });
     }
     if (unit === "days") {
-        return `${formatNumber(value, { maximumFractionDigits: 1 })}d`;
+        return formatNumber(value, { maximumFractionDigits: 1 });
     }
     if (unit === "hours") {
-        return `${formatNumber(value, { maximumFractionDigits: 0 })}h`;
+        return formatNumber(value, { maximumFractionDigits: 0 });
     }
     if (unit === "loc") {
         return formatNumber(value, { notation: "compact" });
@@ -91,9 +96,59 @@ export const formatMetricValue = (value: number, unit: string) => {
     // formatter (the fetcher normalises seconds→minutes for real data; sample
     // data is already in minutes). The formatter only labels the unit.
     if (unit === "m") {
-        return `${formatNumber(value, { maximumFractionDigits: 1 })}m`;
+        return formatNumber(value, { maximumFractionDigits: 1 });
     }
-    return `${formatNumber(value)} ${unit}`.trim();
+    return formatNumber(value);
+};
+
+export const formatMetricValue = (value: number, unit: string) => {
+    const number = formatMetricNumber(value, unit);
+    if (unit === "%") {
+        return `${number}%`;
+    }
+    if (unit === "days") {
+        return `${number}d`;
+    }
+    if (unit === "hours") {
+        return `${number}h`;
+    }
+    if (unit === "loc") {
+        return number;
+    }
+    if (unit === "m") {
+        return `${number}m`;
+    }
+    return `${number} ${unit}`.trim();
+};
+
+export type MetricValueParts = {
+    /** The number as text, same digits as `formatMetricValue`. */
+    value: string;
+    /** The unit word to show beside the number; "" when the metric has no unit. */
+    unit: string;
+};
+
+/**
+ * A metric value as two parts, for a tile that shows the unit small beside the number. Built
+ * from the number and the unit the API serves; a display string is never cut. The unit word is
+ * the served one, except: `loc` reads "LOC", `m` (minutes) reads "min", and `days` / `hours`
+ * read "day" / "hour" when the shown number is exactly 1.
+ */
+export const formatMetricParts = (value: number, unit: string): MetricValueParts => {
+    const number = formatMetricNumber(value, unit);
+    if (unit === "days") {
+        return { value: number, unit: number === "1" ? "day" : "days" };
+    }
+    if (unit === "hours") {
+        return { value: number, unit: number === "1" ? "hour" : "hours" };
+    }
+    if (unit === "loc") {
+        return { value: number, unit: "LOC" };
+    }
+    if (unit === "m") {
+        return { value: number, unit: "min" };
+    }
+    return { value: number, unit };
 };
 
 export const formatTimestamp = (value?: string | null, fallback = "Unavailable") => {

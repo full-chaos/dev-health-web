@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@/test/utils";
 
-import { MetricDelta } from "./MetricDelta";
+import { MetricDelta, metricDeltaParts } from "./MetricDelta";
 
 describe("MetricDelta", () => {
     it("renders rounded signed zero as 0% with muted tone", () => {
@@ -64,5 +64,71 @@ describe("MetricDelta", () => {
         render(<MetricDelta value={Number.POSITIVE_INFINITY} />);
 
         expect(screen.getByText("· No prior period")).toHaveClass("text-(--ink-muted)");
+    });
+});
+
+describe("metricDeltaParts (the delta rule, for surfaces that draw the delta themselves)", () => {
+    it("returns null for a missing delta: missing is never a 0", () => {
+        expect(metricDeltaParts(undefined)).toBeNull();
+        expect(metricDeltaParts(null)).toBeNull();
+        expect(metricDeltaParts(Number.NaN)).toBeNull();
+        expect(metricDeltaParts(Number.POSITIVE_INFINITY)).toBeNull();
+    });
+
+    it("gives the signed text, the glyph and the polarity of a rise and of a fall", () => {
+        expect(metricDeltaParts(12)).toEqual({
+            label: "+12%",
+            glyph: "↑",
+            toneClass: "text-(--positive)",
+            polarity: "good",
+        });
+        expect(metricDeltaParts(-8)).toEqual({
+            label: "-8%",
+            glyph: "↓",
+            toneClass: "text-(--accent-negative)",
+            polarity: "bad",
+        });
+    });
+
+    it("inverts the polarity, never the number, for a lower-is-better metric", () => {
+        expect(metricDeltaParts(5, { inverseGood: true })).toMatchObject({
+            label: "+5%",
+            polarity: "bad",
+            toneClass: "text-(--accent-negative)",
+        });
+        expect(metricDeltaParts(-5, { inverseGood: true })).toMatchObject({
+            label: "-5%",
+            polarity: "good",
+            toneClass: "text-(--positive)",
+        });
+    });
+
+    it("a change that rounds to zero is flat and muted, with no minus sign", () => {
+        expect(metricDeltaParts(-0.2)).toEqual({
+            label: "0%",
+            glyph: "·",
+            toneClass: "text-(--ink-muted)",
+            polarity: "flat",
+        });
+    });
+
+    it("honors the number format and the precision", () => {
+        expect(metricDeltaParts(3.26, { format: "number", precision: 1 })?.label).toBe("+3.3");
+        expect(metricDeltaParts(3.26, { precision: 1 })?.label).toBe("+3.3%");
+    });
+
+    it("MetricDelta says 'No change' in its title only for a flat delta", () => {
+        const { unmount } = render(<MetricDelta value={0.2} />);
+        expect(screen.getByText("· 0%")).toHaveAttribute("title", "No change");
+        unmount();
+        render(<MetricDelta value={12} />);
+        expect(screen.getByText("↑ +12%")).not.toHaveAttribute("title");
+    });
+
+    it("is what MetricDelta prints", () => {
+        const parts = metricDeltaParts(-8, { inverseGood: true });
+        render(<MetricDelta value={-8} inverseGood />);
+        const delta = screen.getByText(`${parts?.glyph} ${parts?.label}`);
+        expect(delta).toHaveClass(parts?.toneClass ?? "");
     });
 });

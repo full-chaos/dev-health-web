@@ -3,6 +3,7 @@ import { render } from "@/test/utils";
 
 import {
     SparklineChart,
+    TILE_SPARK,
     formatSparklineTooltipDate,
     formatSparklineTooltipValue,
 } from "./SparklineChart";
@@ -20,7 +21,8 @@ vi.mock("./chartTheme", () => ({
         accent2: "#70f",
         accent3: "#f00",
     }),
-    useChartColors: () => [],
+    useChartColors: () => ["#0b8fb0", "#c98500"],
+    useChartTokens: () => ({ negative: "#ff8266" }),
 }));
 
 vi.mock("./Chart", () => ({
@@ -106,5 +108,78 @@ describe("SparklineChart tooltip with a null (missing) point", () => {
     it("still formats a produced 0", () => {
         render(<SparklineChart data={[0, 1]} categories={["a", "b"]} />);
         expect(tooltip().tooltip.formatter([{ axisValue: "a", value: 0 }])).toMatch(/:\s*0$/);
+    });
+});
+
+describe("SparklineChart tile variant (the trend mark of a metric tile)", () => {
+    beforeEach(() => chartSpy.mockClear());
+
+    type Series = {
+        smooth: boolean;
+        data: Array<number | null>;
+        symbolSize: (v: unknown, p: { dataIndex: number }) => number;
+        lineStyle: { width: number; color?: string; cap: string; join: string };
+        areaStyle: { opacity: number; color?: string };
+        itemStyle: { color: string; borderColor?: string; borderWidth?: number };
+    };
+    const option = () =>
+        (chartSpy.mock.calls.at(-1)?.[0] as { option: { grid: unknown; series: Series[] } }).option;
+    const sizes = (n: number) =>
+        Array.from({ length: n }, (_, i) => option().series[0].symbolSize(null, { dataIndex: i }));
+
+    it("draws a thin muted line with straight segments over a faint muted area", () => {
+        render(<SparklineChart variant="tile" data={[1, 3, 2]} categories={["a", "b", "c"]} />);
+        const series = option().series[0];
+        expect(series.smooth).toBe(false);
+        expect(series.lineStyle).toEqual({
+            width: 1.5,
+            cap: "round",
+            join: "round",
+            color: "#666",
+        });
+        expect(series.areaStyle).toEqual({ opacity: 0.14, color: "#666" });
+        expect(option().grid).toEqual(TILE_SPARK.grid);
+    });
+
+    it("puts a small unringed dot on the last point only, in the first series color", () => {
+        render(<SparklineChart variant="tile" data={[1, 3, 2]} categories={["a", "b", "c"]} />);
+        expect(sizes(3)).toEqual([0, 0, 5]);
+        expect(option().series[0].itemStyle).toEqual({ color: "#0b8fb0" });
+    });
+
+    it("tone 'bad' colors the dot with the negative status color; the line stays muted", () => {
+        render(
+            <SparklineChart
+                variant="tile"
+                tone="bad"
+                data={[1, 3, 2]}
+                categories={["a", "b", "c"]}
+            />,
+        );
+        expect(option().series[0].itemStyle).toEqual({ color: "#ff8266" });
+        expect(option().series[0].lineStyle.color).toBe("#666");
+    });
+
+    it("keeps a gap as a gap and dots an isolated point", () => {
+        render(
+            <SparklineChart
+                variant="tile"
+                data={[null, 5, null, 7, 8]}
+                categories={["a", "b", "c", "d", "e"]}
+            />,
+        );
+        expect(option().series[0].data).toEqual([null, 5, null, 7, 8]);
+        expect(sizes(5)).toEqual([0, 5, 0, 0, 5]);
+    });
+
+    it("the default variant is unchanged: smoothed, 2px line, ringed 8px muted dot, and tone is ignored", () => {
+        render(<SparklineChart tone="bad" data={[1, 3, 2]} categories={["a", "b", "c"]} />);
+        const series = option().series[0];
+        expect(series.smooth).toBe(true);
+        expect(series.lineStyle).toEqual({ width: 2, cap: "round", join: "round" });
+        expect(series.areaStyle).toEqual({ opacity: 0.15 });
+        expect(series.itemStyle).toEqual({ color: "#666", borderColor: "#fff", borderWidth: 2 });
+        expect(sizes(3)).toEqual([0, 0, 8]);
+        expect(option().grid).toEqual({ left: 8, right: 8, top: 10, bottom: 10 });
     });
 });

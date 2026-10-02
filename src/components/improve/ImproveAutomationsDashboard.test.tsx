@@ -111,11 +111,11 @@ describe("ImproveAutomationsDashboard", () => {
         expect(rows[1]).not.toHaveTextContent("Unresolved");
     });
 
-    it("shows unavailable counts as -- and the dashed unavailable state when the detector is not ready", () => {
+    it("shows unavailable counts as 'Not reported' and the dashed unavailable state when the detector is not ready", () => {
         hook.mockReturnValue(result({ detectorReady: false, totalCount: 0, opportunities: [] }));
         render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
 
-        expect(tiles().getByText("--")).toBeInTheDocument();
+        expect(tiles().getByText("Not reported")).toBeInTheDocument();
         expect(tiles().queryByText("0")).toBeNull();
         const box = screen.getByTestId("improve-automations-unavailable");
         expect(box).toHaveTextContent("No flow opportunities detected");
@@ -128,7 +128,7 @@ describe("ImproveAutomationsDashboard", () => {
         render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
 
         expect(tiles().getByText("0")).toBeInTheDocument();
-        expect(tiles().queryByText("--")).toBeNull();
+        expect(tiles().queryByText("Not reported")).toBeNull();
         const box = screen.getByTestId("improve-automations-empty");
         expect(box).toHaveTextContent("All monitored metrics are within thresholds.");
     });
