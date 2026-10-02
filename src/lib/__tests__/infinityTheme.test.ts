@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { STATUS_PILL_ALPHA, ZONE_GRADIENT_ALPHA } from "../themeTints";
+import { NODE_TYPE_COLOR_SOURCE } from "../workGraphNodeColors";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 const infinityCss = read("../../app/fc-infinity-themes.css");
@@ -98,6 +99,8 @@ const RECORDED_EXCEPTIONS: Record<string, string> = {};
 const THEMES: Theme[] = ["light", "dark"];
 const infinity = (theme: Theme) => getBlock(infinityCss, "infinity", theme);
 const series = (theme: Theme) => [1, 2, 3, 4, 5].map((n) => infinity(theme)[`--chart-color-${n}`]);
+const allSeries = (theme: Theme) =>
+    [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => infinity(theme)[`--chart-color-${n}`]);
 
 describe("infinity palette", () => {
     it.each(THEMES)("keeps text readable on its surfaces (%s)", (theme) => {
@@ -146,13 +149,111 @@ describe("infinity palette", () => {
     );
 
     it.each(THEMES)(
+        "keeps adjacent series distinct for all ten series, under protanopia and deuteranopia (%s)",
+        (theme) => {
+            const colors = allSeries(theme);
+            for (let i = 0; i < colors.length - 1; i += 1) {
+                for (const kind of ["protanopia", "deuteranopia"] as const) {
+                    const key = `${theme}:${i + 1}-${i + 2}:${kind}`;
+                    expect(deltaE(colors[i], colors[i + 1], kind), key).toBeGreaterThanOrEqual(8);
+                }
+            }
+        },
+    );
+
+    // CHAOS-7892: series 3, 7 and 8 were the same red, brown and red as --negative and --caution, so
+    // Work Graph node types (Deployment, Diff, Review outcome, Incident) and legend dots looked alike.
+    it.each(THEMES)(
+        "keeps series 3, 7 and 8 at least 15 dE from the status colors and from each other (%s)",
+        (theme) => {
+            const t = infinity(theme);
+            const colors = allSeries(theme);
+            const slots = { "series 3": colors[2], "series 7": colors[6], "series 8": colors[7] };
+            const status = {
+                "--negative": t["--negative"],
+                "--caution": t["--caution"],
+                "--positive": t["--positive"],
+            };
+            for (const [name, hex] of Object.entries(slots)) {
+                for (const [token, value] of Object.entries(status)) {
+                    expect(
+                        deltaENormal(hex, value),
+                        `${theme} ${name} vs ${token}`,
+                    ).toBeGreaterThanOrEqual(15);
+                }
+            }
+            const names = Object.keys(slots) as (keyof typeof slots)[];
+            for (let a = 0; a < names.length; a += 1) {
+                for (let b = a + 1; b < names.length; b += 1) {
+                    expect(
+                        deltaENormal(slots[names[a]], slots[names[b]]),
+                        `${theme} ${names[a]} vs ${names[b]}`,
+                    ).toBeGreaterThanOrEqual(15);
+                }
+            }
+        },
+    );
+
+    it.each(THEMES)(
+        "draws the Work Graph node types that collided in four distinct colors (%s)",
+        (theme) => {
+            const t = infinity(theme);
+            const colors = allSeries(theme);
+            const colorOf = (type: keyof typeof NODE_TYPE_COLOR_SOURCE) => {
+                const source = NODE_TYPE_COLOR_SOURCE[type];
+                return source === "negative" ? t["--negative"] : colors[source];
+            };
+            const types = ["DEPLOYMENT", "DIFF", "REVIEW_OUTCOME", "INCIDENT"] as const;
+            for (let a = 0; a < types.length; a += 1) {
+                for (let b = a + 1; b < types.length; b += 1) {
+                    expect(
+                        deltaENormal(colorOf(types[a]), colorOf(types[b])),
+                        `${theme} ${types[a]} vs ${types[b]}`,
+                    ).toBeGreaterThanOrEqual(15);
+                }
+            }
+        },
+    );
+
+    it("pins the CHAOS-7892 series picks and leaves the other series alone", () => {
+        const light = allSeries("light");
+        const dark = allSeries("dark");
+        expect(light).toEqual([
+            "#0087a9",
+            "#c88600",
+            "#2525d0",
+            "#00a2b8",
+            "#f06a00",
+            "#075a72",
+            "#e052a7",
+            "#771782",
+            "#656c73",
+            "#2f353b",
+        ]);
+        expect(dark).toEqual([
+            "#0b8fb0",
+            "#c98500",
+            "#da2100",
+            "#02a2bc",
+            "#e8650a",
+            "#4fd3df",
+            "#7d49ca",
+            "#e56ce5",
+            "#808990",
+            "#a7afb5",
+        ]);
+    });
+
+    it.each(THEMES)(
         "fixes investment theme colors by entity and defines the ramp and zones (%s)",
         (theme) => {
             const t = infinity(theme);
             expect(t["--theme-feature"]).toBe("var(--chart-color-5)");
             expect(t["--theme-quality"]).toBe("var(--chart-color-4)");
             expect(t["--theme-risk"]).toBe("var(--chart-color-2)");
+            // Investment's Maintenance follows chart series 3 (chris ruling 66, CHAOS-7892): it is that very token.
             expect(t["--theme-maintenance"]).toBe("var(--chart-color-3)");
+            expect(t["--chart-color-3"]).toBe(theme === "light" ? "#2525d0" : "#da2100");
             expect(t["--theme-operational"]).toBe("var(--chart-color-1)");
             const ramp = [0, 1, 2, 3, 4, 5].map((n) => luminance(t[`--seq-${n}`]));
             const sorted = [...ramp].sort((a, b) => (theme === "light" ? b - a : a - b));
@@ -339,20 +440,19 @@ describe("infinity palette", () => {
         expect(light["--positive"]).toBe("#18664d");
         expect(light["--caution"]).toBe("#7d4f00");
         expect(light["--accent-3"]).toBe("#7d4f00");
-        // Chart colors are not touched by this ticket (series 3, 7 and 8 are CHAOS-7892).
+        // Chart colors are not touched by this ticket (series 3, 7 and 8 are CHAOS-7892, pinned below).
         expect(light["--chart-color-1"]).toBe("#0087a9");
-        expect(light["--chart-color-3"]).toBe("#a30a06");
-        expect(light["--chart-color-7"]).toBe("#8a5700");
-        expect(light["--chart-color-8"]).toBe("#a61708");
     });
 
-    it("leaves the dark block byte for byte as it was", () => {
+    // Pin of the whole dark block: CHAOS-7746 left it byte-equal; CHAOS-7892 changed exactly dark series 7
+    // and 8 (the diff of this hash is those two lines).
+    it("leaves the dark block byte for byte as pinned", () => {
         const block = infinityCss.match(
             /:root\[data-palette="infinity"\]\[data-theme="dark"\] \{([\s\S]*?)\n\}/u,
         );
         expect(block).not.toBeNull();
         expect(createHash("sha256").update(block![1]).digest("hex")).toBe(
-            "d9e2daaa1aa2a4d8ce08f865f7981e001e962d76e35e855961a8721cc42469a6",
+            "3ef223c88b2f79d6283a0dd9de308b76ee2534b501dd3dd7a04e4093c575faff",
         );
     });
 
