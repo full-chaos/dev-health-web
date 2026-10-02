@@ -14,6 +14,8 @@ type TooltipOptions = {
     formatter?: TooltipComponentOption["formatter"];
     /** Draw the time-series crosshair (muted, 1px, solid). Bars keep ECharts' default pointer. */
     crosshair?: boolean;
+    /** `cross` keeps a chart's two-axis pointer (with value labels) and themes its lines. */
+    pointer?: "line" | "cross";
     /** `item` for pies and other charts without an axis; default `axis`. */
     trigger?: "axis" | "item";
     /** Keep the tooltip inside the chart box (default true; a chart that never confined passes false). */
@@ -22,23 +24,50 @@ type TooltipOptions = {
     fontSize?: number;
 };
 
+type PointerLine = { color: string; width: 1; type: "solid" };
+
+/** What `buildTooltip` returns; `axisPointer` and `formatter` are present only when asked for. */
+export type BuiltTooltip = {
+    trigger: "axis" | "item";
+    confine: boolean;
+    backgroundColor: string;
+    borderColor: string;
+    textStyle: { color: string; fontSize?: number };
+    axisPointer?: {
+        type: "line" | "cross";
+        lineStyle: PointerLine;
+        crossStyle?: PointerLine;
+        label?: { backgroundColor: string };
+    };
+    formatter?: TooltipComponentOption["formatter"];
+};
+
 /** The one tooltip: surface background, hairline border, text token. Identity is the marker swatch. */
-export const buildTooltip = (theme: ChartTheme, options: TooltipOptions = {}) => ({
-    trigger: options.trigger ?? ("axis" as const),
-    confine: options.confine ?? true,
-    backgroundColor: theme.background,
-    borderColor: theme.stroke,
-    textStyle: { color: theme.text, ...(options.fontSize ? { fontSize: options.fontSize } : {}) },
-    ...(options.crosshair
-        ? {
-              axisPointer: {
-                  type: "line" as const,
-                  lineStyle: { color: theme.muted, width: 1, type: "solid" as const },
-              },
-          }
-        : {}),
-    ...(options.formatter ? { formatter: options.formatter } : {}),
-});
+export const buildTooltip = (theme: ChartTheme, options: TooltipOptions = {}): BuiltTooltip => {
+    const line: PointerLine = { color: theme.muted, width: 1, type: "solid" };
+    const axisPointer: BuiltTooltip["axisPointer"] = !options.crosshair
+        ? undefined
+        : options.pointer === "cross"
+          ? {
+                type: "cross",
+                lineStyle: line,
+                crossStyle: line,
+                label: { backgroundColor: theme.muted },
+            }
+          : { type: "line", lineStyle: line };
+    return {
+        trigger: options.trigger ?? "axis",
+        confine: options.confine ?? true,
+        backgroundColor: theme.background,
+        borderColor: theme.stroke,
+        textStyle: {
+            color: theme.text,
+            ...(options.fontSize ? { fontSize: options.fontSize } : {}),
+        },
+        ...(axisPointer ? { axisPointer } : {}),
+        ...(options.formatter ? { formatter: options.formatter } : {}),
+    };
+};
 
 /** A 2px line with round caps and joins. */
 export const lineMark = { width: 2, cap: "round" as const, join: "round" as const };
