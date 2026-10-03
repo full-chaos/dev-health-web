@@ -10,8 +10,9 @@ import { describe, expect, it } from "vitest";
  */
 const BANNERS: Array<{ file: string; text: string; title?: string }> = [
     {
+        // One plain sentence + Retry; the backend text goes to the server log (CHAOS-8237).
         file: "app/(app)/org/admin/identities/page.tsx",
-        text: "Failed to load identities: {result.error}",
+        text: "Identities could not be loaded.",
     },
     {
         file: "app/(app)/org/admin/integrations/[provider]/customer-push/[source_id]/batches/page.tsx",

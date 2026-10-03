@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ProviderBadge } from "./ProviderBadge";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
+import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 export type Identity = {
@@ -57,7 +58,7 @@ export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps
             render: (identity) => (
                 <Link
                     href={`/org/admin/identities/${identity.canonical_id}/edit`}
-                    className="hover:underline"
+                    className="font-mono text-xs hover:underline"
                 >
                     {identity.canonical_id}
                 </Link>
@@ -67,15 +68,15 @@ export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps
             key: "display",
             header: "Display Name",
             headerClassName: "px-6 py-4 font-medium",
-            className: "px-6 py-4 text-(--ink-muted)",
-            render: (identity) => identity.display_name ?? "-",
+            className: "px-6 py-4 font-semibold text-foreground",
+            render: (identity) => identity.display_name ?? "—",
         },
         {
             key: "email",
             header: "Email",
             headerClassName: "px-6 py-4 font-medium",
             className: "px-6 py-4 text-(--ink-muted)",
-            render: (identity) => identity.email ?? "-",
+            render: (identity) => identity.email ?? "—",
         },
         {
             key: "team",
@@ -150,25 +151,33 @@ export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps
         },
     ];
 
+    const countNote =
+        filteredIdentities.length === identities.length
+            ? `${identities.length} ${identities.length === 1 ? "identity" : "identities"}`
+            : `${filteredIdentities.length} of ${identities.length} identities`;
+
     return (
-        <DataTable
-            accessibleLabel="Identities"
-            columns={columns}
-            data={filteredIdentities}
-            rowKeyAction={(identity) => identity.canonical_id}
-            emptyColSpan={6}
-            emptyMessage={
-                identities.length === 0
-                    ? "No identities found."
-                    : "No identities match your search."
-            }
-            search={{
-                value: searchQuery,
-                placeholder: "Search identities",
-                buttonLabel: CTA_LABELS.applyFilters,
-            }}
-            onSearchAction={setSearchQuery}
-            onSearchChangeAction={setSearchQuery}
-        />
+        <Section title="Identities">
+            <DataTable
+                accessibleLabel="Identities"
+                columns={columns}
+                data={filteredIdentities}
+                rowKeyAction={(identity) => identity.canonical_id}
+                emptyColSpan={6}
+                emptyMessage={
+                    identities.length === 0
+                        ? "No identities found."
+                        : "No identities match your search."
+                }
+                search={{
+                    value: searchQuery,
+                    placeholder: "Search identities",
+                    buttonLabel: CTA_LABELS.applyFilters,
+                }}
+                onSearchAction={setSearchQuery}
+                onSearchChangeAction={setSearchQuery}
+                footerNote={countNote}
+            />
+        </Section>
     );
 }
