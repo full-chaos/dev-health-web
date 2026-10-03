@@ -202,15 +202,15 @@ describe("/bottleneck in the approved prototype layout (CHAOS-8070)", () => {
         expect(notice).not.toHaveTextContent("950%");
     });
 
-    it("ONE quadrant: Review Load × Review Latency, with no extra Explore work link; WIP × Throughput is not read", async () => {
+    it("ONE quadrant: Review Load × Review Latency, with its Explore work link; WIP × Throughput is not read", async () => {
         await draw();
         expect(quadrantSpy).toHaveBeenCalledTimes(1);
         const props = quadrantSpy.mock.calls[0][0] as {
             title: string;
-            relatedLinks?: Array<{ label: string }>;
+            relatedLinks: Array<{ label: string }>;
         };
         expect(props.title).toBe("Review Load × Review Latency");
-        expect(props.relatedLinks ?? []).toEqual([]);
+        expect(props.relatedLinks.map((link) => link.label)).toEqual(["Explore work"]);
         expect(quadrantRequests.map((request) => request.type)).toEqual(["review_load_latency"]);
     });
 

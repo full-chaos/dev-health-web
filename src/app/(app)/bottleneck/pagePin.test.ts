@@ -44,10 +44,9 @@ describe("Bottlenecks page strings (pin)", () => {
         }
     });
 
-    it("keeps the one prototype quadrant and draws no Explore work link (CHAOS-8070, CHAOS-8569)", () => {
+    it("keeps the one prototype quadrant with the Explore work link (CHAOS-8070)", () => {
         expect(page.match(/<QuadrantPanel /gu)?.length).toBe(1);
-        expect(page).not.toContain("Explore work");
-        expect(page).not.toContain("relatedLinks");
+        expect(page.match(/label: "Explore work"/gu)?.length).toBe(1);
         expect(page).not.toContain('title="WIP × Throughput"');
     });
 });
