@@ -4,7 +4,8 @@ import { act, fireEvent, render, screen } from "@/test/utils";
 import NewReportPage from "./page";
 
 const push = vi.fn();
-vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org-session-1" }));
+const orgIdRef = vi.hoisted(() => ({ current: "org-session-1" as string | null }));
+vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => orgIdRef.current }));
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push }),
     usePathname: () => "/reports/new",
@@ -16,7 +17,10 @@ vi.mock("@/lib/reports/fetchers", () => ({
     createSavedReport: (...args: unknown[]) => createSavedReport(...args),
 }));
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+    vi.clearAllMocks();
+    orgIdRef.current = "org-session-1";
+});
 
 describe("New report form (CHAOS-8096)", () => {
     it("has the footer Cancel link and a primary Create Report button", () => {
@@ -58,5 +62,21 @@ describe("New report form (CHAOS-8096)", () => {
         expect(alert).toHaveTextContent("Could not create");
         expect(alert).toHaveAttribute("data-notice-variant", "danger");
         expect(push).not.toHaveBeenCalled();
+    });
+});
+
+describe("New report form without a session org (CHAOS-8213)", () => {
+    it("makes no request until the session org is there", async () => {
+        orgIdRef.current = null;
+        render(<NewReportPage />);
+
+        fireEvent.change(screen.getByLabelText("Report Name"), { target: { value: "R" } });
+        await act(async () => {
+            fireEvent.submit(
+                screen.getByRole("button", { name: "Create report" }).closest("form")!,
+            );
+        });
+
+        expect(createSavedReport).not.toHaveBeenCalled();
     });
 });

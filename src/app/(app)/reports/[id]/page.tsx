@@ -210,7 +210,7 @@ const RUN_COLUMNS: readonly DataTableColumn<ReportRun>[] = [
 
 export default function SingleReportPage() {
     // The org of the signed-in session (the layout's provider): the backend reads only the caller's own org.
-    const orgId = useOrgId() ?? "";
+    const orgId = useOrgId();
     const params = useParams();
     const router = useRouter();
     const id =
@@ -241,7 +241,9 @@ export default function SingleReportPage() {
     const [isRefreshingRuns, setIsRefreshingRuns] = useState(false);
 
     useEffect(() => {
-        async function loadData() {
+        // No org yet: no request (the page keeps its loading state until the session org arrives).
+        if (!orgId) return;
+        async function loadData(orgId: string) {
             const isTestMode = publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
             const [reportData, runsData] = await Promise.all([
                 fetchSavedReport(orgId, id, isTestMode),
@@ -252,7 +254,7 @@ export default function SingleReportPage() {
             setRunsLastUpdatedAt(new Date().toISOString());
             setIsLoading(false);
         }
-        loadData();
+        loadData(orgId);
     }, [id, orgId]);
 
     // Shared by the Run History Refresh control AND the post-trigger
@@ -270,6 +272,7 @@ export default function SingleReportPage() {
     // fetch races the mutation and can read stale data), letting a second
     // click fire a duplicate report generation.
     const refreshRuns = useCallback(async () => {
+        if (!orgId) return;
         runsFetchSeqRef.current += 1;
         const mySeq = runsFetchSeqRef.current;
         setIsRefreshingRuns(true);
@@ -322,6 +325,7 @@ export default function SingleReportPage() {
     // the Run History card's Refresh control (with a last-updated
     // timestamp) is for.
     const handleRunNow = async () => {
+        if (!orgId) return;
         setIsRunning(true);
         setError(null);
 
@@ -343,6 +347,7 @@ export default function SingleReportPage() {
     };
 
     const handleEditSave = async () => {
+        if (!orgId) return;
         setIsSaving(true);
         setError(null);
         try {
@@ -371,6 +376,7 @@ export default function SingleReportPage() {
     };
 
     const handleCloneConfirm = async () => {
+        if (!orgId) return;
         setIsCloning(true);
         setError(null);
         try {
@@ -386,6 +392,7 @@ export default function SingleReportPage() {
     };
 
     const handleDeleteConfirm = async () => {
+        if (!orgId) return;
         setIsDeleting(true);
         setError(null);
         try {

@@ -3,6 +3,8 @@ import { render, screen, within } from "@testing-library/react";
 
 import type { SavedReport } from "@/lib/reports/types";
 
+import { requireSession } from "@/lib/auth";
+
 import ReportsPage from "./page";
 
 const fetchChecked = vi.fn();
@@ -133,5 +135,15 @@ describe("Report links stay inside /reports/", () => {
                 href,
             );
         }
+    });
+});
+
+describe("Report Center page without a session org (CHAOS-8213)", () => {
+    it("makes no request and says so in one sentence", async () => {
+        vi.mocked(requireSession).mockResolvedValueOnce({ user: {} } as never);
+        await renderPage();
+
+        expect(fetchChecked).not.toHaveBeenCalled();
+        expect(screen.getByText(/no organization selected/i)).toBeInTheDocument();
     });
 });

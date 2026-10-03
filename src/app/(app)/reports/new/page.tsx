@@ -29,7 +29,7 @@ const AVAILABLE_METRICS = [
 
 export default function NewReportPage() {
     // The org of the signed-in session (the layout's provider): the backend reads only the caller's own org.
-    const orgId = useOrgId() ?? "";
+    const orgId = useOrgId();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -54,6 +54,8 @@ export default function NewReportPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        // No org yet: no request.
+        if (!orgId) return;
         setIsSubmitting(true);
         setError(null);
 

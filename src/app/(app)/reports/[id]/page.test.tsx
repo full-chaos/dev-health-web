@@ -5,7 +5,8 @@ import { ReportStatus } from "@/lib/reports/types";
 import type { ReportRun, SavedReport } from "@/lib/reports/types";
 
 const mockPush = vi.fn();
-vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org-session-1" }));
+const orgIdRef = vi.hoisted(() => ({ current: "org-session-1" as string | null }));
+vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => orgIdRef.current }));
 vi.mock("next/navigation", () => ({
     useParams: () => ({ id: "report-1" }),
     useRouter: () => ({ push: mockPush }),
@@ -246,5 +247,19 @@ describe("SingleReportPage — run date (CHAOS-8096)", () => {
         render(<SingleReportPage />);
 
         expect(await screen.findByText("Run date not reported")).toBeInTheDocument();
+    });
+});
+
+describe("Single report page without a session org (CHAOS-8213)", () => {
+    it("makes no request until the session org is there", async () => {
+        orgIdRef.current = null;
+        mockFetchSavedReport.mockReset();
+        mockFetchReportRuns.mockReset();
+        await act(async () => {
+            render(<SingleReportPage />);
+        });
+        expect(mockFetchSavedReport).not.toHaveBeenCalled();
+        expect(mockFetchReportRuns).not.toHaveBeenCalled();
+        orgIdRef.current = "org-session-1";
     });
 });

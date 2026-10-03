@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
 
+import { NoOrgNotice } from "@/components/NoOrgNotice";
 import { ReportsTable } from "@/components/reports/ReportsTable";
 import { buttonClassName } from "@/components/shared/Button";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -21,12 +22,10 @@ export default async function ReportsPage() {
         env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
     // The org of the signed-in session: the backend reads only the caller's own org.
     const session = await requireSession();
-    const reportsData = await fetchSavedReportsChecked(
-        session.user.org_id ?? "",
-        undefined,
-        undefined,
-        isTestMode,
-    );
+    const orgId = session.user.org_id;
+    // No org on the session: no request, one plain sentence.
+    if (!orgId) return <NoOrgNotice />;
+    const reportsData = await fetchSavedReportsChecked(orgId, undefined, undefined, isTestMode);
     const reports = reportsData.items;
 
     return (
