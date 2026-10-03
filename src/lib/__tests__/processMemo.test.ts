@@ -121,4 +121,34 @@ describe("processMemo", () => {
         );
         expect(fetchMock).toHaveBeenCalledTimes(3);
     });
+
+    it("two copies asking at the same time share ONE in-flight call", async () => {
+        const pending: Array<(r: Response) => void> = [];
+        fetchMock.mockImplementation(
+            () =>
+                new Promise<Response>((resolve) => {
+                    pending.push(resolve);
+                }),
+        );
+        const proxy = await loadCopy();
+        proxy.resetValidationMemoForTests();
+        const route = await loadCopy();
+        const now = Date.now();
+
+        const a = proxy.applyBackendValidationMemo(freshToken() as never, now);
+        const b = route.applyBackendValidationMemo(freshToken() as never, now);
+        // Let both reach the memo before the backend answers.
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        for (const release of pending) {
+            release(
+                new Response(JSON.stringify({ valid: true }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                }),
+            );
+        }
+        await Promise.all([a, b]);
+
+        expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
 });
