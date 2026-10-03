@@ -21,7 +21,7 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
     useEffect(() => {
         // Capture error to Sentry and log to console as fallback
         Sentry.captureException(error);
-        logger.error({ err: error }, "[GlobalError] Unhandled global error");
+        logger.error({ err: error, digest: error.digest }, "[GlobalError] Unhandled global error");
     }, [error]);
 
     return (
@@ -76,19 +76,6 @@ export default function GlobalError({ error, reset }: GlobalErrorProps) {
                             support@fullchaos.studio
                         </a>
                         .
-                        {error.digest && (
-                            <span
-                                style={{
-                                    display: "block",
-                                    marginTop: "0.5rem",
-                                    fontSize: "0.75rem",
-                                    fontFamily: "monospace",
-                                    color: "GrayText",
-                                }}
-                            >
-                                Error ID: {error.digest}
-                            </span>
-                        )}
                     </p>
                     <button
                         type="button"

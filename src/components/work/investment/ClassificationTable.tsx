@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
+import { buttonClassName } from "@/components/shared/Button";
+import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
 import { titleCase } from "@/lib/investment";
@@ -33,25 +36,18 @@ export function ClassificationTable({
     const unit = investmentMix.unit?.replace(/_/g, " ");
 
     return (
-        <section
-            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
-            aria-label="Explore the classification"
-        >
-            <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h3 className="font-(--font-display) text-lg">Explore the classification</h3>
-                    <p className="mt-1 text-sm text-(--ink-muted)">
-                        Select a theme to trace the work behind the mix.
-                    </p>
-                </div>
-                <Link
-                    href={evidenceHref}
-                    className="text-xs uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
-                >
+        <Section
+            data-testid="classification-section"
+            title="Explore the classification"
+            description="Select a theme to trace the work behind the mix."
+            action={
+                <Link href={evidenceHref} className={buttonClassName("ghost", "sm")}>
+                    <ArrowRight aria-hidden="true" className="h-4 w-4" />
                     {CTA_LABELS.openEvidence}
                 </Link>
-            </div>
-            <div className="mt-4 overflow-hidden rounded-2xl border border-(--card-stroke)">
+            }
+        >
+            <div className="overflow-hidden rounded-(--radius-md) border border-(--card-stroke)">
                 <table className="w-full text-sm" data-testid="classification-table">
                     <thead className="bg-(--card-60) text-xs uppercase tracking-[0.18em] text-(--ink-muted)">
                         <tr>
@@ -95,6 +91,6 @@ export function ClassificationTable({
                     </tbody>
                 </table>
             </div>
-        </section>
+        </Section>
     );
 }

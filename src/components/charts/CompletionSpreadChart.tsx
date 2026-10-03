@@ -57,8 +57,6 @@ export function CompletionSpreadChart({
     const tide = useChartColors()[0] ?? chartTheme.accent1;
     const mergedStyle: CSSProperties = { height, width: "100%", ...style };
 
-    const totalRuns = useMemo(() => bins.reduce((sum, bin) => sum + bin.count, 0), [bins]);
-
     const option = useMemo((): EChartsOption => {
         const edge = [...bins.map((bin) => bin.value), ...markers.map((marker) => marker.value)];
         const lowest = Math.min(...edge);
@@ -79,7 +77,8 @@ export function CompletionSpreadChart({
                     const [value, count] = data;
                     const heading =
                         unit === "days" ? `Day ${value}` : `${value} ${unitNoun(unit, value)}`;
-                    return `<div style="font-weight: 600;">${heading}</div><div style="margin-top: 4px;">${count} of ${totalRuns} runs ended here</div>`;
+                    // The count as returned. The API serves no run total, so none is shown.
+                    return `<div style="font-weight: 600;">${heading}</div><div style="margin-top: 4px;">${count} ${count === 1 ? "run" : "runs"} ended here</div>`;
                 },
             },
             grid: { left: 48, right: 24, top: 24 + markers.length * LABEL_ROW, bottom: 40 },
@@ -140,7 +139,7 @@ export function CompletionSpreadChart({
                 },
             ],
         };
-    }, [bins, chartTheme, markers, tide, totalRuns, unit]);
+    }, [bins, chartTheme, markers, tide, unit]);
 
     return <Chart option={option} className={className} style={mergedStyle} />;
 }

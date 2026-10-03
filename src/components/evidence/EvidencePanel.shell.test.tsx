@@ -51,10 +51,14 @@ describe("EvidencePanel shell (what callers rely on)", () => {
         expect(screen.queryByRole("heading", { name: "Cycle Time" })).toBeNull();
     });
 
-    it("shows the eyebrow and the title when open", async () => {
+    it("shows the eyebrow, the fixed drawer title and the subject when open", async () => {
         open();
-        expect(screen.getByText("Evidence & Context")).toBeInTheDocument();
-        expect(screen.getByRole("heading", { level: 2, name: "Cycle Time" })).toBeInTheDocument();
+        expect(screen.getByText("Contextual investigation")).toBeInTheDocument();
+        expect(
+            screen.getByRole("heading", { level: 2, name: "Evidence & Context" }),
+        ).toBeInTheDocument();
+        // The subject is a heading in the body, not the drawer title.
+        expect(screen.getByRole("heading", { level: 3, name: "Cycle Time" })).toBeInTheDocument();
         await waitFor(() => expect(mockGetExplainData).toHaveBeenCalled());
     });
 
@@ -84,9 +88,9 @@ describe("EvidencePanel shell (what callers rely on)", () => {
         expect(onClose).not.toHaveBeenCalled();
     });
 
-    it("is a modal dialog named by the title", () => {
+    it("is a modal dialog named 'Evidence & Context', whatever the subject", () => {
         open();
-        const dialog = screen.getByRole("dialog", { name: "Cycle Time" });
+        const dialog = screen.getByRole("dialog", { name: "Evidence & Context" });
         expect(dialog).toHaveAttribute("aria-modal", "true");
     });
 

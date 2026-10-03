@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useState } from "react";
 
 import { ErrorCard } from "@/components/ui/ErrorCard";
@@ -12,8 +13,8 @@ import {
     valueDelta,
 } from "@/lib/graphql/hooks/useAIReviewRisk";
 import { AIComparisonMetricCard } from "./AIComparisonMetricCard";
-import { Drawer } from "@/components/ui/Drawer";
-import { AIEvidenceExplorer } from "./AIEvidenceExplorer";
+import { Section } from "@/components/ui/Section";
+import { AIEvidenceDrawer } from "./AIEvidenceDrawer";
 import { AIMissingDataPanel } from "./AIMissingDataPanel";
 import { AIReviewAmplificationTrend } from "./AIReviewAmplificationTrend";
 
@@ -40,7 +41,7 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
     const reviewerMissing = missingState(reviewLoad?.missingStates, "reviewer_concentration");
 
     if (error) {
-        return <ErrorCard title="Failed to load AI review load" message={error.message} />;
+        return <ErrorCard title="Failed to load AI review load" message={READ_FAILED_MESSAGE} />;
     }
 
     if (!fetching && reviewLoad && !reviewLoad.dataAvailable) {
@@ -115,19 +116,16 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
                     onDrilldown={() => setDrilldownMetric("Push iterations after first review")}
                 />
                 {reviewLoad?.reviewerConcentration.dataAvailable ? (
-                    <section
-                        className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-5"
+                    <Section
+                        as="h3"
+                        title="Reviewer concentration"
+                        description="Distribution-level review spread only. No reviewer names, ranks, or person-level counts are exposed."
                         data-testid="ai-reviewer-concentration"
                     >
                         <p className="text-label-caps uppercase text-(--ink-muted)">
                             Aggregate-only
                         </p>
-                        <h3 className="mt-2 text-h3 font-semibold">Reviewer concentration</h3>
-                        <p className="mt-2 text-sm text-(--ink-muted)">
-                            Distribution-level review spread only. No reviewer names, ranks, or
-                            person-level counts are exposed.
-                        </p>
-                        <div className="mt-5 grid grid-cols-2 gap-3">
+                        <div className="mt-3 grid grid-cols-2 gap-3">
                             <div className="rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-3">
                                 <p className="text-label-caps uppercase text-(--ink-muted)">Gini</p>
                                 <p className="mt-1 text-2xl font-semibold tabular-nums">
@@ -144,7 +142,7 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
                                 </p>
                             </div>
                         </div>
-                    </section>
+                    </Section>
                 ) : (
                     <AIMissingDataPanel
                         title={reviewerMissing?.title ?? "Reviewer concentration"}
@@ -170,22 +168,12 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
 
             <AIReviewAmplificationTrend daily={reviewLoad?.daily ?? []} loading={fetching} />
 
-            {/* A8: the shared Drawer replaces the centred modal on this page. The body is the same PR
-                explorer; the modal component stays for the Governance Risk page. */}
-            <Drawer
-                open={drilldownMetric !== null}
+            {/* A8: the shared Drawer, same PR explorer inside (AIEvidenceDrawer). */}
+            <AIEvidenceDrawer
+                metric={drilldownMetric}
+                filter={filter}
                 onCloseAction={() => setDrilldownMetric(null)}
-                eyebrow={drilldownMetric ?? undefined}
-                title="Evidence by pull request"
-                size="wide"
-                data-testid="ai-drilldown-drawer"
-            >
-                <p className="text-sm text-(--ink-muted)">
-                    Pick an AI-attributed PR to see its Work Graph evidence. Filtered to the current
-                    dashboard range, repo, and work type.
-                </p>
-                <AIEvidenceExplorer filter={filter} />
-            </Drawer>
+            />
         </div>
     );
 }

@@ -54,8 +54,16 @@ export type SignalCluster = {
  * Group signals into severity-sorted clusters, preserving first-seen cluster
  * order. Returns a single `{ cluster: undefined }` bucket when no signal carries
  * a cluster (light areas degrade to a flat grid).
+ *
+ * `clusterOrder` fixes the group order (an area's own order, for example Govern: Quality, then
+ * Risk), so the group of the most severe card does not jump to the top. Clusters it does not name
+ * keep their first-seen order after the named ones. Cards inside a group still sort by severity.
+ * Without it the order is first-seen, as before.
  */
-export function groupByCluster(signals: readonly AreaSignal[]): SignalCluster[] {
+export function groupByCluster(
+    signals: readonly AreaSignal[],
+    clusterOrder?: readonly string[],
+): SignalCluster[] {
     const order: (string | undefined)[] = [];
     const byCluster = new Map<string | undefined, AreaSignal[]>();
 
@@ -68,7 +76,18 @@ export function groupByCluster(signals: readonly AreaSignal[]): SignalCluster[] 
         byCluster.get(key)!.push(signal);
     }
 
-    return order.map((cluster) => ({
+    const rank = (cluster: string | undefined) => {
+        const index = cluster === undefined ? -1 : (clusterOrder?.indexOf(cluster) ?? -1);
+        return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+    };
+    const ordered = clusterOrder
+        ? order
+              .map((cluster, seen) => ({ cluster, seen }))
+              .sort((a, b) => rank(a.cluster) - rank(b.cluster) || a.seen - b.seen)
+              .map(({ cluster }) => cluster)
+        : order;
+
+    return ordered.map((cluster) => ({
         cluster,
         signals: sortBySeverity(byCluster.get(cluster)!),
     }));

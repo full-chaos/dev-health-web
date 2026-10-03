@@ -1,5 +1,7 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
+import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { useMemo } from "react";
 
 import { ForecastInputsCard } from "@/components/capacity/ForecastInputsCard";
@@ -7,7 +9,8 @@ import { ForecastNotices } from "@/components/capacity/ForecastNotices";
 import { CompletionSpread } from "@/components/capacity/CompletionSpread";
 import { ForecastTiles } from "@/components/capacity/ForecastTiles";
 import { ConfidenceBandChart } from "@/components/charts/ConfidenceBandChart";
-import { ThroughputHistogram } from "@/components/charts/ThroughputHistogram";
+import { Inset } from "@/components/capacity/Inset";
+import { Section } from "@/components/ui/Section";
 import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
 import { teamIdsForScope } from "@/lib/filters/capacityScope";
@@ -42,11 +45,21 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
 
     const chartData = useMemo(() => {
         if (!forecast) return null;
+        // A day percentile the API did not serve is not zero (CHAOS-8005): the burn chart needs
+        // all three, so with one missing there is no chart. A served 0 is a value and is drawn.
+        const { p50Days, p85Days, p95Days } = forecast;
+        if (
+            typeof p50Days !== "number" ||
+            typeof p85Days !== "number" ||
+            typeof p95Days !== "number"
+        ) {
+            return null;
+        }
         return {
             backlogSize: forecast.backlogSize,
-            p50Days: forecast.p50Days ?? 0,
-            p85Days: forecast.p85Days ?? 0,
-            p95Days: forecast.p95Days ?? 0,
+            p50Days,
+            p85Days,
+            p95Days,
             p50Date: forecast.p50Date,
             p85Date: forecast.p85Date,
             p95Date: forecast.p95Date,
@@ -66,8 +79,8 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                     ))}
                 </div>
             ) : error ? (
-                <Notice variant="danger" live={false} titleAs="h3" title="Forecast Unavailable">
-                    {error.message}
+                <Notice variant="danger" live={false} titleAs="h3" title="Forecast unavailable">
+                    {READ_FAILED_MESSAGE}
                 </Notice>
             ) : forecast ? (
                 <>
@@ -83,12 +96,11 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                 />
             )}
 
-            <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-                <div className={CARD}>
-                    <h3 className="text-sm font-medium text-foreground">Completion projection</h3>
-                    <p className="mb-4 mt-1 text-sm text-(--text-muted)">
-                        Monte Carlo forecast for work completion
-                    </p>
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <Section
+                    title="Completion projection"
+                    description="Monte Carlo forecast for work completion"
+                >
                     {chartData ? (
                         <>
                             <ConfidenceBandChart
@@ -114,70 +126,61 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                                 Loading chart...
                             </div>
                         </div>
+                    ) : error ? (
+                        <div
+                            data-testid="forecast-chart-failed"
+                            className="flex h-80 items-center justify-center text-sm text-(--text-muted)"
+                        >
+                            {READ_FAILED_MESSAGE}
+                        </div>
+                    ) : forecast ? (
+                        <div
+                            data-testid="forecast-chart-not-reported"
+                            className="flex h-80 flex-col items-center justify-center gap-1 text-sm text-(--text-muted)"
+                        >
+                            <p>{NOT_REPORTED}</p>
+                            <p className="text-xs">
+                                The forecast does not have all of the P50 / P85 / P95 days, so no
+                                line is drawn.
+                            </p>
+                        </div>
                     ) : (
-                        <div className="flex h-80 items-center justify-center text-sm text-(--text-muted)">
-                            No forecast data available
+                        <div
+                            data-testid="forecast-chart-empty"
+                            className="flex h-80 items-center justify-center text-sm text-(--text-muted)"
+                        >
+                            No data for this window
                         </div>
                     )}
-                </div>
+                </Section>
 
                 {forecast ? <ForecastInputsCard forecast={forecast} teamCount={teamCount} /> : null}
             </div>
 
             {forecast && (
-                <div className={CARD} data-testid="completion-spread-card">
-                    <h3 className="mb-1 text-sm font-medium text-foreground">Simulated outcomes</h3>
-                    <p className="mb-4 text-sm text-(--text-muted)">
-                        How the simulation runs behind the forecast spread.
-                    </p>
-                    <CompletionSpread forecast={forecast} />
-                </div>
-            )}
+                <>
+                    <Section
+                        title="Simulated outcomes"
+                        description="How the simulation runs behind the forecast spread."
+                        data-testid="completion-spread-card"
+                    >
+                        <CompletionSpread forecast={forecast} />
+                    </Section>
 
-            {forecast && (
-                <div className="grid gap-6 lg:grid-cols-2">
-                    <div className={CARD}>
-                        <h3 className="mb-4 text-sm font-medium text-foreground">
-                            Throughput Distribution
-                        </h3>
-                        <ThroughputHistogram
-                            throughputMean={forecast.throughputMean}
-                            throughputStddev={forecast.throughputStddev}
-                            height={200}
-                        />
-                        <p className="mt-3 text-xs text-(--text-muted)">
-                            Based on {forecast.historyDays} days of historical data
-                        </p>
-                    </div>
-
-                    <div className={CARD}>
-                        <h3 className="mb-3 text-sm font-medium text-foreground">
-                            How to Interpret
-                        </h3>
-                        <div className="grid gap-3 text-sm text-(--text-muted)">
-                            <div>
-                                <span className="font-medium text-foreground">P50 (50%)</span>
-                                <p className="mt-0.5 text-xs">
-                                    Optimistic estimate. Half of simulations complete by this date.
-                                </p>
-                            </div>
-                            <div>
-                                <span className="font-medium text-foreground">P85 (85%)</span>
-                                <p className="mt-0.5 text-xs">
-                                    Recommended target. 85% confidence provides buffer for
-                                    variability.
-                                </p>
-                            </div>
-                            <div>
-                                <span className="font-medium text-foreground">P95 (95%)</span>
-                                <p className="mt-0.5 text-xs">
-                                    Conservative estimate. Use for commitments with low risk
-                                    tolerance.
-                                </p>
-                            </div>
+                    <Section title="Interpretation" data-testid="forecast-interpretation">
+                        <div className="grid gap-3 md:grid-cols-3">
+                            <Inset title="P50 (50%)" className="mt-0">
+                                Optimistic estimate. Half of simulations complete by this date.
+                            </Inset>
+                            <Inset title="P85 (85%)" className="mt-0">
+                                Recommended target. 85% confidence provides buffer for variability.
+                            </Inset>
+                            <Inset title="P95 (95%)" className="mt-0">
+                                Conservative estimate. Use for commitments with low risk tolerance.
+                            </Inset>
                         </div>
-                    </div>
-                </div>
+                    </Section>
+                </>
             )}
         </div>
     );

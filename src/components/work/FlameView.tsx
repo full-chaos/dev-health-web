@@ -5,6 +5,16 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { getAggregatedFlame } from "@/lib/api/visuals";
 import type { AggregatedFlameMode, MetricFilter, AggregatedFlameResponse } from "@/lib/types";
 import { HierarchicalFlameGraph } from "@/components/charts/HierarchicalFlameGraph";
+import { SegmentedControl } from "@/components/shared/SegmentedControl";
+import { Section } from "@/components/ui/Section";
+
+const MODES: AggregatedFlameMode[] = ["cycle_breakdown", "throughput", "code_hotspots"];
+
+const modeLabels: Record<AggregatedFlameMode, string> = {
+    cycle_breakdown: "Elapsed Time Breakdown",
+    code_hotspots: "Code Hotspots",
+    throughput: "Throughput Breakdown",
+};
 
 type FlameViewProps = {
     filters: MetricFilter;
@@ -16,9 +26,7 @@ export function FlameView({ filters }: FlameViewProps) {
 
     const modeParam = searchParams.get("mode") as AggregatedFlameMode | null;
     const initialMode: AggregatedFlameMode =
-        modeParam && ["cycle_breakdown", "throughput", "code_hotspots"].includes(modeParam)
-            ? modeParam
-            : "cycle_breakdown";
+        modeParam && MODES.includes(modeParam) ? modeParam : "cycle_breakdown";
 
     const [mode, setMode] = useState<AggregatedFlameMode>(initialMode);
     const [flameData, setFlameData] = useState<AggregatedFlameResponse | null>(null);
@@ -70,51 +78,29 @@ export function FlameView({ filters }: FlameViewProps) {
         };
     }, [mode, filters]);
 
-    const modeLabels: Record<AggregatedFlameMode, string> = {
-        cycle_breakdown: "Elapsed Time Breakdown",
-        code_hotspots: "Code Hotspots",
-        throughput: "Throughput Breakdown",
-    };
-
     const hasData = flameData && flameData.root.value > 0;
+
+    // The mode switch is the shared segmented control (prototype `.segments`, sentence case),
+    // drawn left of the chart's search.
+    const modeSwitch = (
+        <SegmentedControl
+            options={MODES.map((m) => ({ id: m, label: modeLabels[m] }))}
+            value={mode}
+            onChange={handleModeChange}
+            ariaLabel="Breakdown"
+            testId="flame-mode-switch"
+        />
+    );
 
     return (
         <div className="flex flex-col gap-6">
-            <section className="rounded-3xl border border-(--card-stroke) bg-card p-6">
-                <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                    <div>
-                        <h2 className="text-xl font-(--font-display)">{modeLabels[mode]}</h2>
-                        <p className="mt-1 text-sm text-(--ink-muted)">
-                            Analyze decomposition and bottlenecks in this surface.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        {(
-                            [
-                                "cycle_breakdown",
-                                "throughput",
-                                "code_hotspots",
-                            ] as AggregatedFlameMode[]
-                        ).map((m) => (
-                            <button
-                                type="button"
-                                key={m}
-                                onClick={() => handleModeChange(m)}
-                                className={`rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] transition ${
-                                    mode === m
-                                        ? "border-(--accent-2) bg-[color-mix(in_srgb,var(--accent-2)_55%,black)] text-white shadow-sm"
-                                        : "border-(--card-stroke) text-(--ink-muted) hover:border-(--card-stroke)/60"
-                                }`}
-                            >
-                                {modeLabels[m]}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="relative h-[calc(100vh-380px)] min-h-96" data-testid="chart-flame">
+            <Section
+                title={modeLabels[mode]}
+                description="Analyze decomposition and bottlenecks in this surface."
+            >
+                <div className="relative min-h-48" data-testid="chart-flame">
                     {loading && (
-                        <div className="absolute inset-0 z-10 flex items-center justify-center bg-card/50 backdrop-blur-sm rounded-2xl">
+                        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-card/50 backdrop-blur-sm">
                             <p className="text-sm text-(--ink-muted) animate-pulse">
                                 Loading flame data...
                             </p>
@@ -122,17 +108,22 @@ export function FlameView({ filters }: FlameViewProps) {
                     )}
                     {hasData ? (
                         <HierarchicalFlameGraph
+                            // A new mode is a new tree: zoom and search start again.
+                            key={mode}
                             root={flameData.root}
                             unit={flameData.unit}
-                            height={600}
                             colorBy={mode === "cycle_breakdown" ? "branch" : "single"}
+                            toolbar={modeSwitch}
                         />
                     ) : (
-                        !loading && (
-                            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
-                                No flame data available for this scope and window.
-                            </div>
-                        )
+                        <>
+                            {modeSwitch}
+                            {!loading && (
+                                <div className="mt-3.5 flex h-48 items-center justify-center rounded-md border border-dashed border-(--card-stroke) bg-(--card-70) text-sm text-(--ink-muted)">
+                                    No flame data available for this scope and window.
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
 
@@ -145,7 +136,7 @@ export function FlameView({ filters }: FlameViewProps) {
                         <span className="text-foreground font-mono">{contextNode}</span>
                     </div>
                 )}
-            </section>
+            </Section>
         </div>
     );
 }

@@ -202,7 +202,7 @@ export function ChordChartControls({
                             grouping: e.target.value as ChordGroupingDimension,
                         })
                     }
-                    className="h-9 px-3 py-1.5 text-sm text-(--foreground) bg-(--card) border border-(--card-stroke) rounded-lg focus:outline-none focus:ring-2 focus:ring-(--accent)"
+                    className="h-9 px-3 py-1.5 text-sm text-(--foreground) bg-(--card) border border-(--card-stroke) rounded-lg focus:outline-none focus:ring-2 focus:ring-(--accent-2)"
                 >
                     <option value="team">Team</option>
                     <option value="repo">Repository</option>
@@ -268,7 +268,7 @@ export function ChordChartControls({
                         type="checkbox"
                         checked={value.showSelfLinks}
                         onChange={(e) => onChange({ ...value, showSelfLinks: e.target.checked })}
-                        className="rounded border-(--card-stroke) accent-(--accent) focus:ring-(--accent)"
+                        className="rounded border-(--card-stroke) accent-(--accent) focus:ring-(--accent-2)"
                     />
                     Include self-links
                 </label>
@@ -284,7 +284,7 @@ export function ChordChartControls({
                         checked={value.showOther}
                         onChange={(e) => onChange({ ...value, showOther: e.target.checked })}
                         disabled={!otherAvailable}
-                        className="rounded border-(--card-stroke) accent-(--accent) focus:ring-(--accent) disabled:opacity-50"
+                        className="rounded border-(--card-stroke) accent-(--accent) focus:ring-(--accent-2) disabled:opacity-50"
                     />
                     Show &apos;Other&apos; bucket
                 </label>

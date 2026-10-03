@@ -292,7 +292,7 @@ describe("AIImpactDashboard", () => {
         render(<AIImpactDashboard filter={filter} />);
 
         expect(screen.getByTestId("ai-impact-dashboard")).toBeInTheDocument();
-        expect(screen.getByText("40.0%")).toBeInTheDocument();
+        expect(screen.getAllByTestId("metric-value")[0]).toHaveTextContent("40 %");
         expect(screen.getByTestId("donut-chart")).toHaveTextContent("Ai Assisted");
         expect(screen.getByTestId("vertical-bar-chart")).toHaveTextContent("PR volume");
         expect(screen.getByText("Best-fit automation opportunities")).toBeInTheDocument();

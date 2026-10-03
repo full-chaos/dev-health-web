@@ -1,12 +1,16 @@
-import { render, screen } from "@/test/utils";
+import { render, screen, within } from "@/test/utils";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockCheckApiHealth, mockFetchCoverageMetrics } = vi.hoisted(() => ({
+const { mockCheckApiHealth, mockFetchCoverageMetrics, timeseriesSpy } = vi.hoisted(() => ({
     mockCheckApiHealth: vi.fn(),
     mockFetchCoverageMetrics: vi.fn(),
+    timeseriesSpy: vi.fn(),
 }));
 
+const requireSessionMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/auth", () => ({ requireSession: requireSessionMock }));
+beforeEach(() => requireSessionMock.mockResolvedValue({ user: { org_id: "org-1" } }));
 vi.mock("@/lib/api/system", () => ({
     checkApiHealth: mockCheckApiHealth,
 }));
@@ -21,6 +25,17 @@ vi.mock("@/lib/config", () => ({
 
 vi.mock("@/lib/labels/entityLabel", () => ({
     resolveEntityLabels: (ids: string[]) => ({ labels: ids, titles: ids }),
+}));
+
+vi.mock("next/navigation", () => ({
+    usePathname: () => "/testops/coverage",
+    useSearchParams: () => new URLSearchParams(),
+    useRouter: () => ({ refresh: vi.fn(), replace: vi.fn(), push: vi.fn() }),
+}));
+
+// The header "View evidence" action opens the shared drawer (its own tests cover it).
+vi.mock("@/components/shell/PageHeaderEvidenceAction", () => ({
+    PageHeaderEvidenceAction: () => <div data-testid="page-evidence" />,
 }));
 
 vi.mock("@/components/shell/ScopeBar", () => ({
@@ -52,7 +67,10 @@ vi.mock("@/components/metrics/MetricCard", () => ({
 }));
 
 vi.mock("@/components/charts/TimeseriesChart", () => ({
-    TimeseriesChart: () => <div data-testid="timeseries-chart" />,
+    TimeseriesChart: (props: unknown) => {
+        timeseriesSpy(props);
+        return <div data-testid="timeseries-chart" />;
+    },
 }));
 
 vi.mock("@/components/charts/HorizontalBarChart", () => ({
@@ -104,7 +122,8 @@ describe("CoveragePage", () => {
         const chartFrame = screen.getByTestId("coverage-chart-frame");
         expect(chartFrame).toHaveAttribute("data-is-error", "true");
         expect(chartFrame).toHaveAttribute("data-is-empty", "true");
-        expect(screen.getByText(/Coverage analytics could not be loaded/i)).toBeInTheDocument();
+        // The trend card says so (the new cards on the page say it too, each in its own card).
+        expect(within(chartFrame).getByText(/Coverage analytics could not be loaded/i)).toBeInTheDocument();
     });
 
     it("renders genuine empty coverage as a not-populated state", async () => {
@@ -115,7 +134,7 @@ describe("CoveragePage", () => {
         const chartFrame = screen.getByTestId("coverage-chart-frame");
         expect(chartFrame).toHaveAttribute("data-is-error", "false");
         expect(chartFrame).toHaveAttribute("data-is-empty", "true");
-        expect(screen.getByText(/connected CI coverage data is available/i)).toBeInTheDocument();
+        expect(within(chartFrame).getByText(/connected CI coverage data is available/i)).toBeInTheDocument();
     });
     // Missing is not zero: a null coverage bucket is never a 0 % card or a 0 point.
     const coverageSeries = (values: Array<number | null>) => ({
@@ -131,14 +150,17 @@ describe("CoveragePage", () => {
     });
     const lineCard = () => screen.getByTestId("card-Line Coverage");
 
-    it("a null latest bucket is no value on the card (not 0) and stays a gap in the spark", async () => {
+    it("a null latest bucket is no value on the card (not 0) and stays a gap in the trend", async () => {
         mockFetchCoverageMetrics.mockResolvedValue(coverageSeries([50, null]));
         render(await CoveragePage({ searchParams: Promise.resolve({}) }));
         expect(lineCard()).toHaveAttribute("data-value", "undefined");
-        expect(JSON.parse(lineCard().getAttribute("data-spark") ?? "null")).toEqual([
-            { ts: "2026-06-01", value: 50 },
-            { ts: "2026-06-02", value: null },
-        ]);
+        // The approved Line Coverage tile has no sparkline; its served series is the trend card.
+        expect(timeseriesSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+            data: [
+                { day: "2026-06-01", value: 50 },
+                { day: "2026-06-02", value: null },
+            ],
+        });
         expect(screen.getByTestId("coverage-chart-frame")).toHaveAttribute("data-is-empty", "false");
     });
 
@@ -154,5 +176,15 @@ describe("CoveragePage", () => {
         render(await CoveragePage({ searchParams: Promise.resolve({}) }));
         expect(lineCard()).toHaveAttribute("data-value", "0");
         expect(screen.getByTestId("coverage-chart-frame")).toHaveAttribute("data-is-empty", "false");
+    });
+});
+
+describe("CoveragePage org scope (CHAOS-8272)", () => {
+    it("shows one plain sentence and makes no request when the session has no org", async () => {
+        requireSessionMock.mockResolvedValue({ user: {} });
+        mockFetchCoverageMetrics.mockClear();
+        render(await CoveragePage({ searchParams: Promise.resolve({}) }));
+        expect(screen.getByText(/no organization selected/i)).toBeInTheDocument();
+        expect(mockFetchCoverageMetrics).not.toHaveBeenCalled();
     });
 });

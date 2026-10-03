@@ -1,3 +1,4 @@
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { RefundList } from "@/components/admin/billing/RefundList";
 import { requireSuperuser } from "@/lib/auth";
@@ -34,7 +35,7 @@ export default async function SuperadminRefundsPage({
 
             {result.error ? (
                 <Notice variant="danger" live={false}>
-                    Failed to load refunds: {result.error}
+                    Failed to load refunds. {READ_FAILED_MESSAGE}
                 </Notice>
             ) : (
                 <RefundList initialData={initialData} initialOrgFilter={orgId ?? ""} />

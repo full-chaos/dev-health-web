@@ -6,7 +6,11 @@ import { Suspense, useEffect, useRef, type RefObject } from "react";
 
 import fcLogo from "@/assets/fc-logo.png";
 import { UserMenu } from "@/components/auth/UserMenu";
-import { OrgSwitcher, type ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
+import {
+    OrgSwitcher,
+    describeOrganizationData,
+    type ActiveOrganizationData,
+} from "@/components/navigation/OrgSwitcher";
 import { useModalFocus } from "@/lib/a11y/useModalFocus";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -18,7 +22,7 @@ import { ShellNav } from "./ShellNav";
  *
  * From `md` up it is a fixed-height column. Below `md` it is a slide-over
  * (concept `.app-sidebar.open`): off canvas until the menu button of the mobile
- * bar opens it from the left, `w-60` wide (the desktop sidebar width, which is the
+ * bar opens it from the left, `w-(--shell-sidebar-w)` wide (the desktop sidebar width, which is the
  * concept's `--sidebarW`), over a backdrop. While open it is a modal dialog:
  * focus moves in, Tab stays inside, Escape or a backdrop click closes it, focus
  * returns to the menu button, a link click closes it and the page behind does
@@ -26,6 +30,8 @@ import { ShellNav } from "./ShellNav";
  * hidden here.
  */
 type ShellSidebarProps = {
+    /** The active organization the card loaded (`undefined`: loading, `null`: not known). */
+    organization?: ActiveOrganizationData | null;
     /** Receives the active organization's data state from the organization card. */
     onActiveOrganizationChange?: (organization: ActiveOrganizationData | null) => void;
     /** Below `md`: the slide-over is open. The shell owns the state (the button is in the mobile bar). */
@@ -36,6 +42,7 @@ type ShellSidebarProps = {
 };
 
 export function ShellSidebar({
+    organization,
     onActiveOrganizationChange,
     mobileOpen = false,
     onMobileClose,
@@ -64,7 +71,7 @@ export function ShellSidebar({
     return (
         <aside
             data-testid="shell-sidebar"
-            className="md:sticky md:top-0 md:h-dvh md:w-60 md:shrink-0 md:border-r md:border-(--border) md:bg-(--surface)"
+            className="md:sticky md:top-0 md:h-dvh md:w-(--shell-sidebar-w) md:shrink-0 md:border-r md:border-(--border) md:bg-(--sidebar)"
         >
             {mobileOpen && (
                 <div
@@ -85,7 +92,7 @@ export function ShellSidebar({
                 onClick={(event) => {
                     if ((event.target as HTMLElement).closest("a[href]")) close();
                 }}
-                className={`flex flex-col gap-4 overflow-y-auto border-r border-(--border) bg-(--surface) p-4 focus:outline-none max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:w-60 max-md:max-w-[86vw] max-md:shadow-xl max-md:transition-[transform,visibility] max-md:duration-200 motion-reduce:transition-none ${
+                className={`flex flex-col gap-4 overflow-y-auto border-r border-(--border) bg-(--sidebar) p-4 focus:outline-none max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-50 max-md:w-(--shell-sidebar-w) max-md:max-w-[86vw] max-md:shadow-xl max-md:transition-[transform,visibility] max-md:duration-200 motion-reduce:transition-none ${
                     mobileOpen
                         ? "max-md:visible max-md:translate-x-0"
                         : "max-md:invisible max-md:-translate-x-full"
@@ -107,10 +114,10 @@ export function ShellSidebar({
                             priority
                         />
                         <span className="flex min-w-0 flex-col leading-tight">
-                            <span className="text-h3 font-semibold text-(--text-primary)">
+                            <span className="text-[1.0625rem] font-bold tracking-tight text-(--text-primary)">
                                 Full Chaos
                             </span>
-                            <span className="text-label-caps uppercase text-(--text-muted)">
+                            <span className="mt-0.5 text-[0.5625rem] font-semibold uppercase tracking-[0.17em] text-(--text-muted)">
                                 Dev Health
                             </span>
                         </span>
@@ -119,15 +126,22 @@ export function ShellSidebar({
 
                 <OrgSwitcher onActiveOrganizationChange={onActiveOrganizationChange} />
 
-                <div className="min-h-0 md:flex-1 md:overflow-y-auto">
+                <div className="min-h-0 flex-1 overflow-y-auto">
                     {/* The links read the live query string (filter, role, lens). */}
                     <Suspense fallback={null}>
-                        <ShellNav />
+                        <ShellNav part="main" />
+                    </Suspense>
+                </div>
+
+                {/* Reports and Admin: held at the bottom, above the account block, outside the scroll region. */}
+                <div data-testid="shell-utility-nav" className="shrink-0">
+                    <Suspense fallback={null}>
+                        <ShellNav part="utility" />
                     </Suspense>
                 </div>
 
                 <div className="hidden border-t border-(--border) pt-3 md:block">
-                    <UserMenu placement="sidebar" />
+                    <UserMenu placement="sidebar" detail={describeOrganizationData(organization)} />
                 </div>
             </div>
         </aside>

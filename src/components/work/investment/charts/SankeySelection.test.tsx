@@ -121,7 +121,7 @@ describe("the allocation switch", () => {
     it("draws exactly one Sankey, defaulting to Team -> Theme -> Repo", () => {
         renderSwitch();
         expect(screen.getAllByTestId("mock-sankey-chart")).toHaveLength(1);
-        expect(screen.getByRole("heading", { level: 3, name: /team.*theme.*repo/i })).toBeVisible();
+        expect(screen.getByTestId("team-category-sankey")).toBeVisible();
         expect(chart().nodes.map((n) => n.name)).toContain("Alpha");
     });
 
@@ -129,7 +129,8 @@ describe("the allocation switch", () => {
         renderSwitch();
         fireEvent.click(screen.getByRole("radio", { name: /theme.*repo.*team/i }));
         expect(screen.getAllByTestId("mock-sankey-chart")).toHaveLength(1);
-        expect(screen.getByRole("heading", { level: 3, name: /theme.*repo.*team/i })).toBeVisible();
+        expect(screen.getByTestId("repo-team-sankey")).toBeVisible();
+        expect(screen.queryByTestId("team-category-sankey")).toBeNull();
         expect(chart().nodes.map((n) => n.name)).toContain("Bugfix");
     });
 });
@@ -255,17 +256,17 @@ describe("team and theme keep production's drill; the panel is its side view", (
     });
 });
 
-describe("the panel's Open evidence link keeps the page filters", () => {
+describe("the panel's 'Inspect allocation evidence' action keeps the page filters", () => {
     it("opens the Evidence tab with the filter param, in both views", () => {
         renderSwitch();
         click({ type: "node", name: "repo-b" });
-        expect(screen.getByRole("link", { name: /open evidence/i }).getAttribute("href")).toContain(
-            "/investment?tab=evidence&f=",
-        );
+        expect(
+            screen.getByRole("link", { name: "Inspect allocation evidence" }).getAttribute("href"),
+        ).toContain("/investment?tab=evidence&f=");
         fireEvent.click(screen.getByRole("radio", { name: /theme.*repo.*team/i }));
         click({ type: "node", name: "repo-a" });
-        expect(screen.getByRole("link", { name: /open evidence/i }).getAttribute("href")).toContain(
-            "/investment?tab=evidence&f=",
-        );
+        expect(
+            screen.getByRole("link", { name: "Inspect allocation evidence" }).getAttribute("href"),
+        ).toContain("/investment?tab=evidence&f=");
     });
 });

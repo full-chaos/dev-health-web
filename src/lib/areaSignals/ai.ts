@@ -49,6 +49,7 @@ import { formatNumber, formatPercent } from "@/lib/formatters";
 import { logger } from "@/lib/logger";
 
 import { BACKEND_LADDER, deriveState, type SeverityThresholds } from "./deriveState";
+import { markFailedSignals } from "./failedRead";
 import type { AreaSignal, AreaSignalState } from "./types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -89,23 +90,37 @@ function buildSignal(
 }
 
 /** Resolve the org scope from the auth session. */
-async function resolveOrgId(): Promise<string> {
+async function resolveOrgId(): Promise<string | null> {
     const session = await auth();
-    return (session?.user?.org_id as string | undefined) ?? "default-org";
+    return (session?.user?.org_id as string | undefined) || null;
 }
 
 /**
  * Run a source fetch, swallowing failures to `undefined` so one dead source
  * degrades to a single honest-empty card instead of failing the whole area.
  */
-async function safe<T>(fn: () => Promise<T>, source: string): Promise<T | undefined> {
+async function safe<T>(
+    fn: () => Promise<T>,
+    source: string,
+    failedSources: Set<string>,
+): Promise<T | undefined> {
     try {
         return await fn();
     } catch (error) {
+        // The backend text goes to the log only; the card says "could not be read" (CHAOS-8269).
         logger.error({ err: error, source }, "AI signal source failed");
+        failedSources.add(source);
         return undefined;
     }
 }
+
+/** The read each AI card depends on, so a failed read marks only its own card (CHAOS-8269). */
+const SIGNAL_SOURCES: Record<string, readonly string[]> = {
+    "ai-impact": ["ai-impact"],
+    "ai-review-load": ["ai-review-load"],
+    "ai-governance-risk": ["ai-governance-risk"],
+    "ai-automations": ["ai-automations"],
+};
 
 // ── Resolver ──────────────────────────────────────────────────────────────────
 
@@ -126,6 +141,8 @@ export async function getAISignals(
     const byId = new Map(ai.hubItems.map((item) => [item.id, item]));
     const descriptor = (id: string): NavAreaHubItem | undefined => byId.get(id);
 
+    // No org on the session: the org-scoped reads below are skipped (cards read
+    // "unavailable"), never sent with an empty or made-up org.
     const orgId = isTestMode ? "default-org" : await resolveOrgId();
 
     // Derive AI query variables from the canonical metric filter.
@@ -143,50 +160,63 @@ export async function getAISignals(
     // fetcher convention, src/lib/testops/fetchers.ts) so the hub renders a
     // realistic severity mix without hitting the API — the samples still flow
     // through the real derivation below, never bypassing it.
+    const failedSources = new Set<string>();
     const [impact, reviewLoad, governance, opportunities] = await Promise.all([
         safe(
             () =>
                 isTestMode
                     ? Promise.resolve(SAMPLE_AI_IMPACT_SUMMARY)
-                    : graphqlFetch<{ aiImpactSummary: AiImpactSummary }>(
-                          AI_IMPACT_SUMMARY_QUERY,
-                          { orgId, dateRange, scope },
-                          { orgId },
-                      ).then((r) => r.aiImpactSummary),
+                    : !orgId
+                      ? Promise.resolve(undefined)
+                      : graphqlFetch<{ aiImpactSummary: AiImpactSummary }>(
+                            AI_IMPACT_SUMMARY_QUERY,
+                            { orgId, dateRange, scope },
+                            { orgId },
+                        ).then((r) => r.aiImpactSummary),
             "ai-impact",
+            failedSources,
         ),
         safe(
             () =>
                 isTestMode
                     ? Promise.resolve(SAMPLE_AI_REVIEW_LOAD)
-                    : graphqlFetch<{ aiReviewLoad: AiReviewLoadResult }>(
-                          AI_REVIEW_LOAD_QUERY,
-                          { orgId, dateRange, scope },
-                          { orgId },
-                      ).then((r) => r.aiReviewLoad),
+                    : !orgId
+                      ? Promise.resolve(undefined)
+                      : graphqlFetch<{ aiReviewLoad: AiReviewLoadResult }>(
+                            AI_REVIEW_LOAD_QUERY,
+                            { orgId, dateRange, scope },
+                            { orgId },
+                        ).then((r) => r.aiReviewLoad),
             "ai-review-load",
+            failedSources,
         ),
         safe(
             () =>
                 isTestMode
                     ? Promise.resolve(SAMPLE_AI_GOVERNANCE_SUMMARY)
-                    : graphqlFetch<{ aiGovernanceSummary: AiGovernanceSummary }>(
-                          AI_GOVERNANCE_SUMMARY_QUERY,
-                          { orgId, dateRange, scope, violationLimit: 50 },
-                          { orgId },
-                      ).then((r) => r.aiGovernanceSummary),
+                    : !orgId
+                      ? Promise.resolve(undefined)
+                      : graphqlFetch<{ aiGovernanceSummary: AiGovernanceSummary }>(
+                            AI_GOVERNANCE_SUMMARY_QUERY,
+                            { orgId, dateRange, scope, violationLimit: 50 },
+                            { orgId },
+                        ).then((r) => r.aiGovernanceSummary),
             "ai-governance-risk",
+            failedSources,
         ),
         safe(
             () =>
                 isTestMode
                     ? Promise.resolve(SAMPLE_AI_OPPORTUNITIES)
-                    : graphqlFetch<{ aiOpportunities: AiOpportunitiesResult }>(
-                          AI_OPPORTUNITIES_QUERY,
-                          { orgId, scope, limit: 5 },
-                          { orgId },
-                      ).then((r) => r.aiOpportunities),
+                    : !orgId
+                      ? Promise.resolve(undefined)
+                      : graphqlFetch<{ aiOpportunities: AiOpportunitiesResult }>(
+                            AI_OPPORTUNITIES_QUERY,
+                            { orgId, scope, limit: 5 },
+                            { orgId },
+                        ).then((r) => r.aiOpportunities),
             "ai-automations",
+            failedSources,
         ),
     ]);
 
@@ -314,5 +344,5 @@ export async function getAISignals(
         push("ai-automations", UNAVAILABLE);
     }
 
-    return signals;
+    return markFailedSignals(signals, SIGNAL_SOURCES, failedSources);
 }

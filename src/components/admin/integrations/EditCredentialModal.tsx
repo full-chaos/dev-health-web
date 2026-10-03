@@ -212,7 +212,7 @@ export function EditCredentialModal({
                                 placeholder={
                                     field.type === "password" ? "Enter new token to update..." : ""
                                 }
-                                className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                             />
                         </div>
                     ))}

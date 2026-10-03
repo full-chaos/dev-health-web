@@ -1,3 +1,4 @@
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { getPlatformStats } from "@/lib/admin/server";
 import { Notice } from "@/components/ui/Notice";
@@ -19,7 +20,7 @@ export default async function SuperadminDashboard() {
                     titleAs="h3"
                     title="Error loading stats"
                 >
-                    {error}
+                    {READ_FAILED_MESSAGE}
                 </Notice>
             </div>
         );

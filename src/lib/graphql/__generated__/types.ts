@@ -1106,7 +1106,14 @@ export type ImproveOpportunity = {
   recommendedAction: Scalars['String']['output'];
   score: Scalars['Float']['output'];
   severity: Scalars['String']['output'];
+  /** The rule's limit, in `unit`. A fixed constant of the detector, not a per-organization setting. */
+  threshold: Scalars['Float']['output'];
+  /** Which side of the threshold fires the rule: ABOVE (value > threshold) or BELOW (value < threshold). */
+  thresholdDirection: ThresholdDirection;
   title: Scalars['String']['output'];
+  unit: ImproveOpportunityUnit;
+  /** The measured metric the rule compared, in `unit`. The same number the rationale states. */
+  value: Scalars['Float']['output'];
 };
 
 export type ImproveOpportunityKind =
@@ -1117,6 +1124,11 @@ export type ImproveOpportunityKind =
   | 'HIGH_WIP'
   | 'LOW_THROUGHPUT'
   | 'SLOW_CYCLE_TIME';
+
+export type ImproveOpportunityUnit =
+  | 'HOURS'
+  | 'ITEMS'
+  | 'RATIO';
 
 export type MaintainerShare = {
   __typename?: 'MaintainerShare';
@@ -1871,13 +1883,18 @@ export type ReviewEdgesInput = {
   orgId: Scalars['String']['input'];
   repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
   sinceDate: Scalars['Date']['input'];
+  /** Team ids (CHAOS-7785). Narrows the edges to the repositories these teams OWN (team_repo_ownership, as of now); person membership is never read. Combined with ``repoIds`` the two both apply (a pair must be on a listed repository and on a team-owned one). */
+  teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
   untilDate: Scalars['Date']['input'];
 };
 
 export type ReviewEdgesResult = {
   __typename?: 'ReviewEdgesResult';
   edges: Array<ReviewEdgeRow>;
+  /** Number of deduplicated (pair, day) rows the filters match, before the ``limit`` cut (CHAOS-7786). One row is one reviewer-to-author pair on one day, so this counts rows, not distinct pairs. Never less than ``edges``. */
   totalCount: Scalars['Int']['output'];
+  /** True when ``totalCount`` is greater than the number of ``edges`` returned: the list was cut by ``limit`` (CHAOS-7786). */
+  truncated: Scalars['Boolean']['output'];
 };
 
 export type ReworkThemeAllocation = {
@@ -2152,6 +2169,10 @@ export type TestOpsRiskTrendPoint = {
   date: Scalars['Date']['output'];
   riskScore: Scalars['Float']['output'];
 };
+
+export type ThresholdDirection =
+  | 'ABOVE'
+  | 'BELOW';
 
 export type ThroughputEstimateCoverage = {
   __typename?: 'ThroughputEstimateCoverage';

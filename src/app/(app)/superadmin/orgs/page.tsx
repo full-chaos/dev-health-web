@@ -1,3 +1,4 @@
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { OrgTable } from "@/components/superadmin/OrgTable";
@@ -16,7 +17,7 @@ export default async function OrganizationsPage() {
                     description="Manage all organizations across the platform."
                 />
                 <Notice variant="danger" live={false}>
-                    Error loading organizations: {error}
+                    Error loading organizations. {READ_FAILED_MESSAGE}
                 </Notice>
             </div>
         );

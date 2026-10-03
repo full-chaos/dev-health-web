@@ -53,13 +53,23 @@ describe("AIImpactEvidenceList repository names", () => {
     });
 
     it.each([null, undefined, "", "   "])(
-        "falls back to the short token with the Unresolved badge when repoName is %j",
+        "reads 'Not reported' when repoName is %j: no id token and no Unresolved badge",
         (name) => {
             withName(name);
             render(<AIImpactEvidenceList filter={filter} />);
+            const cell = screen.getByTestId("ai-impact-evidence-repo");
+            expect(cell).toHaveTextContent(/^Not reported$/);
             const row = screen.getByTestId("ai-impact-evidence-row");
-            expect(row).toHaveTextContent("Unresolved");
+            expect(row).not.toHaveTextContent("Unresolved");
             expect(row).not.toHaveTextContent(UUID);
+            // The short token of the id is not a name either.
+            expect(row).not.toHaveTextContent("11111111");
         },
     );
+
+    it("shows the served name in the repository cell", () => {
+        withName("Sample Repo");
+        render(<AIImpactEvidenceList filter={filter} />);
+        expect(screen.getByTestId("ai-impact-evidence-repo")).toHaveTextContent(/^Sample Repo$/);
+    });
 });

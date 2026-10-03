@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { QuadrantResponse } from "@/lib/types";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
+import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 
 vi.mock("next/link", () => ({
     default: ({ href, children }: { href: string; children: React.ReactNode }) =>
@@ -53,13 +54,18 @@ describe("QuadrantPanel", () => {
             how: {},
         };
 
+        // The panel opens the shared evidence drawer, so it renders inside the provider.
         const html = renderToStaticMarkup(
-            React.createElement(QuadrantPanel, {
-                title: "Churn × Throughput landscape",
-                description: "Individual quadrant view.",
-                data,
-                filters,
-            }),
+            React.createElement(
+                EvidenceDrawerProvider,
+                null,
+                React.createElement(QuadrantPanel, {
+                    title: "Churn × Throughput landscape",
+                    description: "Individual quadrant view.",
+                    data,
+                    filters,
+                }),
+            ),
         );
 
         expect(html.match(/Liam/g) ?? []).toHaveLength(1);

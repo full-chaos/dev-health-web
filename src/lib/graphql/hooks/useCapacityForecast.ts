@@ -34,14 +34,14 @@ interface UseCapacityForecastResult {
  *
  * @example
  * ```tsx
- * function CapacityView({ orgId, teamId }) {
+ * function CapacityView({ orgId, teamIds }) {
  *   const { data, loading, error, refetch } = useCapacityForecast({
  *     orgId,
- *     input: { teamId, historyDays: 90 },
+ *     input: { teamIds, historyDays: 90 },
  *   });
  *
  *   if (loading) return <Spinner />;
- *   if (error) return <Error message={error.message} />;
+ *   if (error) return <ReadFailed />; // never print the error text
  *   return <ForecastChart forecast={data} />;
  * }
  * ```

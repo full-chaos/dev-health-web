@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { NavChildRoute } from "@/lib/navigation/areas";
+import { TAB_ACTIVE, TAB_BASE, TAB_CONTAINER, TAB_INACTIVE } from "@/components/shared/ModeTabs";
 
 export type ViewSetItem = Pick<
     NavChildRoute,
@@ -15,20 +16,10 @@ type ViewSetProps = {
     className?: string;
 };
 
-const TAB_CONTAINER =
-    "flex items-center gap-1 overflow-x-auto whitespace-nowrap border-b border-(--card-stroke) px-1 scrollbar-hide";
-
-const TAB_BASE =
-    "-mb-px flex items-center gap-1.5 border-b-2 px-3.5 py-3 text-[10px] uppercase tracking-[0.18em] transition-all";
-
-const TAB_ACTIVE = "border-(--accent) text-foreground font-semibold";
-const TAB_INACTIVE =
-    "border-transparent text-(--ink-muted) hover:border-(--card-stroke) hover:text-foreground";
-
 const VERTICAL_CONTAINER = "mt-1 ml-3 flex flex-col gap-0.5 border-l border-(--card-stroke) pl-2";
 
 const VERTICAL_BASE =
-    "group relative flex items-center rounded-xl px-3 py-1.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/35";
+    "group relative flex items-center rounded-xl px-3 py-1.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/35";
 
 const VERTICAL_ACTIVE =
     "bg-(--accent)/12 font-medium text-foreground before:absolute before:left-0 before:top-1/4 before:h-1/2 before:w-0.5 before:rounded-full before:bg-(--accent)";

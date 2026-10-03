@@ -1,4 +1,5 @@
-import { render, screen, within } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { screen, within } from "@/test/utils";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -49,6 +50,24 @@ describe("OpportunityMasterDetail", () => {
                 name: "Reduce Review Latency",
             }),
         ).toBeInTheDocument();
+    });
+
+    it("uses the prototype's 295px list column beside a flexible detail", () => {
+        const { container } = render(<OpportunityMasterDetail items={items} filters={filters} />);
+
+        expect((container.firstElementChild as HTMLElement).className).toContain(
+            "lg:grid-cols-[295px_minmax(0,1fr)]",
+        );
+    });
+
+    it("puts an arrow on every row and marks the selected row", () => {
+        render(<OpportunityMasterDetail items={items} filters={filters} />);
+
+        const rows = within(screen.getByTestId("opportunity-list")).getAllByRole("button");
+        expect(rows).toHaveLength(2);
+        for (const row of rows) expect(row.querySelector("svg")).not.toBeNull();
+        expect(rows[0].className).toContain("border-(--accent)");
+        expect(rows[1].className).not.toContain("border-(--accent)");
     });
 
     it("shows the clicked opportunity on the right", async () => {

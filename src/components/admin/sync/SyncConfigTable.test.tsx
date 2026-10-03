@@ -159,16 +159,25 @@ describe("SyncConfigTable", () => {
     });
 
     it.each([
-        ["a returned error", () => mockToggleSyncActive.mockResolvedValueOnce({ error: "Denied" })],
-        ["a thrown error", () => mockToggleSyncActive.mockRejectedValueOnce(new Error("Offline"))],
-    ])("does not refresh after %s while toggling", async (_case, configureFailure) => {
+        [
+            "a returned error",
+            () => mockToggleSyncActive.mockResolvedValueOnce({ error: "Denied" }),
+            "Denied",
+        ],
+        [
+            "a thrown error",
+            () => mockToggleSyncActive.mockRejectedValueOnce(new Error("Offline")),
+            "The change was not saved. Try again.",
+        ],
+    ])("does not refresh after %s while toggling", async (_case, configureFailure, shown) => {
         configureFailure();
         renderTable([standalone]);
         await userEvent.click(
             within(rowFor("Linear sync")).getByRole("button", { name: "Resume Linear sync" }),
         );
         await waitFor(() => expect(mockRefresh).not.toHaveBeenCalled());
-        expect(screen.getByText(/Denied|Offline/)).toBeInTheDocument();
+        expect(screen.getByText(shown)).toBeInTheDocument();
+        expect(screen.queryByText(/Offline/)).toBeNull();
     });
 
     it("confirms group deletion without expanding the group", async () => {

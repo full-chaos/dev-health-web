@@ -3,9 +3,10 @@ import type { ReactNode } from "react";
 import type { MetricFilter } from "@/lib/filters/types";
 import { getAreaById, type NavAreaId } from "@/lib/navigation/areas";
 import type { AreaSignal } from "@/lib/areaSignals/types";
-import { isAvailable, sortBySeverity } from "@/lib/areaSignals/sort";
+import { areaClusterOrder, areaOverviewLayout } from "@/lib/areaSignals/overviewLayout";
 
 import { AreaSignalCard } from "./AreaSignalCard";
+import { PrimarySignalHero } from "./PrimarySignalHero";
 
 // ── AreaOverview (CHAOS-2082) ─────────────────────────────────────────────────
 //
@@ -14,8 +15,10 @@ import { AreaSignalCard } from "./AreaSignalCard";
 // Improve adopt it now; Plan / AI adopt it as they land (J4 / J7).
 //
 // Contract:
-//   - ONE top-signal hero: the single most-severe available sub-area, rendered
-//     with `AreaSignalCard`'s emphasized treatment.
+//   - ONE primary-signal hero: the single most-severe available sub-area, rendered
+//     by `PrimarySignalHero` (value as served, one primary action).
+//   - Where the area defines clusters, the grid is split under group heads
+//     (Govern: Quality, Risk). Without clusters it stays one grid.
 //   - A severity-sorted grid of the REMAINING sub-area signal cards. The hero's
 //     sub-area is EXCLUDED from the grid, so no card is ever repeated between
 //     hero and grid (the duplication fixed by CHAOS-2082).
@@ -34,7 +37,7 @@ type AreaOverviewProps = {
     signals: AreaSignal[];
     filters: MetricFilter;
     role?: string;
-    /** Eyebrow label above the hero. Defaults to "<Area> area". */
+    /** Optional eyebrow above the hero. No eyebrow is drawn when omitted. */
     title?: string;
     /** Optional one-line description under the eyebrow. */
     description?: string;
@@ -54,17 +57,28 @@ export function AreaOverview({
     const area = getAreaById(areaId);
     if (!area) return null;
 
-    // Real-data signals sort by severity; empty / unconnected sub-areas sink to
-    // the muted tier at the bottom. Partitioning here (not just sorting) keeps the
-    // hero selection honest — an unavailable metric is never "the top signal".
-    const available = sortBySeverity(signals.filter(isAvailable));
-    const unavailable = signals.filter((signal) => !isAvailable(signal));
+    // The one layout rule (lib/areaSignals/overviewLayout.ts): severity order, the hero dropped
+    // from the grid (CHAOS-2082), unavailable sub-areas last, groups in the area's own order. The
+    // "View evidence" facts of an overview page read the same layout, so they follow this order.
+    const {
+        hero,
+        restAvailable: gridSignals,
+        unavailable,
+        clusters,
+        isClustered,
+        grid,
+    } = areaOverviewLayout(signals, areaClusterOrder(area));
 
-    // The single top signal becomes the hero and is dropped from the grid so no
-    // card appears in both hero and grid (CHAOS-2082 acceptance).
-    const [hero, ...restAvailable] = available;
-
-    const gridSignals = restAvailable;
+    const renderGrid = (list: AreaSignal[]) => (
+        <div
+            data-testid="area-overview-grid"
+            className="grid gap-3.5 md:grid-cols-2 lg:grid-cols-3"
+        >
+            {list.map((signal) => (
+                <AreaSignalCard key={signal.id} signal={signal} filters={filters} role={role} />
+            ))}
+        </div>
+    );
 
     if (!hero && gridSignals.length === 0 && unavailable.length === 0) return null;
 
@@ -74,43 +88,61 @@ export function AreaOverview({
             data-testid="area-overview"
             className="flex flex-col gap-6"
         >
-            <div>
-                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                    {title ?? `${area.label} area`}
-                </p>
-                {description ? (
-                    <p className="mt-1 text-sm text-(--ink-muted)">{description}</p>
-                ) : null}
-            </div>
+            {title || description ? (
+                <div>
+                    {title ? (
+                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
+                            {title}
+                        </p>
+                    ) : null}
+                    {description ? (
+                        <p className={`${title ? "mt-1 " : ""}text-sm text-(--ink-muted)`}>
+                            {description}
+                        </p>
+                    ) : null}
+                </div>
+            ) : null}
 
             {hero ? (
                 <div data-testid="area-overview-hero">
-                    <AreaSignalCard signal={hero} filters={filters} role={role} emphasized />
+                    <PrimarySignalHero
+                        signal={
+                            hero as typeof hero & {
+                                state: Exclude<typeof hero.state, "unavailable">;
+                            }
+                        }
+                        filters={filters}
+                        role={role}
+                        actionLabel={
+                            area.hubItems.find(
+                                (item) => item.id === hero.id || item.href === hero.href,
+                            )?.heroCta
+                        }
+                    />
                 </div>
             ) : null}
 
             {gridSignals.length > 0 || unavailable.length > 0 ? (
-                <div
-                    data-testid="area-overview-grid"
-                    className="grid gap-3.5 md:grid-cols-2 lg:grid-cols-3"
-                >
-                    {gridSignals.map((signal) => (
-                        <AreaSignalCard
-                            key={signal.id}
-                            signal={signal}
-                            filters={filters}
-                            role={role}
-                        />
-                    ))}
-                    {unavailable.map((signal) => (
-                        <AreaSignalCard
-                            key={signal.id}
-                            signal={signal}
-                            filters={filters}
-                            role={role}
-                        />
-                    ))}
-                </div>
+                isClustered ? (
+                    <div className="space-y-6">
+                        {clusters.map((group) => (
+                            <div
+                                key={group.cluster ?? "_flat"}
+                                data-testid="area-overview-cluster"
+                                data-cluster={group.cluster ?? ""}
+                            >
+                                {group.cluster ? (
+                                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-(--ink-muted)">
+                                        {group.cluster}
+                                    </p>
+                                ) : null}
+                                {renderGrid(group.signals)}
+                            </div>
+                        ))}
+                    </div>
+                ) : (
+                    renderGrid(grid)
+                )
             ) : null}
 
             {note ? <div data-testid="area-overview-note">{note}</div> : null}

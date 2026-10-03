@@ -9,10 +9,6 @@ import { resolveSyncPollTarget, type SyncStatus } from "@/lib/sync-types";
 
 const syncLogger = logger.child({ component: "useSyncTrigger" });
 
-function errorMessage(error: unknown): string {
-    return error instanceof Error ? error.message : "Unknown error";
-}
-
 interface UseSyncTriggerResult {
     /**
      * Optimistic "running" status right after a trigger, or null once we
@@ -152,7 +148,7 @@ export function useSyncTrigger(
                 setLiveStatus(null);
                 setIsSyncing(false);
                 syncLogger.error({ err: error, configId }, "Sync trigger failed");
-                toast.error(`Unable to start sync: ${errorMessage(error)}`);
+                toast.error("Unable to start sync. Try again.");
             }
         })();
     }, [configId, router, freshnessSignal, refreshToken]);

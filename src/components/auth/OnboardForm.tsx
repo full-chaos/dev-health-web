@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidationStatus } from "@/lib/actionFailure";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -58,7 +59,12 @@ export function OnboardForm({ plan, trialIntent = false, guided = false }: Onboa
                 }
                 try {
                     const data = await res.json();
-                    toast.error(extractErrorMessage(data.detail, "Failed to create workspace"));
+                    toast.error(
+                        extractErrorMessage(
+                            isValidationStatus(res.status) ? data.detail : undefined,
+                            "Failed to create workspace",
+                        ),
+                    );
                 } catch {
                     toast.error("Failed to create workspace");
                 }
@@ -139,7 +145,7 @@ export function OnboardForm({ plan, trialIntent = false, guided = false }: Onboa
                     type="text"
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                    className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-(--accent-2)"
                     placeholder="My Company"
                 />
             </div>

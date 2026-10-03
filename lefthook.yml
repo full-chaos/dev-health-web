@@ -17,7 +17,9 @@
 #                 is why fix-and-stage lives here and not in pre-push.
 #
 #   pre-push    — final gate matching CI: prettier --check + eslint on pushed
-#                 files. No auto-fix here — pre-push cannot modify the commits
+#                 files, and the type check (`pnpm typecheck` = `tsc --noEmit`,
+#                 whole project, so it runs when the push has TS/TSX files).
+#                 No auto-fix here — pre-push cannot modify the commits
 #                 it's gating, so blocking with an instruction is the only
 #                 correct shape.
 #
@@ -63,6 +65,10 @@ pre-push:
             glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
             run: pnpm exec eslint {push_files}
             fail_text: "Run `pnpm lint --fix` locally, commit the result, push again. Or `git push --no-verify` to bypass."
+        typecheck:
+            glob: "*.{ts,tsx}"
+            run: pnpm typecheck
+            fail_text: "Type errors. Fix them (`pnpm typecheck` shows them), commit, push again."
         design-lint:
             glob: "*.{ts,tsx,js,mjs,cjs,jsx}"
             run: pnpm design-lint || true

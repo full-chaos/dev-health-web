@@ -104,16 +104,14 @@ describe("resolveOrgId via fetchTestOpsData", () => {
         expect(firstCallVars.orgId).toBe("org-session-123");
     });
 
-    it("falls back to 'default-org' when session has no org_id", async () => {
+    it("rejects, with no request, when the session has no org_id (never a made-up org)", async () => {
         mockAuth({ user: { org_id: undefined } });
         vi.mocked(graphqlFetch).mockResolvedValue({ analytics: emptyAnalytics });
 
-        await fetchCoverageMetrics({ timeseries: [], breakdowns: [] }, false);
-
-        const callVars = vi.mocked(graphqlFetch).mock.calls[0][1] as {
-            orgId: string;
-        };
-        expect(callVars.orgId).toBe("default-org");
+        await expect(
+            fetchCoverageMetrics({ timeseries: [], breakdowns: [] }, false),
+        ).rejects.toThrow();
+        expect(graphqlFetch).not.toHaveBeenCalled();
     });
 
     it("uses orgIdOverride when provided, skipping auth lookup", async () => {
@@ -275,5 +273,20 @@ describe("normalizeAnalyticsDurations", () => {
     it("returns empty timeseries unchanged", () => {
         const input = { timeseries: [], breakdowns: [] };
         expect(normalizeAnalyticsDurations(input)).toEqual(input);
+    });
+});
+
+describe("TestOps fetchers without a session org (CHAOS-8272)", () => {
+    beforeEach(() => {
+        vi.resetAllMocks();
+    });
+
+    it("reject and make no request, never falling back to a made-up org", async () => {
+        mockAuth({ user: { org_id: undefined } });
+        const batch = { timeseries: [], breakdowns: [] };
+        await expect(fetchTestOpsData(batch)).rejects.toThrow();
+        await expect(fetchCoverageMetrics(batch)).rejects.toThrow();
+        await expect(fetchRiskMetrics(batch)).rejects.toThrow();
+        expect(graphqlFetch).not.toHaveBeenCalled();
     });
 });

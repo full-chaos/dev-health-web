@@ -266,7 +266,8 @@ describe("admin/server sync config actions", () => {
             );
 
             await expect(getSyncCoverage("cfg-coverage")).resolves.toEqual({
-                error: "coverage unavailable",
+                error: "Could not be read",
+                status: 500,
             });
             fetchSpy.mockRestore();
         });

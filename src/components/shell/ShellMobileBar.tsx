@@ -21,8 +21,8 @@ type ShellMobileBarProps = {
 /**
  * Top bar of a shell route below the `md` breakpoint (the desktop top bar is hidden there):
  * the menu button that opens the slide-over navigation (concept `.mobile-menu`), the brand,
- * the light / dark toggle and the account menu. It replaces the account bar on shell routes;
- * routes outside the shell registry keep `LegacyAccountBar`.
+ * the light / dark toggle and the account menu.
+ * It is the top bar of every authed route.
  */
 export function ShellMobileBar({ open, onToggle, controlRef }: ShellMobileBarProps) {
     return (
@@ -38,7 +38,7 @@ export function ShellMobileBar({ open, onToggle, controlRef }: ShellMobileBarPro
                     aria-controls="primary-navigation-panel"
                     aria-label={open ? "Hide navigation" : "Show navigation"}
                     onClick={onToggle}
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-(--card-stroke) bg-(--card-80) text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-(--card-stroke) bg-(--card-80) text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                 >
                     <Menu aria-hidden="true" className="h-4 w-4" />
                 </button>

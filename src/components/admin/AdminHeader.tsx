@@ -3,13 +3,15 @@
 import React from "react";
 
 import { PageHeader } from "@/components/shell/PageHeader";
-import { STATUS_PILL } from "@/lib/statusPill";
+import { StatusPill } from "@/components/admin/StatusPill";
 
 import { AdminTabs, useAdminNav } from "./AdminTabs";
 
 type AdminHeaderProps = {
     title: string;
     description?: string;
+    /** A status badge drawn beside the title (the title adornment slot), after the Platform admin pill. */
+    titleBadge?: React.ReactNode;
     /** Page actions (right-aligned). */
     children?: React.ReactNode;
 };
@@ -20,20 +22,28 @@ type AdminHeaderProps = {
  * (AD-1 option A). The trail and the eyebrow come from the shell; there is no in-page trail.
  * On a page outside the Admin tab routes (the platform admin pages) the tab row renders nothing.
  */
-export function AdminHeader({ title, description, children }: AdminHeaderProps) {
+export function AdminHeader({ title, description, titleBadge, children }: AdminHeaderProps) {
     const { isPlatformAdmin } = useAdminNav();
 
     return (
         <div className="flex flex-col gap-4">
-            <PageHeader title={title} subtitle={description} actions={children}>
-                {isPlatformAdmin ? (
-                    <span
-                        className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-label-caps font-medium uppercase ${STATUS_PILL.info}`}
-                    >
-                        Platform Admin
-                    </span>
-                ) : null}
-            </PageHeader>
+            <PageHeader
+                title={title}
+                subtitle={description}
+                actions={children}
+                titleAdornment={
+                    isPlatformAdmin || titleBadge ? (
+                        <div className="flex flex-wrap items-center gap-2">
+                            {isPlatformAdmin ? (
+                                <StatusPill tone="outline" className="w-fit">
+                                    Platform admin
+                                </StatusPill>
+                            ) : null}
+                            {titleBadge}
+                        </div>
+                    ) : undefined
+                }
+            />
             <AdminTabs />
         </div>
     );

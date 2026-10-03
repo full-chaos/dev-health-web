@@ -10,6 +10,7 @@ import {
     type SelectedEntity,
 } from "@/lib/allocationSelection";
 import { withFilterParam } from "@/lib/filters/url";
+import { DataNote } from "@/components/charts/DataNote";
 import { SelectedPathPanel } from "./SelectedPathPanel";
 import { computeSankeyMetrics } from "@/lib/sankey";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -131,20 +132,9 @@ export function RepoTeamSankeySection({
     // A read that produced no flow (failed, or no flow and no error) is unavailable,
     // never a measured "no teams associated" absence; only a produced flow can say that.
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                    <h3 className="font-(--font-display) text-lg">Theme &rarr; Repo &rarr; Team</h3>
-                    <p className="mt-1 text-xs text-(--ink-muted)">Theme to Repo to Team</p>
-                </div>
-                <span className="text-xs text-(--ink-muted)">
-                    Two-hop allocation to highlight team ownership behind repos.
-                </span>
-            </div>
-            <div className="mb-4 mt-2 border-l-2 border-(--card-stroke) py-1 pl-3 text-xs leading-relaxed text-(--ink-muted)">
-                This view uses repo-to-team mapping when available. Missing repo associations are
-                routed through an unassigned repo node.
-            </div>
+        <div className="min-w-0" data-testid="repo-team-sankey">
+            {/* No summary block above the chart (prototype `allocation()`); the mapping caveat is
+                the data note under it. */}
             {selectedEntity && (
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                     <button
@@ -236,6 +226,10 @@ export function RepoTeamSankeySection({
                     </div>
                 )}
             </div>
+            <DataNote>
+                This view uses repo-to-team mapping when available. Missing repo associations are
+                routed through an unassigned repo node.
+            </DataNote>
         </div>
     );
 }

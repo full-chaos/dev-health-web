@@ -1,3 +1,4 @@
+import { Section } from "@/components/ui/Section";
 import { formatDelta, formatMetricValue } from "@/lib/formatters";
 
 type ReadTheSignalProps = {
@@ -38,13 +39,8 @@ export function ReadTheSignal({ label, value, unit, deltaPct }: ReadTheSignalPro
     const hasValue = typeof value === "number" && Number.isFinite(value);
 
     return (
-        <section
-            className="rounded-3xl border border-(--card-stroke) bg-(--card) p-5"
-            aria-label="Read the signal"
-            data-testid="read-the-signal"
-        >
-            <h2 className="font-(--font-display) text-xl">Read the signal</h2>
-            <p className="mt-3 text-xs uppercase tracking-[0.15em] text-(--ink-muted)">{label}</p>
+        <Section title="Read the signal" aria-label="Read the signal" data-testid="read-the-signal">
+            <p className="text-label-caps uppercase text-(--ink-muted)">{label}</p>
             <p className="mt-1 text-2xl font-semibold" data-testid="signal-headline">
                 {headline}
             </p>
@@ -60,6 +56,6 @@ export function ReadTheSignal({ label, value, unit, deltaPct }: ReadTheSignalPro
                 source explanation and contributing artifacts rather than treating a percentage
                 change as a causal diagnosis.
             </div>
-        </section>
+        </Section>
     );
 }

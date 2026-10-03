@@ -23,7 +23,7 @@ describe("StateBadge", () => {
         for (const state of ["open", "detected", "confirmed"] as const) {
             const { unmount } = render(<StateBadge state={state} />);
             const badge = screen.getByText(new RegExp(state, "i"));
-            expect(badge.className).toContain("bg-(--caution)/12");
+            expect(badge.className).toContain("bg-(--caution-wash)");
             unmount();
         }
     });
@@ -32,7 +32,7 @@ describe("StateBadge", () => {
         for (const state of ["fixed", "resolved"] as const) {
             const { unmount } = render(<StateBadge state={state} />);
             const badge = screen.getByText(new RegExp(state, "i"));
-            expect(badge.className).toContain("bg-(--positive)/12");
+            expect(badge.className).toContain("bg-(--positive-wash)");
             unmount();
         }
     });

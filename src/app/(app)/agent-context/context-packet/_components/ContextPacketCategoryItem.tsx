@@ -149,7 +149,7 @@ function RelatedEntities({
                     <li key={`${entity.type}-${entity.id}`}>
                         {href ? (
                             <a
-                                className="underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                                className="underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                                 href={href}
                                 rel="noreferrer"
                                 target="_blank"
@@ -188,7 +188,7 @@ function EvidenceDisclosure({
             <button
                 aria-controls={evidenceId}
                 aria-expanded={evidenceOpen}
-                className="rounded-(--radius-sm) border border-(--card-stroke) px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                className="rounded-(--radius-sm) border border-(--card-stroke) px-3 py-2 text-xs font-semibold text-foreground transition hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                 onClick={onToggle}
                 type="button"
             >
@@ -226,7 +226,7 @@ function ExpandedEvidence({ expanded }: { readonly expanded: ACRExpandedEvidence
             </p>
             {sourceHref ? (
                 <a
-                    className="underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                    className="underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                     href={sourceHref}
                     rel="noreferrer"
                     target="_blank"

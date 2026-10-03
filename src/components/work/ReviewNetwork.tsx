@@ -4,54 +4,66 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
+import { Section } from "@/components/ui/Section";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
+import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
+import { hasEmailAddress } from "@/lib/graphql/reviewEdgeIdentities";
 import type { ReviewEdgeRow } from "@/lib/graphql/reviewEdgesFetchers";
 
 // Review Network tab: reviewer to author collaboration pairs from code review activity
 // (CHAOS-2077). Data comes from review_edges_daily (the reviewEdges resolver), one row per
 // reviewer, author, repo and day; the tab sums them per (reviewer, author) over the window and
-// orders them by reviews, high to low. Identities are the stored identity (an e-mail address);
-// the client has no org-scoped display-name lookup, so a person shows as the part before "@"
-// with the full identity in the tooltip and for screen readers (a resolved display name needs an
-// identity read: CHAOS-7732).
+// orders them by reviews, high to low.
+//
+// People (CHAOS-7973, ruling 51): a cell shows the served name, and NEVER an e-mail address or a
+// part of one. The API serves no display name; the stored identity of a person can be an e-mail
+// address. The server takes the addresses out before the rows come here (reviewEdgeIdentities.ts):
+// a row has a key per person (never shown) and a name, which is null when no name is served. A
+// person with no name reads "Not reported".
 
-type ReviewPair = { reviewer: string; author: string; totalReviews: number };
+type ReviewPair = {
+    reviewer: string;
+    author: string;
+    reviewerName: string | null;
+    authorName: string | null;
+    totalReviews: number;
+};
 
-/** Aggregate raw per-day rows into (reviewer, author, totalReviews), most reviews first. */
+/** Aggregate raw per-day rows into one pair per (reviewer key, author key), most reviews first. */
 export function aggregateReviewEdges(rawEdges: ReviewEdgeRow[]): ReviewPair[] {
-    const map = new Map<string, number>();
+    const map = new Map<string, ReviewPair>();
     for (const row of rawEdges) {
         const key = `${row.reviewer}\t${row.author}`;
-        map.set(key, (map.get(key) ?? 0) + row.reviewsCount);
+        const pair = map.get(key);
+        if (pair) {
+            pair.totalReviews += row.reviewsCount;
+        } else {
+            map.set(key, {
+                reviewer: row.reviewer,
+                author: row.author,
+                reviewerName: row.reviewerName ?? null,
+                authorName: row.authorName ?? null,
+                totalReviews: row.reviewsCount,
+            });
+        }
     }
-    return Array.from(map.entries())
-        .map(([key, totalReviews]) => {
-            const [reviewer, author] = key.split("\t") as [string, string];
-            return { reviewer, author, totalReviews };
-        })
-        .sort((a, b) => b.totalReviews - a.totalReviews);
+    return Array.from(map.values()).sort((a, b) => b.totalReviews - a.totalReviews);
 }
 
-/** The part of an identity before "@"; an identity without "@" is shown whole, once. */
-export function identityLocalPart(identity: string): string {
-    const atIndex = identity.indexOf("@");
-    return atIndex > 0 ? identity.slice(0, atIndex) : identity;
-}
-
-function Person({ identity }: { identity: string }) {
-    const local = identityLocalPart(identity);
-    return (
-        <>
-            <span className="font-medium" title={identity}>
-                {local}
-            </span>
-            {/* The full identity for a screen reader; shown only when the cell text is shorter. */}
-            {local !== identity && <span className="sr-only"> ({identity})</span>}
-        </>
-    );
+/**
+ * A person's cell: the served name, or "Not reported" when no name is served. The key of the
+ * person is never shown. The address check is the second guard (the server is the first): a name
+ * that holds an e-mail address is not shown.
+ */
+function Person({ name }: { name: string | null }) {
+    if (name === null || hasEmailAddress(name)) {
+        return <span className="text-(--ink-muted)">{NOT_REPORTED}</span>;
+    }
+    return <span className="font-medium">{name}</span>;
 }
 
 type ReviewNetworkViewProps = {
@@ -74,14 +86,14 @@ export function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewPr
         {
             key: "reviewer",
             header: "Reviewer",
-            render: (row) => <Person identity={row.reviewer} />,
+            render: (row) => <Person name={row.reviewerName} />,
             className: "px-4 py-3 align-middle",
             headerClassName: "px-4 py-3 font-medium",
         },
         {
             key: "author",
             header: "Author",
-            render: (row) => <Person identity={row.author} />,
+            render: (row) => <Person name={row.authorName} />,
             className: "px-4 py-3 align-middle",
             headerClassName: "px-4 py-3 font-medium",
         },
@@ -119,18 +131,12 @@ export function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewPr
     ];
 
     return (
-        <section
-            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+        <Section
             data-testid="review-network-panel"
+            as="h3"
+            title="Review Network"
+            description="Reviewer-to-author collaboration—not a performance ranking."
         >
-            <div className="mb-4">
-                <h3 className="text-lg font-semibold tracking-tight">Review Network</h3>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                    Reviewer→author collaboration pairs from code review activity, ranked by review
-                    count.
-                </p>
-            </div>
-
             {loading ? (
                 <DataState variant="loading" title="Loading…" />
             ) : error ? (
@@ -156,27 +162,28 @@ export function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewPr
                 />
             ) : (
                 <>
-                    <div
-                        className="mb-4 grid gap-4 sm:grid-cols-3"
-                        data-testid="review-network-tiles"
-                    >
+                    <MetricStrip className="mb-4" data-testid="review-network-tiles">
                         {[
-                            ["Reviewer", reviewerCount],
-                            ["Author", authorCount],
-                            ["Total review", totalReviews],
-                        ].map(([label, count]) => {
+                            ["Reviewer", reviewerCount, "distinct reviewers in the pairs below"],
+                            ["Author", authorCount, "distinct authors in the pairs below"],
+                            [
+                                "Total review",
+                                totalReviews,
+                                "sum of the reviews counted in the pairs",
+                            ],
+                        ].map(([label, count, note]) => {
                             const n = count as number;
                             return (
                                 <MetricCard
-                                    key={label}
+                                    key={label as string}
                                     label={`${label}${n === 1 ? "" : "s"}`}
                                     value={n}
-                                    deltaSlot={<></>}
-                                    noTrendLabel=""
+                                    hideTrend
+                                    deltaSlot={<span>{note as string}</span>}
                                 />
                             );
                         })}
-                    </div>
+                    </MetricStrip>
                     <div data-testid="review-network-table">
                         <DataTable
                             accessibleLabel="Reviewer to author review pairs"
@@ -203,6 +210,6 @@ export function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewPr
                     </div>
                 </>
             )}
-        </section>
+        </Section>
     );
 }

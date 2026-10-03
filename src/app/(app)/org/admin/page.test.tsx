@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@/test/utils";
 
-import type { User } from "@/lib/admin/types";
+import type { SyncConfig, User } from "@/lib/admin/types";
 import {
     getPendingTeamChanges,
     listCredentials,
@@ -30,7 +30,7 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("@/lib/auth", () => ({
-    auth: vi.fn(async () => ({ user: { email: "admin@test.com" } })),
+    auth: vi.fn(async () => ({ user: { name: "Ada Admin", email: "admin@test.com" } })),
 }));
 
 vi.mock("@/lib/admin/server", () => ({
@@ -57,7 +57,7 @@ describe("AdminDashboardPage", () => {
     it("renders operational signals without the partial banner on the happy path", async () => {
         render(await AdminDashboardPage());
 
-        expect(screen.getByText("Admin Dashboard")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 1, name: "Organization" })).toBeInTheDocument();
         expect(screen.getByText("Organization roster")).toBeInTheDocument();
         expect(screen.getByText("Setup progress")).toBeInTheDocument();
         expect(screen.queryByText(/Some admin signals could not load/)).not.toBeInTheDocument();
@@ -73,7 +73,7 @@ describe("AdminDashboardPage", () => {
 
         render(await AdminDashboardPage());
 
-        expect(screen.getByText("Admin Dashboard")).toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 1, name: "Organization" })).toBeInTheDocument();
         expect(screen.getByText(/Some admin signals could not load/)).toBeInTheDocument();
     });
 
@@ -83,5 +83,95 @@ describe("AdminDashboardPage", () => {
         render(await AdminDashboardPage());
 
         expect(screen.getByText(/Some admin signals could not load/)).toBeInTheDocument();
+    });
+
+    it("has no greeting: the header carries neither the name nor the e-mail address (AD-2)", async () => {
+        const { container } = render(await AdminDashboardPage());
+
+        expect(container.textContent).not.toMatch(/Welcome back/);
+        expect(container.textContent).not.toContain("Ada Admin");
+        expect(container.textContent).not.toContain("admin@test.com");
+        expect(
+            screen.getByText("System configuration and management for this organization."),
+        ).toBeInTheDocument();
+    });
+
+    it("shows the four signals as one joined strip with their links, and the Attention pill only above zero", async () => {
+        vi.mocked(listSyncConfigs).mockResolvedValue({
+            data: [{ is_active: true, last_sync_success: false }] as unknown as SyncConfig[],
+        });
+        render(await AdminDashboardPage());
+
+        const strip = screen.getByTestId("admin-signal-strip");
+        expect(strip.querySelectorAll("section")).toHaveLength(4);
+        expect(screen.getByRole("link", { name: "Review sync health" })).toHaveAttribute(
+            "href",
+            "/org/admin/sync",
+        );
+        expect(screen.getAllByText("Attention")).toHaveLength(1);
+    });
+
+    it("has no Attention pill when nothing needs attention", async () => {
+        render(await AdminDashboardPage());
+
+        expect(screen.queryByText("Attention")).toBeNull();
+    });
+
+    it("marks each setup line, with the same sentence as before", async () => {
+        render(await AdminDashboardPage());
+
+        const lines = screen.getByTestId("setup-checklist").querySelectorAll("li");
+        expect(lines).toHaveLength(3);
+        expect(lines[0]).toHaveTextContent("No integration credentials are configured yet.");
+        expect(lines[2]).toHaveTextContent(
+            "Add teams so ownership and identity mapping can be reviewed.",
+        );
+    });
+
+    it("shows the partial-signals notice as a warning notice", async () => {
+        vi.mocked(listCredentials).mockResolvedValue({ error: "backend unavailable" });
+        render(await AdminDashboardPage());
+
+        expect(
+            screen.getByText(/Some admin signals could not load/).closest("[data-notice-variant]"),
+        ).toHaveAttribute("data-notice-variant", "warn");
+    });
+});
+
+describe("AdminDashboardPage — a failed list is not zero (CHAOS-8098)", () => {
+    beforeEach(() => {
+        vi.mocked(listUsers).mockResolvedValue({ data: [] });
+        vi.mocked(listTeams).mockResolvedValue({ data: [] });
+        vi.mocked(listCredentials).mockResolvedValue({ data: [] });
+        vi.mocked(listSyncConfigs).mockResolvedValue({ data: [] });
+        vi.mocked(getPendingTeamChanges).mockResolvedValue({ data: { changes: [], total: 0 } });
+    });
+
+    it("shows 'Not reported' instead of 0/0 when the identity request failed", async () => {
+        vi.mocked(listIdentities).mockResolvedValue({ error: "backend unavailable" });
+        render(await AdminDashboardPage());
+
+        const tile = screen.getByText("Identity coverage").closest("section")!;
+        expect(tile).toHaveTextContent("Not reported");
+        expect(tile).not.toHaveTextContent("0/0");
+        expect(tile).toHaveTextContent("This signal could not load.");
+    });
+
+    it("shows a real empty identity list as 0/0", async () => {
+        vi.mocked(listIdentities).mockResolvedValue({ data: [] });
+        render(await AdminDashboardPage());
+
+        const tile = screen.getByText("Identity coverage").closest("section")!;
+        expect(tile).toHaveTextContent("0/0");
+        expect(tile).not.toHaveTextContent("Not reported");
+    });
+
+    it("puts the arrow after the link text on the tiles", async () => {
+        vi.mocked(listIdentities).mockResolvedValue({ data: [] });
+        render(await AdminDashboardPage());
+
+        const link = screen.getByRole("link", { name: "Review identities" });
+        expect(link.lastElementChild?.tagName.toLowerCase()).toBe("svg");
+        expect(link.firstChild?.nodeType).toBe(Node.TEXT_NODE);
     });
 });

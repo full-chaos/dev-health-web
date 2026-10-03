@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockFetchRiskMetrics, quadrantProps } = vi.hoisted(() => ({
@@ -6,6 +6,9 @@ const { mockFetchRiskMetrics, quadrantProps } = vi.hoisted(() => ({
     quadrantProps: vi.fn(),
 }));
 
+const requireSessionMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/auth", () => ({ requireSession: requireSessionMock }));
+beforeEach(() => requireSessionMock.mockResolvedValue({ user: { org_id: "org-1" } }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({ ok: true }) }));
 vi.mock("@/lib/testops/fetchers", () => ({ fetchRiskMetrics: mockFetchRiskMetrics }));
 vi.mock("@/lib/config", () => ({ getServerEnv: () => ({}) }));
@@ -77,5 +80,44 @@ describe("Delivery Risk page", () => {
         expect(screen.queryByTestId("quadrant-chart")).toBeNull();
         expect(screen.getByTestId("risk-throughput-empty")).toBeInTheDocument();
         expect(screen.getByText("No repo risk data for this window")).toBeInTheDocument();
+    });
+
+    it("draws the three tiles as one joined metric strip and each chart in a shared section card", async () => {
+        mockFetchRiskMetrics.mockResolvedValue(
+            risk([{ id: "repo-a", pipeline_success_rate: 0.9, test_pass_rate: 0.95 }]),
+        );
+        render(await RiskPage({ searchParams: Promise.resolve({}) }));
+
+        const strip = screen.getByTestId("delivery-risk-tiles");
+        expect(strip).toHaveAttribute("data-columns", "3");
+        expect(
+            within(strip)
+                .getAllByRole("article")
+                .map((a) => a.textContent),
+        ).toEqual(["Release Confidence", "Quality Drag", "Pipeline Stability"]);
+        for (const [id, title, chart] of [
+            ["delivery-risk-trend", "Risk Trend", "timeseries-chart"],
+            ["delivery-risk-drag", "Quality Drag Breakdown", "horizontal-bar-chart"],
+            [
+                "delivery-risk-scatter",
+                "Pipeline success × test pass rate (by repo)",
+                "quadrant-chart",
+            ],
+        ]) {
+            const card = screen.getByTestId(id);
+            expect(card.tagName).toBe("SECTION");
+            expect(within(card).getByRole("heading", { level: 2 })).toHaveTextContent(title);
+            expect(within(card).getByTestId(chart)).toBeInTheDocument();
+        }
+    });
+});
+
+describe("RiskPage org scope (CHAOS-8272)", () => {
+    it("shows one plain sentence and makes no request when the session has no org", async () => {
+        requireSessionMock.mockResolvedValue({ user: {} });
+        mockFetchRiskMetrics.mockClear();
+        render(await RiskPage({ searchParams: Promise.resolve({}) }));
+        expect(screen.getByText(/no organization selected/i)).toBeInTheDocument();
+        expect(mockFetchRiskMetrics).not.toHaveBeenCalled();
     });
 });

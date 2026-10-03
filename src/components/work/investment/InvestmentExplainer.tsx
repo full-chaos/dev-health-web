@@ -1,3 +1,7 @@
+import { RefreshCw } from "lucide-react";
+
+import { Button } from "@/components/shared/Button";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
 import { formatSubcategoryLabel, titleCase } from "@/lib/investment";
 import { confidenceToneClass } from "./ConfidencePanel";
@@ -8,32 +12,30 @@ type InvestmentExplainerProps = {
     mixExplainKey: string;
     isExplainingMix: boolean;
     onRegenerate: () => void;
-    /** Inside the "Read this with context" card: no card chrome of its own. */
-    embedded?: boolean;
 };
 
+/**
+ * The labelled AI explanation of the investment mix, inside the "Read this with context" card
+ * (collapsed there by default). The text is the served explanation; the web adds no claim.
+ */
 export function InvestmentExplainer({
     mixExplanation,
     mixExplainKey,
     isExplainingMix,
     onRegenerate,
-    embedded = false,
 }: InvestmentExplainerProps) {
     return (
-        <details
-            open
-            className={embedded ? "" : "rounded-3xl border border-(--card-stroke) bg-card p-5"}
-        >
-            <summary className="cursor-pointer list-none font-(--font-display) text-lg">
+        <div data-testid="investment-explainer">
+            <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold text-foreground">
                 What this investment mix indicates
                 <span
-                    className="ml-2 whitespace-nowrap rounded-full border border-(--card-stroke) px-2 py-0.5 align-middle font-sans text-xs uppercase tracking-[0.18em] text-(--ink-muted)"
+                    className="whitespace-nowrap rounded-sm bg-(--surface2) px-1.75 py-0.75 text-xs font-semibold text-(--ink-muted)"
                     data-testid="ai-generated-label"
                 >
                     AI-generated
                 </span>
-            </summary>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+            </h3>
+            <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
                 <div className="text-xs text-(--ink-muted)">
                     {mixExplanation.focus.subcategory
                         ? `Focused: ${formatSubcategoryLabel(mixExplanation.focus.subcategory, true)}`
@@ -42,14 +44,15 @@ export function InvestmentExplainer({
                           : "Focused: All themes"}
                 </div>
                 {(!mixExplanation.data || mixExplanation.data.status !== "llm_unavailable") && (
-                    <button
-                        type="button"
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<RefreshCw />}
                         onClick={onRegenerate}
                         disabled={isExplainingMix}
-                        className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted) disabled:opacity-50"
                     >
-                        {isExplainingMix ? "Generating..." : "Regenerate explanation"}
-                    </button>
+                        {isExplainingMix ? CTA_LABELS.generating : CTA_LABELS.regenerate}
+                    </Button>
                 )}
             </div>
             <div className="mt-4 space-y-4">
@@ -203,6 +206,6 @@ export function InvestmentExplainer({
                     </>
                 )}
             </div>
-        </details>
+        </div>
     );
 }
