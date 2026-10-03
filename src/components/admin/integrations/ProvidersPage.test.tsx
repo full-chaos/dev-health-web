@@ -113,7 +113,7 @@ describe("ProvidersPage header and notice (CHAOS-8099)", () => {
         const add = within(screen.getByTestId("page-header")).getByRole("button", {
             name: "Add Provider",
         });
-        expect(add.firstElementChild?.querySelector("svg")).not.toBeNull();
+        expect(add.firstElementChild?.querySelector("svg") ?? null).not.toBeNull();
         expect(add.lastChild?.nodeType).toBe(Node.TEXT_NODE);
         expect(screen.getByRole("heading", { level: 2, name: "Providers" })).toBeInTheDocument();
     });
