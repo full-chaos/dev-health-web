@@ -1,14 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen, within } from "@/test/utils";
+import { cleanup, fireEvent, render, screen, within } from "@/test/utils";
+import { renderWithEvidenceDrawer } from "@/test/evidenceDrawer";
 
 import type { AreaSignal, AreaSignalState } from "@/lib/areaSignals/types";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { AreaOverview } from "./AreaOverview";
 import {
-    AreaOverviewSignalFacts,
+    AreaOverviewEvidenceAction,
     areaOverviewBodyOrder,
-    areaOverviewEvidenceSubject,
+    areaOverviewFacts,
 } from "./areaOverviewEvidence";
 
 vi.mock("next/link", () => ({
@@ -92,34 +93,28 @@ describe("areaOverviewBodyOrder", () => {
     });
 });
 
-describe("areaOverviewEvidenceSubject (the 'View evidence' subject of an overview page)", () => {
-    it("is the page: a content subject with the page title and no explain metric", () => {
-        const subject = areaOverviewEvidenceSubject("Diagnose", FLAT);
-        expect(subject.title).toBe("Diagnose");
-        expect("metric" in subject).toBe(false);
-        expect("apiUrl" in subject).toBe(false);
-        render(<>{subject.content}</>);
-        expect(screen.getAllByTestId("evidence-fact")).toHaveLength(FLAT.length);
+describe("areaOverviewFacts (the page facts of an overview page)", () => {
+    it("lists every signal's served value and state in body order; no data reads 'Not reported'", () => {
+        expect(areaOverviewFacts(FLAT)).toEqual([
+            { label: "crit · crit metric", value: "42% · Critical" },
+            { label: "high · high metric", value: "42% · High" },
+            { label: "low · low metric", value: "42% · Low" },
+            { label: "neutral · neutral metric", value: "42% · Info" },
+            { label: "high-demoted · high-demoted metric", value: "42% · High" },
+            { label: "none · none metric", value: undefined },
+        ]);
     });
 });
 
-describe("AreaOverviewSignalFacts", () => {
-    it("shows every signal's served value and state in body order, with the caption", () => {
-        render(
-            <AreaOverviewSignalFacts
-                title="Diagnose"
-                signals={FLAT}
-                description="Diagnostic sub-areas, ordered by severity."
-            />,
-        );
-        expect(screen.getByText("Diagnostic sub-areas, ordered by severity.")).toBeInTheDocument();
-        const list = screen.getByTestId("area-overview-signal-list");
-        expect(list).toHaveAttribute("aria-label", "Diagnose signals");
-        expect(
-            within(list)
-                .getAllByTestId("evidence-fact")
-                .map((row) => row.textContent),
-        ).toEqual([
+describe("AreaOverviewEvidenceAction (the 'View evidence' action of an overview page)", () => {
+    it("opens the shared drawer with the PAGE as the subject: its facts in body order, no explain metric", async () => {
+        renderWithEvidenceDrawer(<AreaOverviewEvidenceAction title="Diagnose" signals={FLAT} />);
+        fireEvent.click(screen.getByRole("button", { name: "View evidence" }));
+        const dialog = within(screen.getByRole("dialog"));
+        const list = dialog.getByTestId("page-evidence-facts");
+        expect(list).toHaveAttribute("aria-label", "Diagnose");
+        const rows = within(list).getAllByTestId("evidence-fact");
+        expect(rows.map((row) => row.textContent)).toEqual([
             "crit · crit metric42% · Critical",
             "high · high metric42% · High",
             "low · low metric42% · Low",
@@ -127,14 +122,8 @@ describe("AreaOverviewSignalFacts", () => {
             "high-demoted · high-demoted metric42% · High",
             "none · none metricNot reported",
         ]);
-    });
-
-    it("shows 'Not reported' for a signal with no data, never a value", () => {
-        render(<AreaOverviewSignalFacts title="Diagnose" signals={FLAT} />);
-        const row = screen
-            .getAllByTestId("evidence-fact")
-            .find((node) => node.textContent?.startsWith("none"));
-        expect(row).toHaveAttribute("data-reported", "false");
-        expect(row).toHaveTextContent("Not reported");
+        expect(rows.at(-1)).toHaveAttribute("data-reported", "false");
+        // A content subject: the request panel (an explain metric) is not mounted.
+        expect(dialog.queryByTestId("evidence-panel")).toBeNull();
     });
 });
