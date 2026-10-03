@@ -95,13 +95,22 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(screen.getAllByRole("heading", { level: 2 })).toHaveLength(3);
     });
 
-    it("sends only the first team id and the filter's range as history days", () => {
+    it("sends every selected team id and the filter's range as history days", () => {
         render(<CapacityView filters={filters} />);
 
         expect(hook.lastOptions).toEqual({
             orgId: "org-1",
-            input: { teamId: "team-a", historyDays: 60 },
+            input: { teamIds: ["team-a", "team-b"], historyDays: 60 },
         });
+    });
+
+    it("labels the scope with the team count when several teams are selected and the response has no teamId", () => {
+        hook.state.data = forecast({ teamId: null });
+        render(<CapacityView filters={filters} />);
+
+        const inputs = within(screen.getByTestId("forecast-inputs"));
+        expect(inputs.getByText("2 teams")).toBeInTheDocument();
+        expect(inputs.queryByText("All Teams")).toBeNull();
     });
 
     it("says 1 day, not 1 days, in a tile caption", () => {
@@ -196,7 +205,7 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         // The notice and the projection card both say it: a failed read is never drawn as an empty one.
         expect(screen.getAllByText("Could not be read")).toHaveLength(2);
         expect(screen.getByTestId("forecast-chart-failed")).toBeInTheDocument();
-        expect(screen.queryByText("No forecast data available")).toBeNull();
+        expect(screen.queryByText("No data for this window")).toBeNull();
         expect(screen.queryByText("No Forecast Available")).toBeNull();
         first.unmount();
 
@@ -208,7 +217,7 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
                 "Insufficient throughput history to generate a forecast. Need at least 14 days of data.",
             ),
         ).toBeInTheDocument();
-        expect(screen.getByText("No forecast data available")).toBeInTheDocument();
+        expect(screen.getByText("No data for this window")).toBeInTheDocument();
     });
 
     it("shows the low-variance range as one tile, not three percentiles", () => {

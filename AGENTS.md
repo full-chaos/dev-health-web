@@ -48,7 +48,7 @@ lint (eslint src) · design-lint · typecheck (tsc --noEmit) · codegen (graphql
 
 ## Hooks (lefthook)
 
-`pnpm install` runs `lefthook install`. `commit-msg` strips agent attribution; `pre-commit` = `prettier --write` + `eslint --fix` (re-stages); `pre-push` gates `prettier --check` + `eslint`. Disable for a checkout: `git config core.hooksPath /dev/null`.
+`pnpm install` runs `lefthook install`. `commit-msg` strips agent attribution; `pre-commit` = `prettier --write` + `eslint --fix` (re-stages); `pre-push` gates `prettier --check` + `eslint` + `pnpm typecheck` (`tsc --noEmit`, whole project, runs when the push has TS/TSX files). Disable for a checkout: `git config core.hooksPath /dev/null`.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
