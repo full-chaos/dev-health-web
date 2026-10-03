@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
+import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 export type Team = {
@@ -67,33 +68,42 @@ export function TeamTable({ teams, onDeleteAction }: TeamTableProps) {
             header: "Repo Patterns",
             headerClassName: "px-6 py-4 font-medium",
             className: "px-6 py-4 text-(--ink-muted)",
-            render: (team) => (
-                <div className="flex flex-wrap gap-1">
-                    {(team.repo_patterns ?? []).map((pattern) => (
-                        <span
-                            key={pattern}
-                            className="rounded bg-(--card-70) px-1.5 py-0.5 text-xs"
-                        >
-                            {pattern}
-                        </span>
-                    ))}
-                </div>
-            ),
+            render: (team) =>
+                (team.repo_patterns ?? []).length === 0 ? (
+                    "—"
+                ) : (
+                    <div className="flex flex-wrap gap-1">
+                        {(team.repo_patterns ?? []).map((pattern) => (
+                            <span
+                                key={pattern}
+                                className="rounded bg-(--card-70) px-1.5 py-0.5 font-mono text-xs"
+                            >
+                                {pattern}
+                            </span>
+                        ))}
+                    </div>
+                ),
         },
         {
             key: "project_keys",
             header: "Project Keys",
             headerClassName: "px-6 py-4 font-medium",
             className: "px-6 py-4 text-(--ink-muted)",
-            render: (team) => (
-                <div className="flex flex-wrap gap-1">
-                    {(team.project_keys ?? []).map((key) => (
-                        <span key={key} className="rounded bg-(--card-70) px-1.5 py-0.5 text-xs">
-                            {key}
-                        </span>
-                    ))}
-                </div>
-            ),
+            render: (team) =>
+                (team.project_keys ?? []).length === 0 ? (
+                    "—"
+                ) : (
+                    <div className="flex flex-wrap gap-1">
+                        {(team.project_keys ?? []).map((key) => (
+                            <span
+                                key={key}
+                                className="rounded bg-(--card-70) px-1.5 py-0.5 font-mono text-xs"
+                            >
+                                {key}
+                            </span>
+                        ))}
+                    </div>
+                ),
         },
         {
             key: "actions",
@@ -122,21 +132,31 @@ export function TeamTable({ teams, onDeleteAction }: TeamTableProps) {
         },
     ];
 
+    const countNote =
+        filteredTeams.length === teams.length
+            ? `${teams.length} ${teams.length === 1 ? "team" : "teams"}`
+            : `${filteredTeams.length} of ${teams.length} teams`;
+
     return (
-        <DataTable
-            accessibleLabel="Teams"
-            columns={columns}
-            data={filteredTeams}
-            rowKeyAction={(team) => team.team_id}
-            emptyColSpan={5}
-            emptyMessage={teams.length === 0 ? "No teams found." : "No teams match your search."}
-            search={{
-                value: searchQuery,
-                placeholder: "Search teams",
-                buttonLabel: CTA_LABELS.applyFilters,
-            }}
-            onSearchAction={setSearchQuery}
-            onSearchChangeAction={setSearchQuery}
-        />
+        <Section title="Teams">
+            <DataTable
+                accessibleLabel="Teams"
+                columns={columns}
+                data={filteredTeams}
+                rowKeyAction={(team) => team.team_id}
+                emptyColSpan={5}
+                emptyMessage={
+                    teams.length === 0 ? "No teams found." : "No teams match your search."
+                }
+                search={{
+                    value: searchQuery,
+                    placeholder: "Search teams",
+                    buttonLabel: CTA_LABELS.applyFilters,
+                }}
+                onSearchAction={setSearchQuery}
+                onSearchChangeAction={setSearchQuery}
+                footerNote={`${countNote} · team ownership comes from synced project and repository ownership`}
+            />
+        </Section>
     );
 }
