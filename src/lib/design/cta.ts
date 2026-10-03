@@ -62,7 +62,7 @@ export const CTA_LABELS = {
     continue: "Continue",
     back: "Back",
     saving: "Saving...",
-    runNow: "Run Now",
+    runNow: "Run now",
     addOneFirst: "Add one first",
     createOneNow: "Create One Now",
     importSelected: "Import Selected",
