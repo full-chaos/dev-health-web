@@ -15,6 +15,7 @@ import {
     filterSankeyToEntity,
     findClickedNode,
     type SelectedEntity,
+    allocationNodeLabel,
 } from "@/lib/allocationSelection";
 import { withFilterParam } from "@/lib/filters/url";
 import { SelectedPathPanel } from "./SelectedPathPanel";
@@ -356,6 +357,8 @@ export function TeamCategorySankeySection({
                             links={(chartFlow ?? sankeyFlow).links}
                             unit={effortUnit}
                             height={320}
+                            nodeLabelAction={allocationNodeLabel}
+                            showNodeValues
                             tooltipFormatterAction={sankeyTooltipFormatter}
                             onItemClickAction={(item) => {
                                 if (!sankeyFlow) return;

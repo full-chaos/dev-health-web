@@ -85,6 +85,13 @@ type SankeyChartProps = {
     className?: string;
     style?: CSSProperties;
     tooltipFormatterAction?: (params: unknown, unit: string) => string;
+    /**
+     * Rewrites the DRAWN node label only (a theme key as the page names it). Clicks and tooltips
+     * keep the resolved name, so a handler that matches on names is not affected.
+     */
+    nodeLabelAction?: (label: string, group: string | undefined) => string;
+    /** Appends each node's value (the one its tooltip shows) to its label: "Quality 59.7". */
+    showNodeValues?: boolean;
     onItemClickAction?: (item: {
         type: "node" | "link";
         name?: string;
@@ -148,6 +155,8 @@ export function SankeyChart({
     className,
     style,
     tooltipFormatterAction,
+    nodeLabelAction,
+    showNodeValues = false,
     onItemClickAction,
 }: SankeyChartProps) {
     const chartTheme = useChartTheme();
@@ -176,6 +185,12 @@ export function SankeyChart({
         },
         [labelByKey],
     );
+
+    const groupByKey = useMemo(() => {
+        const map = new Map<string, string | undefined>();
+        chartNodes.forEach((node) => map.set(node.name, node.group));
+        return map;
+    }, [chartNodes]);
 
     // Memoize flow computations
     const { outgoingTotals, nodeValueByName, totalFlow } = useMemo(
@@ -332,9 +347,19 @@ export function SankeyChart({
                             if (!params || typeof params !== "object") {
                                 return "";
                             }
-                            const entry = params as { name?: string };
+                            const entry = params as { name?: string; value?: number };
                             const name = entry.name || "";
-                            return displayNameForKey(name);
+                            const label = displayNameForKey(name);
+                            const drawn = nodeLabelAction
+                                ? nodeLabelAction(label, groupByKey.get(name))
+                                : label;
+                            if (!showNodeValues || !label) return drawn;
+                            // The same node value the tooltip shows.
+                            const value =
+                                typeof entry.value === "number"
+                                    ? entry.value
+                                    : (nodeValueByName.get(name) ?? 0);
+                            return `${drawn} ${formatNumber(value, { maximumFractionDigits: 1 })}`;
                         },
                     },
                     itemStyle: {
@@ -358,6 +383,9 @@ export function SankeyChart({
         outgoingTotals,
         nodeValueByName,
         totalFlow,
+        groupByKey,
+        nodeLabelAction,
+        showNodeValues,
         tooltipFormatterAction,
         displayNameForKey,
     ]);

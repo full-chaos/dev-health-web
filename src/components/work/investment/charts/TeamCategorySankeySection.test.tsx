@@ -3,8 +3,13 @@ import { render, screen } from "@/test/utils";
 import { TeamCategorySankeySection } from "./TeamCategorySankeySection";
 import type { SankeyResponse } from "@/lib/types";
 
+const { sankeySpy } = vi.hoisted(() => ({ sankeySpy: vi.fn() }));
+
 vi.mock("@/components/charts/SankeyChart", () => ({
-    SankeyChart: () => <div data-testid="mock-sankey-chart" />,
+    SankeyChart: (props: unknown) => {
+        sankeySpy(props);
+        return <div data-testid="mock-sankey-chart" />;
+    },
 }));
 
 const linkedFlow: SankeyResponse = {
@@ -43,6 +48,22 @@ const renderSection = (
             resolveSubcategoryIdFromLabel={() => null}
         />,
     );
+
+describe("TeamCategorySankeySection — node labels (CHAOS-8565)", () => {
+    it("asks the chart for node values and draws a theme key as its title-case name", () => {
+        sankeySpy.mockClear();
+        renderSection(linkedFlow);
+        const props = sankeySpy.mock.calls.at(-1)?.[0] as {
+            showNodeValues?: boolean;
+            nodeLabelAction?: (label: string, group: string | undefined) => string;
+        };
+        expect(props.showNodeValues).toBe(true);
+        expect(props.nodeLabelAction?.("feature_delivery", "category")).toBe("Feature Delivery");
+        // Only themes are rewritten: a repo or team name is drawn as served.
+        expect(props.nodeLabelAction?.("dev_health_ops", "repo")).toBe("dev_health_ops");
+        expect(props.nodeLabelAction?.("feature_delivery", undefined)).toBe("feature_delivery");
+    });
+});
 
 describe("TeamCategorySankeySection — no summary block above the chart (prototype allocation())", () => {
     it("draws no coverage line, no top-theme chips and no left-rule paragraph: coverage is in the tiles", () => {

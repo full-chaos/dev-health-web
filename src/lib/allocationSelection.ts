@@ -1,4 +1,5 @@
 import { chartEntityLabel } from "@/lib/labels/entityLabel";
+import { titleCase } from "@/lib/stringUtils";
 import { computeSankeyMetrics } from "@/lib/sankey";
 import type { SankeyLink, SankeyNode } from "@/lib/types";
 
@@ -21,6 +22,13 @@ export const entityKindForGroup = (group: string | undefined): AllocationEntityK
             return null;
     }
 };
+
+/**
+ * The label drawn on an Allocation Sankey node: a theme (group "category") as the page names it
+ * ("Feature Delivery"), never the raw key ("feature_delivery"). Other nodes are unchanged.
+ */
+export const allocationNodeLabel = (label: string, group: string | undefined): string =>
+    group === "category" ? titleCase(label) : label;
 
 /**
  * Filter a flow to ONE entity: the node, every link that touches it, and the nodes at the
