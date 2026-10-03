@@ -1,9 +1,15 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import { screen, userEvent, within } from "@/test/utils";
 
 const graphql = vi.hoisted(() => vi.fn());
+const heatmapRead = vi.hoisted(() => vi.fn());
+const explainRead = vi.hoisted(() => vi.fn());
+const dashboardProps = vi.hoisted(() => ({
+    last: undefined as Record<string, unknown> | undefined,
+}));
+const session = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({
     usePathname: () => "/complexity",
@@ -15,11 +21,16 @@ vi.mock("@/components/navigation/ViewSet", () => ({
 }));
 vi.mock("@/components/work/FlameView", () => ({ FlameView: () => <div data-testid="flame" /> }));
 vi.mock("@/components/complexity/ComplexityDashboard", () => ({
-    ComplexityDashboard: () => <div data-testid="complexity-dashboard" />,
+    ComplexityDashboard: (props: Record<string, unknown>) => {
+        dashboardProps.last = props;
+        return <div data-testid="complexity-dashboard" />;
+    },
 }));
 vi.mock("@/lib/auth", () => ({
-    requireSession: vi.fn().mockResolvedValue({ user: { org_id: "org-1" } }),
+    requireSession: () => session(),
 }));
+vi.mock("@/lib/api/visuals", () => ({ getHeatmap: (...a: unknown[]) => heatmapRead(...a) }));
+vi.mock("@/lib/api/home", () => ({ getExplainData: (...a: unknown[]) => explainRead(...a) }));
 vi.mock("@/lib/graphql/server", () => ({ graphqlFetch: (...args: unknown[]) => graphql(...args) }));
 
 import ComplexityPage from "./page";
@@ -29,6 +40,14 @@ const point = (scopeId: string, date: string, perKloc: number, high: number) => 
     date,
     cyclomaticPerKloc: perKloc,
     highComplexityFunctions: high,
+});
+
+beforeEach(() => {
+    vi.clearAllMocks();
+    dashboardProps.last = undefined;
+    session.mockResolvedValue({ user: { org_id: "org-1" } });
+    explainRead.mockResolvedValue({ contributors: [] });
+    heatmapRead.mockResolvedValue({ axes: { x: ["a"], y: ["b"] }, cells: [] });
 });
 
 async function renderPage(tab?: string) {
@@ -88,5 +107,39 @@ describe("Complexity page header", () => {
             ["High-Complexity Functions", "3"],
             ["Hotspot Files", "1"],
         ]);
+    });
+});
+
+describe("Complexity page hotspot heatmap read (moved from the Code page)", () => {
+    const heatmapState = () =>
+        (dashboardProps.last?.hotspotHeatmap as { state: string } | undefined)?.state;
+
+    it("reads the risk heatmap on the hotspots tab with a session org", async () => {
+        await renderPage("hotspots");
+        expect(heatmapRead).toHaveBeenCalledTimes(1);
+        expect(heatmapRead.mock.calls[0][0]).toMatchObject({
+            type: "risk",
+            metric: "hotspot_risk",
+        });
+        expect(heatmapState()).toBe("ok");
+    });
+
+    it("marks a failed read as failed, not as empty", async () => {
+        heatmapRead.mockRejectedValue(new Error("boom"));
+        await renderPage("hotspots");
+        expect(heatmapState()).toBe("failed");
+    });
+
+    it("makes no read without a session org", async () => {
+        session.mockResolvedValue({ user: {} });
+        await renderPage("hotspots");
+        expect(heatmapRead).not.toHaveBeenCalled();
+        expect(explainRead).not.toHaveBeenCalled();
+    });
+
+    it("makes no read on the other tabs", async () => {
+        await renderPage();
+        expect(heatmapRead).not.toHaveBeenCalled();
+        expect(dashboardProps.last?.hotspotHeatmap).toBeUndefined();
     });
 });

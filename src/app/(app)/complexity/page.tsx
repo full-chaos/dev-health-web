@@ -25,6 +25,9 @@ import type {
 } from "@/components/complexity/ComplexityDashboard";
 import { FlameView } from "@/components/work/FlameView";
 import { requireSession } from "@/lib/auth";
+import { getExplainData } from "@/lib/api/home";
+import { getHeatmap } from "@/lib/api/visuals";
+import { resolveEntityLabel } from "@/lib/labels/entityLabel";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { withFilterParam } from "@/lib/filters/url";
 import { graphqlFetch } from "@/lib/graphql/server";
@@ -34,6 +37,8 @@ import {
     complexityWindowFromFilter,
     type ComplexityScopeInput,
 } from "@/lib/complexity/filters";
+import type { HotspotHeatmapProps } from "@/components/complexity/ComplexityDashboard";
+import type { HeatmapResponse } from "@/lib/types";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 
@@ -44,6 +49,9 @@ import { ScopeBar } from "@/components/shell/ScopeBar";
 type PageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
+
+type HotspotHeatmapRequest = NonNullable<HotspotHeatmapProps["request"]>;
+type HotspotHeatmapState = NonNullable<HotspotHeatmapProps["state"]>;
 
 type ComplexityTimeseriesResponse = {
     complexityTimeseries: {
@@ -119,6 +127,43 @@ async function fetchHotspots(
     }
 }
 
+/**
+ * The hotspot-concentration heatmap (moved here from the Code page). Same read as before:
+ * the served risk heatmap, no web-made numbers. A read without a session org is not made.
+ */
+async function fetchHotspotHeatmap(
+    request: HotspotHeatmapRequest,
+    hasSessionOrg: boolean,
+): Promise<{ state: HotspotHeatmapState; data: HeatmapResponse | null }> {
+    if (!hasSessionOrg) return { state: "unavailable", data: null };
+    try {
+        const data = await getHeatmap(request);
+        return { state: data ? "ok" : "unavailable", data: data ?? null };
+    } catch (err) {
+        console.warn("hotspot heatmap read failed", err);
+        return { state: "failed", data: null };
+    }
+}
+
+async function fetchHotspotSummary(
+    filters: Parameters<typeof getExplainData>[0]["filters"],
+    hasSessionOrg: boolean,
+): Promise<string | undefined> {
+    if (!hasSessionOrg) return undefined;
+    try {
+        const explain = await getExplainData({ metric: "churn", filters });
+        const names = (explain?.contributors ?? [])
+            .slice(0, 3)
+            .map((item) => resolveEntityLabel(item.id, { name: item.label }).label);
+        return names.length
+            ? `Leading hotspots: ${names.join(", ")}. Higher values lean toward concentrated change and ownership load — open a cell to trace the files, PRs, and commits behind it.`
+            : undefined;
+    } catch (err) {
+        console.warn("hotspot summary read failed", err);
+        return undefined;
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
@@ -159,10 +204,26 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
     const { sinceUtc, untilUtc } = complexityWindowFromFilter(filters.time);
     const scopeInput = complexityScopeInputFromFilter(filters);
 
-    // Parallel pre-fetch — both queries are independent
-    const [points, hotspotRows] = await Promise.all([
+    const hasSessionOrg = Boolean(session.user?.org_id);
+    const heatmapRequest: HotspotHeatmapRequest = {
+        type: "risk",
+        metric: "hotspot_risk",
+        scope_type: filters.scope.level,
+        scope_id: filters.scope.ids[0] ?? "",
+        range_days: filters.time.range_days,
+        start_date: filters.time.start_date,
+        end_date: filters.time.end_date,
+    };
+    const onHotspots = activeTab === "hotspots";
+
+    // Parallel pre-fetch — the queries are independent. The heatmap reads only on its own tab.
+    const [points, hotspotRows, heatmap, heatmapSummary] = await Promise.all([
         fetchComplexityTimeseries(orgId, sinceUtc, untilUtc, scopeInput),
         fetchHotspots(orgId, sinceUtc, untilUtc, scopeInput),
+        onHotspots
+            ? fetchHotspotHeatmap(heatmapRequest, hasSessionOrg)
+            : Promise.resolve(undefined),
+        onHotspots ? fetchHotspotSummary(filters, hasSessionOrg) : Promise.resolve(undefined),
     ]);
 
     // The page's served values for the evidence drawer: the overview tiles, as they read there.
@@ -218,6 +279,16 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
                     hotspotRows={hotspotRows}
                     activeTab={activeTab as ComplexityTab}
                     windowDays={filters.time.range_days}
+                    hotspotHeatmap={
+                        heatmap
+                            ? {
+                                  request: heatmapRequest,
+                                  state: heatmap.state,
+                                  data: heatmap.data,
+                                  summary: heatmapSummary,
+                              }
+                            : undefined
+                    }
                 />
             )}
         </div>

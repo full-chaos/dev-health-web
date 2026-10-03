@@ -40,6 +40,26 @@ vi.mock("@/components/complexity/HotspotColumnTreemap", () => ({
     ),
 }));
 
+vi.mock("@/components/charts/HeatmapPanel", () => ({
+    HeatmapPanel: (props: {
+        title: string;
+        emptyState?: string;
+        initialData?: { cells?: unknown[] } | null;
+        embedded?: boolean;
+        failed?: boolean;
+    }) => (
+        <div
+            data-testid="heatmap-panel"
+            data-title={props.title}
+            data-embedded={String(Boolean(props.embedded))}
+            data-failed={String(Boolean(props.failed))}
+            data-cells={props.initialData?.cells?.length ?? "none"}
+        >
+            {props.initialData ? "grid" : props.emptyState}
+        </div>
+    ),
+}));
+
 vi.mock("@/lib/echartsInit", () => ({
     echarts: { use: vi.fn() },
 }));
@@ -639,5 +659,109 @@ describe("buildTrendOption conventions", () => {
                 color: colors[i],
             });
         });
+    });
+});
+
+describe("Hotspots tab: Hotspot concentration heatmap", () => {
+    const request = {
+        type: "risk" as const,
+        metric: "hotspot_risk",
+        scope_type: "org",
+        scope_id: "",
+        range_days: 90,
+    };
+    const props = {
+        orgId: "org-1",
+        points: [makePoint("a", "2026-01-01")],
+        hotspotRows: [makeHotspot("src/a.ts", 3)],
+        activeTab: "hotspots" as const,
+    };
+    const served = {
+        axes: { x: ["w1"], y: ["r1"] },
+        cells: [{ x: "w1", y: "r1", value: 2 }],
+        legend: { unit: "risk" },
+        evidence: [],
+    } as never;
+
+    it("renders the served heatmap in a Section card under the existing hotspot content", () => {
+        render(
+            <ComplexityDashboard
+                {...props}
+                hotspotHeatmap={{ request, state: "ok", data: served }}
+            />,
+        );
+        const card = screen.getByTestId("hotspot-heatmap-section");
+        expect(
+            within(card).getByRole("heading", { name: "Hotspot concentration" }),
+        ).toBeInTheDocument();
+        const panel = within(card).getByTestId("heatmap-panel");
+        expect(panel).toHaveAttribute("data-cells", "1");
+        expect(panel).toHaveAttribute("data-embedded", "true");
+        // under the existing content
+        const table = screen.getByTestId("drilldown-table");
+        expect(table.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("puts the unit pill in the Section card head, not inside the panel", () => {
+        render(
+            <ComplexityDashboard
+                {...props}
+                hotspotHeatmap={{ request, state: "ok", data: served }}
+            />,
+        );
+        const card = screen.getByTestId("hotspot-heatmap-section");
+        const pill = within(card).getByTestId("heatmap-unit");
+        expect(pill).toHaveTextContent("risk");
+        expect(
+            within(screen.getByTestId("heatmap-panel")).queryByTestId("heatmap-unit"),
+        ).toBeNull();
+        // the head row holds the title block and the pill; the body (panel) is a later sibling
+        const head = pill.closest("section")?.firstElementChild as HTMLElement;
+        expect(head.contains(pill)).toBe(true);
+        expect(head.contains(screen.getByTestId("heatmap-panel"))).toBe(false);
+    });
+
+    it("keeps the Code page empty words when nothing was served", () => {
+        render(
+            <ComplexityDashboard
+                {...props}
+                hotspotHeatmap={{ request, state: "unavailable", data: null }}
+            />,
+        );
+        expect(screen.getByTestId("heatmap-panel")).toHaveTextContent(
+            "Hotspot heatmap unavailable.",
+        );
+    });
+
+    it("says Could not be read when the read failed", () => {
+        render(
+            <ComplexityDashboard
+                {...props}
+                hotspotHeatmap={{ request, state: "failed", data: null }}
+            />,
+        );
+        expect(screen.getByTestId("heatmap-panel")).toHaveAttribute("data-failed", "true");
+    });
+
+    it("still shows it when there are no hotspot files", () => {
+        render(
+            <ComplexityDashboard
+                {...props}
+                hotspotRows={[]}
+                hotspotHeatmap={{ request, state: "ok", data: served }}
+            />,
+        );
+        expect(screen.getByTestId("hotspot-heatmap-section")).toBeInTheDocument();
+    });
+
+    it("does not render on the other tabs", () => {
+        render(
+            <ComplexityDashboard
+                {...props}
+                activeTab="overview"
+                hotspotHeatmap={{ request, state: "ok", data: served }}
+            />,
+        );
+        expect(screen.queryByTestId("hotspot-heatmap-section")).toBeNull();
     });
 });

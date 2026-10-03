@@ -26,6 +26,7 @@ import type { EChartsOption } from "echarts";
 import { LineChart } from "echarts/charts";
 
 import { Chart } from "@/components/charts/Chart";
+import { HeatmapPanel } from "@/components/charts/HeatmapPanel";
 import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/chartConventions";
 import { HotspotColumnTreemap } from "@/components/complexity/HotspotColumnTreemap";
 import type { TreemapNode } from "@/components/charts/TreemapChart";
@@ -39,6 +40,7 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { Button } from "@/components/shared/Button";
 import { DataState } from "@/components/ui/DataState";
+import { StatusPill } from "@/components/admin/StatusPill";
 import { Section } from "@/components/ui/Section";
 import { Notice } from "@/components/ui/Notice";
 import { useChartColors, useChartTheme } from "@/components/charts/chartTheme";
@@ -47,6 +49,7 @@ import { computeKpis, computeRisingAreas } from "./complexityKpis";
 
 export { computeKpis, computeRisingAreas };
 import { formatNumber } from "@/lib/formatters";
+import type { HeatmapResponse } from "@/lib/types";
 
 // Register LineChart for multi-series trend — Grid, Tooltip, Legend already
 // registered globally in echartsInit.ts.
@@ -84,6 +87,23 @@ export type HotspotRow = {
 /** The tabs ComplexityDashboard renders. `flame` is handled by the page (FlameView). */
 export type ComplexityTab = "overview" | "hotspots" | "ownership-risk" | "churn";
 
+/** The hotspot-concentration heatmap the page read for the Hotspots tab (served values only). */
+export type HotspotHeatmapProps = {
+    request: {
+        type: "risk";
+        metric: string;
+        scope_type: string;
+        scope_id?: string;
+        range_days: number;
+        start_date?: string;
+        end_date?: string;
+    };
+    /** ok = served; unavailable = nothing served; failed = the read threw. */
+    state: "ok" | "unavailable" | "failed";
+    data: HeatmapResponse | null;
+    summary?: string;
+};
+
 export type ComplexityDashboardProps = {
     orgId: string;
     points: ComplexityPoint[];
@@ -92,6 +112,8 @@ export type ComplexityDashboardProps = {
     activeTab?: ComplexityTab;
     /** Days in the selected window; the Churn tab says so when it differs from its fixed 30 days. */
     windowDays?: number;
+    /** Hotspots tab only: the heatmap moved here from the Code page. */
+    hotspotHeatmap?: HotspotHeatmapProps;
 };
 
 // ---------------------------------------------------------------------------
@@ -461,7 +483,45 @@ function OverviewView({
     );
 }
 
-function HotspotsView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
+function HotspotHeatmapSection({ heatmap }: { heatmap: HotspotHeatmapProps }) {
+    const emptyState = "Hotspot heatmap unavailable.";
+    const unit = heatmap.data?.legend?.unit;
+    return (
+        <Section
+            title="Hotspot concentration"
+            description="Where churn and ownership load accumulate over time."
+            data-testid="hotspot-heatmap-section"
+            action={
+                unit ? (
+                    <StatusPill tone="info" testId="heatmap-unit">
+                        {unit}
+                    </StatusPill>
+                ) : undefined
+            }
+        >
+            <HeatmapPanel
+                title="Hotspot concentration"
+                description="Where churn and ownership load accumulate over time."
+                request={heatmap.request}
+                initialData={heatmap.data}
+                emptyState={emptyState}
+                embedded
+                failed={heatmap.state === "failed"}
+                evidenceTitle="Hotspot evidence"
+                defaultSummary={heatmap.summary}
+                flatStateLabel="No hotspot variance in this window — churn is evenly spread, so no single area stands out yet."
+            />
+        </Section>
+    );
+}
+
+function HotspotsView({
+    hotspotRows,
+    heatmap,
+}: {
+    hotspotRows: HotspotRow[];
+    heatmap?: HotspotHeatmapProps;
+}) {
     const treemapData = useMemo(() => buildTreemapData(hotspotRows), [hotspotRows]);
     const top20 = useMemo(
         () => [...hotspotRows].sort((a, b) => b.riskScore - a.riskScore).slice(0, 20),
@@ -470,17 +530,20 @@ function HotspotsView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
 
     if (hotspotRows.length === 0) {
         return (
-            <Panel
-                title="File hotspots"
-                description="Files sized by risk score (churn × complexity × ownership)."
-                testId="hotspot-panel-empty"
-            >
-                <DataState
-                    variant="detector-enabled-no-findings"
-                    title="No hotspot files"
-                    description="No files crossed the hotspot risk threshold for this scope and window."
-                />
-            </Panel>
+            <div className="flex flex-col gap-6">
+                <Panel
+                    title="File hotspots"
+                    description="Files sized by risk score (churn × complexity × ownership)."
+                    testId="hotspot-panel-empty"
+                >
+                    <DataState
+                        variant="detector-enabled-no-findings"
+                        title="No hotspot files"
+                        description="No files crossed the hotspot risk threshold for this scope and window."
+                    />
+                </Panel>
+                {heatmap ? <HotspotHeatmapSection heatmap={heatmap} /> : null}
+            </div>
         );
     }
 
@@ -546,6 +609,8 @@ function HotspotsView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                     })}
                 </FileTable>
             </Section>
+
+            {heatmap ? <HotspotHeatmapSection heatmap={heatmap} /> : null}
         </div>
     );
 }
@@ -739,6 +804,7 @@ export function ComplexityDashboard({
     hotspotRows,
     activeTab = "overview",
     windowDays,
+    hotspotHeatmap,
 }: ComplexityDashboardProps) {
     const chartTheme = useChartTheme();
     const chartColors = useChartColors();
@@ -747,30 +813,36 @@ export function ComplexityDashboard({
 
     if (isEmpty) {
         return (
-            <section
-                className="rounded-2xl border border-(--card-stroke) bg-card p-8 shadow-sm"
-                data-testid="empty-state"
-            >
-                <h2 className="text-2xl font-semibold tracking-tight">
-                    No complexity history in this window.
-                </h2>
-                <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted)">
-                    Complexity data appears once{" "}
-                    <code className="font-mono text-[0.85em]">dev-hops metrics daily</code> has
-                    processed at least one complexity analysis run for this org. The page populates
-                    automatically on the next metrics run.
-                </p>
-                <p className="mt-2 text-xs text-(--ink-muted)">
-                    Org <span className="font-mono">{orgId}</span>
-                </p>
-            </section>
+            <div className="flex flex-col gap-6">
+                <section
+                    className="rounded-2xl border border-(--card-stroke) bg-card p-8 shadow-sm"
+                    data-testid="empty-state"
+                >
+                    <h2 className="text-2xl font-semibold tracking-tight">
+                        No complexity history in this window.
+                    </h2>
+                    <p className="mt-4 max-w-2xl text-sm leading-6 text-(--ink-muted)">
+                        Complexity data appears once{" "}
+                        <code className="font-mono text-[0.85em]">dev-hops metrics daily</code> has
+                        processed at least one complexity analysis run for this org. The page
+                        populates automatically on the next metrics run.
+                    </p>
+                    <p className="mt-2 text-xs text-(--ink-muted)">
+                        Org <span className="font-mono">{orgId}</span>
+                    </p>
+                </section>
+
+                {activeTab === "hotspots" && hotspotHeatmap ? (
+                    <HotspotHeatmapSection heatmap={hotspotHeatmap} />
+                ) : null}
+            </div>
         );
     }
 
     return (
         <div className="flex flex-col gap-6" data-testid="complexity-dashboard">
             {activeTab === "hotspots" ? (
-                <HotspotsView hotspotRows={hotspotRows} />
+                <HotspotsView hotspotRows={hotspotRows} heatmap={hotspotHeatmap} />
             ) : activeTab === "ownership-risk" ? (
                 <OwnershipRiskView hotspotRows={hotspotRows} />
             ) : activeTab === "churn" ? (

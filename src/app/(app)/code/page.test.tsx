@@ -136,6 +136,21 @@ describe("CodePage", () => {
         expect(screen.queryByRole("link", { name: /Back to/ })).toBeNull();
     });
 
+    it("no longer renders the Hotspot concentration heatmap or reads it (moved to Complexity > Hotspots)", async () => {
+        checkApiHealthMock.mockResolvedValue({ ok: true });
+        getHomeDataMock.mockResolvedValue({ deltas: [] });
+        getExplainDataMock.mockResolvedValue({ contributors: [], unit: "loc" });
+        getHeatmapMock.mockResolvedValue(null);
+        getQuadrantMock.mockResolvedValue(null);
+        getBusFactorDataMock.mockResolvedValue(null);
+
+        await renderPage();
+
+        expect(screen.queryByTestId("heatmap-panel")).toBeNull();
+        expect(screen.queryByText("Hotspot concentration")).toBeNull();
+        expect(getHeatmapMock).not.toHaveBeenCalled();
+    });
+
     describe("ownership tiles and repository table (CHAOS-7616)", () => {
         const base = {
             orgId: "org-1",
