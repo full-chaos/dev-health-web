@@ -28,7 +28,7 @@ import { UpgradeGate } from "@/components/billing/UpgradeGate";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { RetentionPolicyForm } from "./RetentionPolicyForm";
 import { RetentionPolicyTable } from "./RetentionPolicyTable";
-import { RetentionRunConfirm } from "./RetentionRunConfirm";
+import { RETENTION_RUN_FAILED_MESSAGE, RetentionRunConfirm } from "./RetentionRunConfirm";
 
 type FormState =
     { mode: "closed" } | { mode: "create" } | { mode: "edit"; policy: RetentionPolicy };
@@ -147,7 +147,8 @@ export default function RetentionPolicyPage() {
             // embedded error (e.g. the policy went inactive, or the resource
             // type isn't implemented) — surface it instead of silently
             // refetching as if the run succeeded.
-            reportActionError(result.data.error, undefined, true);
+            logger.error({ err: result.data.error, policyId: id }, "Retention run failed");
+            reportActionError(RETENTION_RUN_FAILED_MESSAGE, undefined, true);
         } else {
             fetchPolicies();
         }

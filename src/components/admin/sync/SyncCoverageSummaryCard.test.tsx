@@ -53,7 +53,8 @@ describe("SyncCoverageSummaryCard", () => {
         );
 
         expect(screen.getByTestId("coverage-summary-error")).toBeInTheDocument();
-        expect(screen.getByText("Request failed with 500")).toBeInTheDocument();
+        expect(screen.queryByText("Request failed with 500")).toBeNull();
+        expect(screen.getByText("Could not be read")).toBeInTheDocument();
 
         await user.click(screen.getByRole("button", { name: "Backfill" }));
         expect(onBackfillAction).toHaveBeenCalledOnce();

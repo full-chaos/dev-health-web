@@ -1,3 +1,4 @@
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { InvoiceList } from "@/components/admin/billing/InvoiceList";
 import { requireSuperuser } from "@/lib/auth";
@@ -34,7 +35,7 @@ export default async function AdminInvoicesPage({
 
             {result.error ? (
                 <Notice variant="danger" live={false}>
-                    Failed to load invoices: {result.error}
+                    Failed to load invoices. {READ_FAILED_MESSAGE}
                 </Notice>
             ) : (
                 <InvoiceList

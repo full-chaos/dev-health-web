@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
@@ -53,7 +54,7 @@ export function SyncCoverageSummaryCard({
                 <DataState
                     variant="error"
                     title="Coverage summary unavailable"
-                    message={error}
+                    message={READ_FAILED_MESSAGE}
                     action={
                         <div className="flex flex-wrap items-center justify-center gap-3">
                             <button

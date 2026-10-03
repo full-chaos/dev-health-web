@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import { toast } from "sonner";
 
@@ -88,8 +89,8 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
             if ("error" in subRes) {
                 // 404 is expected for free-tier users with no Stripe subscription
                 // Only toast on unexpected errors
-                if (!subRes.error?.includes("No active subscription")) {
-                    toast.error(subRes.error);
+                if (subRes.status !== 404) {
+                    toast.error(READ_FAILED_MESSAGE);
                 }
             } else {
                 setSubscription(subRes.data);
@@ -97,11 +98,8 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
 
             if ("error" in historyRes) {
                 // History may also 404 for free-tier — silently ignore
-                if (
-                    !historyRes.error?.includes("No active subscription") &&
-                    !historyRes.error?.includes("not found")
-                ) {
-                    toast.error(historyRes.error);
+                if (historyRes.status !== 404) {
+                    toast.error(READ_FAILED_MESSAGE);
                 }
             } else {
                 setHistory(historyRes.data.items);

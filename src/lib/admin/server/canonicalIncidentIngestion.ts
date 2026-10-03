@@ -2,6 +2,7 @@
 
 import { AdminApiError, adminApi } from "../api";
 import { isCanonicalIncidentIngestionEnabled } from "../canonicalIncidentIngestion";
+import { UserFacingActionError } from "@/lib/actionFailure";
 import type { Result } from "@/lib/result";
 import { getSessionContext, withErrorHandling } from "./_shared";
 
@@ -29,6 +30,6 @@ export async function getCanonicalIncidentIngestionEntitlement(): Promise<
 export async function requirePagerDutyCreationEntitlement(): Promise<void> {
     const entitlement = await getCanonicalIncidentIngestionEntitlement();
     if (entitlement.data?.enabled !== true) {
-        throw new AdminApiError(403, "Forbidden", PAGERDUTY_CONNECTIONS_UNAVAILABLE_MESSAGE);
+        throw new UserFacingActionError(403, PAGERDUTY_CONNECTIONS_UNAVAILABLE_MESSAGE);
     }
 }

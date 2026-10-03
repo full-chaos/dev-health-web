@@ -32,7 +32,8 @@ describe("SyncCoverageTimeline", () => {
         );
 
         expect(screen.getByText("Coverage timeline unavailable")).toBeInTheDocument();
-        expect(screen.getByText("Coverage endpoint returned 500")).toBeInTheDocument();
+        expect(screen.queryByText("Coverage endpoint returned 500")).toBeNull();
+        expect(screen.getByText("Could not be read")).toBeInTheDocument();
     });
 
     it("renders a legacy-aware empty state for insufficient_data + legacy data_basis", () => {

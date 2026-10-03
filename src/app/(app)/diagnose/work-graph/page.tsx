@@ -1,3 +1,4 @@
+import { readFailureMessage } from "@/lib/readFailure";
 import { ViewSet } from "@/components/navigation/ViewSet";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { GraphView, type WorkGraphTab } from "@/components/work/GraphView";
@@ -108,8 +109,7 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
                 repoIds,
             });
         } catch (err) {
-            reviewEdgesError =
-                err instanceof Error ? err.message : "Failed to load review network data";
+            reviewEdgesError = readFailureMessage(err, "reviewEdges");
         }
     }
 

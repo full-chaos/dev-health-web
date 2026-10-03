@@ -124,3 +124,35 @@ describe("BillingSettings cancellation flow", () => {
         expect(mockCancelSubscription).toHaveBeenCalledWith(true);
     });
 });
+
+describe("BillingSettings failed reads (CHAOS-8436)", () => {
+    const HOSTILE = "dial tcp 10.1.2.3:5432: connection refused (cmd/billing/stripe.go:88)";
+
+    beforeEach(() => {
+        mockGetSubscription.mockReset();
+        mockGetSubscriptionHistory.mockReset();
+    });
+    afterEach(() => cleanup());
+
+    it("shows the read sentence, never the served or thrown text", async () => {
+        mockGetSubscription.mockResolvedValue({ error: HOSTILE, status: 500 });
+        mockGetSubscriptionHistory.mockResolvedValue({ error: HOSTILE });
+        const { container } = renderWithToaster(<BillingSettings tier="team" />);
+
+        await waitFor(() =>
+            expect(screen.getAllByText("Could not be read").length).toBeGreaterThan(0),
+        );
+        expect(document.body.textContent).not.toContain("10.1.2.3");
+        expect(container.textContent).not.toContain("stripe.go");
+    });
+
+    it("stays silent for the expected 404 of a free-tier org", async () => {
+        mockGetSubscription.mockResolvedValue({ error: "Could not be read", status: 404 });
+        mockGetSubscriptionHistory.mockResolvedValue({ error: "Could not be read", status: 404 });
+        renderWithToaster(<BillingSettings tier="community" />);
+
+        await waitFor(() => expect(mockGetSubscriptionHistory).toHaveBeenCalled());
+        await new Promise((r) => setTimeout(r, 50));
+        expect(screen.queryByText("Could not be read")).toBeNull();
+    });
+});

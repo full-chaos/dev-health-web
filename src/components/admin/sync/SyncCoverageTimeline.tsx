@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useMemo, useState } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -277,7 +278,11 @@ export function SyncCoverageTimeline({
     if (error) {
         return (
             <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
-                <DataState variant="error" title="Coverage timeline unavailable" message={error} />
+                <DataState
+                    variant="error"
+                    title="Coverage timeline unavailable"
+                    message={READ_FAILED_MESSAGE}
+                />
             </div>
         );
     }

@@ -249,7 +249,7 @@ describe("IPAllowlistPage design A6/A7 (CHAOS-8239)", () => {
     it("logs the backend text of a 5xx and of a network failure, but not of a validation answer", async () => {
         logError.mockClear();
         await failToggleWith({ error: "backend 502 text", status: 502 });
-        expect(await screen.findByText(/That change could not be completed/u)).toBeInTheDocument();
+        expect(await screen.findByText(/The change was not saved/u)).toBeInTheDocument();
         expect(logError).toHaveBeenCalledWith(
             expect.objectContaining({ err: "backend 502 text", status: 502 }),
             "Admin action failed",
@@ -268,18 +268,14 @@ describe("IPAllowlistPage design A6/A7 (CHAOS-8239)", () => {
             status: 502,
         });
 
-        expect(
-            await screen.findByText("That change could not be completed. Try again in a moment."),
-        ).toBeInTheDocument();
+        expect(await screen.findByText("The change was not saved. Try again.")).toBeInTheDocument();
         expect(container.textContent).not.toContain("502");
     });
 
     it("shows one plain sentence for a network failure (no status), and not the served text", async () => {
         const { container } = await failToggleWith({ error: "fetch failed: ECONNRESET" });
 
-        expect(
-            await screen.findByText("That change could not be completed. Try again in a moment."),
-        ).toBeInTheDocument();
+        expect(await screen.findByText("The change was not saved. Try again.")).toBeInTheDocument();
         expect(container.textContent).not.toContain("ECONNRESET");
     });
 

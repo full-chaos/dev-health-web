@@ -175,7 +175,8 @@ describe("SyncJobHistory", () => {
             await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
             await waitFor(() => {
-                expect(screen.getByRole("alert")).toHaveTextContent("Request failed with 500");
+                expect(screen.getByRole("alert")).toHaveTextContent("Could not be read");
+                expect(screen.getByRole("alert")).not.toHaveTextContent("Request failed with 500");
                 expect(screen.getByText("Showing 1-10")).toBeInTheDocument();
             });
         });

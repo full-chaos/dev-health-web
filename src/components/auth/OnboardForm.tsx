@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidationStatus } from "@/lib/actionFailure";
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
@@ -58,7 +59,12 @@ export function OnboardForm({ plan, trialIntent = false, guided = false }: Onboa
                 }
                 try {
                     const data = await res.json();
-                    toast.error(extractErrorMessage(data.detail, "Failed to create workspace"));
+                    toast.error(
+                        extractErrorMessage(
+                            isValidationStatus(res.status) ? data.detail : undefined,
+                            "Failed to create workspace",
+                        ),
+                    );
                 } catch {
                     toast.error("Failed to create workspace");
                 }

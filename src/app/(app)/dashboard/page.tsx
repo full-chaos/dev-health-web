@@ -151,6 +151,9 @@ export default async function Home({ searchParams }: HomePageProps) {
                     filters={filters}
                     activeRole={activeRole}
                     lensId={activeLensId}
+                    initialView={
+                        Array.isArray(params.monitoring) ? params.monitoring[0] : params.monitoring
+                    }
                 />
 
                 <InvestigationThreads home={home} filters={filters} activeRole={activeRole} />

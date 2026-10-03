@@ -1,3 +1,4 @@
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
@@ -83,7 +84,7 @@ export default async function CustomerPushBatchesPage({
 
             {batchesResult.error && (
                 <Notice variant="danger" live={false}>
-                    Failed to load batches: {batchesResult.error}
+                    Failed to load batches. {READ_FAILED_MESSAGE}
                 </Notice>
             )}
 

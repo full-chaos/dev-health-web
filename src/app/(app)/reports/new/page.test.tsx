@@ -59,7 +59,8 @@ describe("New report form (CHAOS-8096)", () => {
         });
 
         const alert = await screen.findByRole("alert");
-        expect(alert).toHaveTextContent("Could not create");
+        expect(alert).toHaveTextContent("The change was not saved. Try again.");
+        expect(alert).not.toHaveTextContent("Could not create");
         expect(alert).toHaveAttribute("data-notice-variant", "danger");
         expect(push).not.toHaveBeenCalled();
     });

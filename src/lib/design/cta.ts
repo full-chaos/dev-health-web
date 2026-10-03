@@ -27,6 +27,8 @@ export const CTA_LABELS = {
     openEvidence: "Open evidence",
     /** Page header action: open the shared evidence drawer for the page as a whole. */
     viewEvidence: "View evidence",
+    /** Home Monitoring: link to the full diagnostic page of the chosen metric group. */
+    jumpToDiagnosticViews: "Jump to full diagnostic views",
     /** Primary-signal hero action for the Code destination (approved copy, app.js line 97). */
     inspectCode: "Inspect code",
     /** Primary-signal hero action for the Opportunities destination (approved copy, app.js line 108). */

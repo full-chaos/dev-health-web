@@ -41,6 +41,7 @@ describe("PagerDuty server actions", () => {
 
         await expect(startPagerDutyOAuth()).resolves.toEqual({
             error: "PagerDuty connections are currently unavailable.",
+            status: 403,
         });
 
         expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -63,7 +64,10 @@ describe("PagerDuty server actions", () => {
                 name: "production",
                 credentials: { apiToken: "secret" },
             }),
-        ).resolves.toEqual({ error: "PagerDuty connections are currently unavailable." });
+        ).resolves.toEqual({
+            error: "PagerDuty connections are currently unavailable.",
+            status: 403,
+        });
 
         expect(fetchSpy).toHaveBeenCalledTimes(1);
         expect(fetchSpy.mock.calls[0]?.[0]).toBe(
@@ -103,6 +107,7 @@ describe("PagerDuty server actions", () => {
 
         await expect(connect()).resolves.toEqual({
             error: "PagerDuty connections are currently unavailable.",
+            status: 403,
         });
 
         expect(fetchSpy).toHaveBeenCalledTimes(1);
@@ -206,6 +211,7 @@ describe("PagerDuty server actions", () => {
             completePagerDutyOAuth({ state: "callback-state", code: "oauth-code" }),
         ).resolves.toEqual({
             error: "Invalid or expired PagerDuty OAuth state",
+            status: 400,
         });
 
         const entitlementRequests = fetchSpy.mock.calls.filter(([input]) =>
@@ -236,6 +242,7 @@ describe("PagerDuty server actions", () => {
             completePagerDutyOAuth({ state: "callback-state", code: "oauth-code" }),
         ).resolves.toEqual({
             error: "Invalid or expired PagerDuty OAuth state",
+            status: 400,
         });
 
         expect(fetchSpy).toHaveBeenCalledTimes(1);

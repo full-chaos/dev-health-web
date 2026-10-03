@@ -1,5 +1,6 @@
 "use server";
 
+import { failureResult } from "@/lib/actionFailure";
 import { auth } from "@/lib/auth";
 import { ValidationErrors } from "@/lib/constants/errors";
 import { getBackendUrl } from "@/lib/origin";
@@ -108,12 +109,15 @@ export async function getAuditLog(
         const response = await fetch(url, { method: "GET", headers, cache: "no-store" });
         if (!response.ok) {
             const body = await response.json().catch(() => ({ detail: response.statusText }));
-            return { error: body.detail ?? `Failed to fetch audit log (${response.status})` };
+            return failureResult("read", "getAuditLog", {
+                status: response.status,
+                served: body.detail,
+            });
         }
 
         return { data: (await response.json()) as BillingAuditListResponse };
     } catch (error) {
-        return { error: error instanceof Error ? error.message : "Unknown error" };
+        return failureResult("read", "getAuditLog", { error: error });
     }
 }
 
@@ -131,11 +135,14 @@ export async function getAuditEntry(id: string): Promise<ActionResult<BillingAud
         });
         if (!response.ok) {
             const body = await response.json().catch(() => ({ detail: response.statusText }));
-            return { error: body.detail ?? `Failed to fetch audit entry (${response.status})` };
+            return failureResult("read", "getAuditEntry", {
+                status: response.status,
+                served: body.detail,
+            });
         }
         return { data: (await response.json()) as BillingAuditEntry };
     } catch (error) {
-        return { error: error instanceof Error ? error.message : "Unknown error" };
+        return failureResult("read", "getAuditEntry", { error: error });
     }
 }
 
@@ -156,11 +163,14 @@ export async function resolveAuditMismatch(
         });
         if (!response.ok) {
             const body = await response.json().catch(() => ({ detail: response.statusText }));
-            return { error: body.detail ?? `Failed to resolve mismatch (${response.status})` };
+            return failureResult("action", "resolveAuditMismatch", {
+                status: response.status,
+                served: body.detail,
+            });
         }
         return { data: (await response.json()) as BillingAuditEntry };
     } catch (error) {
-        return { error: error instanceof Error ? error.message : "Unknown error" };
+        return failureResult("action", "resolveAuditMismatch", { error: error });
     }
 }
 
@@ -191,10 +201,13 @@ export async function triggerReconciliation(
         });
         if (!response.ok) {
             const body = await response.json().catch(() => ({ detail: response.statusText }));
-            return { error: body.detail ?? `Failed to run reconciliation (${response.status})` };
+            return failureResult("action", "triggerReconciliation", {
+                status: response.status,
+                served: body.detail,
+            });
         }
         return { data: (await response.json()) as ReconciliationReport };
     } catch (error) {
-        return { error: error instanceof Error ? error.message : "Unknown error" };
+        return failureResult("action", "triggerReconciliation", { error: error });
     }
 }

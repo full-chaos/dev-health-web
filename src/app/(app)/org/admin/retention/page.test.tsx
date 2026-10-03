@@ -59,6 +59,9 @@ function respondWith(items: RetentionPolicy[]) {
     return { data: { items, total: items.length, limit: 50, offset: 0 }, error: undefined };
 }
 
+const HOSTILE_DB =
+    'pq: relation "audit_log_partitions" does not exist (SQLSTATE 42P01) at internal/apiservice/admin/retention.go:455';
+
 describe("RetentionPolicyPage", () => {
     beforeEach(() => {
         mockListRetentionPolicies.mockReset();
@@ -179,7 +182,7 @@ describe("RetentionPolicyPage", () => {
             Promise.resolve(
                 dryRun
                     ? { data: { deleted_count: 7, error: null } }
-                    : { data: { deleted_count: 0, error: "Policy is inactive" } },
+                    : { data: { deleted_count: 0, error: HOSTILE_DB } },
             ),
         );
         const user = userEvent.setup();
@@ -194,7 +197,12 @@ describe("RetentionPolicyPage", () => {
         await user.click(within(dialog).getByRole("button", { name: "Run Now" }));
 
         await waitFor(() => expect(mockExecuteRetentionPolicy).toHaveBeenCalledWith("rp-1", false));
-        await waitFor(() => expect(screen.getByText("Policy is inactive")).toBeInTheDocument());
+        await waitFor(() =>
+            expect(
+                screen.getByText("The retention run did not complete. Try again."),
+            ).toBeInTheDocument(),
+        );
+        expect(screen.queryByText(/SQLSTATE|audit_log_partitions/)).toBeNull();
         // Only the initial mount call + the dry-run should have listed policies —
         // a failed execute must not silently trigger a refetch as if it succeeded.
         expect(mockListRetentionPolicies).toHaveBeenCalledTimes(1);
@@ -285,7 +293,7 @@ describe("RetentionPolicyPage design A6/A7 (CHAOS-8239)", () => {
     it("logs the backend text of a 5xx and of a network failure, but not of a validation answer", async () => {
         logError.mockClear();
         await failToggleWith({ error: "backend 502 text", status: 502 });
-        expect(await screen.findByText(/That change could not be completed/u)).toBeInTheDocument();
+        expect(await screen.findByText(/The change was not saved/u)).toBeInTheDocument();
         expect(logError).toHaveBeenCalledWith(
             expect.objectContaining({ err: "backend 502 text", status: 502 }),
             "Admin action failed",
@@ -304,18 +312,14 @@ describe("RetentionPolicyPage design A6/A7 (CHAOS-8239)", () => {
             status: 502,
         });
 
-        expect(
-            await screen.findByText("That change could not be completed. Try again in a moment."),
-        ).toBeInTheDocument();
+        expect(await screen.findByText("The change was not saved. Try again.")).toBeInTheDocument();
         expect(container.textContent).not.toContain("502");
     });
 
     it("shows one plain sentence for a network failure (no status), and not the served text", async () => {
         const { container } = await failToggleWith({ error: "fetch failed: ECONNRESET" });
 
-        expect(
-            await screen.findByText("That change could not be completed. Try again in a moment."),
-        ).toBeInTheDocument();
+        expect(await screen.findByText("The change was not saved. Try again.")).toBeInTheDocument();
         expect(container.textContent).not.toContain("ECONNRESET");
     });
 

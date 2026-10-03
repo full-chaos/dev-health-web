@@ -1,5 +1,6 @@
 "use client";
 
+import { actionFailureMessage } from "@/lib/actionFailure";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -37,7 +38,7 @@ export function SyncConfigHeaderActions({ config }: { readonly config: SyncConfi
                 router.refresh();
             } catch (error) {
                 if (!(error instanceof Error)) throw error;
-                toast.error(error.message || "Failed to update sync configuration");
+                toast.error(actionFailureMessage(error, "toggleSyncActive"));
             }
         });
     }

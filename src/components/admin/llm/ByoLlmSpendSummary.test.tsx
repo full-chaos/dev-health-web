@@ -165,7 +165,7 @@ describe("ByoLlmSpendSummary", () => {
             expect(unhandled).not.toHaveBeenCalled();
             // It is logged as an error (no backend text on screen), not shown.
             expect(logError).toHaveBeenCalledWith(
-                { message: "network down" },
+                { err: expect.any(Error) },
                 "Budget request for the spend tiles failed",
             );
             process.off("unhandledRejection", unhandled);
@@ -330,7 +330,8 @@ describe("ByoLlmSpendSummary", () => {
         });
         renderPanel();
 
-        expect(await screen.findByText("temporary backend failure")).toBeInTheDocument();
+        expect(await screen.findByText("Could not be read")).toBeInTheDocument();
+        expect(screen.queryByText("temporary backend failure")).toBeNull();
         const retryButton = screen.getByRole("button", { name: "Retry" });
 
         await waitFor(() => expect(mockLoad).toHaveBeenCalledTimes(1));

@@ -1,5 +1,6 @@
 "use client";
 
+import { actionFailureMessage } from "@/lib/actionFailure";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useRef } from "react";
@@ -324,7 +325,7 @@ export default function SingleReportPage() {
             await triggerReport(orgId, id);
             await refreshRuns();
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to trigger report");
+            setError(actionFailureMessage(err, "triggerReport"));
         } finally {
             setIsRunning(false);
         }
@@ -349,7 +350,7 @@ export default function SingleReportPage() {
             setReport(updated);
             setIsEditing(false);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to update report");
+            setError(actionFailureMessage(err, "updateSavedReport"));
         } finally {
             setIsSaving(false);
         }
@@ -377,7 +378,7 @@ export default function SingleReportPage() {
             });
             router.push(`/reports/${cloned.id}`);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to clone report");
+            setError(actionFailureMessage(err, "cloneSavedReport"));
             setIsCloning(false);
         }
     };
@@ -390,7 +391,7 @@ export default function SingleReportPage() {
             await deleteSavedReport(orgId, id);
             router.push("/reports");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to delete report");
+            setError(actionFailureMessage(err, "deleteSavedReport"));
             setIsDeleting(false);
             setShowDeleteConfirm(false);
         }
