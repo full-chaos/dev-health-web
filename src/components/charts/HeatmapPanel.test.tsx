@@ -60,11 +60,15 @@ describe("HeatmapPanel — axis captions on the hours by weekdays grid (CHAOS-85
         chartProps.mockClear();
         draw("temporal_load");
         expect((chartProps.mock.calls.at(-1)?.[0] as { weekHours?: boolean }).weekHours).toBe(true);
+        const flag = () => (chartProps.mock.calls.at(-1)?.[0] as { weekHours?: boolean }).weekHours;
         chartProps.mockClear();
-        draw("risk");
-        expect((chartProps.mock.calls.at(-1)?.[0] as { weekHours?: boolean }).weekHours).toBe(
-            false,
-        );
+        draw("individual");
+        expect(flag()).toBe(true);
+        for (const type of ["risk", "context_switch"] as const) {
+            chartProps.mockClear();
+            draw(type);
+            expect(flag()).toBe(false);
+        }
     });
 
     it("captions the person grid the same way", () => {
