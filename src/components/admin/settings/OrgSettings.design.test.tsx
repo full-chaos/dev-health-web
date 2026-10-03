@@ -11,6 +11,7 @@ import { SettingsSection } from "@/components/settings/SettingsSection";
 import { render, screen, within } from "@/test/utils";
 
 import { DangerZone } from "./DangerZone";
+import { GeneralSettings } from "./GeneralSettings";
 import { SubscriptionSummaryCard } from "./billing/SubscriptionSummaryCard";
 
 describe("Organization settings design (CHAOS-8241)", () => {
@@ -75,5 +76,13 @@ describe("Organization settings design (CHAOS-8241)", () => {
         const row = name.parentElement as HTMLElement;
         expect(within(row).getByText("free")).toBeInTheDocument();
         expect(screen.getByText("Current plan").className).toContain("uppercase");
+    });
+
+    it("says the slug cannot be changed, and ties the hint to the read-only field (CHAOS-8255)", () => {
+        render(<GeneralSettings org={{ id: "o", name: "Acme", slug: "acme" } as never} />);
+        const slug = screen.getByLabelText("Slug");
+        expect(slug).toBeDisabled();
+        expect(screen.getByText("The slug cannot be changed.")).toBeInTheDocument();
+        expect(slug).toHaveAttribute("aria-describedby", "slug-hint");
     });
 });
