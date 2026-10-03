@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, userEvent } from "@/test/utils";
+import { render, screen, userEvent, within } from "@/test/utils";
 
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ refresh: vi.fn() }),
+    usePathname: () => "/org/admin/integrations",
+    useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/lib/admin/server", () => ({
@@ -98,5 +100,34 @@ describe("ProvidersPage", () => {
         expect(
             screen.getByText("Choose the tool you want Dev Health to connect to."),
         ).toBeInTheDocument();
+    });
+});
+
+describe("ProvidersPage header and notice (CHAOS-8099)", () => {
+    it("has the title Connections and Add Provider in the header with the icon before the label", () => {
+        render(
+            <ProvidersPage canCreatePagerDuty={false} providers={[makeRow()]} credentials={[]} />,
+        );
+
+        expect(screen.getByRole("heading", { level: 1, name: "Connections" })).toBeInTheDocument();
+        const add = within(screen.getByTestId("page-header")).getByRole("button", {
+            name: "Add Provider",
+        });
+        expect(add.firstElementChild?.querySelector("svg")).not.toBeNull();
+        expect(add.lastChild?.nodeType).toBe(Node.TEXT_NODE);
+        expect(screen.getByRole("heading", { level: 2, name: "Providers" })).toBeInTheDocument();
+    });
+
+    it("shows the given notice above the table", () => {
+        render(
+            <ProvidersPage
+                canCreatePagerDuty={false}
+                providers={[makeRow()]}
+                credentials={[]}
+                notice={<p>Providers could not be loaded.</p>}
+            />,
+        );
+
+        expect(screen.getByText("Providers could not be loaded.")).toBeInTheDocument();
     });
 });
