@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockData, tileProps } = vi.hoisted(() => ({ mockData: vi.fn(), tileProps: vi.fn() }));
@@ -21,9 +21,19 @@ vi.mock("@/components/feature-flags/FeatureFlagTable", () => ({
     FeatureFlagTable: () => <div data-testid="flag-table" />,
 }));
 vi.mock("@/components/metrics/MetricCard", () => ({
-    MetricCard: (props: { label: string; href?: string }) => {
+    MetricCard: (props: {
+        label: string;
+        href?: string;
+        testId?: string;
+        headAction?: React.ReactNode;
+    }) => {
         tileProps(props);
-        return <article data-testid="tile">{props.label}</article>;
+        return (
+            <div data-testid={props.testId}>
+                <article data-testid="tile">{props.label}</article>
+                <span data-testid="metric-head-action">{props.headAction}</span>
+            </div>
+        );
     },
 }));
 
@@ -68,5 +78,46 @@ describe("Feature Flags page", () => {
         const pill = screen.getByTestId("release-friction-severity");
         expect(pill).toHaveTextContent("Unavailable");
         expect(pill).toHaveAttribute("data-severity", "unavailable");
+    });
+
+    it("draws the four tiles as one joined 2 x 2 metric strip", async () => {
+        mockData.mockResolvedValue(data("moderate"));
+        render(await FeatureFlagsPage({ searchParams: Promise.resolve({}) }));
+        const strip = screen.getByTestId("feature-flag-tiles");
+        expect(strip).toHaveAttribute("data-columns", "2");
+        expect(
+            within(strip)
+                .getAllByTestId("tile")
+                .map((t) => t.textContent),
+        ).toEqual([
+            "Active Flags",
+            "Release Friction Delta",
+            "Release Error Rate Delta",
+            "Impact Coverage Ratio",
+        ]);
+    });
+
+    it("puts the severity pill in the Release Friction tile head slot, and keeps the caption", async () => {
+        mockData.mockResolvedValue(data("moderate"));
+        render(await FeatureFlagsPage({ searchParams: Promise.resolve({}) }));
+        const tile = screen.getByTestId("release-friction-tile");
+        expect(tile).toHaveTextContent("Release Friction Delta");
+        // CHAOS-8214: the pill is the tile's headAction, not a node beside the tile in the strip cell.
+        const slot = within(tile).getByTestId("metric-head-action");
+        expect(within(slot).getByTestId("release-friction-severity")).toHaveTextContent("Moderate");
+        expect(tile.parentElement).toBe(screen.getByTestId("feature-flag-tiles"));
+        const friction = tileProps.mock.calls
+            .map(([props]) => props as { label: string; caption?: string })
+            .find((props) => props.label === "Release Friction Delta");
+        expect(friction?.caption).toBe("Severity: moderate");
+    });
+
+    it("draws the flag registry as a table card titled Flag Registry", async () => {
+        mockData.mockResolvedValue(data("low"));
+        render(await FeatureFlagsPage({ searchParams: Promise.resolve({}) }));
+        const card = screen.getByTestId("flag-registry");
+        expect(card.tagName).toBe("SECTION");
+        expect(within(card).getByRole("heading", { level: 2 })).toHaveTextContent("Flag Registry");
+        expect(within(card).getByTestId("flag-table")).toBeInTheDocument();
     });
 });

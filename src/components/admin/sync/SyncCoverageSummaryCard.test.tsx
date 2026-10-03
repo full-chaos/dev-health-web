@@ -53,7 +53,8 @@ describe("SyncCoverageSummaryCard", () => {
         );
 
         expect(screen.getByTestId("coverage-summary-error")).toBeInTheDocument();
-        expect(screen.getByText("Request failed with 500")).toBeInTheDocument();
+        expect(screen.queryByText("Request failed with 500")).toBeNull();
+        expect(screen.getByText("Could not be read")).toBeInTheDocument();
 
         await user.click(screen.getByRole("button", { name: "Backfill" }));
         expect(onBackfillAction).toHaveBeenCalledOnce();
@@ -77,11 +78,9 @@ describe("SyncCoverageSummaryCard", () => {
 
         expect(screen.getByText("Healthy")).toBeInTheDocument();
         expect(screen.getByText("Active")).toBeInTheDocument();
-        expect(screen.getByText("Sync Now")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Edit config" })).toHaveAttribute(
-            "href",
-            "/org/admin/sync/cfg-1/edit",
-        );
+        // CHAOS-8265: Edit and Sync Now live in the page header; the card keeps only Backfill.
+        expect(screen.queryByText("Sync Now")).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Edit config" })).not.toBeInTheDocument();
 
         const backfillButton = screen.getByRole("button", { name: "Backfill" });
         await user.click(backfillButton);

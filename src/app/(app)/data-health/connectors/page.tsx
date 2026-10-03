@@ -1,5 +1,7 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Notice } from "@/components/ui/Notice";
+import { RetryButton } from "@/components/ui/RetryButton";
+import { logger } from "@/lib/logger";
 import {
     ConnectorStatusTable,
     type ConnectorStatusItem,
@@ -31,19 +33,21 @@ export default async function ConnectorsHealthPage() {
         );
         data = res.dataHealth.connectors as ConnectorStatusItem[];
     } catch (e) {
-        error = e instanceof Error ? e.message : "Failed to load connectors health";
+        // The failure goes to the log; the page says one plain sentence + Retry.
+        logger.error({ err: e }, "Failed to load connectors health");
+        error = "Failed to load connectors health";
     }
 
     return (
         <div className="space-y-8">
             <AdminHeader
-                title="Connector Health"
+                title="Data Confidence"
                 description="Freshness, errors, and status of all configured providers."
             />
 
             {error ? (
-                <Notice variant="danger" live={false}>
-                    Failed to load data: {error}
+                <Notice variant="danger" live={false} action={<RetryButton />}>
+                    Connector health could not be loaded. Retry, or check again in a moment.
                 </Notice>
             ) : (
                 <ConnectorStatusTable data={data} />

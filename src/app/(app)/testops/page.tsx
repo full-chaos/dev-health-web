@@ -1,14 +1,25 @@
+import { NoOrgNotice } from "@/components/NoOrgNotice";
+import { requireSession } from "@/lib/auth";
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { FailurePatternsCard } from "@/components/testops/FailurePatternsCard";
+import { InvestigateTestOps } from "@/components/testops/InvestigateTestOps";
+import { PipelineRateTrendChart } from "@/components/testops/PipelineRateTrendChart";
+import { DataState } from "@/components/ui/DataState";
+import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
-import { TESTOPS_MEASURES } from "@/lib/testops/constants";
-import { getLatestValue, getSparkline, getDelta } from "@/lib/testops/aggregateSeries";
+import { buildFailurePatternsModel } from "@/lib/testops/failure-patterns";
+import { buildPipelineRateTrend, hasPipelineRateData } from "@/lib/testops/rateTrend";
+import type { BreakdownResult } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
 
+import { resolveTestOpsTiles, testOpsEvidenceSubject } from "./testOpsEvidence";
 import { TestOpsTabs } from "./TestOpsTabs";
 
 type TestOpsPageProps = {
@@ -26,6 +37,8 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
     const env = getServerEnv();
     const isTestMode =
         env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+    // No org on the session: nothing is requested (the TestOps reads reject without one).
+    if (!isTestMode && !(await requireSession()).user.org_id) return <NoOrgNotice />;
 
     const rangeDays = filters?.time?.range_days ?? 14;
     const today = new Date();
@@ -60,18 +73,6 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
                     },
                     {
                         dimension: "TEAM",
-                        measure: "PIPELINE_QUEUE_TIME",
-                        interval: "DAY",
-                        dateRange,
-                    },
-                    {
-                        dimension: "TEAM",
-                        measure: "PIPELINE_RERUN_RATE",
-                        interval: "DAY",
-                        dateRange,
-                    },
-                    {
-                        dimension: "TEAM",
                         measure: "TEST_FLAKE_RATE",
                         interval: "DAY",
                         dateRange,
@@ -83,7 +84,15 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
                         dateRange,
                     },
                 ],
-                breakdowns: [],
+                // The same failure-rate breakdown the Pipelines tab reads (Failure patterns).
+                breakdowns: [
+                    {
+                        dimension: "TEAM",
+                        measure: "PIPELINE_FAILURE_RATE",
+                        dateRange,
+                        topN: 10,
+                    },
+                ],
             },
             isTestMode,
         ),
@@ -94,18 +103,25 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
     }
 
     const pipelineTimeseries = testOpsData.pipelines.timeseries || [];
+    const pipelineBreakdowns = testOpsData.pipelines.breakdowns || [];
     const testTimeseries = testOpsData.tests.timeseries || [];
     const coverageTimeseries = testOpsData.coverage.timeseries || [];
+    const fetchFailed = Boolean(testOpsData.fetchFailed);
 
-    const measures = [
+    // The approved Overview strip: five tiles. Queue Time and Rerun Rate are on the Pipelines tab.
+    const tiles = resolveTestOpsTiles([
         { id: "PIPELINE_SUCCESS_RATE", ts: pipelineTimeseries },
         { id: "PIPELINE_FAILURE_RATE", ts: pipelineTimeseries },
         { id: "PIPELINE_DURATION_P95", ts: pipelineTimeseries },
-        { id: "PIPELINE_QUEUE_TIME", ts: pipelineTimeseries },
-        { id: "PIPELINE_RERUN_RATE", ts: pipelineTimeseries },
         { id: "TEST_FLAKE_RATE", ts: testTimeseries },
         { id: "COVERAGE_LINE_PCT", ts: coverageTimeseries },
-    ];
+    ]);
+
+    const rateTrend = buildPipelineRateTrend(pipelineTimeseries);
+    const failurePatterns = buildFailurePatternsModel(
+        pipelineBreakdowns.find((b: BreakdownResult) => b.measure === "PIPELINE_FAILURE_RATE"),
+        "%",
+    );
 
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
@@ -113,47 +129,64 @@ export default async function TestOpsPage({ searchParams }: TestOpsPageProps) {
         <div className="flex min-w-0 flex-1 flex-col gap-8">
             <PageHeader
                 title="TestOps"
-                subtitle="Pipeline, test, and coverage operations in one durable destination."
+                subtitle="Pipeline, test, and coverage operations in one destination."
+                actions={
+                    <PageHeaderEvidenceAction
+                        subject={testOpsEvidenceSubject("TestOps overview", tiles)}
+                    />
+                }
             ></PageHeader>
+
+            {/* Approved order: header, scope bar, tab row, content. */}
+            <ScopeBar view="testops" />
 
             <TestOpsTabs activeId="overview" filters={filters} role={activeRole} />
 
-            <ScopeBar view="testops" />
-            <section className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
-                <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                    TestOps summary
-                </p>
-                <p className="mt-2 text-sm text-(--ink-muted)">
-                    Overview of pipeline stability, test reliability, and coverage health.
-                </p>
-            </section>
+            <MetricStrip data-testid="testops-overview-tiles">
+                {tiles.map((tile) => (
+                    <MetricCard
+                        key={tile.id}
+                        label={tile.label}
+                        value={tile.value}
+                        unit={tile.unit}
+                        delta={tile.delta}
+                        deltaUnavailableLabel="Insufficient history"
+                        inverseGood={tile.inverseGood}
+                        spark={tile.spark}
+                        caption={tile.note}
+                    />
+                ))}
+            </MetricStrip>
 
-            <section className="grid gap-4 lg:grid-cols-3">
-                {measures.map(({ id, ts }) => {
-                    const def = TESTOPS_MEASURES[id];
-                    if (!def) return null;
+            <Section
+                title="CI and test health"
+                description="Success Rate and Failure Rate are shares of completed pipeline runs and need not sum to 100%: runs can be cancelled or skipped."
+                data-testid="testops-ci-health"
+            >
+                {fetchFailed ? (
+                    <DataState
+                        variant="error"
+                        title="Pipeline trend could not be loaded"
+                        message="Pipeline analytics could not be loaded. The trend will reappear once the data service recovers."
+                    />
+                ) : !hasPipelineRateData(rateTrend) ? (
+                    <DataState
+                        variant="no-data-connected"
+                        title="Pipeline trend not populated"
+                        description="Success-rate and failure-rate history appears here once pipeline runs are ingested for this scope."
+                    />
+                ) : (
+                    <>
+                        <p className="text-label-caps uppercase text-(--ink-muted)">Percent</p>
+                        <PipelineRateTrendChart points={rateTrend} />
+                    </>
+                )}
+            </Section>
 
-                    const value = getLatestValue(ts, id);
-                    const spark = getSparkline(ts, id);
-                    const delta = getDelta(ts, id);
-
-                    return (
-                        <MetricCard
-                            key={id}
-                            label={def.label}
-                            value={value}
-                            unit={
-                                def.unit === "percentage" ? "%" : def.unit === "duration" ? "m" : ""
-                            }
-                            delta={delta}
-                            deltaUnavailableLabel="Insufficient history"
-                            inverseGood={def.goodDirection === "down"}
-                            spark={spark}
-                            caption={def.description}
-                        />
-                    );
-                })}
-            </section>
+            <div className="grid gap-4.5 lg:grid-cols-2">
+                <FailurePatternsCard model={failurePatterns} fetchFailed={fetchFailed} />
+                <InvestigateTestOps filters={filters} role={activeRole} />
+            </div>
         </div>
     );
 }

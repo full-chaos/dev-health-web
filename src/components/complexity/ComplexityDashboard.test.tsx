@@ -7,9 +7,10 @@
  *   - ComplexityDashboard: empty state, KPI tiles, trend panel, treemap, drilldown table
  */
 import { describe, expect, it, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
-import { render } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import {
     ComplexityDashboard,
     computeKpis,
@@ -33,9 +34,29 @@ vi.mock("@/components/charts/Chart", () => ({
     ),
 }));
 
-vi.mock("@/components/charts/TreemapChart", () => ({
-    TreemapChart: ({ data }: { data: { children?: unknown[] } }) => (
+vi.mock("@/components/complexity/HotspotColumnTreemap", () => ({
+    HotspotColumnTreemap: ({ data }: { data: { children?: unknown[] } }) => (
         <div data-testid="treemap-chart" data-children={data?.children?.length ?? 0} />
+    ),
+}));
+
+vi.mock("@/components/charts/HeatmapPanel", () => ({
+    HeatmapPanel: (props: {
+        title: string;
+        emptyState?: string;
+        initialData?: { cells?: unknown[] } | null;
+        embedded?: boolean;
+        failed?: boolean;
+    }) => (
+        <div
+            data-testid="heatmap-panel"
+            data-title={props.title}
+            data-embedded={String(Boolean(props.embedded))}
+            data-failed={String(Boolean(props.failed))}
+            data-cells={props.initialData?.cells?.length ?? "none"}
+        >
+            {props.initialData ? "grid" : props.emptyState}
+        </div>
     ),
 }));
 
@@ -62,6 +83,7 @@ vi.mock("@/components/charts/chartTheme", () => ({
 vi.mock("next/navigation", () => ({
     usePathname: () => "/complexity",
     useRouter: () => ({ refresh: vi.fn() }),
+    useSearchParams: () => new URLSearchParams(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -261,6 +283,35 @@ describe("ComplexityDashboard", () => {
         expect(screen.getAllByTestId("kpi-card")).toHaveLength(4);
     });
 
+    it("draws the tiles as one strip; a value that is not served reads 'Not reported' with its reason, a served 0 stays 0", () => {
+        const points = [makePoint("r1", "2026-01-08", { cyclomaticPerKloc: 6.0 })];
+        render(<ComplexityDashboard {...baseProps} points={points} hotspotRows={[]} />);
+
+        expect(screen.getByTestId("complexity-kpis")).toHaveAttribute("data-columns", "4");
+        const tiles = screen.getAllByTestId("kpi-card");
+        const hotspotTile = tiles.find((tile) => tile.textContent?.includes("Hotspot Files"));
+        expect(within(hotspotTile as HTMLElement).getByTestId("metric-value")).toHaveTextContent(
+            "Not reported",
+        );
+        expect(hotspotTile).toHaveTextContent(
+            "No hotspots: no files crossed the hotspot risk threshold.",
+        );
+        const rising = tiles.find((tile) => tile.textContent?.includes("Rising Areas"));
+        expect(within(rising as HTMLElement).getByTestId("metric-value")).toHaveTextContent("0");
+    });
+
+    it("draws the Evidence button on a churn row too, with the arrow before the label", async () => {
+        const rows = [
+            makeHotspot("a.py", 0.8, { churnLoc30d: 120, evidenceUrl: "/explore?api=x" }),
+        ];
+        render(<ComplexityDashboard {...baseProps} activeTab="churn" hotspotRows={rows} />);
+
+        const row = within(screen.getByTestId("churn-row"));
+        const button = row.getByRole("button", { name: /^Evidence for / });
+        expect(button).toHaveTextContent("Evidence");
+        expect(button.firstElementChild?.tagName.toLowerCase()).toBe("span");
+    });
+
     it("renders the trend panel and Chart on overview when points are present", () => {
         const points = [makePoint("r1", "2026-01-08")];
         render(<ComplexityDashboard {...baseProps} points={points} />);
@@ -305,15 +356,114 @@ describe("ComplexityDashboard", () => {
         expect(screen.getAllByTestId("hotspot-row")).toHaveLength(20);
     });
 
-    it("renders evidence link when evidenceUrl is provided (hotspots tab)", () => {
+    it("opens the shared evidence drawer from a hotspot row: served values as fact rows, served link in the footer", async () => {
         const hotspots = [
-            makeHotspot("a.py", 0.9, { evidenceUrl: "https://example.com/evidence" }),
+            makeHotspot("src/app/a.py", 0.9, {
+                evidenceUrl: "/code?file=src/app/a.py",
+                blameConcentration: 0.82,
+            }),
         ];
         render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
-        expect(screen.getAllByTestId("evidence-link")[0]).toHaveAttribute(
-            "href",
-            "https://example.com/evidence",
+        // The row has a button, not a link that leaves the page.
+        expect(screen.queryByTestId("evidence-link")).toBeNull();
+        expect(screen.queryByRole("dialog")).toBeNull();
+
+        await userEvent.click(
+            within(screen.getByTestId("hotspot-row")).getByRole("button", {
+                name: /^Evidence for /,
+            }),
         );
+
+        const drawer = screen.getByRole("dialog", { name: "Evidence & Context" });
+        expect(within(drawer).getByTestId("evidence-subject")).toHaveTextContent("a.py");
+        const facts = Object.fromEntries(
+            within(within(drawer).getByTestId("evidence-subject-facts"))
+                .getAllByTestId("evidence-fact")
+                .map((row) => [
+                    row.querySelector("dt")?.textContent,
+                    row.querySelector("dd")?.textContent,
+                ]),
+        );
+        expect(facts).toEqual({
+            File: "src/app/a.py",
+            Repo: "repo-one",
+            "Risk score": "0.9",
+            "Cyclomatic avg": "8.5",
+            "Churn LOC 30d": "100",
+            "Owner concentration": "82%",
+        });
+        // The evidence link stays: it is the drawer's footer action.
+        expect(within(drawer).getByTestId("evidence-link")).toHaveAttribute(
+            "href",
+            "/code?file=src/app/a.py",
+        );
+    });
+
+    it("shows one muted provenance line in the row drawer, not five empty rows (the hotspots query serves none)", async () => {
+        const hotspots = [
+            makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py", blameConcentration: 0.5 }),
+        ];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
+        await userEvent.click(screen.getByRole("button", { name: /^Evidence for / }));
+
+        const drawer = screen.getByRole("dialog");
+        expect(within(drawer).getByTestId("evidence-provenance-not-reported")).toHaveTextContent(
+            "Provenance is not reported for this item.",
+        );
+        expect(within(drawer).queryByTestId("evidence-facts")).toBeNull();
+        expect(within(drawer).queryByText("Not reported")).toBeNull();
+        expect(within(drawer).getByTestId("evidence-subject-facts")).toBeInTheDocument();
+    });
+
+    it("Escape closes the row drawer and focus returns to the row's Evidence button", async () => {
+        const hotspots = [
+            makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py" }),
+            makeHotspot("b.py", 0.8, { evidenceUrl: "/code?file=b.py" }),
+        ];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
+        const opener = within(screen.getAllByTestId("hotspot-row")[1]).getByRole("button", {
+            name: /^Evidence for /,
+        });
+        await userEvent.click(opener);
+        expect(screen.getByTestId("evidence-subject")).toHaveTextContent("b.py");
+
+        await userEvent.keyboard("{Escape}");
+
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(opener).toHaveFocus();
+    });
+
+    it("shows 'Not reported' in the drawer for an owner concentration the query did not serve", async () => {
+        const hotspots = [makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py" })];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
+
+        await userEvent.click(screen.getByRole("button", { name: /^Evidence for / }));
+
+        const row = within(screen.getByRole("dialog"))
+            .getAllByTestId("evidence-fact")
+            .find((fact) => fact.querySelector("dt")?.textContent === "Owner concentration");
+        expect(row?.querySelector("dd")).toHaveTextContent(/^Not reported$/);
+    });
+
+    it("closes the drawer when the user follows the footer evidence link", async () => {
+        const hotspots = [makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py" })];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
+        await userEvent.click(screen.getByRole("button", { name: /^Evidence for / }));
+        const link = screen.getByTestId("evidence-link");
+        link.addEventListener("click", (event) => event.preventDefault());
+
+        await userEvent.click(link);
+
+        expect(screen.queryByRole("dialog")).toBeNull();
+    });
+
+    it("keeps the 'No artifact link' state for a row with no served link (no button)", () => {
+        const hotspots = [makeHotspot("a.py", 0.9)];
+        render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
+
+        const row = screen.getByTestId("hotspot-row");
+        expect(within(row).getByText("No artifact link")).toBeInTheDocument();
+        expect(within(row).queryByRole("button", { name: /^Evidence for / })).toBeNull();
     });
 
     it("shows a DataState (not the treemap) on the hotspots tab when only points exist", () => {
@@ -509,5 +659,109 @@ describe("buildTrendOption conventions", () => {
                 color: colors[i],
             });
         });
+    });
+});
+
+describe("Hotspots tab: Hotspot concentration heatmap", () => {
+    const request = {
+        type: "risk" as const,
+        metric: "hotspot_risk",
+        scope_type: "org",
+        scope_id: "",
+        range_days: 90,
+    };
+    const props = {
+        orgId: "org-1",
+        points: [makePoint("a", "2026-01-01")],
+        hotspotRows: [makeHotspot("src/a.ts", 3)],
+        activeTab: "hotspots" as const,
+    };
+    const served = {
+        axes: { x: ["w1"], y: ["r1"] },
+        cells: [{ x: "w1", y: "r1", value: 2 }],
+        legend: { unit: "risk" },
+        evidence: [],
+    } as never;
+
+    it("renders the served heatmap in a Section card under the existing hotspot content", () => {
+        render(
+            <ComplexityDashboard
+                {...props}
+                hotspotHeatmap={{ request, state: "ok", data: served }}
+            />,
+        );
+        const card = screen.getByTestId("hotspot-heatmap-section");
+        expect(
+            within(card).getByRole("heading", { name: "Hotspot concentration" }),
+        ).toBeInTheDocument();
+        const panel = within(card).getByTestId("heatmap-panel");
+        expect(panel).toHaveAttribute("data-cells", "1");
+        expect(panel).toHaveAttribute("data-embedded", "true");
+        // under the existing content
+        const table = screen.getByTestId("drilldown-table");
+        expect(table.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it("puts the unit pill in the Section card head, not inside the panel", () => {
+        render(
+            <ComplexityDashboard
+                {...props}
+                hotspotHeatmap={{ request, state: "ok", data: served }}
+            />,
+        );
+        const card = screen.getByTestId("hotspot-heatmap-section");
+        const pill = within(card).getByTestId("heatmap-unit");
+        expect(pill).toHaveTextContent("risk");
+        expect(
+            within(screen.getByTestId("heatmap-panel")).queryByTestId("heatmap-unit"),
+        ).toBeNull();
+        // the head row holds the title block and the pill; the body (panel) is a later sibling
+        const head = pill.closest("section")?.firstElementChild as HTMLElement;
+        expect(head.contains(pill)).toBe(true);
+        expect(head.contains(screen.getByTestId("heatmap-panel"))).toBe(false);
+    });
+
+    it("keeps the Code page empty words when nothing was served", () => {
+        render(
+            <ComplexityDashboard
+                {...props}
+                hotspotHeatmap={{ request, state: "unavailable", data: null }}
+            />,
+        );
+        expect(screen.getByTestId("heatmap-panel")).toHaveTextContent(
+            "Hotspot heatmap unavailable.",
+        );
+    });
+
+    it("says Could not be read when the read failed", () => {
+        render(
+            <ComplexityDashboard
+                {...props}
+                hotspotHeatmap={{ request, state: "failed", data: null }}
+            />,
+        );
+        expect(screen.getByTestId("heatmap-panel")).toHaveAttribute("data-failed", "true");
+    });
+
+    it("still shows it when there are no hotspot files", () => {
+        render(
+            <ComplexityDashboard
+                {...props}
+                hotspotRows={[]}
+                hotspotHeatmap={{ request, state: "ok", data: served }}
+            />,
+        );
+        expect(screen.getByTestId("hotspot-heatmap-section")).toBeInTheDocument();
+    });
+
+    it("does not render on the other tabs", () => {
+        render(
+            <ComplexityDashboard
+                {...props}
+                activeTab="overview"
+                hotspotHeatmap={{ request, state: "ok", data: served }}
+            />,
+        );
+        expect(screen.queryByTestId("hotspot-heatmap-section")).toBeNull();
     });
 });

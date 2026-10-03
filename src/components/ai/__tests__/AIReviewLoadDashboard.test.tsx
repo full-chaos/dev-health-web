@@ -30,7 +30,11 @@ vi.mock("../AIReviewAmplificationTrend", () => ({
 }));
 
 vi.mock("../AIEvidenceExplorer", () => ({
-    AIEvidenceExplorer: () => <div data-testid="explorer-stub">explorer</div>,
+    AIEvidenceExplorer: ({ layout }: { layout?: string }) => (
+        <div data-testid="explorer-stub" data-layout={layout}>
+            explorer
+        </div>
+    ),
 }));
 
 const filter: AIFilter = { startDate: "2026-04-01", endDate: "2026-05-01" };
@@ -186,11 +190,27 @@ describe("AIReviewLoadDashboard", () => {
             const dialog = screen.getByRole("dialog", { name: "Evidence by pull request" });
             expect(within(dialog).getByText("Pickup latency")).toBeInTheDocument();
             expect(within(dialog).getByTestId("explorer-stub")).toBeInTheDocument();
+            // The evidence stacks under the PR table inside the drawer (A8, CHAOS-8297).
+            expect(within(dialog).getByTestId("explorer-stub")).toHaveAttribute(
+                "data-layout",
+                "stacked",
+            );
             expect(
                 within(dialog).getByText(/Pick an AI-attributed PR to see its Work Graph evidence/),
             ).toBeInTheDocument();
 
-            fireEvent.click(within(dialog).getByRole("button", { name: /close/i }));
+            // The concept's frame: eyebrow "Evidence & context", the metric as a caps line at the top of
+            // the body, and a Close button in the footer next to the icon Close at the top.
+            expect(within(dialog).getByText("Evidence & context")).toBeInTheDocument();
+            expect(within(dialog).getByTestId("ai-drilldown-metric")).toHaveTextContent(
+                "Pickup latency",
+            );
+            expect(within(dialog).getAllByRole("button", { name: "Close" })).toHaveLength(2);
+            fireEvent.click(
+                within(dialog.querySelector("footer") as HTMLElement).getByRole("button", {
+                    name: "Close",
+                }),
+            );
             expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
             fireEvent.click(screen.getAllByRole("button", { name: "Open evidence" })[5]);
@@ -213,6 +233,18 @@ describe("AIReviewLoadDashboard", () => {
             expect(card).toHaveTextContent("Reviewers");
         });
 
+        it("draws the reviewer concentration card as a shared Section (CHAOS-8094)", () => {
+            loaded({ dataAvailable: true, reviewerCount: 5, reviewerGini: 0.42 });
+            render(<AIReviewLoadDashboard filter={filter} />);
+            const concentration = screen.getByTestId("ai-reviewer-concentration");
+            expect(
+                within(concentration).getByRole("heading", {
+                    level: 3,
+                    name: "Reviewer concentration",
+                }),
+            ).toBeInTheDocument();
+        });
+
         it("shows the missing-data panel (not a zero) when reviewer concentration is unavailable", () => {
             loaded({ dataAvailable: false, reviewerCount: 0, reviewerGini: null });
             render(<AIReviewLoadDashboard filter={filter} />);
@@ -233,7 +265,8 @@ describe("AIReviewLoadDashboard", () => {
             });
             render(<AIReviewLoadDashboard filter={filter} />);
             expect(screen.getByText("Failed to load AI review load")).toBeInTheDocument();
-            expect(screen.getByText("boom")).toBeInTheDocument();
+            expect(screen.queryByText("boom")).toBeNull();
+            expect(screen.getByText("Could not be read")).toBeInTheDocument();
         });
     });
 });

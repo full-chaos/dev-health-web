@@ -45,7 +45,11 @@ describe("client banners", () => {
             "We couldn&apos;t connect the GitHub App.",
             1,
         ],
-        ["components/admin/sync/RepoSelector.tsx", "Failed to load repositories: {error}", 1],
+        [
+            "components/admin/sync/RepoSelector.tsx",
+            "Failed to load repositories. {READ_FAILED_MESSAGE}",
+            1,
+        ],
         [
             "components/admin/integrations/customer-push/CreateCustomerPushSourceForm.tsx",
             "{genericError}",
@@ -79,7 +83,7 @@ describe("client banners", () => {
     it("the forecast error notice keeps its heading and is a page-load notice", () => {
         const s = src("components/work/CapacityView.tsx");
         expect(s).toMatch(
-            /<Notice variant="danger" live=\{false\} titleAs="h3" title="Forecast Unavailable"/u,
+            /<Notice variant="danger" live=\{false\} titleAs="h3" title="Forecast unavailable"/u,
         );
         expect(s).not.toMatch(RED);
     });

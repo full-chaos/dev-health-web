@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from "react";
-
-import { EvidencePanel } from "@/components/evidence";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { MetricCard } from "@/components/metrics/MetricCard";
-import { buildExploreUrl } from "@/lib/filters/url";
-import { metricInverseGood } from "@/lib/metrics/catalog";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
+import { getMetricLabel, metricInverseGood } from "@/lib/metrics/catalog";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta } from "@/lib/types";
 
@@ -27,53 +25,40 @@ export function MetricEvidenceCards({
     activeRole,
     placeholderDeltas,
 }: MetricEvidenceCardsProps) {
-    const [activeMetric, setActiveMetric] = useState<MetricDelta | null>(null);
+    const evidence = useEvidenceDrawer();
 
     return (
-        <>
-            <EvidencePanel
-                isOpen={Boolean(activeMetric)}
-                onCloseAction={() => setActiveMetric(null)}
-                title={activeMetric?.label ?? "Metric evidence"}
-                metric={activeMetric?.metric}
-                filters={filters}
-            />
+        // One joined strip with one column per tile (prototype `metrics(arr, cols)`): 4 tiles give
+        // 4 columns, 3 give 3.
+        <MetricStrip data-testid="metric-tile-strip">
+            {metrics.map((metric) => {
+                const data = getMetric(deltas, metric);
+                // A metric with no served row keeps its catalog name; a raw key is never shown.
+                const label = data?.label ?? getMetricLabel(metric);
+                const hasValue = !placeholderDeltas && data?.value !== undefined;
+                const delta = placeholderDeltas ? undefined : data?.delta_pct;
 
-            <section className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                {metrics.map((metric) => {
-                    const data = getMetric(deltas, metric);
-                    const label = data?.label ?? metric;
-                    const hasValue = !placeholderDeltas && data?.value !== undefined;
-
-                    return (
-                        <MetricCard
-                            key={metric}
-                            as="article"
-                            label={label}
-                            value={hasValue ? data?.value : undefined}
-                            unit={data?.unit}
-                            spark={data?.spark}
-                            noTrendLabel="Trend"
-                            // A missing delta (placeholder rows, or no data row) is "No prior period", never 0.
-                            delta={placeholderDeltas ? undefined : data?.delta_pct}
-                            inverseGood={metricInverseGood(metric)}
-                            onOpenEvidence={() =>
-                                setActiveMetric(
-                                    data ?? {
-                                        metric,
-                                        label,
-                                        value: 0,
-                                        unit: "",
-                                        delta_pct: 0,
-                                        spark: [],
-                                    },
-                                )
-                            }
-                            evidenceHref={buildExploreUrl({ metric, filters, role: activeRole })}
-                        />
-                    );
-                })}
-            </section>
-        </>
+                return (
+                    <MetricCard
+                        key={metric}
+                        as="article"
+                        label={label}
+                        value={hasValue ? data?.value : undefined}
+                        unit={data?.unit}
+                        spark={data?.spark}
+                        // A missing delta (placeholder rows, or no data row) is "No prior period", never 0.
+                        delta={delta}
+                        // The served delta compares the window with the previous window of the same length.
+                        caption={delta !== undefined ? "vs previous window" : undefined}
+                        inverseGood={metricInverseGood(metric)}
+                        // One evidence path per tile: the button opens the shared drawer, and
+                        // the drawer footer links to Explore for the metric (with the role).
+                        onOpenEvidence={() =>
+                            evidence.open({ title: label, metric, filters, role: activeRole })
+                        }
+                    />
+                );
+            })}
+        </MetricStrip>
     );
 }

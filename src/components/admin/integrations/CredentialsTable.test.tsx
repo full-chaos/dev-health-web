@@ -131,6 +131,22 @@ describe("CredentialsTable", () => {
         expect(screen.getByRole("dialog")).toHaveTextContent(/used by 1 sync configuration/i);
     });
 
+    it("draws Delete as the shared danger variant: red text and outline from the variant, no page classes (CHAOS-8254)", () => {
+        renderWithToaster(
+            <CredentialsTable
+                provider="github"
+                providerName="GitHub"
+                credentials={[makeCredential()]}
+                syncConfigs={[]}
+            />,
+        );
+        const del = screen.getByRole("button", { name: "Delete" });
+        expect(del).toHaveClass("text-(--negative)");
+        expect(del).toHaveClass("border-(--negative)");
+        expect(del).not.toHaveClass("text-(--accent-2)");
+        expect(del.className).not.toContain("!");
+    });
+
     it("deletes the credential when the confirm dialog is confirmed", async () => {
         vi.mocked(deleteCredential).mockResolvedValue({ data: undefined });
         renderWithToaster(

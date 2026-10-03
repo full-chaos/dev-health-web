@@ -115,7 +115,8 @@ describe("ByoLlmSettings", () => {
 
         renderForm();
 
-        expect(await screen.findByText("Budget service unavailable")).toBeInTheDocument();
+        expect(await screen.findByText("Could not be read")).toBeInTheDocument();
+        expect(screen.queryByText("Budget service unavailable")).toBeNull();
         expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: "Retry" }));
         expect(await screen.findByText("Budget enforced")).toBeInTheDocument();
@@ -548,7 +549,8 @@ describe("ByoLlmSettings", () => {
             .mockResolvedValueOnce({ data: { provider: "openai" } });
         renderForm();
 
-        expect(await screen.findByText("temporary backend failure")).toBeInTheDocument();
+        expect(await screen.findByText("Could not be read")).toBeInTheDocument();
+        expect(screen.queryByText("temporary backend failure")).toBeNull();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
         expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
 
@@ -571,6 +573,43 @@ describe("ByoLlmSettings", () => {
         expect(screen.getByText("This feature requires the Team plan.")).toBeInTheDocument();
         expect(screen.getByRole("link", { name: /Upgrade to Team/ })).toBeInTheDocument();
         expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
+    });
+
+    it("draws the card as the shared Section in the form, locked and error states (CHAOS-8240)", async () => {
+        const cardOf = () =>
+            screen.getByRole("heading", { name: "BYO LLM", level: 2 }).closest("section");
+
+        mockLoad.mockResolvedValue({ data: {} });
+        const first = renderForm();
+        await screen.findByText("Not configured");
+        expect(cardOf()).not.toBeNull();
+        expect(cardOf()).toHaveTextContent(/Provide your own provider, model, and credentials/);
+        first.unmount();
+
+        mockLoad.mockResolvedValue({ error: "This feature requires the Team plan.", status: 402 });
+        const second = renderForm();
+        await screen.findByText("BYO-LLM is locked");
+        expect(cardOf()).toHaveTextContent(
+            "Bring your own model provider for AI explanations and reports.",
+        );
+        second.unmount();
+
+        mockLoad.mockResolvedValue({ error: "fetch failed", status: 500 });
+        renderForm();
+        await screen.findByText("Could not be read");
+        expect(screen.queryByText("fetch failed")).toBeNull();
+        expect(cardOf()).toHaveTextContent("Bring your own model provider");
+    });
+
+    it("edit mode has no second card inside the section, and Save is the shared primary button (CHAOS-8240)", async () => {
+        mockLoad.mockResolvedValue({ data: {} });
+        renderForm();
+        await screen.findByText("Not configured");
+        const body = screen.getByTestId("byo-llm-edit-body");
+        expect(body.className).not.toMatch(/border|bg-/);
+        const save = screen.getByRole("button", { name: "Save" });
+        expect(save.className).toContain("bg-(--action)");
+        expect(save.className).not.toContain("bg-(--accent)");
     });
 
     it("renders a locked state without an upgrade link when the flag is off (403)", async () => {

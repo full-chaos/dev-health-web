@@ -1,10 +1,13 @@
 "use client";
 
+import { actionFailureMessage } from "@/lib/actionFailure";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { CircleDot, CirclePause } from "lucide-react";
 import { toast } from "sonner";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
+import { Button, buttonClassName } from "@/components/shared/Button";
 import { toggleSyncActive } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { SyncConfigDeleteControls } from "./SyncConfigDeleteControls";
@@ -129,7 +132,7 @@ function ConfigTableRow({
                 router.refresh();
             } catch (error) {
                 if (!(error instanceof Error)) throw error;
-                toast.error(error.message || "Failed to update sync configuration");
+                toast.error(actionFailureMessage(error, "toggleSyncActive"));
             }
         });
     }
@@ -154,12 +157,13 @@ function ConfigTableRow({
             <td className="px-4 py-3 text-(--ink-muted)">{providerLabel(row.config.provider)}</td>
             <td className="px-4 py-3">
                 <span
-                    className={
-                        row.config.is_active
-                            ? "inline-flex rounded-full bg-(--positive)/10 px-2.5 py-0.5 text-xs font-medium text-(--positive)"
-                            : "inline-flex rounded-full bg-(--card-70) px-2.5 py-0.5 text-xs font-medium text-(--ink-muted)"
-                    }
+                    className={`inline-flex items-center gap-1 rounded-full border border-(--card-stroke) px-2 py-0.5 text-xs font-semibold ${row.config.is_active ? "text-foreground" : "text-(--ink-muted)"}`}
                 >
+                    {row.config.is_active ? (
+                        <CircleDot aria-hidden="true" className="h-3 w-3" />
+                    ) : (
+                        <CirclePause aria-hidden="true" className="h-3 w-3" />
+                    )}
                     {row.config.is_active ? "Active" : "Paused"}
                 </span>
             </td>
@@ -178,19 +182,18 @@ function ConfigTableRow({
                         <Link
                             href={`/org/admin/sync/${encodeURIComponent(row.config.id)}`}
                             aria-label={`Manage ${row.config.name}`}
-                            className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-xs font-medium text-foreground hover:bg-(--card-70)"
+                            className={buttonClassName("secondary", "sm")}
                         >
                             {CTA_LABELS.manageSyncConfig}
                         </Link>
-                        <button
-                            type="button"
+                        <Button
+                            size="sm"
                             onClick={handleToggleActive}
                             disabled={isRowBusy}
                             aria-label={`${row.config.is_active ? "Pause" : "Resume"} ${row.config.name}`}
-                            className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-xs font-medium text-foreground hover:bg-(--card-70) disabled:opacity-50"
                         >
                             {row.config.is_active ? CTA_LABELS.pauseSync : CTA_LABELS.resumeSync}
-                        </button>
+                        </Button>
                         <SyncConfigDeleteControls
                             configId={row.config.id}
                             confirmMessage={`Delete ${row.config.name}?`}
@@ -199,8 +202,9 @@ function ConfigTableRow({
                             successMessage="Config deleted"
                             targetName={row.config.name}
                         />
-                        <button
-                            type="button"
+                        <Button
+                            size="sm"
+                            variant="primary"
                             onClick={trigger}
                             disabled={isRowBusy}
                             aria-label={
@@ -208,10 +212,9 @@ function ConfigTableRow({
                                     ? `Syncing ${row.config.name}`
                                     : `Sync ${row.config.name} now`
                             }
-                            className="rounded-md bg-(--accent) px-3 py-1.5 text-xs font-medium text-white transition-opacity hover:opacity-80 active:opacity-70 disabled:opacity-50"
                         >
                             {isSyncing ? CTA_LABELS.syncing : CTA_LABELS.syncNow}
-                        </button>
+                        </Button>
                     </div>
                 </div>
             </td>

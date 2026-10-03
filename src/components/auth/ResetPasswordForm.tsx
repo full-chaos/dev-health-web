@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidationStatus } from "@/lib/actionFailure";
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -61,7 +62,12 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                 toast.error("Invalid or expired token");
             } else {
                 const data = await response.json().catch(() => ({}));
-                toast.error(extractErrorMessage(data?.detail, "Failed to reset password"));
+                toast.error(
+                    extractErrorMessage(
+                        isValidationStatus(response.status) ? data?.detail : undefined,
+                        "Failed to reset password",
+                    ),
+                );
             }
         } catch {
             toast.error("An unexpected error occurred");

@@ -16,6 +16,23 @@
  *   --chart-grid        derived from --card-stroke
  * ============================================================ */
 :root {
+    /* The 2px line along the top edge of the app (prototype theme.css `--ribbon`); the same in both themes. */
+    --ribbon: linear-gradient(
+        90deg,
+        #f92c00 0%,
+        #ff7900 22%,
+        #ffaf00 40%,
+        #c2c3c7 50%,
+        #20d0dc 64%,
+        #009aac 82%,
+        #01718d 100%
+    );
+    /* The orange-red to amber gradient of the selection marks (prototype theme.css `--ember`). */
+    --ember: linear-gradient(100deg, #f92c00, #ff7900 55%, #ffad08);
+    /* The same stops, top to bottom: the left marker of the current nav row (theme.css `.selected:before`). */
+    --ember-vertical: linear-gradient(180deg, #f92c00, #ff7900 60%, #ffaf00);
+    /* Dark ink on the ember gradient (the avatar). */
+    --on-ember: #15171a;
     color-scheme: light;
     --background: #fffbfe;
     --foreground: #1c1b1f;
@@ -26,6 +43,8 @@
     --accent-text: var(--accent);
     --accent-foreground: #0d1117;
     --accent-2: #625b71;
+    --action: var(--accent-2);
+    --on-action: #ffffff;
     --accent-3: #7d5260;
     --accent-negative: #b3261e;
     --accent-highlight: #fb8c00;
@@ -113,6 +132,9 @@
 :root[data-palette][data-theme="light"] {
     /* C2 color roles */
     --surface: var(--card);
+    /* Selected-control fill and ink; the infinity palette sets literal values. */
+    --accent-wash: color-mix(in srgb, var(--accent) 15%, var(--card));
+    --accent-ink: var(--accent-text);
     --surface-raised: color-mix(in srgb, var(--card) 97%, var(--foreground));
     --border: var(--card-stroke);
     --text-primary: var(--foreground);
@@ -137,6 +159,9 @@
     --radius-md: 10px;
     --radius-lg: 16px;
     --radius-pill: 999px;
+    /* Shell frame sizes, from the rendered prototype (--sidebarW 226px; top bar 66px) */
+    --shell-sidebar-w: 226px;
+    --shell-topbar-h: 66px;
     --elevation-card: 0 18px 48px -34px rgb(15 23 42 / 0.25);
     --elevation-drawer: 0 28px 80px -36px rgb(15 23 42 / 0.35);
     --card-stroke-active: color-mix(in srgb, var(--accent) 42%, var(--card-stroke));
@@ -193,6 +218,8 @@
     --color-accent: var(--accent);
     --color-accent-text: var(--accent-text);
     --color-accent-2: var(--accent-2);
+    --color-action: var(--action);
+    --color-on-action: var(--on-action);
     --color-accent-3: var(--accent-3);
     --color-accent-ai: var(--accent-ai);
     --color-accent-negative: var(--accent-negative);
@@ -213,19 +240,50 @@
  * section header = h2; uppercase descriptors = label-caps.
  * ============================================================ */
 @theme {
+    /* Approved prototype scale (theme.css/style.css). Weights: the vendored Inter is static
+     * 400/500/600/700, so the prototype's 620/630/640 render at 600 and 650 at 700.
+     * 650 vs 600/700 measured on the /govern title: prototype 83.06px wide, 600 = 82.03px,
+     * 700 = 83.05px, so 700 is the closer static cut (CHAOS-8136). */
     --text-display: 32px;
     --text-display--line-height: 40px;
+    --text-display--font-weight: 700;
+    --text-display--letter-spacing: -0.7px;
     --text-h1: 24px;
     --text-h1--line-height: 32px;
+    --text-h1--font-weight: 700;
+    --text-h1--letter-spacing: -0.4px;
     --text-h2: 18px;
     --text-h2--line-height: 26px;
+    --text-h2--font-weight: 600;
+    --text-h2--letter-spacing: -0.2px;
     --text-h3: 15px;
     --text-h3--line-height: 22px;
+    --text-h3--font-weight: 600;
+    --text-card-title: 14px;
+    --text-card-title--line-height: 22px;
+    --text-card-title--font-weight: 600;
     --text-body: 14px;
     --text-body--line-height: 22px;
     --text-label-caps: 11px;
     --text-label-caps--line-height: 16px;
-    --text-label-caps--letter-spacing: 0.08em;
+    --text-label-caps--letter-spacing: 0.9px;
+    --text-pill: 10px;
+    --text-pill--line-height: 16px;
+    --text-pill--font-weight: 700;
+    --text-pill--letter-spacing: 0.5px;
+    /* Values: card value 24px (630), metric tile value 28px (650), hero value 37px (640). */
+    --text-value: 24px;
+    --text-value--line-height: 22px;
+    --text-value--font-weight: 600;
+    --text-value--letter-spacing: -0.6px;
+    --text-metric: 28px;
+    --text-metric--line-height: 1.1;
+    --text-metric--font-weight: 700;
+    --text-metric--letter-spacing: -0.8px;
+    --text-value-hero: 37px;
+    --text-value-hero--line-height: 44.4px;
+    --text-value-hero--font-weight: 600;
+    --text-value-hero--letter-spacing: -1px;
 }
 
 /* ============================================================
@@ -339,18 +397,27 @@ html [data-sonner-toaster][data-sonner-theme] {
     border-radius: 0.75rem;
     box-shadow:
         0 0 0 2px var(--background),
-        0 0 0 4px var(--accent);
+        0 0 0 4px var(--accent-2);
 }
 
 :focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--accent-2);
     outline-offset: 2px;
     border-radius: inherit;
 }
 
 .metric-hero {
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: var(--text-primary);
+}
+
+/* Selected-row fill of the sidebar (prototype `--surface2`): visible on the light sidebar. */
+:root[data-palette="infinity"][data-theme="light"] {
+    --surface2: #e8ecee;
+    /* Sidebar fill (prototype `--sidebar`, theme.css:14). */
+    --sidebar: #f8f9f9;
+}
+:root[data-palette="infinity"][data-theme="dark"] {
+    --surface2: #1f272c;
+    /* Sidebar fill (prototype `--sidebar`, dark-tokens.css:2). */
+    --sidebar: #11171a;
 }

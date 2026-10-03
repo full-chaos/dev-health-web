@@ -8,12 +8,9 @@ import { navTrailForPathname } from "@/lib/navigation/areas";
 
 import { CommandPalette } from "./CommandPalette";
 import { shellHref } from "./shellHref";
-import { ShellStatusChip, type ShellStatus } from "./ShellStatusChip";
 import { useShellNavParams } from "./useShellNavParams";
 
 type ShellTopBarProps = {
-    /** Data state of the active organization, from the organization card. */
-    status: ShellStatus;
     /** Slot for the light / dark toggle. Empty until the toggle is mounted. */
     themeToggle?: ReactNode;
 };
@@ -35,27 +32,27 @@ function ShellTrail({ pathname }: { pathname: string }) {
 
 /**
  * Top bar of the shared app shell: the location trail from the nav config (A6:
- * breadcrumb label = sidebar label), the data-freshness chip, and a slot for the
- * theme toggle. Shown from the `md` breakpoint up; below it the legacy account
- * bar is the top chrome.
+ * breadcrumb label = sidebar label), and a slot for the
+ * theme toggle. Shown from the `md` breakpoint up; below it the mobile bar
+ * is the top chrome.
  */
-export function ShellTopBar({ status, themeToggle }: ShellTopBarProps) {
+export function ShellTopBar({ themeToggle }: ShellTopBarProps) {
     const pathname = usePathname() ?? "";
 
     return (
         <header
             data-testid="shell-top-bar"
-            className="sticky top-0 z-30 hidden min-h-14 items-center gap-4 border-b border-(--border) bg-(--surface) px-6 md:flex"
+            className="sticky top-0 z-30 hidden h-(--shell-topbar-h) items-center gap-4 border-b border-(--border) bg-(--surface)/92 px-6 backdrop-blur-sm md:flex"
         >
-            <div className="min-w-0 flex-1">
+            <div className="min-w-48 shrink-0">
                 {/* The links read the live query string; the bare trail is the fallback. */}
                 <Suspense fallback={<Breadcrumbs items={navTrailForPathname(pathname)} />}>
                     <ShellTrail pathname={pathname} />
                 </Suspense>
             </div>
-            <div className="flex shrink-0 items-center gap-3">
-                <CommandPalette />
-                <ShellStatusChip status={status} />
+            {/* Prototype `.topbar`: breadcrumb, then the search, then the toggle. */}
+            <CommandPalette />
+            <div className="ml-auto flex shrink-0 items-center gap-3">
                 <div data-slot="theme-toggle" className="flex items-center empty:hidden">
                     {themeToggle}
                 </div>

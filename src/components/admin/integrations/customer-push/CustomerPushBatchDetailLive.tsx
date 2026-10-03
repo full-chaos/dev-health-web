@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useCallback, useRef, useState } from "react";
 import { getCustomerPushBatch } from "@/lib/admin/server";
 import { CustomerPushStatusBadge } from "./CustomerPushStatusBadge";
@@ -49,7 +50,7 @@ export function CustomerPushBatchDetailLive({
         try {
             const result = await getCustomerPushBatch(ingestionId);
             if (result.error || !result.data) {
-                setPollError(result.error ?? "Refresh failed.");
+                setPollError(READ_FAILED_MESSAGE);
                 return;
             }
             setBatch(result.data);

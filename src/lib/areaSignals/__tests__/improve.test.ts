@@ -474,3 +474,48 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         });
     });
 });
+
+describe("getImproveSignals — a failed read is not an empty read (CHAOS-8269)", () => {
+    it("a failed opportunities read marks Opportunities and Experiments as failed, not Automations", async () => {
+        mockGetOpportunities.mockRejectedValue(new Error("opportunities timed out"));
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        for (const id of ["opportunities", "experiments"]) {
+            expect(signals[id]).toMatchObject({ state: "unavailable", failed: true });
+        }
+        expect(signals["improve-automations"].failed).toBeUndefined();
+        expect(signals["improve-automations"].state).toBe("neutral");
+    });
+
+    it("a failed automations read marks only Automations", async () => {
+        mockGraphqlFetch.mockRejectedValue(new Error("graphql down"));
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        expect(signals["improve-automations"]).toMatchObject({
+            state: "unavailable",
+            failed: true,
+        });
+        expect(signals.opportunities.failed).toBeUndefined();
+    });
+
+    it("a session with no org: every card unavailable, none failed, and no read is made", async () => {
+        const { auth } = await import("@/lib/auth");
+        vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
+        const signals = await getImproveSignals(defaultMetricFilter);
+        expect(signals.map((s) => s.id).sort()).toEqual(
+            ["experiments", "improve-automations", "opportunities"].sort(),
+        );
+        for (const signal of signals) {
+            expect(signal).toMatchObject({ state: "unavailable", value: "" });
+            expect(signal.failed).toBeUndefined();
+        }
+        expect(mockGetOpportunities).not.toHaveBeenCalled();
+        expect(mockGetHomeData).not.toHaveBeenCalled();
+        expect(mockGraphqlFetch).not.toHaveBeenCalled();
+    });
+
+    it("an answer with zero items is a healthy zero, never failed", async () => {
+        mockGetOpportunities.mockResolvedValue({ items: [] } as never);
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        expect(signals.opportunities).toMatchObject({ state: "neutral", value: "0 open" });
+        expect(signals.opportunities.failed).toBeUndefined();
+    });
+});

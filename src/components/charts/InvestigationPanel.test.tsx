@@ -2,13 +2,17 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/lensContext.client", () => ({ useActiveRole: () => undefined }));
 
-import { render, screen } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { screen } from "@/test/utils";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { QuadrantResponse } from "@/lib/types";
 
 import { InvestigationPanel } from "./InvestigationPanel";
 
-/** CHAOS-7761: the investigation panel's paths and summary (decisions L1 = A, L2 = A). Invented entity. */
+/**
+ * CHAOS-7761: the investigation panel's paths and summary (decisions L1 = A, L2 = A). Invented entity.
+ * CHAOS-8060: the panel is the body of the shared evidence drawer (no header or close of its own).
+ */
 const filters = {
     scope: { level: "team", ids: ["t1"] },
     time: { range_days: 30, compare_days: 30 },
@@ -37,14 +41,7 @@ const data: QuadrantResponse = {
 
 describe("InvestigationPanel", () => {
     it("keeps the six investigation paths", () => {
-        render(
-            <InvestigationPanel
-                point={point}
-                data={data}
-                filters={filters}
-                onCloseAction={() => {}}
-            />,
-        );
+        render(<InvestigationPanel point={point} data={data} filters={filters} />);
         expect(screen.getByText("Explain this state")).toBeInTheDocument();
         expect(screen.getByText("View related patterns")).toBeInTheDocument();
         expect(screen.getByText("View time breakdown")).toBeInTheDocument();
@@ -54,14 +51,7 @@ describe("InvestigationPanel", () => {
     });
 
     it("L2: the two association paths have distinct labels and keep their targets", () => {
-        render(
-            <InvestigationPanel
-                point={point}
-                data={data}
-                filters={filters}
-                onCloseAction={() => {}}
-            />,
-        );
+        render(<InvestigationPanel point={point} data={data} filters={filters} />);
         const throughput = screen.getByRole("link", { name: /Inspect throughput breakdown/u });
         const hotspots = screen.getByRole("link", { name: /Inspect code hotspots/u });
         expect(throughput.getAttribute("href")).toContain("mode=throughput");
@@ -70,14 +60,7 @@ describe("InvestigationPanel", () => {
     });
 
     it("L1: no fixed WIP concentration / Flow constraint tags; the summary text stays", () => {
-        render(
-            <InvestigationPanel
-                point={point}
-                data={data}
-                filters={filters}
-                onCloseAction={() => {}}
-            />,
-        );
+        render(<InvestigationPanel point={point} data={data} filters={filters} />);
         expect(screen.queryByText("WIP concentration")).toBeNull();
         expect(screen.queryByText("Flow constraint")).toBeNull();
         expect(screen.getByText("Summary")).toBeInTheDocument();
@@ -87,5 +70,16 @@ describe("InvestigationPanel", () => {
         expect(
             screen.getByText(/during the window of 2026-06-01 to 2026-09-01/u),
         ).toBeInTheDocument();
+    });
+
+    it("has no header, close button or panel chrome of its own (the drawer supplies them)", () => {
+        render(<InvestigationPanel point={point} data={data} filters={filters} />);
+        const body = screen.getByTestId("investigation-panel");
+        expect(body.querySelector("header")).toBeNull();
+        expect(body.querySelector("footer")).toBeNull();
+        expect(screen.queryByRole("button")).toBeNull();
+        expect(screen.queryByText("Investigation")).toBeNull();
+        // The lens line stays.
+        expect(screen.getByText(/^Lens: /u, { selector: "p" })).toBeInTheDocument();
     });
 });

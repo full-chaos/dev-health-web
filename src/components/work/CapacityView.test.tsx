@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+const HOSTILE =
+    "[GraphQL] capacityForecast is served by query-api and has no Python implementation. The Go dispatcher did not intercept this request (cmd/query-api/query_route.go)";
 
 import { render, screen, within } from "@/test/utils";
 import type { CapacityForecast } from "@/lib/graphql/types";
@@ -65,7 +67,9 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
 
         const tile = (id: string) => within(screen.getByTestId(id));
         expect(tile("tile-remaining").getByText("Remaining work")).toBeInTheDocument();
-        expect(tile("tile-remaining").getByText("42 items")).toBeInTheDocument();
+        // The number and its unit apart: the unit is drawn small beside the number.
+        expect(tile("tile-remaining").getByTestId("metric-value")).toHaveTextContent("42 items");
+        expect(tile("tile-remaining").getByTestId("metric-unit")).toHaveTextContent("items");
         expect(tile("tile-p50").getByText("P50 · optimistic")).toBeInTheDocument();
         expect(tile("tile-p50").getByText("9 days")).toBeInTheDocument();
         expect(tile("tile-p85").getByText("P85 · target")).toBeInTheDocument();
@@ -75,6 +79,24 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(tile("tile-p95").getByText("30 days")).toBeInTheDocument();
         // The old "50% chance" rows are gone.
         expect(screen.queryByText("50% chance")).toBeNull();
+    });
+
+    it("draws the tiles as one joined strip with a column per tile", () => {
+        render(<CapacityView filters={filters} />);
+
+        expect(screen.getByTestId("forecast-tiles")).toHaveAttribute("data-columns", "4");
+        expect(screen.getAllByTestId(/^tile-/)).toHaveLength(4);
+    });
+
+    it("lays the projection beside the Forecast inputs card, and keeps the distribution below", () => {
+        render(<CapacityView filters={filters} />);
+
+        for (const name of ["Completion projection", "Forecast inputs", "Interpretation"]) {
+            expect(screen.getByRole("heading", { level: 2, name })).toBeInTheDocument();
+        }
+        expect(
+            screen.getByRole("heading", { name: "Throughput Distribution" }),
+        ).toBeInTheDocument();
     });
 
     it("sends every selected team id and the filter's range as history days", () => {
@@ -148,10 +170,14 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         ).toBeInTheDocument();
     });
 
-    it("keeps the How to Interpret texts", () => {
+    it("shows the Interpretation section with the three percentile texts", () => {
         render(<CapacityView filters={filters} />);
 
-        expect(screen.getByText("How to Interpret")).toBeInTheDocument();
+        const interp = within(screen.getByTestId("forecast-interpretation"));
+        expect(interp.getByRole("heading", { name: "Interpretation" })).toBeInTheDocument();
+        expect(screen.queryByText("How to Interpret")).toBeNull();
+        // Three inset cards, one per percentile.
+        expect(interp.getAllByRole("heading", { level: 4 })).toHaveLength(3);
         expect(
             screen.getByText("Optimistic estimate. Half of simulations complete by this date."),
         ).toBeInTheDocument();
@@ -178,11 +204,16 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(screen.queryByTestId("forecast-tiles")).toBeNull();
     });
 
-    it("shows the error title and message, and the empty text", () => {
-        hook.state = { ...hook.state, data: null, error: new Error("boom") };
+    it("shows the error title and the plain sentence, and the empty text", () => {
+        hook.state = { ...hook.state, data: null, error: new Error(HOSTILE) };
         const first = render(<CapacityView filters={filters} />);
-        expect(screen.getByText("Forecast Unavailable")).toBeInTheDocument();
-        expect(screen.getByText("boom")).toBeInTheDocument();
+        expect(screen.getByText("Forecast unavailable")).toBeInTheDocument();
+        expect(screen.queryByText(HOSTILE)).toBeNull();
+        // The notice and the projection card both say it: a failed read is never drawn as an empty one.
+        expect(screen.getAllByText("Could not be read")).toHaveLength(2);
+        expect(screen.getByTestId("forecast-chart-failed")).toBeInTheDocument();
+        expect(screen.queryByText("No forecast data available")).toBeNull();
+        expect(screen.queryByText("No Forecast Available")).toBeNull();
         first.unmount();
 
         hook.state = { ...hook.state, data: null, error: null };

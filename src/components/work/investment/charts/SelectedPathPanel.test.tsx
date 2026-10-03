@@ -86,7 +86,7 @@ describe("SelectedPathPanel", () => {
         expect(screen.getByText("A theme drill holds only that theme.")).toBeInTheDocument();
     });
 
-    it("always carries the attribution line and opens the Evidence tab", () => {
+    it("carries the attribution inset and ONE primary action, 'Inspect allocation evidence', to the Evidence tab", () => {
         render(
             <SelectedPathPanel
                 selection={{ kind: "team", label: "Alpha" }}
@@ -94,10 +94,29 @@ describe("SelectedPathPanel", () => {
                 {...base}
             />,
         );
-        expect(screen.getByText(/Attribution, not dependency/)).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: /open evidence/i })).toHaveAttribute(
-            "href",
-            "/investment?tab=evidence&f=abc",
-        );
+        const inset = screen.getByTestId("selected-path-inset");
+        expect(inset).toHaveTextContent("Attribution, not dependency");
+        expect(inset).toHaveTextContent("appears to land");
+        // Washed inset (prototype `.inset`), not a left-rule quote.
+        expect(inset.className).toContain("bg-background");
+        expect(inset.className).not.toContain("border-l");
+
+        const link = screen.getByRole("link", { name: "Inspect allocation evidence" });
+        expect(link).toHaveAttribute("href", "/investment?tab=evidence&f=abc");
+        expect(link.className).toContain("bg-(--action)");
+        expect(link.className).not.toContain("uppercase");
+        // The arrow comes before the text.
+        expect(link.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+        expect(screen.getAllByRole("link")).toHaveLength(1);
+        expect(screen.queryByRole("link", { name: /open evidence/i })).toBeNull();
+    });
+
+    it("keeps the inset and the action with no selection", () => {
+        render(<SelectedPathPanel selection={null} numbers={null} {...base} />);
+        expect(screen.getByTestId("selected-path-empty")).toBeInTheDocument();
+        expect(screen.getByTestId("selected-path-inset")).toBeInTheDocument();
+        expect(
+            screen.getByRole("link", { name: "Inspect allocation evidence" }),
+        ).toBeInTheDocument();
     });
 });

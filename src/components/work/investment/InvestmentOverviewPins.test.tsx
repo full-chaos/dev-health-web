@@ -5,9 +5,10 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent } from "@testing-library/react";
-import { render, screen, cleanup } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { screen, cleanup } from "@/test/utils";
 import type { MetricFilter } from "@/lib/filters/types";
-import type { MetricDelta, WorkUnitInvestment } from "@/lib/types";
+import type { WorkUnitInvestment } from "@/lib/types";
 import type { UseInvestmentDataResult } from "./useInvestmentData";
 
 const { useInvestmentDataMock, workUnitAttributionRef } = vi.hoisted(() => ({
@@ -222,10 +223,16 @@ describe("InvestmentView overview today", () => {
         }
     });
 
-    it("mounts the mix section (treemap by default) with the theme mix", () => {
+    it("mounts the mix section (the column treemap by default) with the theme mix", () => {
         overview(makeData({ investmentMix: mix as never, workUnits: [makeUnit("a", 5)] }));
-        expect(screen.getByTestId("treemap-chart")).toBeInTheDocument();
+        expect(screen.getByTestId("column-treemap")).toBeInTheDocument();
+        // The ECharts treemap is not used for this card any more.
+        expect(screen.queryByTestId("treemap-chart")).toBeNull();
     });
+
+    /** The AI explanation is collapsed by default (behind a ghost button) since CHAOS-8067. */
+    const openAiExplanation = () =>
+        fireEvent.click(screen.getByRole("button", { name: "Show AI explanation" }));
 
     it("LLM panel: title, Focused line, Regenerate calls the handler", () => {
         const regenerate = vi.fn();
@@ -236,14 +243,16 @@ describe("InvestmentView overview today", () => {
                 regenerateMixExplanation: regenerate,
             }),
         );
+        openAiExplanation();
         expect(screen.getByText("What this investment mix indicates")).toBeInTheDocument();
         expect(screen.getByText("Focused: All themes")).toBeInTheDocument();
-        fireEvent.click(screen.getByRole("button", { name: /regenerate explanation/i }));
+        fireEvent.click(screen.getByRole("button", { name: "Regenerate" }));
         expect(regenerate).toHaveBeenCalledTimes(1);
     });
 
     it("LLM panel with an explanation: summary, findings, confidence + mean, what to check next, anti-claims", () => {
         overview(makeData({ mixExplanation: explained() as never, mixExplainKey: "k" }));
+        openAiExplanation();
         expect(
             screen.getByText("Effort appears to lean toward feature delivery."),
         ).toBeInTheDocument();
@@ -262,12 +271,14 @@ describe("InvestmentView overview today", () => {
                 mixExplainKey: "k",
             }),
         );
+        openAiExplanation();
         expect(screen.getByText(/Connect an LLM provider in settings/)).toBeInTheDocument();
-        expect(screen.queryByRole("button", { name: /regenerate explanation/i })).toBeNull();
+        expect(screen.queryByRole("button", { name: "Regenerate" })).toBeNull();
     });
 
     it("LLM panel state: generating, and unavailable for this window", () => {
         overview(makeData({ mixExplainKey: "new-key" }));
+        openAiExplanation();
         expect(screen.getByText("Generating investment explanation...")).toBeInTheDocument();
         cleanup();
         overview(
@@ -280,6 +291,7 @@ describe("InvestmentView overview today", () => {
                 mixExplainKey: "k",
             }),
         );
+        openAiExplanation();
         expect(screen.getByText("Explanation unavailable for this window.")).toBeInTheDocument();
     });
 });

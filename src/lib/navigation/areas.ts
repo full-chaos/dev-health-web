@@ -23,6 +23,7 @@
 // flat always-on list, and only for routes that resolve to a real page.
 
 import type { Crumb } from "@/components/Breadcrumbs";
+import { CTA_LABELS } from "@/lib/design/cta";
 
 export type NavAreaId =
     "cockpit" | "diagnose" | "plan" | "improve" | "govern" | "ai" | "reports" | "admin";
@@ -50,6 +51,11 @@ export type NavAreaHubItem = {
      * within its cluster rather than at equal billing.
      */
     demoted?: boolean;
+    /**
+     * Visible action text of the primary-signal hero when this destination is the hero subject.
+     * Set only where the approved prototype gives the text; without it the whole hero is one link.
+     */
+    heroCta?: string;
 };
 
 /**
@@ -182,6 +188,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "flow",
                 label: "Flow",
                 href: "/metrics?tab=flow",
+                heroCta: CTA_LABELS.inspectFlow,
                 description: "Flow trends and delivery movement.",
                 metricLabel: "Deploy frequency",
             },
@@ -189,6 +196,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "investment",
                 label: "Investment",
                 href: "/investment",
+                heroCta: CTA_LABELS.inspectInvestment,
                 description: "Effort and attention allocation.",
                 metricLabel: "Planned allocation",
             },
@@ -196,6 +204,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "code",
                 label: "Code",
                 href: "/code",
+                heroCta: CTA_LABELS.inspectCode,
                 description: "Code health and ownership.",
                 metricLabel: "Code churn",
             },
@@ -203,6 +212,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "landscape",
                 label: "Landscape",
                 href: "/landscape",
+                heroCta: CTA_LABELS.inspectLandscape,
                 description: "System landscape overview.",
                 metricLabel: "Bus factor",
             },
@@ -210,6 +220,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "complexity",
                 label: "Complexity",
                 href: "/complexity",
+                heroCta: CTA_LABELS.inspectComplexity,
                 description: "Complexity trend and hotspots.",
                 metricLabel: "Avg complexity",
             },
@@ -217,6 +228,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "cognitive-load",
                 label: "Cognitive Load",
                 href: "/cognitive-load",
+                heroCta: CTA_LABELS.inspectCognitiveLoad,
                 description: "Focus and context-switch pressure.",
                 // Wired via the cognitiveLoad GraphQL resolver (CHAOS-2077):
                 // headline = avg PR interruption load over the window.
@@ -226,6 +238,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "bottleneck",
                 label: "Bottlenecks",
                 href: "/bottleneck",
+                heroCta: CTA_LABELS.inspectBottlenecks,
                 description: "Flow bottleneck detection.",
                 metricLabel: "WIP saturation",
             },
@@ -302,6 +315,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "capacity",
                 label: "Completion Forecast",
                 href: "/plan/capacity",
+                heroCta: CTA_LABELS.forecastCompletion,
                 description: "Monte Carlo throughput forecasting.",
                 metricLabel: "Forecast window",
             },
@@ -309,6 +323,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "operating-review",
                 label: "Operating Review",
                 href: "/operating-review",
+                heroCta: CTA_LABELS.inspectOperatingReview,
                 description:
                     "Monday-ready weekly agenda: delivery, bottlenecks, risk, reliability, and investment.",
                 metricLabel: "Weekly signals",
@@ -357,6 +372,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "opportunities",
                 label: "Opportunities",
                 href: "/opportunities",
+                heroCta: CTA_LABELS.reviewOpportunities,
                 description: "Evidence-linked improvement opportunities.",
                 metricLabel: "Opportunities data",
             },
@@ -364,6 +380,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "experiments",
                 label: "Experiments",
                 href: "/improve/experiments",
+                heroCta: CTA_LABELS.inspectExperiments,
                 description: "Run and track improvement experiments.",
                 metricLabel: "Experiments data",
             },
@@ -371,6 +388,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "improve-automations",
                 label: "Automations",
                 href: "/improve/automations",
+                heroCta: CTA_LABELS.inspectAutomations,
                 description: "Automated improvement workflows.",
                 metricLabel: "Automations data",
             },
@@ -437,6 +455,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "testops",
                 label: "TestOps",
                 href: "/testops",
+                heroCta: CTA_LABELS.inspectTestOps,
                 description: "Pipeline, test, and coverage health.",
                 cluster: "Quality",
                 metricLabel: "Worst TestOps signal",
@@ -445,6 +464,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "quality",
                 label: "Quality",
                 href: "/quality",
+                heroCta: CTA_LABELS.inspectQuality,
                 description: "Reliability and rework.",
                 cluster: "Quality",
                 metricLabel: "Change failure rate",
@@ -454,6 +474,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "security",
                 label: "Security",
                 href: "/security",
+                heroCta: CTA_LABELS.inspectSecurity,
                 description: "Security posture.",
                 cluster: "Risk",
                 metricLabel: "Open criticals",
@@ -462,35 +483,41 @@ export const navAreas: readonly NavArea[] = [
                 id: "risk",
                 label: "Delivery Risk",
                 href: "/testops/risk",
+                heroCta: CTA_LABELS.inspectDeliveryRisk,
                 description: "Delivery risk drag.",
                 cluster: "Risk",
                 metricLabel: "Release confidence",
             },
-            {
-                id: "incident-correlation",
-                label: "Incident Correlation",
-                href: "/incident-correlation",
-                description: "Incidents correlated to changes.",
-                cluster: "Risk",
-                metricLabel: "Change failure rate",
-            },
+            // Order inside Risk = the approved Govern overview (Delivery Risk, Compounding Risk,
+            // Incident Correlation, Feature Flags). The cards sort by severity; this order
+            // decides only between cards of equal severity.
             {
                 id: "risk-compounding",
                 label: "Compounding Risk",
                 href: "/risk/compounding",
+                heroCta: CTA_LABELS.inspectCompoundingRisk,
                 description: "Compounding risk signals.",
                 cluster: "Risk",
                 metricLabel: "Worst risk score",
             },
             {
+                id: "incident-correlation",
+                label: "Incident Correlation",
+                href: "/incident-correlation",
+                heroCta: CTA_LABELS.inspectIncidentCorrelation,
+                description: "Incidents correlated to changes.",
+                cluster: "Risk",
+                metricLabel: "Change failure rate",
+            },
+            {
+                // A normal card in Risk: the approved overview does not draw it secondary.
                 id: "feature-flags",
                 label: "Feature Flags",
                 href: "/feature-flags",
+                heroCta: CTA_LABELS.inspectFeatureFlags,
                 description: "Flag lifecycle and debt.",
                 cluster: "Risk",
                 metricLabel: "Active flags",
-                // R4: low-value single surface — render secondary, not equal billing.
-                demoted: true,
             },
         ],
         children: [
@@ -567,6 +594,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "ai-impact",
                 label: "Impact",
                 href: "/ai/impact",
+                heroCta: CTA_LABELS.inspectAiImpact,
                 description: "AI-assisted delivery and review impact.",
                 cluster: "Signal",
                 metricLabel: "AI impact",
@@ -575,6 +603,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "ai-review-load",
                 label: "Review Load",
                 href: "/ai/review-load",
+                heroCta: CTA_LABELS.inspectReviewLoad,
                 description: "AI-associated review pressure.",
                 cluster: "Signal",
                 metricLabel: "Review pressure",
@@ -583,6 +612,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "ai-governance-risk",
                 label: "Governance Risk",
                 href: "/ai/risk",
+                heroCta: CTA_LABELS.inspectGovernanceRisk,
                 description: "Quality and governance signals for AI-associated work.",
                 cluster: "Signal",
                 metricLabel: "Governance risk",
@@ -592,6 +622,7 @@ export const navAreas: readonly NavArea[] = [
                 id: "ai-automations",
                 label: "Automations",
                 href: "/ai/automations",
+                heroCta: CTA_LABELS.inspectAutomations,
                 description: "Responsible automation opportunities.",
                 cluster: "Action",
                 metricLabel: "Automation candidates",

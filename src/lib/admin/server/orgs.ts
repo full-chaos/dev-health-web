@@ -39,7 +39,7 @@ export async function getCurrentOrg(): Promise<ActionResult<Organization>> {
             } catch {
                 detail = undefined;
             }
-            throw new AdminApiError(response.status, response.statusText, detail);
+            throw new AdminApiError(response.status, response.statusText, detail, "GET");
         }
 
         const org = (await response.json()) as Partial<Organization>;
@@ -102,7 +102,7 @@ export async function updateOrgProfile(data: {
             } catch {
                 detail = undefined;
             }
-            throw new AdminApiError(response.status, response.statusText, detail);
+            throw new AdminApiError(response.status, response.statusText, detail, "PATCH");
         }
 
         return (await response.json()) as Organization;

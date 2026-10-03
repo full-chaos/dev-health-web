@@ -1,3 +1,4 @@
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { PlanManager } from "@/components/admin/billing/PlanManager";
 import { requireSuperuser } from "@/lib/auth";
@@ -19,7 +20,7 @@ export default async function BillingPlansAdminPage() {
 
             {plansResult.error && (
                 <Notice variant="danger" live={false} className="mb-6">
-                    Failed to load plans: {plansResult.error}
+                    Failed to load plans. {READ_FAILED_MESSAGE}
                 </Notice>
             )}
 

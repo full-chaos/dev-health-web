@@ -278,7 +278,8 @@ describe("AIRiskDashboard", () => {
                 within(dialog).getByText(/Pick an AI-attributed PR to see its Work Graph evidence/),
             ).toBeInTheDocument();
 
-            fireEvent.click(within(dialog).getByRole("button", { name: /close/i }));
+            // Two Close buttons: the icon at the top and the footer one; the icon one closes here.
+            fireEvent.click(within(dialog).getAllByRole("button", { name: "Close" })[0]);
             expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         });
     });

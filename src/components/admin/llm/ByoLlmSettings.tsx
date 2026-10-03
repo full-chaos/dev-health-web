@@ -1,9 +1,14 @@
 "use client";
 
+import { isPlanGateMessage } from "@/lib/actionFailure";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { DataState } from "@/components/ui/DataState";
+import { Button } from "@/components/shared/Button";
+import { Section } from "@/components/ui/Section";
+import { formatMicroUsd } from "@/lib/admin/llmBudgetFormat";
 import { CTA_LABELS } from "@/lib/design/cta";
 import {
     LLM_PROVIDERS,
@@ -78,16 +83,6 @@ const BADGE_DOT_CLASSES: Record<BadgeTone, string> = {
 };
 
 const MICRO_USD_PER_USD = 1_000_000;
-
-function formatMicroUsd(value: number | null): string {
-    if (value === null) return "Unavailable";
-    return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 6,
-    }).format(value / MICRO_USD_PER_USD);
-}
 
 function formatMicroUsdInput(value: number | null): string {
     if (value === null) return "";
@@ -196,6 +191,9 @@ function formatCheckedAt(value: string | null): string {
     return Number.isNaN(date.getTime()) ? "Not checked" : date.toLocaleString();
 }
 
+/** The one-line description of the BYO LLM card (design: "Bring your own model provider for AI explanations and reports."). */
+const BYO_DESCRIPTION = "Bring your own model provider for AI explanations and reports.";
+
 export function ByoLlmSettings({
     loadSettingsAction,
     loadBudgetAction,
@@ -246,7 +244,7 @@ export function ByoLlmSettings({
             setBudgetUsd(formatMicroUsdInput(result.data.limit_micro_usd));
         } else {
             setBudget(null);
-            setBudgetLoadError(result.error ?? "Could not load the organization budget.");
+            setBudgetLoadError(READ_FAILED_MESSAGE);
         }
         setBudgetLoading(false);
     }, [loadBudgetAction]);
@@ -273,16 +271,19 @@ export function ByoLlmSettings({
         if (result.status === 402) {
             setLocked({
                 reason: "not_licensed",
-                message:
-                    result.error ?? "BYO-LLM requires Team tier or higher for this organization.",
+                message: isPlanGateMessage(result.error)
+                    ? result.error
+                    : "BYO-LLM requires Team tier or higher for this organization.",
             });
         } else if (result.status === 403) {
             setLocked({
                 reason: "not_enabled",
-                message: result.error ?? "BYO-LLM is not enabled for this organization.",
+                message: isPlanGateMessage(result.error)
+                    ? result.error
+                    : "BYO-LLM is not enabled for this organization.",
             });
         } else if (result.error) {
-            setLoadError(result.error);
+            setLoadError(READ_FAILED_MESSAGE);
         } else if (result.data) {
             applySettings(result.data);
             void fetchStatus();
@@ -433,19 +434,17 @@ export function ByoLlmSettings({
 
     if (loading) {
         return (
-            <div>
-                <h2 className="text-h2 text-(--text-primary)">BYO LLM</h2>
-                <div className="mt-6 py-12 text-center text-(--text-muted)">
+            <Section title="BYO LLM" description={BYO_DESCRIPTION}>
+                <div className="py-12 text-center text-(--text-muted)">
                     Loading BYO LLM settings...
                 </div>
-            </div>
+            </Section>
         );
     }
 
     if (locked) {
         return (
-            <div>
-                <h2 className="mb-6 text-h2 text-(--text-primary)">BYO LLM</h2>
+            <Section title="BYO LLM" description={BYO_DESCRIPTION}>
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center">
                     <div className="mx-auto max-w-md space-y-4">
                         <p className="text-xs font-semibold uppercase tracking-wider text-(--accent-text)">
@@ -469,17 +468,13 @@ export function ByoLlmSettings({
                         ) : null}
                     </div>
                 </div>
-            </div>
+            </Section>
         );
     }
 
     if (loadError) {
         return (
-            <div>
-                <header className="mb-8">
-                    <h2 className="text-h2 text-(--text-primary)">BYO LLM</h2>
-                </header>
-
+            <Section title="BYO LLM" description={BYO_DESCRIPTION}>
                 <div className="rounded-2xl border border-(--negative)/20 bg-(--negative)/10 p-6 text-sm text-(--negative)">
                     <p>{loadError}</p>
                     <button
@@ -490,7 +485,7 @@ export function ByoLlmSettings({
                         {CTA_LABELS.retry}
                     </button>
                 </div>
-            </div>
+            </Section>
         );
     }
 
@@ -688,18 +683,11 @@ export function ByoLlmSettings({
     );
 
     return (
-        <div>
-            <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                    <h2 className="text-h2 text-(--text-primary)">BYO LLM</h2>
-                    <p className="mt-1 max-w-2xl text-sm text-(--ink-muted)">
-                        Provide your own provider, model, and credentials. Resolution precedence:
-                        per-call kill-switch › org settings › platform default.
-                    </p>
-                </div>
-                <div className="shrink-0">{statusBadge}</div>
-            </header>
-
+        <Section
+            title="BYO LLM"
+            description="Provide your own provider, model, and credentials. Resolution precedence: per-call kill-switch › org settings › platform default."
+            action={statusBadge}
+        >
             {formError && (
                 <div className="mb-6 rounded-2xl border border-(--negative)/20 bg-(--negative)/10 p-4 text-sm text-(--negative)">
                     {formError}
@@ -746,7 +734,7 @@ export function ByoLlmSettings({
                     </div>
                 </div>
             ) : (
-                <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div data-testid="byo-llm-edit-body">
                     <div className="grid gap-5 sm:grid-cols-2">
                         <div>
                             <label htmlFor="byo-provider" className={labelClass}>
@@ -870,23 +858,13 @@ export function ByoLlmSettings({
                     </div>
 
                     <div className="mt-6 flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                        >
+                        <Button variant="primary" onClick={handleSave} disabled={saving}>
                             {saving ? "Saving…" : CTA_LABELS.save}
-                        </button>
+                        </Button>
                         {hasSavedSettings && (
-                            <button
-                                type="button"
-                                onClick={handleCancel}
-                                disabled={saving}
-                                className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground disabled:opacity-50"
-                            >
+                            <Button onClick={handleCancel} disabled={saving}>
                                 {CTA_LABELS.cancel}
-                            </button>
+                            </Button>
                         )}
                         {deleteButton}
                     </div>
@@ -894,6 +872,6 @@ export function ByoLlmSettings({
             )}
 
             {byoPreflightPanel}
-        </div>
+        </Section>
     );
 }

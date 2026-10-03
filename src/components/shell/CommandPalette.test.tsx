@@ -67,7 +67,7 @@ describe("CommandPalette", () => {
     it("is closed until asked: a trigger button, no dialog", () => {
         setup();
         expect(screen.getByTestId("command-palette-trigger")).toHaveTextContent(
-            "Find a destination…",
+            "Find a product surface…",
         );
         expect(screen.queryByRole("dialog")).toBeNull();
     });
@@ -88,7 +88,7 @@ describe("CommandPalette", () => {
     it("opens from the trigger button", async () => {
         setup();
         await userEvent.click(screen.getByTestId("command-palette-trigger"));
-        expect(screen.getByRole("dialog", { name: "Find a destination" })).toBeInTheDocument();
+        expect(screen.getByRole("dialog", { name: "Find a product surface" })).toBeInTheDocument();
     });
 
     it("lists the registry destinations, as links that carry the filter, role and lens", () => {
