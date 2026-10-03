@@ -42,4 +42,16 @@ describe("AuditIdentityLabel", () => {
         expect(screen.getByText(UUID)).toBeInTheDocument();
         expect(screen.getByRole("button", { name: /copy actor id/i })).toBeInTheDocument();
     });
+
+    it("keeps the Copy icon on the same row as the label in the stacked cell (design: inline)", () => {
+        const { container } = render(
+            <AuditIdentityLabel id={UUID} emptyLabel="System" copyLabel="actor ID" />,
+        );
+
+        const row = container.firstElementChild as HTMLElement;
+        expect(row.className).not.toContain("flex-col");
+        expect(row.className).toContain("items-center");
+        expect(row).toContainElement(screen.getByText("Unresolved"));
+        expect(row).toContainElement(screen.getByRole("button", { name: /copy actor id/i }));
+    });
 });
