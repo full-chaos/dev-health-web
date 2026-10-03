@@ -9,6 +9,9 @@ const { mockCheckApiHealth, mockFetchCoverageMetrics, timeseriesSpy } = vi.hoist
     timeseriesSpy: vi.fn(),
 }));
 
+vi.mock("@/lib/auth", () => ({
+    requireSession: vi.fn().mockResolvedValue({ user: { org_id: "org-1" } }),
+}));
 vi.mock("next/navigation", () => ({
     usePathname: () => "/testops/coverage",
     useSearchParams: () => new URLSearchParams(),

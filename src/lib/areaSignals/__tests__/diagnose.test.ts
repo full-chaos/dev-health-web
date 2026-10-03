@@ -24,6 +24,7 @@ import { graphqlFetch } from "@/lib/graphql/server";
 import { getBusFactorData } from "@/lib/api/code";
 import { getInvestment } from "@/lib/api/investment";
 import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers";
+import { auth } from "@/lib/auth";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { getDiagnoseSignals } from "../diagnose";
@@ -697,5 +698,27 @@ describe("Investment card (CHAOS-7612 5.2b)", () => {
         const card = await investment(true);
         expect(mockGetInvestment).not.toHaveBeenCalled();
         expect(card).toMatchObject({ state: "neutral", value: "Feature Delivery 42%" });
+    });
+});
+
+describe("getDiagnoseSignals — org scope comes from the session (CHAOS-8272)", () => {
+    it("makes no request when the session has no org", async () => {
+        const normalOrder = (await getDiagnoseSignals(defaultMetricFilter)).map((s) => s.id);
+        vi.clearAllMocks();
+        vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
+        const signals = await getDiagnoseSignals(defaultMetricFilter);
+        expect(signals.map((s) => s.id)).toEqual(normalOrder);
+        expect(mockGraphql).not.toHaveBeenCalled();
+        expect(mockGetHomeData).not.toHaveBeenCalled();
+        expect(mockGetBusFactorData).not.toHaveBeenCalled();
+        expect(mockGetCognitiveLoad).not.toHaveBeenCalled();
+        expect(mockGetInvestment).not.toHaveBeenCalled();
+        expect(signals.length).toBeGreaterThan(0);
+        for (const s of signals) expect(s.state).toBe("unavailable");
+    });
+
+    it("sends the session org when present", async () => {
+        await getDiagnoseSignals(defaultMetricFilter);
+        expect(JSON.stringify(mockGraphql.mock.calls)).toContain("org-test");
     });
 });
