@@ -1,6 +1,7 @@
 "use client";
 
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
+import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { useMemo } from "react";
 
 import { ForecastInputsCard } from "@/components/capacity/ForecastInputsCard";
@@ -41,11 +42,21 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
 
     const chartData = useMemo(() => {
         if (!forecast) return null;
+        // A day percentile the API did not serve is not zero (CHAOS-8005): the burn chart needs
+        // all three, so with one missing there is no chart. A served 0 is a value and is drawn.
+        const { p50Days, p85Days, p95Days } = forecast;
+        if (
+            typeof p50Days !== "number" ||
+            typeof p85Days !== "number" ||
+            typeof p95Days !== "number"
+        ) {
+            return null;
+        }
         return {
             backlogSize: forecast.backlogSize,
-            p50Days: forecast.p50Days ?? 0,
-            p85Days: forecast.p85Days ?? 0,
-            p95Days: forecast.p95Days ?? 0,
+            p50Days,
+            p85Days,
+            p95Days,
             p50Date: forecast.p50Date,
             p85Date: forecast.p85Date,
             p95Date: forecast.p95Date,
@@ -118,9 +129,23 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                         >
                             {READ_FAILED_MESSAGE}
                         </div>
+                    ) : forecast ? (
+                        <div
+                            data-testid="forecast-chart-not-reported"
+                            className="flex h-80 flex-col items-center justify-center gap-1 text-sm text-(--text-muted)"
+                        >
+                            <p>{NOT_REPORTED}</p>
+                            <p className="text-xs">
+                                The forecast does not have all of the P50 / P85 / P95 days, so no
+                                line is drawn.
+                            </p>
+                        </div>
                     ) : (
-                        <div className="flex h-80 items-center justify-center text-sm text-(--text-muted)">
-                            No forecast data available
+                        <div
+                            data-testid="forecast-chart-empty"
+                            className="flex h-80 items-center justify-center text-sm text-(--text-muted)"
+                        >
+                            No data for this window
                         </div>
                     )}
                 </Section>
