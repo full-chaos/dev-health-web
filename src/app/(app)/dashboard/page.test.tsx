@@ -3,13 +3,13 @@ import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import { screen, within } from "@/test/utils";
 
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
-import { checkApiHealth, getApiMeta } from "@/lib/api/system";
+import { checkApiHealth } from "@/lib/api/system";
 import { getSetupStatus } from "@/lib/admin/server";
 import type { HomeResponse } from "@/lib/types";
 import Home from "./page";
 
 vi.mock("@/lib/graphql/homeFetchers", () => ({ getHomeDataViaGraphQL: vi.fn() }));
-vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn(), getApiMeta: vi.fn() }));
+vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn() }));
 vi.mock("@/lib/admin/server", () => ({ getSetupStatus: vi.fn() }));
 vi.mock("@/lib/auth", () => ({
     auth: vi.fn(async () => ({ user: { org_id: "org-1" } })),
@@ -65,14 +65,6 @@ const lastSyncRow = () => {
 describe("dashboard freshness", () => {
     beforeEach(() => {
         vi.mocked(checkApiHealth).mockResolvedValue({ ok: true, data: null });
-        vi.mocked(getApiMeta).mockResolvedValue({
-            backend: "clickhouse",
-            version: "test",
-            last_ingest_at: null,
-            coverage: {},
-            limits: {},
-            supported_endpoints: [],
-        });
         vi.mocked(getSetupStatus).mockResolvedValue({ error: "not needed for this test" });
         vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(HOME_DATA);
     });
