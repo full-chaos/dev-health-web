@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
@@ -15,6 +16,17 @@ import { afterEach, describe, expect, it } from "vitest";
 // that the formatter does not rewrite the copy.
 
 const WEB_ROOT = resolve(__dirname, "../..");
+
+// The generated file is read back with a real YAML parser, as traefik reads it:
+// a file that is not valid YAML fails each test here. `yaml` is not a
+// dependency of this repo; `@graphql-codegen/cli` brings it, so it is resolved
+// from there. If it is gone, these tests fail; they do not skip.
+const localRequire = createRequire(join(WEB_ROOT, "package.json"));
+const YAML: { parse: (text: string) => unknown } = localRequire(
+    localRequire.resolve("yaml", {
+        paths: [localRequire.resolve("@graphql-codegen/cli/package.json")],
+    }),
+);
 const SCRIPT = join(WEB_ROOT, "ci/generate-live-e2e-plane-router.mjs");
 const FIXTURES = join(__dirname, "fixtures/live-e2e-plane-router");
 const WORKFLOW = join(WEB_ROOT, ".github/workflows/live-e2e.yml");
@@ -62,24 +74,32 @@ function generate(inputs: string[], flags: string[] = WORKFLOW_FLAGS) {
     return { status: result.status, stdout: result.stdout, stderr: result.stderr };
 }
 
+type RouterFile = {
+    http: {
+        routers: Record<
+            string,
+            { rule: string; entryPoints: string[]; priority: number; service: string }
+        >;
+        services: Record<string, { loadBalancer: { servers: { url: string }[] } }>;
+    };
+};
+
+/** The generated file as a YAML parser reads it. It throws on a file that is not valid YAML. */
+function parseRouterFile(yaml: string): RouterFile {
+    return YAML.parse(yaml) as RouterFile;
+}
+
 /** The port of the service that a router sends its requests to. */
 function servicePort(yaml: string, name: string): string {
-    const port = yaml.match(
-        new RegExp(
-            `\\n    ${name}:\\n      loadBalancer:\\n        servers:\\n          - url: "http://127\\.0\\.0\\.1:(\\d+)"`,
-        ),
-    );
-    if (!port) throw new Error(`service ${name} not found in:\n${yaml}`);
-    return port[1];
+    return new URL(parseRouterFile(yaml).http.services[name].loadBalancer.servers[0].url).port;
 }
 
 /** The alternatives of the `PathRegexp` rule of one path router, and the port of its service. */
 function route(yaml: string, name: string): { paths: string[]; port: string } {
-    const rule = yaml.match(
-        new RegExp(`\\n    ${name}:\\n      rule: 'PathRegexp\\(\`\\^\\((.*)\\)\\$\`\\)'\\n`),
-    );
-    if (!rule) throw new Error(`router ${name} not found in:\n${yaml}`);
-    return { paths: rule[1].split("|"), port: servicePort(yaml, name) };
+    const rule = parseRouterFile(yaml).http.routers[name].rule;
+    const paths = rule.match(/^PathRegexp\(`\^\((.*)\)\$`\)$/);
+    if (!paths) throw new Error(`router ${name} has no path list: ${rule}`);
+    return { paths: paths[1].split("|"), port: servicePort(yaml, name) };
 }
 
 type Contract = {
@@ -111,32 +131,50 @@ describe("generate-live-e2e-plane-router", () => {
         });
         expect(route(result.stdout, "go-api-paths").port).toBe("8001");
         expect(route(result.stdout, "go-api-paths").paths).toContain("/api/v1/billing/audit/[^/]+");
-        // A path of the public host list (an exact path, so its dot is escaped).
-        expect(route(result.stdout, "go-api-paths").paths).toContain("/openapi\\.json");
-        expect(result.stdout).toContain(
-            "api-catchall:\n      rule: 'PathRegexp(`^/.*$`)'\n      entryPoints: [web]\n      priority: 1\n",
-        );
+        expect(parseRouterFile(result.stdout).http.routers["api-catchall"]).toEqual({
+            rule: "PathRegexp(`^/.*$`)",
+            entryPoints: ["web"],
+            priority: 1,
+            service: "api-catchall",
+        });
+        expect(servicePort(result.stdout, "api-catchall")).toBe("8001");
         expect(result.stdout).toContain(`# ${ops.contract} -- do not hand-edit`);
     });
 
-    it("writes each rule as a YAML single-quoted scalar, so a regex backslash is not a YAML escape", () => {
+    it("writes a file that a YAML parser accepts, and a regex backslash comes back unchanged", () => {
         const ops = opsTree({ contract: true });
 
         const yaml = generate([ops.contract]).stdout;
 
-        // traefik refused the file with a rule in double quotes: "/openapi\\.json"
-        // has a backslash, and "\\." is not a YAML escape.
-        const rules = yaml.split("\n").filter((line) => line.trimStart().startsWith("rule:"));
-        expect(rules).toHaveLength(3);
-        for (const rule of rules) expect(rule).toMatch(/^      rule: 'PathRegexp\(`\^.*\$`\)'$/);
-        expect(yaml.match(/"[^"\n]*\\[^"\n]*"/g)).toBeNull();
-
-        // The backslash reaches the regex as it is: the dot is a literal dot.
+        // traefik refused the file of an earlier commit ("found unknown escape
+        // character"): the public host path /openapi.json is the regex
+        // /openapi\.json, and the rule was in a YAML double-quoted scalar.
+        // Read back through the parser, the rule must be the regex traefik needs.
+        const config = parseRouterFile(yaml);
+        expect(Object.keys(config.http.routers)).toEqual([
+            "go-api-paths",
+            "query-api-paths",
+            "api-catchall",
+        ]);
         const goPaths = route(yaml, "go-api-paths").paths;
-        expect(goPaths).toContain("/openapi\\.json");
+        expect(goPaths.filter((path) => path.includes("openapi"))).toEqual(["/openapi\\.json"]);
         const goRegex = new RegExp(`^(${goPaths.join("|")})$`);
         expect(goRegex.test("/openapi.json")).toBe(true);
         expect(goRegex.test("/openapiXjson")).toBe(false);
+        expect(goRegex.test("/api/v1/billing/audit/abc")).toBe(true);
+    });
+
+    it("keeps a single quote of a path intact in the YAML file", () => {
+        const ops = opsTree({ contract: true });
+
+        // A rule is a YAML single-quoted scalar; a quote in it must be doubled.
+        const result = generate(
+            [ops.contract],
+            ["--query-api-only", "/api/v1/meta", "--query-api-extra", "/it's"],
+        );
+
+        expect(result.status).toBe(0);
+        expect(route(result.stdout, "query-api-paths").paths).toEqual(["/api/v1/meta", "/it's"]);
     });
 
     it("reads the contract and not the ledger when the ops checkout has both (ops main)", () => {
