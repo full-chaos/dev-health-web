@@ -8,6 +8,7 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { DataState } from "@/components/ui/DataState";
 import { formatMicroUsd } from "@/lib/admin/llmBudgetFormat";
+import { logger } from "@/lib/logger";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type {
     LLMBudgetResponse,
@@ -29,6 +30,8 @@ export type ByoLlmSpendSummaryProps = {
      */
     loadBudgetAction?: () => Promise<LLMSettingsActionResult<LLMBudgetResponse>>;
 };
+
+const spendLogger = logger.child({ component: "ByoLlmSpendSummary" });
 
 const PANEL_TITLE = "AI / LLM Spend Summary (BYO-LLM)";
 const PANEL_DESCRIPTION =
@@ -138,7 +141,11 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
                 if (active) setBudget(result.data ?? null);
             })
             // A budget action that throws leaves the tiles out; it is never an unhandled rejection.
-            .catch(() => {
+            .catch((error: unknown) => {
+                spendLogger.warn(
+                    { message: error instanceof Error ? error.message : "Unknown error" },
+                    "Budget request for the spend tiles failed",
+                );
                 if (active) setBudget(null);
             });
         return () => {

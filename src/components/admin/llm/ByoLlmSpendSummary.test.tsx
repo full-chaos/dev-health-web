@@ -7,6 +7,11 @@ vi.mock("next/link", () => ({
     ),
 }));
 
+const warn = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/logger", () => ({
+    logger: { child: () => ({ warn, info: vi.fn(), error: vi.fn(), debug: vi.fn() }) },
+}));
+
 import { ByoLlmSpendSummary, type ByoLlmSpendSummaryProps } from "./ByoLlmSpendSummary";
 
 const mockLoad = vi.fn<ByoLlmSpendSummaryProps["loadSpendAction"]>();
@@ -131,6 +136,11 @@ describe("ByoLlmSpendSummary", () => {
             await new Promise((resolve) => setTimeout(resolve, 20));
             expect(screen.queryByTestId("byo-llm-spend-tiles")).not.toBeInTheDocument();
             expect(unhandled).not.toHaveBeenCalled();
+            // It is logged (the issue asks for it), not shown.
+            expect(warn).toHaveBeenCalledWith(
+                { message: "network down" },
+                "Budget request for the spend tiles failed",
+            );
             process.off("unhandledRejection", unhandled);
         });
 
