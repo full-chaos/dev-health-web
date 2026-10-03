@@ -179,9 +179,9 @@ function avgInterruptionLoad(result: CognitiveLoadResult | undefined): number | 
 }
 
 /** Resolve the org scope from the auth session (mirrors the area fetchers). */
-async function resolveOrgId(): Promise<string> {
+async function resolveOrgId(): Promise<string | null> {
     const session = await auth();
-    return (session?.user?.org_id as string | undefined) ?? "";
+    return (session?.user?.org_id as string | undefined) || null;
 }
 
 /**
@@ -232,6 +232,8 @@ export async function getDiagnoseSignals(
 
     // Resolve the org scope server-side (the complexity GraphQL call needs it
     // threaded in as a variable AND as the `X-Org-Id` header).
+    // No org on the session: the org-scoped reads below are skipped (cards read
+    // "unavailable"), never sent with an empty or made-up org.
     const orgId = isTestMode ? "default-org" : await resolveOrgId();
     const complexityScopeInput = complexityScopeInputFromFilter(filters);
 
@@ -260,23 +262,25 @@ export async function getDiagnoseSignals(
             () =>
                 isTestMode
                     ? Promise.resolve(SAMPLE_DIAGNOSE_COMPLEXITY)
-                    : graphqlFetch<{
-                          complexityTimeseries: ComplexityTimeseriesResult;
-                      }>(
-                          COMPLEXITY_TIMESERIES_QUERY,
-                          {
-                              input: {
-                                  orgId,
-                                  sinceUtc,
-                                  untilUtc,
-                                  granularity: "DAY",
-                                  scope: "REPO",
-                                  ...complexityScopeInput,
-                                  limit: 50,
-                              },
-                          },
-                          { orgId },
-                      ).then((r) => r.complexityTimeseries),
+                    : !orgId
+                      ? Promise.resolve(undefined)
+                      : graphqlFetch<{
+                            complexityTimeseries: ComplexityTimeseriesResult;
+                        }>(
+                            COMPLEXITY_TIMESERIES_QUERY,
+                            {
+                                input: {
+                                    orgId,
+                                    sinceUtc,
+                                    untilUtc,
+                                    granularity: "DAY",
+                                    scope: "REPO",
+                                    ...complexityScopeInput,
+                                    limit: 50,
+                                },
+                            },
+                            { orgId },
+                        ).then((r) => r.complexityTimeseries),
             "complexity",
         ),
         safe(
@@ -290,7 +294,7 @@ export async function getDiagnoseSignals(
             () =>
                 isTestMode
                     ? Promise.resolve(SAMPLE_DIAGNOSE_COGNITIVE_LOAD)
-                    : !cognitiveLoadScopeSupported
+                    : !orgId || !cognitiveLoadScopeSupported
                       ? Promise.resolve(undefined)
                       : getCognitiveLoadViaGraphQL({
                             orgId,

@@ -627,13 +627,13 @@ describe("Backlog Risk page header", () => {
 });
 
 describe("Backlog Risk page org scope (CHAOS-8272)", () => {
-    it('asks for the session org, and never the "default-org" placeholder', async () => {
+    it("asks for the session org, and makes no request without one", async () => {
         await renderPage();
         expect(getThroughputForecastViaGraphQLMock.mock.calls[0]?.[0]).toBe("org-1");
 
         requireSessionMock.mockResolvedValue({ user: { id: "user-1" } });
         getThroughputForecastViaGraphQLMock.mockClear();
         await renderPage();
-        expect(getThroughputForecastViaGraphQLMock.mock.calls[0]?.[0]).toBe("");
+        expect(getThroughputForecastViaGraphQLMock).not.toHaveBeenCalled();
     });
 });

@@ -275,13 +275,16 @@ describe("PrDetailPage", () => {
 });
 
 describe("PrDetailPage org scope (CHAOS-8272)", () => {
-    it('never sends the "default-org" placeholder when the session has no org', async () => {
+    it("makes no request when the session has no org", async () => {
+        getPrDetailViaGraphQLMock.mockReset();
+        getAIWorkflowDrilldownViaGraphQLMock.mockReset();
         checkApiHealthMock.mockResolvedValue({ ok: true });
         requireSessionMock.mockResolvedValue({ user: {} });
         getFlameMock.mockResolvedValue(null);
         getPrDetailViaGraphQLMock.mockResolvedValue(samplePr);
         getAIWorkflowDrilldownViaGraphQLMock.mockResolvedValue(emptyDrilldown);
         await renderPage();
-        expect(getPrDetailViaGraphQLMock).toHaveBeenCalledWith({ orgId: "", id: prId });
+        expect(getPrDetailViaGraphQLMock).not.toHaveBeenCalled();
+        expect(getAIWorkflowDrilldownViaGraphQLMock).not.toHaveBeenCalled();
     });
 });

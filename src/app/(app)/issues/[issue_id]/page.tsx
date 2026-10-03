@@ -24,7 +24,9 @@ export default async function IssueDetailPage({ params }: IssueDetailPageProps) 
 
     const { issue_id: issueId } = await params;
     const session = await requireSession();
-    const orgId = session.user.org_id ?? "";
+    const orgId = session.user.org_id;
+    // No org on the session: ask for nothing (never an empty or made-up org).
+    if (!orgId) return <ServiceUnavailable landmark={false} />;
     const [flame, drilldown] = await Promise.all([
         fetchOrNull(getFlame({ entity_type: "issue", entity_id: issueId }), "issue-flame"),
         getAIWorkflowDrilldownViaGraphQL({

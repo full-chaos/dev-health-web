@@ -678,10 +678,10 @@ describe("Investment card (CHAOS-7612 5.2b)", () => {
 });
 
 describe("getDiagnoseSignals — org scope comes from the session (CHAOS-8272)", () => {
-    it('never sends the "default-org" placeholder when the session has no org', async () => {
+    it("makes no request when the session has no org", async () => {
         vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
         await getDiagnoseSignals(defaultMetricFilter);
-        expect(JSON.stringify(mockGraphql.mock.calls)).not.toContain("default-org");
+        expect(mockGraphql).not.toHaveBeenCalled();
     });
 
     it("sends the session org when present", async () => {

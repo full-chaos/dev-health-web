@@ -111,12 +111,10 @@ describe("Issue detail in the shared app shell", () => {
 });
 
 describe("Issue detail org scope (CHAOS-8272)", () => {
-    it('never sends the "default-org" placeholder when the session has no org', async () => {
+    it("makes no request when the session has no org", async () => {
         vi.mocked(requireSession).mockResolvedValueOnce({ user: {} } as never);
         vi.mocked(getAIWorkflowDrilldownViaGraphQL).mockClear();
         await renderPage();
-        expect(getAIWorkflowDrilldownViaGraphQL).toHaveBeenCalledWith(
-            expect.objectContaining({ orgId: "" }),
-        );
+        expect(getAIWorkflowDrilldownViaGraphQL).not.toHaveBeenCalled();
     });
 });

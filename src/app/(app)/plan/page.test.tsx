@@ -425,7 +425,7 @@ describe("Plan overview — page pass", () => {
 });
 
 describe("Plan overview — org scope (CHAOS-8272)", () => {
-    it('asks for the session org, and never the "default-org" placeholder', async () => {
+    it("asks for the session org, and makes no request without one", async () => {
         mockForecast.mockResolvedValue(forecast());
         await renderPage();
         expect(mockForecast).toHaveBeenCalledWith("org-1", expect.anything());
@@ -433,6 +433,6 @@ describe("Plan overview — org scope (CHAOS-8272)", () => {
         vi.mocked(requireSession).mockResolvedValueOnce({ user: {} } as never);
         mockForecast.mockClear();
         await renderPage();
-        expect(mockForecast.mock.calls[0]?.[0]).toBe("");
+        expect(mockForecast).not.toHaveBeenCalled();
     });
 });
