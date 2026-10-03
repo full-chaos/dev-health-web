@@ -7,12 +7,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 import { getMetricLabel, metricInverseGood } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 
-/** The three tiles of the page (prototype `metrics([M.wip, M.blocked, M.review], 3)`). */
-export const BOTTLENECK_TILES = [
-    { metric: "wip_saturation", caption: "Work in progress" },
-    { metric: "blocked_work", caption: "Blocked items" },
-    { metric: "review_latency", caption: "Time to first review" },
-] as const;
+import { BOTTLENECK_TILES } from "./tiles";
 
 type BottleneckTilesProps = {
     deltas: MetricDelta[];

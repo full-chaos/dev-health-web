@@ -36,7 +36,7 @@ describe("Bottlenecks page strings (pin)", () => {
 
     it("keeps the tile captions (now in the tile strip component)", () => {
         const tiles = readFileSync(
-            join(process.cwd(), "src/app/(app)/bottleneck/BottleneckTiles.tsx"),
+            join(process.cwd(), "src/app/(app)/bottleneck/tiles.ts"),
             "utf8",
         );
         for (const caption of ["Work in progress", "Blocked items", "Time to first review"]) {

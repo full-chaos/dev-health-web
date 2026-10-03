@@ -32,7 +32,8 @@ import { FALLBACK_DELTAS, getMetricLabel } from "@/lib/metrics/catalog";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
-import { BOTTLENECK_TILES, BottleneckTiles } from "./BottleneckTiles";
+import { BottleneckTiles } from "./BottleneckTiles";
+import { BOTTLENECK_TILES } from "./tiles";
 
 type BottleneckPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
