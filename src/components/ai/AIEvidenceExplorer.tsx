@@ -1,5 +1,7 @@
 "use client";
 
+import { Search } from "lucide-react";
+
 import { useMemo, useState, type ReactNode } from "react";
 
 import type { AIFilter } from "@/lib/filters/ai";
@@ -148,10 +150,16 @@ const PANEL_NOTE = "rounded-2xl bg-background/60 px-4 py-4 text-sm text-(--ink-m
 export function EvidencePanel({
     selected,
     showTitle = true,
+    placement = "side",
 }: {
     selected: AiAttributedPr | null;
     /** False where the caller's own card already carries the "Work Graph evidence" title. */
     showTitle?: boolean;
+    /**
+     * "side": the panel beside the PR table (pages, A6). "below": stacked under the table, inside the
+     * "Open evidence" drawer (A8, CHAOS-8297); the drawer scrolls, so the edge list does not.
+     */
+    placement?: "side" | "below";
 }) {
     const rootId = selected ? prRowKey(selected) : null;
     const { data: drilldown, fetching, error } = useAIWorkflowDrilldownForPr(rootId);
@@ -200,7 +208,13 @@ export function EvidencePanel({
                         </span>
                     )}
                 </div>
-                <ul className="max-h-[32rem] space-y-2 overflow-y-auto pr-1">
+                <ul
+                    className={
+                        placement === "below"
+                            ? "space-y-2"
+                            : "max-h-[32rem] space-y-2 overflow-y-auto pr-1"
+                    }
+                >
                     {drilldown.edges.slice(0, 25).map((edge) => (
                         <li
                             key={edge.edgeId}
@@ -220,10 +234,10 @@ export function EvidencePanel({
                                         {edge.provider}
                                     </span>
                                 )}
+                                <span data-testid="ai-edge-confidence">
+                                    confidence {edge.confidence.toFixed(2)}
+                                </span>
                             </div>
-                            <p className="mt-1.5 text-xs text-(--ink-muted)">
-                                confidence {edge.confidence.toFixed(2)}
-                            </p>
                             <p className="mt-1 text-(--ink-muted)">{edge.evidence}</p>
                         </li>
                     ))}
@@ -236,7 +250,7 @@ export function EvidencePanel({
     }
     return (
         <aside
-            className={PANEL_SHELL}
+            className={placement === "below" ? "mt-6 min-w-0" : PANEL_SHELL}
             aria-label="Work Graph evidence"
             data-testid="ai-work-graph-evidence"
         >
@@ -248,6 +262,11 @@ export function EvidencePanel({
 
 type AIEvidenceExplorerProps = {
     filter: AIFilter;
+    /**
+     * Where the Work Graph evidence sits. "side" (default): beside the PR table, as on the pages (A6).
+     * "stacked": under the table, for the "Open evidence" drawer (A8, CHAOS-8297).
+     */
+    layout?: "side" | "stacked";
 };
 
 /**
@@ -258,7 +277,7 @@ type AIEvidenceExplorerProps = {
  * Overview) and the Governance Risk → Evidence tab, so both surfaces stay behaviourally
  * identical, including their honest loading / empty / error states.
  */
-export function AIEvidenceExplorer({ filter }: AIEvidenceExplorerProps) {
+export function AIEvidenceExplorer({ filter, layout = "side" }: AIEvidenceExplorerProps) {
     const [search, setSearch] = useState("");
     const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
@@ -289,8 +308,15 @@ export function AIEvidenceExplorer({ filter }: AIEvidenceExplorerProps) {
         );
     }
 
+    const stacked = layout === "stacked";
     return (
-        <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,26rem)]">
+        <div
+            className={
+                stacked
+                    ? "mt-4"
+                    : "mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,26rem)]"
+            }
+        >
             <div className="min-w-0">
                 <label
                     className="block text-xs font-semibold uppercase tracking-[0.14em] text-(--ink-muted)"
@@ -298,15 +324,21 @@ export function AIEvidenceExplorer({ filter }: AIEvidenceExplorerProps) {
                 >
                     Filter PRs
                 </label>
-                <input
-                    id="ai-drilldown-search"
-                    type="search"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search title, kind, or PR number"
-                    className="mt-1 w-full rounded-full border border-(--card-stroke) bg-background/60 px-4 py-2 text-sm focus:border-(--accent-positive) focus:outline-none"
-                    data-testid="ai-drilldown-search"
-                />
+                <div className="relative mt-1">
+                    <Search
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-(--ink-muted)"
+                    />
+                    <input
+                        id="ai-drilldown-search"
+                        type="search"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Search title, kind, or PR number"
+                        className="w-full rounded-full border border-(--card-stroke) bg-background/60 py-2 pl-10 pr-4 text-sm focus:border-(--accent-positive) focus:outline-none"
+                        data-testid="ai-drilldown-search"
+                    />
+                </div>
 
                 <div className="mt-4">
                     {error ? (
@@ -335,7 +367,7 @@ export function AIEvidenceExplorer({ filter }: AIEvidenceExplorerProps) {
                     )}
                 </div>
             </div>
-            <EvidencePanel selected={selected} />
+            <EvidencePanel selected={selected} placement={stacked ? "below" : "side"} />
         </div>
     );
 }

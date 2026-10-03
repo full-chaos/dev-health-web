@@ -80,7 +80,8 @@ test.describe("AI Review Load dashboard", () => {
         await expect(dialog.getByTestId("ai-drilldown-table")).toBeVisible();
         await expect(dialog.getByTestId("ai-drilldown-evidence-prompt")).toBeVisible();
 
-        await dialog.getByRole("button", { name: /close/i }).click();
+        // The footer Close button (the icon Close at the top has the same name).
+        await dialog.locator("footer").getByRole("button", { name: "Close" }).click();
         await expect(dialog).not.toBeVisible();
     });
 
