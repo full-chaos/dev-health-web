@@ -68,7 +68,11 @@ export function AreaOverview({
     const [hero, ...restAvailable] = available;
 
     const gridSignals = restAvailable;
-    const clusters = groupByCluster([...gridSignals, ...unavailable]);
+    // Groups keep the area's own order (the order of its hub items), not the order of severity.
+    const clusterOrder = [
+        ...new Set(area.hubItems.flatMap((item) => (item.cluster ? [item.cluster] : []))),
+    ];
+    const clusters = groupByCluster([...gridSignals, ...unavailable], clusterOrder);
     const isClustered = clusters.some((group) => group.cluster != null);
 
     const renderGrid = (list: AreaSignal[]) => (
