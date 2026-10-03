@@ -43,7 +43,8 @@ describe("Plan route placement", () => {
         expect(source).toContain("Completion Forecast");
         expect(source).toContain("CapacityView");
         expect(source).toContain("completion projection");
-        expect(source).toContain("throughput distribution");
+        // CHAOS-7990: the page draws no throughput distribution, so the subtitle names none.
+        expect(source).not.toContain("throughput distribution");
         expect(source).toContain("confidence bands");
         expect(source).not.toContain("ModeTabs");
         expect(source).not.toContain("planForecastTabs");
