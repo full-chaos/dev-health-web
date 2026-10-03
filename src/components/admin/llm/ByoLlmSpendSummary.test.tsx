@@ -34,6 +34,105 @@ describe("ByoLlmSpendSummary", () => {
         ).toBeInTheDocument();
     });
 
+    describe("spend tiles (CHAOS-8240)", () => {
+        const emptySpend = {
+            data: { since: "2024-01-01T00:00:00Z", limit: 20, runs: [], legacy: [] },
+        };
+        const budget = (over: Record<string, unknown> = {}) => ({
+            data: {
+                used_micro_usd: 184_000_000,
+                limit_micro_usd: 500_000_000,
+                remaining_micro_usd: 316_000_000,
+                window: "calendar_month_utc",
+                reset_at: "2026-11-01T00:00:00Z",
+                enforcement_available: true,
+                reason: "available",
+                maximum_limit_micro_usd: 500_000_000,
+                pricing_version: "v1",
+                ...over,
+            },
+        });
+
+        it("opens the card with Used or reserved, Monthly limit and Remaining from the served budget", async () => {
+            mockLoad.mockResolvedValue(emptySpend);
+            render(
+                <ByoLlmSpendSummary
+                    loadSpendAction={mockLoad}
+                    loadBudgetAction={async () => budget() as never}
+                />,
+            );
+            const strip = await screen.findByTestId("byo-llm-spend-tiles");
+            await waitFor(() => expect(strip).toHaveTextContent("$184.00"));
+            expect(strip).toHaveTextContent("Used or reserved");
+            expect(strip).toHaveTextContent("Monthly limit");
+            expect(strip).toHaveTextContent("$500.00");
+            expect(strip).toHaveTextContent("Remaining");
+            expect(strip).toHaveTextContent("$316.00");
+            expect(strip).toHaveAttribute("data-columns", "3");
+        });
+
+        it("reads Not reported, never $0, for a value the budget does not serve", async () => {
+            mockLoad.mockResolvedValue(emptySpend);
+            render(
+                <ByoLlmSpendSummary
+                    loadSpendAction={mockLoad}
+                    loadBudgetAction={
+                        (async () =>
+                            budget({
+                                limit_micro_usd: null,
+                                remaining_micro_usd: null,
+                            })) as never
+                    }
+                />,
+            );
+            const strip = await screen.findByTestId("byo-llm-spend-tiles");
+            await waitFor(() => expect(strip).toHaveTextContent("$184.00"));
+            expect(strip.textContent?.match(/Not reported/g)).toHaveLength(2);
+            expect(strip).not.toHaveTextContent("$0.00");
+        });
+
+        it("has no tiles without a budget action, or when the budget cannot be read", async () => {
+            mockLoad.mockResolvedValue(emptySpend);
+            const first = render(<ByoLlmSpendSummary loadSpendAction={mockLoad} />);
+            await screen.findByText("AI / LLM Spend Summary (BYO-LLM)");
+            expect(screen.queryByTestId("byo-llm-spend-tiles")).not.toBeInTheDocument();
+            first.unmount();
+            render(
+                <ByoLlmSpendSummary
+                    loadSpendAction={mockLoad}
+                    loadBudgetAction={async () => ({ error: "nope", status: 500 }) as never}
+                />,
+            );
+            await screen.findByText("AI / LLM Spend Summary (BYO-LLM)");
+            expect(screen.queryByTestId("byo-llm-spend-tiles")).not.toBeInTheDocument();
+        });
+    });
+
+    it("draws the runs as a bordered table with a caps header band (CHAOS-8240)", async () => {
+        mockLoad.mockResolvedValue({
+            data: {
+                since: "2024-01-01T00:00:00Z",
+                limit: 20,
+                runs: [
+                    {
+                        run_id: "run-1",
+                        calls: 42,
+                        input_tokens: 12345,
+                        output_tokens: 6789,
+                        model: "gpt-4o",
+                        failures_by_class: {},
+                    },
+                ],
+                legacy: [],
+            },
+        });
+        renderPanel();
+        const table = await screen.findByTestId("byo-llm-spend-table");
+        expect(table.parentElement?.className).toContain("border-(--card-stroke)");
+        expect(table.querySelector("thead")?.className).toContain("uppercase");
+        expect(table).toHaveTextContent("12,345");
+    });
+
     it("renders per-run rows with calls, tokens, model, and failures-by-class", async () => {
         mockLoad.mockResolvedValue({
             data: {
