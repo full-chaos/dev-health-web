@@ -7,6 +7,12 @@ import type { WorkGraphNodeType } from "@/lib/graphql/types";
  *
  * Columns follow the entity types that are PRESENT, in this fixed order (a type with no
  * node gets no column). Work flows left to right: work item, change, review, code, release.
+ *
+ * Rows: a column is spread evenly over the height (the approved prototype's rule). The one
+ * exception is a short column of a drawing that is taller than the box (CHAOS-8511): a node
+ * linked to other columns sits at the mean height of those linked nodes, so it is on the same
+ * screen as they are; the nodes with no such link are listed from the top, so the column has
+ * nodes on the first screen.
  */
 export const LAYERED_TYPE_ORDER: readonly WorkGraphNodeType[] = [
     "ISSUE",
@@ -35,6 +41,12 @@ export const MARGIN_LEFT = 56;
 export const MARGIN_RIGHT = 140;
 /** Rows of the tallest column that fit the box without scrolling at the minimum pitch. */
 export const FIT_ROWS = Math.floor((BOX_HEIGHT - 2 * MARGIN_Y) / MIN_ROW_GAP);
+/** Width in px kept for a node label, on the right of its node. */
+export const LABEL_WIDTH = MARGIN_RIGHT - 24;
+/** Clear px between a bow and what is beside it (the canvas edge, or the labels of a column). */
+export const BOW_PAD = 8;
+/** How far a link inside one column bows, as a share of its length (ECharts `curveness`). */
+export const INNER_LINK_CURVENESS = 0.45;
 const SWEEPS = 4;
 
 export type GraphMode = "layered" | "network";
@@ -54,8 +66,14 @@ export type LayoutNode = { id: string; type: WorkGraphNodeType };
 export type LayoutLink = { source: string; target: string };
 
 export type LayeredLayout = {
-    /** Columns left to right, with their node count. Empty columns are not listed. */
-    columns: Array<{ type: WorkGraphNodeType; count: number; x: number }>;
+    /**
+     * Columns left to right, with their node count. Empty columns are not listed. `bowRoom` is
+     * the free width in px on the left of the column: to the canvas edge for the first column,
+     * to the labels of the column before for the others. A link inside the column bows into it.
+     */
+    columns: Array<{ type: WorkGraphNodeType; count: number; x: number; bowRoom: number }>;
+    /** True when a link joins two nodes of one column (for example issue to issue). */
+    innerLinks: boolean;
     /** Coordinates per node id, in px inside the drawing area (margins are added by the chart). */
     positions: Map<string, { x: number; y: number }>;
     /** Height in px of the drawing area, and the row pitch used. */
@@ -143,22 +161,141 @@ export function layoutLayered(
         options.width === undefined
             ? undefined
             : Math.max(0, options.width - MARGIN_LEFT - MARGIN_RIGHT);
+    // A link between two nodes of ONE column is drawn as a bow beside the column. A graph with
+    // such links needs room beside every column, so each column sits in the middle of its own
+    // band of the width: the drawing is centred. A graph whose links all go between columns
+    // keeps the columns edge to edge.
+    const innerLinks = links.some(
+        ({ source, target }) =>
+            typeOf.has(source) && typeOf.has(target) && typeOf.get(source) === typeOf.get(target),
+    );
+    const columnX = (columnIndex: number) =>
+        usableWidth === undefined
+            ? columnIndex * COLUMN_GAP
+            : innerLinks
+              ? ((columnIndex + 0.5) * usableWidth) / present.length
+              : present.length > 1
+                ? (columnIndex * usableWidth) / (present.length - 1)
+                : usableWidth / 2;
     const positions = new Map<string, { x: number; y: number }>();
-    const columns = present.map((type, columnIndex) => {
+    // The approved prototype spreads every column evenly over the height. That is right while a
+    // column has a node on every screen. In a drawing that is taller than the box, a SHORT column
+    // (its even spread would be wider than the widest row gap) had its few nodes far apart, with
+    // none on the first screen. Such a column is placed after the others: a node that is linked
+    // to other columns sits at the mean height of those linked nodes; the nodes with no such link
+    // are listed from the top at the widest row gap (see `placeShortColumn`).
+    const isShort = (count: number) => !fits && height / count > MAX_ROW_GAP;
+    present.forEach((type, columnIndex) => {
         const ids = order.get(type) ?? [];
-        const x =
-            usableWidth === undefined
-                ? columnIndex * COLUMN_GAP
-                : present.length > 1
-                  ? (columnIndex * usableWidth) / (present.length - 1)
-                  : usableWidth / 2;
+        if (isShort(ids.length)) return;
+        const x = columnX(columnIndex);
         ids.forEach((id, index) => {
             positions.set(id, { x, y: ((index + 0.5) * height) / ids.length });
         });
-        return { type, count: ids.length, x };
+    });
+    // The longer short column first, so the next one finds it placed (ties: column order).
+    present
+        .map((type, columnIndex) => ({ type, columnIndex, ids: order.get(type) ?? [] }))
+        .filter(({ ids }) => isShort(ids.length))
+        .sort((a, b) => b.ids.length - a.ids.length || a.columnIndex - b.columnIndex)
+        .forEach(({ type, columnIndex, ids }) => {
+            const x = columnX(columnIndex);
+            let listed = 0;
+            const placed = placeShortColumn(
+                ids.map((id, index) => {
+                    // Linked nodes that have a place already. The nodes of this column have
+                    // none yet, so a link inside the column moves no node.
+                    const near = (neighbours.get(id) ?? [])
+                        .map((other) => positions.get(other)?.y)
+                        .filter((value): value is number => value !== undefined);
+                    if (near.length) {
+                        const sum = near.reduce((total, value) => total + value, 0);
+                        return { id, index, wanted: sum / near.length };
+                    }
+                    // No linked node in another column: next in the list at the top.
+                    listed += 1;
+                    return { id, index, wanted: (listed - 0.5) * MAX_ROW_GAP };
+                }),
+                rowPitch,
+                height,
+            );
+            placed.forEach(({ id, y }) => positions.set(id, { x, y }));
+            // `order` lists a column top to bottom, as it is drawn
+            order.set(
+                type,
+                placed.map(({ id }) => id),
+            );
+        });
+    const columns = present.map((type, columnIndex) => {
+        const ids = order.get(type) ?? [];
+        const x = columnX(columnIndex);
+        const bowRoom =
+            columnIndex === 0
+                ? MARGIN_LEFT + x - BOW_PAD
+                : x - columnX(columnIndex - 1) - LABEL_WIDTH - BOW_PAD;
+        return { type, count: ids.length, x, bowRoom: Math.max(0, bowRoom) };
     });
 
-    return { columns, positions, order, height, rowPitch };
+    return { columns, innerLinks, positions, order, height, rowPitch };
+}
+
+/**
+ * Places for the nodes of a short column: each node as near as possible to the height it wants
+ * (the mean height of its linked nodes), with at least `gap` px between two nodes and every node
+ * inside the canvas. Nodes that want the same height become a group around that height.
+ *
+ * The result is top to bottom. Order: by the wanted height, then by the order the column had.
+ * Method: with the nodes in that order, node i at w(i) + i * gap, where w is the non-decreasing
+ * sequence nearest to wanted(i) - i * gap (pool adjacent violators), kept inside the canvas.
+ */
+export function placeShortColumn(
+    nodes: Array<{ id: string; index: number; wanted: number }>,
+    gap: number,
+    height: number,
+): Array<{ id: string; y: number }> {
+    const sorted = [...nodes].sort((a, b) => a.wanted - b.wanted || a.index - b.index);
+    // blocks of nodes that share one w: [sum of (wanted - i * gap), count]
+    const blocks: Array<{ sum: number; count: number }> = [];
+    sorted.forEach((node, i) => {
+        blocks.push({ sum: node.wanted - i * gap, count: 1 });
+        while (blocks.length > 1) {
+            const last = blocks[blocks.length - 1];
+            const before = blocks[blocks.length - 2];
+            if (before.sum / before.count <= last.sum / last.count) break;
+            before.sum += last.sum;
+            before.count += last.count;
+            blocks.pop();
+        }
+    });
+    const lowest = gap / 2;
+    const highest = Math.max(lowest, height - gap / 2 - (sorted.length - 1) * gap);
+    const placed: Array<{ id: string; y: number }> = [];
+    for (const block of blocks) {
+        const w = Math.min(highest, Math.max(lowest, block.sum / block.count));
+        for (let k = 0; k < block.count; k += 1) {
+            const i = placed.length;
+            placed.push({ id: sorted[i].id, y: w + i * gap });
+        }
+    }
+    return placed;
+}
+
+/**
+ * The ECharts `curveness` of a link between two rows of ONE column.
+ *
+ * - It always bows to the LEFT of the column: the node labels are on the right. ECharts puts the
+ *   control point at (mid x) - (y1 - y2) * curveness, so the sign follows the link's direction.
+ * - It never strays further than `room` px from the column (the peak of the curve is half of the
+ *   control point's distance, curveness * length / 2), so a long link is a flat bow and no link
+ *   leaves the canvas or crosses the labels of the column before.
+ *
+ * `sourceY` and `targetY` are the layout y of the two ends (y grows downward, as on screen).
+ */
+export function innerLinkCurveness(sourceY: number, targetY: number, room: number): number {
+    const length = Math.abs(targetY - sourceY);
+    if (length === 0 || room <= 0) return 0;
+    const size = Math.min(INNER_LINK_CURVENESS, (2 * room) / length);
+    return sourceY > targetY ? size : -size;
 }
 
 /** Number of link crossings between neighbouring columns (for tests and tuning). */

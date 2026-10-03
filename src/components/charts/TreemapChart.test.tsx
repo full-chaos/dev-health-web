@@ -178,7 +178,7 @@ describe("TreemapChart", () => {
         });
     });
 
-    it("never hides a label for contrast: low-contrast tiles get a halo instead", () => {
+    it("never hides a label for contrast, and never adds a halo or shadow (CHAOS-8510)", () => {
         render(
             <TreemapChart
                 useInputColors
@@ -200,7 +200,7 @@ describe("TreemapChart", () => {
         };
         const label = props.option.series[0].data[0].label;
         expect(label.show).toBe(true);
-        expect(label.textBorderWidth).toBe(2);
+        expect(label.textBorderWidth).toBe(0);
     });
 
     it("uses the fixed white / near-black ink pair, not the theme text color", () => {
