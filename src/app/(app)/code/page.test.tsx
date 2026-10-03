@@ -1,4 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import { describe, expect, it, vi } from "vitest";
 
 const checkApiHealthMock = vi.fn();
@@ -18,6 +20,10 @@ vi.mock("@/components/metrics/MetricCard", () => ({
             {label}
         </section>
     ),
+}));
+
+vi.mock("@/components/charts/HorizontalBarChart", () => ({
+    HorizontalBarChart: () => <div data-testid="hotspot-bars" />,
 }));
 
 vi.mock("@/components/charts/HeatmapPanel", () => ({
@@ -57,7 +63,7 @@ async function renderPage(params: Record<string, string> = {}) {
 }
 
 describe("CodePage", () => {
-    it("renders Ownership Patterns from bus-factor evidence when Git blame data exists", async () => {
+    it("renders Ownership concentration as meter rows from bus-factor evidence when Git blame data exists", async () => {
         checkApiHealthMock.mockResolvedValue({ ok: true });
         getHomeDataMock.mockResolvedValue({ deltas: [] });
         getExplainDataMock.mockResolvedValue({ contributors: [], unit: "loc" });
@@ -89,13 +95,15 @@ describe("CodePage", () => {
 
         const card = screen.getByTestId("ownership-patterns-card");
         expect(
-            within(card).getByRole("heading", { name: "Ownership Patterns" }),
+            within(card).getByRole("heading", { name: "Ownership concentration" }),
         ).toBeInTheDocument();
-        expect(within(card).getByText("Git blame")).toBeInTheDocument();
-        expect(within(card).queryByText("Manual")).not.toBeInTheDocument();
-        expect(within(card).getByText("chrisgeo@users.noreply.github.com")).toBeInTheDocument();
-        expect(within(card).getByText("98.8%")).toBeInTheDocument();
-        expect(within(card).getByText("3773 file-change samples")).toBeInTheDocument();
+        // Meter rows with the prototype's labels and the served shares; no author names or emails.
+        const rows = within(card).getAllByTestId("meter-row");
+        expect(rows.map((row) => row.textContent)).toEqual([
+            "Primary maintainer98.8%",
+            "Other contributor1.2%",
+        ]);
+        expect(card.textContent).not.toMatch(/chrisgeo|dependabot|@/);
         expect(
             within(card).queryByText(
                 /connect a git provider with commit history to surface ownership/i,
@@ -189,28 +197,79 @@ describe("CodePage", () => {
             expect(screen.getByTestId("tile-Bus factor")).toHaveAttribute("data-value", "none");
         });
 
-        it("lists repositories by lowest bus factor with the bus factor and samples only", async () => {
+        it("lists repositories by lowest bus factor as Repository hotspots, Hotspot score 'Not reported' until served", async () => {
             setup({ ...base, value: 1, evidenceSampleCount: 3773 });
             await renderPage();
             const section = within(screen.getByTestId("code-repo-bus-factor"));
             expect(
-                section.getByRole("heading", { name: "Bus factor by repository" }),
+                section.getByRole("heading", { level: 2, name: "Repository hotspots" }),
             ).toBeInTheDocument();
-            const rows = within(screen.getByTestId("code-repo-bus-factor-table")).getAllByRole(
-                "row",
-            );
+            const table = within(screen.getByTestId("code-repo-bus-factor-table"));
+            expect(table.getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
+                "Repository",
+                "Hotspot score",
+                "Bus factor",
+                "File-change samples",
+                "Evidence",
+            ]);
+            const rows = table.getAllByRole("row");
             // header + 2 rows, sorted by bus factor ascending
             expect(rows).toHaveLength(3);
             expect(rows[1]).toHaveTextContent("org/ops");
             expect(rows[1]).toHaveTextContent("1,947");
             expect(rows[2]).toHaveTextContent("org/web");
-            expect(screen.queryByText(/hotspot score/i)).toBeNull();
+            for (const cell of screen.getAllByTestId("repo-hotspot-score")) {
+                expect(cell).toHaveTextContent("Not reported");
+            }
         });
 
-        it("links to the three Complexity tabs and carries the filter on each", async () => {
+        it("shows a served repository hotspot score from the churn explain", async () => {
+            setup({ ...base, value: 1, evidenceSampleCount: 3773 });
+            getExplainDataMock.mockResolvedValue({
+                unit: "loc",
+                contributors: [
+                    { id: "r1", label: "org/ops", value: 67122, evidence_link: "/api/x" },
+                ],
+            });
+            await renderPage();
+            const scores = screen.getAllByTestId("repo-hotspot-score").map((c) => c.textContent);
+            expect(scores[0]).toBe("67.1K");
+            expect(scores[1]).toBe("Not reported");
+        });
+
+        it("opens the shared drawer from a row's Evidence button with the repository's values", async () => {
+            setup({ ...base, value: 1, evidenceSampleCount: 3773 });
+            await renderPage();
+            await userEvent.click(screen.getAllByTestId("repo-evidence-button")[0]);
+            const facts = within(await screen.findByTestId("repo-evidence-facts"))
+                .getAllByTestId("evidence-fact")
+                .map((r) => [
+                    r.querySelector("dt")?.textContent,
+                    r.querySelector("dd")?.textContent,
+                ]);
+            expect(facts).toEqual([
+                ["Repository", "org/ops"],
+                ["Hotspot score", "Not reported"],
+                ["Bus factor", "1"],
+                ["File-change samples", "1,947"],
+            ]);
+        });
+
+        it("draws the three tiles as one strip", async () => {
+            setup({ ...base, value: 1, evidenceSampleCount: 10 });
+            await renderPage();
+            expect(screen.getByTestId("code-tiles")).toHaveAttribute("data-columns", "3");
+        });
+
+        it("links to the three Complexity tabs with the arrow first and the filter on each", async () => {
             setup({ ...base, value: 1, evidenceSampleCount: 10 });
             await renderPage({ role: "eng" });
-            const links = within(screen.getByTestId("code-complexity-links")).getAllByRole("link");
+            const links = [
+                ...within(screen.getByTestId("code-repo-bus-factor")).getAllByRole("link", {
+                    name: "File-level hotspots",
+                }),
+                ...within(screen.getByTestId("code-complexity-links")).getAllByRole("link"),
+            ];
             const want: Record<string, string> = {
                 "File-level hotspots": "tab=hotspots",
                 "Ownership risk": "tab=ownership-risk",
@@ -218,12 +277,39 @@ describe("CodePage", () => {
             };
             expect(links.map((l) => l.textContent)).toEqual(Object.keys(want));
             for (const link of links) {
+                expect(link.firstElementChild?.tagName.toLowerCase()).toBe("svg");
                 const url = new URL(link.getAttribute("href") ?? "", "http://x");
                 expect(url.pathname).toBe("/complexity");
                 expect(url.search).toContain(want[link.textContent ?? ""]);
                 expect(url.searchParams.get("f")).toBeTruthy();
                 expect(url.searchParams.get("role")).toBe("eng");
             }
+        });
+
+        it("has a View evidence action with the tile values, shares and repositories as fact rows", async () => {
+            setup({
+                ...base,
+                value: 2,
+                evidenceSampleCount: 3773,
+                topMaintainers: [{ author: "someone", sharePercent: 90 }],
+            });
+            await renderPage();
+            await userEvent.click(
+                within(screen.getByTestId("page-header")).getByRole("button", {
+                    name: "View evidence",
+                }),
+            );
+            const rows = within(await screen.findByTestId("page-evidence-facts"))
+                .getAllByTestId("evidence-fact")
+                .map((r) => [
+                    r.querySelector("dt")?.textContent,
+                    r.querySelector("dd")?.textContent,
+                ]);
+            expect(rows).toContainEqual(["File-change samples", "3,773"]);
+            expect(rows).toContainEqual(["Bus factor", "2"]);
+            expect(rows).toContainEqual(["Primary maintainer", "90%"]);
+            expect(rows).toContainEqual(["org/ops", "Bus factor 1 · 1,947 samples"]);
+            expect(JSON.stringify(rows)).not.toContain("someone");
         });
     });
 });
