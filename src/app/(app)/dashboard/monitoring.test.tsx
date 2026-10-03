@@ -51,6 +51,7 @@ const HOME = {
         delta("throughput", "Throughput", 1006, "items", -30),
         delta("wip_saturation", "WIP Saturation", 301, "%", -29),
         delta("deploy_freq", "Deploy Frequency", 148, "deploys", -45),
+        delta("blocked_work", "Blocked Work", 7, "items", -20),
     ],
     summary: [],
     tiles: {},
@@ -69,13 +70,12 @@ async function renderHome(params: Record<string, string> = {}) {
     render(await Home({ searchParams: Promise.resolve(params) }));
     const block = screen.getByTestId("home-monitoring");
     const links = within(screen.getByTestId("monitoring-segments")).getAllByRole(
-        "link",
-    ) as HTMLAnchorElement[];
+        "button",
+    ) as HTMLButtonElement[];
     return { block, links };
 }
 
-const segmentIds = (links: HTMLAnchorElement[]) =>
-    links.map((a) => /tab=([a-z]+)/.exec(a.getAttribute("href") ?? "")?.[1]);
+const segmentIds = (links: HTMLButtonElement[]) => links.map((b) => b.textContent?.toLowerCase());
 
 describe("Monitoring block on Home (CHAOS-8064)", () => {
     it.each([
@@ -99,33 +99,33 @@ describe("Monitoring block on Home (CHAOS-8064)", () => {
         expect(screen.queryByText("Release speed and stability.")).toBeNull();
     });
 
-    it("each view links to its tab with the filter and the role of the page", async () => {
+    it("each view is a toggle button, and the jump link goes to the chosen tab with the filter and the role", async () => {
         const { links } = await renderHome({ lens: "em" });
         expect(links.map((a) => a.textContent)).toEqual(["Flow", "Throughput", "DORA"]);
-        for (const link of links) {
-            const href = link.getAttribute("href") ?? "";
-            expect(href.startsWith("/metrics?tab=")).toBe(true);
-            expect(href).toContain("role=em");
-            expect(href).toContain("f=");
-        }
+        const href = screen.getByTestId("monitoring-jump").getAttribute("href") ?? "";
+        expect(href.startsWith("/metrics?tab=flow")).toBe(true);
+        expect(href).toContain("role=em");
+        expect(href).toContain("f=");
     });
 
-    it("keeps the default role on the links when no lens is set", async () => {
-        const { links } = await renderHome();
-        for (const link of links) {
-            expect(link.getAttribute("href")).toContain(`role=${DEFAULT_ROLE}`);
-        }
+    it("the monitoring search parameter picks the group shown on load", async () => {
+        const { block } = await renderHome({ monitoring: "dora" });
+        expect(within(block).getByTestId("monitoring-tile-deploy_freq")).toBeInTheDocument();
+        expect(screen.getByRole("button", { name: "DORA" })).toHaveAttribute(
+            "aria-pressed",
+            "true",
+        );
     });
 
-    it("shows the four tiles from the served deltas, each a link to its metric evidence with the page role", async () => {
+    it("shows the four Flow tiles from the served deltas, each a link to its metric evidence with the page role", async () => {
         const { block } = await renderHome({ lens: "pm" });
         const tiles = within(block).getByTestId("monitoring-tiles");
         expect(tiles).toHaveAttribute("data-columns", "4");
         for (const [metric, label] of [
             ["cycle_time", "Cycle Time"],
             ["review_latency", "Review Latency"],
-            ["throughput", "Throughput"],
             ["wip_saturation", "WIP Saturation"],
+            ["blocked_work", "Blocked Work"],
         ]) {
             const tile = within(tiles).getByTestId(`monitoring-tile-${metric}`);
             expect(tile).toHaveTextContent(label);

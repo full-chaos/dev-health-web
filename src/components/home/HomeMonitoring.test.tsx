@@ -3,10 +3,17 @@ import { describe, expect, it, vi } from "vitest";
 import { formatMetricParts } from "@/lib/formatters";
 import type { MetricFilter } from "@/lib/filters/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { render, screen, within } from "@/test/utils";
+import { render, screen, userEvent, within } from "@/test/utils";
 import type { HomeResponse, MetricDelta } from "@/lib/types";
 
-import { HomeMonitoring, MONITORING_TILE_METRICS, MONITORING_TILE_NOTE } from "./HomeMonitoring";
+import {
+    HomeMonitoring,
+    MONITORING_GROUP_METRICS,
+    MONITORING_TILE_NOTE,
+    type MonitoringView,
+} from "./HomeMonitoring";
+
+const MONITORING_TILE_METRICS = MONITORING_GROUP_METRICS.flow;
 
 // The chart canvas is not the subject here; the tile's own tests cover the sparkline.
 vi.mock("@/components/charts/SparklineChart", () => ({
@@ -48,6 +55,8 @@ const DELTAS: MetricDelta[] = [
     delta("churn", "Code Churn", 18, "loc", 3),
     delta("review_latency", "Review Latency", 0.3, "hours", 258),
     delta("cycle_time", "Cycle Time", 1.5, "days", 655),
+    delta("blocked_work", "Blocked Work", 7, "items", -20),
+    delta("change_failure_rate", "Change Failure Rate", 4.2, "%", -3),
 ];
 
 const makeHome = (deltas: MetricDelta[] = DELTAS, sources: Record<string, string> = {}) =>
@@ -60,28 +69,51 @@ const makeHome = (deltas: MetricDelta[] = DELTAS, sources: Record<string, string
         events: [],
     }) as unknown as HomeResponse;
 
-const draw = (home: HomeResponse | null = makeHome(), role = "em", lensId = "em") =>
-    render(<HomeMonitoring home={home} filters={filters} activeRole={role} lensId={lensId} />);
+const draw = (
+    home: HomeResponse | null = makeHome(),
+    role = "em",
+    lensId = "em",
+    initialView?: string | null,
+) =>
+    render(
+        <HomeMonitoring
+            home={home}
+            filters={filters}
+            activeRole={role}
+            lensId={lensId}
+            initialView={initialView}
+        />,
+    );
 
 const segments = () =>
     within(screen.getByTestId("monitoring-segments"))
-        .getAllByRole("link")
-        .map((a) => [a.textContent, a.getAttribute("href")]);
+        .getAllByRole("button")
+        .map((b) => [b.textContent, b.getAttribute("aria-pressed")]);
+
+const tileIds = () =>
+    [
+        ...screen
+            .getByTestId("monitoring-tiles")
+            .querySelectorAll("[data-testid^='monitoring-tile-']"),
+    ].map((el) => el.getAttribute("data-testid")?.replace("monitoring-tile-", ""));
 
 const tile = (metric: string) => screen.getByTestId(`monitoring-tile-${metric}`);
 
 // The Monitoring block of Home (CHAOS-8064): approved prototype `.segments` + `metrics(...)`.
 describe("HomeMonitoring segments", () => {
-    it("has the heading, the jump text and three segment links with the filter and the role", () => {
+    it("has the heading, the jump link and three toggle buttons, Flow pressed by default", () => {
         draw();
         expect(screen.getByRole("heading", { name: "Monitoring" })).toBeInTheDocument();
-        expect(screen.getByText("Jump to full diagnostic views")).toBeInTheDocument();
         expect(segments()).toEqual([
-            ["Flow", withFilterParam("/metrics?tab=flow", filters, "em")],
-            ["Throughput", withFilterParam("/metrics?tab=throughput", filters, "em")],
-            ["DORA", withFilterParam("/metrics?tab=dora", filters, "em")],
+            ["Flow", "true"],
+            ["Throughput", "false"],
+            ["DORA", "false"],
         ]);
-        expect(screen.getByRole("navigation", { name: "Monitoring views" })).toBeInTheDocument();
+        expect(screen.getByRole("group", { name: "Monitoring views" })).toBeInTheDocument();
+        // The toggle is not navigation: no link inside it.
+        expect(
+            within(screen.getByTestId("monitoring-segments")).queryAllByRole("link"),
+        ).toHaveLength(0);
     });
 
     it.each([
@@ -98,13 +130,75 @@ describe("HomeMonitoring segments", () => {
         draw();
         const block = screen.getByTestId("home-monitoring");
         expect(block).not.toHaveTextContent("Idea to merge insight.");
-        expect(block).not.toHaveTextContent("Open metrics");
-        expect(block).not.toHaveTextContent("Tabs for steady trend monitoring.");
+    });
+
+    it.each([
+        ["Throughput", "throughput"],
+        ["DORA", "dora"],
+        ["Flow", "flow"],
+    ] as const)(
+        "clicking %s switches the shown group in place and does not navigate",
+        async (label, view) => {
+            const user = userEvent.setup();
+            const replace = vi.spyOn(window.history, "replaceState");
+            const push = vi.spyOn(window.history, "pushState");
+            draw(makeHome(), "em", "em", view === "flow" ? "dora" : null);
+            await user.click(screen.getByRole("button", { name: label }));
+
+            expect(tileIds()).toEqual([...MONITORING_GROUP_METRICS[view as MonitoringView]]);
+            expect(screen.getByRole("button", { name: label })).toHaveAttribute(
+                "aria-pressed",
+                "true",
+            );
+            expect(push).not.toHaveBeenCalled();
+            expect(new URL(window.location.href).searchParams.get("monitoring")).toBe(view);
+            replace.mockRestore();
+            push.mockRestore();
+        },
+    );
+
+    it("the jump link follows the chosen group, with the filter and the role", async () => {
+        const user = userEvent.setup();
+        draw(makeHome(), "em");
+        const jump = () => screen.getByRole("link", { name: /Jump to full diagnostic views/ });
+        expect(jump()).toHaveAttribute("href", withFilterParam("/metrics?tab=flow", filters, "em"));
+        await user.click(screen.getByRole("button", { name: "DORA" }));
+        expect(jump()).toHaveAttribute("href", withFilterParam("/metrics?tab=dora", filters, "em"));
+    });
+
+    it("the URL parameter picks the group on load; an unknown value falls back to Flow", () => {
+        const first = draw(makeHome(), "em", "em", "dora");
+        expect(tileIds()).toEqual([...MONITORING_GROUP_METRICS.dora]);
+        first.unmount();
+        draw(makeHome(), "em", "em", "nonsense");
+        expect(tileIds()).toEqual([...MONITORING_GROUP_METRICS.flow]);
+    });
+
+    it("moves with the keyboard: Tab to a button, Enter picks it", async () => {
+        const user = userEvent.setup();
+        draw();
+        await user.tab();
+        expect(screen.getByRole("button", { name: "Flow" })).toHaveFocus();
+        await user.tab();
+        expect(screen.getByRole("button", { name: "Throughput" })).toHaveFocus();
+        await user.keyboard("{Enter}");
+        expect(tileIds()).toEqual([...MONITORING_GROUP_METRICS.throughput]);
+        await user.tab();
+        await user.keyboard(" ");
+        expect(tileIds()).toEqual([...MONITORING_GROUP_METRICS.dora]);
+    });
+
+    it("a metric of the chosen group that is not served reads Not reported", async () => {
+        const user = userEvent.setup();
+        draw(makeHome([delta("deploy_freq", "Deploy Frequency", 14, "deploys", 22)]));
+        await user.click(screen.getByRole("button", { name: "DORA" }));
+        expect(tile("deploy_freq")).toHaveTextContent("Deploy Frequency");
+        expect(tile("change_failure_rate")).toHaveTextContent("Not reported");
     });
 });
 
 describe("HomeMonitoring tiles", () => {
-    it("shows the four approved tiles in the approved order, in one strip of four columns", () => {
+    it("shows the Flow tiles in the approved order, in one strip of four columns", () => {
         draw();
         const strip = screen.getByTestId("monitoring-tiles");
         expect(strip).toHaveAttribute("data-columns", "4");
@@ -112,7 +206,7 @@ describe("HomeMonitoring tiles", () => {
             el.getAttribute("data-testid"),
         );
         expect(ids).toEqual(MONITORING_TILE_METRICS.map((metric) => `monitoring-tile-${metric}`));
-        // The other served deltas are not tiles of this block.
+        // Another group's metric is not a tile of this group.
         expect(strip).not.toHaveTextContent("Deploy Frequency");
         expect(strip).not.toHaveTextContent("Code Churn");
     });
@@ -145,16 +239,20 @@ describe("HomeMonitoring tiles", () => {
         }
     });
 
-    it("polarity: a rise in a lower-is-better metric is the bad tone, in throughput the good tone", () => {
+    it("polarity: a rise in a lower-is-better metric is the bad tone, in throughput the good tone", async () => {
+        const user = userEvent.setup();
         draw(
             makeHome([
                 delta("cycle_time", "Cycle Time", 48, "hours", 12),
                 delta("throughput", "Throughput", 14, "items", 12),
             ]),
         );
+        await user.click(screen.getByRole("button", { name: "Throughput" }));
         const tone = (metric: string) => within(tile(metric)).getByTestId("metric-delta");
-        expect(tone("cycle_time")).toHaveClass("text-(--accent-negative)");
         expect(tone("throughput")).toHaveClass("text-(--positive)");
+        expect(tone("throughput").textContent).toBe("+12%");
+        await user.click(screen.getByRole("button", { name: "Flow" }));
+        expect(tone("cycle_time")).toHaveClass("text-(--accent-negative)");
         // The sign is text, so the tone is never the only signal.
         expect(tone("cycle_time").textContent).toBe("+12%");
     });
@@ -197,7 +295,7 @@ describe("HomeMonitoring tiles", () => {
         expect(
             screen.getByTestId("home-monitoring").querySelector("[data-variant]"),
         ).toHaveAttribute("data-variant", "no-data-connected");
-        // The segment links stay in every state.
+        // The toggle stays in every state.
         expect(segments()).toHaveLength(3);
     });
 });
