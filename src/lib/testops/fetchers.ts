@@ -8,10 +8,12 @@ import {
     CoverageAnalyticsResultSchema,
 } from "@/lib/graphql/schemas/analytics";
 import { logger } from "@/lib/logger";
+import { JobFailuresResultSchema, type JobFailuresState } from "./jobFailures";
 import {
     TESTOPS_PIPELINE_QUERY,
     TESTOPS_TEST_QUERY,
     TESTOPS_COVERAGE_QUERY,
+    TESTOPS_JOB_FAILURES_QUERY,
     TESTOPS_RISK_QUERY,
 } from "./queries";
 import { mapRiskMetricsPayload, type RiskMetricsResult } from "./risk-metrics";
@@ -20,6 +22,7 @@ import {
     SAMPLE_PIPELINES_DATA,
     SAMPLE_TESTS_DATA,
     SAMPLE_COVERAGE_DATA,
+    SAMPLE_JOB_FAILURES_DATA,
     SAMPLE_RISK_DATA,
 } from "./sample-data";
 
@@ -180,5 +183,63 @@ export async function fetchRiskMetrics(
     } catch (error) {
         logger.error({ err: error }, "Failed to fetch risk metrics");
         return null;
+    }
+}
+
+/** The input of `testopsJobFailures`: a window of at most 90 days and an optional scope. */
+export type JobFailuresInput = {
+    /** First day of the window, included ("YYYY-MM-DD"). */
+    sinceDate: string;
+    /** Last day of the window, included. */
+    untilDate: string;
+    repoIds?: string[] | null;
+    /** Team scope: the repositories these teams own. */
+    teamIds?: string[] | null;
+    /** 1 to 100. */
+    limit?: number;
+};
+
+/**
+ * The failing workflows and jobs of the window (CHAOS-8514). A failed read, and an answer that is
+ * not the served shape, are `{ fetchFailed: true }`: the card then says so and never shows an
+ * empty list in its place.
+ */
+export async function fetchJobFailures(
+    input: JobFailuresInput,
+    isTestMode: boolean = false,
+    orgIdOverride?: string,
+): Promise<JobFailuresState> {
+    if (isTestMode) {
+        return SAMPLE_JOB_FAILURES_DATA;
+    }
+
+    const orgId = await resolveOrgId(orgIdOverride);
+    try {
+        const res = await graphqlFetch<{ testopsJobFailures: unknown }>(
+            TESTOPS_JOB_FAILURES_QUERY,
+            {
+                orgId,
+                input: {
+                    sinceDate: input.sinceDate,
+                    untilDate: input.untilDate,
+                    // A scope is sent only when it is set: an empty list would narrow to nothing.
+                    ...(input.repoIds?.length ? { repoIds: input.repoIds } : {}),
+                    ...(input.teamIds?.length ? { teamIds: input.teamIds } : {}),
+                    limit: input.limit ?? 20,
+                },
+            },
+        );
+        const parsed = JobFailuresResultSchema.safeParse(res.testopsJobFailures);
+        if (!parsed.success) {
+            logger.error(
+                { err: parsed.error },
+                "Job failures failed schema validation; reporting a failed read",
+            );
+            return { fetchFailed: true };
+        }
+        return parsed.data;
+    } catch (error) {
+        logger.error({ err: error }, "Failed to fetch job failures");
+        return { fetchFailed: true };
     }
 }

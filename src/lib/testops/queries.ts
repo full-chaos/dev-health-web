@@ -108,3 +108,22 @@ query TestOpsRisk($orgId: String!, $input: TestOpsRiskInput!) {
   }
 }
 `;
+
+// Failing workflows and jobs (CHAOS-8514). One group per (workflow name, job name, provider);
+// `failureRate` is a share from 0 to 1. The text is registered on the API side.
+export const TESTOPS_JOB_FAILURES_QUERY = `
+query TestOpsJobFailures($orgId: String!, $input: TestOpsJobFailuresInput!) {
+  testopsJobFailures(orgId: $orgId, input: $input) {
+    groups {
+      workflowName
+      jobName
+      provider
+      runs
+      failedRuns
+      failureRate
+    }
+    totalCount
+    truncated
+  }
+}
+`;

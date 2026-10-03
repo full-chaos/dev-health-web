@@ -1556,6 +1556,8 @@ export type Query = {
   securityAlerts: SecurityAlertConnection;
   /** Aggregated security posture for the dashboard */
   securityOverview: SecurityOverview;
+  /** CI job names that failed in a window, by workflow and job name (CHAOS-8513). Computed at read time from the stored job runs of every CI provider. */
+  testopsJobFailures: TestOpsJobFailuresResult;
   /** Persisted TestOps Delivery Risk metrics from release confidence, quality drag, and pipeline stability tables. */
   testopsRisk: TestOpsRiskResult;
   /** Compute throughput-based capacity forecast */
@@ -1801,6 +1803,12 @@ export type QuerySecurityAlertsArgs = {
 
 export type QuerySecurityOverviewArgs = {
   filters?: InputMaybe<SecurityAlertFilterInput>;
+  orgId: Scalars['String']['input'];
+};
+
+
+export type QueryTestopsJobFailuresArgs = {
+  input: TestOpsJobFailuresInput;
   orgId: Scalars['String']['input'];
 };
 
@@ -2165,6 +2173,43 @@ export type TeamAttributionSource =
   | 'PROJECT_OWNERSHIP'
   | 'REPO_OWNERSHIP'
   | 'UNASSIGNED';
+
+export type TestOpsJobFailureGroup = {
+  __typename?: 'TestOpsJobFailureGroup';
+  /** The runs that failed (a failure, an error or a timeout). Always above 0: a group with no failed run is not served. */
+  failedRuns: Scalars['Int']['output'];
+  /** ``failedRuns / runs``: a share from 0 to 1, NOT a percent. Null = no run to divide by (not served today: every served group has a failed run). */
+  failureRate?: Maybe<Scalars['Float']['output']>;
+  jobName: Scalars['String']['output'];
+  /** The CI provider of the runs (``github``, ``gitlab``). Null = the job runs have no stored pipeline row. */
+  provider?: Maybe<Scalars['String']['output']>;
+  /** Job runs of this group that started in the window and reached a result (success, failure or cancelled). A skipped, queued or running job is not a run. */
+  runs: Scalars['Int']['output'];
+  /** The workflow (GitHub Actions) or pipeline (GitLab CI) name of the runs. Null = the job runs have no stored pipeline row, or the row has no name. */
+  workflowName?: Maybe<Scalars['String']['output']>;
+};
+
+export type TestOpsJobFailuresInput = {
+  /** Most groups to serve: 1 to 100. */
+  limit?: Scalars['Int']['input'];
+  repoIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** First day of the window (UTC), included. The day a job run started places it. */
+  sinceDate: Scalars['Date']['input'];
+  /** Team ids. Narrows the runs to the repositories these teams OWN (team_repo_ownership, as of now); person membership is never read. With ``repoIds`` both apply. */
+  teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Last day of the window (UTC), included. A window longer than 90 days, or one that ends before it starts, is an error. */
+  untilDate: Scalars['Date']['input'];
+};
+
+export type TestOpsJobFailuresResult = {
+  __typename?: 'TestOpsJobFailuresResult';
+  /** The groups with the most failed runs first (then by job name, workflow name and provider), cut at ``limit``. */
+  groups: Array<TestOpsJobFailureGroup>;
+  /** Number of groups that match before the ``limit`` cut. Never less than ``groups``. */
+  totalCount: Scalars['Int']['output'];
+  /** True = ``totalCount`` is above the number of ``groups`` served. */
+  truncated: Scalars['Boolean']['output'];
+};
 
 export type TestOpsRiskBreakdownItem = {
   __typename?: 'TestOpsRiskBreakdownItem';
