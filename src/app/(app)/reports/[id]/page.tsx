@@ -183,6 +183,7 @@ const RUN_COLUMNS: readonly DataTableColumn<ReportRun>[] = [
     {
         key: "date",
         header: "Date",
+        className: "whitespace-nowrap px-3 py-3.25",
         render: (run) => (run.startedAt ? formatDateUTC(run.startedAt) : "-"),
     },
     { key: "status", header: "Status", render: (run) => <StatusBadge status={run.status} /> },
