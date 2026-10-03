@@ -1,5 +1,6 @@
 "use client";
 
+import { readFailureMessage } from "@/lib/readFailure";
 import Link from "next/link";
 
 import { DonutChart } from "@/components/charts/DonutChart";
@@ -47,10 +48,10 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
             <DataState
                 variant="error"
                 title="AI impact data could not load"
-                message={
-                    (summaryResult.error || comparisonResult.error)?.message ??
-                    "Please retry the request."
-                }
+                message={readFailureMessage(
+                    summaryResult.error || comparisonResult.error,
+                    "aiImpact",
+                )}
             />
         );
     }

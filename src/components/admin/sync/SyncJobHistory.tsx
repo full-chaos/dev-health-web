@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -78,7 +79,7 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
         startTransition(async () => {
             const result = await getSyncJobs(configId, PAGE_SIZE + 1, safeOffset);
             if (result.error || !result.data) {
-                setFetchError(result.error ?? "Failed to load more jobs.");
+                setFetchError(READ_FAILED_MESSAGE);
                 return;
             }
             setOffset(safeOffset);

@@ -1,5 +1,6 @@
 "use client";
 
+import { actionFailureMessage } from "@/lib/actionFailure";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -55,7 +56,7 @@ export function SyncConfigDeleteControls({
                 else router.refresh();
             } catch (error) {
                 if (!(error instanceof Error)) throw error;
-                toast.error(error.message || "Failed to delete sync configuration");
+                toast.error(actionFailureMessage(error, "deleteSyncConfig"));
                 setConfirmOpen(false);
             }
         });

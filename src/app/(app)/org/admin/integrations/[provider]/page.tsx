@@ -1,3 +1,4 @@
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
@@ -99,7 +100,7 @@ export default async function IntegrationPage({
 
             {credentialsResult.error && !isCustomProvider && (
                 <Notice variant="danger" live={false}>
-                    Failed to load credentials: {credentialsResult.error}
+                    Failed to load credentials. {READ_FAILED_MESSAGE}
                 </Notice>
             )}
 
@@ -114,7 +115,7 @@ export default async function IntegrationPage({
 
             {customerPushEnabled && customerPushSourcesResult?.error && (
                 <Notice variant="danger" live={false} className="mb-6">
-                    Failed to load customer-push sources: {customerPushSourcesResult.error}
+                    Failed to load customer-push sources. {READ_FAILED_MESSAGE}
                 </Notice>
             )}
 

@@ -1,5 +1,7 @@
 "use client";
 
+import { isPlanGateMessage } from "@/lib/actionFailure";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { AIPanelCard } from "@/components/ai/AIPanelCard";
@@ -119,15 +121,19 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
         if (result.status === 402) {
             setLocked({
                 reason: "not_licensed",
-                message: result.error ?? "BYO-LLM spend summary requires Team tier or higher.",
+                message: isPlanGateMessage(result.error)
+                    ? result.error
+                    : "BYO-LLM spend summary requires Team tier or higher.",
             });
         } else if (result.status === 403) {
             setLocked({
                 reason: "not_enabled",
-                message: result.error ?? "BYO-LLM is not enabled for this organization.",
+                message: isPlanGateMessage(result.error)
+                    ? result.error
+                    : "BYO-LLM is not enabled for this organization.",
             });
         } else if (result.error) {
-            setLoadError(result.error);
+            setLoadError(READ_FAILED_MESSAGE);
         } else if (result.data) {
             setSummary(result.data);
         }
@@ -155,10 +161,7 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
             })
             // A budget action that throws leaves the tiles out; it is never an unhandled rejection.
             .catch((error: unknown) => {
-                spendLogger.error(
-                    { message: error instanceof Error ? error.message : "Unknown error" },
-                    "Budget request for the spend tiles failed",
-                );
+                spendLogger.error({ err: error }, "Budget request for the spend tiles failed");
                 if (active) setBudget(null);
             });
         return () => {

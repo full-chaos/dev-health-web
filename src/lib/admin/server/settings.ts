@@ -1,5 +1,6 @@
 "use server";
 
+import { failureFromError } from "@/lib/actionFailure";
 import { adminApi } from "../api";
 import { AdminApiError } from "../api";
 import { revalidatePath } from "next/cache";
@@ -228,14 +229,7 @@ async function withStatusErrorHandling<T>(
     try {
         return { data: await fn() };
     } catch (err) {
-        if (err instanceof AdminApiError) {
-            const detail = err.detail || err.message;
-            return {
-                error: typeof detail === "string" ? detail : JSON.stringify(detail),
-                status: err.status,
-            };
-        }
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureFromError("withStatusErrorHandling", err);
     }
 }
 
@@ -330,13 +324,6 @@ async function withHttpStatus<T>(fn: () => Promise<T>): Promise<ActionResult<T>>
     try {
         return { data: await fn() };
     } catch (err) {
-        if (err instanceof AdminApiError) {
-            const detail = err.detail || err.message;
-            return {
-                error: typeof detail === "string" ? detail : JSON.stringify(detail),
-                status: err.status,
-            };
-        }
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureFromError("withHttpStatus", err);
     }
 }

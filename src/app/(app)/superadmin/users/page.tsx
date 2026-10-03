@@ -1,3 +1,4 @@
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { UserTable } from "@/components/superadmin/UserTable";
@@ -20,7 +21,7 @@ export default async function UsersPage({ searchParams }: UsersPageProps) {
             <div>
                 <AdminHeader title="Users" description="Manage all users across the platform." />
                 <Notice variant="danger" live={false}>
-                    Error loading users: {error}
+                    Error loading users. {READ_FAILED_MESSAGE}
                 </Notice>
             </div>
         );

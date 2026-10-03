@@ -4,22 +4,27 @@ import { describe, expect, it } from "vitest";
 
 /**
  * CHAOS-8434 (ruling 107): a component never renders the text of a backend or thrown error. A failed
- * read shows `readFailureMessage(error, "<operation>")`, which logs the detail and returns the plain
- * sentence. This scan fails when a `.tsx` file under src/ reads `<error>.message` or `graphQLErrors`.
- *
- * ALLOWED: each entry below, with its reason. The action files (4xx validation text rule of
- * `AdminErrorNotice`) are removed from this list by the actions PR of the same ticket.
+ * read shows `readFailureMessage(error, "<operation>")`; a failed action shows
+ * `actionFailureMessage` / `failureResult`, which keep the served text ONLY for a 4xx other than
+ * 401/403 (or a plan-gate sentence). The detail goes to the log. This scan fails when a `.ts` or
+ * `.tsx` file under src/ reads `<error>.message` or `graphQLErrors`, except for the files below.
  */
 const ALLOW: Record<string, string> = {
     "components/evidence/EvidencePanel.tsx":
         "the text goes to the log and to the dev-diagnostics block (flag-gated), not to users",
-    "app/(app)/reports/[id]/page.tsx": "ACTION errors (trigger/update/clone/delete): actions PR",
-    "app/(app)/reports/new/page.tsx": "ACTION error (create): actions PR",
-    "components/admin/llm/ByoLlmSpendSummary.tsx": "actions PR",
-    "components/admin/billing/PlanManager.tsx": "ACTION toast (client JSON validation): actions PR",
-    "components/admin/sync/SyncConfigHeaderActions.tsx": "ACTION toast: actions PR",
-    "components/admin/sync/SyncConfigDeleteControls.tsx": "ACTION toast: actions PR",
-    "components/admin/sync/SyncConfigTableRow.tsx": "ACTION toast: actions PR",
+    "components/admin/billing/PlanManager.tsx":
+        "client-side JSON validation text authored by this page (parsePriceJson), not backend text",
+    "lib/graphql/server.ts":
+        "builds the thrown Error from the GraphQL error; callers log it and show a plain sentence",
+    "lib/graphql/validate.ts": "builds the schema-validation Error (thrown, then logged)",
+    "lib/graphql/urqlExchanges.ts": "passes graphQLErrors to the logger only",
+    "lib/acr/contracts.ts": "ajv schema error text for a developer-facing contract check",
+    "lib/result.ts": "withResult: not used by a screen (test-only helper)",
+    "lib/admin/api/_request.ts":
+        "reads the served detail into AdminApiError; failureResult gates it",
+    "lib/admin/server/orgs.ts":
+        "reads the served detail into AdminApiError; failureResult gates it",
+    "lib/actionFailure.ts": "the one place that decides whether served text is shown (4xx rule)",
 };
 
 const SRC = join(process.cwd(), "src");
@@ -29,9 +34,9 @@ function walk(dir: string, out: string[] = []): string[] {
     for (const name of readdirSync(dir)) {
         const full = join(dir, name);
         if (statSync(full).isDirectory()) {
-            if (name === "__tests__" || name === "generated") continue;
+            if (["__tests__", "generated", "__generated__"].includes(name)) continue;
             walk(full, out);
-        } else if (full.endsWith(".tsx") && !/\.(test|spec)\.tsx$/u.test(name)) {
+        } else if (/\.tsx?$/u.test(name) && !/\.(test|spec)\.tsx?$/u.test(name)) {
             out.push(full);
         }
     }
@@ -45,7 +50,7 @@ describe("no component renders backend error text", () => {
         expect(files.length).toBeGreaterThan(200);
     });
 
-    it("finds no error.message / graphQLErrors read outside the allow-list", () => {
+    it("finds no error.message / graphQLErrors read outside the allow-list (.ts and .tsx)", () => {
         const offenders = files
             .map((f) => relative(SRC, f))
             .filter((rel) => !(rel in ALLOW))

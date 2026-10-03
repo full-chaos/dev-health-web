@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/shared/Button";
 import { Notice } from "@/components/ui/Notice";
+import { isValidationStatus } from "@/lib/actionFailure";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 /**
@@ -28,12 +29,7 @@ export type AdminErrorNoticeProps = {
 
 const PLAN_GATE = /^This feature requires the /u;
 
-/** A 4xx other than 401/403: a validation-style answer whose message the admin must act on. */
-export function isValidationStatus(status: number | undefined): boolean {
-    return (
-        status !== undefined && status >= 400 && status < 500 && status !== 401 && status !== 403
-    );
-}
+export { isValidationStatus };
 
 export function AdminErrorNotice({
     error,

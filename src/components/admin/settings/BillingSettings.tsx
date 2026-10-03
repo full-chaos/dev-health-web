@@ -88,7 +88,7 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
             if ("error" in subRes) {
                 // 404 is expected for free-tier users with no Stripe subscription
                 // Only toast on unexpected errors
-                if (!subRes.error?.includes("No active subscription")) {
+                if (subRes.status !== 404) {
                     toast.error(subRes.error);
                 }
             } else {
@@ -97,10 +97,7 @@ export function BillingSettings({ tier = "community" }: BillingSettingsProps) {
 
             if ("error" in historyRes) {
                 // History may also 404 for free-tier — silently ignore
-                if (
-                    !historyRes.error?.includes("No active subscription") &&
-                    !historyRes.error?.includes("not found")
-                ) {
+                if (historyRes.status !== 404) {
                     toast.error(historyRes.error);
                 }
             } else {

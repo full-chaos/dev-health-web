@@ -45,7 +45,11 @@ describe("client banners", () => {
             "We couldn&apos;t connect the GitHub App.",
             1,
         ],
-        ["components/admin/sync/RepoSelector.tsx", "Failed to load repositories: {error}", 1],
+        [
+            "components/admin/sync/RepoSelector.tsx",
+            "Failed to load repositories. {READ_FAILED_MESSAGE}",
+            1,
+        ],
         [
             "components/admin/integrations/customer-push/CreateCustomerPushSourceForm.tsx",
             "{genericError}",

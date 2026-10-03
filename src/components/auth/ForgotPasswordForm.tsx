@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidationStatus } from "@/lib/actionFailure";
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -33,7 +34,12 @@ export function ForgotPasswordForm() {
                 setIsSuccess(true);
             } else {
                 const data = await response.json().catch(() => ({}));
-                toast.error(extractErrorMessage(data?.detail, "Failed to send reset link"));
+                toast.error(
+                    extractErrorMessage(
+                        isValidationStatus(response.status) ? data?.detail : undefined,
+                        "Failed to send reset link",
+                    ),
+                );
             }
         } catch {
             toast.error("An unexpected error occurred");

@@ -1,5 +1,6 @@
 "use client";
 
+import { actionFailureMessage } from "@/lib/actionFailure";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -70,7 +71,7 @@ export default function NewReportPage() {
             await createSavedReport(orgId, input);
             router.push("/reports");
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to create report");
+            setError(actionFailureMessage(err, "createSavedReport"));
             setIsSubmitting(false);
         }
     };

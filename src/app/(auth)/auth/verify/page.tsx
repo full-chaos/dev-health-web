@@ -1,3 +1,4 @@
+import { isValidationStatus } from "@/lib/actionFailure";
 import Link from "next/link";
 import { getBackendUrl } from "@/lib/origin";
 import { extractErrorMessage } from "@/lib/errorMessages";
@@ -28,7 +29,7 @@ export default async function VerifyEmailPage({ searchParams }: { searchParams: 
                 try {
                     const data = await res.json();
                     message = extractErrorMessage(
-                        data.detail,
+                        isValidationStatus(res.status) ? data.detail : undefined,
                         "Invalid or expired verification token",
                     );
                 } catch {
