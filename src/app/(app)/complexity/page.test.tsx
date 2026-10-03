@@ -55,10 +55,17 @@ describe("Complexity page header", () => {
         ["hotspots", "Files sized by risk score and grouped by repository."],
         ["ownership-risk", "Files ranked by blame concentration."],
         ["churn", "Files ranked by lines changed over the last 30 days."],
-    ])("tab %s has its own subtitle", async (tab, subtitle) => {
+    ])("tab %s has its own subtitle, as the one line under the title", async (tab, subtitle) => {
         await renderPage(tab);
 
-        expect(within(screen.getByTestId("page-header")).getByText(subtitle)).toBeInTheDocument();
+        const header = screen.getByTestId("page-header");
+        expect(within(header).getByText(subtitle)).toBeInTheDocument();
+        // Prototype views 17 to 21: one subtitle line (no second "Every score traces…" line).
+        const lines = Array.from(
+            header.querySelectorAll("p:not([data-testid='page-header-eyebrow'])"),
+        ).map((line) => line.textContent);
+        expect(lines).toEqual([subtitle]);
+        expect(within(header).queryByText(/Every score traces/u)).toBeNull();
     });
 
     it("has a View evidence action with the overview tile values as fact rows", async () => {
