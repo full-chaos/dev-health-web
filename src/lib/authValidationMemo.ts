@@ -97,11 +97,12 @@ async function validateBackendSession(
         //    of the credentials must never keep a session.
         // Every other answer says nothing about the user: a 404 from a router
         // that has no backend during a roll, a 400 or 422, a 429, a 5xx, a 2xx
-        // body without a boolean `valid`. Those keep the session and validation
+        // body without a boolean `valid` (a body that is not JSON included).
+        // Those keep the session, are logged with their status, and validation
         // is retried after backoff. The access token still expires on its own
         // clock, and then the refresh path decides.
         if (res.ok) {
-            const verdict = validVerdict(await res.json());
+            const verdict = validVerdict(await readJson(res));
             if (verdict === true) return { kind: "valid", checkedAt: now };
             if (verdict === false) {
                 logSessionBranch({
@@ -131,6 +132,19 @@ async function validateBackendSession(
             failures,
         });
         return transientOutcome(failures, now);
+    }
+}
+
+/**
+ * The JSON body of an answer, or undefined when it cannot be read. An answer
+ * that arrived but is not JSON is not a failed call: the caller logs it with
+ * its status, not as a network failure.
+ */
+async function readJson(res: Response): Promise<unknown> {
+    try {
+        return await res.json();
+    } catch {
+        return undefined;
     }
 }
 

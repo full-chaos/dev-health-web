@@ -242,6 +242,26 @@ describe("validation branches name themselves in the log", () => {
         },
     );
 
+    it.each([
+        ["an empty object", "{}"],
+        ["valid as a string", JSON.stringify({ valid: "false" })],
+        ["a JSON null", "null"],
+        ["a body that is not JSON", "<html>bad gateway</html>"],
+    ])("validate_transient: a 200 with %s is logged with its status", async (_name, body) => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response(body, { status: 200 })),
+        );
+
+        const token = await run(validationDueToken());
+
+        expect(token.error).toBeUndefined();
+        expect(token.access_token).toBe(ACCESS_TOKEN);
+        expect(branchLines()).toEqual([
+            { operation: "validate", branch: "validate_transient", status: 200, failures: 1 },
+        ]);
+    });
+
     it("validate_call_failed: a thrown validation call keeps the session and logs the error name", async () => {
         backendThrows();
 

@@ -15,9 +15,10 @@ const log = logger.child({ module: "auth-session" });
  * - `user_invalid`          backend validation refused the session (a 2xx with `valid: false`,
  *                           or 401 / 403): both tokens go.
  * - `validate_transient`    validation got an answer that says nothing about the user (404, 400,
- *                           422, 429, 5xx, a body without `valid`): the session is KEPT, retry
- *                           after backoff.
- * - `validate_call_failed`  the validation call threw: the session is KEPT, retry after backoff.
+ *                           422, 429, 5xx, a 2xx body without a boolean `valid` or that is
+ *                           not JSON): the session is KEPT, retry after backoff.
+ * - `validate_call_failed`  the validation call itself threw (no answer arrived): the session
+ *                           is KEPT, retry after backoff.
  */
 export type SessionBranch =
     | "refresh_failed"

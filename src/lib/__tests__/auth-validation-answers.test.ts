@@ -177,3 +177,46 @@ describe("an answer that confirms the user", () => {
         expect(token.validation_failures).toBe(0);
     });
 });
+
+describe("a good refresh starts the validation count again", () => {
+    const REFRESHED = JSON.stringify({
+        access_token: "next-access",
+        refresh_token: "next-refresh",
+        expires_in: 3600,
+    });
+
+    /** A token past its refresh point that carries a validation count from before. */
+    function refreshDueToken(): Token {
+        return {
+            id: "user-1",
+            access_token: ACCESS_TOKEN,
+            refresh_token: REFRESH_TOKEN,
+            expires_at: Date.now() - 1000,
+            last_validated: Date.now(),
+            validation_failures: 5,
+        };
+    }
+
+    it("resets validation_failures on the new access token", async () => {
+        backendAnswers(200, REFRESHED);
+
+        const token = await validate(refreshDueToken());
+
+        expect(token.access_token).toBe("next-access");
+        expect(token.validation_failures).toBe(0);
+    });
+
+    it("the next failed validation of the new token counts from one", async () => {
+        backendAnswers(200, REFRESHED);
+        const refreshed = await validate(refreshDueToken());
+
+        backendAnswers(503, "");
+        const later = await validate({
+            ...refreshed,
+            last_validated: Date.now() - 6 * 60 * 1000,
+        });
+
+        expect(later.access_token).toBe("next-access");
+        expect(later.validation_failures).toBe(1);
+    });
+});

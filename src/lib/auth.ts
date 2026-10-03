@@ -300,6 +300,10 @@ const nextAuth = NextAuth({
                         token.expires_at = now + (data.expires_in || 3600) * 1000;
                         token.last_validated = now;
                         token.refresh_failures = 0;
+                        // A new access token starts with a clean validation count:
+                        // the count belongs to the token it replaces, and a stale
+                        // one keeps the next validation backoff at its cap.
+                        token.validation_failures = 0;
                         token.error = undefined;
                         if (data.user) {
                             token.id = data.user.id;
