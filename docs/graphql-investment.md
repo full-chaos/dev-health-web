@@ -29,15 +29,14 @@ When disabled (default), all calls continue to use the existing REST endpoints.
 
 ### Backend (dev-health-ops)
 
-The GraphQL endpoint is already mounted at `/graphql`, but GraphiQL is dev-only and only available when the ops API runs with `DEBUG=1` in a dev environment:
+The GraphQL endpoint is `/graphql` of the Go `query-api` service. Start it with the root compose file of `dev-health-ops` (service `query-api`; it listens on `:8090` inside the compose network and the stack's router sends `/graphql` to it):
 
 ```bash
 cd dev-health-ops
-# Start the API server
-python cli.py api --port 8000 --db "$DATABASE_URI"
-
-# GraphiQL is available only in dev at http://localhost:8000/graphql
+docker compose up -d query-api
 ```
+
+For a web dev server on the host, point `BACKEND_URL` at the stack's router (see `docs/agent-visual-testing.md` for the port and the sign-in account).
 
 To keep the schema in sync, copy the ops contract pin (`contracts/graphql/v1/schema.graphql` in `dev-health-ops`) verbatim to `src/lib/graphql/schema.graphql`, then run `pnpm codegen`.
 
