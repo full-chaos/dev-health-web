@@ -169,7 +169,8 @@ describe("TestOps Coverage page — approved layout", () => {
         };
         expect(batch.breakdowns.map(({ dimension, measure, topN }) => [dimension, measure, topN])).toEqual([
             ["REPO", "COVERAGE_LINE_PCT", 10],
-            ["REPO", "COVERAGE_BRANCH_PCT", 10],
+            // The largest topN the API accepts, so the branch list is complete whenever it can be.
+            ["REPO", "COVERAGE_BRANCH_PCT", 100],
         ]);
         // Both read the same window.
         expect(batch.breakdowns[1].dateRange).toEqual(batch.breakdowns[0].dateRange);

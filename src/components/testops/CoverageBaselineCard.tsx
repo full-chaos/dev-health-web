@@ -2,7 +2,7 @@ import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { MeterRows } from "@/components/ui/MeterRows";
 import { formatPercent } from "@/lib/formatters";
-import type { RepositoryCoverageRow } from "@/lib/testops/coverageRepos";
+import { BRANCH_BREAKDOWN_TOP_N, type RepositoryCoverageRow } from "@/lib/testops/coverageRepos";
 
 type CoverageBaselineCardProps = {
     repositories: RepositoryCoverageRow[];
@@ -70,9 +70,22 @@ export function CoverageBaselineCard({
                                 testId="testops-coverage-meters"
                                 rows={[
                                     percentRow("Line coverage", repo.lineCoverage),
-                                    percentRow("Branch coverage", repo.branchCoverage),
+                                    // A repository outside a cut branch answer has no branch row:
+                                    // its figure can exist, so "Not reported" would be false.
+                                    ...(repo.branchOutsideList
+                                        ? []
+                                        : [percentRow("Branch coverage", repo.branchCoverage)]),
                                 ]}
                             />
+                            {repo.branchOutsideList ? (
+                                <p
+                                    data-testid="testops-coverage-branch-outside-list"
+                                    className="mt-2 text-xs text-(--ink-muted)"
+                                >
+                                    Branch coverage: this repository is outside the{" "}
+                                    {BRANCH_BREAKDOWN_TOP_N} repositories the branch answer lists.
+                                </p>
+                            ) : null}
                         </div>
                     ))}
                     <div className="rounded-(--radius-sm) bg-background p-3.75 text-xs text-(--ink-muted)">

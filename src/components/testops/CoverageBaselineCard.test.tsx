@@ -5,12 +5,17 @@ import { CoverageBaselineCard } from "./CoverageBaselineCard";
 
 afterEach(cleanup);
 
-const repo = (lineCoverage: number | null, branchCoverage: number | null = null) => ({
+const repo = (
+    lineCoverage: number | null,
+    branchCoverage: number | null = null,
+    branchOutsideList = false,
+) => ({
     id: "repo-1",
     name: "dev-health-web",
     title: "full-chaos/dev-health-web",
     lineCoverage,
     branchCoverage,
+    branchOutsideList,
 });
 
 const rowsOf = (block: HTMLElement) => within(block).getAllByTestId("meter-row");
@@ -54,6 +59,27 @@ describe("CoverageBaselineCard on the shared meter rows", () => {
         const card = screen.getByTestId("testops-coverage-baseline");
         expect(card).toHaveTextContent("A per-repository baseline is not reported yet.");
         expect(card).not.toHaveTextContent(/Branch coverage and/);
+    });
+
+    it("does not say 'Not reported' for a repository outside a cut branch answer: no branch row, and a note says why", () => {
+        render(<CoverageBaselineCard repositories={[repo(60, null, true)]} baselinePct={80} />);
+        const rows = rowsOf(screen.getByTestId("testops-coverage-meters"));
+        expect(rows.map((row) => row.textContent)).toEqual(["Line coverage60%"]);
+        const block = screen.getByTestId("testops-coverage-baseline-repo");
+        expect(block).not.toHaveTextContent("Not reported");
+        expect(within(block).getByTestId("testops-coverage-branch-outside-list")).toHaveTextContent(
+            "Branch coverage: this repository is outside the 100 repositories the branch answer lists.",
+        );
+    });
+
+    it("shows no such note when the branch value is served or truly not reported", () => {
+        render(
+            <CoverageBaselineCard
+                repositories={[repo(60, 54), { ...repo(60, null), id: "repo-2" }]}
+                baselinePct={80}
+            />,
+        );
+        expect(screen.queryByTestId("testops-coverage-branch-outside-list")).toBeNull();
     });
 
     it("reads a Branch coverage that is not served as 'Not reported' with an empty track", () => {

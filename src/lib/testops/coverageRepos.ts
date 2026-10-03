@@ -1,6 +1,13 @@
 import type { NullableBreakdownResult } from "@/lib/graphql/schemas/analytics";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
 
+/**
+ * The topN of the branch-coverage breakdown: the largest the API accepts (ops
+ * `internal/queryapi/analytics/breakdown.go`, `maxTopN`). An answer with fewer items than this is
+ * complete; an answer with exactly this many items was cut.
+ */
+export const BRANCH_BREAKDOWN_TOP_N = 100;
+
 /** One repository row of the served coverage breakdowns (REPO dimension). */
 export type RepositoryCoverageRow = {
     /** The served breakdown key (repository id). */
@@ -12,10 +19,16 @@ export type RepositoryCoverageRow = {
     /** Served line coverage of the repository, in percent. Null = not reported. */
     lineCoverage: number | null;
     /**
-     * Served branch coverage of the repository, in percent. Null = not reported: the branch answer
-     * has a null value for the repository, does not list it, or was not served.
+     * Served branch coverage of the repository, in percent. Null = no value: the branch answer has
+     * a null value for the repository, does not list it, or was not served. It is "not reported"
+     * unless `branchOutsideList` is true.
      */
     branchCoverage: number | null;
+    /**
+     * True when the branch answer was cut by its topN and does not list the repository: a branch
+     * figure can exist, so the row must not read "Not reported".
+     */
+    branchOutsideList: boolean;
 };
 
 /**
@@ -32,6 +45,8 @@ export function buildRepositoryCoverage(
 ): RepositoryCoverageRow[] {
     const items = line?.items ?? [];
     const branchByKey = new Map((branch?.items ?? []).map((item) => [item.key, item.value]));
+    // A list as long as the request's topN was cut; a shorter one holds every repository.
+    const branchCut = (branch?.items.length ?? 0) >= BRANCH_BREAKDOWN_TOP_N;
     const { labels, titles } = resolveEntityLabels(
         items.map((item) => item.key),
         (_id, i) => ({
@@ -45,5 +60,6 @@ export function buildRepositoryCoverage(
         title: titles[i],
         lineCoverage: item.value,
         branchCoverage: branchByKey.get(item.key) ?? null,
+        branchOutsideList: branchCut && !branchByKey.has(item.key),
     }));
 }

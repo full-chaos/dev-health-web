@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildRepositoryCoverage } from "../coverageRepos";
+import { BRANCH_BREAKDOWN_TOP_N, buildRepositoryCoverage } from "../coverageRepos";
 
 const UUID = "0f2b9c1e-1111-4222-8333-944455556666";
 
@@ -96,6 +96,60 @@ describe("buildRepositoryCoverage", () => {
         expect(rows[0].name).toBe("dev-health-web");
         expect(rows[1].name).not.toContain(UUID);
         expect(rows[1].title).toBe(UUID);
+    });
+
+    // The branch answer is asked with the largest topN the API accepts. A list shorter than that is
+    // complete: a repository it does not list has no branch figure. A list of exactly that length
+    // was cut: a repository it does not list can have a figure that the cut removed.
+    it("marks a repository as outside the list, not as not reported, when the branch answer was cut", () => {
+        const cut = branch(
+            Array.from({ length: BRANCH_BREAKDOWN_TOP_N }, (_, i) => ({
+                key: `other-${i}`,
+                value: 50,
+            })),
+        );
+        const [row] = buildRepositoryCoverage(line([{ key: "repo-1", value: 60 }]), cut);
+        expect(row.branchCoverage).toBeNull();
+        expect(row.branchOutsideList).toBe(true);
+    });
+
+    it("keeps a served value from a cut branch answer", () => {
+        const cut = branch([
+            { key: "repo-1", value: 54 },
+            ...Array.from({ length: BRANCH_BREAKDOWN_TOP_N - 1 }, (_, i) => ({
+                key: `other-${i}`,
+                value: 50,
+            })),
+        ]);
+        const [row] = buildRepositoryCoverage(line([{ key: "repo-1", value: 60 }]), cut);
+        expect([row.branchCoverage, row.branchOutsideList]).toEqual([54, false]);
+    });
+
+    it("keeps a served null from a cut branch answer as not reported (the repository is in the list)", () => {
+        const cut = branch([
+            { key: "repo-1", value: null },
+            ...Array.from({ length: BRANCH_BREAKDOWN_TOP_N - 1 }, (_, i) => ({
+                key: `other-${i}`,
+                value: 50,
+            })),
+        ]);
+        const [row] = buildRepositoryCoverage(line([{ key: "repo-1", value: 60 }]), cut);
+        expect([row.branchCoverage, row.branchOutsideList]).toEqual([null, false]);
+    });
+
+    it("reads a missing repository as not reported when the branch answer is complete (one item under the cap)", () => {
+        const complete = branch(
+            Array.from({ length: BRANCH_BREAKDOWN_TOP_N - 1 }, (_, i) => ({
+                key: `other-${i}`,
+                value: 50,
+            })),
+        );
+        const [row] = buildRepositoryCoverage(line([{ key: "repo-1", value: 60 }]), complete);
+        expect([row.branchCoverage, row.branchOutsideList]).toEqual([null, false]);
+    });
+
+    it("asks for the largest topN the API accepts (ops maxTopN)", () => {
+        expect(BRANCH_BREAKDOWN_TOP_N).toBe(100);
     });
 
     it("gives no rows when the line breakdown is missing", () => {
