@@ -22,6 +22,9 @@ export const TINT = {
 /** The empty state of a week with no stored value. */
 const NO_DATA = "No data for this window";
 
+/** The note on a metric whose value is the whole organization's while a team is selected. */
+export const WHOLE_ORGANIZATION = "Whole organization";
+
 function formatSigned(value: number, unit: string): string {
     // Object.is distinguishes -0 from +0 so we never emit "+0"
     const sign = Object.is(value, 0) || Object.is(value, -0) ? "" : value > 0 ? "+" : "";
@@ -39,8 +42,20 @@ function statusClass(status: string): string {
 /**
  * `narrow`: five or more cards share a row, so a label can run under a top-right pill. The pill
  * then sits in the flow, before the prior-period line.
+ *
+ * `teamSelected`: the page has a team selection. A metric the API marks as the whole
+ * organization's (`scope`) then gets the note "Whole organization", so its value is not read as
+ * the selection's. With no selection every value is the organization's and no note is drawn.
  */
-export function MetricTile({ metric, narrow }: { metric: OperatingReviewMetric; narrow: boolean }) {
+export function MetricTile({
+    metric,
+    narrow,
+    teamSelected = false,
+}: {
+    metric: OperatingReviewMetric;
+    narrow: boolean;
+    teamSelected?: boolean;
+}) {
     // The served flags (CHAOS-8115). An answer with no flag (an API before it) counts as data.
     const hasData = metric.hasData !== false;
     const hasPriorData = metric.delta.hasPriorData !== false;
@@ -54,6 +69,9 @@ export function MetricTile({ metric, narrow }: { metric: OperatingReviewMetric; 
             value={hasData ? metric.value : undefined}
             valueText={hasData ? undefined : NO_DATA}
             unit={hasData ? metric.unit : undefined}
+            caption={
+                teamSelected && metric.scope === "ORGANIZATION" ? WHOLE_ORGANIZATION : undefined
+            }
             hideTrend
             deltaSlot={
                 <>
