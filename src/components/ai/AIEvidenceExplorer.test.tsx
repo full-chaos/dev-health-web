@@ -272,3 +272,131 @@ describe("AIEvidenceExplorer", () => {
         expect(text).not.toMatch(/fabricat/i);
     });
 });
+
+describe("AIEvidenceExplorer layout (CHAOS-8297)", () => {
+    beforeEach(() => {
+        mockUseAIAttributedPrs.mockReset();
+        mockUseDrilldown.mockReset();
+        setEvidenceResult(emptyEvidence());
+        mockUseAIAttributedPrs.mockReturnValue({
+            data: {
+                rows: [
+                    {
+                        repoId: "r1",
+                        number: 42,
+                        title: "Add feature flag",
+                        kind: "copilot",
+                        workType: "pull_request",
+                        teamId: null,
+                        mergedAt: null,
+                    },
+                ],
+                total: 1,
+                hasMore: false,
+                dataAvailable: true,
+            },
+            fetching: false,
+            error: undefined,
+        });
+    });
+    afterEach(() => cleanup());
+
+    it("side (default): the evidence panel is beside the table, in a two-column grid (A6)", () => {
+        const { container } = render(<AIEvidenceExplorer filter={filter} />);
+        const panel = screen.getByTestId("ai-work-graph-evidence");
+        expect(container.firstElementChild?.className).toContain("lg:grid-cols-");
+        expect(container.firstElementChild).toContainElement(panel);
+        expect(panel.className).toContain("lg:pt-1");
+    });
+
+    it("stacked: the evidence sits under the table, no grid, and keeps its title, prompt and test id (A8)", async () => {
+        const user = userEvent.setup();
+        const { container } = render(<AIEvidenceExplorer filter={filter} layout="stacked" />);
+        expect(container.firstElementChild?.className).not.toContain("grid-cols-");
+        const table = screen.getByTestId("ai-drilldown-table");
+        const panel = screen.getByTestId("ai-work-graph-evidence");
+        expect(
+            table.compareDocumentPosition(panel) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        expect(within(panel).getByTestId("ai-drilldown-evidence-prompt")).toBeInTheDocument();
+        expect(
+            within(panel).getByRole("heading", { name: "Work Graph evidence" }),
+        ).toBeInTheDocument();
+        await user.click(screen.getByTestId("ai-drilldown-pr-row"));
+        expect(
+            within(screen.getByTestId("ai-work-graph-evidence")).getByRole("heading", {
+                name: "Work Graph evidence · PR #42",
+            }),
+        ).toBeInTheDocument();
+    });
+});
+
+describe("AIEvidenceExplorer concept details (search icon, edge confidence line)", () => {
+    beforeEach(() => {
+        mockUseAIAttributedPrs.mockReset();
+        mockUseDrilldown.mockReset();
+        mockUseAIAttributedPrs.mockReturnValue({
+            data: {
+                rows: [
+                    {
+                        repoId: "r1",
+                        number: 42,
+                        title: "Add feature flag",
+                        kind: "copilot",
+                        workType: "pull_request",
+                        teamId: null,
+                        mergedAt: null,
+                    },
+                ],
+                total: 1,
+                hasMore: false,
+                dataAvailable: true,
+            },
+            fetching: false,
+            error: undefined,
+        });
+        setEvidenceResult({
+            fetching: false,
+            error: undefined,
+            data: {
+                dataAvailable: true,
+                partial: false,
+                nodes: [{}, {}],
+                edges: [
+                    {
+                        edgeId: "e1",
+                        edgeType: "PR_LINKS_ISSUE",
+                        sourceType: "pull_request",
+                        sourceId: "pr:r1#42",
+                        targetType: "issue",
+                        targetId: "ABC-1",
+                        provider: "github",
+                        confidence: 0.94,
+                        evidence: "Linked in the PR body",
+                    },
+                ],
+            },
+        } as never);
+    });
+    afterEach(() => cleanup());
+
+    it("the Filter PRs field has a decorative search icon inside it", () => {
+        render(<AIEvidenceExplorer filter={filter} />);
+        const input = screen.getByTestId("ai-drilldown-search");
+        const svg = input.parentElement?.querySelector("svg");
+        expect(svg).not.toBeNull();
+        expect(svg).toHaveAttribute("aria-hidden", "true");
+        expect(input.className).toContain("pl-10");
+    });
+
+    it("the edge confidence is in the head row beside the provider, not on its own line", async () => {
+        const user = userEvent.setup();
+        render(<AIEvidenceExplorer filter={filter} />);
+        await user.click(screen.getByTestId("ai-drilldown-pr-row"));
+        const confidence = screen.getByTestId("ai-edge-confidence");
+        expect(confidence).toHaveTextContent("confidence 0.94");
+        const head = screen.getByTestId("ai-edge-ends").parentElement;
+        expect(head).toContainElement(confidence);
+        expect(head).toContainElement(screen.getByText("github"));
+    });
+});
