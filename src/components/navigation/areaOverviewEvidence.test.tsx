@@ -64,7 +64,8 @@ const FLAT: AreaSignal[] = [
 ];
 
 // Grouping changes the order here: the flat severity order would put q-high between the two Risk
-// cards; under the cluster heads the Risk cards come first, then Quality.
+// cards, and the first-seen group order would put Risk first. Govern's own group order (its hub
+// items) is Quality, then Risk, so the Quality cards come first.
 const CLUSTERED: AreaSignal[] = [
     signal("r-low", "low", { cluster: "Risk" }),
     signal("q-high", "high", { cluster: "Quality" }),
@@ -75,27 +76,27 @@ const CLUSTERED: AreaSignal[] = [
 
 describe("areaOverviewBodyOrder", () => {
     it("is the order AreaOverview draws: hero first, then the grid (flat area)", () => {
-        const order = areaOverviewBodyOrder(FLAT).map((s) => s.id);
+        const order = areaOverviewBodyOrder("govern", FLAT).map((s) => s.id);
         expect(order).toEqual(drawnOrder(FLAT));
         expect(order[0]).toBe("crit");
         expect(order.at(-1)).toBe("none");
     });
 
-    it("is the order AreaOverview draws with cluster heads (clustered area)", () => {
-        const order = areaOverviewBodyOrder(CLUSTERED).map((s) => s.id);
+    it("is the order AreaOverview draws with cluster heads: the area's group order (Govern: Quality, then Risk)", () => {
+        const order = areaOverviewBodyOrder("govern", CLUSTERED).map((s) => s.id);
         expect(order).toEqual(drawnOrder(CLUSTERED));
-        expect(order).toEqual(["q-crit", "r-crit", "r-low", "q-high", "q-none"]);
+        expect(order).toEqual(["q-crit", "q-high", "q-none", "r-crit", "r-low"]);
     });
 
     it("lists only the grid when no signal has data", () => {
         const none = [signal("a", "unavailable"), signal("b", "unavailable")];
-        expect(areaOverviewBodyOrder(none).map((s) => s.id)).toEqual(drawnOrder(none));
+        expect(areaOverviewBodyOrder("govern", none).map((s) => s.id)).toEqual(drawnOrder(none));
     });
 });
 
 describe("areaOverviewFacts (the page facts of an overview page)", () => {
     it("lists every signal's served value and state in body order; no data reads 'Not reported'", () => {
-        expect(areaOverviewFacts(FLAT)).toEqual([
+        expect(areaOverviewFacts("diagnose", FLAT)).toEqual([
             { label: "crit · crit metric", value: "42% · Critical" },
             { label: "high · high metric", value: "42% · High" },
             { label: "low · low metric", value: "42% · Low" },
@@ -108,7 +109,9 @@ describe("areaOverviewFacts (the page facts of an overview page)", () => {
 
 describe("AreaOverviewEvidenceAction (the 'View evidence' action of an overview page)", () => {
     it("opens the shared drawer with the PAGE as the subject: its facts in body order, no explain metric", async () => {
-        renderWithEvidenceDrawer(<AreaOverviewEvidenceAction title="Diagnose" signals={FLAT} />);
+        renderWithEvidenceDrawer(
+            <AreaOverviewEvidenceAction title="Diagnose" areaId="diagnose" signals={FLAT} />,
+        );
         fireEvent.click(screen.getByRole("button", { name: "View evidence" }));
         const dialog = within(screen.getByRole("dialog"));
         const list = dialog.getByTestId("page-evidence-facts");
