@@ -869,6 +869,13 @@ describe("GraphView", () => {
     });
 
     it("Overview keeps the scope-preserving Open evidence link in the body, arrow after the text", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
         render(<GraphView filters={filters} />);
         const link = within(screen.getByTestId("graph-context")).getByRole("link", {
             name: "Open evidence",
@@ -876,7 +883,7 @@ describe("GraphView", () => {
         expect(link.getAttribute("href")).toContain("/explore");
         // A text link: the arrow follows the words (an icon leads only on a button).
         expect(link.lastElementChild?.tagName.toLowerCase()).toBe("svg");
-        expect(link.firstElementChild?.tagName.toLowerCase()).not.toBe("svg");
+        expect(link.firstChild?.nodeType).toBe(Node.TEXT_NODE);
     });
 
     it("pages the served artifact rows (10 per page), with no total", async () => {
