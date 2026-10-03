@@ -1,25 +1,26 @@
 /**
- * Review Network identities (CHAOS-7973, ruling 51): a person is shown by a served name, else by
- * the stored identity, and NEVER by an e-mail address or a part of one.
+ * Review Network identities (CHAOS-7973, ruling 51; CHAOS-8485): a person is shown by the served
+ * display name, and NEVER by an e-mail address or a part of one.
  *
- * What `reviewEdges` serves: the stored identity of the reviewer and of the author, as two plain
- * strings. It serves no display name. In the data the author is the pull request's author e-mail
- * first (else the author name), and the reviewer is the review's reviewer text, so a stored
- * identity can be an e-mail address.
+ * What `reviewEdges` serves for the reviewer and for the author (CHAOS-8485):
+ * - a display name, or null when no name is known (the cell then reads "Not reported");
+ * - an opaque key: one key per person in the org, the same as reviewer and as author. It tells
+ *   people apart and joins rows. It is never shown.
+ * The request does not select the stored identities (`reviewer` / `author`), which can be e-mail
+ * addresses.
  *
- * This module takes the addresses out on the server, before the rows go to the page: a person
- * whose stored identity is an address gets an opaque key and no name (the cell then reads
- * "Not reported"). No file in this module imports server code, so the view can use
- * `hasEmailAddress` as a second guard.
- *
- * Display names need the backend to serve them with the rows: CHAOS-8485. When it does, the name
- * fields below take the served names and this step has no address left to take out.
+ * The contract says that a served name and a served key are never an e-mail address. This module
+ * is the last server step before the rows go to the page, and it does not rely on that: a name
+ * that holds an address is not passed on, and a key that holds one is replaced. No file in this
+ * module imports server code, so the view can use `hasEmailAddress` as a second guard.
  */
 
 /** A row as `reviewEdges` serves it. It stays on the server. */
 export interface ServedReviewEdgeRow {
-    reviewer: string;
-    author: string;
+    reviewerKey: string;
+    authorKey: string;
+    reviewerName: string | null | undefined;
+    authorName: string | null | undefined;
     reviewsCount: number;
     day: string; // Date scalar → ISO string "YYYY-MM-DD"
     repoId: string | null | undefined;
@@ -53,45 +54,40 @@ export function hasEmailAddress(text: string): boolean {
 }
 
 /**
- * The served rows with every e-mail address taken out.
+ * The served rows as the page gets them, with no e-mail address in any field.
  *
- * - A stored identity that is not an address (a login, a name) is kept: it is the name, and its
- *   key is that identity.
- * - A stored identity that is, or holds, an address gets an opaque key and no name. The key is an
- *   index in the order of first appearance in THIS answer (never made from the address), and one
- *   address has one key, as reviewer and as author.
- * - The placeholder "unknown" keeps its one key and has no name.
+ * - The served name is the name. A name that is not served stays null. A name that is, or holds,
+ *   an address is not passed on (null). The stored placeholder "unknown" is not a name (null).
+ * - The served key is the key. A key that holds an address is replaced by an opaque key: an index
+ *   in the order of first appearance in THIS answer (never made from the address); one address
+ *   has one key, as reviewer and as author.
+ * - Only the fields named here go to the page: any other field of the answer stays on the server.
  *
- * The two kinds of key have different prefixes, so a kept identity can never equal an opaque key.
+ * The two kinds of key have different prefixes, so a served key can never equal a replaced key.
  */
 export function withoutEmailAddresses(edges: ServedReviewEdgeRow[]): ReviewEdgeRow[] {
-    const opaqueKeys = new Map<string, string>();
-    const person = (identity: string): { key: string; name: string | null } => {
-        if (hasEmailAddress(identity)) {
-            let key = opaqueKeys.get(identity);
-            if (key === undefined) {
-                key = `unnamed:${opaqueKeys.size + 1}`;
-                opaqueKeys.set(identity, key);
-            }
-            return { key, name: null };
+    const replacedKeys = new Map<string, string>();
+    const keyOf = (served: string): string => {
+        if (!hasEmailAddress(served)) return `key:${served}`;
+        let key = replacedKeys.get(served);
+        if (key === undefined) {
+            key = `unnamed:${replacedKeys.size + 1}`;
+            replacedKeys.set(served, key);
         }
-        return {
-            key: `stored:${identity}`,
-            name: identity === NO_STORED_IDENTITY ? null : identity,
-        };
+        return key;
     };
+    const nameOf = (served: string | null | undefined): string | null =>
+        typeof served !== "string" || served === NO_STORED_IDENTITY || hasEmailAddress(served)
+            ? null
+            : served;
 
-    return edges.map((edge) => {
-        const reviewer = person(edge.reviewer);
-        const author = person(edge.author);
-        return {
-            reviewer: reviewer.key,
-            author: author.key,
-            reviewerName: reviewer.name,
-            authorName: author.name,
-            reviewsCount: edge.reviewsCount,
-            day: edge.day,
-            repoId: edge.repoId,
-        };
-    });
+    return edges.map((edge) => ({
+        reviewer: keyOf(edge.reviewerKey),
+        author: keyOf(edge.authorKey),
+        reviewerName: nameOf(edge.reviewerName),
+        authorName: nameOf(edge.authorName),
+        reviewsCount: edge.reviewsCount,
+        day: edge.day,
+        repoId: edge.repoId,
+    }));
 }

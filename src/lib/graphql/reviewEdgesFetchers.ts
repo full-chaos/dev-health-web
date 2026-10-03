@@ -3,8 +3,9 @@
  *
  * Mirrors the structure of cognitiveLoadFetchers.ts:
  * - Uses graphqlFetch from ./server (per-request urql client with auth + X-Org-Id).
- * - Returns the rows with every e-mail address taken out (CHAOS-7973): the stored identity of a
- *   person can be an e-mail address, and no address leaves the server. See reviewEdgeIdentities.ts.
+ * - Asks for the served display name and key of each person (CHAOS-8485), not for the stored
+ *   identities, and returns rows with no e-mail address in any field (CHAOS-7973): no address
+ *   leaves the server. See reviewEdgeIdentities.ts.
  */
 
 import { graphqlFetch } from "./server";
@@ -65,7 +66,7 @@ export async function getReviewEdgesViaGraphQL(params: {
         },
         { orgId: params.orgId },
     );
-    // The served identities can be e-mail addresses: they stop here.
+    // The served names and keys go to the page; an e-mail address, if one came, stops here.
     return {
         edges: withoutEmailAddresses(response.reviewEdges.edges),
         totalCount: response.reviewEdges.totalCount,

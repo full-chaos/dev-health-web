@@ -16,30 +16,41 @@ vi.mock("@/components/charts/SparklineChart", () => ({
     SparklineChart: () => <div data-testid="sparkline" />,
 }));
 
+// What the API serves for a person (CHAOS-8485): a display name, null when none is known, and an
+// opaque key. A test person is written as one text. A login is served as the name. A person the
+// API has no name for is written as an e-mail address here: the API serves a null name and a key
+// that is not the address.
+const personKeys = new Map<string, string>();
+const person = (who: string) => {
+    if (!personKeys.has(who)) personKeys.set(who, `p${personKeys.size + 1}`);
+    return { key: personKeys.get(who)!, name: who.includes("@") ? null : who };
+};
 const served = (
     reviewer: string,
     author: string,
     reviewsCount: number,
     day = "2026-09-01",
 ): ServedReviewEdgeRow => ({
-    reviewer,
-    author,
+    reviewerKey: person(reviewer).key,
+    authorKey: person(author).key,
+    reviewerName: person(reviewer).name,
+    authorName: person(author).name,
     reviewsCount,
     day,
     repoId: "repo-1",
 });
-/** Rows as the page gets them: the served rows through the server step that takes addresses out. */
+/** Rows as the page gets them: the served rows through the last server step. */
 const rowsOf = (...rows: ServedReviewEdgeRow[]): ReviewEdgeRow[] => withoutEmailAddresses(rows);
 const row = (reviewer: string, author: string, reviewsCount: number, day = "2026-09-01") =>
     rowsOf(served(reviewer, author, reviewsCount, day))[0];
-// People with a stored identity that is not an address (logins): the identity is the name.
+// People the API serves a name for.
 const pairs = rowsOf(
     served("ana-fake", "bo-fake", 6),
     served("ana-fake", "bo-fake", 4, "2026-09-02"),
     served("cy-fake", "bo-fake", 5),
     served("ana-fake", "di-fake", 2),
 );
-// The same pairs where every stored identity is an e-mail address: no name is served.
+// The same pairs where the API serves no name for any person.
 const addressPairs = rowsOf(
     served("ana.fake@example.test", "bo.fake@example.test", 6),
     served("ana.fake@example.test", "bo.fake@example.test", 4, "2026-09-02"),
@@ -143,20 +154,17 @@ describe("ReviewNetworkView restyle", () => {
         expect(author).toHaveTextContent(/^Not reported$/u);
     });
 
-    it("a stored identity that is not an address is shown as the name, once", () => {
-        render(
-            <ReviewNetworkView
-                edges={[row("Ana Fake", "bo-fake", 3)]}
-                loading={false}
-                error={null}
-            />,
-        );
+    it("a served name is shown as the name, once; the key of a person is never on screen", () => {
+        const shown = row("Ana Fake", "bo-fake", 3);
+        render(<ReviewNetworkView edges={[shown]} loading={false} error={null} />);
         const only = screen.getByTestId("review-network-row");
         const [reviewer, author] = within(only).getAllByRole("cell");
         expect(reviewer).toHaveTextContent(/^Ana Fake$/u);
         expect(author).toHaveTextContent(/^bo-fake$/u);
-        // The key of a person is never on screen.
-        expect(only.innerHTML).not.toContain("stored:");
+        expect(shown.reviewer).not.toBe(shown.author);
+        expect(only.innerHTML).not.toContain(shown.reviewer);
+        expect(only.innerHTML).not.toContain(shown.author);
+        expect(only.innerHTML).not.toContain("key:");
         expect(only.querySelectorAll(".sr-only")).toHaveLength(0);
         expect(only.querySelectorAll("[title]")).toHaveLength(0);
     });
