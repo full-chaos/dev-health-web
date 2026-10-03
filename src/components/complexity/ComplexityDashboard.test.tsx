@@ -34,8 +34,8 @@ vi.mock("@/components/charts/Chart", () => ({
     ),
 }));
 
-vi.mock("@/components/charts/TreemapChart", () => ({
-    TreemapChart: ({ data }: { data: { children?: unknown[] } }) => (
+vi.mock("@/components/complexity/HotspotColumnTreemap", () => ({
+    HotspotColumnTreemap: ({ data }: { data: { children?: unknown[] } }) => (
         <div data-testid="treemap-chart" data-children={data?.children?.length ?? 0} />
     ),
 }));
@@ -263,6 +263,35 @@ describe("ComplexityDashboard", () => {
         expect(screen.getAllByTestId("kpi-card")).toHaveLength(4);
     });
 
+    it("draws the tiles as one strip; a value that is not served reads 'Not reported' with its reason, a served 0 stays 0", () => {
+        const points = [makePoint("r1", "2026-01-08", { cyclomaticPerKloc: 6.0 })];
+        render(<ComplexityDashboard {...baseProps} points={points} hotspotRows={[]} />);
+
+        expect(screen.getByTestId("complexity-kpis")).toHaveAttribute("data-columns", "4");
+        const tiles = screen.getAllByTestId("kpi-card");
+        const hotspotTile = tiles.find((tile) => tile.textContent?.includes("Hotspot Files"));
+        expect(within(hotspotTile as HTMLElement).getByTestId("metric-value")).toHaveTextContent(
+            "Not reported",
+        );
+        expect(hotspotTile).toHaveTextContent(
+            "No hotspots: no files crossed the hotspot risk threshold.",
+        );
+        const rising = tiles.find((tile) => tile.textContent?.includes("Rising Areas"));
+        expect(within(rising as HTMLElement).getByTestId("metric-value")).toHaveTextContent("0");
+    });
+
+    it("draws the Evidence button on a churn row too, with the arrow before the label", async () => {
+        const rows = [
+            makeHotspot("a.py", 0.8, { churnLoc30d: 120, evidenceUrl: "/explore?api=x" }),
+        ];
+        render(<ComplexityDashboard {...baseProps} activeTab="churn" hotspotRows={rows} />);
+
+        const row = within(screen.getByTestId("churn-row"));
+        const button = row.getByRole("button", { name: /^Evidence for / });
+        expect(button).toHaveTextContent("Evidence");
+        expect(button.firstElementChild?.tagName.toLowerCase()).toBe("span");
+    });
+
     it("renders the trend panel and Chart on overview when points are present", () => {
         const points = [makePoint("r1", "2026-01-08")];
         render(<ComplexityDashboard {...baseProps} points={points} />);
@@ -321,7 +350,7 @@ describe("ComplexityDashboard", () => {
 
         await userEvent.click(
             within(screen.getByTestId("hotspot-row")).getByRole("button", {
-                name: "Open evidence",
+                name: /^Evidence for /,
             }),
         );
 
@@ -355,7 +384,7 @@ describe("ComplexityDashboard", () => {
             makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py", blameConcentration: 0.5 }),
         ];
         render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
-        await userEvent.click(screen.getByRole("button", { name: "Open evidence" }));
+        await userEvent.click(screen.getByRole("button", { name: /^Evidence for / }));
 
         const drawer = screen.getByRole("dialog");
         expect(within(drawer).getByTestId("evidence-provenance-not-reported")).toHaveTextContent(
@@ -373,7 +402,7 @@ describe("ComplexityDashboard", () => {
         ];
         render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
         const opener = within(screen.getAllByTestId("hotspot-row")[1]).getByRole("button", {
-            name: "Open evidence",
+            name: /^Evidence for /,
         });
         await userEvent.click(opener);
         expect(screen.getByTestId("evidence-subject")).toHaveTextContent("b.py");
@@ -388,7 +417,7 @@ describe("ComplexityDashboard", () => {
         const hotspots = [makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py" })];
         render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
 
-        await userEvent.click(screen.getByRole("button", { name: "Open evidence" }));
+        await userEvent.click(screen.getByRole("button", { name: /^Evidence for / }));
 
         const row = within(screen.getByRole("dialog"))
             .getAllByTestId("evidence-fact")
@@ -399,7 +428,7 @@ describe("ComplexityDashboard", () => {
     it("closes the drawer when the user follows the footer evidence link", async () => {
         const hotspots = [makeHotspot("a.py", 0.9, { evidenceUrl: "/code?file=a.py" })];
         render(<ComplexityDashboard {...baseProps} hotspotRows={hotspots} activeTab="hotspots" />);
-        await userEvent.click(screen.getByRole("button", { name: "Open evidence" }));
+        await userEvent.click(screen.getByRole("button", { name: /^Evidence for / }));
         const link = screen.getByTestId("evidence-link");
         link.addEventListener("click", (event) => event.preventDefault());
 
@@ -414,7 +443,7 @@ describe("ComplexityDashboard", () => {
 
         const row = screen.getByTestId("hotspot-row");
         expect(within(row).getByText("No artifact link")).toBeInTheDocument();
-        expect(within(row).queryByRole("button", { name: "Open evidence" })).toBeNull();
+        expect(within(row).queryByRole("button", { name: /^Evidence for / })).toBeNull();
     });
 
     it("shows a DataState (not the treemap) on the hotspots tab when only points exist", () => {

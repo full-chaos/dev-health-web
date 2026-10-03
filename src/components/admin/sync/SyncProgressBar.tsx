@@ -20,7 +20,7 @@ import type { SyncJob } from "@/lib/admin/types";
  *   1. Discovery: check the config's recent jobs (GET /sync-configs/{id}/jobs)
  *      for a planner-backed job that is still running/pending. This surfaces
  *      manual, scheduled, AND backfill-triggered runs uniformly, with no
- *      direct hookup to SyncNowButton/useSyncTrigger required.
+ *      direct hookup to useSyncTrigger required.
  *   2. Tracking: once a `sync_run_id` is known, read GET /sync-runs/{id}.
  *
  * CHAOS-4318: the Python API replicas are a scarce resource, so this no

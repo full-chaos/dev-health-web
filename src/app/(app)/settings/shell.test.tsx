@@ -42,14 +42,14 @@ beforeEach(() => {
 });
 
 describe("Preferences in the shared app shell (CHAOS-7966)", () => {
-    it("has one sidebar, one main and one h1 'Preferences' with its subtitle", () => {
+    it("has one sidebar, one main and one h1 'Settings' with its subtitle", () => {
         renderPage();
 
         expect(document.querySelectorAll("aside")).toHaveLength(1);
         expect(screen.getAllByRole("main")).toHaveLength(1);
         expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
         const header = screen.getByTestId("page-header");
-        expect(within(header).getByRole("heading", { level: 1 })).toHaveTextContent("Preferences");
+        expect(within(header).getByRole("heading", { level: 1 })).toHaveTextContent("Settings");
         expect(
             within(header).getByText("Personal display settings stored in your browser."),
         ).toBeInTheDocument();
@@ -71,5 +71,10 @@ describe("Preferences in the shared app shell (CHAOS-7966)", () => {
         expect(within(main).queryByText(/\/ Preferences/)).toBeNull();
         // Settings has no tab row.
         expect(screen.queryByRole("tablist")).toBeNull();
+    });
+
+    it("lets the settings card use the full column width (CHAOS-8257)", () => {
+        renderPage();
+        expect(screen.getByTestId("settings-page").className).not.toMatch(/max-w-/);
     });
 });
