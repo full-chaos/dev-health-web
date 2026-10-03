@@ -15,8 +15,7 @@ import {
     useAIRiskBreakdown,
 } from "@/lib/graphql/hooks/useAIReviewRisk";
 import { AIComparisonMetricCard } from "./AIComparisonMetricCard";
-import { Drawer } from "@/components/ui/Drawer";
-import { AIEvidenceExplorer } from "./AIEvidenceExplorer";
+import { AIEvidenceDrawer } from "./AIEvidenceDrawer";
 import { AIMissingDataPanel } from "./AIMissingDataPanel";
 import { AIViolationsList } from "./AIViolationsList";
 
@@ -225,21 +224,12 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
                 </p>
             )}
 
-            {/* A8: the shared Drawer, as on Review Load. Same PR explorer inside. */}
-            <Drawer
-                open={drilldownMetric !== null}
+            {/* A8: the shared Drawer, same PR explorer inside (AIEvidenceDrawer). */}
+            <AIEvidenceDrawer
+                metric={drilldownMetric}
+                filter={filter}
                 onCloseAction={() => setDrilldownMetric(null)}
-                eyebrow={drilldownMetric ?? undefined}
-                title="Evidence by pull request"
-                size="wide"
-                data-testid="ai-drilldown-drawer"
-            >
-                <p className="text-sm text-(--ink-muted)">
-                    Pick an AI-attributed PR to see its Work Graph evidence. Filtered to the current
-                    dashboard range, repo, and work type.
-                </p>
-                <AIEvidenceExplorer filter={filter} layout="stacked" />
-            </Drawer>
+            />
         </div>
     );
 }
