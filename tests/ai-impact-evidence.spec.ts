@@ -51,14 +51,22 @@ test.describe("AI Impact PR evidence", () => {
         );
     });
 
-    test("selecting a PR loads Work Graph evidence", async ({ page }) => {
+    test("selecting a PR opens its Work Graph evidence in the shared evidence drawer", async ({
+        page,
+    }) => {
         await page.goto(`/ai/impact/evidence?f=${populatedFilter}`);
 
         const list = page.getByTestId("ai-impact-evidence-list");
-        await expect(list.getByTestId("ai-drilldown-evidence-prompt")).toBeVisible();
+        const drawer = page.getByRole("dialog", { name: "Evidence & Context" });
+        // No inline panel and no drawer until a row is selected.
+        await expect(list.getByTestId("ai-work-graph-evidence")).toHaveCount(0);
+        await expect(drawer).toHaveCount(0);
 
         await list.getByTestId("ai-impact-evidence-row").first().click();
-        await expect(list.getByTestId("ai-drilldown-evidence")).toBeVisible();
+        await expect(drawer.getByTestId("evidence-subject")).toContainText(
+            "Work Graph evidence · PR #",
+        );
+        await expect(drawer.getByTestId("ai-drilldown-evidence")).toBeVisible();
     });
 
     test("has a single return path back to Impact", async ({ page }) => {

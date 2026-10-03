@@ -1,13 +1,14 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from "react";
 
-import type { AIFilter } from "@/lib/filters/ai";
+import { encodeAIFilter, type AIFilter } from "@/lib/filters/ai";
 import type { AiAttributedPr } from "@/lib/graphql/__generated__/types";
 import { STATUS_PILL } from "@/lib/statusPill";
 import { edgeTypeWords, nodeTypeWords, pullRequestNumber } from "@/lib/ai/edgeLabels";
 import { prWorkflowRootId } from "@/lib/ai/workflowRootId";
 import { EntityLabel } from "@/components/labels/EntityLabel";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import {
     useAIAttributedPrs,
     useAIWorkflowDrilldownForPr,
@@ -35,6 +36,17 @@ function formatMergedAt(value: string | null | undefined): string {
     } catch {
         return value;
     }
+}
+
+/** Enter or Space on a focused row does what a click does. */
+export function activateOnKey(action: () => void) {
+    return (event: KeyboardEvent) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            action();
+        }
+    };
 }
 
 function useFilteredPrs(rows: AiAttributedPr[] | undefined, search: string): AiAttributedPr[] {
@@ -106,6 +118,8 @@ function PrTable({
                             <tr
                                 key={key}
                                 onClick={() => onSelect(pr)}
+                                onKeyDown={activateOnKey(() => onSelect(pr))}
+                                tabIndex={0}
                                 className={`cursor-pointer transition-colors ${isSelected ? "bg-(--accent-positive)/10 shadow-[inset_0.1875rem_0_0_var(--accent)]" : "hover:bg-background/50"}`}
                                 data-testid="ai-drilldown-pr-row"
                                 data-pr-key={key}
@@ -145,20 +159,21 @@ function EdgeEnd({ type, id }: { type: string; id: string }) {
 const PANEL_SHELL = "min-w-0 lg:pt-1";
 const PANEL_NOTE = "rounded-2xl bg-background/60 px-4 py-4 text-sm text-(--ink-muted)";
 
-export function EvidencePanel({
+/**
+ * The Work Graph evidence of one PR: the count line and the Partial pill, then one card per edge, with
+ * honest loading, error and empty states. It loads on mount, so it is the body of the shared evidence
+ * drawer (`scrollList` false: the drawer scrolls) and of the inline side panel (`scrollList` true).
+ */
+export function WorkGraphEvidenceBody({
     selected,
-    showTitle = true,
+    scrollList = false,
 }: {
     selected: AiAttributedPr | null;
-    /** False where the caller's own card already carries the "Work Graph evidence" title. */
-    showTitle?: boolean;
+    scrollList?: boolean;
 }) {
     const rootId = selected ? prRowKey(selected) : null;
     const { data: drilldown, fetching, error } = useAIWorkflowDrilldownForPr(rootId);
 
-    // The side panel beside the PR table (MAPPING-CHAOS-7629 E5): titled with the PR, then the count
-    // line and the Partial pill, then one card per edge.
-    const title = selected ? `Work Graph evidence · PR #${selected.number}` : "Work Graph evidence";
     let body: ReactNode;
     if (!selected) {
         body = (
@@ -200,7 +215,11 @@ export function EvidencePanel({
                         </span>
                     )}
                 </div>
-                <ul className="max-h-[32rem] space-y-2 overflow-y-auto pr-1">
+                <ul
+                    className={
+                        scrollList ? "max-h-[32rem] space-y-2 overflow-y-auto pr-1" : "space-y-2"
+                    }
+                >
                     {drilldown.edges.slice(0, 25).map((edge) => (
                         <li
                             key={edge.edgeId}
@@ -234,6 +253,19 @@ export function EvidencePanel({
             </div>
         );
     }
+    return body;
+}
+
+export function EvidencePanel({
+    selected,
+    showTitle = true,
+}: {
+    selected: AiAttributedPr | null;
+    /** False where the caller's own card already carries the "Work Graph evidence" title. */
+    showTitle?: boolean;
+}) {
+    // The side panel beside the PR table (MAPPING-CHAOS-7629 E5): titled with the PR, then the body.
+    const title = selected ? `Work Graph evidence · PR #${selected.number}` : "Work Graph evidence";
     return (
         <aside
             className={PANEL_SHELL}
@@ -241,26 +273,50 @@ export function EvidencePanel({
             data-testid="ai-work-graph-evidence"
         >
             {showTitle ? <h3 className="text-h3 font-semibold">{title}</h3> : null}
-            <div className={showTitle ? "mt-2" : undefined}>{body}</div>
+            <div className={showTitle ? "mt-2" : undefined}>
+                <WorkGraphEvidenceBody selected={selected} scrollList />
+            </div>
         </aside>
     );
+}
+
+/**
+ * Opens the shared evidence drawer for one PR (CHAOS-8151). The selection is cleared when the drawer
+ * closes or another PR replaces it. `open` goes first: it calls the previous subject's `onClose`,
+ * which would otherwise clear the key just set.
+ */
+export function usePrEvidenceDrawer(
+    setSelectedKey: (key: string | null) => void,
+    /** The scope the PR list is for: a drawer of the old scope must not outlive a scope change. */
+    scopeKey: string,
+) {
+    const drawer = useEvidenceDrawer();
+    const { close } = drawer;
+    useEffect(() => close, [scopeKey, close]);
+    return (pr: AiAttributedPr) => {
+        drawer.open({
+            title: `Work Graph evidence · PR #${pr.number}`,
+            content: <WorkGraphEvidenceBody selected={pr} />,
+            onClose: () => setSelectedKey(null),
+        });
+        setSelectedKey(prRowKey(pr));
+    };
 }
 
 type AIEvidenceExplorerProps = {
     filter: AIFilter;
 };
 
-/**
- * PR-evidence explorer: a searchable AI-attributed PR table paired with the
- * Work Graph evidence (nodes + edges with provenance) for the selected PR.
- *
- * Shared body between the metric drilldown Drawers (Review Load, Governance Risk
- * Overview) and the Governance Risk → Evidence tab, so both surfaces stay behaviourally
- * identical, including their honest loading / empty / error states.
- */
-export function AIEvidenceExplorer({ filter }: AIEvidenceExplorerProps) {
+type ExplorerViewProps = {
+    filter: AIFilter;
+    selectedKey: string | null;
+    onSelect: (pr: AiAttributedPr) => void;
+    /** The inline side panel; absent when the evidence opens in the shared drawer. */
+    renderAside?: (selected: AiAttributedPr | null) => ReactNode;
+};
+
+function ExplorerView({ filter, selectedKey, onSelect, renderAside }: ExplorerViewProps) {
     const [search, setSearch] = useState("");
-    const [selectedKey, setSelectedKey] = useState<string | null>(null);
 
     const { data, fetching, error } = useAIAttributedPrs(filter, PAGE_SIZE);
     const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
@@ -290,7 +346,13 @@ export function AIEvidenceExplorer({ filter }: AIEvidenceExplorerProps) {
     }
 
     return (
-        <div className="mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,26rem)]">
+        <div
+            className={
+                renderAside
+                    ? "mt-4 grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(19rem,26rem)]"
+                    : "mt-4"
+            }
+        >
             <div className="min-w-0">
                 <label
                     className="block text-xs font-semibold uppercase tracking-[0.14em] text-(--ink-muted)"
@@ -321,7 +383,7 @@ export function AIEvidenceExplorer({ filter }: AIEvidenceExplorerProps) {
                             rows={filteredRows}
                             fetching={fetching}
                             selectedKey={selected ? prRowKey(selected) : null}
-                            onSelect={(pr) => setSelectedKey(prRowKey(pr))}
+                            onSelect={onSelect}
                         />
                     )}
                     {data?.hasMore && (
@@ -335,7 +397,35 @@ export function AIEvidenceExplorer({ filter }: AIEvidenceExplorerProps) {
                     )}
                 </div>
             </div>
-            <EvidencePanel selected={selected} />
+            {renderAside ? renderAside(selected) : null}
         </div>
     );
+}
+
+/**
+ * PR-evidence explorer with the Work Graph evidence in an inline side panel. It is the body of the
+ * wide Drawer on Review Load and Governance Risk: a second drawer must not open on top of that one,
+ * so the evidence stays beside the table there (CHAOS-8151).
+ */
+export function AIEvidenceExplorer({ filter }: AIEvidenceExplorerProps) {
+    const [selectedKey, setSelectedKey] = useState<string | null>(null);
+    return (
+        <ExplorerView
+            filter={filter}
+            selectedKey={selectedKey}
+            onSelect={(pr) => setSelectedKey(prRowKey(pr))}
+            renderAside={(selected) => <EvidencePanel selected={selected} />}
+        />
+    );
+}
+
+/**
+ * PR-evidence explorer on a page: a searchable AI-attributed PR table; selecting a PR opens its Work
+ * Graph evidence (nodes + edges with provenance) in the shared evidence drawer (CHAOS-8151). It needs
+ * `EvidenceDrawerProvider`, which the `(app)` layout mounts.
+ */
+export function AIEvidenceExplorerWithDrawer({ filter }: AIEvidenceExplorerProps) {
+    const [selectedKey, setSelectedKey] = useState<string | null>(null);
+    const openEvidence = usePrEvidenceDrawer(setSelectedKey, encodeAIFilter(filter));
+    return <ExplorerView filter={filter} selectedKey={selectedKey} onSelect={openEvidence} />;
 }

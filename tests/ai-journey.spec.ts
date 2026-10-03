@@ -129,7 +129,11 @@ test.describe("AI area journey (CHAOS-2213)", () => {
         await expect(list.getByTestId("ai-impact-evidence-row")).toHaveCount(3);
         await expect(list.getByTestId("ai-attribution-badge").first()).toBeVisible();
         await list.getByTestId("ai-impact-evidence-row").first().click();
-        await expect(list.getByTestId("ai-drilldown-evidence")).toBeVisible();
+        await expect(
+            page
+                .getByRole("dialog", { name: "Evidence & Context" })
+                .getByTestId("ai-drilldown-evidence"),
+        ).toBeVisible();
 
         // Pagination is honest about a single page: 3 rows < page size, so both
         // controls are disabled (the mock honors limit/offset — CHAOS-2196 fix).

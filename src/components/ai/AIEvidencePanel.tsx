@@ -1,7 +1,7 @@
 "use client";
 
 import type { AIFilter } from "@/lib/filters/ai";
-import { AIEvidenceExplorer } from "./AIEvidenceExplorer";
+import { AIEvidenceExplorerWithDrawer } from "./AIEvidenceExplorer";
 
 type AIEvidencePanelProps = {
     filter: AIFilter;
@@ -22,7 +22,7 @@ export function AIEvidencePanel({ filter }: AIEvidencePanelProps) {
                 Pick an AI-attributed PR to see its Work Graph evidence — nodes and edges with
                 provenance. Filtered to the current range, repo, and work type.
             </p>
-            <AIEvidenceExplorer filter={filter} />
+            <AIEvidenceExplorerWithDrawer filter={filter} />
         </section>
     );
 }

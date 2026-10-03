@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@/test/utils";
+import { fireEvent, screen, within } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 
 import type { AIFilter } from "@/lib/filters/ai";
 
@@ -117,8 +118,9 @@ describe("AIImpactEvidenceList", () => {
 
         const { rerender } = render(<AIImpactEvidenceList filter={filter} />);
 
-        // Select a row, then paginate forward into the sparse page.
+        // Select a row (the drawer opens), then paginate forward into the sparse page.
         fireEvent.click(screen.getByTestId("ai-impact-evidence-row"));
+        expect(screen.getByRole("dialog")).toBeInTheDocument();
         fireEvent.click(screen.getByRole("button", { name: "Next" }));
         expect(screen.getByTestId("ai-impact-evidence-sparse-page")).toBeInTheDocument();
         expect(mockUseAIAttributedPrs).toHaveBeenLastCalledWith(filter, 25, 25);
@@ -131,7 +133,8 @@ describe("AIImpactEvidenceList", () => {
         expect(mockUseAIAttributedPrs).toHaveBeenLastCalledWith(narrower, 25, 0);
         expect(screen.getByTestId("ai-impact-evidence-row")).toBeInTheDocument();
         expect(screen.queryByTestId("ai-impact-evidence-sparse-page")).not.toBeInTheDocument();
-        expect(mockUseAIWorkflowDrilldown).toHaveBeenLastCalledWith(null);
+        // The drawer of the old scope is closed too (CHAOS-8151).
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 
     describe("pins (CHAOS-7769)", () => {
@@ -172,20 +175,71 @@ describe("AIImpactEvidenceList", () => {
             expect(row.querySelectorAll("td")[5]).toHaveTextContent("—");
         });
 
-        it("selecting a row loads its evidence by the row key and marks it selected", () => {
+        const twoRows = () =>
+            attributedPrs({
+                total: 2,
+                rows: [
+                    ...attributedPrs().rows,
+                    {
+                        repoId: "repo-1",
+                        number: 43,
+                        title: "Refactor auth",
+                        kind: "ai_assisted",
+                        workType: "feature",
+                        teamId: "team-1",
+                        mergedAt: null,
+                    },
+                ],
+            });
+
+        it("has no inline evidence panel: nothing opens until a row is selected (CHAOS-8151)", () => {
             ok(attributedPrs());
             render(<AIImpactEvidenceList filter={filter} />);
-            expect(screen.getByText("Work Graph evidence")).toBeInTheDocument();
-            expect(screen.getByTestId("ai-drilldown-evidence-prompt")).toBeInTheDocument();
+            expect(screen.queryByTestId("ai-work-graph-evidence")).not.toBeInTheDocument();
+            expect(screen.queryByTestId("ai-drilldown-evidence-prompt")).not.toBeInTheDocument();
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        });
+
+        it("selecting a row opens the shared drawer for that PR and loads its evidence by the row key", () => {
+            ok(attributedPrs());
+            render(<AIImpactEvidenceList filter={filter} />);
             const row = screen.getByTestId("ai-impact-evidence-row");
             fireEvent.click(row);
             const key = row.getAttribute("data-pr-key");
             expect(key).toBeTruthy();
+            const dialog = screen.getByRole("dialog");
+            expect(within(dialog).getByText("Work Graph evidence · PR #42")).toBeInTheDocument();
             expect(mockUseAIWorkflowDrilldown).toHaveBeenLastCalledWith(key);
-            expect(screen.getByTestId("ai-impact-evidence-row")).toHaveAttribute(
-                "data-pr-key",
-                key,
+            expect(screen.getByTestId("ai-impact-evidence-row").className).toContain(
+                "var(--accent)",
             );
+        });
+
+        it("Enter on a focused row opens the drawer like a click", () => {
+            ok(attributedPrs());
+            render(<AIImpactEvidenceList filter={filter} />);
+            const row = screen.getByTestId("ai-impact-evidence-row");
+            expect(row).toHaveAttribute("tabindex", "0");
+            fireEvent.keyDown(row, { key: "Enter" });
+            expect(screen.getByRole("dialog")).toBeInTheDocument();
+        });
+
+        it("a second row replaces the subject, and closing the drawer clears the selection", () => {
+            ok(twoRows());
+            render(<AIImpactEvidenceList filter={filter} />);
+            const rows = () => screen.getAllByTestId("ai-impact-evidence-row");
+            fireEvent.click(rows()[0]);
+            fireEvent.click(rows()[1]);
+            expect(screen.getAllByRole("dialog")).toHaveLength(1);
+            expect(
+                within(screen.getByRole("dialog")).getByText("Work Graph evidence · PR #43"),
+            ).toBeInTheDocument();
+            // Only the second row carries the selection edge.
+            expect(rows()[0].className).not.toContain("var(--accent)");
+            expect(rows()[1].className).toContain("var(--accent)");
+            fireEvent.keyDown(document, { key: "Escape" });
+            expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+            expect(rows()[1].className).not.toContain("var(--accent)");
         });
 
         it("keeps the loading row, the error card and the not-populated state", () => {

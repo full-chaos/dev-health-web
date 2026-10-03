@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@/test/utils";
+import { fireEvent, screen } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 
 import type { AIFilter } from "@/lib/filters/ai";
 
@@ -38,9 +39,11 @@ describe("AIImpactEvidenceList look (CHAOS-7769)", () => {
         });
     });
 
-    it("puts the evidence panel beside the table at wide screens", () => {
+    it("is the table alone, at full width: the evidence is in the shared drawer, not beside it (CHAOS-8151)", () => {
         render(<AIImpactEvidenceList filter={filter} />);
-        expect(screen.getByTestId("ai-impact-evidence-list").className).toContain("xl:grid-cols-");
+        const list = screen.getByTestId("ai-impact-evidence-list");
+        expect(list.className).not.toContain("grid-cols-");
+        expect(list.querySelector("aside")).toBeNull();
     });
 
     it("marks only the selected row with the orange selection edge", () => {

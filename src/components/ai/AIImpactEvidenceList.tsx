@@ -10,7 +10,7 @@ import { encodeAIFilter, type AIFilter } from "@/lib/filters/ai";
 import type { AiAttributedPr } from "@/lib/graphql/__generated__/types";
 import { useAIAttributedPrs } from "@/lib/graphql/hooks/useAIReviewRisk";
 import { AIAttributionBadge, attributionBucketForKind } from "./AIAttributionBadge";
-import { EvidencePanel, prRowKey } from "./AIEvidenceExplorer";
+import { activateOnKey, prRowKey, usePrEvidenceDrawer } from "./AIEvidenceExplorer";
 
 const PAGE_SIZE = 25;
 
@@ -58,10 +58,8 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
     const { data, fetching, error } = useAIAttributedPrs(filter, PAGE_SIZE, offset);
 
     const rows = useMemo(() => data?.rows ?? [], [data?.rows]);
-    const selected = useMemo(
-        () => (selectedKey ? (rows.find((row) => prRowKey(row) === selectedKey) ?? null) : null),
-        [rows, selectedKey],
-    );
+    // A PR opens its Work Graph evidence in the shared evidence drawer (CHAOS-8151).
+    const openEvidence = usePrEvidenceDrawer(setSelectedKey, filterKey);
 
     if (error) {
         return <ErrorCard title="Failed to load AI-attributed PRs" message={error.message} />;
@@ -91,10 +89,7 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
         !fetching && data?.dataAvailable === true && data.total > 0 && rows.length === 0;
 
     return (
-        <div
-            className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start"
-            data-testid="ai-impact-evidence-list"
-        >
+        <div className="min-w-0" data-testid="ai-impact-evidence-list">
             <div className="flex min-w-0 flex-col gap-4">
                 {sparsePage ? (
                     <DataState
@@ -134,7 +129,9 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
                                         return (
                                             <tr
                                                 key={key}
-                                                onClick={() => setSelectedKey(key)}
+                                                onClick={() => openEvidence(pr)}
+                                                onKeyDown={activateOnKey(() => openEvidence(pr))}
+                                                tabIndex={0}
                                                 className={`cursor-pointer transition-colors ${isSelected ? "bg-(--accent-positive)/10 shadow-[inset_0.1875rem_0_0_var(--accent)]" : "hover:bg-background"}`}
                                                 data-testid="ai-impact-evidence-row"
                                                 data-pr-key={key}
@@ -198,13 +195,6 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
                     </div>
                 </div>
             </div>
-
-            <section className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-5 xl:sticky xl:top-4">
-                <h3 className="font-(--font-display) text-lg">Work Graph evidence</h3>
-                <div className="mt-3">
-                    <EvidencePanel selected={selected} showTitle={false} />
-                </div>
-            </section>
         </div>
     );
 }

@@ -12,7 +12,8 @@ vi.mock("@/lib/graphql/hooks/useAIReviewRisk", () => ({
     useAIWorkflowDrilldownForPr: mockUseDrilldown,
 }));
 
-import { AIEvidenceExplorer } from "./AIEvidenceExplorer";
+import { renderWithEvidenceDrawer } from "@/test/evidenceDrawer";
+import { AIEvidenceExplorer, AIEvidenceExplorerWithDrawer } from "./AIEvidenceExplorer";
 import type { AIFilter } from "@/lib/filters/ai";
 
 const filter: AIFilter = {
@@ -270,5 +271,98 @@ describe("AIEvidenceExplorer", () => {
         expect(text).not.toMatch(/aiWorkflowDrilldown/);
         expect(text).not.toMatch(/rootType/);
         expect(text).not.toMatch(/fabricat/i);
+    });
+});
+
+describe("AIEvidenceExplorerWithDrawer (CHAOS-8151)", () => {
+    const rows = [
+        {
+            repoId: "r1",
+            number: 42,
+            title: "Add feature flag",
+            kind: "copilot",
+            workType: "pull_request",
+            teamId: null,
+            mergedAt: null,
+        },
+        {
+            repoId: "r1",
+            number: 43,
+            title: "Refactor auth",
+            kind: "cursor",
+            workType: "pull_request",
+            teamId: null,
+            mergedAt: null,
+        },
+    ];
+    beforeEach(() => {
+        mockUseAIAttributedPrs.mockReset();
+        mockUseDrilldown.mockReset();
+        setEvidenceResult(emptyEvidence());
+        mockUseAIAttributedPrs.mockReturnValue({
+            data: { rows, total: 2, hasMore: false, dataAvailable: true },
+            fetching: false,
+            error: undefined,
+        });
+    });
+    afterEach(() => cleanup());
+
+    it("has the table at full width and no inline evidence panel or prompt", () => {
+        renderWithEvidenceDrawer(<AIEvidenceExplorerWithDrawer filter={filter} />);
+        expect(screen.getByTestId("ai-drilldown-table")).toBeInTheDocument();
+        expect(screen.queryByTestId("ai-work-graph-evidence")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("ai-drilldown-evidence-prompt")).not.toBeInTheDocument();
+    });
+
+    it("a row opens the shared drawer titled with the PR; its evidence loads inside it", async () => {
+        const user = userEvent.setup();
+        renderWithEvidenceDrawer(<AIEvidenceExplorerWithDrawer filter={filter} />);
+        await user.click(screen.getAllByTestId("ai-drilldown-pr-row")[0]);
+        const dialog = screen.getByRole("dialog");
+        expect(within(dialog).getByText("Work Graph evidence · PR #42")).toBeInTheDocument();
+        expect(screen.getAllByTestId("ai-drilldown-pr-row")[0]).toHaveAttribute(
+            "aria-selected",
+            "true",
+        );
+        expect(mockUseDrilldown).toHaveBeenLastCalledWith(expect.stringContaining("42"));
+    });
+
+    it("the evidence body is the same in the drawer: edges, count line, no-cause note", async () => {
+        setEvidenceResult({
+            fetching: false,
+            error: undefined,
+            data: {
+                dataAvailable: true,
+                partial: true,
+                nodes: [{}, {}],
+                edges: [
+                    {
+                        edgeId: "e1",
+                        edgeType: "PR_LINKS_ISSUE",
+                        sourceType: "pull_request",
+                        sourceId: "pr:r1#42",
+                        targetType: "issue",
+                        targetId: "ABC-1",
+                        provider: "github",
+                        confidence: 0.9,
+                        evidence: "Linked in the PR body",
+                    },
+                ],
+            },
+        } as never);
+        const user = userEvent.setup();
+        renderWithEvidenceDrawer(<AIEvidenceExplorerWithDrawer filter={filter} />);
+        await user.click(screen.getAllByTestId("ai-drilldown-pr-row")[0]);
+        const dialog = screen.getByRole("dialog");
+        expect(within(dialog).getByTestId("ai-evidence-partial")).toHaveTextContent("Partial");
+        expect(within(dialog).getByText(/2 nodes · 1 edges/)).toBeInTheDocument();
+        expect(within(dialog).getByText("Linked in the PR body")).toBeInTheDocument();
+        expect(within(dialog).getByText(/does not show cause/)).toBeInTheDocument();
+    });
+
+    it("the inline explorer still shows its side panel (the wide-drawer pages keep it)", () => {
+        render(<AIEvidenceExplorer filter={filter} />);
+        expect(screen.getByTestId("ai-work-graph-evidence")).toBeInTheDocument();
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     });
 });

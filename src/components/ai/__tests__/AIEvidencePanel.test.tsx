@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@/test/utils";
 
 vi.mock("../AIEvidenceExplorer", () => ({
-    AIEvidenceExplorer: () => <div data-testid="explorer-stub" />,
+    AIEvidenceExplorerWithDrawer: () => <div data-testid="explorer-stub" />,
 }));
 
 import { AIEvidencePanel } from "../AIEvidencePanel";
