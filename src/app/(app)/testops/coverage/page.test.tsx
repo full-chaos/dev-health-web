@@ -8,6 +8,9 @@ const { mockCheckApiHealth, mockFetchCoverageMetrics, timeseriesSpy } = vi.hoist
     timeseriesSpy: vi.fn(),
 }));
 
+const requireSessionMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/auth", () => ({ requireSession: requireSessionMock }));
+beforeEach(() => requireSessionMock.mockResolvedValue({ user: { org_id: "org-1" } }));
 vi.mock("@/lib/api/system", () => ({
     checkApiHealth: mockCheckApiHealth,
 }));
@@ -173,5 +176,15 @@ describe("CoveragePage", () => {
         render(await CoveragePage({ searchParams: Promise.resolve({}) }));
         expect(lineCard()).toHaveAttribute("data-value", "0");
         expect(screen.getByTestId("coverage-chart-frame")).toHaveAttribute("data-is-empty", "false");
+    });
+});
+
+describe("CoveragePage org scope (CHAOS-8272)", () => {
+    it("shows one plain sentence and makes no request when the session has no org", async () => {
+        requireSessionMock.mockResolvedValue({ user: {} });
+        mockFetchCoverageMetrics.mockClear();
+        render(await CoveragePage({ searchParams: Promise.resolve({}) }));
+        expect(screen.getByText(/no organization selected/i)).toBeInTheDocument();
+        expect(mockFetchCoverageMetrics).not.toHaveBeenCalled();
     });
 });

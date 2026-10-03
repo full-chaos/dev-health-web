@@ -25,6 +25,7 @@ import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { fetchFeatureFlagsData } from "@/lib/feature-flags/fetchers";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { fetchCoverageMetrics, fetchRiskMetrics, fetchTestOpsData } from "@/lib/testops/fetchers";
+import { auth } from "@/lib/auth";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { getGovernSignals } from "../govern";
@@ -420,5 +421,21 @@ describe("getGovernSignals — null buckets are missing, not zero", () => {
         } as never);
         const signals = byId(await getGovernSignals(defaultMetricFilter));
         expect(signals["feature-flags"].state).toBe("unavailable");
+    });
+});
+
+describe("getGovernSignals — org scope comes from the session (CHAOS-8272)", () => {
+    it("makes no request when the session has no org", async () => {
+        vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
+        await getGovernSignals(defaultMetricFilter);
+        expect(mockGraphql).not.toHaveBeenCalled();
+        expect(mockTestOps).not.toHaveBeenCalled();
+        expect(mockCoverage).not.toHaveBeenCalled();
+        expect(mockRisk).not.toHaveBeenCalled();
+    });
+
+    it("sends the session org when present", async () => {
+        await getGovernSignals(defaultMetricFilter);
+        expect(JSON.stringify(mockGraphql.mock.calls)).toContain("org-test");
     });
 });

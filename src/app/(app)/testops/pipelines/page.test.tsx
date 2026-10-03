@@ -9,6 +9,9 @@ const { mockCheckApiHealth, mockFetchTestOpsData, rateChartSpy } = vi.hoisted(()
     rateChartSpy: vi.fn(),
 }));
 
+const requireSessionMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/auth", () => ({ requireSession: requireSessionMock }));
+beforeEach(() => requireSessionMock.mockResolvedValue({ user: { org_id: "org-1" } }));
 vi.mock("next/link", () => ({
     default: ({
         href,
@@ -303,5 +306,15 @@ describe("TestOps Pipelines page — approved layout", () => {
         const definitions = within(evidence).getByTestId("testops-evidence-definitions");
         expect(definitions).toHaveTextContent("Average time pipelines spend waiting to start");
         expect(definitions).toHaveTextContent("Percentage of pipelines that are rerun");
+    });
+});
+
+describe("PipelinesPage org scope (CHAOS-8272)", () => {
+    it("shows one plain sentence and makes no request when the session has no org", async () => {
+        requireSessionMock.mockResolvedValue({ user: {} });
+        mockFetchTestOpsData.mockClear();
+        render(await PipelinesPage({ searchParams: Promise.resolve({}) }));
+        expect(screen.getByText(/no organization selected/i)).toBeInTheDocument();
+        expect(mockFetchTestOpsData).not.toHaveBeenCalled();
     });
 });

@@ -351,7 +351,10 @@ describe("/explore in the approved prototype layout (CHAOS-8068)", () => {
             within(sections[0]).getByRole("list", { name: "Likely associations" }),
         ).getAllByTestId("meter-row");
         expect(associationRows.map((row) => row.textContent)).toEqual(["repo-alpha-20%"]);
-        expect(within(associationRows[0]).getByTestId("meter-fill").style.width).toBe("100%");
+        // Signed (K-5): a decrease fills LEFT of the zero line, to half the track at most.
+        const fill = within(associationRows[0]).getByTestId("meter-fill");
+        expect(fill.style.width).toBe("50%");
+        expect(fill).toHaveAttribute("data-direction", "left");
         const contributorRows = within(
             within(sections[1]).getByRole("list", { name: "Primary contributors" }),
         ).getAllByTestId("meter-row");

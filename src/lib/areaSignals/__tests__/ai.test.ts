@@ -13,6 +13,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { graphqlFetch } from "@/lib/graphql/server";
+import { auth } from "@/lib/auth";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { getAISignals } from "../ai";
@@ -528,5 +529,18 @@ describe("getAISignals — source → AreaSignal mapping", () => {
             value: "2 opportunities",
         });
         expect(mockGraphql).not.toHaveBeenCalled();
+    });
+});
+
+describe("getAISignals — org scope comes from the session (CHAOS-8272)", () => {
+    it("makes no request when the session has no org", async () => {
+        vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
+        await getAISignals(defaultMetricFilter);
+        expect(mockGraphql).not.toHaveBeenCalled();
+    });
+
+    it("sends the session org when present", async () => {
+        await getAISignals(defaultMetricFilter);
+        expect(JSON.stringify(mockGraphql.mock.calls)).toContain("org-test");
     });
 });

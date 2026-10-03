@@ -10,6 +10,9 @@ const { mockCheckApiHealth, mockFetchTestOpsData, chartSpy, heatmapSpy } = vi.ho
     heatmapSpy: vi.fn(),
 }));
 
+const requireSessionMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/auth", () => ({ requireSession: requireSessionMock }));
+beforeEach(() => requireSessionMock.mockResolvedValue({ user: { org_id: "org-1" } }));
 vi.mock("next/navigation", () => ({
     usePathname: () => "/testops/tests",
     useSearchParams: () => new URLSearchParams(),
@@ -383,5 +386,15 @@ describe("TestOps Tests page — approved layout", () => {
         expect(within(evidence).getByTestId("testops-evidence-definitions")).toHaveTextContent(
             "95th percentile of test suite execution time",
         );
+    });
+});
+
+describe("TestsPage org scope (CHAOS-8272)", () => {
+    it("shows one plain sentence and makes no request when the session has no org", async () => {
+        requireSessionMock.mockResolvedValue({ user: {} });
+        mockFetchTestOpsData.mockClear();
+        render(await TestsPage({ searchParams: Promise.resolve({}) }));
+        expect(screen.getByText(/no organization selected/i)).toBeInTheDocument();
+        expect(mockFetchTestOpsData).not.toHaveBeenCalled();
     });
 });

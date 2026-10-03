@@ -20,7 +20,8 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useMemo } from "react";
 
-import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
+import { associationMeterRows } from "@/components/metrics/associationRows";
+import { MeterRows } from "@/components/ui/MeterRows";
 import { SankeyChart } from "@/components/charts/SankeyChart";
 import { useChartTheme, useChartTokens } from "@/components/charts/chartTheme";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
@@ -515,11 +516,13 @@ export function IncidentCorrelationDashboard({
                         </div>
                         {hasDriverSeries ? (
                             <div className="mt-4 space-y-4">
-                                <HorizontalBarChart
-                                    categories={driverChartLabels.labels}
-                                    values={topDrivers.map((d) => Math.abs(d.delta_pct))}
-                                    categoryTitles={driverChartLabels.titles}
-                                    valueFormat="percent"
+                                <MeterRows
+                                    signed
+                                    aria-label="Change failure associations"
+                                    testId="change-failure-associations"
+                                    rows={associationMeterRows(topDrivers, driverChartLabels, {
+                                        signed: true,
+                                    })}
                                 />
                             </div>
                         ) : (

@@ -190,9 +190,12 @@ export default async function MetricsPage({ searchParams }: MetricsPageProps) {
                         // Meter rows (prototype `bars()`): the fill is |delta| as production
                         // draws it; the value is the served signed percent change.
                         <MeterRows
+                            signed
                             aria-label="Likely associations"
                             testId="association-meter-rows"
-                            rows={associationMeterRows(drivers, driverChartLabels)}
+                            rows={associationMeterRows(drivers, driverChartLabels, {
+                                signed: true,
+                            })}
                         />
                     ) : (
                         <p className="text-sm text-(--ink-muted)">

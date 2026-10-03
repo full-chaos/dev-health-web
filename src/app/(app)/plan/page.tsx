@@ -1,3 +1,4 @@
+import { NoOrgNotice } from "@/components/NoOrgNotice";
 import Link from "next/link";
 import { ArrowRight, CircleCheck, TriangleAlert } from "lucide-react";
 
@@ -191,7 +192,9 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
     const [health, session] = await Promise.all([checkApiHealth(), requireSession()]);
     if (!health.ok) return <ServiceUnavailable landmark={false} />;
 
-    const orgId = session.user.org_id ?? "default-org";
+    const orgId = session.user.org_id;
+    // No org on the session: ask for nothing (never an empty or made-up org).
+    if (!orgId) return <NoOrgNotice />;
     const forecast = await fetchOrNull(
         getThroughputForecastViaGraphQL(orgId, {
             teamIds,
