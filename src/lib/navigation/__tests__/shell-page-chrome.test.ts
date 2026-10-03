@@ -1,9 +1,10 @@
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
 import { SHELL_ROUTES } from "@/components/shell/shellRoutes";
+import { sourceEntries } from "@/test/sourceTree";
 
 // A page under a registered shell prefix gets its chrome from the shared app
 // shell. It must not bring its own navigation, `<main>`, context bars or trail,
@@ -14,10 +15,9 @@ const appRoot = join(process.cwd(), "src/app/(app)");
 
 function listFiles(directory: string, recursive: boolean): string[] {
     if (!existsSync(directory)) return [];
-    return readdirSync(directory).flatMap((entry) => {
-        const fullPath = join(directory, entry);
-        if (!statSync(fullPath).isDirectory()) return [fullPath];
-        return recursive ? listFiles(fullPath, true) : [];
+    return sourceEntries(directory).flatMap(({ path, isDirectory }) => {
+        if (!isDirectory) return [path];
+        return recursive ? listFiles(path, true) : [];
     });
 }
 
@@ -213,7 +213,7 @@ describe("Cognitive Load keeps its privacy framing in the shell", () => {
     });
 
     it("has the page title as the one h1 and the privacy statement as a second-level heading", () => {
-        expect(pageSource).toContain('<PageHeader title="Cognitive Load" />');
+        expect(pageSource).toContain('<PageHeader title="Cognitive Load"');
         expect(pageSource).toContain("<PrivacyHeader />");
         expect(pageSource).not.toMatch(/<h1[\s>]/);
         expect(source).not.toMatch(/<h1[\s>]/);

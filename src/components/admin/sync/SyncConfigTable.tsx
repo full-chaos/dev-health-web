@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { RefreshControl } from "@/components/admin/RefreshControl";
+import { Section } from "@/components/ui/Section";
 import type { SyncConfig } from "@/lib/admin/types";
 import { SyncConfigTableRow } from "./SyncConfigTableRow";
 import {
@@ -76,14 +77,16 @@ export function SyncConfigTable({ configs }: SyncConfigTableProps) {
     }
 
     return (
-        <div className="space-y-3">
-            <div className="flex justify-end">
+        <Section
+            title="Sync Status"
+            action={
                 <RefreshControl
                     onRefresh={handleRefresh}
                     lastUpdatedAt={lastUpdatedAt}
                     isRefreshing={isRefreshing}
                 />
-            </div>
+            }
+        >
             <DataTable
                 accessibleLabel="Sync configurations"
                 columns={COLUMNS}
@@ -99,6 +102,6 @@ export function SyncConfigTable({ configs }: SyncConfigTableProps) {
                 )}
                 emptyMessage="No sync configurations found. Create a new configuration to get started."
             />
-        </div>
+        </Section>
     );
 }

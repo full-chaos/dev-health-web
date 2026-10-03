@@ -103,19 +103,19 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
                 title="Operating Review"
-                subtitle="A Monday-ready agenda for delivery movement, bottlenecks, risk, reliability, investment, and recommendations."
-            >
-                <div className="flex flex-wrap items-center gap-3">
+                titleAdornment={
                     <span
                         data-testid="operating-review-preview-pill"
                         className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS_PILL.muted}`}
                     >
                         Preview
                     </span>
-                    <p className="text-sm text-(--ink-muted)">
-                        Each callout compares the selected week against the prior week.
-                    </p>
-                </div>
+                }
+                subtitle="A Monday-ready agenda for delivery movement, bottlenecks, risk, reliability, investment, and recommendations."
+            >
+                <p className="text-sm text-(--ink-muted)">
+                    Each callout compares the selected week against the prior week.
+                </p>
             </PageHeader>
 
             <ScopeBar view="capacity-planning" origin={activeOrigin} />

@@ -21,9 +21,19 @@ vi.mock("@/components/feature-flags/FeatureFlagTable", () => ({
     FeatureFlagTable: () => <div data-testid="flag-table" />,
 }));
 vi.mock("@/components/metrics/MetricCard", () => ({
-    MetricCard: (props: { label: string; href?: string }) => {
+    MetricCard: (props: {
+        label: string;
+        href?: string;
+        testId?: string;
+        headAction?: React.ReactNode;
+    }) => {
         tileProps(props);
-        return <article data-testid="tile">{props.label}</article>;
+        return (
+            <div data-testid={props.testId}>
+                <article data-testid="tile">{props.label}</article>
+                <span data-testid="metric-head-action">{props.headAction}</span>
+            </div>
+        );
     },
 }));
 
@@ -87,14 +97,15 @@ describe("Feature Flags page", () => {
         ]);
     });
 
-    it("puts the severity pill inside the Release Friction tile cell, and keeps the caption", async () => {
+    it("puts the severity pill in the Release Friction tile head slot, and keeps the caption", async () => {
         mockData.mockResolvedValue(data("moderate"));
         render(await FeatureFlagsPage({ searchParams: Promise.resolve({}) }));
-        const cell = screen.getByTestId("release-friction-tile");
-        // The cell is a direct cell of the strip, and it holds both the tile and its pill.
-        expect(cell.parentElement).toBe(screen.getByTestId("feature-flag-tiles"));
-        expect(within(cell).getByTestId("tile")).toHaveTextContent("Release Friction Delta");
-        expect(within(cell).getByTestId("release-friction-severity")).toHaveTextContent("Moderate");
+        const tile = screen.getByTestId("release-friction-tile");
+        expect(tile).toHaveTextContent("Release Friction Delta");
+        // CHAOS-8214: the pill is the tile's headAction, not a node beside the tile in the strip cell.
+        const slot = within(tile).getByTestId("metric-head-action");
+        expect(within(slot).getByTestId("release-friction-severity")).toHaveTextContent("Moderate");
+        expect(tile.parentElement).toBe(screen.getByTestId("feature-flag-tiles"));
         const friction = tileProps.mock.calls
             .map(([props]) => props as { label: string; caption?: string })
             .find((props) => props.label === "Release Friction Delta");

@@ -1,7 +1,6 @@
 "use client";
 
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { DataState } from "@/components/ui/DataState";
@@ -9,7 +8,6 @@ import { formatDateUTC, formatNumber } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { SyncCoverageSummary } from "@/lib/admin/types";
 import { CoverageBadge, healthLabel, healthTone } from "./CoverageBadge";
-import { SyncNowButton } from "./SyncNowButton";
 
 interface SyncCoverageSummaryCardProps {
     configId: string;
@@ -48,7 +46,6 @@ export function SyncCoverageSummaryCard({
     onBackfillAction,
 }: SyncCoverageSummaryCardProps) {
     const router = useRouter();
-    const editHref = `/org/admin/sync/${configId}/edit`;
 
     if (error) {
         return (
@@ -163,13 +160,6 @@ export function SyncCoverageSummaryCard({
                     >
                         {CTA_LABELS.backfill}
                     </button>
-                    <Link
-                        href={editHref}
-                        className="rounded-md border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground hover:border-(--accent-2) hover:text-(--accent-2)"
-                    >
-                        {CTA_LABELS.editConfig}
-                    </Link>
-                    <SyncNowButton configId={configId} freshnessSignal={coverage.generated_at} />
                 </div>
             </div>
 

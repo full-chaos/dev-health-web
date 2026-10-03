@@ -24,10 +24,10 @@ test.describe("CHAOS-2035 screenshots", () => {
             .first()
             .waitFor({ timeout: 10000 });
         const ownershipCard = page.getByTestId("ownership-patterns-card");
-        await expect(ownershipCard).toContainText("Git blame");
-        await expect(ownershipCard).not.toContainText("Manual");
-        await expect(ownershipCard).toContainText("chrisgeo@users.noreply.github.com");
-        await expect(ownershipCard).toContainText("3773 file-change samples");
+        // Meter rows with the aggregated labels; author names and emails are not shown.
+        await expect(ownershipCard).toContainText("Ownership concentration");
+        await expect(ownershipCard).toContainText("Primary maintainer");
+        await expect(ownershipCard).not.toContainText("@");
         await expect(ownershipCard).not.toContainText("Connect a Git provider");
         await page.waitForTimeout(1000);
         await page.screenshot({

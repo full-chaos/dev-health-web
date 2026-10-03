@@ -4,6 +4,8 @@ import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
+import { Section } from "@/components/ui/Section";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -119,18 +121,12 @@ export function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewPr
     ];
 
     return (
-        <section
-            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+        <Section
             data-testid="review-network-panel"
+            as="h3"
+            title="Review Network"
+            description="Reviewer-to-author collaboration—not a performance ranking."
         >
-            <div className="mb-4">
-                <h3 className="text-lg font-semibold tracking-tight">Review Network</h3>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                    Reviewer→author collaboration pairs from code review activity, ranked by review
-                    count.
-                </p>
-            </div>
-
             {loading ? (
                 <DataState variant="loading" title="Loading…" />
             ) : error ? (
@@ -156,27 +152,28 @@ export function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewPr
                 />
             ) : (
                 <>
-                    <div
-                        className="mb-4 grid gap-4 sm:grid-cols-3"
-                        data-testid="review-network-tiles"
-                    >
+                    <MetricStrip className="mb-4" data-testid="review-network-tiles">
                         {[
-                            ["Reviewer", reviewerCount],
-                            ["Author", authorCount],
-                            ["Total review", totalReviews],
-                        ].map(([label, count]) => {
+                            ["Reviewer", reviewerCount, "distinct reviewers in the pairs below"],
+                            ["Author", authorCount, "distinct authors in the pairs below"],
+                            [
+                                "Total review",
+                                totalReviews,
+                                "sum of the reviews counted in the pairs",
+                            ],
+                        ].map(([label, count, note]) => {
                             const n = count as number;
                             return (
                                 <MetricCard
-                                    key={label}
+                                    key={label as string}
                                     label={`${label}${n === 1 ? "" : "s"}`}
                                     value={n}
-                                    deltaSlot={<></>}
-                                    noTrendLabel=""
+                                    hideTrend
+                                    deltaSlot={<span>{note as string}</span>}
                                 />
                             );
                         })}
-                    </div>
+                    </MetricStrip>
                     <div data-testid="review-network-table">
                         <DataTable
                             accessibleLabel="Reviewer to author review pairs"
@@ -203,6 +200,6 @@ export function ReviewNetworkView({ edges, loading, error }: ReviewNetworkViewPr
                     </div>
                 </>
             )}
-        </section>
+        </Section>
     );
 }
