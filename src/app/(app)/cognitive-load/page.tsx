@@ -1,3 +1,4 @@
+import { readFailureMessage } from "@/lib/readFailure";
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { getTabSet, tabHref } from "@/lib/navigation/tabs";
 import { HeatmapView } from "@/components/work/HeatmapView";
@@ -126,7 +127,7 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
                 repoId,
             });
         } catch (err) {
-            fetchError = err instanceof Error ? err.message : "Failed to load cognitive-load data";
+            fetchError = readFailureMessage(err, "cognitiveLoad");
         }
     }
 

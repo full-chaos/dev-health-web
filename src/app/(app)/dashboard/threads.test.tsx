@@ -118,9 +118,11 @@ describe("Investigation threads block on Home (CHAOS-8064)", () => {
         expect(screen.getByTestId("investigation-threads").querySelector("details")).toBeNull();
     });
 
-    it("Investment mix: its old throughput evidence link is the Throughput tile of Monitoring", async () => {
+    it("Investment mix: its old throughput evidence link is the Throughput tile of Monitoring (Throughput group)", async () => {
         vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(aiHome(false));
-        render(await Home({ searchParams: Promise.resolve({ lens: "em" }) }));
+        render(
+            await Home({ searchParams: Promise.resolve({ lens: "em", monitoring: "throughput" }) }),
+        );
         const href =
             within(screen.getByTestId("monitoring-tile-throughput"))
                 .getByRole("link")

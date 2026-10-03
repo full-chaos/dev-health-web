@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useState } from "react";
 
 import { DataState } from "@/components/ui/DataState";
@@ -67,7 +68,7 @@ export function AIAttributionDashboard({ filter }: AIAttributionDashboardProps) 
             <DataState
                 variant="error"
                 title="AI attribution data could not load"
-                message={error.message}
+                message={READ_FAILED_MESSAGE}
             />
         );
     }
