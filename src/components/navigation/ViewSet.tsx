@@ -19,7 +19,7 @@ type ViewSetProps = {
 const VERTICAL_CONTAINER = "mt-1 ml-3 flex flex-col gap-0.5 border-l border-(--card-stroke) pl-2";
 
 const VERTICAL_BASE =
-    "group relative flex items-center rounded-xl px-3 py-1.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/35";
+    "group relative flex items-center rounded-xl px-3 py-1.5 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/35";
 
 const VERTICAL_ACTIVE =
     "bg-(--accent)/12 font-medium text-foreground before:absolute before:left-0 before:top-1/4 before:h-1/2 before:w-0.5 before:rounded-full before:bg-(--accent)";

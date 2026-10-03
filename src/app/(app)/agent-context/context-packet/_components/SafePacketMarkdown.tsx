@@ -26,7 +26,7 @@ export function SafePacketMarkdown({ children }: { readonly children: string }) 
                             href={safeHref}
                             rel="noreferrer"
                             target="_blank"
-                            className="underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                            className="underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                         >
                             {linkChildren}
                         </a>

@@ -66,7 +66,7 @@ export function TeamImportSection({
                                 checked={supported && values[category.id]}
                                 disabled={!supported}
                                 onChange={(e) => onChange(category.id, e.target.checked)}
-                                className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-50"
+                                className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent-2) disabled:cursor-not-allowed disabled:opacity-50"
                             />
                             <label
                                 htmlFor={checkboxId}

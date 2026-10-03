@@ -101,7 +101,7 @@ export default function NewReportPage() {
                                 required
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                                 placeholder="e.g., Weekly Engineering Health"
                             />
                         </div>
@@ -115,7 +115,7 @@ export default function NewReportPage() {
                                 rows={3}
                                 value={description}
                                 onChange={(e) => setDescription(e.target.value)}
-                                className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                                 placeholder="What is this report for?"
                             />
                         </div>
@@ -133,7 +133,7 @@ export default function NewReportPage() {
                                     id="scope"
                                     value={scope}
                                     onChange={(e) => setScope(e.target.value)}
-                                    className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                    className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                                 >
                                     <option value="org">Organization</option>
                                     <option value="team">Team</option>
@@ -149,7 +149,7 @@ export default function NewReportPage() {
                                     id="dateRange"
                                     value={dateRange}
                                     onChange={(e) => setDateRange(e.target.value)}
-                                    className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                    className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                                 >
                                     <option value="last_7_days">Last 7 Days</option>
                                     <option value="last_30_days">Last 30 Days</option>
@@ -168,7 +168,7 @@ export default function NewReportPage() {
                                     >
                                         <input
                                             type="checkbox"
-                                            className="rounded border-(--card-stroke) text-(--accent) focus:ring-(--accent)"
+                                            className="rounded border-(--card-stroke) text-(--accent) focus:ring-(--accent-2)"
                                             checked={selectedMetrics.has(metric)}
                                             onChange={() => toggleMetric(metric)}
                                         />
@@ -186,7 +186,7 @@ export default function NewReportPage() {
                                 id="schedule"
                                 value={schedule}
                                 onChange={(e) => setSchedule(e.target.value)}
-                                className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                             >
                                 <option value="none">None (Manual only)</option>
                                 <option value="weekly">Weekly</option>

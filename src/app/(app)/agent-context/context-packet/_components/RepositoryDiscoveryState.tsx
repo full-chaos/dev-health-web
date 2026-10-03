@@ -24,7 +24,7 @@ export function RepositoryDiscoveryState({
                         type="button"
                         disabled={isRetrying}
                         onClick={onRetry}
-                        className="rounded-(--radius-sm) border border-(--card-stroke) px-3 py-2 text-sm font-semibold text-foreground hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50 disabled:cursor-wait disabled:opacity-60"
+                        className="rounded-(--radius-sm) border border-(--card-stroke) px-3 py-2 text-sm font-semibold text-foreground hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50 disabled:cursor-wait disabled:opacity-60"
                     >
                         {CTA_LABELS.retry}
                     </button>
