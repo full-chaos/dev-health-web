@@ -121,8 +121,8 @@ export function RetentionPolicyTable({
                                         </Button>
                                         <Button
                                             size="sm"
+                                            variant="danger"
                                             onClick={() => setConfirmDelete(policy)}
-                                            className="border-(--negative)/40! text-(--negative)! hover:bg-(--negative-wash)!"
                                         >
                                             {CTA_LABELS.delete}
                                         </Button>

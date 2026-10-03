@@ -120,8 +120,8 @@ export function IpAllowlistTable({
                                         </Button>
                                         <Button
                                             size="sm"
+                                            variant="danger"
                                             onClick={() => setConfirmDelete(entry)}
-                                            className="border-(--negative)/40! text-(--negative)! hover:bg-(--negative-wash)!"
                                         >
                                             {CTA_LABELS.delete}
                                         </Button>
