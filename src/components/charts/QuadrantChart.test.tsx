@@ -84,7 +84,7 @@ describe("QuadrantChart", () => {
         expect(typeof props.onEvents.click).toBe("function");
     });
 
-    it("ends a percent axis at 100 when every served value is at most 100 (display only)", () => {
+    it("draws a percent axis 0 to 100 in steps of 25 when every served value is in that range (display only)", () => {
         const percentData: QuadrantResponse = {
             axes: {
                 x: { metric: "pipeline_success_rate", label: "Pipeline Success Rate", unit: "%" },
@@ -97,9 +97,13 @@ describe("QuadrantChart", () => {
             annotations: [],
         };
         const option = buildQuadrantOption({ data: percentData, chartTheme, colors: chartColors });
-        const axes = option as unknown as { xAxis: { max?: number }; yAxis: { max?: number } };
-        expect(axes.xAxis.max).toBe(100);
-        expect(axes.yAxis.max).toBe(100);
+        const axes = option as unknown as {
+            xAxis: Record<string, unknown>;
+            yAxis: Record<string, unknown>;
+        };
+        for (const axis of [axes.xAxis, axes.yAxis]) {
+            expect(axis).toMatchObject({ min: 0, max: 100, interval: 25 });
+        }
         // The served values are drawn as served.
         const series = option.series as Array<{ data?: Array<{ value?: number[] }> }>;
         const drawn = series.flatMap((s) =>
@@ -113,7 +117,7 @@ describe("QuadrantChart", () => {
         );
     });
 
-    it("keeps the automatic range on a percent axis with a value above 100, and on other units", () => {
+    it("keeps the automatic range on a percent axis with a value outside 0 to 100, and on other units", () => {
         const over: QuadrantResponse = {
             axes: {
                 x: { metric: "growth", label: "Growth", unit: "%" },
@@ -122,6 +126,20 @@ describe("QuadrantChart", () => {
             points: [{ ...sampleData.points[0], x: 140, y: 80 }],
             annotations: [],
         };
+        const negative: QuadrantResponse = {
+            ...over,
+            axes: { ...over.axes, y: { metric: "delta", label: "Change", unit: "%" } },
+            points: [{ ...sampleData.points[0], x: 140, y: -12 }],
+        };
+        const below = buildQuadrantOption({
+            data: negative,
+            chartTheme,
+            colors: chartColors,
+        }) as unknown as {
+            yAxis: { min?: number; max?: number };
+        };
+        expect(below.yAxis.max).toBeUndefined();
+        expect(below.yAxis.min).toBeUndefined();
         const axes = buildQuadrantOption({
             data: over,
             chartTheme,
