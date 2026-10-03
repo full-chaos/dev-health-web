@@ -122,6 +122,9 @@ export type IncidentCorrelationDashboardProps = {
 /** DORA metric keys we recognise — tiles rendered only when present in home.deltas. */
 const DORA_METRIC_KEYS = ["change_failure_rate", "deployment_frequency", "mttr"] as const;
 
+/** Card-head text link (prototype `.link`): sentence case in the action color, the arrow after the text. */
+const CARD_LINK = "text-xs text-(--accent-2) hover:underline";
+
 const MAX_SANKEY_INCIDENTS = 10;
 
 /**
@@ -509,9 +512,9 @@ export function IncidentCorrelationDashboard({
                                     filters,
                                     role,
                                 })}
-                                className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                                className={CARD_LINK}
                             >
-                                {CTA_LABELS.openEvidence}
+                                {CTA_LABELS.openEvidence} <span aria-hidden="true">→</span>
                             </Link>
                         </div>
                         {hasDriverSeries ? (
@@ -545,9 +548,9 @@ export function IncidentCorrelationDashboard({
                                     filters,
                                     role,
                                 })}
-                                className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                                className={CARD_LINK}
                             >
-                                {CTA_LABELS.openEvidence}
+                                {CTA_LABELS.openEvidence} <span aria-hidden="true">→</span>
                             </Link>
                         </div>
                         {topContributors.length > 0 ? (

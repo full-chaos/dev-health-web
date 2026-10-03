@@ -10,6 +10,7 @@ import {
     EvidenceFactList,
     EvidenceProvenanceFacts,
 } from "@/components/evidence/EvidenceFacts";
+import { StatusPill } from "@/components/admin/StatusPill";
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import { getHeatmap } from "@/lib/api/visuals";
 import { resolveEntityLabel } from "@/lib/labels/entityLabel";
@@ -228,9 +229,12 @@ export function HeatmapPanel({
                     <h2 className="font-(--font-display) text-xl">{title}</h2>
                     <p className="mt-2 text-sm text-(--ink-muted)">{description}</p>
                 </div>
-                <div className="text-xs uppercase tracking-[0.2em] text-(--accent-2)">
-                    {data.legend.unit}
-                </div>
+                {/* Prototype `pill(unit, 'info')` (app.js:79): the served unit as an info pill. */}
+                {data.legend.unit ? (
+                    <StatusPill tone="info" testId="heatmap-unit">
+                        {data.legend.unit}
+                    </StatusPill>
+                ) : null}
             </div>
             <div
                 ref={chartRegionRef}

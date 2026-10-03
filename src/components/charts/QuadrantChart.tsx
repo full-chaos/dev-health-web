@@ -139,6 +139,16 @@ type QuadrantChartOptionParams = {
     highlightOverlayKey?: string | null;
 };
 
+/**
+ * A percent axis ends at 100 when every served value on it is at most 100, as a percent axis reads
+ * (display only: left alone, ECharts rounds the top up to 120). A served percent above 100 keeps the
+ * automatic range, so no point is ever cut off.
+ */
+export const percentAxisMax = (
+    unit: string | undefined,
+    values: readonly number[],
+): number | undefined => (unit === "%" && values.every((value) => value <= 100) ? 100 : undefined);
+
 export const buildQuadrantOption = ({
     data,
     chartTheme,
@@ -155,6 +165,14 @@ export const buildQuadrantOption = ({
     const yAxisLabel = data.axes.y.unit
         ? `${data.axes.y.label} (${data.axes.y.unit})`
         : data.axes.y.label;
+    const xAxisMax = percentAxisMax(
+        data.axes.x.unit,
+        data.points.map((point) => point.x),
+    );
+    const yAxisMax = percentAxisMax(
+        data.axes.y.unit,
+        data.points.map((point) => point.y),
+    );
 
     const normalizedScopeType = normalizeScopeType(scopeType);
     const isPersonScope = normalizedScopeType === "person";
@@ -285,6 +303,7 @@ export const buildQuadrantOption = ({
             nameGap: 30,
             type: "value",
             splitNumber: 4,
+            ...(xAxisMax === undefined ? {} : { max: xAxisMax }),
             axisLine: { lineStyle: axisLineStyle },
             axisLabel: { color: axisLabelColor },
             splitLine: { lineStyle: gridLineStyle },
@@ -295,6 +314,7 @@ export const buildQuadrantOption = ({
             nameGap: 40,
             type: "value",
             splitNumber: 4,
+            ...(yAxisMax === undefined ? {} : { max: yAxisMax }),
             axisLine: { lineStyle: axisLineStyle },
             axisLabel: { color: axisLabelColor },
             splitLine: { lineStyle: gridLineStyle },

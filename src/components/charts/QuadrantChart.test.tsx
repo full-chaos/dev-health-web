@@ -84,6 +84,63 @@ describe("QuadrantChart", () => {
         expect(typeof props.onEvents.click).toBe("function");
     });
 
+    it("ends a percent axis at 100 when every served value is at most 100 (display only)", () => {
+        const percentData: QuadrantResponse = {
+            axes: {
+                x: { metric: "pipeline_success_rate", label: "Pipeline Success Rate", unit: "%" },
+                y: { metric: "test_pass_rate", label: "Test Pass Rate", unit: "%" },
+            },
+            points: [
+                { ...sampleData.points[0], entity_id: "r1", x: 100, y: 96.5 },
+                { ...sampleData.points[0], entity_id: "r2", x: 62, y: 100 },
+            ],
+            annotations: [],
+        };
+        const option = buildQuadrantOption({ data: percentData, chartTheme, colors: chartColors });
+        const axes = option as unknown as { xAxis: { max?: number }; yAxis: { max?: number } };
+        expect(axes.xAxis.max).toBe(100);
+        expect(axes.yAxis.max).toBe(100);
+        // The served values are drawn as served.
+        const series = option.series as Array<{ data?: Array<{ value?: number[] }> }>;
+        const drawn = series.flatMap((s) =>
+            (s.data ?? []).flatMap((d) => (Array.isArray(d?.value) ? [d.value.slice(0, 2)] : [])),
+        );
+        expect(drawn).toEqual(
+            expect.arrayContaining([
+                [100, 96.5],
+                [62, 100],
+            ]),
+        );
+    });
+
+    it("keeps the automatic range on a percent axis with a value above 100, and on other units", () => {
+        const over: QuadrantResponse = {
+            axes: {
+                x: { metric: "growth", label: "Growth", unit: "%" },
+                y: { metric: "throughput", label: "Throughput", unit: "items" },
+            },
+            points: [{ ...sampleData.points[0], x: 140, y: 80 }],
+            annotations: [],
+        };
+        const axes = buildQuadrantOption({
+            data: over,
+            chartTheme,
+            colors: chartColors,
+        }) as unknown as {
+            xAxis: { max?: number };
+            yAxis: { max?: number };
+        };
+        expect(axes.xAxis.max).toBeUndefined();
+        expect(axes.yAxis.max).toBeUndefined();
+        const plain = buildQuadrantOption({
+            data: sampleData,
+            chartTheme,
+            colors: chartColors,
+        }) as unknown as { xAxis: { max?: number }; yAxis: { max?: number } };
+        expect(plain.xAxis.max).toBeUndefined();
+        expect(plain.yAxis.max).toBeUndefined();
+    });
+
     it("handles empty data and null click payload gracefully", () => {
         render(
             <QuadrantChart
