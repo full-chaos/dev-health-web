@@ -78,7 +78,7 @@ describe("Report Center page", () => {
         await renderPage();
 
         expect(screen.getByTestId("data-state-detector-enabled-no-findings")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Create Report" })).toHaveAttribute(
+        expect(screen.getByRole("link", { name: "Create report" })).toHaveAttribute(
             "href",
             "/reports/new",
         );

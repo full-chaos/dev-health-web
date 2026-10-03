@@ -62,7 +62,7 @@ export const CTA_LABELS = {
     continue: "Continue",
     back: "Back",
     saving: "Saving...",
-    runNow: "Run Now",
+    runNow: "Run now",
     addOneFirst: "Add one first",
     createOneNow: "Create One Now",
     importSelected: "Import Selected",
@@ -119,8 +119,8 @@ export const CTA_LABELS = {
     landscape: "Landscape",
     week: "Week",
     month: "Month",
-    newReport: "New Report",
-    createReport: "Create Report",
+    newReport: "New report",
+    createReport: "Create report",
     /** Paginate to the previous page of a list. */
     previousPage: "Previous",
     /** Paginate to the next page of a list. */
