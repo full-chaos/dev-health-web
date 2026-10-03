@@ -26,6 +26,16 @@ describe("signedPercent", () => {
     });
 });
 
+describe("associationMeterRows signed (K-5)", () => {
+    it("carries the signed change as the value; the default stays |change|", () => {
+        const drivers = [row("a", "raw-a", 3, -20), row("b", "raw-b", 2, 10)];
+        expect(
+            associationMeterRows(drivers, undefined, { signed: true }).map((r) => r.value),
+        ).toEqual([-20, 10]);
+        expect(associationMeterRows(drivers).map((r) => r.value)).toEqual([20, 10]);
+    });
+});
+
 describe("associationMeterRows", () => {
     it("fills by |delta| and shows the signed served change; labels come from the resolver when given", () => {
         const rows = associationMeterRows([row("a", "raw-a", 3, -20), row("b", "raw-b", 2, 10)], {
