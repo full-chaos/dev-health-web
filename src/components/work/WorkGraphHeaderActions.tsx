@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
+import { buttonClassName } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -28,8 +30,9 @@ export function WorkGraphHeaderActions({
     return (
         <Link
             href={buildExploreUrl({ metric: "throughput", filters, role, origin })}
-            className="rounded-full border border-(--card-stroke) px-4 py-2 text-xs uppercase tracking-[0.2em]"
+            className={buttonClassName("ghost")}
         >
+            <ArrowRight aria-hidden="true" className="h-4 w-4" />
             {CTA_LABELS.openEvidence}
         </Link>
     );
