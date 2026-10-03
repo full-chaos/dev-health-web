@@ -118,9 +118,14 @@ export function PrimarySignalHero({
                         {action}
                     </div>
                 ) : actionLabel ? (
-                    <Link href={href} className={buttonClassName("primary", "md", "mt-3")}>
-                        {actionLabel}
+                    <Link
+                        href={href}
+                        data-testid="area-signal-hero-cta"
+                        className={buttonClassName("primary", "md", "mt-3")}
+                    >
+                        {/* Prototype `btn()`: the icon comes before the text. */}
                         <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                        {actionLabel}
                     </Link>
                 ) : null}
             </div>

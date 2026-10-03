@@ -1,3 +1,4 @@
+import { PageFactsEvidenceAction } from "@/components/evidence/PageFactsEvidenceAction";
 import { AreaOverview } from "@/components/navigation/AreaOverview";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
@@ -7,6 +8,9 @@ import { getGovernSignals } from "@/lib/areaSignals";
 import { getServerEnv } from "@/lib/config";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
+import { getAreaById } from "@/lib/navigation/areas";
+
+import { governEvidenceFacts } from "./governEvidenceFacts";
 
 type GovernPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -69,6 +73,16 @@ export default async function GovernPage({ searchParams }: GovernPageProps) {
         return <ServiceUnavailable landmark={false} />;
     }
 
+    // The page is the subject of its "View evidence": its served signals, in body order.
+    const clusterOrder = [
+        ...new Set(
+            (getAreaById("govern")?.hubItems ?? []).flatMap((item) =>
+                item.cluster ? [item.cluster] : [],
+            ),
+        ),
+    ];
+    const evidenceFacts = governEvidenceFacts(governSignals, clusterOrder);
+
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
@@ -76,6 +90,7 @@ export default async function GovernPage({ searchParams }: GovernPageProps) {
             <PageHeader
                 title="Govern"
                 subtitle="Quality and risk across delivery, incidents, security, flags, and TestOps."
+                actions={<PageFactsEvidenceAction title="Govern overview" facts={evidenceFacts} />}
             />
 
             <ScopeBar pageFilters={false} />

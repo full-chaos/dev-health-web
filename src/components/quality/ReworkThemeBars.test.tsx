@@ -32,18 +32,26 @@ describe("ReworkThemeBars", () => {
                 rows={[
                     row({ theme: "risk", label: "Risk / Security", allocation_pct: 56.64 }),
                     row({ prs_merged: 1, churn_loc: 0 }),
+                    row({ theme: "feature", label: "Feature Delivery", churn_loc: 30 }),
                 ]}
             />,
         );
 
         const items = screen.getAllByRole("listitem");
-        expect(items.map((item) => item.getAttribute("data-theme"))).toEqual(["risk", "quality"]);
+        expect(items.map((item) => item.getAttribute("data-theme"))).toEqual([
+            "risk",
+            "quality",
+            "feature",
+        ]);
         expect(within(items[0]).getByText("Risk / Security")).toBeInTheDocument();
         expect(within(items[0]).getByText("56.6%")).toBeInTheDocument();
         expect(within(items[0]).getByText("3 PRs")).toBeInTheDocument();
-        expect(within(items[0]).getByText("2.5k churn LOC")).toBeInTheDocument();
+        // The shared compact LOC format ("2.5K").
+        expect(within(items[0]).getByText("2.5K churn LOC")).toBeInTheDocument();
         expect(within(items[1]).getByText("1 PR")).toBeInTheDocument();
-        expect(within(items[1]).getByText("0k churn LOC")).toBeInTheDocument();
+        // A served 0 is 0; a served small value is never shown as 0 (it read "0k").
+        expect(within(items[1]).getByText("0 churn LOC")).toBeInTheDocument();
+        expect(within(items[2]).getByText("30 churn LOC")).toBeInTheDocument();
     });
 
     it("clamps the bar width at 100 %", () => {

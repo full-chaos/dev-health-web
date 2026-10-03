@@ -1,25 +1,23 @@
 import { MetricCard } from "@/components/metrics/MetricCard";
-import { DataState } from "@/components/ui/DataState";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { ChartFrame } from "@/components/charts/ChartFrame";
-import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
-import { HeatmapChart } from "@/components/charts/HeatmapChart";
+import { FailurePatternsCard } from "@/components/testops/FailurePatternsCard";
+import { InvestigateTestOps } from "@/components/testops/InvestigateTestOps";
+import { PipelineRateTrendChart } from "@/components/testops/PipelineRateTrendChart";
+import { DataState } from "@/components/ui/DataState";
+import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
-import { TESTOPS_MEASURES } from "@/lib/testops/constants";
-import { buildFailurePatternsModel, UNATTRIBUTED_LABEL } from "@/lib/testops/failure-patterns";
-import {
-    mergeSeriesByMeasure,
-    getLatestValue,
-    getSparkline,
-    getDelta,
-} from "@/lib/testops/aggregateSeries";
-import { TimeseriesBucket, BreakdownResult } from "@/lib/graphql/schemas/analytics";
+import { buildFailurePatternsModel } from "@/lib/testops/failure-patterns";
+import { buildPipelineRateTrend, hasPipelineRateData } from "@/lib/testops/rateTrend";
+import type { BreakdownResult } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
 
+import { resolveTestOpsTiles, testOpsEvidenceSubject } from "../testOpsEvidence";
 import { TestOpsTabs } from "../TestOpsTabs";
 
 type PipelinesPageProps = {
@@ -101,28 +99,21 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
 
     const pipelineTimeseries = testOpsData.pipelines.timeseries || [];
     const pipelineBreakdowns = testOpsData.pipelines.breakdowns || [];
+    const fetchFailed = Boolean(testOpsData.fetchFailed);
 
-    const measures = [
+    const tiles = resolveTestOpsTiles([
         { id: "PIPELINE_SUCCESS_RATE", ts: pipelineTimeseries },
         { id: "PIPELINE_FAILURE_RATE", ts: pipelineTimeseries },
         { id: "PIPELINE_DURATION_P95", ts: pipelineTimeseries },
         { id: "PIPELINE_QUEUE_TIME", ts: pipelineTimeseries },
         { id: "PIPELINE_RERUN_RATE", ts: pipelineTimeseries },
-    ];
+    ]);
 
-    const successRateSeries = mergeSeriesByMeasure(pipelineTimeseries, "PIPELINE_SUCCESS_RATE");
-    const failureBreakdown = pipelineBreakdowns.find(
-        (b: BreakdownResult) => b.measure === "PIPELINE_FAILURE_RATE",
+    const rateTrend = buildPipelineRateTrend(pipelineTimeseries);
+    const failurePatterns = buildFailurePatternsModel(
+        pipelineBreakdowns.find((b: BreakdownResult) => b.measure === "PIPELINE_FAILURE_RATE"),
+        "%",
     );
-
-    const timeseriesData = successRateSeries
-        ? successRateSeries.buckets.map((b: TimeseriesBucket) => ({
-              day: b.date,
-              value: b.value,
-          }))
-        : [];
-
-    const failurePatterns = buildFailurePatternsModel(failureBreakdown, "%");
 
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
@@ -131,86 +122,70 @@ export default async function PipelinesPage({ searchParams }: PipelinesPageProps
             <PageHeader
                 title="TestOps"
                 subtitle="CI/CD pipeline health and performance."
+                actions={
+                    <PageHeaderEvidenceAction
+                        subject={testOpsEvidenceSubject("TestOps pipelines", tiles)}
+                    />
+                }
             ></PageHeader>
+
+            {/* Approved order: header, scope bar, tab row, content. */}
+            <ScopeBar view="testops" />
 
             <TestOpsTabs activeId="pipelines" filters={filters} role={activeRole} />
 
-            <ScopeBar view="testops" />
-            <section className="grid gap-4 lg:grid-cols-3">
-                {measures.map(({ id, ts }) => {
-                    const def = TESTOPS_MEASURES[id];
-                    if (!def) return null;
+            <MetricStrip data-testid="testops-pipelines-tiles">
+                {tiles.map((tile) => (
+                    <MetricCard
+                        key={tile.id}
+                        label={tile.label}
+                        value={tile.value}
+                        unit={tile.unit}
+                        delta={tile.delta}
+                        deltaUnavailableLabel="Insufficient history"
+                        inverseGood={tile.inverseGood}
+                        spark={tile.spark}
+                        caption={tile.note}
+                    />
+                ))}
+            </MetricStrip>
 
-                    const value = getLatestValue(ts, id);
-                    const spark = getSparkline(ts, id);
-                    const delta = getDelta(ts, id);
+            {/* The denominators note stays with the chart it explains (it protects meaning). */}
+            <Section
+                title="Pipeline trends"
+                description={
+                    <>
+                        Success Rate and Failure Rate are shares of <em>completed</em> pipeline runs
+                        and need not sum to 100% — runs can be cancelled or skipped. A sustained dip
+                        of the success rate flags CI instability before it blocks delivery.
+                    </>
+                }
+                data-testid="testops-pipeline-trends"
+            >
+                {fetchFailed ? (
+                    <DataState
+                        variant="error"
+                        title="Pipeline trend could not be loaded"
+                        message="Pipeline analytics could not be loaded. The trend will reappear once the data service recovers."
+                    />
+                ) : !hasPipelineRateData(rateTrend) ? (
+                    <DataState
+                        variant="no-data-connected"
+                        title="Pipeline trend not populated"
+                        description="Success-rate history appears here once pipeline runs are ingested for this scope."
+                    />
+                ) : (
+                    <>
+                        <p className="text-label-caps uppercase text-(--ink-muted)">Percent</p>
+                        <PipelineRateTrendChart points={rateTrend} />
+                    </>
+                )}
+            </Section>
 
-                    return (
-                        <MetricCard
-                            key={id}
-                            label={def.label}
-                            value={value}
-                            unit={
-                                def.unit === "percentage" ? "%" : def.unit === "duration" ? "m" : ""
-                            }
-                            delta={delta}
-                            deltaUnavailableLabel="Insufficient history"
-                            inverseGood={def.goodDirection === "down"}
-                            spark={spark}
-                            caption={def.description}
-                        />
-                    );
-                })}
-            </section>
-
-            <p className="-mt-4 text-xs text-(--ink-muted)">
-                Success Rate and Failure Rate are shares of <em>completed</em> pipeline runs and
-                need not sum to 100% — runs can be cancelled or skipped. Failure Patterns below
-                shows the failure rate <em>within each group</em>, a different denominator from the
-                headline Failure Rate, so the figures are not directly comparable.
-            </p>
-
-            <section className="grid gap-6 lg:grid-cols-2">
-                <ChartFrame
-                    title="Success Rate Trend"
-                    headingLevel="h2"
-                    interpretation="Share of completed pipeline runs that succeed, day by day — a sustained dip flags CI instability before it blocks delivery."
-                    direction={TESTOPS_MEASURES.PIPELINE_SUCCESS_RATE.goodDirection}
-                    isError={Boolean(testOpsData.fetchFailed)}
-                    stateMessage="Pipeline analytics could not be loaded. The trend will reappear once the data service recovers."
-                    isEmpty={timeseriesData.length === 0}
-                    stateTitle="Pipeline trend not populated"
-                    stateDescription="Success-rate history appears here once pipeline runs are ingested for this scope."
-                >
-                    <div className="h-64">
-                        <TimeseriesChart data={timeseriesData} valueFormat="percent" />
-                    </div>
-                </ChartFrame>
-                <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
-                    <h2 className="font-(--font-display) text-xl mb-4">Failure Patterns</h2>
-                    {failurePatterns.isEmpty ? (
-                        <DataState
-                            variant="detector-enabled-no-findings"
-                            title="No failure patterns"
-                            description="No failure data surfaced for this window or scope."
-                            className="flex h-64 items-center justify-center"
-                        />
-                    ) : (
-                        <>
-                            <div className="h-64">
-                                <HeatmapChart data={failurePatterns.heatmap} />
-                            </div>
-                            {failurePatterns.hasUnattributed ? (
-                                <p className="mt-3 text-xs text-(--ink-muted)">
-                                    &ldquo;{UNATTRIBUTED_LABEL}&rdquo; groups failures with no
-                                    attribution in the source data &mdash; read its share as a
-                                    data-quality caveat, not a real category.
-                                </p>
-                            ) : null}
-                        </>
-                    )}
-                </div>
-            </section>
+            <div className="grid gap-4.5 lg:grid-cols-2">
+                <FailurePatternsCard model={failurePatterns} fetchFailed={fetchFailed} />
+                <InvestigateTestOps filters={filters} role={activeRole} />
+            </div>
         </div>
     );
 }
