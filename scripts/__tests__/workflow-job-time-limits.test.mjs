@@ -37,9 +37,36 @@ function jobsOf(file) {
 describe("workflow job time limits (CHAOS-8530)", () => {
     const files = fs.readdirSync(WORKFLOWS).filter((f) => f.endsWith(".yml"));
 
-    it("finds the jobs of every workflow", () => {
-        expect(files.length).toBeGreaterThan(5);
-        for (const f of files) expect(jobsOf(f).length, f).toBeGreaterThan(0);
+    // The jobs the limits were measured for. A new job must be added here WITH a limit (or to NO_DATA).
+    const EXPECTED = {
+        "tests.yml": [
+            "changes",
+            "format",
+            "quality",
+            "build",
+            "unit",
+            "e2e-default",
+            "e2e-onboarding",
+            "design-lint",
+            "test",
+        ],
+        "build.yml": ["changes", "build"],
+        "live-e2e.yml": ["changes", "live-e2e"],
+        "build-docker.yml": ["changes", "build", "merge"],
+        "build-static.yml": ["changes", "build", "test-e2e"],
+        "governance-src-test-policy.yml": ["enforce-src-test-policy"],
+        "deploy-demo.yml": ["build", "deploy"],
+        "package.yml": ["package"],
+    };
+
+    it("knows exactly the jobs of every workflow (a new job needs a limit decision)", () => {
+        expect(files.sort()).toEqual(Object.keys(EXPECTED).sort());
+        for (const f of files) {
+            expect(
+                jobsOf(f).map((j) => j.id),
+                f,
+            ).toEqual(EXPECTED[f]);
+        }
     });
 
     for (const f of files) {
