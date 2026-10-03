@@ -134,4 +134,13 @@ describe("describeOrganizationData", () => {
             }),
         ).toMatch(/^Data through /);
     });
+
+    it("a timestamp that is not a date never prints 'Data through Invalid Date'", () => {
+        const text = describeOrganizationData({
+            name: "A",
+            hasData: true,
+            lastMetricsAt: "soon",
+        });
+        expect(text).toBe("Has data");
+    });
 });
