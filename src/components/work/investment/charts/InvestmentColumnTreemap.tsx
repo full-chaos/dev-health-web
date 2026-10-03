@@ -88,7 +88,6 @@ export function InvestmentColumnTreemap({
         const ink = tileLabel(color, opacity, chartTheme.background);
         const inkStyle: CSSProperties = {
             color: ink.color,
-            textShadow: ink.haloColor ? `0 0 2px ${ink.haloColor}` : undefined,
         };
         const key = columnTreemapKey(node);
         const description = describeNodeAction?.(node, path) ?? path.join(" · ");
