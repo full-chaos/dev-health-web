@@ -220,6 +220,9 @@ describe("GraphView", () => {
 
         render(<GraphView filters={filters} />);
 
+        // The three filters are one segmented group (prototype `.segments`).
+        const segments = within(screen.getByTestId("graph-segments"));
+        expect(segments.getAllByRole("combobox")).toHaveLength(3);
         expect(screen.getByLabelText(/Connection type/i)).toHaveValue("work-to-change");
         // The TOUCHES edge is sliced out by the default work-to-change connection,
         // leaving a single FIXES edge counted in the active view.
@@ -782,6 +785,56 @@ describe("GraphView", () => {
         expect(inflow.className).toContain("bg-(--chart-color-1)");
         expect(outflow.className).toContain("bg-(--chart-color-2)");
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    it("inflow-outflow rows carry the prototype balance pill, from the served inflow and outflow only", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphFlow.mockReturnValue({
+            rows: [
+                { nodeType: "ISSUE", inflow: 10, outflow: 2 },
+                { nodeType: "PR", inflow: 0, outflow: 9 },
+                { nodeType: "COMMIT", inflow: 4, outflow: 4 },
+            ],
+            loading: false,
+            error: null,
+            degradedReason: null,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="inflow-outflow" />);
+
+        expect(screen.getAllByTestId("balance-pill").map((pill) => pill.textContent)).toEqual([
+            "More incoming",
+            "More outgoing",
+            "Balanced",
+        ]);
+        const panel = within(screen.getByTestId("inflow-outflow-panel"));
+        expect(
+            panel.getByText("Outflow originates from an entity type; inflow points into it."),
+        ).toBeInTheDocument();
+    });
+
+    it("artifacts tab is the 'Artifact browser' section with the prototype description", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+        render(<GraphView filters={filters} activeTab="artifacts" />);
+
+        const panel = within(screen.getByTestId("artifacts-panel"));
+        expect(panel.getByRole("heading", { name: "Artifact browser" })).toBeInTheDocument();
+        expect(
+            panel.getByText(/Entities ranked by how many relationships they carry/),
+        ).toBeInTheDocument();
     });
 
     it("artifacts tab renders rows from the workGraphArtifacts aggregate", () => {

@@ -10,6 +10,8 @@ import {
     WorkGraphLegend,
 } from "@/components/charts/WorkGraphExplorer";
 import { Notice } from "@/components/ui/Notice";
+import { Section } from "@/components/ui/Section";
+import { STATUS_PILL } from "@/lib/statusPill";
 import { ReviewNetworkView } from "./ReviewNetwork";
 import { DataState } from "@/components/ui/DataState";
 import { EntityLabel } from "@/components/labels/EntityLabel";
@@ -634,19 +636,23 @@ export function GraphView({
                     {themeScopeChip}
 
                     {showConnectionSelector && (
-                        <div className="mb-4 rounded-2xl border border-(--card-stroke) bg-(--card-70) p-3 text-xs">
-                            <div className="grid gap-3 lg:grid-cols-[minmax(13rem,1.1fr)_minmax(11rem,0.9fr)_minmax(14rem,1.2fr)]">
-                                <label className="grid min-w-0 gap-1">
-                                    <span className="uppercase tracking-[0.18em] text-(--ink-muted)">
-                                        Connection type
-                                    </span>
+                        <div className="mb-4 rounded-sm bg-background p-3 text-xs">
+                            <div
+                                role="group"
+                                aria-label="Graph filters"
+                                data-testid="graph-segments"
+                                className="inline-flex max-w-full flex-wrap items-center overflow-hidden rounded-sm border border-(--card-stroke) bg-card"
+                            >
+                                <label className="flex min-w-0 items-center gap-1.5 border-r border-(--card-stroke) px-3 py-1.5">
+                                    <span className="text-(--ink-muted)">Connection type</span>
                                     <select
+                                        aria-label="Connection type"
                                         value={connectionSliceId}
                                         onChange={(event) => {
                                             setConnectionSliceId(event.target.value);
                                             setSelectedNode(null);
                                         }}
-                                        className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
+                                        className="min-w-0 bg-transparent font-semibold text-foreground focus-visible:outline-none"
                                     >
                                         {CONNECTION_SLICES.map((slice) => (
                                             <option key={slice.id} value={slice.id}>
@@ -655,14 +661,13 @@ export function GraphView({
                                         ))}
                                     </select>
                                 </label>
-                                <label className="grid min-w-0 gap-1">
-                                    <span className="uppercase tracking-[0.18em] text-(--ink-muted)">
-                                        Theme
-                                    </span>
+                                <label className="flex min-w-0 items-center gap-1.5 border-r border-(--card-stroke) px-3 py-1.5">
+                                    <span className="text-(--ink-muted)">Theme</span>
                                     <select
+                                        aria-label="Theme"
                                         value={theme}
                                         onChange={(event) => handleThemeChange(event.target.value)}
-                                        className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
+                                        className="min-w-0 bg-transparent font-semibold text-foreground focus-visible:outline-none"
                                     >
                                         <option value="all">All themes</option>
                                         {INVESTMENT_THEMES.map((item) => (
@@ -672,16 +677,15 @@ export function GraphView({
                                         ))}
                                     </select>
                                 </label>
-                                <label className="grid min-w-0 gap-1">
-                                    <span className="uppercase tracking-[0.18em] text-(--ink-muted)">
-                                        Subcategory
-                                    </span>
+                                <label className="flex min-w-0 items-center gap-1.5 px-3 py-1.5">
+                                    <span className="text-(--ink-muted)">Subcategory</span>
                                     <select
+                                        aria-label="Subcategory"
                                         value={subcategory}
                                         onChange={(event) =>
                                             handleSubcategoryChange(event.target.value)
                                         }
-                                        className="min-w-0 rounded-xl border border-(--card-stroke) bg-background px-3 py-2 text-foreground"
+                                        className="min-w-0 bg-transparent font-semibold text-foreground focus-visible:outline-none"
                                     >
                                         <option value="all">All subcategories</option>
                                         {visibleSubcategories.map((item) => (
@@ -851,6 +855,13 @@ type InflowOutflowViewProps = {
     error: { message: string } | null;
 };
 
+/** Direction of a row, from its served inflow and outflow only (no threshold, no invented tolerance). */
+export function balanceLabel(inflow: number, outflow: number): string {
+    if (inflow > outflow) return "More incoming";
+    if (outflow > inflow) return "More outgoing";
+    return "Balanced";
+}
+
 function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowViewProps) {
     // Rows now come from the server-side workGraphFlow aggregate (CHAOS-2442),
     // so they are no longer derived from a capped edge page. We only drop
@@ -866,17 +877,12 @@ function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowVi
     const max = rows.reduce((m, r) => Math.max(m, r.inflow, r.outflow), 1);
 
     return (
-        <section
-            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+        <Section
             data-testid="inflow-outflow-panel"
+            as="h3"
+            title="Inflow / Outflow"
+            description="Outflow originates from an entity type; inflow points into it."
         >
-            <div className="mb-4">
-                <h3 className="text-lg font-semibold tracking-tight">Inflow / Outflow</h3>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                    How relationships flow into and out of each entity type — outflow links
-                    originate from a type, inflow links point to it.
-                </p>
-            </div>
             {loading ? (
                 <p className="text-sm text-(--ink-muted)">Loading…</p>
             ) : error ? (
@@ -892,9 +898,9 @@ function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowVi
                     description="No work graph edges are available for this scope and window."
                 />
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90)">
+                <div className="overflow-x-auto">
                     <table className="w-full text-sm" data-testid="inflow-outflow-table">
-                        <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
+                        <thead className="text-label-caps uppercase text-(--ink-muted)">
                             <tr>
                                 <th className="px-5 py-3 text-left">Entity type</th>
                                 <th className="px-5 py-3 text-right">Inflow</th>
@@ -921,6 +927,16 @@ function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowVi
                                     <td className="px-5 py-3 align-middle">
                                         <div className="flex items-center gap-2">
                                             <span
+                                                data-testid="balance-pill"
+                                                className={`shrink-0 rounded-full border px-2 py-0.5 text-xs font-semibold ${
+                                                    row.inflow > row.outflow
+                                                        ? STATUS_PILL.info
+                                                        : STATUS_PILL.muted
+                                                }`}
+                                            >
+                                                {balanceLabel(row.inflow, row.outflow)}
+                                            </span>
+                                            <span
                                                 aria-hidden
                                                 className="h-2 rounded-r-(--radius-sm) bg-(--chart-color-1)"
                                                 style={{
@@ -942,7 +958,7 @@ function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowVi
                     </table>
                 </div>
             )}
-        </section>
+        </Section>
     );
 }
 
@@ -958,17 +974,12 @@ type ArtifactsViewProps = {
 
 function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
     return (
-        <section
-            className="rounded-[1.75rem] border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm"
+        <Section
             data-testid="artifacts-panel"
+            as="h3"
+            title="Artifact browser"
+            description="Entities ranked by how many relationships they carry; provider artifact labels stay intact. Open a node on the Overview tab to inspect its full evidence trail."
         >
-            <div className="mb-4">
-                <h3 className="text-lg font-semibold tracking-tight">Artifacts</h3>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                    Entities in the graph ranked by how many relationships they carry. Open a node
-                    on the Overview tab to inspect its full evidence trail.
-                </p>
-            </div>
             {loading ? (
                 <p className="text-sm text-(--ink-muted)">Loading…</p>
             ) : error ? (
@@ -984,9 +995,9 @@ function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
                     description="No work graph entities are available for this scope and window."
                 />
             ) : (
-                <div className="overflow-hidden rounded-2xl border border-(--card-stroke) bg-(--card-90)">
+                <div className="overflow-x-auto">
                     <table className="w-full text-sm" data-testid="artifacts-table">
-                        <thead className="bg-(--card-60) text-xs font-semibold uppercase tracking-[0.18em] text-(--ink-muted)">
+                        <thead className="text-label-caps uppercase text-(--ink-muted)">
                             <tr>
                                 <th className="px-5 py-3 text-left">Type</th>
                                 <th className="px-5 py-3 text-left">Entity</th>
@@ -1052,7 +1063,7 @@ function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
                     </table>
                 </div>
             )}
-        </section>
+        </Section>
     );
 }
 
