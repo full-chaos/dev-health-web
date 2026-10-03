@@ -545,7 +545,8 @@ describe("Investment Confidence (prototype view 10)", () => {
 
         const rework = screen.getByTestId("confidence-tile-rework");
         expect(rework).toHaveTextContent("PR Rework Ratio");
-        expect(rework).toHaveTextContent("96%");
+        // Number and unit are two elements on the shared tile.
+        expect(within(rework).getByTestId("metric-value")).toHaveTextContent(/^96 %$/);
         expect(within(rework).getByRole("link").getAttribute("href")).toContain(
             "metric=pr_rework_ratio",
         );
@@ -554,11 +555,11 @@ describe("Investment Confidence (prototype view 10)", () => {
     it("no confidence served: the first two tiles show the 'no value' mark and say why, no number", () => {
         confidence();
         const mean = screen.getByTestId("confidence-tile-mean");
-        expect(within(mean).getByText("--")).toBeInTheDocument();
-        expect(mean).toHaveTextContent("Not reported");
+        // The value reads "Not reported" (the shared tile's no-value mark), and so does the spread.
+        expect(within(mean).getByTestId("metric-value")).toHaveTextContent(/^Not reported$/);
         expect(mean.textContent).not.toMatch(/\d/);
         const level = screen.getByTestId("confidence-tile-level");
-        expect(within(level).getByText("--")).toBeInTheDocument();
+        expect(within(level).getByTestId("metric-value")).toHaveTextContent(/^Not reported$/);
         expect(level).toHaveTextContent(
             "Classification confidence appears once an investment explanation has been generated for this window.",
         );
