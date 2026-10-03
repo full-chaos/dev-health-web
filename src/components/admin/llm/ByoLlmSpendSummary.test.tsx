@@ -118,6 +118,33 @@ describe("ByoLlmSpendSummary", () => {
             // Remaining has nothing to remain from: it is not served, so it is not reported.
             expect(strip.textContent?.match(/Not reported/g)).toHaveLength(1);
             expect(strip.textContent?.match(/Not set/g)).toHaveLength(1);
+            // "Not set" has the same muted ink as "Not reported".
+            const values = Array.from(strip.querySelectorAll("[data-testid=metric-value]"));
+            const notSet = values.find((v) => v.textContent === "Not set") as HTMLElement;
+            const MUTED = "[&_[data-testid=metric-value]]:text-(--ink-muted)";
+            expect(notSet.closest(`[class*="${MUTED}"]`)).not.toBeNull();
+            const notReported = values.find((v) => v.textContent === "Not reported") as HTMLElement;
+            expect(notReported.className).toContain("text-(--ink-muted)");
+        });
+
+        it("logs a served failure (an error answer with no data) and leaves the tiles out (CHAOS-8266)", async () => {
+            mockLoad.mockResolvedValue(emptySpend);
+            logError.mockClear();
+            render(
+                <ByoLlmSpendSummary
+                    loadSpendAction={mockLoad}
+                    loadBudgetAction={async () => ({ error: "refused", status: 500 }) as never}
+                />,
+            );
+            await screen.findByText("AI / LLM Spend Summary (BYO-LLM)");
+            await waitFor(() => expect(logError).toHaveBeenCalled());
+            expect(logError).toHaveBeenCalledWith(
+                { status: 500 },
+                "Budget request for the spend tiles was refused or failed",
+            );
+            expect(screen.queryByTestId("byo-llm-spend-tiles")).not.toBeInTheDocument();
+            // The backend text is never on screen.
+            expect(screen.queryByText(/refused/)).not.toBeInTheDocument();
         });
 
         it("a budget action that throws leaves the tiles out, with no unhandled rejection", async () => {

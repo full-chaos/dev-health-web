@@ -83,6 +83,12 @@ function SpendTile({
         <MetricCard
             label={label}
             valueText={micro == null ? unsetText : formatMicroUsd(micro)}
+            // "Not set" is drawn in the same muted ink as "Not reported": it is a state, not an amount.
+            className={
+                micro == null && unsetText
+                    ? "[&_[data-testid=metric-value]]:text-(--ink-muted)"
+                    : undefined
+            }
             deltaSlot={<></>}
             hideTrend
         />
@@ -138,6 +144,13 @@ export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlm
         let active = true;
         loadBudgetAction()
             .then((result) => {
+                if (!result.data && result.error) {
+                    // A served failure (an error answer with no data): logged, tiles left out.
+                    spendLogger.error(
+                        { status: result.status },
+                        "Budget request for the spend tiles was refused or failed",
+                    );
+                }
                 if (active) setBudget(result.data ?? null);
             })
             // A budget action that throws leaves the tiles out; it is never an unhandled rejection.
