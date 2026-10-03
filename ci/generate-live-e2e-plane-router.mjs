@@ -110,19 +110,26 @@ function parsePlanesContract(text, file) {
     } catch (error) {
         fail(`${file} is not valid JSON: ${error.message}`);
     }
+    // The shape is contracts/ingress/v1/planes.schema.json in ops.
     if (
         contract?.schema_version !== 1 ||
         contract.regex_mode !== true ||
-        !Array.isArray(contract.rules)
+        !Array.isArray(contract.rules) ||
+        !Array.isArray(contract.public_host_rules)
     ) {
         fail(
-            `${file} is not the ingress contract this generator reads (schema_version 1, regex_mode true, a rules list); found schema_version ${JSON.stringify(contract?.schema_version)}, regex_mode ${JSON.stringify(contract?.regex_mode)}`,
+            `${file} is not the ingress contract this generator reads (schema_version 1, regex_mode true, a rules list and a public_host_rules list); found schema_version ${JSON.stringify(contract?.schema_version)}, regex_mode ${JSON.stringify(contract?.regex_mode)}`,
         );
     }
 
     const goPaths = new Set();
     const queryPaths = new Set();
     const otherPlanes = new Map();
+    const addToPlane = (plane, fragment) => {
+        if (plane === "go-api") goPaths.add(fragment);
+        else if (plane === "query-api") queryPaths.add(fragment);
+        else otherPlanes.set(plane, (otherPlanes.get(plane) ?? 0) + 1);
+    };
     let catchAllPlane = null;
     for (const rule of contract.rules) {
         if (rule.path_type === "Prefix" && rule.path === "/") {
@@ -137,10 +144,17 @@ function parsePlanesContract(text, file) {
         if (!rule.path.endsWith("$")) {
             fail(`${file} has a path rule that does not end with "$": ${JSON.stringify(rule)}`);
         }
-        const fragment = rule.path.slice(0, -1);
-        if (rule.plane === "go-api") goPaths.add(fragment);
-        else if (rule.plane === "query-api") queryPaths.add(fragment);
-        else otherPlanes.set(rule.plane, (otherPlanes.get(rule.plane) ?? 0) + 1);
+        addToPlane(rule.plane, rule.path.slice(0, -1));
+    }
+    // The paths that the public host shows are exact paths, not regexes.
+    // live-e2e has one host, so they are routed by plane like the path rules.
+    for (const rule of contract.public_host_rules) {
+        if (rule.path_type !== "Exact" || typeof rule.path !== "string") {
+            fail(
+                `${file} has a public host rule this generator cannot read: ${JSON.stringify(rule)}`,
+            );
+        }
+        addToPlane(rule.plane, escapeRegex(rule.path));
     }
     // live-e2e sends the catch-all to --api-port, which the workflow sets to
     // the go-api port. A contract with another catch-all plane needs a change

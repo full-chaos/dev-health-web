@@ -82,7 +82,12 @@ function route(yaml: string, name: string): { paths: string[]; port: string } {
     return { paths: rule[1].split("|"), port: servicePort(yaml, name) };
 }
 
-function contractWith(change: (contract: { rules: Record<string, unknown>[] }) => void): string {
+type Contract = {
+    rules: Record<string, unknown>[];
+    public_host_rules?: Record<string, unknown>[];
+};
+
+function contractWith(change: (contract: Contract) => void): string {
     const contract = JSON.parse(readFileSync(join(FIXTURES, "planes.json.txt"), "utf8"));
     change(contract);
     return JSON.stringify(contract);
@@ -106,6 +111,8 @@ describe("generate-live-e2e-plane-router", () => {
         });
         expect(route(result.stdout, "go-api-paths").port).toBe("8001");
         expect(route(result.stdout, "go-api-paths").paths).toContain("/api/v1/billing/audit/[^/]+");
+        // A path of the public host list (an exact path, so its dot is escaped).
+        expect(route(result.stdout, "go-api-paths").paths).toContain("/openapi\\.json");
         expect(result.stdout).toContain(
             'api-catchall:\n      rule: "PathRegexp(`^/.*$`)"\n      entryPoints: [web]\n      priority: 1\n',
         );
@@ -196,6 +203,22 @@ describe("generate-live-e2e-plane-router", () => {
                 contract.rules[0] = { ...contract.rules[0], plane: "query-api" };
             }),
             "live-e2e routes the catch-all to go-api",
+        ],
+        [
+            "no public host list",
+            contractWith((contract) => {
+                delete contract.public_host_rules;
+            }),
+            "is not the ingress contract this generator reads",
+        ],
+        [
+            "a public host rule that is not an exact path",
+            contractWith((contract) => {
+                contract.public_host_rules = [
+                    { path: "/metrics$", path_type: "ImplementationSpecific", plane: "go-api" },
+                ];
+            }),
+            "has a public host rule this generator cannot read",
         ],
         [
             "no query-api rule",
