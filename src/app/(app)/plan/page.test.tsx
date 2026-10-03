@@ -3,7 +3,10 @@ import { render, screen, within } from "@testing-library/react";
 
 import { STATUS_PILL } from "@/lib/statusPill";
 
-const { mockForecast } = vi.hoisted(() => ({ mockForecast: vi.fn() }));
+const { mockForecast, evidenceSubject } = vi.hoisted(() => ({
+    mockForecast: vi.fn(),
+    evidenceSubject: { current: null as null | { title: string; content: unknown } },
+}));
 
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({ ok: true }) }));
 vi.mock("@/lib/auth", () => ({
@@ -13,7 +16,18 @@ vi.mock("@/lib/graphql/capacityFetchers", () => ({
     getThroughputForecastViaGraphQL: mockForecast,
 }));
 vi.mock("@/components/shell/PageHeader", () => ({
-    PageHeader: ({ title }: { title: string }) => <h1>{title}</h1>,
+    PageHeader: ({ title, actions }: { title: string; actions?: React.ReactNode }) => (
+        <>
+            <h1>{title}</h1>
+            <div data-testid="page-actions">{actions}</div>
+        </>
+    ),
+}));
+vi.mock("@/components/shell/PageHeaderEvidenceAction", () => ({
+    PageHeaderEvidenceAction: ({ subject }: { subject: { title: string; content: unknown } }) => {
+        evidenceSubject.current = subject;
+        return <button type="button" data-testid="view-evidence" />;
+    },
 }));
 vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => <div data-testid="scope-bar" /> }));
 vi.mock("@/components/charts/VerticalBarChart", () => ({
@@ -65,7 +79,10 @@ async function renderPage(searchParams: Record<string, string> = {}) {
     return render(await PlanPage({ searchParams: Promise.resolve(searchParams) }));
 }
 
-beforeEach(() => mockForecast.mockReset());
+beforeEach(() => {
+    mockForecast.mockReset();
+    evidenceSubject.current = null;
+});
 
 describe("Plan overview — what the page shows (pins)", () => {
     it("shows the open items, P50 / P75 / P90 in weeks and the caption", async () => {
@@ -76,13 +93,16 @@ describe("Plan overview — what the page shows (pins)", () => {
         expect(screen.getByText("Open items")).toBeInTheDocument();
         expect(screen.queryByText("Delivery confidence")).toBeNull();
         expect(screen.getAllByText("51").length).toBeGreaterThan(0);
-        expect(screen.getByText("1 weeks")).toBeInTheDocument();
+        expect(screen.getByText("1 week")).toBeInTheDocument();
+        expect(screen.queryByText("1 weeks")).toBeNull();
         expect(screen.getByText("2 weeks")).toBeInTheDocument();
         expect(screen.getByText("4 weeks")).toBeInTheDocument();
-        expect(screen.getAllByText("Weeks to complete backlog")).toHaveLength(3);
-        expect(
-            screen.getByText(/Backlog and scope count are derived from current filters/),
-        ).toBeInTheDocument();
+        expect(screen.getAllByText("throughput-based")).toHaveLength(3);
+        expect(screen.getByText("Derived from current filters")).toBeInTheDocument();
+        // The four tiles are one joined strip, one column per tile.
+        const strip = screen.getByTestId("plan-tiles");
+        expect(strip).toHaveAttribute("data-columns", "4");
+        expect(within(strip).getAllByTestId("percentile-tile")).toHaveLength(3);
     });
 
     it("shows a missing percentile as a dash with its reason, never a number", async () => {
@@ -118,7 +138,7 @@ describe("Plan overview — what the page shows (pins)", () => {
         expect(screen.getByTestId("throughput-bars")).toHaveTextContent("4w,8w,12w");
     });
 
-    it("shows the three risk cards with value, threshold and Elevated / Normal", async () => {
+    it("shows the three risk checks as fact rows with value and Elevated / Normal", async () => {
         mockForecast.mockResolvedValue(
             forecast({
                 wipCongestion: overlay("wip", "WIP congestion", 1.5, 1.25, true),
@@ -126,30 +146,81 @@ describe("Plan overview — what the page shows (pins)", () => {
         );
         await renderPage();
 
-        const wip = screen.getByRole("heading", { level: 3, name: "WIP congestion" }).closest("div")
-            ?.parentElement as HTMLElement;
-        expect(within(wip).getByText("Elevated")).toBeInTheDocument();
-        expect(within(wip).getByText("1.5×")).toBeInTheDocument();
-        expect(within(wip).getByText("Threshold 1.25×")).toBeInTheDocument();
-        const review = screen
-            .getByRole("heading", { level: 3, name: "Review bottleneck" })
-            .closest("div")?.parentElement as HTMLElement;
-        expect(within(review).getByText("Normal")).toBeInTheDocument();
-        expect(within(review).getByText("0.3h")).toBeInTheDocument();
-        expect(within(review).getByText("Threshold 48h")).toBeInTheDocument();
-        expect(screen.getByText("0/week")).toBeInTheDocument();
+        const facts = within(screen.getByTestId("risk-facts")).getAllByTestId("evidence-fact");
+        expect(facts.map((row) => row.querySelector("dt")?.textContent)).toEqual([
+            "WIP congestion",
+            "Review bottleneck",
+            "Incident burden",
+        ]);
+        expect(facts[0]).toHaveTextContent("1.5×Elevated");
+        expect(facts[1]).toHaveTextContent("0.3hNormal");
+        expect(facts[2]).toHaveTextContent("0/weekNormal");
     });
 
-    it("keeps the primary risk callout as the last section", async () => {
+    it("names the incident check 'Incident burden' (prototype) whatever label the API serves", async () => {
+        mockForecast.mockResolvedValue(
+            forecast({ incidentLoad: overlay("incident_load", "Incident load", 0, 10) }),
+        );
+        await renderPage();
+
+        const labels = within(screen.getByTestId("risk-facts"))
+            .getAllByTestId("evidence-fact")
+            .map((row) => row.querySelector("dt")?.textContent);
+        expect(labels).toContain("Incident burden");
+        expect(labels).not.toContain("Incident load");
+    });
+
+    it("labels the tiles P50 / P75 / P90 forecast and says '1 week' for exactly one", async () => {
         mockForecast.mockResolvedValue(forecast());
         await renderPage();
 
-        const callout = screen.getByText("Primary risk callout").closest("section");
-        expect(callout).not.toBeNull();
-        expect(callout?.nextElementSibling).toBeNull();
-        expect(within(callout as HTMLElement).getByRole("heading")).toHaveTextContent(
-            "WIP congestion",
+        const tiles = screen.getAllByTestId("percentile-tile");
+        expect(tiles.map((tile) => within(tile).getByText(/forecast$/).textContent)).toEqual([
+            "P50 forecast",
+            "P75 forecast",
+            "P90 forecast",
+        ]);
+    });
+
+    it("shows the prototype's No elevated risk inset with the served thresholds when calm", async () => {
+        mockForecast.mockResolvedValue(forecast());
+        await renderPage();
+
+        const inset = screen.getByTestId("risk-inset");
+        expect(
+            within(inset).getByRole("heading", { name: "No elevated risk" }),
+        ).toBeInTheDocument();
+        expect(inset).toHaveTextContent(
+            "Checks: WIP threshold 1.25×, review threshold 48 hours, incident threshold 10 per week.",
         );
+    });
+
+    it("says 'not reported' for a threshold that is not set, never 0", async () => {
+        mockForecast.mockResolvedValue(
+            forecast({ reviewBottleneck: overlay("review", "Review bottleneck", 0.3, 0) }),
+        );
+        await renderPage();
+
+        const text = screen.getByTestId("risk-inset").textContent ?? "";
+        expect(text).toContain("review threshold not reported");
+        expect(text).not.toMatch(/review threshold 0/);
+    });
+
+    it("folds the primary risk into the Risk checks inset when a risk is elevated", async () => {
+        mockForecast.mockResolvedValue(
+            forecast({
+                wipCongestion: overlay("wip", "WIP congestion", 1.5, 1.25, true),
+                primaryRisk: overlay("wip", "WIP congestion", 1.5, 1.25, true),
+            }),
+        );
+        await renderPage();
+
+        const inset = screen.getByTestId("risk-inset");
+        expect(within(inset).getByRole("heading", { name: "WIP congestion" })).toBeInTheDocument();
+        expect(inset).toHaveTextContent("most elevated current overlay");
+        expect(screen.queryByText("No elevated risk")).toBeNull();
+        // The old stand-alone callout section is gone.
+        expect(screen.queryByText("Primary risk callout")).toBeNull();
     });
 
     it("shows the empty forecast state with the scope and its text when there is no forecast", async () => {
@@ -164,6 +235,51 @@ describe("Plan overview — what the page shows (pins)", () => {
         ).toBeInTheDocument();
         expect(screen.getByTestId("plan-empty-forecast")).toBeInTheDocument();
         expect(screen.queryByText("Delivery confidence")).toBeNull();
+    });
+});
+
+describe("Plan overview — View evidence", () => {
+    it("adds a View evidence action whose subject lists the page's served values, 'Not reported' for a missing one", async () => {
+        mockForecast.mockResolvedValue(forecast({ p75Weeks: null }));
+        await renderPage();
+
+        const drawer = render(evidenceSubject.current?.content as React.ReactElement);
+        const rows = within(drawer.container)
+            .getAllByTestId("evidence-fact")
+            .map((row) => [
+                row.querySelector("dt")?.textContent,
+                row.querySelector("dd")?.textContent,
+            ]);
+        expect(rows).toContainEqual(["Open items", "51"]);
+        expect(rows).toContainEqual(["P50 forecast", "1 week"]);
+        expect(rows).toContainEqual(["P75 forecast", "Not reported"]);
+        expect(rows).toContainEqual(["Rolling throughput · 4w", "12 items/week"]);
+        expect(rows).toContainEqual(["WIP congestion", "0.69× · Normal"]);
+    });
+
+    it("shows the served history state, 'Not reported' only when the flag is absent", async () => {
+        const history = async (over: Record<string, unknown>) => {
+            mockForecast.mockResolvedValue(forecast(over));
+            const view = await renderPage();
+            const drawer = render(evidenceSubject.current?.content as React.ReactElement);
+            const row = within(drawer.container)
+                .getAllByTestId("evidence-fact")
+                .find((r) => r.querySelector("dt")?.textContent === "History");
+            const text = row?.querySelector("dd")?.textContent;
+            drawer.unmount();
+            view.unmount();
+            return text;
+        };
+        expect(await history({ insufficientHistory: false })).toBe("Sufficient");
+        expect(await history({ insufficientHistory: true })).toBe("Insufficient");
+        expect(await history({ insufficientHistory: undefined })).toBe("Not reported");
+    });
+
+    it("has no View evidence action when there is no forecast", async () => {
+        mockForecast.mockResolvedValue(null);
+        await renderPage();
+
+        expect(screen.queryByTestId("view-evidence")).toBeNull();
     });
 });
 
@@ -267,6 +383,7 @@ describe("Plan overview — page pass", () => {
             within(card).getByRole("heading", { level: 2, name: "Risk checks" }),
         ).toBeInTheDocument();
         expect(within(card).getAllByTestId("risk-row")).toHaveLength(3);
+        expect(within(card).getByTestId("risk-inset")).toBeInTheDocument();
     });
 
     it("draws Elevated and Normal as token pills with an icon and the word", async () => {
@@ -282,13 +399,22 @@ describe("Plan overview — page pass", () => {
         for (const pill of pills) expect(pill.querySelector("svg")).not.toBeNull();
     });
 
-    it("keeps the callout last, after the destinations", async () => {
+    it("draws the arrow before the label on the three buttons (prototype btn())", async () => {
+        mockForecast.mockResolvedValue(forecast());
+        await renderPage();
+
+        for (const name of ["Completion Forecast", "Forecast completion", "Inspect backlog risk"]) {
+            const link = screen.getByRole("link", { name });
+            expect(link.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+            expect(link.lastChild?.nodeType).toBe(Node.TEXT_NODE);
+        }
+    });
+
+    it("ends with the Planning destinations card", async () => {
         mockForecast.mockResolvedValue(forecast());
         await renderPage();
 
         const destinations = screen.getByTestId("plan-destinations");
-        const callout = screen.getByText("Primary risk callout").closest("section");
-        expect(destinations.nextElementSibling).toBe(callout);
-        expect(callout?.nextElementSibling).toBeNull();
+        expect(destinations.nextElementSibling).toBeNull();
     });
 });

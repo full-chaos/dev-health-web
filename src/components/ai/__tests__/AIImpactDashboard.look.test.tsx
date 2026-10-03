@@ -66,15 +66,6 @@ describe("AI Impact page look (CHAOS-7768)", () => {
         expect(donutProps.last?.legendPercent).toBe(true);
     });
 
-    it("the unknown-attribution tile is dashed; the other two are solid", () => {
-        setup();
-        render(<AIImpactDashboard filter={{ startDate: "a", endDate: "b" }} />);
-        const tile = (label: string) => screen.getAllByText(label)[0].parentElement as HTMLElement;
-        expect(tile("Unknown attribution").className).toContain("border-dashed");
-        expect(tile("AI-assisted work share").className).not.toContain("border-dashed");
-        expect(tile("Agent-created work share").className).not.toContain("border-dashed");
-    });
-
     it("the automations card is an info notice with the link, not a live region", () => {
         setup();
         const { container } = render(

@@ -180,7 +180,13 @@ describe("AIEvidenceExplorer", () => {
         expect(lastCall?.[0]).toBe("11111111-1111-1111-1111-111111111111:42");
 
         expect(screen.getByTestId("ai-drilldown-evidence")).toBeInTheDocument();
-        expect(screen.getByText(/has_ai_workflow/i)).toBeInTheDocument();
+        // CHAOS-8093: words for the edge type; the ends read as type + number, never `type:id`.
+        expect(screen.getByText("Has AI workflow")).toBeInTheDocument();
+        expect(screen.queryByText(/has_ai_workflow/i)).not.toBeInTheDocument();
+        const ends = screen.getByTestId("ai-edge-ends");
+        expect(ends).toHaveTextContent("Pull request #42 → AI workflow run");
+        expect(ends).not.toHaveTextContent("pr:");
+        expect(ends).not.toHaveTextContent("11111111-1111-1111-1111-111111111111");
         expect(screen.getByText(/label:ai-assisted/i)).toBeInTheDocument();
     });
 
