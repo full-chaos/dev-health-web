@@ -171,7 +171,7 @@ describe("AppShell — a route in the registry gets the shared shell", () => {
     });
 });
 
-describe("AppShell — the status chip states what the organization card knows", () => {
+describe("AppShell — the data fact is under the account name, not in the top bar (CHAOS-8432)", () => {
     function organizationsResponse(active: { has_data: boolean; last_metrics_at?: string | null }) {
         return {
             ok: true,
@@ -185,11 +185,7 @@ describe("AppShell — the status chip states what the organization card knows",
         };
     }
 
-    function chip() {
-        return screen.getByTestId("shell-status-chip");
-    }
-
-    it("asks for the organizations once: the card and the chip share one request", async () => {
+    it("asks for the organizations once, shows 'Data through' in the sidebar account block only", async () => {
         const fetchMock = vi
             .fn()
             .mockResolvedValue(
@@ -198,8 +194,11 @@ describe("AppShell — the status chip states what the organization card knows",
         vi.stubGlobal("fetch", fetchMock);
         renderFrame(<ShellPage />);
 
-        await waitFor(() => expect(chip()).toHaveAttribute("data-status", "synced"));
-        expect(chip()).toHaveTextContent(/^Data through /);
+        await waitFor(() =>
+            expect(screen.getByTestId("account-detail")).toHaveTextContent(/^Data through /),
+        );
+        expect(screen.getByTestId("shell-top-bar")).not.toHaveTextContent("Data through");
+        expect(screen.queryByTestId("shell-status-chip")).toBeNull();
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(screen.getByRole("combobox", { name: /organization/i })).toBeInTheDocument();
     });
@@ -211,8 +210,9 @@ describe("AppShell — the status chip states what the organization card knows",
         );
         renderFrame(<ShellPage />);
 
-        await waitFor(() => expect(chip()).toHaveAttribute("data-status", "empty"));
-        expect(chip()).toHaveTextContent("No data yet");
+        await waitFor(() =>
+            expect(screen.getByTestId("account-detail")).toHaveTextContent("No data yet"),
+        );
     });
 
     it.each([
@@ -238,25 +238,28 @@ describe("AppShell — the status chip states what the organization card knows",
                     }),
                 }),
         ],
-    ])("shows the neutral 'Status unavailable' state when %s", async (_label, makeFetch) => {
+    ])("shows 'Data status unavailable' (not 'No data yet') when %s", async (_label, makeFetch) => {
         vi.stubGlobal("fetch", makeFetch());
         renderFrame(<ShellPage />);
 
-        await waitFor(() => expect(chip()).toHaveAttribute("data-status", "unknown"));
-        expect(chip()).toHaveTextContent("Status unavailable");
-        expect(chip()).not.toHaveTextContent("Data through");
-        expect(chip()).not.toHaveTextContent("No data yet");
+        await waitFor(() =>
+            expect(screen.getByTestId("account-detail")).toHaveTextContent(
+                "Data status unavailable",
+            ),
+        );
+        expect(screen.getByTestId("account-detail")).not.toHaveTextContent("No data yet");
+        expect(screen.getByTestId("account-detail")).not.toHaveTextContent("Data through");
     });
 
-    it("is neutral while the request is open", () => {
+    it("shows no data line while the request is open", () => {
         vi.stubGlobal(
             "fetch",
             vi.fn(() => new Promise(() => {})),
         );
         renderFrame(<ShellPage />);
 
-        expect(chip()).toHaveAttribute("data-status", "loading");
-        expect(chip()).not.toHaveTextContent("Data through");
+        expect(screen.getByTestId("shell-top-bar")).not.toHaveTextContent("Data through");
+        expect(screen.queryByText(/Data through|No data yet|Data status unavailable/)).toBeNull();
     });
 });
 

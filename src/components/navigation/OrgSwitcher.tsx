@@ -41,7 +41,10 @@ export function describeOrganizationData(
     if (organization === undefined) return null;
     if (organization === null) return "Data status unavailable";
     if (!organization.hasData) return "No data yet";
-    if (!organization.lastMetricsAt) return "Has data";
+    // A missing or unreadable timestamp is "Has data": never "Data through Invalid Date".
+    if (!organization.lastMetricsAt || Number.isNaN(Date.parse(organization.lastMetricsAt))) {
+        return "Has data";
+    }
     return `Data through ${new Date(organization.lastMetricsAt).toLocaleDateString()}`;
 }
 
@@ -121,8 +124,8 @@ export function OrgSwitcher({ onActiveOrganizationChange }: OrgSwitcherProps = {
         [activeOrgId, state?.organizations],
     );
 
-    // Tell the owner what this card shows, so a second surface (the shell's
-    // status chip) states the same thing and never a different one.
+    // Tell the owner what this card shows, so a second surface (the sidebar
+    // account line) states the same thing and never a different one.
     useEffect(() => {
         if (!onActiveOrganizationChange) return;
         if (loadFailed) {

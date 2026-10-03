@@ -8,12 +8,9 @@ import { navTrailForPathname } from "@/lib/navigation/areas";
 
 import { CommandPalette } from "./CommandPalette";
 import { shellHref } from "./shellHref";
-import { ShellStatusChip, type ShellStatus } from "./ShellStatusChip";
 import { useShellNavParams } from "./useShellNavParams";
 
 type ShellTopBarProps = {
-    /** Data state of the active organization, from the organization card. */
-    status: ShellStatus;
     /** Slot for the light / dark toggle. Empty until the toggle is mounted. */
     themeToggle?: ReactNode;
 };
@@ -35,11 +32,11 @@ function ShellTrail({ pathname }: { pathname: string }) {
 
 /**
  * Top bar of the shared app shell: the location trail from the nav config (A6:
- * breadcrumb label = sidebar label), the data-freshness chip, and a slot for the
+ * breadcrumb label = sidebar label), and a slot for the
  * theme toggle. Shown from the `md` breakpoint up; below it the mobile bar
  * is the top chrome.
  */
-export function ShellTopBar({ status, themeToggle }: ShellTopBarProps) {
+export function ShellTopBar({ themeToggle }: ShellTopBarProps) {
     const pathname = usePathname() ?? "";
 
     return (
@@ -53,10 +50,9 @@ export function ShellTopBar({ status, themeToggle }: ShellTopBarProps) {
                     <ShellTrail pathname={pathname} />
                 </Suspense>
             </div>
-            {/* Prototype `.topbar`: breadcrumb, then the search, then the status and the toggle. */}
+            {/* Prototype `.topbar`: breadcrumb, then the search, then the toggle. */}
             <CommandPalette />
             <div className="ml-auto flex shrink-0 items-center gap-3">
-                <ShellStatusChip status={status} />
                 <div data-slot="theme-toggle" className="flex items-center empty:hidden">
                     {themeToggle}
                 </div>

@@ -10,7 +10,6 @@ import { FilterPendingProvider } from "./FilterPending";
 import { ShellMobileBar } from "./ShellMobileBar";
 import { ShellOrganizationProvider } from "./ShellContext";
 import { ShellSidebar } from "./ShellSidebar";
-import { shellStatusFromOrganization, type ShellStatus } from "./ShellStatusChip";
 import { ShellTopBar } from "./ShellTopBar";
 
 type AppShellProps = {
@@ -29,7 +28,7 @@ type AppShellProps = {
  */
 export function AppShell({ banners, themeToggle, children }: AppShellProps) {
     const pathname = usePathname();
-    // The organization card owns the request. The top bar chip and the scope bar
+    // The organization card owns the request. The sidebar account block and the scope bar
     // show its answer: `undefined` while it loads, `null` when it is not known.
     const [organization, setOrganization] = useState<ActiveOrganizationData | null | undefined>(
         undefined,
@@ -53,10 +52,6 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
         query.addEventListener("change", onChange);
         return () => query.removeEventListener("change", onChange);
     }, []);
-    const dataStatus: ShellStatus =
-        organization === undefined
-            ? { kind: "loading" }
-            : shellStatusFromOrganization(organization);
 
     return (
         <>
@@ -88,7 +83,7 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
                     mobileControlRef={menuControlRef}
                 />
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <ShellTopBar status={dataStatus} themeToggle={themeToggle} />
+                    <ShellTopBar themeToggle={themeToggle} />
                     <FilterPendingProvider>
                         {(pending) => (
                             <main
