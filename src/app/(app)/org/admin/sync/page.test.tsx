@@ -2,6 +2,12 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import type { SyncConfig } from "@/lib/admin/types";
 
+vi.mock("next/navigation", () => ({
+    useRouter: () => ({ refresh: vi.fn() }),
+    usePathname: () => "/org/admin/sync",
+    useSearchParams: () => new URLSearchParams(),
+}));
+
 const mockListSyncConfigs = vi.fn();
 vi.mock("@/lib/admin/server", () => ({
     listSyncConfigs: () => mockListSyncConfigs(),
@@ -64,5 +70,33 @@ describe("SyncStatusPage", () => {
 
         expect(screen.getByText("Sync configurations unavailable")).toBeInTheDocument();
         expect(screen.queryByTestId("sync-config-table")).not.toBeInTheDocument();
+    });
+
+    it("says one plain sentence with Retry and never prints the backend text", async () => {
+        mockListSyncConfigs.mockResolvedValue({
+            data: null,
+            error: "GET /api/v1/admin/sync-configs 502 upstream connect error",
+        });
+
+        const { container } = render(await SyncStatusPage());
+
+        expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+        expect(container.textContent).not.toContain("502");
+        expect(container.textContent).not.toContain("/api/v1");
+        expect(
+            screen.getByText(
+                "Sync configurations could not be loaded. Retry, or check again in a moment.",
+            ),
+        ).toBeInTheDocument();
+    });
+
+    it("has the title Connections and the Add sync config action with an icon before the label", async () => {
+        mockListSyncConfigs.mockResolvedValue({ data: [] });
+
+        render(await SyncStatusPage());
+
+        expect(screen.getByRole("heading", { level: 1, name: "Connections" })).toBeInTheDocument();
+        const add = screen.getByRole("link", { name: "Add sync config" });
+        expect(add.firstElementChild?.tagName.toLowerCase()).toBe("svg");
     });
 });
