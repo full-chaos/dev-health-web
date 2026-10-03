@@ -1,33 +1,42 @@
 import Link from "next/link";
+import { Clock, Plus } from "lucide-react";
+
 import { AdminHeader } from "@/components/admin/AdminHeader";
-import { TeamTable } from "@/components/admin/teams/TeamTable";
+import { StatusPill } from "@/components/admin/StatusPill";
 import { ImportTeamsDialog } from "@/components/admin/teams/ImportTeamsDialog";
 import { PendingChangesPanel } from "@/components/admin/teams/PendingChangesPanel";
-import { listTeams, getPendingTeamChanges } from "@/lib/admin/server";
-import { CTA_LABELS } from "@/lib/design/cta";
+import { TeamTable } from "@/components/admin/teams/TeamTable";
+import { buttonClassName } from "@/components/shared/Button";
 import { Notice } from "@/components/ui/Notice";
+import { RetryButton } from "@/components/ui/RetryButton";
+import { getPendingTeamChanges, listTeams } from "@/lib/admin/server";
+import { CTA_LABELS } from "@/lib/design/cta";
+import { logger } from "@/lib/logger";
 
 export default async function TeamsPage() {
     const [result, pendingResult] = await Promise.all([listTeams(), getPendingTeamChanges()]);
     const pendingCount = pendingResult.data?.total ?? 0;
 
+    if (result.error) {
+        // The backend text goes to the server log, never to the page (one plain sentence + Retry).
+        logger.error({ err: result.error }, "Failed to load teams");
+    }
+
     return (
-        <div>
+        <div className="space-y-6">
             <AdminHeader
-                title="Teams"
+                title="Organization"
                 description="Manage teams and their resource ownership mappings."
             >
                 <div className="flex items-center gap-2">
                     {pendingCount > 0 && (
-                        <span className="rounded-full bg-(--caution)/12 px-2 py-0.5 text-xs font-medium text-(--caution)">
+                        <StatusPill tone="caution" icon={Clock}>
                             {pendingCount} pending
-                        </span>
+                        </StatusPill>
                     )}
                     <ImportTeamsDialog />
-                    <Link
-                        href="/org/admin/teams/new"
-                        className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
-                    >
+                    <Link href="/org/admin/teams/new" className={buttonClassName("primary", "md")}>
+                        <Plus aria-hidden="true" className="h-4 w-4" />
                         {CTA_LABELS.addTeam}
                     </Link>
                 </div>
@@ -35,20 +44,21 @@ export default async function TeamsPage() {
 
             <PendingChangesPanel />
 
-            {result.error && (
-                <Notice variant="danger" live={false} className="mb-6">
-                    Failed to load teams: {result.error}
+            {result.error ? (
+                <Notice variant="danger" live={false} action={<RetryButton />}>
+                    Teams could not be loaded. Retry, or check again in a moment.
                 </Notice>
+            ) : (
+                <TeamTable
+                    teams={(result.data ?? []).map((t) => ({
+                        team_id: t.team_id,
+                        name: t.name,
+                        description: t.description,
+                        repo_patterns: t.repo_patterns,
+                        project_keys: t.project_keys,
+                    }))}
+                />
             )}
-            <TeamTable
-                teams={(result.data ?? []).map((t) => ({
-                    team_id: t.team_id,
-                    name: t.name,
-                    description: t.description,
-                    repo_patterns: t.repo_patterns,
-                    project_keys: t.project_keys,
-                }))}
-            />
         </div>
     );
 }

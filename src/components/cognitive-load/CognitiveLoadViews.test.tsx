@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { render, screen } from "@/test/utils";
+import { render, screen, within } from "@/test/utils";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { METRIC_CATALOG } from "@/lib/metrics/catalog";
 import type { MetricFilter } from "@/lib/filters/types";
 
-import { OverviewView, contextSpreadSummary, loadDriverSummary } from "./CognitiveLoadViews";
+import {
+    LoadDriversView,
+    OverviewView,
+    contextSpreadSummary,
+    loadDriverSummary,
+} from "./CognitiveLoadViews";
 
 const filters = {
     scope: { level: "team" as const, ids: ["team-1"] },
@@ -97,5 +102,51 @@ describe("loadDriverSummary", () => {
         expect(summary.values[0]).toBe(60);
         expect(summary.top?.label).toBe("Context spread");
         expect(summary.topShare).toBe(75); // 60 / (16 + 60 + 4) = 75%
+    });
+});
+
+describe("LoadDriversView (CHAOS-8267)", () => {
+    const window = { sinceDate: "2026-05-01", untilDate: "2026-05-31" };
+
+    it("draws the drivers as meter rows, longest first, with the served averages", () => {
+        render(
+            <LoadDriversView
+                drivers={[
+                    { label: "PR interruption", value: 16 },
+                    { label: "Context spread", value: 60.04 },
+                    { label: "Review request", value: 4 },
+                ]}
+                hasData
+                window={window as never}
+            />,
+        );
+        const rows = within(screen.getByTestId("load-driver-meter-rows")).getAllByTestId(
+            "meter-row",
+        );
+        expect(rows.map((r) => r.textContent)).toEqual([
+            "Context spread60",
+            "PR interruption16",
+            "Review request4",
+        ]);
+        // The web-computed share of the top driver stays.
+        expect(screen.getByText("Context spread · 75%")).toBeInTheDocument();
+    });
+
+    it("draws an all-zero window as empty tracks, with no top-driver share", () => {
+        render(
+            <LoadDriversView
+                drivers={[{ label: "PR interruption", value: 0 }]}
+                hasData
+                window={window as never}
+            />,
+        );
+        expect(screen.getAllByTestId("meter-row")).toHaveLength(1);
+        expect(screen.queryByText(/Top driver/)).toBeNull();
+    });
+
+    it("keeps the empty state when the window has no rows", () => {
+        render(<LoadDriversView drivers={[]} hasData={false} window={window as never} />);
+        expect(screen.getByText("No load-driver data")).toBeInTheDocument();
+        expect(screen.queryByTestId("load-driver-meter-rows")).toBeNull();
     });
 });

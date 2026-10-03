@@ -7,6 +7,11 @@ vi.mock("next/link", () => ({
     ),
 }));
 
+const logError = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/logger", () => ({
+    logger: { child: () => ({ error: logError, warn: vi.fn(), info: vi.fn(), debug: vi.fn() }) },
+}));
+
 import { ByoLlmSpendSummary, type ByoLlmSpendSummaryProps } from "./ByoLlmSpendSummary";
 
 const mockLoad = vi.fn<ByoLlmSpendSummaryProps["loadSpendAction"]>();
@@ -32,6 +37,180 @@ describe("ByoLlmSpendSummary", () => {
                 "Per-run LLM call volume, token usage, and model for the latest runs in the last 30 days.",
             ),
         ).toBeInTheDocument();
+    });
+
+    describe("spend tiles (CHAOS-8240)", () => {
+        const emptySpend = {
+            data: { since: "2024-01-01T00:00:00Z", limit: 20, runs: [], legacy: [] },
+        };
+        const budget = (over: Record<string, unknown> = {}) => ({
+            data: {
+                used_micro_usd: 184_000_000,
+                limit_micro_usd: 500_000_000,
+                remaining_micro_usd: 316_000_000,
+                window: "calendar_month_utc",
+                reset_at: "2026-11-01T00:00:00Z",
+                enforcement_available: true,
+                reason: "available",
+                maximum_limit_micro_usd: 500_000_000,
+                pricing_version: "v1",
+                ...over,
+            },
+        });
+
+        it("opens the card with Used or reserved, Monthly limit and Remaining from the served budget", async () => {
+            mockLoad.mockResolvedValue(emptySpend);
+            render(
+                <ByoLlmSpendSummary
+                    loadSpendAction={mockLoad}
+                    loadBudgetAction={async () => budget() as never}
+                />,
+            );
+            const strip = await screen.findByTestId("byo-llm-spend-tiles");
+            await waitFor(() => expect(strip).toHaveTextContent("$184.00"));
+            expect(strip).toHaveTextContent("Used or reserved");
+            expect(strip).toHaveTextContent("Monthly limit");
+            expect(strip).toHaveTextContent("$500.00");
+            expect(strip).toHaveTextContent("Remaining");
+            expect(strip).toHaveTextContent("$316.00");
+            expect(strip).toHaveAttribute("data-columns", "3");
+        });
+
+        it("reads Not reported, never $0, for a value the budget does not serve", async () => {
+            mockLoad.mockResolvedValue(emptySpend);
+            render(
+                <ByoLlmSpendSummary
+                    loadSpendAction={mockLoad}
+                    loadBudgetAction={
+                        (async () =>
+                            budget({
+                                limit_micro_usd: null,
+                                remaining_micro_usd: null,
+                            })) as never
+                    }
+                />,
+            );
+            const strip = await screen.findByTestId("byo-llm-spend-tiles");
+            await waitFor(() => expect(strip).toHaveTextContent("$184.00"));
+            expect(strip.textContent?.match(/Not reported/g)).toHaveLength(2);
+            expect(strip).not.toHaveTextContent("$0.00");
+        });
+
+        it("reads Not set for the Monthly limit when the organization has set none (budget_not_configured)", async () => {
+            mockLoad.mockResolvedValue(emptySpend);
+            render(
+                <ByoLlmSpendSummary
+                    loadSpendAction={mockLoad}
+                    loadBudgetAction={
+                        (async () =>
+                            budget({
+                                used_micro_usd: 0,
+                                limit_micro_usd: null,
+                                remaining_micro_usd: null,
+                                reason: "budget_not_configured",
+                            })) as never
+                    }
+                />,
+            );
+            const strip = await screen.findByTestId("byo-llm-spend-tiles");
+            await waitFor(() => expect(strip).toHaveTextContent("Not set"));
+            expect(strip).toHaveTextContent("$0.00");
+            // Remaining has nothing to remain from: it is not served, so it is not reported.
+            expect(strip.textContent?.match(/Not reported/g)).toHaveLength(1);
+            expect(strip.textContent?.match(/Not set/g)).toHaveLength(1);
+            // "Not set" has the same muted ink as "Not reported".
+            const values = Array.from(strip.querySelectorAll("[data-testid=metric-value]"));
+            const notSet = values.find((v) => v.textContent === "Not set") as HTMLElement;
+            const MUTED = "[&_[data-testid=metric-value]]:text-(--ink-muted)";
+            expect(notSet.closest(`[class*="${MUTED}"]`)).not.toBeNull();
+            const notReported = values.find((v) => v.textContent === "Not reported") as HTMLElement;
+            expect(notReported.className).toContain("text-(--ink-muted)");
+        });
+
+        it("logs a served failure (an error answer with no data) and leaves the tiles out (CHAOS-8266)", async () => {
+            mockLoad.mockResolvedValue(emptySpend);
+            logError.mockClear();
+            render(
+                <ByoLlmSpendSummary
+                    loadSpendAction={mockLoad}
+                    loadBudgetAction={async () => ({ error: "refused", status: 500 }) as never}
+                />,
+            );
+            await screen.findByText("AI / LLM Spend Summary (BYO-LLM)");
+            await waitFor(() => expect(logError).toHaveBeenCalled());
+            expect(logError).toHaveBeenCalledWith(
+                { status: 500 },
+                "Budget request for the spend tiles was refused or failed",
+            );
+            expect(screen.queryByTestId("byo-llm-spend-tiles")).not.toBeInTheDocument();
+            // The backend text is never on screen.
+            expect(screen.queryByText(/refused/)).not.toBeInTheDocument();
+        });
+
+        it("a budget action that throws leaves the tiles out, with no unhandled rejection", async () => {
+            mockLoad.mockResolvedValue(emptySpend);
+            const unhandled = vi.fn();
+            process.on("unhandledRejection", unhandled);
+            render(
+                <ByoLlmSpendSummary
+                    loadSpendAction={mockLoad}
+                    loadBudgetAction={async () => {
+                        throw new Error("network down");
+                    }}
+                />,
+            );
+            await screen.findByText("AI / LLM Spend Summary (BYO-LLM)");
+            await new Promise((resolve) => setTimeout(resolve, 20));
+            expect(screen.queryByTestId("byo-llm-spend-tiles")).not.toBeInTheDocument();
+            expect(unhandled).not.toHaveBeenCalled();
+            // It is logged as an error (no backend text on screen), not shown.
+            expect(logError).toHaveBeenCalledWith(
+                { message: "network down" },
+                "Budget request for the spend tiles failed",
+            );
+            process.off("unhandledRejection", unhandled);
+        });
+
+        it("has no tiles without a budget action, or when the budget cannot be read", async () => {
+            mockLoad.mockResolvedValue(emptySpend);
+            const first = render(<ByoLlmSpendSummary loadSpendAction={mockLoad} />);
+            await screen.findByText("AI / LLM Spend Summary (BYO-LLM)");
+            expect(screen.queryByTestId("byo-llm-spend-tiles")).not.toBeInTheDocument();
+            first.unmount();
+            render(
+                <ByoLlmSpendSummary
+                    loadSpendAction={mockLoad}
+                    loadBudgetAction={async () => ({ error: "nope", status: 500 }) as never}
+                />,
+            );
+            await screen.findByText("AI / LLM Spend Summary (BYO-LLM)");
+            expect(screen.queryByTestId("byo-llm-spend-tiles")).not.toBeInTheDocument();
+        });
+    });
+
+    it("draws the runs as a bordered table with a caps header band (CHAOS-8240)", async () => {
+        mockLoad.mockResolvedValue({
+            data: {
+                since: "2024-01-01T00:00:00Z",
+                limit: 20,
+                runs: [
+                    {
+                        run_id: "run-1",
+                        calls: 42,
+                        input_tokens: 12345,
+                        output_tokens: 6789,
+                        model: "gpt-4o",
+                        failures_by_class: {},
+                    },
+                ],
+                legacy: [],
+            },
+        });
+        renderPanel();
+        const table = await screen.findByTestId("byo-llm-spend-table");
+        expect(table.parentElement?.className).toContain("border-(--card-stroke)");
+        expect(table.querySelector("thead")?.className).toContain("uppercase");
+        expect(table).toHaveTextContent("12,345");
     });
 
     it("renders per-run rows with calls, tokens, model, and failures-by-class", async () => {
