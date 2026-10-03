@@ -95,6 +95,8 @@ jobs:
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
             - run: bash ci/run_tests.sh format
+            - name: PLANTED WAIT (CHAOS-8530 evidence, removed in the next commit)
+              run: sleep 330
 
     quality:
         name: Quality
