@@ -7,7 +7,7 @@ import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider"
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
 import { Button } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
 import {
@@ -75,6 +75,59 @@ function groupKeyForUnit(dimension: GroupDimension, unit: WorkUnitInvestment): s
     return unit.work_unit_type ?? "__none__";
 }
 
+type LiveSnapshot = {
+    groups: EvidenceGroup[];
+    groupBy: GroupDimension;
+    effortUnit: string;
+    attributionByWorkUnit?: Map<string, WorkUnitTeamAttribution>;
+};
+type LiveEvidence = { snapshot: LiveSnapshot; listeners: Set<() => void> };
+
+/** The body of the group's drawer: the served numbers, then the units with their details. */
+function GroupEvidenceBody({
+    store,
+    groupKey,
+    onOpenUnitEvidence,
+}: {
+    store: LiveEvidence;
+    groupKey: string;
+    onOpenUnitEvidence: (workUnitId: string) => void;
+}) {
+    const snapshot = useSyncExternalStore(
+        (listener) => {
+            store.listeners.add(listener);
+            return () => {
+                store.listeners.delete(listener);
+            };
+        },
+        () => store.snapshot,
+        () => store.snapshot,
+    );
+    const group = snapshot.groups.find((entry) => entry.key === groupKey);
+    if (!group) return null;
+    return (
+        <div className="space-y-4">
+            <EvidenceFactList aria-label="Evidence group" testId="evidence-group-facts">
+                <EvidenceFact
+                    label="Average quality"
+                    value={group.avgQuality !== null ? formatQuality(group.avgQuality) : "Unknown"}
+                />
+                <EvidenceFact label="Units" value={String(group.entries.length)} />
+                <EvidenceFact
+                    label="Weighted effort"
+                    value={`${formatNumber(group.totalEffort)} ${snapshot.effortUnit}`}
+                />
+            </EvidenceFactList>
+            <GroupUnitsList
+                entries={group.entries}
+                effortUnit={snapshot.effortUnit}
+                attributionByWorkUnit={snapshot.attributionByWorkUnit}
+                onOpenUnitEvidence={onOpenUnitEvidence}
+            />
+        </div>
+    );
+}
+
 type GroupUnitsListProps = {
     entries: WorkUnitListEntry[];
     effortUnit: string;
@@ -104,7 +157,7 @@ export function GroupUnitsList({
         });
     };
     return (
-        <ul className="space-y-2 bg-(--card-80) px-4 pb-4">
+        <ul className="space-y-2">
             {entries.map((entry) => {
                 const unit = entry.unit;
                 const unitOpen = openUnits.has(unit.work_unit_id);
@@ -313,42 +366,32 @@ export function InvestmentEvidenceTable({
             .sort((a, b) => b.totalEffort - a.totalEffort);
     }, [allEntries, groupBy]);
 
+    // The drawer body is mounted once, at the click, so it cannot re-render with this table. It
+    // reads the CURRENT groups and team attribution from this store instead, so a team badge that
+    // arrives after the drawer opened (its own query) shows up without opening it again.
+    const live = useRef<LiveEvidence>({
+        snapshot: { groups, groupBy, effortUnit, attributionByWorkUnit },
+        listeners: new Set(),
+    });
+    useEffect(() => {
+        live.current.snapshot = { groups, groupBy, effortUnit, attributionByWorkUnit };
+        live.current.listeners.forEach((listener) => listener());
+    }, [groups, groupBy, effortUnit, attributionByWorkUnit]);
+
     // The row's Evidence action opens the ONE shared drawer: the group's served numbers, then its
     // work units with their details (what the expandable row held before).
     const openGroupEvidence = (group: EvidenceGroup) => {
         evidence.open({
             title: group.label,
             content: (
-                <div className="space-y-4">
-                    <EvidenceFactList aria-label="Evidence group" testId="evidence-group-facts">
-                        <EvidenceFact
-                            label={GROUP_OPTIONS.find((o) => o.id === groupBy)?.label ?? "Group"}
-                            value={group.label}
-                        />
-                        <EvidenceFact
-                            label="Average quality"
-                            value={
-                                group.avgQuality !== null
-                                    ? formatQuality(group.avgQuality)
-                                    : "Unknown"
-                            }
-                        />
-                        <EvidenceFact label="Units" value={String(group.entries.length)} />
-                        <EvidenceFact
-                            label="Weighted effort"
-                            value={`${formatNumber(group.totalEffort)} ${effortUnit}`}
-                        />
-                    </EvidenceFactList>
-                    <GroupUnitsList
-                        entries={group.entries}
-                        effortUnit={effortUnit}
-                        attributionByWorkUnit={attributionByWorkUnit}
-                        onOpenUnitEvidence={(workUnitId) => {
-                            onSelectWorkUnit(workUnitId);
-                            evidence.close();
-                        }}
-                    />
-                </div>
+                <GroupEvidenceBody
+                    store={live.current}
+                    groupKey={group.key}
+                    onOpenUnitEvidence={(workUnitId) => {
+                        onSelectWorkUnit(workUnitId);
+                        evidence.close();
+                    }}
+                />
             ),
         });
     };
