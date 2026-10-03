@@ -89,8 +89,8 @@ describe("AdminHeader", () => {
         expect(screen.getByTestId("page-header-title-adornment")).toContainElement(pill);
         expect(pill.className).not.toContain("uppercase");
         // Neutral with a border (design), not the teal info tone.
-        expect(pill.className).toContain(STATUS_PILL.muted);
-        expect(pill.className).toContain("border");
+        expect(pill.className).toContain("border-(--card-stroke)");
+        expect(pill.className).not.toContain("bg-");
         expect(pill.className).not.toContain(STATUS_PILL.info);
         expect(screen.getByRole("link", { name: "Platform Admin" })).toHaveAttribute(
             "href",

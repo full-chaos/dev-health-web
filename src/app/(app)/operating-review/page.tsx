@@ -1,3 +1,4 @@
+import { StatusPill } from "@/components/admin/StatusPill";
 import Link from "next/link";
 
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
@@ -104,12 +105,9 @@ export default async function OperatingReviewPage({ searchParams }: OperatingRev
             <PageHeader
                 title="Operating Review"
                 titleAdornment={
-                    <span
-                        data-testid="operating-review-preview-pill"
-                        className={`rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS_PILL.muted}`}
-                    >
+                    <StatusPill tone="outline" testId="operating-review-preview-pill">
                         Preview
-                    </span>
+                    </StatusPill>
                 }
                 subtitle="A Monday-ready agenda for delivery movement, bottlenecks, risk, reliability, investment, and recommendations."
             >
