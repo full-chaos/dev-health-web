@@ -411,7 +411,8 @@ export const buildQuadrantOption = ({
                           id: POINT_LABEL_SERIES_ID,
                           data: backgroundData,
                           symbol: "circle",
-                          symbolSize: normalizedScopeType === "person" ? 8 : 10,
+                          // Only team / repo charts have this series: the team / repo dot size.
+                          symbolSize: 10,
                           // A transparent dot, not opacity 0: ECharts applies the item opacity to
                           // its label too, which would hide every label.
                           itemStyle: { color: "transparent" },
