@@ -35,10 +35,6 @@ const BANNERS: Array<{ file: string; text: string; title?: string }> = [
         file: "app/(app)/org/admin/integrations/page.tsx",
         text: "Providers could not be loaded.",
     },
-    {
-        file: "app/(app)/org/admin/settings/page.tsx",
-        text: "Failed to load organization: {result.error}",
-    },
     // One plain sentence + Retry; the backend text goes to the server log (CHAOS-8236).
     { file: "app/(app)/org/admin/teams/page.tsx", text: "Teams could not be loaded." },
     // One plain sentence + Retry; the backend text goes to the server log (CHAOS-8235).
