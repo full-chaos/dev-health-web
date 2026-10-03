@@ -205,8 +205,6 @@ export function FlameDiagram({
                                     style: {
                                         text: textValue(label),
                                         fill: ink.color,
-                                        stroke: ink.textBorderColor,
-                                        lineWidth: ink.textBorderColor ? ink.textBorderWidth : 0,
                                         fontSize: 11,
                                         overflow: "truncate",
                                     },

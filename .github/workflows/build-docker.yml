@@ -37,6 +37,7 @@ env:
 jobs:
     changes:
         runs-on: ubuntu-latest
+        timeout-minutes: 5
         outputs:
             code: ${{ steps.filter.outputs.code }}
         steps:
@@ -71,6 +72,7 @@ jobs:
             github.event_name == 'release' ||
             needs.changes.outputs.code == 'true'
         runs-on: ${{ matrix.runner }}
+        timeout-minutes: 15
         strategy:
             fail-fast: false
             matrix:
@@ -155,6 +157,7 @@ jobs:
     merge:
         name: Merge Digests
         runs-on: ubuntu-latest
+        timeout-minutes: 5
         needs: build
         if: github.event_name != 'pull_request' && github.event.inputs.push != 'false'
         steps:

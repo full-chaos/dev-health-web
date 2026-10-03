@@ -8,10 +8,11 @@ import { ForecastInputsCard } from "@/components/capacity/ForecastInputsCard";
 import { ForecastNotices } from "@/components/capacity/ForecastNotices";
 import { ForecastTiles } from "@/components/capacity/ForecastTiles";
 import { ConfidenceBandChart } from "@/components/charts/ConfidenceBandChart";
-import { Inset } from "@/components/capacity/Inset";
+import { Inset } from "@/components/ui/Inset";
 import { Section } from "@/components/ui/Section";
 import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
+import { teamIdsForScope } from "@/lib/filters/capacityScope";
 import { useCapacityForecast } from "@/lib/graphql/hooks";
 import { useOrgId } from "@/lib/graphql/provider";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -39,6 +40,7 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
     });
 
     const forecast = queryData;
+    const teamCount = teamIdsForScope(filters)?.length ?? 0;
 
     const chartData = useMemo(() => {
         if (!forecast) return null;
@@ -150,19 +152,19 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                     )}
                 </Section>
 
-                {forecast ? <ForecastInputsCard forecast={forecast} /> : null}
+                {forecast ? <ForecastInputsCard forecast={forecast} teamCount={teamCount} /> : null}
             </div>
 
             {forecast && (
                 <Section title="Interpretation" data-testid="forecast-interpretation">
                     <div className="grid gap-3 md:grid-cols-3">
-                        <Inset title="P50 (50%)" className="mt-0">
+                        <Inset title="P50 (50%)">
                             Optimistic estimate. Half of simulations complete by this date.
                         </Inset>
-                        <Inset title="P85 (85%)" className="mt-0">
+                        <Inset title="P85 (85%)">
                             Recommended target. 85% confidence provides buffer for variability.
                         </Inset>
-                        <Inset title="P95 (95%)" className="mt-0">
+                        <Inset title="P95 (95%)">
                             Conservative estimate. Use for commitments with low risk tolerance.
                         </Inset>
                     </div>

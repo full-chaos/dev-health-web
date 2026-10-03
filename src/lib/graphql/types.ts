@@ -343,7 +343,9 @@ export interface BusFactorQueryResponse {
 // ==== Capacity Planning Types ====
 
 export interface CapacityForecastInput {
+    /** One team id. The schema keeps it with no deprecation mark; the capacity page sends teamIds. */
     teamId?: string;
+    teamIds?: string[];
     workScopeId?: string;
     targetItems?: number;
     targetDate?: string;
@@ -362,7 +364,7 @@ export interface CapacityForecastFilterInput {
 export interface CapacityForecast {
     forecastId: string;
     computedAt: string;
-    teamId?: string;
+    teamId?: string | null;
     workScopeId?: string;
     backlogSize: number;
     targetItems?: number;
@@ -381,6 +383,25 @@ export interface CapacityForecast {
     historyDays: number;
     insufficientHistory: boolean;
     highVariance: boolean;
+    /**
+     * The Monte Carlo runs behind the percentiles, as histograms (CHAOS-7624). Null or absent =
+     * no distribution was stored for this forecast; never "every run was zero".
+     */
+    completionDistribution?: CapacityDistribution | null;
+}
+
+/** One simulated outcome and how many runs ended on it. */
+export interface CapacityDistributionBin {
+    value: number;
+    count: number;
+}
+
+/** Per mode, ascending by value. A mode that did not simulate is null. */
+export interface CapacityDistribution {
+    /** Fixed-scope mode: days to complete the target items. */
+    days?: CapacityDistributionBin[] | null;
+    /** Fixed-date mode: items completed by the target date. */
+    items?: CapacityDistributionBin[] | null;
 }
 
 export interface PageInfo {

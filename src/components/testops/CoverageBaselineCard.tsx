@@ -2,7 +2,8 @@ import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { MeterRows } from "@/components/ui/MeterRows";
 import { formatPercent } from "@/lib/formatters";
-import type { RepositoryCoverageRow } from "@/lib/testops/coverageRepos";
+import { Inset } from "@/components/ui/Inset";
+import { BRANCH_BREAKDOWN_TOP_N, type RepositoryCoverageRow } from "@/lib/testops/coverageRepos";
 
 type CoverageBaselineCardProps = {
     repositories: RepositoryCoverageRow[];
@@ -13,10 +14,15 @@ type CoverageBaselineCardProps = {
 
 /**
  * The approved "Coverage against baseline" card: per repository, its name, then one row per
- * coverage kind with the served value. Line coverage is the served breakdown value. Branch
- * coverage by repository is not served by the API yet, so its row reads "Not reported" (never a
- * made-up value). The baseline is the one product target, shown once in the card head.
+ * coverage kind with the served value. Line and branch coverage are the served breakdown values
+ * of the repository; a value that is not served reads "Not reported" (never a made-up value, never
+ * 0). The baseline is the one product target, shown once in the card head.
  */
+
+/** One meter row of a served percent; null = not served ("Not reported", empty track). */
+const percentRow = (label: string, value: number | null) =>
+    value === null ? { label, value } : { label, value, display: formatPercent(value) };
+
 export function CoverageBaselineCard({
     repositories,
     baselinePct,
@@ -26,7 +32,7 @@ export function CoverageBaselineCard({
     return (
         <Section
             title="Coverage against baseline"
-            description="Line coverage of each repository against the one target baseline."
+            description="Coverage of each repository; the baseline is the one line-coverage target."
             action={
                 <span
                     data-testid="testops-coverage-baseline-pill"
@@ -64,22 +70,30 @@ export function CoverageBaselineCard({
                                 aria-label={`${repo.name} coverage`}
                                 testId="testops-coverage-meters"
                                 rows={[
-                                    {
-                                        label: "Line coverage",
-                                        value: repo.lineCoverage,
-                                        display: formatPercent(repo.lineCoverage),
-                                    },
-                                    // Branch coverage by repository is not served yet (B11).
-                                    { label: "Branch coverage", value: null },
+                                    percentRow("Line coverage", repo.lineCoverage),
+                                    // A repository outside a cut branch answer has no branch row:
+                                    // its figure can exist, so "Not reported" would be false.
+                                    ...(repo.branchOutsideList
+                                        ? []
+                                        : [percentRow("Branch coverage", repo.branchCoverage)]),
                                 ]}
                             />
+                            {repo.branchOutsideList ? (
+                                <p
+                                    data-testid="testops-coverage-branch-outside-list"
+                                    className="mt-2 text-xs text-(--ink-muted)"
+                                >
+                                    Branch coverage: this repository is outside the{" "}
+                                    {BRANCH_BREAKDOWN_TOP_N} repositories the branch answer lists.
+                                </p>
+                            ) : null}
                         </div>
                     ))}
-                    <div className="rounded-(--radius-sm) bg-background p-3.75 text-xs text-(--ink-muted)">
+                    <Inset flush className="text-xs text-(--ink-muted)">
                         The baseline is one product target ({formatPercent(baselinePct)} line
-                        coverage) for every repository. Branch coverage and a per-repository
-                        baseline are not reported yet.
-                    </div>
+                        coverage) for every repository. A per-repository baseline is not reported
+                        yet.
+                    </Inset>
                 </div>
             )}
         </Section>

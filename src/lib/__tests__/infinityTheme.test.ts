@@ -248,13 +248,26 @@ describe("infinity palette", () => {
         "fixes investment theme colors by entity and defines the ramp and zones (%s)",
         (theme) => {
             const t = infinity(theme);
-            expect(t["--theme-feature"]).toBe("var(--chart-color-5)");
-            expect(t["--theme-quality"]).toBe("var(--chart-color-4)");
-            expect(t["--theme-risk"]).toBe("var(--chart-color-2)");
-            // Investment's Maintenance follows chart series 3 (chris ruling 66, CHAOS-7892): it is that very token.
-            expect(t["--theme-maintenance"]).toBe("var(--chart-color-3)");
+            // Light: the investment themes are the series colors. Dark (CHAOS-8510): their own darker
+            // fills, so one ink (white) fits every tile; the raw series colors stay as they are.
+            const alias =
+                theme === "light"
+                    ? {
+                          "--theme-feature": "var(--chart-color-5)",
+                          "--theme-quality": "var(--chart-color-4)",
+                          "--theme-risk": "var(--chart-color-2)",
+                          "--theme-maintenance": "var(--chart-color-3)",
+                          "--theme-operational": "var(--chart-color-1)",
+                      }
+                    : {
+                          "--theme-feature": "#a64807",
+                          "--theme-quality": "#016e7f",
+                          "--theme-risk": "#885a00",
+                          "--theme-maintenance": "#cc1f00",
+                          "--theme-operational": "#086d86",
+                      };
+            for (const [name, value] of Object.entries(alias)) expect(t[name]).toBe(value);
             expect(t["--chart-color-3"]).toBe(theme === "light" ? "#2525d0" : "#da2100");
-            expect(t["--theme-operational"]).toBe("var(--chart-color-1)");
             const ramp = [0, 1, 2, 3, 4, 5].map((n) => luminance(t[`--seq-${n}`]));
             const sorted = [...ramp].sort((a, b) => (theme === "light" ? b - a : a - b));
             expect(ramp).toEqual(sorted);
@@ -447,14 +460,14 @@ describe("infinity palette", () => {
     // Pin of the whole dark block: CHAOS-7746 left it byte-equal; CHAOS-7892 changed exactly dark series 7
     // and 8 (the diff of this hash is those two lines); CHAOS-8061 added exactly --action and --on-action;
     // CHAOS-8141 added --accent-wash and --accent-ink and set --accent-text to #ffab66 (4 lines);
-    // CHAOS-8171 added the four --*-wash status tokens (comment line + 4 lines); --deemph added (CHAOS-8171 follow-up).
+    // CHAOS-8171 added the four --*-wash status tokens (comment line + 4 lines); --deemph added (CHAOS-8171 follow-up); CHAOS-8510 set the five --theme-* to darker dark fills and added --flame-branch-1..5.
     it("leaves the dark block byte for byte as pinned", () => {
         const block = infinityCss.match(
             /:root\[data-palette="infinity"\]\[data-theme="dark"\] \{([\s\S]*?)\n\}/u,
         );
         expect(block).not.toBeNull();
         expect(createHash("sha256").update(block![1]).digest("hex")).toBe(
-            "0cda353fc32d4a5860b8f680b7b9641c0a855201465bdc35bf47e64c8e2dd7da",
+            "9175d6e0dab926af6604b054093ad04995f996109d8611fe2ccaade5f65bfa8f",
         );
     });
 

@@ -38,12 +38,12 @@ describe("RefreshForecastButton", () => {
         expect(hook.state.refetch).toHaveBeenCalledTimes(1);
     });
 
-    it("asks for the same forecast as the view: first team id, range as history days, same org", () => {
+    it("asks for the same forecast as the view: every selected team id, range as history days, same org", () => {
         render(<RefreshForecastButton filters={filters} orgId="org-1" />);
 
         expect(hook.lastOptions).toEqual({
             orgId: "org-1",
-            input: { teamId: "team-a", historyDays: 60 },
+            input: { teamIds: ["team-a", "team-b"], historyDays: 60 },
         });
     });
 
