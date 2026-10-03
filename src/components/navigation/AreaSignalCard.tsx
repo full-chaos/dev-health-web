@@ -19,7 +19,7 @@ import type { MetricFilter } from "@/lib/filters/types";
 // An RSC (no client state) — the whole card is a link into the sub-area.
 //
 // Honest states (owner decision 1): a signal whose value is genuinely
-// unavailable renders an inline {@link DataState} instead of a fabricated
+// unavailable renders an inline state line instead of a fabricated
 // number. Demoted signals (R4 low-value single surfaces) render visually
 // secondary — tighter padding, no emphasis — within their cluster.
 
@@ -50,11 +50,11 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
     // which is shared by areas whose routes DO exist and must stay clickable.
     const isPreview = signal.preview === true;
 
-    // Unavailable → inline DataState (never a fabricated value). A real (routed)
+    // Unavailable → inline state line (never a fabricated value). A real (routed)
     // sub-area stays a link so it remains reachable; a preview sub-area renders as
     // a plain <div> (same visual) so the dead route is never linked.
     if (signal.state === "unavailable") {
-        // The dashed box is the DataState inside (3.6); only ROUTED (clickable) cards get the hover
+        // Only ROUTED (clickable) cards get the hover
         // affordance — a preview card must not look interactive.
         const unavailableBaseClassName =
             "group block min-h-30 overflow-hidden rounded-(--radius-md) border border-(--card-stroke) bg-(--card) p-4.75";
@@ -77,14 +77,20 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                         data-testid="area-signal-failed"
                     />
                 ) : (
-                    <DataState
-                        variant="detector-unavailable"
-                        title={AREA_UNAVAILABLE_EMPTY_STATE.title}
-                        description={AREA_UNAVAILABLE_EMPTY_STATE.description}
-                        className="mt-3"
-                        compact
+                    // An empty window is a line inside the tile, like the value of a neighbouring tile:
+                    // not a tall dashed box (prototype screen 38, CHAOS-8572).
+                    <div
+                        data-variant="detector-unavailable"
                         data-testid="area-signal-unavailable"
-                    />
+                        className="mt-3"
+                    >
+                        <p className="text-h3 font-semibold text-foreground">
+                            {AREA_UNAVAILABLE_EMPTY_STATE.title}
+                        </p>
+                        <p className="mt-1 text-xs text-(--ink-muted)">
+                            {AREA_UNAVAILABLE_EMPTY_STATE.description}
+                        </p>
+                    </div>
                 )}
             </>
         );

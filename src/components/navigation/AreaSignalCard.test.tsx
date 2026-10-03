@@ -110,12 +110,12 @@ describe("AreaSignalCard pinned behaviour (before the CHAOS-7598 restyle)", () =
         expect(html).toMatchSnapshot();
     });
 
-    it("unavailable card is full contrast: no opacity fade, its own neutral dashed look", () => {
+    it("unavailable card is full contrast: no opacity fade, a plain line (CHAOS-8572)", () => {
         draw({ ...base, value: "", state: "unavailable", direction: undefined });
         const card = screen.getByTestId("area-signal-card");
         expect(card.className).not.toMatch(/opacity-/);
         expect(card.innerHTML).not.toMatch(/opacity-/);
-        expect(card.querySelector(".border-dashed")).not.toBeNull();
+        expect(card.querySelector(".border-dashed")).toBeNull();
         // The state is named in words, not implied by dimming.
         expect(screen.getByText("No data for this window")).toBeInTheDocument();
     });
@@ -177,6 +177,15 @@ describe("AreaSignalCard approved look (CHAOS-8062)", () => {
         expect(card).toHaveClass("border", "bg-(--card)", "rounded-(--radius-md)");
         expect(screen.getByRole("heading", { name: "Feature Flags" })).toBeInTheDocument();
         expect(screen.getByTestId("area-signal-unavailable")).toBeInTheDocument();
+    });
+
+    it("the empty-window state is a line inside the tile, not a tall dashed box (CHAOS-8572)", () => {
+        renderCard(sig({ state: "unavailable", value: "", label: "Feature Flags" }));
+        const state = screen.getByTestId("area-signal-unavailable");
+        expect(state).toHaveTextContent("No data for this window");
+        expect(state.querySelector(".border-dashed")).toBeNull();
+        expect(state.querySelector("[class*='min-h-']")).toBeNull();
+        expect(state.className).not.toMatch(/min-h-/u);
     });
 
     describe("three different states (CHAOS-8168)", () => {
