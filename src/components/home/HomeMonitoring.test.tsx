@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
+import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 import { formatMetricParts } from "@/lib/formatters";
 import type { MetricFilter } from "@/lib/filters/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
@@ -55,7 +56,7 @@ const DELTAS: MetricDelta[] = [
     delta("churn", "Code Churn", 18, "loc", 3),
     delta("review_latency", "Review Latency", 0.3, "hours", 258),
     delta("cycle_time", "Cycle Time", 1.5, "days", 655),
-    delta("blocked_work", "Blocked Work", 7, "items", -20),
+    delta("blocked_work", "Blocked Work", 7, "hours", -20),
     delta("change_failure_rate", "Change Failure Rate", 4.2, "%", -3),
 ];
 
@@ -152,6 +153,8 @@ describe("HomeMonitoring segments", () => {
             );
             expect(push).not.toHaveBeenCalled();
             expect(new URL(window.location.href).searchParams.get("monitoring")).toBe(view);
+            // Next's own history state would make Next skip its router sync (the scope bar then loses it).
+            expect(replace).toHaveBeenCalledWith(null, "", expect.anything());
             replace.mockRestore();
             push.mockRestore();
         },
@@ -194,6 +197,19 @@ describe("HomeMonitoring segments", () => {
         await user.click(screen.getByRole("button", { name: "DORA" }));
         expect(tile("deploy_freq")).toHaveTextContent("Deploy Frequency");
         expect(tile("change_failure_rate")).toHaveTextContent("Not reported");
+    });
+});
+
+describe("HomeMonitoring groups", () => {
+    it("shows the same rows, in the same order, as the Metrics tab of that name", () => {
+        for (const tab of METRIC_TABS) {
+            expect(MONITORING_GROUP_METRICS[tab.id as MonitoringView]).toEqual(tab.metrics);
+        }
+        expect(Object.keys(MONITORING_GROUP_METRICS).sort()).toEqual([
+            "dora",
+            "flow",
+            "throughput",
+        ]);
     });
 });
 

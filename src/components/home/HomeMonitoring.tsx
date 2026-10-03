@@ -11,6 +11,7 @@ import { SegmentedControl } from "@/components/shared/SegmentedControl";
 import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 import type { MetricFilter } from "@/lib/filters/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { getMetricLabel, metricInverseGood } from "@/lib/metrics/catalog";
@@ -44,15 +45,14 @@ const VIEW_PRIORITY: Record<string, readonly string[]> = {
 };
 
 /**
- * The tiles of each group, in the approved order (prototype `flow(tab)`: Flow = cycle, review, WIP,
- * blocked; Throughput = throughput, WIP, blocked; DORA = deploy, cycle, review, failure). Each is one
- * served `HomeResponse.deltas` entry.
+ * The tiles of each group, in the approved order: the same rows as the `/metrics` tab of that name
+ * (one source, `metricTabs.ts`; prototype `flow(tab)`). Each is one served `HomeResponse.deltas` entry.
  */
-export const MONITORING_GROUP_METRICS: Record<MonitoringView, readonly string[]> = {
-    flow: ["cycle_time", "review_latency", "wip_saturation", "blocked_work"],
-    throughput: ["throughput", "wip_saturation", "blocked_work"],
-    dora: ["deploy_freq", "cycle_time", "review_latency", "change_failure_rate"],
-};
+export const MONITORING_GROUP_METRICS: Record<MonitoringView, readonly string[]> =
+    Object.fromEntries(METRIC_TABS.map((tab) => [tab.id, tab.metrics])) as Record<
+        MonitoringView,
+        readonly string[]
+    >;
 
 /** Tile note (approved prototype `M.*.note`). The change compares with the window before. */
 export const MONITORING_TILE_NOTE = "vs previous window";
@@ -100,7 +100,9 @@ export function HomeMonitoring({
         try {
             const url = new URL(window.location.href);
             url.searchParams.set(MONITORING_PARAM, next);
-            window.history.replaceState(window.history.state, "", url);
+            // Null state: Next treats a call that carries its own history state as its own and skips
+            // the router sync, so the scope bar would not see this parameter.
+            window.history.replaceState(null, "", url);
         } catch {
             // The address is a convenience; the toggle works without it.
         }

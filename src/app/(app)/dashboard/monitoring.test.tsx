@@ -51,7 +51,7 @@ const HOME = {
         delta("throughput", "Throughput", 1006, "items", -30),
         delta("wip_saturation", "WIP Saturation", 301, "%", -29),
         delta("deploy_freq", "Deploy Frequency", 148, "deploys", -45),
-        delta("blocked_work", "Blocked Work", 7, "items", -20),
+        delta("blocked_work", "Blocked Work", 7, "hours", -20),
     ],
     summary: [],
     tiles: {},
@@ -106,6 +106,13 @@ describe("Monitoring block on Home (CHAOS-8064)", () => {
         expect(href.startsWith("/metrics?tab=flow")).toBe(true);
         expect(href).toContain("role=em");
         expect(href).toContain("f=");
+    });
+
+    it("keeps the default role on the jump link when no lens is set", async () => {
+        await renderHome();
+        expect(screen.getByTestId("monitoring-jump").getAttribute("href")).toContain(
+            `role=${DEFAULT_ROLE}`,
+        );
     });
 
     it("the monitoring search parameter picks the group shown on load", async () => {
