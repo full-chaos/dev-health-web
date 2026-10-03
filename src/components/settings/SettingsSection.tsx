@@ -1,5 +1,7 @@
 import React from "react";
 
+import { Section } from "@/components/ui/Section";
+
 type SettingsSectionProps = {
     title: string;
     description: string;
@@ -7,32 +9,20 @@ type SettingsSectionProps = {
     danger?: boolean;
 };
 
+/**
+ * A titled settings card: the shared Section (title, one-line description, body). `danger` adds the
+ * red left edge of the design's Danger Zone; the card stays neutral, the title and text keep their
+ * normal colours, and the red is on the edge and on the destructive button only.
+ */
 export function SettingsSection({ title, description, children, danger }: SettingsSectionProps) {
     return (
-        <section
-            className={`mb-8 rounded-lg border p-6 ${
-                danger
-                    ? "border-(--negative)/30 bg-(--negative)/12"
-                    : "border-(--card-stroke) bg-(--card)"
-            }`}
+        <Section
+            title={title}
+            description={description}
+            data-danger={danger ? "true" : undefined}
+            className={`mb-8 ${danger ? "border-l-[3px] border-l-(--negative)" : ""}`.trim()}
         >
-            <div className="mb-6">
-                <h2
-                    className={`text-lg font-semibold ${
-                        danger ? "text-(--negative)" : "text-(--foreground)"
-                    }`}
-                >
-                    {title}
-                </h2>
-                <p
-                    className={`mt-1 text-sm ${
-                        danger ? "text-(--negative)" : "text-(--ink-muted)"
-                    }`}
-                >
-                    {description}
-                </p>
-            </div>
             {children}
-        </section>
+        </Section>
     );
 }

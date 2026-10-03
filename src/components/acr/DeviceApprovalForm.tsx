@@ -195,7 +195,7 @@ export function DeviceApprovalForm({
                                 id="device-code"
                                 autoCapitalize="characters"
                                 autoComplete="one-time-code"
-                                className="mt-2 w-full rounded-(--radius-md) border border-(--card-stroke) bg-background px-4 py-3 font-mono tracking-[0.16em] uppercase outline-none focus-visible:ring-2 focus-visible:ring-(--accent)"
+                                className="mt-2 w-full rounded-(--radius-md) border border-(--card-stroke) bg-background px-4 py-3 font-mono tracking-[0.16em] uppercase outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
                                 maxLength={8}
                                 onChange={(event) =>
                                     setCode(event.target.value.trim().toUpperCase())

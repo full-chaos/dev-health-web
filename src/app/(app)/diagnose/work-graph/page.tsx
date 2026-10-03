@@ -1,7 +1,9 @@
+import { readFailureMessage } from "@/lib/readFailure";
 import { ViewSet } from "@/components/navigation/ViewSet";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { GraphView, type WorkGraphTab } from "@/components/work/GraphView";
-import { WorkGraphHeaderActions } from "@/components/work/WorkGraphHeaderActions";
+import { WorkGraphFactsAction, WorkGraphFactsProvider } from "@/components/work/WorkGraphPageFacts";
+import { WorkGraphEvidenceAction } from "@/components/work/WorkGraphEvidenceAction";
 import { buildWorkGraphTabs } from "./buildTabs";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
@@ -12,6 +14,10 @@ import {
     getReviewEdgesViaGraphQL,
     type ReviewEdgesResult,
 } from "@/lib/graphql/reviewEdgesFetchers";
+import {
+    PageFactsEvidenceAction,
+    type PageFact,
+} from "@/components/evidence/PageFactsEvidenceAction";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 
@@ -34,6 +40,15 @@ function dateRangeFromFilter(time: {
     const isoDate = (d: Date) => d.toISOString().slice(0, 10);
     return { sinceDate: isoDate(start), untilDate: isoDate(end) };
 }
+
+/** One line per tab, as the approved prototype words it (views 13 to 16). */
+const TAB_SUBTITLES: Record<string, string> = {
+    overview:
+        "Relationship topology across work, pull requests, code, releases, incidents, and evidence-bearing artifacts.",
+    "inflow-outflow": "How relationships flow into and out of each entity type.",
+    "review-network": "Reviewer-to-author collaboration pairs from code review activity.",
+    artifacts: "Entities ranked by how many relationships they carry.",
+};
 
 export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps) {
     const params = (await searchParams) ?? {};
@@ -98,46 +113,73 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
                 teamIds,
             });
         } catch (err) {
-            reviewEdgesError =
-                err instanceof Error ? err.message : "Failed to load review network data";
+            reviewEdgesError = readFailureMessage(err, "reviewEdges");
         }
     }
+
+    // Review Network is the one tab whose data is on the server: its served totals, no names.
+    const reviewFacts: PageFact[] | null =
+        activeTab === "review-network" && reviewEdgesData && reviewEdgesData.edges.length > 0
+            ? [
+                  {
+                      label: "Reviewers",
+                      value: String(new Set(reviewEdgesData.edges.map((e) => e.reviewer)).size),
+                  },
+                  {
+                      label: "Authors",
+                      value: String(new Set(reviewEdgesData.edges.map((e) => e.author)).size),
+                  },
+                  {
+                      label: "Total reviews",
+                      value: String(
+                          reviewEdgesData.edges.reduce((sum, e) => sum + e.reviewsCount, 0),
+                      ),
+                  },
+              ]
+            : null;
 
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
-        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
-            <PageHeader
-                title="Work Graph"
-                subtitle="Relationship topology across work, pull requests, code, releases, incidents, and evidence-bearing artifacts."
-                actions={
-                    <WorkGraphHeaderActions
-                        filters={filters}
-                        activeTab={activeTab}
-                        role={activeRole}
-                        origin={activeOrigin}
-                    />
-                }
-            />
+        <WorkGraphFactsProvider>
+            <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+                <PageHeader
+                    title="Work Graph"
+                    subtitle={TAB_SUBTITLES[activeTab] ?? TAB_SUBTITLES.overview}
+                    actions={
+                        <>
+                            {reviewFacts ? (
+                                <PageFactsEvidenceAction
+                                    title="Review Network"
+                                    facts={reviewFacts}
+                                />
+                            ) : null}
+                            <WorkGraphEvidenceAction filters={filters} activeTab={activeTab} />
+                            <WorkGraphFactsAction />
+                        </>
+                    }
+                />
 
-            <ScopeBar view="work" origin={activeOrigin} />
-            <ViewSet
-                orientation="tabs"
-                items={tabs}
-                activeId={activeTab}
-                overviewId="overview"
-                ariaLabel="Work Graph views"
-            />
-            <GraphView
-                filters={filters}
-                activeRole={activeRole}
-                activeTab={activeTab as WorkGraphTab}
-                reviewEdges={reviewEdgesData?.edges ?? null}
-                reviewEdgesTotalCount={reviewEdgesData?.totalCount ?? null}
-                reviewEdgesTeamScope={teamIds !== null}
-                reviewEdgesLoading={false}
-                reviewEdgesError={reviewEdgesError}
-            />
-        </div>
+                <ScopeBar view="work" origin={activeOrigin} />
+                <ViewSet
+                    orientation="tabs"
+                    items={tabs}
+                    activeId={activeTab}
+                    overviewId="overview"
+                    ariaLabel="Work Graph views"
+                />
+                <GraphView
+                    filters={filters}
+                    activeRole={activeRole}
+                    activeOrigin={activeOrigin}
+                    activeTab={activeTab as WorkGraphTab}
+                    reviewEdges={reviewEdgesData?.edges ?? null}
+                    reviewEdgesTotalCount={reviewEdgesData?.totalCount ?? null}
+                    reviewEdgesTeamScope={teamIds !== null}
+                    reviewEdgesLoading={false}
+                    reviewEdgesError={reviewEdgesError}
+                />
+            </div>
+        </WorkGraphFactsProvider>
     );
 }

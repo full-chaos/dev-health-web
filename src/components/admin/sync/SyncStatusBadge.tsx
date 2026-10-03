@@ -1,3 +1,5 @@
+import { CircleCheck, CircleHelp, Loader, Minus, TriangleAlert } from "lucide-react";
+
 import { STATUS_PILL } from "@/lib/statusPill";
 import { SyncStatus } from "@/lib/sync-types";
 
@@ -16,6 +18,15 @@ export function SyncStatusBadge({ status, className = "", label }: SyncStatusBad
         never: STATUS_PILL.muted,
     };
 
+    const icons = {
+        success: CircleCheck,
+        failed: TriangleAlert,
+        running: Loader,
+        idle: Minus,
+        never: CircleHelp,
+    };
+    const Icon = icons[status];
+
     const labels = {
         success: "Success",
         failed: "Failed",
@@ -26,8 +37,9 @@ export function SyncStatusBadge({ status, className = "", label }: SyncStatusBad
 
     return (
         <span
-            className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 ${variants[status]} ${className}`}
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold transition-colors ${variants[status]} ${className}`}
         >
+            <Icon aria-hidden="true" className="h-3 w-3" />
             {label ?? labels[status]}
         </span>
     );

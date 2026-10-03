@@ -1,11 +1,12 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useMemo, useState } from "react";
 
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { ErrorCard } from "@/components/ui/ErrorCard";
-import { EntityLabel } from "@/components/labels/EntityLabel";
+import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { encodeAIFilter, type AIFilter } from "@/lib/filters/ai";
 import type { AiAttributedPr } from "@/lib/graphql/__generated__/types";
 import { useAIAttributedPrs } from "@/lib/graphql/hooks/useAIReviewRisk";
@@ -64,7 +65,7 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
     );
 
     if (error) {
-        return <ErrorCard title="Failed to load AI-attributed PRs" message={error.message} />;
+        return <ErrorCard title="Failed to load AI-attributed PRs" message={READ_FAILED_MESSAGE} />;
     }
 
     if (!fetching && data && !data.dataAvailable) {
@@ -153,11 +154,14 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
                                                 <td className="px-4 py-3 text-(--ink-muted)">
                                                     {pr.workType ?? "—"}
                                                 </td>
-                                                <td className="whitespace-nowrap px-4 py-3 text-xs text-(--ink-muted)">
-                                                    <EntityLabel
-                                                        id={pr.repoId}
-                                                        displayName={pr.repoName}
-                                                    />
+                                                {/* The served repository name. A name that is not
+                                                    served reads "Not reported": an id token is
+                                                    not a name. */}
+                                                <td
+                                                    data-testid="ai-impact-evidence-repo"
+                                                    className="whitespace-nowrap px-4 py-3 text-xs text-(--ink-muted)"
+                                                >
+                                                    {pr.repoName?.trim() || NOT_REPORTED}
                                                 </td>
                                                 <td className="whitespace-nowrap px-4 py-3 text-(--ink-muted)">
                                                     {formatMergedAt(pr.mergedAt)}
@@ -205,7 +209,7 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
             <section className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-5 xl:sticky xl:top-4">
                 <h3 className="font-(--font-display) text-lg">Work Graph evidence</h3>
                 <div className="mt-3">
-                    <EvidencePanel selected={selected} />
+                    <EvidencePanel selected={selected} showTitle={false} />
                 </div>
             </section>
         </div>

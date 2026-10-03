@@ -8,9 +8,11 @@ describe("signalDirection", () => {
         expect(signalDirection(12)).toBe("up");
         expect(signalDirection(-3)).toBe("down");
         expect(signalDirection(0)).toBe("unchanged");
-        // rounds to 0% in the Snapshot card's own formatter, so it is "unchanged" here too
-        expect(signalDirection(0.4)).toBe("unchanged");
-        expect(signalDirection(-0.4)).toBe("unchanged");
+        expect(signalDirection(-0)).toBe("unchanged");
+        // The Snapshot card's formatter shows a small served change ("+0.4%", "-0.4%"), not 0%,
+        // so the direction follows its sign.
+        expect(signalDirection(0.4)).toBe("up");
+        expect(signalDirection(-0.4)).toBe("down");
         expect(signalDirection(0.6)).toBe("up");
     });
 

@@ -22,12 +22,13 @@ const ratio = (a: number[], b: number[]) => {
 };
 
 describe("admin navigation marks", () => {
-    it("the Platform Admin pill uses the info status pill, with no purple", () => {
+    it("the Platform Admin pill uses the shared outline StatusPill, with no purple", () => {
         // Both admin sidebars are gone (CHAOS-7591, CHAOS-7967): the "Platform Admin" pill is in
         // AdminHeader, and the shell sidebar marks the active destination.
         const header = src("components/admin/AdminHeader.tsx");
         expect(header).not.toMatch(/purple/u);
-        expect(header).toContain("STATUS_PILL.info");
+        expect(header).toContain('<StatusPill tone="outline"');
+        expect(header).not.toContain("STATUS_PILL.info");
     });
 });
 

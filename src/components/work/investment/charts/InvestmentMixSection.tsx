@@ -1,14 +1,22 @@
+"use client";
+
 import { useCallback, useMemo, useState } from "react";
 import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
 import {
     ChartTypeToggle,
     TREEMAP_SUNBURST_OPTIONS,
     type TreemapSunburstType,
 } from "@/components/charts/ChartTypeToggle";
+import { DataNote } from "@/components/charts/DataNote";
 import { InvestmentMixSunburst } from "@/components/charts/InvestmentMixSunburst";
-import { TreemapChart, type TreemapNode } from "@/components/charts/TreemapChart";
+import type { TreemapNode } from "@/components/charts/TreemapChart";
 import { useChartTheme } from "@/components/charts/chartTheme";
-import { buildTooltipHtml, calcPercent } from "@/lib/chartUtils";
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import { buttonClassName } from "@/components/shared/Button";
+import { MeterRows } from "@/components/ui/MeterRows";
+import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import { formatNumber } from "@/lib/formatters";
@@ -23,6 +31,7 @@ import { getSortedSubcategories, getSortedThemes } from "@/lib/investmentMix";
 import type { WorkUnitInvestment } from "@/lib/types";
 import { buildInvestmentWorkGraphUrl } from "@/lib/workGraphDrilldownUrl";
 import type { TreemapSelection } from "../types";
+import { InvestmentColumnTreemap, type ColumnTreemapClick } from "./InvestmentColumnTreemap";
 
 type InvestmentMix = ReturnType<typeof import("@/lib/investmentMix").normalizeInvestmentMix>;
 
@@ -56,6 +65,7 @@ export function InvestmentMixSection({
     themeColorMap,
 }: InvestmentMixSectionProps) {
     const chartTheme = useChartTheme();
+    const evidence = useEvidenceDrawer();
     const [mixChartType, setMixChartType] = useState<TreemapSunburstType>("treemap");
     const [treemapSelection, setTreemapSelection] = useState<TreemapSelection | null>(null);
 
@@ -90,17 +100,6 @@ export function InvestmentMixSection({
                 : null,
         });
     }, [activeRole, filters, focusSubcategory, focusTheme]);
-    const treemapWorkGraphUrl = useMemo(() => {
-        if (!treemapSelection?.themeKey) return null;
-        return buildInvestmentWorkGraphUrl({
-            filters,
-            role: activeRole,
-            themeKey: treemapSelection.themeKey,
-            subcategoryKey:
-                treemapSelection.type === "subcategory" ? treemapSelection.subcategoryId : null,
-        });
-    }, [activeRole, filters, treemapSelection]);
-
     const handleThemeClick = useCallback(
         (themeKey: string) => {
             setFocusTheme(focusTheme === themeKey ? null : themeKey);
@@ -117,14 +116,19 @@ export function InvestmentMixSection({
         [setFocusSubcategory, setFocusTheme],
     );
 
+    // A treemap cell (or a column head) opens the ONE shared evidence drawer for that theme or
+    // subcategory. The drawer shows the served effort, the share and the evidence quality of the
+    // node, and its footer links to the Work Graph for it. The selection stays marked while the
+    // drawer is open and is cleared when it closes.
     const handleTreemapSelection = useCallback(
-        (node: { name: string; path: string[]; data?: TreemapNode }) => {
+        (node: ColumnTreemapClick) => {
             const nodeData = node.data as
                 | (TreemapNode & {
                       nodeType?: "theme" | "subcategory";
                       themeKey?: string;
                       categoryId?: string;
                       categoryLabel?: string;
+                      qualityValue?: number;
                   })
                 | undefined;
 
@@ -140,41 +144,84 @@ export function InvestmentMixSection({
                     ? `subcategory:${categoryId ?? node.name}`
                     : `theme:${themeKey ?? node.name}`;
 
-            setTreemapSelection((current) => {
-                if (current?.key === selectionKey) {
-                    return null;
-                }
-                return {
-                    key: selectionKey,
-                    type: nodeType,
-                    themeLabel,
-                    themeKey,
-                    subcategoryLabel,
-                    subcategoryId: categoryId,
-                };
+            const value = typeof nodeData?.value === "number" ? nodeData.value : undefined;
+            // The theme quality is the served `evidence_quality_distribution[theme]`; a
+            // subcategory carries its own. Absent means not served, never zero.
+            const quality =
+                nodeType === "subcategory"
+                    ? nodeData?.qualityValue
+                    : themeKey
+                      ? investmentMix?.evidence_quality_distribution?.[themeKey]
+                      : undefined;
+            const workGraphUrl = themeKey
+                ? buildInvestmentWorkGraphUrl({
+                      filters,
+                      role: activeRole,
+                      themeKey,
+                      subcategoryKey: nodeType === "subcategory" ? categoryId : null,
+                  })
+                : null;
+
+            evidence.open({
+                title: subcategoryLabel ? `${themeLabel} · ${subcategoryLabel}` : themeLabel,
+                content: (
+                    <EvidenceFactList
+                        aria-label="Investment mix selection"
+                        testId="mix-selection-facts"
+                    >
+                        <EvidenceFact label="Theme" value={themeLabel} />
+                        {nodeType === "subcategory" ? (
+                            <EvidenceFact label="Subcategory" value={subcategoryLabel} />
+                        ) : null}
+                        <EvidenceFact
+                            label="Effort"
+                            value={
+                                value === undefined
+                                    ? undefined
+                                    : `${formatNumber(value)} ${investmentMix?.unit?.replace(/_/g, " ") ?? effortUnit}`
+                            }
+                        />
+                        <EvidenceFact
+                            label="Share of the mix"
+                            value={
+                                value === undefined || mixTotalValue <= 0
+                                    ? undefined
+                                    : `${formatNumber((value / mixTotalValue) * 100, { maximumFractionDigits: 1 })}%`
+                            }
+                        />
+                        <EvidenceFact
+                            label="Average evidence quality"
+                            value={typeof quality === "number" ? formatQuality(quality) : undefined}
+                        />
+                    </EvidenceFactList>
+                ),
+                footer: workGraphUrl ? (
+                    <Link
+                        href={workGraphUrl}
+                        // The shared drawer lives in the layout: close it before the page changes.
+                        onClick={evidence.close}
+                        data-testid="mix-selection-work-graph"
+                        className={buttonClassName("secondary", "md", "w-full")}
+                    >
+                        <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+                        {CTA_LABELS.openWorkGraph}
+                    </Link>
+                ) : undefined,
+                onClose: () => setTreemapSelection(null),
+            });
+            // After `open`: opening tells the subject before this one that it closed (its
+            // `onClose` clears the selection), so the new selection is set last.
+            setTreemapSelection({
+                key: selectionKey,
+                type: nodeType,
+                themeLabel,
+                themeKey,
+                subcategoryLabel,
+                subcategoryId: categoryId,
             });
         },
-        [],
+        [activeRole, effortUnit, evidence, filters, investmentMix, mixTotalValue],
     );
-
-    const clearTreemapSelection = useCallback(() => {
-        setTreemapSelection(null);
-    }, []);
-
-    const focusTreemapTheme = useCallback(() => {
-        setTreemapSelection((current) => {
-            if (!current || current.type !== "subcategory") {
-                return current;
-            }
-            const themeKey = current.themeKey ?? current.themeLabel;
-            return {
-                key: `theme:${themeKey}`,
-                type: "theme",
-                themeLabel: current.themeLabel,
-                themeKey: current.themeKey,
-            };
-        });
-    }, []);
 
     const treemapData = useMemo<TreemapNode>(() => {
         if (!investmentMix) {
@@ -227,71 +274,47 @@ export function InvestmentMixSection({
         return { name: "Investment", value: mixTotalValue, children };
     }, [investmentMix, mixTotalValue, themeColorMap, chartTheme.grid]);
 
-    const treemapLabelFormatter = useCallback((params: unknown, totalValue: number) => {
-        if (!params || typeof params !== "object") return "";
-        const entry = params as { data?: { name?: string; value?: number } };
-        const nodeData = entry.data ?? {};
-        const name = typeof nodeData.name === "string" ? nodeData.name : "";
-        const value = typeof nodeData.value === "number" ? nodeData.value : 0;
-        const pct = totalValue > 0 ? (value / totalValue) * 100 : 0;
-        if (!name || pct < 2) return "";
-        return `${name}\n${formatNumber(pct, { maximumFractionDigits: 0 })}%`;
-    }, []);
-
-    const formatTreemapTooltip = useCallback(
-        (params: unknown, _totalValue: number, unitLabel: string) => {
-            if (!params || typeof params !== "object") return "";
-            const entry = params as {
-                data?: Record<string, unknown>;
-                treePathInfo?: Array<{ name: string }>;
-            };
-            const data = entry.data ?? {};
-            const treePath = entry.treePathInfo ?? [];
-            const pathSegments = treePath.slice(1).map((p) => p.name);
-            const title = pathSegments.join(" · ");
-            if (!title) return "";
-            const value = typeof data.value === "number" ? data.value : 0;
-            const qualityValue = typeof data.qualityValue === "number" ? data.qualityValue : null;
-            const qualityLabel = qualityValue !== null ? formatQuality(qualityValue) : "Unknown";
-            const qualityExtra =
-                qualityValue !== null
-                    ? `Avg evidence quality: ${qualityLabel}<br/><div style=\"margin-top: 6px; font-size: 11px; opacity: 0.8;\">Evidence quality reflects average across contributing units.</div>`
-                    : `<div style=\"opacity: 0.7;\">Evidence quality: Unknown<br/>Insufficient evidence to compute quality.</div>`;
-
-            return buildTooltipHtml({
-                title,
-                value,
-                unit: unitLabel,
-                percent: calcPercent(value, mixTotalValue),
-                mutedColor: chartTheme.muted,
-                accentColor: chartTheme.accent2,
-                extra: qualityExtra,
-            });
+    // Tooltip and accessible name of a treemap node: the same facts the ECharts tooltip showed
+    // (path, served value and unit, share of the mix, average evidence quality).
+    const describeTreemapNode = useCallback(
+        (node: TreemapNode, path: string[]) => {
+            const nodeData = node as TreemapNode & { nodeType?: string; qualityValue?: number };
+            const themeNode = node as TreemapNode & { themeKey?: string };
+            const quality =
+                nodeData.nodeType === "subcategory"
+                    ? nodeData.qualityValue
+                    : themeNode.themeKey
+                      ? investmentMix?.evidence_quality_distribution?.[themeNode.themeKey]
+                      : undefined;
+            const share =
+                mixTotalValue > 0
+                    ? `${formatNumber((node.value / mixTotalValue) * 100, { maximumFractionDigits: 1 })}%`
+                    : null;
+            return [
+                `${path.join(" · ")}: ${formatNumber(node.value)} ${effortUnit}`,
+                share ? `${share} of the mix` : null,
+                typeof quality === "number"
+                    ? `Average evidence quality ${formatQuality(quality)}`
+                    : "Evidence quality not reported",
+            ]
+                .filter(Boolean)
+                .join(". ");
         },
-        [chartTheme.accent2, chartTheme.muted, mixTotalValue],
+        [effortUnit, investmentMix, mixTotalValue],
     );
 
-    const categoryScopeLabel = focusTheme ? "Subcategory" : "Theme";
-
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                    <h3 className="font-(--font-display) text-lg">
-                        {mixChartType === "treemap" ? "Treemap" : "Investment mix"}
-                    </h3>
-                    <span className="text-xs text-(--ink-muted)">
-                        {mixChartType === "treemap"
-                            ? `Effort size - Evidence quality opacity - ${categoryScopeLabel} view`
-                            : "Theme to Subcategory (depth 2)"}
-                    </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-3">
+        <Section
+            data-testid="investment-mix-section"
+            title="Investment mix"
+            description="Themes and the work behind them"
+            action={
+                <div className="flex flex-wrap items-center justify-end gap-3">
                     {mixChartType === "sunburst" && focusTheme && (
                         <button
                             type="button"
                             onClick={() => setFocusTheme(null)}
-                            className="rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--ink-muted)"
+                            className={buttonClassName("ghost", "sm")}
                         >
                             {CTA_LABELS.clearTheme}
                         </button>
@@ -302,79 +325,40 @@ export function InvestmentMixSection({
                         onChangeAction={setMixChartType}
                     />
                 </div>
-            </div>
-            <div className="mt-4">
+            }
+        >
+            <div>
                 {mixChartType === "treemap" ? (
-                    <>
-                        <div className="mb-3 flex flex-wrap items-center gap-1 text-xs">
-                            <button
-                                type="button"
-                                onClick={treemapSelection ? clearTreemapSelection : undefined}
-                                className={`rounded-full px-2 py-0.5 text-xs ${treemapSelection ? "text-(--accent-2) hover:underline" : "bg-(--card-stroke) text-foreground"}`}
-                            >
-                                {CTA_LABELS.allThemes}
-                            </button>
-                            {treemapSelection && (
-                                <>
-                                    <span className="text-(--ink-muted)">/</span>
-                                    {treemapSelection.type === "subcategory" ? (
-                                        <button
-                                            type="button"
-                                            onClick={focusTreemapTheme}
-                                            className="rounded-full px-2 py-0.5 text-xs text-(--accent-2) hover:underline"
-                                        >
-                                            {treemapSelection.themeLabel}
-                                        </button>
-                                    ) : (
-                                        <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-xs text-foreground">
-                                            {treemapSelection.themeLabel}
-                                        </span>
-                                    )}
-                                    {treemapSelection.type === "subcategory" &&
-                                        treemapSelection.subcategoryLabel && (
-                                            <>
-                                                <span className="text-(--ink-muted)">/</span>
-                                                <span className="rounded-full bg-(--card-stroke) px-2 py-0.5 text-xs text-foreground">
-                                                    {treemapSelection.subcategoryLabel}
-                                                </span>
-                                            </>
-                                        )}
-                                </>
-                            )}
-                            {treemapWorkGraphUrl && (
-                                <Link
-                                    href={treemapWorkGraphUrl}
-                                    className="ml-auto rounded-full border border-(--card-stroke) px-3 py-1 text-xs uppercase tracking-[0.2em] text-(--accent-2) hover:border-(--accent-2)/40"
-                                >
-                                    {CTA_LABELS.openWorkGraph} ↗
-                                </Link>
-                            )}
-                        </div>
-                        {isLoading ? (
-                            <p className="text-sm text-(--ink-muted)">Loading work units...</p>
-                        ) : workUnits.length === 0 ? (
-                            <p className="text-sm text-(--ink-muted)">
-                                No work unit investments available.
-                            </p>
-                        ) : (
-                            <TreemapChart
+                    isLoading ? (
+                        <p className="text-sm text-(--ink-muted)">Loading work units...</p>
+                    ) : workUnits.length === 0 ? (
+                        <p className="text-sm text-(--ink-muted)">
+                            No work unit investments available.
+                        </p>
+                    ) : (
+                        <>
+                            <InvestmentColumnTreemap
                                 data={treemapData}
-                                unit={effortUnit}
-                                height={360}
-                                useInputColors
-                                showBreadcrumb={false}
-                                tooltipFormatterAction={formatTreemapTooltip}
-                                labelFormatterAction={treemapLabelFormatter}
+                                selectedKey={treemapSelection?.key ?? null}
                                 onNodeClickAction={handleTreemapSelection}
+                                describeNodeAction={describeTreemapNode}
+                                ariaLabel="Investment mix by theme and subcategory; column width follows each theme's share of effort"
                             />
-                        )}
-                    </>
+                            <DataNote>
+                                Size is effort. Opacity is evidence quality. Select a cell for its
+                                evidence.
+                            </DataNote>
+                        </>
+                    )
                 ) : isMixLoading ? (
                     <p className="text-sm text-(--ink-muted)">Loading investment mix...</p>
                 ) : !investmentMix || mixThemes.length === 0 ? (
                     <p className="text-sm text-(--ink-muted)">No investment mix available.</p>
                 ) : (
-                    <div className="grid gap-4 md:grid-cols-[1.15fr_0.85fr] md:items-start">
+                    <div
+                        data-testid="mix-sunburst-state"
+                        className="grid gap-4.5 md:grid-cols-2 md:items-center"
+                    >
                         <InvestmentMixSunburst
                             themeDistribution={investmentMix.theme_distribution}
                             subcategoryDistribution={investmentMix.subcategory_distribution}
@@ -387,106 +371,79 @@ export function InvestmentMixSection({
                             onThemeClickAction={handleThemeClick}
                             onSubcategoryClickAction={handleSubcategoryClick}
                         />
-                        <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-                            <div className="flex items-center justify-between">
-                                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                    {focusTheme ? "Subcategory breakdown" : "Themes"}
+                        {/* Prototype `sunburstChart` side: plain meter rows (`bars()`), share of the
+                            mix per theme with the theme colour; a theme row drills into its
+                            subcategories (share of the theme). */}
+                        <div
+                            data-testid="mix-sunburst-panel"
+                            className="flex min-w-0 flex-col gap-3 md:self-center"
+                        >
+                            {focusTheme ? (
+                                <p className="text-xs text-(--ink-muted)">
+                                    {titleCase(focusTheme)}: share of the theme
                                 </p>
-                                {focusTheme && (
-                                    <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                                        {titleCase(focusTheme)}
-                                    </span>
-                                )}
-                            </div>
-                            {focusedWorkGraphUrl && (
-                                <Link
-                                    href={focusedWorkGraphUrl}
-                                    className="mt-3 flex items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-xs uppercase tracking-[0.2em] text-foreground hover:border-(--accent-2)/40 hover:bg-(--accent-2)/5 group"
-                                >
-                                    <span>{CTA_LABELS.openWorkGraph}</span>
-                                    <span className="text-(--accent-2) group-hover:translate-x-0.5 transition-transform">
-                                        ↗
-                                    </span>
-                                </Link>
-                            )}
-                            <div className="mt-3 space-y-2 text-sm">
-                                {focusTheme ? (
-                                    focusedThemeSubcategories.length ? (
-                                        focusedThemeSubcategories.map((entry) => {
+                            ) : null}
+                            {focusTheme ? (
+                                focusedThemeSubcategories.length ? (
+                                    <MeterRows
+                                        aria-label={`${titleCase(focusTheme)} subcategories`}
+                                        testId="mix-subcategory-meter-rows"
+                                        max={100}
+                                        rows={focusedThemeSubcategories.map((entry) => {
                                             const pctOfTheme = focusedThemeTotalValue
                                                 ? (entry.value / focusedThemeTotalValue) * 100
                                                 : 0;
-                                            return (
-                                                <button
-                                                    key={entry.key}
-                                                    type="button"
-                                                    onClick={() =>
-                                                        handleSubcategoryClick(entry.key)
-                                                    }
-                                                    className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
-                                                >
-                                                    <div className="min-w-0">
-                                                        <div className="truncate text-sm text-foreground">
-                                                            {formatSubcategoryLabel(
-                                                                entry.key,
-                                                                false,
-                                                            )}
-                                                        </div>
-                                                        <div className="mt-1 text-xs text-(--ink-muted)">
-                                                            {formatNumber(entry.value)}{" "}
-                                                            {investmentMix.unit ?? effortUnit}
-                                                        </div>
-                                                        <div className="text-xs text-(--accent-2)">
-                                                            {formatNumber(pctOfTheme, {
-                                                                maximumFractionDigits: 1,
-                                                            })}
-                                                            % of theme
-                                                        </div>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })
-                                    ) : (
-                                        <p className="text-sm text-(--ink-muted)">
-                                            No subcategories observed for this theme.
-                                        </p>
-                                    )
+                                            return {
+                                                key: entry.key,
+                                                label: formatSubcategoryLabel(entry.key, false),
+                                                title: formatSubcategoryLabel(entry.key, true),
+                                                value: pctOfTheme,
+                                                display: `${formatNumber(pctOfTheme, { maximumFractionDigits: 1 })}%`,
+                                                color: themeColorMap.get(focusTheme),
+                                                onSelect: () => handleSubcategoryClick(entry.key),
+                                                selected: focusSubcategory === entry.key,
+                                            };
+                                        })}
+                                    />
                                 ) : (
-                                    mixThemes.slice(0, 8).map((entry) => {
+                                    <p className="text-sm text-(--ink-muted)">
+                                        No subcategories observed for this theme.
+                                    </p>
+                                )
+                            ) : (
+                                <MeterRows
+                                    aria-label="Themes"
+                                    testId="mix-theme-meter-rows"
+                                    max={100}
+                                    rows={mixThemes.slice(0, 8).map((entry) => {
                                         const pct = mixTotalValue
                                             ? (entry.value / mixTotalValue) * 100
                                             : 0;
-                                        return (
-                                            <button
-                                                key={entry.key}
-                                                type="button"
-                                                onClick={() => handleThemeClick(entry.key)}
-                                                className="flex w-full items-center justify-between rounded-xl border border-(--card-stroke) bg-card px-3 py-2 text-left transition hover:border-(--accent-2)"
-                                            >
-                                                <div className="min-w-0">
-                                                    <div className="truncate text-sm text-foreground">
-                                                        {titleCase(entry.key)}
-                                                    </div>
-                                                    <div className="mt-1 text-xs text-(--ink-muted)">
-                                                        {formatNumber(entry.value)}{" "}
-                                                        {investmentMix.unit ?? effortUnit}
-                                                    </div>
-                                                    <div className="text-xs text-(--accent-2)">
-                                                        {formatNumber(pct, {
-                                                            maximumFractionDigits: 1,
-                                                        })}
-                                                        % of total
-                                                    </div>
-                                                </div>
-                                            </button>
-                                        );
-                                    })
-                                )}
-                            </div>
+                                        return {
+                                            key: entry.key,
+                                            label: titleCase(entry.key),
+                                            value: pct,
+                                            display: `${formatNumber(pct, { maximumFractionDigits: 1 })}%`,
+                                            color: themeColorMap.get(entry.key),
+                                            onSelect: () => handleThemeClick(entry.key),
+                                        };
+                                    })}
+                                />
+                            )}
+                            {focusedWorkGraphUrl ? (
+                                <Link
+                                    href={focusedWorkGraphUrl}
+                                    data-testid="mix-sunburst-work-graph"
+                                    className={buttonClassName("ghost", "sm", "self-start")}
+                                >
+                                    <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+                                    {CTA_LABELS.openWorkGraph}
+                                </Link>
+                            ) : null}
                         </div>
                     </div>
                 )}
             </div>
-        </div>
+        </Section>
     );
 }

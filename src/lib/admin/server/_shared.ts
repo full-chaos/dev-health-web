@@ -1,3 +1,4 @@
+import { failureFromError } from "@/lib/actionFailure";
 import { auth } from "@/lib/auth";
 import { AdminApiError } from "../api";
 import type { ActionResult } from "@/lib/result";
@@ -39,10 +40,6 @@ export async function withErrorHandling<T>(fn: () => Promise<T>): Promise<Action
         const data = await fn();
         return { data };
     } catch (err) {
-        if (err instanceof AdminApiError) {
-            const detail = err.detail || err.message;
-            return { error: typeof detail === "string" ? detail : JSON.stringify(detail) };
-        }
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureFromError("adminServerCall", err);
     }
 }

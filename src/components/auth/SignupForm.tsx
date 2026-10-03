@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidationStatus } from "@/lib/actionFailure";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -61,7 +62,12 @@ export function SignupForm({ plan, trialIntent = false, callbackUrl }: SignupFor
                 }
                 try {
                     const data = await res.json();
-                    toast.error(extractErrorMessage(data.detail, "Registration failed"));
+                    toast.error(
+                        extractErrorMessage(
+                            isValidationStatus(res.status) ? data.detail : undefined,
+                            "Registration failed",
+                        ),
+                    );
                 } catch {
                     toast.error("Registration failed");
                 }
@@ -84,7 +90,7 @@ export function SignupForm({ plan, trialIntent = false, callbackUrl }: SignupFor
     };
 
     const inputClass =
-        "w-full rounded-lg border border-[var(--card-stroke)] bg-[var(--background)] px-4 py-3 text-[var(--foreground)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition-shadow";
+        "w-full rounded-lg border border-[var(--card-stroke)] bg-[var(--background)] px-4 py-3 text-[var(--foreground)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-(--accent-2) transition-shadow";
 
     return (
         <form onSubmit={handleSubmit} className="space-y-5">

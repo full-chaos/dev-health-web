@@ -100,7 +100,7 @@ export function CreateCustomerPushTokenForm({
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="CI runner"
-                    className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base) focus:border-(--accent) focus:outline-none"
+                    className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base) focus:border-(--accent-2) focus:outline-none"
                 />
             </div>
 
@@ -161,7 +161,7 @@ export function CreateCustomerPushTokenForm({
                     type="date"
                     value={expiresAt}
                     onChange={(e) => setExpiresAt(e.target.value)}
-                    className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base) focus:border-(--accent) focus:outline-none"
+                    className="w-full rounded-md border border-(--border-subtle) bg-(--surface-base) px-3 py-2 text-sm text-(--ink-base) focus:border-(--accent-2) focus:outline-none"
                 />
             </div>
 

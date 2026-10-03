@@ -28,30 +28,25 @@ const VARIANTS: Record<
     info: {
         label: "Information",
         Icon: Info,
-        surface:
-            "border-[color-mix(in_srgb,var(--info)_28%,var(--card-stroke))] bg-[color-mix(in_srgb,var(--info)_8%,var(--card))]",
+        surface: "border-transparent bg-(--surface2)",
         accent: "text-(--info)",
     },
     warn: {
         label: "Warning",
         Icon: TriangleAlert,
-        surface:
-            "border-[color-mix(in_srgb,var(--caution)_32%,var(--card-stroke))] bg-[color-mix(in_srgb,var(--caution)_10%,var(--card))]",
+        surface: "border-transparent bg-(--caution-wash)",
         accent: "text-(--caution)",
     },
     good: {
         label: "OK",
         Icon: CircleCheck,
-        surface:
-            "border-[color-mix(in_srgb,var(--positive)_28%,var(--card-stroke))] bg-[color-mix(in_srgb,var(--positive)_8%,var(--card))]",
+        surface: "border-transparent bg-(--positive-wash)",
         accent: "text-(--positive)",
     },
-    // 8% tint, not 10%: body ink on a 10% negative tint is 4.38:1 in light, under 4.5.
     danger: {
         label: "Error",
         Icon: OctagonAlert,
-        surface:
-            "border-[color-mix(in_srgb,var(--negative)_32%,var(--card-stroke))] bg-[color-mix(in_srgb,var(--negative)_8%,var(--card))]",
+        surface: "border-transparent bg-(--negative-wash)",
         accent: "text-(--negative)",
     },
 };

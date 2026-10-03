@@ -27,11 +27,6 @@ export default function Error({ error, reset }: ErrorProps) {
                 <h1 className="font-(--font-display) text-3xl mb-4">Something went wrong</h1>
                 <p className="text-sm text-(--ink-muted) leading-relaxed mb-8">
                     An unexpected error occurred while rendering this page.
-                    {error.digest && (
-                        <span className="block mt-2 font-mono text-xs text-(--ink-subtle)">
-                            Error ID: {error.digest}
-                        </span>
-                    )}
                 </p>
                 <button
                     onClick={reset}

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 import { AppShell } from "@/components/shell/AppShell";
 import { FILTER_OPTIONS, scopeBarUrl } from "@/test/scopeBarHarness";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
@@ -38,14 +39,12 @@ vi.mock("@/lib/auth", () => ({
     auth: vi.fn(async () => ({ user: { org_id: "org-1" } })),
 }));
 
-vi.mock("@/components/home/AiWorkflowCallout", () => ({ AiWorkflowCallout: () => null }));
-vi.mock("@/components/home/BackendBanner", () => ({ BackendBanner: () => null }));
-vi.mock("@/components/home/CockpitClient", () => ({ CockpitClient: () => null }));
+vi.mock("@/components/home/HomeMonitoring", () => ({ HomeMonitoring: () => null }));
+vi.mock("@/components/home/InvestigationThreads", () => ({ InvestigationThreads: () => null }));
 vi.mock("@/components/home/CockpitSummary", () => ({ CockpitSummary: () => null }));
 vi.mock("@/components/home/DataConfidenceIndicator", () => ({
     DataConfidenceIndicator: () => null,
 }));
-vi.mock("@/components/home/InvestmentPreview", () => ({ InvestmentPreview: () => null }));
 vi.mock("@/components/home/RankedSignals", () => ({ RankedSignals: () => null }));
 vi.mock("@/components/onboarding/SetupBanner", () => ({ SetupBanner: () => null }));
 
@@ -54,7 +53,9 @@ const fetchMock = vi.fn();
 async function renderCockpit() {
     return render(
         <AdminTierProvider tier="community" features={{}}>
-            <AppShell>{await Home({ searchParams: Promise.resolve({}) })}</AppShell>
+            <EvidenceDrawerProvider>
+                <AppShell>{await Home({ searchParams: Promise.resolve({}) })}</AppShell>
+            </EvidenceDrawerProvider>
         </AdminTierProvider>,
     );
 }

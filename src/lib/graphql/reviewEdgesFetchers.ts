@@ -3,23 +3,24 @@
  *
  * Mirrors the structure of cognitiveLoadFetchers.ts:
  * - Uses graphqlFetch from ./server (per-request urql client with auth + X-Org-Id).
- * - Returns the raw result object; the caller maps it to UI shapes.
+ * - Returns the rows with every e-mail address taken out (CHAOS-7973): the stored identity of a
+ *   person can be an e-mail address, and no address leaves the server. See reviewEdgeIdentities.ts.
  */
 
 import { graphqlFetch } from "./server";
 import { REVIEW_EDGES_QUERY } from "./queries";
+import {
+    withoutEmailAddresses,
+    type ReviewEdgeRow,
+    type ServedReviewEdgeRow,
+} from "./reviewEdgeIdentities";
 
 // ---------------------------------------------------------------------------
 // Types (mirroring the generated SDL types to avoid an extra import chain)
 // ---------------------------------------------------------------------------
 
-export interface ReviewEdgeRow {
-    reviewer: string; // email
-    author: string; // email
-    reviewsCount: number;
-    day: string; // Date scalar → ISO string "YYYY-MM-DD"
-    repoId: string | null | undefined;
-}
+/** A row as the page gets it: keys and names, never an e-mail address. */
+export type { ReviewEdgeRow };
 
 export interface ReviewEdgesResult {
     edges: ReviewEdgeRow[];
@@ -27,7 +28,7 @@ export interface ReviewEdgesResult {
 }
 
 interface ReviewEdgesQueryResponse {
-    reviewEdges: ReviewEdgesResult;
+    reviewEdges: { edges: ServedReviewEdgeRow[]; totalCount: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -68,5 +69,9 @@ export async function getReviewEdgesViaGraphQL(params: {
         },
         { orgId: params.orgId },
     );
-    return response.reviewEdges;
+    // The served identities can be e-mail addresses: they stop here.
+    return {
+        edges: withoutEmailAddresses(response.reviewEdges.edges),
+        totalCount: response.reviewEdges.totalCount,
+    };
 }

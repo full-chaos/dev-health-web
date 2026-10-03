@@ -23,7 +23,7 @@ import { filterPaletteEntries, paletteEntries } from "./commandPaletteEntries";
 import { shellHref } from "./shellHref";
 import { useShellNavParams } from "./useShellNavParams";
 
-const TRIGGER_LABEL = "Find a destination…";
+const TRIGGER_LABEL = "Find a product surface…";
 
 const subscribeNever = () => () => {};
 const serverHint = () => "Ctrl K";
@@ -61,7 +61,7 @@ function Palette({ onClose }: { onClose: () => void }) {
         <Dialog
             open
             onCloseAction={onClose}
-            title="Find a destination"
+            title="Find a product surface"
             hideTitle
             initialFocusRef={inputRef}
             data-testid="command-palette"
@@ -165,11 +165,11 @@ export function CommandPalette() {
                 type="button"
                 onClick={() => setOpen(true)}
                 data-testid="command-palette-trigger"
-                className="flex items-center gap-2 rounded-(--radius-sm) border border-(--card-stroke) bg-(--surface) px-3 py-1.5 text-xs text-(--ink-muted) hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
+                className="flex h-9 w-full max-w-95 flex-1 items-center gap-2.5 rounded-md border border-(--card-stroke) bg-(--background) px-3 text-left text-xs text-(--ink-muted) hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
             >
                 <Search className="size-3.5" aria-hidden="true" />
                 {TRIGGER_LABEL}
-                <kbd className="rounded border border-(--card-stroke) px-1.5 py-0.5 text-label-caps">
+                <kbd className="ml-auto rounded-sm border border-(--card-stroke) bg-(--surface) px-1.25 text-label-caps">
                     {hint}
                 </kbd>
             </button>

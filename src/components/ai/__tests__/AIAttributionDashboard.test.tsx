@@ -101,7 +101,8 @@ describe("AIAttributionDashboard", () => {
         render(<AIAttributionDashboard filter={filter} />);
 
         expect(screen.getByTestId("data-state-error")).toBeInTheDocument();
-        expect(screen.getByText("network exploded")).toBeInTheDocument();
+        expect(screen.queryByText("network exploded")).toBeNull();
+        expect(screen.getByText("Could not be read")).toBeInTheDocument();
         expect(screen.queryByTestId("ai-attribution-dashboard")).not.toBeInTheDocument();
     });
 

@@ -6,7 +6,13 @@ import { AuditLogFilters } from "@/components/shared/AuditLogFilters";
 import { listAuditLogs } from "@/lib/admin/server";
 import type { AuditLog, AuditLogFilter } from "@/lib/admin/types";
 import { UpgradeGate } from "@/components/billing/UpgradeGate";
+import { Button } from "@/components/shared/Button";
+import { AdminPager } from "@/components/admin/AdminPager";
+import { DataState } from "@/components/ui/DataState";
+import { Notice } from "@/components/ui/Notice";
+import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { logger } from "@/lib/logger";
 import { AuditLogRows } from "./AuditLogRows";
 import { AuditLogDetailDrawer } from "./AuditLogDetailDrawer";
 import { AuditLogEmptyState } from "./AuditLogEmptyState";
@@ -31,11 +37,14 @@ export default function OrgAuditLogPage() {
         try {
             const { data, error: apiError } = await listAuditLogs(filters, limit, offset);
             if (apiError) {
+                // The backend text goes to the log, never to the page (one plain sentence + Retry).
+                logger.error({ err: apiError }, "Failed to load audit logs");
                 setError(apiError);
             } else if (data) {
                 setLogs(data.items);
             }
-        } catch {
+        } catch (err) {
+            logger.error({ err }, "Failed to load audit logs");
             setError("An unexpected error occurred");
         } finally {
             setLoading(false);
@@ -82,55 +91,50 @@ export default function OrgAuditLogPage() {
 
     return (
         <UpgradeGate feature="audit_log" requiredTier="enterprise">
-            <div>
+            <div className="space-y-6">
                 <AdminHeader
-                    title="Audit Logs"
+                    title="Organization"
                     description="Browse and filter audit events for your organization."
                 />
 
-                <AuditLogFilters key={filterResetKey} variant="admin" onFilter={handleFilter} />
-
-                {error && (
-                    <div className="mb-6 rounded-2xl border border-(--negative)/20 bg-(--negative)/10 p-4 text-(--negative)">
-                        Error loading audit logs: {error}
-                    </div>
-                )}
-
-                {loading ? (
-                    <div className="py-12 text-center text-(--ink-muted)">
-                        Loading audit logs...
-                    </div>
-                ) : error ? null : logs.length === 0 ? (
-                    <AuditLogEmptyState
-                        hasActiveFilters={hasActiveFilters}
-                        onResetAction={handleResetFilters}
+                <Section title="Audit events">
+                    <AuditLogFilters
+                        key={filterResetKey}
+                        variant="admin"
+                        framed={false}
+                        onFilter={handleFilter}
                     />
-                ) : (
-                    <>
-                        <AuditLogRows entries={logs} onRowSelectAction={handleRowSelect} />
-                        <div className="mt-4 flex items-center justify-between">
-                            <button
-                                type="button"
-                                onClick={handlePrevPage}
-                                disabled={offset === 0}
-                                className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
-                            >
-                                {CTA_LABELS.previousPage}
-                            </button>
-                            <span className="text-sm text-(--ink-muted)">
-                                Showing {offset + 1}-{offset + logs.length}
-                            </span>
-                            <button
-                                type="button"
-                                onClick={handleNextPage}
-                                disabled={logs.length < limit}
-                                className="rounded-lg border border-(--card-stroke) bg-(--card-80) px-4 py-2 text-sm font-medium disabled:opacity-50"
-                            >
-                                {CTA_LABELS.nextPage}
-                            </button>
-                        </div>
-                    </>
-                )}
+
+                    {error && (
+                        <Notice
+                            variant="danger"
+                            live={false}
+                            action={<Button onClick={fetchLogs}>{CTA_LABELS.retry}</Button>}
+                        >
+                            Audit logs could not be loaded. Retry, or check again in a moment.
+                        </Notice>
+                    )}
+
+                    {loading ? (
+                        <DataState variant="loading" title="Loading audit logs..." />
+                    ) : error ? null : logs.length === 0 ? (
+                        <AuditLogEmptyState
+                            hasActiveFilters={hasActiveFilters}
+                            onResetAction={handleResetFilters}
+                        />
+                    ) : (
+                        <>
+                            <AuditLogRows entries={logs} onRowSelectAction={handleRowSelect} />
+                            <AdminPager
+                                offset={offset}
+                                count={logs.length}
+                                hasNext={logs.length >= limit}
+                                onPreviousAction={handlePrevPage}
+                                onNextAction={handleNextPage}
+                            />
+                        </>
+                    )}
+                </Section>
 
                 <AuditLogDetailDrawer
                     entry={selectedEntry}

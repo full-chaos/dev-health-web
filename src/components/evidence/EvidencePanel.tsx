@@ -1,32 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { ArrowUpRight } from "lucide-react";
 import { getExplainData } from "@/lib/api/home";
 import { ValidationErrors } from "@/lib/constants/errors";
 import { logger } from "@/lib/logger";
 import { MetricFilter } from "@/lib/filters/types";
 import { Contributor, HomeResponse, InvestmentResponse, OpportunitiesResponse } from "@/lib/types";
-import { EvidenceContext } from "./EvidenceContext";
-import { EvidenceItems } from "./EvidenceItems";
+import { EvidenceDrawerShell } from "./EvidenceDrawerShell";
+import { EvidenceFact, EvidenceFactList, EvidenceProvenanceFacts } from "./EvidenceFacts";
+import { EvidenceItems, type EvidenceItem } from "./EvidenceItems";
 import { SuggestedActions } from "./SuggestedActions";
 import { ErrorCard } from "@/components/ui/ErrorCard";
-import { Drawer } from "@/components/ui/Drawer";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { buttonClassName } from "@/components/shared/Button";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { STATUS_PILL } from "@/lib/statusPill";
 import { getMetricDefinition } from "@/lib/metrics/definitions";
-import { formatNumber, formatPercent as formatDisplayPercent } from "@/lib/formatters";
+import { formatDelta, formatNumber, formatPercent as formatDisplayPercent } from "@/lib/formatters";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import Link from "next/link";
-
-type EvidenceItem = {
-    id: string;
-    title: string;
-    url: string;
-    type: "pr" | "issue" | "commit" | "other";
-    meta?: string;
-};
 
 type EvidenceProvenance = {
     last_sync?: string | null;
@@ -45,11 +39,13 @@ type Action = {
 type EvidencePanelData = {
     metric?: string;
     label?: string;
+    /** Served by the explain endpoint; shown as the "Value" row. */
     value?: number;
+    unit?: string;
+    /** Served by the explain endpoint; shown as the "Change" row. */
     delta_pct?: number;
-    summary: string;
-    trend: "up" | "down" | "flat";
-    magnitude: string;
+    /** A summary the API served. The web builds none. */
+    summary?: string;
     why_it_matters?: string;
     evidence: EvidenceItem[];
     actions: Action[];
@@ -137,8 +133,6 @@ const normalizeHomeEvidence = (
 
     return {
         label: title,
-        value: result.data_confidence?.coverage_pct ?? coverage.repos_covered_pct,
-        delta_pct: 0,
         summary:
             thread === "measure"
                 ? coverageSummary
@@ -158,10 +152,11 @@ const normalizeHomeEvidence = (
             label: experiment,
             type: "experiment" as const,
         })),
+        // Served fields only. The Home response serves no source name; "Last sync" is the last
+        // successful sync, as on the Home card (an ingest time is not a sync).
         provenance: {
-            last_sync: result.freshness.last_ingested_at,
-            source: "home API",
-            quality: result.data_confidence?.level ?? "partial",
+            last_sync: result.freshness.latest_successful_sync_at ?? null,
+            quality: result.data_confidence?.level ?? null,
             partial: evidence.length === 0,
         },
     };
@@ -171,38 +166,26 @@ const normalizeInvestmentEvidence = (
     result: InvestmentResponse,
     title: string,
 ): EvidencePanelResult => {
+    // The served share of each theme is one row: theme left, share right, in the served order of
+    // size. The web writes no sentence about them (no "largest theme" statement).
     const themes = Object.entries(result.theme_distribution).sort(([, a], [, b]) => b - a);
-    const topTheme = themes[0];
-    const evidence = themes.slice(0, 6).map(([theme, share], index) => ({
+    const evidence = themes.map(([theme, share]) => ({
         id: `theme-${theme}`,
-        title: `${humanizeKey(theme)}: ${formatPercent(share * 100)}`,
+        title: humanizeKey(theme),
         url: "/investment",
         type: "other" as const,
-        meta: index === 0 ? "Largest investment theme" : "Investment theme",
+        value: formatPercent(share * 100),
     }));
 
     return {
         label: title,
-        value: topTheme ? topTheme[1] * 100 : 0,
-        delta_pct: 0,
-        summary: topTheme
-            ? `${humanizeKey(topTheme[0])} is the largest persisted investment theme in this scope.`
-            : "No investment mix has been persisted for this scope yet.",
         why_it_matters:
             "Investment mix context explains where effort is actually being spent, using persisted WorkUnit distributions.",
         evidence,
-        actions: [
-            {
-                id: "inspect-investment-mix",
-                label: "Inspect the investment mix and compare it with current priorities.",
-                type: "process",
-            },
-        ],
-        provenance: {
-            source: "investment API",
-            quality: result.evidence_quality_stats ? "moderate" : "partial",
-            partial: evidence.length === 0,
-        },
+        // The Investment response serves no action, so the drawer shows none.
+        actions: [],
+        // The Investment response serves no source name and no quality word for this block.
+        provenance: { partial: evidence.length === 0 },
     };
 };
 
@@ -229,20 +212,15 @@ const normalizeOpportunitiesEvidence = (
 
     return {
         label: title,
-        value: result.items.length,
-        delta_pct: 0,
         summary: result.items.length
-            ? `${result.items.length} opportunity${result.items.length === 1 ? "" : "ies"} matched the selected context.`
+            ? `${result.items.length} ${result.items.length === 1 ? "opportunity" : "opportunities"} matched the selected context.`
             : "No opportunities matched the selected context yet.",
         why_it_matters:
             "Opportunity context connects the investigation thread to the next reversible operating experiment.",
         evidence,
         actions,
-        provenance: {
-            source: "opportunities API",
-            quality: evidence.length > 0 ? "moderate" : "partial",
-            partial: evidence.length === 0,
-        },
+        // The Opportunities response serves no source name and no quality word.
+        provenance: { partial: evidence.length === 0 },
     };
 };
 
@@ -280,8 +258,13 @@ const evidenceDestination = (params: {
     apiUrl?: string;
     metric?: string;
     filters: MetricFilter;
+    role?: string;
+    origin?: string;
 }) => {
-    if (params.metric) return buildExploreUrl({ metric: params.metric, filters: params.filters });
+    const { role, origin } = params;
+    if (params.metric) {
+        return buildExploreUrl({ metric: params.metric, filters: params.filters, role, origin });
+    }
     if (!params.apiUrl) return "#";
 
     try {
@@ -290,16 +273,16 @@ const evidenceDestination = (params: {
             typeof window === "undefined" ? "http://localhost" : window.location.origin,
         );
         if (url.pathname === "/api/v1/investment") {
-            return withFilterParam("/investment", params.filters);
+            return withFilterParam("/investment", params.filters, role, origin);
         }
         if (url.pathname === "/api/v1/opportunities") {
-            return withFilterParam("/opportunities", params.filters);
+            return withFilterParam("/opportunities", params.filters, role, origin);
         }
     } catch {
-        return buildExploreUrl({ api: params.apiUrl, filters: params.filters });
+        return buildExploreUrl({ api: params.apiUrl, filters: params.filters, role, origin });
     }
 
-    return buildExploreUrl({ api: params.apiUrl, filters: params.filters });
+    return buildExploreUrl({ api: params.apiUrl, filters: params.filters, role, origin });
 };
 
 const readJsonOrEmpty = async <T,>(response: Response): Promise<T | null> => {
@@ -320,6 +303,12 @@ export type EvidencePanelProps = {
     apiUrl?: string;
     metric?: string;
     filters: MetricFilter;
+    /** The active lens role. It is kept in the footer link (Explore and the other destinations). */
+    role?: string;
+    /** A return-path hint: added to the footer link as the `origin` query parameter. */
+    origin?: string;
+    /** The opener's own content for the subject. Shown first, in every state (loading, error, data). */
+    intro?: ReactNode;
 };
 
 export function EvidencePanel({
@@ -329,6 +318,9 @@ export function EvidencePanel({
     apiUrl,
     metric,
     filters,
+    role,
+    origin,
+    intro,
 }: EvidencePanelProps) {
     const [data, setData] = useState<EvidencePanelData | null>(null);
     const [loading, setLoading] = useState(false);
@@ -375,19 +367,19 @@ export function EvidencePanel({
                         const metricKey = result.metric || metric;
                         const definition = metricKey ? getMetricDefinition(metricKey) : undefined;
 
-                        const deltaPct = result.delta_pct || 0;
-                        const trend = deltaPct > 0 ? "up" : deltaPct < 0 ? "down" : "flat";
-                        const magnitude = Math.abs(deltaPct) > 10 ? "Significant" : "Moderate";
-
+                        // A served contributor is one row: its served name left, its served
+                        // value (with the unit of the payload) and served change right.
+                        const unit = result.unit ? ` ${result.unit}` : "";
                         const rawEvidence: EvidenceItem[] =
                             result.evidence ||
                             [...(result.drivers || []), ...(result.contributors || [])].map(
                                 (d: Contributor) => ({
                                     id: d.id,
-                                    title: d.label,
+                                    title: d.display_name || d.label,
                                     url: d.evidence_link || "#",
                                     type: "other" as const,
-                                    meta: `${formatNumber(d.value)} (${formatPercent(d.delta_pct)})`,
+                                    value: `${formatNumber(d.value)}${unit}`,
+                                    valueNote: `(${formatDelta(d.delta_pct)})`,
                                 }),
                             );
 
@@ -405,26 +397,27 @@ export function EvidencePanel({
                                 ...(item.meta ? { meta: safeNarrative(item.meta) } : {}),
                             }));
 
-                        const actions = result.actions || definition?.suggestedActions || [];
+                        // Served actions only. The metric definition's fixed suggestions are not
+                        // served data and are not in the approved drawer.
+                        const actions = result.actions || [];
 
+                        // Served fields only: the web names no source and grades no quality. A
+                        // field the API did not serve reads "Not reported" in its row.
                         const provenance: EvidenceProvenance = result.provenance || {
                             last_sync: result.last_sync ?? null,
-                            source: result.source ?? "metrics API",
+                            source: result.source ?? null,
                             identity_confidence: result.identity_confidence ?? null,
-                            quality: evidence.length > 0 ? "moderate" : "partial",
+                            quality: null,
                             partial: evidence.length === 0,
                         };
 
-                        const summary =
-                            result.summary ||
-                            `${result.label || title} is ${trend} by ${formatPercent(Math.abs(deltaPct))}`;
+                        // The summary is the served one. The web builds no sentence from the
+                        // numbers: the served value and change are rows of their own.
                         const whyItMatters = result.why_it_matters || definition?.whyItMatters;
 
                         setData({
                             ...result,
-                            summary: safeNarrative(summary),
-                            trend,
-                            magnitude,
+                            summary: result.summary ? safeNarrative(result.summary) : undefined,
                             why_it_matters: whyItMatters ? safeNarrative(whyItMatters) : undefined,
                             evidence,
                             actions,
@@ -456,27 +449,31 @@ export function EvidencePanel({
 
     const showDevDiagnostics = isEvidenceDebugEnabled();
 
-    const exploreUrl = evidenceDestination({ apiUrl, metric, filters });
+    const exploreUrl = evidenceDestination({ apiUrl, metric, filters, role, origin });
 
-    // Escape contract: Drawer closes on Escape unless an inner control already handled it and
-    // called `preventDefault()`. Nothing inside this panel handles Escape today (links and
-    // buttons only); a future inner menu must call `preventDefault()` on its own Escape.
+    // Nothing inside this panel handles Escape today (links and buttons only); a future inner
+    // menu must call `preventDefault()` on its own Escape (see `EvidenceDrawerShell`).
     return (
-        <Drawer
-            open
+        <EvidenceDrawerShell
+            subject={title}
             onCloseAction={onCloseAction}
-            title={title}
-            eyebrow="Evidence & Context"
             footer={
                 <Link
                     href={exploreUrl}
-                    className="flex w-full items-center justify-center rounded-xl border border-(--accent-2)/20 bg-(--accent-2)/10 px-4 py-3 text-sm font-medium text-(--info) transition-colors hover:bg-(--accent-2)/20"
+                    // The shared drawer lives in the layout: close it, or it stays open over the
+                    // destination when the path does not change (Explore to Explore).
+                    onClick={onCloseAction}
+                    // Approved footer: one primary button (`.btn.primary`), not a full-width strip;
+                    // the icon goes before the text, as the prototype `btn()` draws it.
+                    className={buttonClassName("primary", "md")}
                 >
-                    {CTA_LABELS.openEvidence} ↗
+                    <ArrowUpRight aria-hidden="true" className="h-4 w-4" />
+                    {CTA_LABELS.openEvidence}
                 </Link>
             }
         >
-            <div className="space-y-4">
+            <>
+                {intro ? <div data-testid="evidence-intro">{intro}</div> : null}
                 {loading ? (
                     <div className="space-y-4 animate-pulse">
                         <div className="h-24 bg-(--card-70) rounded-2xl" />
@@ -497,8 +494,33 @@ export function EvidencePanel({
                     </div>
                 ) : data ? (
                     <>
-                        <EvidenceProvenanceStrip provenance={data.provenance} />
-                        <EvidenceContext data={data} />
+                        {data.summary ? (
+                            <p
+                                data-testid="evidence-summary"
+                                className="text-[0.8125rem] leading-5 text-(--ink-muted)"
+                            >
+                                {data.summary}
+                            </p>
+                        ) : null}
+                        <EvidenceFacts
+                            provenance={data.provenance}
+                            artifactCount={data.evidence?.length ?? 0}
+                        />
+                        <EvidenceMetricFacts
+                            value={data.value}
+                            unit={data.unit}
+                            deltaPct={data.delta_pct}
+                        />
+                        {data.why_it_matters ? (
+                            <div data-testid="evidence-why">
+                                <h4 className="text-xs font-semibold text-foreground">
+                                    Why this matters
+                                </h4>
+                                <p className="mt-1 text-xs leading-5 text-(--ink-muted)">
+                                    {data.why_it_matters}
+                                </p>
+                            </div>
+                        ) : null}
                         {data.evidence?.length ? (
                             <EvidenceItems items={data.evidence} />
                         ) : (
@@ -515,50 +537,62 @@ export function EvidencePanel({
                         description="There's no supporting detail to display for this selection right now. Try a different metric or widen the time window."
                     />
                 )}
-            </div>
-        </Drawer>
+            </>
+        </EvidenceDrawerShell>
     );
 }
 
-function EvidenceProvenanceStrip({ provenance }: { provenance?: EvidenceProvenance }) {
-    const confidence = provenance?.identity_confidence;
+/**
+ * The served value and change of a metric payload, as two fact rows. A payload that serves
+ * neither number gets no block (no row reads a made value).
+ */
+function EvidenceMetricFacts({
+    value,
+    unit,
+    deltaPct,
+}: {
+    value?: number;
+    unit?: string;
+    deltaPct?: number;
+}) {
+    const hasValue = typeof value === "number" && Number.isFinite(value);
+    const hasDelta = typeof deltaPct === "number" && Number.isFinite(deltaPct);
+    if (!hasValue && !hasDelta) return null;
 
     return (
-        <section className="grid gap-3 rounded-2xl border border-(--card-stroke) bg-(--card-90) p-4 text-xs text-(--ink-muted)">
-            <p className="text-xs uppercase tracking-[0.2em]">Quality + provenance</p>
-            <div className="grid gap-2 sm:grid-cols-2">
-                <EvidenceProvenanceItem
-                    label="Source"
-                    value={provenance?.source || "metrics API"}
-                />
-                <EvidenceProvenanceItem label="Quality" value={provenance?.quality || "partial"} />
-                <EvidenceProvenanceItem
-                    label="Last sync"
-                    value={provenance?.last_sync || "not reported"}
-                />
-                <EvidenceProvenanceItem
-                    label="Identity confidence"
-                    value={
-                        typeof confidence === "number"
-                            ? `${Math.round(confidence * 100)}%`
-                            : "not reported"
-                    }
-                />
-            </div>
+        <EvidenceFactList aria-label="Value and change" testId="evidence-metric-facts">
+            <EvidenceFact
+                label="Value"
+                value={hasValue ? `${formatNumber(value)}${unit ? ` ${unit}` : ""}` : undefined}
+            />
+            <EvidenceFact label="Change" value={hasDelta ? formatDelta(deltaPct) : undefined} />
+        </EvidenceFactList>
+    );
+}
+
+/** The provenance rows of an explain result, and the partial-data note under them. */
+function EvidenceFacts({
+    provenance,
+    artifactCount,
+}: {
+    provenance?: EvidenceProvenance;
+    artifactCount: number;
+}) {
+    return (
+        <section className="text-xs">
+            <EvidenceProvenanceFacts
+                source={provenance?.source}
+                quality={provenance?.quality}
+                lastSync={provenance?.last_sync}
+                identityConfidence={provenance?.identity_confidence}
+                artifactCount={artifactCount}
+            />
             {provenance?.partial && (
-                <p className={`rounded-xl px-3 py-2 ${STATUS_PILL.caution}`}>
+                <p className={`mt-3 rounded-xl px-3 py-2 ${STATUS_PILL.caution}`}>
                     Partial evidence: the backend did not return a complete artifact list for this
                     selection.
                 </p>
             )}
         </section>
-    );
-}
-
-function EvidenceProvenanceItem({ label, value }: { label: string; value: string }) {
-    return (
-        <span className="rounded-xl border border-(--card-stroke) bg-background/35 px-3 py-2 leading-5">
-            {label}: {value}
-        </span>
     );
 }

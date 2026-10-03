@@ -30,7 +30,7 @@ export function CidrField({ id, label, value, error, disabled, onChangeAction }:
                 className={`w-full rounded-lg border bg-(--card-70) px-3 py-2 text-sm focus:outline-none ${
                     error
                         ? "border-(--negative) focus:border-(--negative)"
-                        : "border-(--card-stroke) focus:border-(--accent)"
+                        : "border-(--card-stroke) focus:border-(--accent-2)"
                 }`}
             />
             {error ? (

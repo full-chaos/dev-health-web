@@ -29,14 +29,22 @@ const automationsLink = (page: Page) =>
     aiChildren(page).getByRole("link", { name: /^Automations$/ });
 
 test.describe("AI workflow primary navigation", () => {
-    test("Home exposes the AI entry path when the Home callout is secondary", async ({ page }) => {
+    // CHAOS-8064: the Home body shows only the approved blocks, so the "AI Workflow" callout and
+    // its "Open AI Workflows" link are not on Home. The AI entry path from Home is the sidebar.
+    test("Home reaches the AI area from the sidebar; the Home body has no AI callout", async ({
+        page,
+    }) => {
         // clickUntilUrl retries can consume up to 30s under load; widen the budget so
         // the retry window doesn't collide with the default 30s test timeout.
         test.slow();
         await page.goto(`/dashboard?f=${defaultFilter}`);
         await waitForHydration(page);
 
-        const aiEntry = page.getByRole("link", { name: /Open AI/ });
+        await expect(page.getByRole("link", { name: /Open AI/ })).toHaveCount(0);
+        await expect(page.getByTestId("ai-workflow-callout")).toHaveCount(0);
+        await expect(page.getByTestId("ai-workflow-secondary-link")).toHaveCount(0);
+
+        const aiEntry = page.locator("aside nav").getByRole("link", { name: /^AI$/ });
         await expect(aiEntry).toBeVisible();
 
         // Heavy dashboard hydrates slowly under suite load; allow a longer retry

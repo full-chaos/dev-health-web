@@ -190,7 +190,7 @@ export function ContextPacketExplorer({
                             aria-describedby={goalError ? "context-goal-error" : undefined}
                             value={form.goal}
                             onChange={(event) => updateField("goal", event.target.value)}
-                            className="mt-2 min-h-24 w-full rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-body text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                            className="mt-2 min-h-24 w-full rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-body text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                         />
                         {goalError ? (
                             <span
@@ -211,7 +211,7 @@ export function ContextPacketExplorer({
                             disabled={catalog.kind !== "ready"}
                             value={form.repository}
                             onChange={(event) => updateField("repository", event.target.value)}
-                            className="mt-2 w-full rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-body text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                            className="mt-2 w-full rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-body text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                         >
                             {availableRepositories.map((repository) => (
                                 <option key={repository} value={repository}>
@@ -228,7 +228,7 @@ export function ContextPacketExplorer({
                             id="context-branch-or-commit"
                             value={form.branchOrCommit}
                             onChange={(event) => updateField("branchOrCommit", event.target.value)}
-                            className="mt-2 w-full rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-body text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                            className="mt-2 w-full rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-body text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                         />
                     </label>
                     <label htmlFor="context-task-reference" className="md:col-span-2">
@@ -237,7 +237,7 @@ export function ContextPacketExplorer({
                             id="context-task-reference"
                             value={form.taskReference}
                             onChange={(event) => updateField("taskReference", event.target.value)}
-                            className="mt-2 w-full rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-body text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                            className="mt-2 w-full rounded-(--radius-sm) border border-(--card-stroke) bg-background px-3 py-2 text-body text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                         />
                     </label>
                     <RepositoryDiscoveryState
@@ -249,7 +249,7 @@ export function ContextPacketExplorer({
                 <button
                     type="submit"
                     disabled={catalog.kind !== "ready"}
-                    className="mt-5 rounded-(--radius-sm) bg-(--accent) px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50 disabled:cursor-wait disabled:opacity-60"
+                    className="mt-5 rounded-(--radius-sm) bg-(--accent) px-4 py-2 text-sm font-semibold text-white transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50 disabled:cursor-wait disabled:opacity-60"
                 >
                     {CTA_LABELS.generateContext}
                 </button>

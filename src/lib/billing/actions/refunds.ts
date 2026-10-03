@@ -1,5 +1,6 @@
 "use server";
 
+import { failureResult } from "@/lib/actionFailure";
 import type { ActionResult } from "@/lib/result";
 import { getAuthHeaders, getBackendUrl, resolveOrgId } from "./_shared";
 
@@ -74,13 +75,16 @@ export async function createRefund(
 
         if (!res.ok) {
             const detail = await res.json().catch(() => ({ detail: res.statusText }));
-            return { error: detail.detail || `Refund failed (${res.status})` };
+            return failureResult("action", "createRefund", {
+                status: res.status,
+                served: detail.detail,
+            });
         }
 
         const data = (await res.json()) as RefundRecord;
         return { data };
     } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureResult("action", "createRefund", { error: err });
     }
 }
 
@@ -125,12 +129,15 @@ export async function getRefunds(
 
         if (!res.ok) {
             const detail = await res.json().catch(() => ({ detail: res.statusText }));
-            return { error: detail.detail || `Unable to load refunds (${res.status})` };
+            return failureResult("read", "getRefunds", {
+                status: res.status,
+                served: detail.detail,
+            });
         }
 
         const data = (await res.json()) as RefundListResponse;
         return { data };
     } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureResult("read", "getRefunds", { error: err });
     }
 }

@@ -1106,7 +1106,14 @@ export type ImproveOpportunity = {
   recommendedAction: Scalars['String']['output'];
   score: Scalars['Float']['output'];
   severity: Scalars['String']['output'];
+  /** The rule's limit, in `unit`. A fixed constant of the detector, not a per-organization setting. */
+  threshold: Scalars['Float']['output'];
+  /** Which side of the threshold fires the rule: ABOVE (value > threshold) or BELOW (value < threshold). */
+  thresholdDirection: ThresholdDirection;
   title: Scalars['String']['output'];
+  unit: ImproveOpportunityUnit;
+  /** The measured metric the rule compared, in `unit`. The same number the rationale states. */
+  value: Scalars['Float']['output'];
 };
 
 export type ImproveOpportunityKind =
@@ -1117,6 +1124,11 @@ export type ImproveOpportunityKind =
   | 'HIGH_WIP'
   | 'LOW_THROUGHPUT'
   | 'SLOW_CYCLE_TIME';
+
+export type ImproveOpportunityUnit =
+  | 'HOURS'
+  | 'ITEMS'
+  | 'RATIO';
 
 export type MaintainerShare = {
   __typename?: 'MaintainerShare';
@@ -2157,6 +2169,10 @@ export type TestOpsRiskTrendPoint = {
   date: Scalars['Date']['output'];
   riskScore: Scalars['Float']['output'];
 };
+
+export type ThresholdDirection =
+  | 'ABOVE'
+  | 'BELOW';
 
 export type ThroughputEstimateCoverage = {
   __typename?: 'ThroughputEstimateCoverage';

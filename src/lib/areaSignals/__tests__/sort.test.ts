@@ -91,3 +91,22 @@ describe("groupByCluster", () => {
         expect(groupByCluster(input)[0].signals.map((s) => s.id)).toEqual(["ok", "u"]);
     });
 });
+
+describe("groupByCluster with a fixed group order", () => {
+    const list = [
+        signal("r1", "critical", "Risk"),
+        signal("q1", "low", "Quality"),
+        signal("x1", "high", "Other"),
+        signal("q2", "high", "Quality"),
+    ];
+
+    it("keeps the first-seen order without an order (as before)", () => {
+        expect(groupByCluster(list).map((g) => g.cluster)).toEqual(["Risk", "Quality", "Other"]);
+    });
+
+    it("follows the given order, puts clusters it does not name after them, and keeps severity inside", () => {
+        const groups = groupByCluster(list, ["Quality", "Risk"]);
+        expect(groups.map((g) => g.cluster)).toEqual(["Quality", "Risk", "Other"]);
+        expect(groups[0].signals.map((s) => s.id)).toEqual(["q2", "q1"]);
+    });
+});

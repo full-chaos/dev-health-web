@@ -86,7 +86,7 @@ export function LoginForm({ plan, trialIntent = false, callbackUrl }: LoginFormP
     };
 
     const inputClass =
-        "w-full rounded-lg border border-[var(--card-stroke)] bg-[var(--background)] px-4 py-3 text-[var(--foreground)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)] transition-shadow";
+        "w-full rounded-lg border border-[var(--card-stroke)] bg-[var(--background)] px-4 py-3 text-[var(--foreground)] placeholder:text-[var(--ink-muted)] focus:outline-none focus:ring-2 focus:ring-(--accent-2) transition-shadow";
 
     return (
         <>

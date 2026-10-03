@@ -1,6 +1,7 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+
+import { sourceEntries } from "@/test/sourceTree";
 
 // CHAOS ticket 1.7: links and actions use the action color (`--accent-2`, `--info` on tinted
 // pills), never orange. Orange text is `--accent-text` (selection, eyebrows, badges). This scan
@@ -8,9 +9,8 @@ import { describe, expect, it } from "vitest";
 const SRC = new URL("../..", import.meta.url).pathname;
 
 const walk = (dir: string): string[] =>
-    readdirSync(dir).flatMap((name) => {
-        const path = join(dir, name);
-        if (statSync(path).isDirectory()) {
+    sourceEntries(dir).flatMap(({ name, path, isDirectory }) => {
+        if (isDirectory) {
             return name === "__tests__" || name === "marketing" || name === "(marketing)"
                 ? []
                 : walk(path);

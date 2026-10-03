@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
+import { PageHeader } from "@/components/shell/PageHeader";
 import { ChordChart } from "@/components/charts/ChordChart";
 import {
     ChordChartControls,
@@ -450,19 +451,11 @@ export default function Home() {
 
     return (
         <div className="min-h-screen bg-background text-foreground">
-            <main className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
-                <header className="flex flex-col gap-3">
-                    <p className="text-sm font-semibold uppercase tracking-[0.15em] text-(--ink-muted)">
-                        Full Chaos Dev Health Ops
-                    </p>
-                    <h1 className="text-4xl font-semibold leading-tight tracking-tight">
-                        Chart prototypes powered by ECharts
-                    </h1>
-                    <p className="max-w-2xl text-base text-(--ink-muted)">
-                        Interactive chart types inspired by Grafana charts, built in React +
-                        Next.js. Each chart has a Playwright test running in a headless browser.
-                    </p>
-                </header>
+            <div className="mx-auto flex w-full max-w-6xl flex-col gap-10 px-6 py-12">
+                <PageHeader
+                    title="Chart prototypes powered by ECharts"
+                    subtitle="Interactive chart types inspired by Grafana charts, built in React + Next.js. Each chart has a Playwright test running in a headless browser."
+                />
 
                 <section className="grid gap-6 md:grid-cols-2">
                     <div
@@ -773,7 +766,7 @@ export default function Home() {
                         <WorkGraphLegend />
                     </div>
                 </section>
-            </main>
+            </div>
         </div>
     );
 }

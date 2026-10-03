@@ -124,3 +124,26 @@ describe("PageHeader — BackLink versus breadcrumbs (A5)", () => {
         expect(screen.queryAllByRole("link")).toHaveLength(0);
     });
 });
+
+describe("PageHeader — title adornment", () => {
+    it("draws the adornment in the title row beside the h1, not inside it", () => {
+        render(<PageHeader title="Organization" titleAdornment={<span>Platform admin</span>} />);
+
+        const heading = screen.getByRole("heading", { level: 1 });
+        expect(heading).toHaveTextContent("Organization");
+        expect(heading).not.toHaveTextContent("Platform admin");
+        const adornment = screen.getByTestId("page-header-title-adornment");
+        expect(adornment).toHaveTextContent("Platform admin");
+        expect(adornment.parentElement).toBe(heading.parentElement);
+        expect(
+            heading.compareDocumentPosition(adornment) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
+    it("draws nothing when there is no adornment", () => {
+        render(<PageHeader title="Organization" />);
+
+        expect(screen.queryByTestId("page-header-title-adornment")).toBeNull();
+        expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+    });
+});

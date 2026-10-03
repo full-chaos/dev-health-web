@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/shared/Button";
 import { SettingsSection } from "./SettingsSection";
 import { updateOrgProfile } from "@/lib/admin/server";
 import type { Organization } from "@/lib/admin/types";
@@ -37,7 +38,7 @@ export function GeneralSettings({ org }: GeneralSettingsProps) {
             title="Profile"
             description="Manage your organization's basic information."
         >
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="max-w-3xl space-y-4">
                 <div>
                     <label htmlFor="name" className="block text-sm font-medium text-(--foreground)">
                         Organization Name
@@ -48,7 +49,7 @@ export function GeneralSettings({ org }: GeneralSettingsProps) {
                         name="name"
                         defaultValue={org?.name ?? ""}
                         disabled={isLoading}
-                        className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+                        className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2) disabled:opacity-50"
                     />
                 </div>
                 <div>
@@ -61,8 +62,12 @@ export function GeneralSettings({ org }: GeneralSettingsProps) {
                         name="slug"
                         defaultValue={org?.slug ?? ""}
                         disabled
+                        aria-describedby="slug-hint"
                         className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--ink-muted) shadow-sm opacity-50 cursor-not-allowed"
                     />
+                    <p id="slug-hint" className="mt-1.5 text-xs text-(--ink-muted)">
+                        The slug cannot be changed.
+                    </p>
                 </div>
                 <div>
                     <label
@@ -77,17 +82,13 @@ export function GeneralSettings({ org }: GeneralSettingsProps) {
                         rows={3}
                         defaultValue={org?.description ?? ""}
                         disabled={isLoading}
-                        className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent) disabled:opacity-50"
+                        className="mt-1 block w-full rounded-md border border-(--card-stroke) bg-(--background) px-3 py-2 text-(--foreground) shadow-sm focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2) disabled:opacity-50"
                     />
                 </div>
                 <div className="flex justify-end">
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2 disabled:opacity-50"
-                    >
+                    <Button type="submit" variant="primary" disabled={isLoading}>
                         {isLoading ? "Saving..." : "Save Changes"}
-                    </button>
+                    </Button>
                 </div>
             </form>
         </SettingsSection>

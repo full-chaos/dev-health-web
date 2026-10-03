@@ -1,4 +1,5 @@
 import { render, screen, within } from "@/test/utils";
+import { renderWithEvidenceDrawer } from "@/test/evidenceDrawer";
 import { STATUS_PILL } from "@/lib/statusPill";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Session } from "next-auth";
@@ -36,6 +37,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import {
+    backlogFacts,
     BacklogConditionCard,
     BacklogTiles,
     EstimateCoverageCard,
@@ -104,7 +106,7 @@ function makeSession(orgId = "org-1"): Session {
 
 async function renderPage(params: Record<string, string> = {}) {
     const ui = await BacklogRiskPage({ searchParams: Promise.resolve(params) });
-    render(ui as React.ReactElement);
+    renderWithEvidenceDrawer(ui as React.ReactElement);
 }
 
 beforeEach(() => {
@@ -146,12 +148,16 @@ const tiles = (over: Partial<ThroughputForecast> = {}) => {
 };
 
 const tile = (id: string) => within(screen.getByTestId(id));
+/** The tile's value as it reads: the number, then the small unit ("4 days", "0.69 ×"). */
+const valueOf = (id: string) => tile(id).getByTestId("metric-value").textContent;
+const unitOf = (id: string) => tile(id).queryByTestId("metric-unit");
 
 describe("BacklogTiles", () => {
     it("writes the congestion ratio as 'N.NN×' like /plan, with 'vs typical' and the threshold, never a raw count", () => {
         tiles({ wipCongestion: makeWipOverlay({ value: 1.25, threshold: 1.25 }) });
 
-        expect(tile("tile-wip-congestion").getByText("1.25×")).toBeInTheDocument();
+        // Two decimals, as the threshold caption: the shared tile formatter keeps one.
+        expect(valueOf("tile-wip-congestion")).toBe("1.25×");
         expect(
             tile("tile-wip-congestion").getByText("vs typical · threshold 1.25×"),
         ).toBeInTheDocument();
@@ -175,25 +181,25 @@ describe("BacklogTiles", () => {
     it("renders WIP ages as ages, not counts: P90 and median", () => {
         tiles({ staleWip: { p50AgeHours: 24, p90AgeHours: 96 } });
 
-        expect(tile("tile-stale-wip").getByText("4 days")).toBeInTheDocument();
+        expect(valueOf("tile-stale-wip")).toBe("4 days");
+        expect(unitOf("tile-stale-wip")).toHaveTextContent("days");
         expect(
             tile("tile-stale-wip").getByText("90th percentile age of in-progress items"),
         ).toBeInTheDocument();
-        expect(tile("tile-median-wip-age").getByText("1 day")).toBeInTheDocument();
+        expect(valueOf("tile-median-wip-age")).toBe("1 day");
         expect(screen.queryByText(/items stuck/i)).not.toBeInTheDocument();
     });
 
     it("pluralizes rounded day labels from the displayed value", () => {
         tiles({ staleWip: { p50AgeHours: null, p90AgeHours: 24.1 } });
-        expect(screen.getByText("1 day")).toBeInTheDocument();
-        expect(screen.queryByText("1 days")).not.toBeInTheDocument();
+        expect(valueOf("tile-stale-wip")).toBe("1 day");
     });
 
-    it("shows a dash and 'No data' (never 0) when WIP age is missing", () => {
+    it("shows 'Not reported' and 'No data' (never 0) when WIP age is missing", () => {
         tiles({ staleWip: null });
 
         for (const id of ["tile-stale-wip", "tile-median-wip-age"]) {
-            expect(tile(id).getByText("—")).toBeInTheDocument();
+            expect(valueOf(id)).toBe("Not reported");
             expect(tile(id).getByText("No data")).toBeInTheDocument();
         }
     });
@@ -201,7 +207,7 @@ describe("BacklogTiles", () => {
     it("shows the unestimated count and the coverage in the fourth tile", () => {
         tiles();
 
-        expect(tile("tile-unestimated").getByText("28 items")).toBeInTheDocument();
+        expect(valueOf("tile-unestimated")).toBe("28 items");
         expect(tile("tile-unestimated").getByText("72% estimate coverage")).toBeInTheDocument();
     });
 
@@ -220,9 +226,9 @@ describe("BacklogTiles", () => {
         expect(screen.queryByText(/0%/)).toBeNull();
     });
 
-    it("shows a dash and 'No data' when estimate coverage is missing or not computed", () => {
+    it("shows 'Not reported' and 'No data' when estimate coverage is missing or not computed", () => {
         const first = tiles({ estimateCoverage: null });
-        expect(tile("tile-unestimated").getByText("—")).toBeInTheDocument();
+        expect(valueOf("tile-unestimated")).toBe("Not reported");
         expect(tile("tile-unestimated").getByText("No data")).toBeInTheDocument();
         first.unmount();
 
@@ -234,7 +240,7 @@ describe("BacklogTiles", () => {
                 backlogSize: 5,
             },
         });
-        expect(tile("tile-unestimated").getByText("—")).toBeInTheDocument();
+        expect(valueOf("tile-unestimated")).toBe("Not reported");
         expect(tile("tile-unestimated").getByText("No data")).toBeInTheDocument();
     });
 });
@@ -413,6 +419,27 @@ describe("ForecastErrorState", () => {
 // ── ForecastContent ───────────────────────────────────────────────────────────
 
 describe("ForecastContent", () => {
+    it("draws four joined tiles, then the two cards as Sections with the prototype descriptions", () => {
+        render(<ForecastContent forecast={makeForecast()} />);
+
+        expect(screen.getByTestId("backlog-tiles")).toHaveAttribute("data-columns", "4");
+        const condition = within(screen.getByTestId("backlog-condition"));
+        expect(
+            condition.getByRole("heading", { level: 2, name: "Backlog condition" }),
+        ).toBeInTheDocument();
+        expect(
+            condition.getByText(
+                "Normal congestion and aging work can coexist; do not flatten the panels into one status.",
+            ),
+        ).toBeInTheDocument();
+        const coverage = within(screen.getByTestId("unestimated-debt-card"));
+        expect(
+            coverage.getByRole("heading", { level: 2, name: "Estimate coverage" }),
+        ).toBeInTheDocument();
+        expect(coverage.getByText("Missing estimates remain explicit.")).toBeInTheDocument();
+        expect(coverage.getAllByTestId("evidence-fact")).toHaveLength(4);
+    });
+
     it("renders the congestion tile with the ratio from the fixture", () => {
         render(
             <ForecastContent
@@ -422,15 +449,15 @@ describe("ForecastContent", () => {
             />,
         );
         expect(
-            within(screen.getByTestId("tile-wip-congestion")).getByText("1.50×"),
-        ).toBeInTheDocument();
+            within(screen.getByTestId("tile-wip-congestion")).getByTestId("metric-value"),
+        ).toHaveTextContent("1.50×");
         expect(screen.getByText("Elevated")).toBeInTheDocument();
     });
 
     it("renders live stale WIP and live unestimated work", () => {
         render(<ForecastContent forecast={makeForecast()} />);
-        expect(screen.getAllByText("4 days").length).toBeGreaterThan(0);
-        expect(screen.getByText("28 items")).toBeInTheDocument();
+        expect(valueOf("tile-stale-wip")).toBe("4 days");
+        expect(valueOf("tile-unestimated")).toBe("28 items");
         expect(screen.getByText("72% estimate coverage")).toBeInTheDocument();
     });
 
@@ -516,7 +543,9 @@ describe("BacklogRiskPage GraphQL states", () => {
             workScopeId: null,
             historyWeeks: 12,
         });
-        expect(screen.getByText("20 items")).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId("tile-unestimated")).getByTestId("metric-value"),
+        ).toHaveTextContent("20 items");
         expect(screen.getByText("60% estimate coverage")).toBeInTheDocument();
     });
 
@@ -547,5 +576,64 @@ describe("BacklogRiskPage GraphQL states", () => {
         expect(screen.getByTestId("backlog-risk-fetch-error")).toBeInTheDocument();
         expect(screen.getByText("Backlog risk could not load")).toBeInTheDocument();
         expect(screen.queryByText("Not enough throughput history")).not.toBeInTheDocument();
+    });
+});
+
+describe("backlogFacts (View evidence)", () => {
+    const rows = (forecast: ThroughputForecast) =>
+        backlogFacts(forecast).map((fact) => [fact.label, fact.value]);
+
+    it("lists the served values as the tiles and cards show them", () => {
+        expect(rows(makeForecast())).toEqual([
+            ["WIP congestion", "1.25× · Elevated"],
+            ["Open items · WIP panel", "100"],
+            ["P90 work age", "4 days"],
+            ["Median work age", "1 day"],
+            ["Coverage", "72%"],
+            ["Estimated", "72"],
+            ["Unestimated", "28"],
+            ["Open backlog · estimates panel", "100"],
+        ]);
+    });
+
+    it("leaves a value out (the drawer reads 'Not reported') when it is not served, never 0", () => {
+        const all = rows(makeForecast({ staleWip: null, estimateCoverage: null }));
+        for (const label of [
+            "P90 work age",
+            "Median work age",
+            "Coverage",
+            "Estimated",
+            "Unestimated",
+            "Open backlog · estimates panel",
+        ]) {
+            expect(all).toContainEqual([label, undefined]);
+        }
+    });
+});
+
+describe("Backlog Risk page header", () => {
+    it("has a View evidence action with the page's values when a forecast loads", async () => {
+        await renderPage();
+
+        expect(await screen.findByRole("button", { name: "View evidence" })).toBeInTheDocument();
+    });
+
+    it("has none when the forecast failed to load", async () => {
+        getThroughputForecastViaGraphQLMock.mockRejectedValue(new Error("boom"));
+        await renderPage();
+
+        expect(screen.queryByRole("button", { name: "View evidence" })).toBeNull();
+    });
+});
+
+describe("Backlog Risk page org scope (CHAOS-8272)", () => {
+    it("asks for the session org, and makes no request without one", async () => {
+        await renderPage();
+        expect(getThroughputForecastViaGraphQLMock.mock.calls[0]?.[0]).toBe("org-1");
+
+        requireSessionMock.mockResolvedValue({ user: { id: "user-1" } });
+        getThroughputForecastViaGraphQLMock.mockClear();
+        await renderPage();
+        expect(getThroughputForecastViaGraphQLMock).not.toHaveBeenCalled();
     });
 });

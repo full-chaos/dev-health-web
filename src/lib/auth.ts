@@ -10,6 +10,7 @@ import { logger } from "@/lib/logger";
 import { getServerEnv } from "@/lib/config";
 import { resolveActiveOrgId } from "@/lib/impersonation";
 import { applyBackendValidationMemo } from "@/lib/authValidationMemo";
+import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 
 const authLogger = logger.child({ module: "auth" });
 
@@ -279,6 +280,15 @@ const nextAuth = NextAuth({
                     if (res.ok) {
                         const data = await res.json();
                         token.access_token = data.access_token;
+                        if (!data.access_token) {
+                            // A 2xx answer with no access token: the session loses its
+                            // access token and no error is set.
+                            logSessionBranch({
+                                operation: "refresh",
+                                branch: "refresh_no_access_token",
+                                status: res.status,
+                            });
+                        }
                         // NOTE: Single-use token rotation — if multiple concurrent JWT callbacks
                         // race (e.g., parallel SSR requests), a later callback may attempt to use
                         // an already-rotated refresh_token and receive a 401. The ?? fallback below
@@ -290,6 +300,10 @@ const nextAuth = NextAuth({
                         token.expires_at = now + (data.expires_in || 3600) * 1000;
                         token.last_validated = now;
                         token.refresh_failures = 0;
+                        // A new access token starts with a clean validation count:
+                        // the count belongs to the token it replaces, and a stale
+                        // one keeps the next validation backoff at its cap.
+                        token.validation_failures = 0;
                         token.error = undefined;
                         if (data.user) {
                             token.id = data.user.id;
@@ -299,6 +313,11 @@ const nextAuth = NextAuth({
                             token.is_superuser = data.user.is_superuser ?? false;
                         }
                     } else if (res.status === 401) {
+                        logSessionBranch({
+                            operation: "refresh",
+                            branch: "refresh_failed",
+                            status: res.status,
+                        });
                         token.access_token = undefined;
                         token.refresh_token = undefined;
                         token.error = "refresh_failed";
@@ -310,6 +329,12 @@ const nextAuth = NextAuth({
                         token.access_token = undefined;
                         const failures = ((token.refresh_failures as number | undefined) ?? 0) + 1;
                         token.refresh_failures = failures;
+                        logSessionBranch({
+                            operation: "refresh",
+                            branch: "refresh_unavailable",
+                            status: res.status,
+                            failures,
+                        });
                         const cappedDelay = Math.min(
                             REFRESH_BACKOFF_CAP,
                             REFRESH_BACKOFF_BASE * Math.pow(2, failures - 1),
@@ -322,12 +347,18 @@ const nextAuth = NextAuth({
                         token.error = "refresh_unavailable";
                         return token;
                     }
-                } catch {
+                } catch (error) {
                     // Network error — revoke access_token to prevent exposing an expired bearer
                     // token, but keep refresh_token so a later JWT callback can retry after backoff.
                     token.access_token = undefined;
                     const failures = ((token.refresh_failures as number | undefined) ?? 0) + 1;
                     token.refresh_failures = failures;
+                    logSessionBranch({
+                        operation: "refresh",
+                        branch: "refresh_call_failed",
+                        errorName: thrownErrorName(error),
+                        failures,
+                    });
                     const cappedDelay = Math.min(
                         REFRESH_BACKOFF_CAP,
                         REFRESH_BACKOFF_BASE * Math.pow(2, failures - 1),

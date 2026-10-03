@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { RefreshControl } from "@/components/admin/RefreshControl";
@@ -288,7 +289,7 @@ export function SyncRunDetailLive({
             // fetch arrives as data:undefined. Do NOT apply blindly: surface a
             // non-fatal indicator instead of rendering stale/empty data.
             if (runRes.error || unitsRes.error || !runRes.data || !unitsRes.data) {
-                setUnitsError(runRes.error ?? unitsRes.error ?? "Refresh failed.");
+                setUnitsError(READ_FAILED_MESSAGE);
                 return;
             }
 

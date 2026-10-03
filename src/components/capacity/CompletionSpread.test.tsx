@@ -94,12 +94,19 @@ describe("CompletionSpread — the days histogram", () => {
         expect(marks[0].label.formatter).toContain("40 days");
     });
 
-    it("says how many of the runs ended on a value, from the returned counts", () => {
+    it("says how many runs ended on a value: the returned count, and no total the API did not serve", () => {
         render(<CompletionSpread forecast={base()} />);
         const text = options()[0].tooltip.formatter({ data: [19, 120] });
-        // 50 + 120 + 30 = 200 runs in the returned bins
-        expect(text).toContain("120 of 200 runs");
+        expect(text).toContain("120 runs ended here");
         expect(text).toContain("19");
+        // The bins sum to 200 (50 + 120 + 30). The API serves no run total, so the web shows none.
+        expect(text).not.toContain("200");
+        expect(text).not.toMatch(/\bof\b/);
+    });
+
+    it("says 1 run, not 1 runs", () => {
+        render(<CompletionSpread forecast={base()} />);
+        expect(options()[0].tooltip.formatter({ data: [19, 1] })).toContain("1 run ended here");
     });
 
     it("skips a marker whose percentile the forecast does not carry", () => {
@@ -121,22 +128,26 @@ describe("CompletionSpread — the days histogram", () => {
 });
 
 describe("CompletionSpread — states, never zero-filled", () => {
-    it("a null distribution is a quiet notice and no chart", () => {
+    it("a null distribution reads 'Not reported' and draws no chart", () => {
         render(<CompletionSpread forecast={base({ completionDistribution: null })} />);
 
         expect(chartSpy).not.toHaveBeenCalled();
         expect(screen.queryByTestId("chart")).toBeNull();
-        expect(
-            screen.getByText("No simulation spread was stored for this forecast."),
-        ).toBeInTheDocument();
+        // Not served: the state word of the rule, then why. Never an empty chart, never a zero.
+        const state = screen.getByTestId("completion-spread");
+        expect(state).toHaveAttribute("data-reported", "false");
+        expect(state).toHaveTextContent(/^Not reported/);
+        expect(state).toHaveTextContent("No simulation spread is stored for this forecast.");
     });
 
     it("a missing field is the same as null (an older response)", () => {
         render(<CompletionSpread forecast={base({ completionDistribution: undefined })} />);
         expect(screen.queryByTestId("chart")).toBeNull();
-        expect(
-            screen.getByText("No simulation spread was stored for this forecast."),
-        ).toBeInTheDocument();
+        // Not served: the state word of the rule, then why. Never an empty chart, never a zero.
+        const state = screen.getByTestId("completion-spread");
+        expect(state).toHaveAttribute("data-reported", "false");
+        expect(state).toHaveTextContent(/^Not reported/);
+        expect(state).toHaveTextContent("No simulation spread is stored for this forecast.");
     });
 
     it("an object with both lists null or empty is also no distribution", () => {
@@ -146,9 +157,11 @@ describe("CompletionSpread — states, never zero-filled", () => {
             />,
         );
         expect(screen.queryByTestId("chart")).toBeNull();
-        expect(
-            screen.getByText("No simulation spread was stored for this forecast."),
-        ).toBeInTheDocument();
+        // Not served: the state word of the rule, then why. Never an empty chart, never a zero.
+        const state = screen.getByTestId("completion-spread");
+        expect(state).toHaveAttribute("data-reported", "false");
+        expect(state).toHaveTextContent(/^Not reported/);
+        expect(state).toHaveTextContent("No simulation spread is stored for this forecast.");
     });
 
     it("an items-only distribution draws only the items chart, with the items percentiles", () => {

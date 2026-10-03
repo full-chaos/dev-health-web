@@ -175,7 +175,7 @@ export function CreateCredentialModal({
                             type="text"
                             value={name}
                             onChange={(event) => handleNameChange(event.target.value)}
-                            className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                            className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                             placeholder="e.g., Primary token"
                         />
                     </div>
@@ -196,7 +196,7 @@ export function CreateCredentialModal({
                                     handleFieldChange(field.key, event.target.value)
                                 }
                                 required={field.required}
-                                className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                                className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                             />
                         </div>
                     ))}

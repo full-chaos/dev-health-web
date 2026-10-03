@@ -18,11 +18,24 @@ vi.mock("@/lib/auth", () => ({
     requireSession: async () => ({ user: { org_id: "org-1" } }),
 }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: async () => ({ ok: true }) }));
-vi.mock("@/lib/config", () => ({ getServerEnv: () => ({ DEV_HEALTH_TEST_MODE: "true" }) }));
+// The rest of the module stays real: the page's failure helper loads the logger, which reads it.
+vi.mock("@/lib/config", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("@/lib/config")>()),
+    getServerEnv: () => ({ DEV_HEALTH_TEST_MODE: "true" }),
+}));
 vi.mock("@/components/navigation/ViewSet", () => ({ ViewSet: () => null }));
 vi.mock("@/components/shell/PageHeader", () => ({ PageHeader: () => null }));
 vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => null }));
 vi.mock("@/components/work/WorkGraphHeaderActions", () => ({ WorkGraphHeaderActions: () => null }));
+// The page facts and the evidence action are not what this file tests; a pass-through keeps their
+// client modules out of the import graph.
+vi.mock("@/components/work/WorkGraphPageFacts", () => ({
+    WorkGraphFactsAction: () => null,
+    WorkGraphFactsProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+vi.mock("@/components/work/WorkGraphEvidenceAction", () => ({
+    WorkGraphEvidenceAction: () => null,
+}));
 vi.mock("@/components/work/GraphView", () => ({
     GraphView: (props: Record<string, unknown>) => {
         graphViewProps(props);
@@ -85,7 +98,7 @@ describe("work graph page: review edges", () => {
         expect(fetchMock).not.toHaveBeenCalled();
     });
 
-    it("hands the edges to the view, and the fetch error text when it fails", async () => {
+    it("hands the edges to the view, and the plain failed-read message (never the backend text) when it fails", async () => {
         await render(filterWith({}));
         expect(graphViewProps.mock.calls[0][0].reviewEdges).toHaveLength(1);
         expect(graphViewProps.mock.calls[0][0].reviewEdgesError).toBeNull();
@@ -94,7 +107,7 @@ describe("work graph page: review edges", () => {
         fetchMock.mockRejectedValue(new Error("boom"));
         await render(filterWith({}));
         expect(graphViewProps.mock.calls[0][0].reviewEdges).toBeNull();
-        expect(graphViewProps.mock.calls[0][0].reviewEdgesError).toBe("boom");
+        expect(graphViewProps.mock.calls[0][0].reviewEdgesError).toBe("Could not be read");
     });
 
     it("sends a team scope's ids, in order and once each, as teamIds (CHAOS-7785)", async () => {

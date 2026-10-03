@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
-import { ShellStatusChip, shellStatusFromOrganization, type ShellStatus } from "./ShellStatusChip";
 import { ShellTopBar } from "./ShellTopBar";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
@@ -16,16 +15,6 @@ vi.mock("next/navigation", () => ({
     useSearchParams: () => new URLSearchParams(navigationMock.search),
 }));
 
-const LOADING: ShellStatus = { kind: "loading" };
-
-function chip() {
-    return screen.getByTestId("shell-status-chip");
-}
-
-function dot() {
-    return chip().querySelector("span[aria-hidden='true']");
-}
-
 beforeEach(() => {
     navigationMock.pathname = "/dashboard";
     navigationMock.search = "";
@@ -33,14 +22,20 @@ beforeEach(() => {
 
 describe("ShellTopBar — location trail from the nav config (A6)", () => {
     it("is one banner landmark", () => {
-        render(<ShellTopBar status={LOADING} />);
+        render(<ShellTopBar />);
 
         expect(screen.getAllByRole("banner")).toHaveLength(1);
         expect(screen.getByTestId("shell-top-bar").tagName).toBe("HEADER");
     });
 
+    it("is 66px high, as the prototype top bar", () => {
+        render(<ShellTopBar />);
+
+        expect(screen.getByTestId("shell-top-bar")).toHaveClass("h-(--shell-topbar-h)");
+    });
+
     it("shows the area as the current crumb on an area with no child (Home)", () => {
-        render(<ShellTopBar status={LOADING} />);
+        render(<ShellTopBar />);
 
         const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
         expect(within(trail).getByText("Home")).toHaveAttribute("aria-current", "page");
@@ -49,7 +44,7 @@ describe("ShellTopBar — location trail from the nav config (A6)", () => {
 
     it("shows Area / Destination on a child route, with the area as a link", () => {
         navigationMock.pathname = "/investment";
-        render(<ShellTopBar status={LOADING} />);
+        render(<ShellTopBar />);
 
         const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
         expect(within(trail).getByRole("link", { name: "Diagnose" })).toHaveAttribute(
@@ -61,10 +56,10 @@ describe("ShellTopBar — location trail from the nav config (A6)", () => {
 
     it("shows no trail on a route that no area owns", () => {
         navigationMock.pathname = "/demo";
-        render(<ShellTopBar status={LOADING} />);
+        render(<ShellTopBar />);
 
         expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
-        expect(chip()).toBeInTheDocument();
+        expect(screen.getByTestId("shell-top-bar")).toBeInTheDocument();
     });
 });
 
@@ -84,7 +79,7 @@ describe("ShellTopBar — a crumb link is the return path and keeps the user's s
     it("carries f, role, lens and origin, as the in-page 'Back to Diagnose' link did", () => {
         navigationMock.pathname = "/investment";
         navigationMock.search = `f=${encodeFilterParam(filter)}&role=em&lens=pm&origin=cockpit`;
-        render(<ShellTopBar status={LOADING} />);
+        render(<ShellTopBar />);
 
         const url = areaCrumb();
         expect(url.pathname).toBe("/diagnose");
@@ -105,7 +100,7 @@ describe("ShellTopBar — a crumb link is the return path and keeps the user's s
 
     it("adds no role, lens or origin that the URL does not have", () => {
         navigationMock.pathname = "/investment";
-        render(<ShellTopBar status={LOADING} />);
+        render(<ShellTopBar />);
 
         const url = areaCrumb();
         expect(url.searchParams.has("f")).toBe(true);
@@ -128,7 +123,7 @@ describe("ShellTopBar — a route with its own `f` encoding (Security)", () => {
         (pathname) => {
             navigationMock.pathname = pathname;
             navigationMock.search = `f=${SECURITY_F}`;
-            render(<ShellTopBar status={LOADING} />);
+            render(<ShellTopBar />);
 
             const links = within(
                 screen.getByRole("navigation", { name: "Breadcrumb" }),
@@ -145,7 +140,7 @@ describe("ShellTopBar — a route with its own `f` encoding (Security)", () => {
 
 describe("ShellTopBar — theme toggle slot", () => {
     it("renders an empty slot until a toggle is passed", () => {
-        const { container } = render(<ShellTopBar status={LOADING} />);
+        const { container } = render(<ShellTopBar />);
 
         const slot = container.querySelector("[data-slot='theme-toggle']");
         expect(slot).not.toBeNull();
@@ -154,10 +149,7 @@ describe("ShellTopBar — theme toggle slot", () => {
 
     it("renders the passed toggle inside the slot", () => {
         const { container } = render(
-            <ShellTopBar
-                status={LOADING}
-                themeToggle={<button type="button">Toggle theme</button>}
-            />,
+            <ShellTopBar themeToggle={<button type="button">Toggle theme</button>} />,
         );
 
         const slot = container.querySelector("[data-slot='theme-toggle']");
@@ -165,85 +157,49 @@ describe("ShellTopBar — theme toggle slot", () => {
     });
 });
 
-describe("shellStatusFromOrganization — unknown is its own state", () => {
-    it("is synced for an organization with data and a real timestamp", () => {
-        expect(
-            shellStatusFromOrganization({ hasData: true, lastMetricsAt: "2026-09-30T10:00:00Z" }),
-        ).toEqual({ kind: "synced", at: "2026-09-30T10:00:00Z" });
+describe("ShellTopBar — prototype order", () => {
+    it("puts the breadcrumb first, then the search, then the toggle on the right", () => {
+        const { container } = render(
+            <ShellTopBar themeToggle={<button type="button">Toggle</button>} />,
+        );
+        const bar = container.querySelector("[data-testid='shell-top-bar']") as HTMLElement;
+        const kids = Array.from(bar.children);
+        expect(kids).toHaveLength(3);
+        expect(kids[0].querySelector("[data-testid='breadcrumbs']")).not.toBeNull();
+        expect(kids[1]).toBe(screen.getByTestId("command-palette-trigger"));
+        expect(kids[2].className).toContain("ml-auto");
+        expect(kids[2]).toContainElement(screen.getByRole("button", { name: "Toggle" }));
+        expect(kids[2].querySelector("[data-testid='shell-status-chip']")).toBeNull();
     });
 
-    it("is empty only when the organization is known to have no data", () => {
-        expect(shellStatusFromOrganization({ hasData: false, lastMetricsAt: null })).toEqual({
-            kind: "empty",
-        });
-    });
-
-    it.each([
-        ["no timestamp", { hasData: true, lastMetricsAt: null }],
-        ["a timestamp that is not a date", { hasData: true, lastMetricsAt: "soon" }],
-    ])("is present, with no time, for an organization with data and %s", (_label, organization) => {
-        expect(shellStatusFromOrganization(organization)).toEqual({ kind: "present" });
-    });
-
-    it.each([
-        ["null (the request failed)", null],
-        ["undefined", undefined],
-        ["an empty object", {}],
-        ["a string", "ok"],
-        ["a data flag that is not a boolean", { hasData: "yes", lastMetricsAt: null }],
-        ["a timestamp with no data flag", { lastMetricsAt: "2026-09-30T10:00:00Z" }],
-    ])("is unknown for %s", (_label, organization) => {
-        expect(shellStatusFromOrganization(organization)).toEqual({ kind: "unknown" });
+    it("draws the search as a wide, 36px, 6px-radius field with the key hint at its right", () => {
+        render(<ShellTopBar />);
+        const trigger = screen.getByTestId("command-palette-trigger");
+        expect(trigger.className).toContain("flex-1");
+        expect(trigger.className).toContain("max-w-95");
+        expect(trigger.className).toContain("h-9");
+        expect(trigger.className).toContain("rounded-md");
+        expect(trigger.querySelector("kbd")?.className).toContain("ml-auto");
     });
 });
 
-describe("ShellStatusChip — never looks healthy, or empty, when the state is not known", () => {
-    it("is neutral while the organization data loads", () => {
-        render(<ShellStatusChip status={{ kind: "loading" }} />);
-
-        expect(chip()).toHaveAttribute("data-status", "loading");
-        expect(chip()).toHaveAttribute("aria-busy", "true");
-        expect(chip()).toHaveTextContent("Checking data status");
-        expect(dot()?.className).toContain("bg-(--text-muted)");
+describe("ShellTopBar — surface", () => {
+    it("is the surface at 92% with an 8px blur, as the prototype `.topbar` (theme.css:59)", () => {
+        render(<ShellTopBar />);
+        const bar = screen.getByTestId("shell-top-bar");
+        expect(bar.className).toContain("bg-(--surface)/92");
+        expect(bar.className).toContain("backdrop-blur-sm");
+        expect(bar.className).toContain("border-b");
     });
+});
 
-    it("shows the neutral 'Status unavailable' state when the state is unknown", () => {
-        render(<ShellStatusChip status={{ kind: "unknown" }} />);
+describe("ShellTopBar — no data-freshness chip (CHAOS-8432)", () => {
+    it("has no 'Data through' text and no status chip: the fact lives under the account name", () => {
+        const { container } = render(
+            <ShellTopBar themeToggle={<button type="button">Toggle</button>} />,
+        );
 
-        expect(chip()).toHaveTextContent("Status unavailable");
-        expect(chip()).not.toHaveTextContent("Data through");
-        expect(chip()).not.toHaveTextContent("No data yet");
-        // The neutral dot: not the data colour and not the caution colour.
-        expect(dot()?.className).toContain("bg-(--text-muted)");
-        expect(dot()?.className).not.toContain("--info");
-        expect(dot()?.className).not.toContain("--caution");
-    });
-
-    it("shows 'No data yet' with the caution dot for an organization with no data", () => {
-        render(<ShellStatusChip status={{ kind: "empty" }} />);
-
-        expect(chip()).toHaveTextContent("No data yet");
-        expect(dot()?.className).toContain("bg-(--caution)");
-    });
-
-    it("shows the data time with the data colour, and no health word", () => {
-        render(<ShellStatusChip status={{ kind: "synced", at: "2026-09-30T10:00:00Z" }} />);
-
-        expect(chip()).toHaveTextContent(/^Data through /);
-        expect(chip()).not.toHaveTextContent("Unavailable");
-        expect(chip()).not.toHaveTextContent(/healthy|ok|connected/i);
-        expect(dot()?.className).toContain("bg-(--info)");
-    });
-
-    it("shows 'Has data' when the organization has data and no time is known", () => {
-        render(<ShellStatusChip status={{ kind: "present" }} />);
-
-        expect(chip()).toHaveTextContent("Has data");
-    });
-
-    it("passes the status from the top bar to the chip", () => {
-        render(<ShellTopBar status={{ kind: "empty" }} />);
-
-        expect(chip()).toHaveAttribute("data-status", "empty");
+        expect(screen.queryByTestId("shell-status-chip")).toBeNull();
+        expect(container).not.toHaveTextContent("Data through");
     });
 });

@@ -39,6 +39,17 @@ describe("SyncJobHistory", () => {
         expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
     });
 
+    it("has one frame: the table wrapper adds no border or background of its own (CHAOS-8242)", () => {
+        render(<SyncJobHistory jobs={buildJobs(2)} configId="cfg-1" />);
+        const wrapper = screen.getByTestId("sync-job-history-table");
+        expect(wrapper.className).not.toMatch(/border|bg-|rounded/);
+        // The range, scope and units cells may wrap, so every column fits the card without a sideways scroll.
+        const firstRow = wrapper.querySelectorAll("tbody tr")[0] as HTMLElement;
+        const cells = Array.from(firstRow.querySelectorAll("td"));
+        expect(cells.length).toBeGreaterThan(8);
+        expect(cells[0].className).toContain("px-3");
+    });
+
     it("renders the redesigned column headings", () => {
         render(<SyncJobHistory jobs={[SYNC_JOB_WITH_RUN]} configId="cfg-1" testMode />);
 
@@ -164,7 +175,8 @@ describe("SyncJobHistory", () => {
             await userEvent.click(screen.getByRole("button", { name: "Next" }));
 
             await waitFor(() => {
-                expect(screen.getByRole("alert")).toHaveTextContent("Request failed with 500");
+                expect(screen.getByRole("alert")).toHaveTextContent("Could not be read");
+                expect(screen.getByRole("alert")).not.toHaveTextContent("Request failed with 500");
                 expect(screen.getByText("Showing 1-10")).toBeInTheDocument();
             });
         });

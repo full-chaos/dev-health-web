@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect } from "react";
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { logger } from "@/lib/logger";
 
 export default function SecurityError({
     error,
@@ -10,11 +12,15 @@ export default function SecurityError({
     error: Error & { digest?: string };
     reset: () => void;
 }) {
+    useEffect(() => {
+        logger.error({ err: error, digest: error.digest }, "Security page error");
+    }, [error]);
+
     return (
         <div className="flex items-center justify-center p-6">
             <ErrorCard
                 title="Security page error"
-                message={error.message}
+                message="This page could not be shown."
                 action={
                     <button
                         onClick={reset}

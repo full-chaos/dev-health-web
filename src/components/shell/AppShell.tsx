@@ -6,13 +6,11 @@ import { usePathname } from "next/navigation";
 import type { ActiveOrganizationData } from "@/components/navigation/OrgSwitcher";
 import { CTA_LABELS } from "@/lib/design/cta";
 
-import { LegacyAccountBar } from "./LegacyAccountBar";
+import { FilterPendingProvider } from "./FilterPending";
 import { ShellMobileBar } from "./ShellMobileBar";
 import { ShellOrganizationProvider } from "./ShellContext";
 import { ShellSidebar } from "./ShellSidebar";
-import { shellStatusFromOrganization, type ShellStatus } from "./ShellStatusChip";
 import { ShellTopBar } from "./ShellTopBar";
-import { isShellRoute } from "./shellRoutes";
 
 type AppShellProps = {
     /** Full-width banners (impersonation, trial). Always first, above the chrome. */
@@ -23,20 +21,14 @@ type AppShellProps = {
 };
 
 /**
- * The frame of every authed page.
- *
- * The route registry (`shellRoutes.ts`) is the single switch:
- * - a registered route gets the shared app shell: skip link, sidebar, top bar
- *   and the one `<main>` landmark;
- * - every other route gets the legacy chrome without a change (the account bar,
- *   then the page, which renders its own navigation and `<main>`).
- *
- * The choice is made on the client from the pathname, because a layout does not
- * re-render on a client navigation.
+ * The frame of every authed page: skip link, sidebar, top bar and the one `<main>`
+ * landmark. Every authed route renders inside it, including a route the registry
+ * (`shellRoutes.ts`) does not name (a not-found page, an error): the registry now
+ * only carries per-route link behaviour (role, filter param), not a chrome switch.
  */
 export function AppShell({ banners, themeToggle, children }: AppShellProps) {
     const pathname = usePathname();
-    // The organization card owns the request. The top bar chip and the scope bar
+    // The organization card owns the request. The sidebar account block and the scope bar
     // show its answer: `undefined` while it loads, `null` when it is not known.
     const [organization, setOrganization] = useState<ActiveOrganizationData | null | undefined>(
         undefined,
@@ -60,20 +52,6 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
         query.addEventListener("change", onChange);
         return () => query.removeEventListener("change", onChange);
     }, []);
-    const dataStatus: ShellStatus =
-        organization === undefined
-            ? { kind: "loading" }
-            : shellStatusFromOrganization(organization);
-
-    if (!isShellRoute(pathname)) {
-        return (
-            <>
-                {banners}
-                <LegacyAccountBar />
-                {children}
-            </>
-        );
-    }
 
     return (
         <>
@@ -83,6 +61,13 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
             >
                 {CTA_LABELS.skipToMainContent}
             </a>
+            {/* Prototype `body::before`: a 2px orange-to-teal line along the top edge. z-35: over the sticky top bar (z-30), under the mobile
+            slide-over and its backdrop (z-40/50), drawers and dialogs (z-50), so it never covers them. Fixed, so it adds no scroll offset. */}
+            <div
+                aria-hidden="true"
+                data-testid="shell-ribbon"
+                className="pointer-events-none fixed inset-x-0 top-0 z-35 h-0.5 bg-(image:--ribbon)"
+            />
             {banners}
             <ShellMobileBar
                 open={mobileOpen}
@@ -91,22 +76,43 @@ export function AppShell({ banners, themeToggle, children }: AppShellProps) {
             />
             <div className="flex flex-col md:flex-row" data-testid="app-shell">
                 <ShellSidebar
+                    organization={organization}
                     onActiveOrganizationChange={handleActiveOrganizationChange}
                     mobileOpen={mobileOpen}
                     onMobileClose={closeMobileNav}
                     mobileControlRef={menuControlRef}
                 />
                 <div className="flex min-w-0 flex-1 flex-col">
-                    <ShellTopBar status={dataStatus} themeToggle={themeToggle} />
-                    <main
-                        id="main-content"
-                        tabIndex={-1}
-                        className="flex min-w-0 flex-1 flex-col px-4 pb-20 pt-6 focus:outline-none sm:px-6 md:pt-8"
-                    >
-                        <ShellOrganizationProvider value={organization}>
-                            {children}
-                        </ShellOrganizationProvider>
-                    </main>
+                    <ShellTopBar themeToggle={themeToggle} />
+                    <FilterPendingProvider>
+                        {(pending) => (
+                            <main
+                                id="main-content"
+                                tabIndex={-1}
+                                aria-busy={pending ? true : undefined}
+                                data-filter-pending={pending ? "true" : undefined}
+                                className="flex min-w-0 flex-1 flex-col px-4 pb-20 pt-6 focus:outline-none aria-busy:cursor-progress aria-busy:[&_[data-testid=scope-bar]~*]:opacity-60 motion-safe:[&_[data-testid=scope-bar]~*]:transition-opacity sm:px-6 md:px-8 md:pt-8"
+                            >
+                                {pending ? (
+                                    <>
+                                        {/* Busy mark: the values below are those of the previous filter until the line is gone. */}
+                                        <div
+                                            aria-hidden="true"
+                                            data-testid="filter-pending-bar"
+                                            className="pointer-events-none fixed inset-x-0 top-0.5 z-35 h-0.5 animate-pulse bg-(--accent-2) motion-reduce:animate-none"
+                                        />
+                                        <p role="status" className="sr-only">
+                                            Loading the new window. The values shown are from the
+                                            previous one.
+                                        </p>
+                                    </>
+                                ) : null}
+                                <ShellOrganizationProvider value={organization}>
+                                    {children}
+                                </ShellOrganizationProvider>
+                            </main>
+                        )}
+                    </FilterPendingProvider>
                 </div>
             </div>
         </>

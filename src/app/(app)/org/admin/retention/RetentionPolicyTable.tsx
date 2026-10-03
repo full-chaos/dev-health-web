@@ -1,7 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { CircleCheck, CircleSlash, Clock } from "lucide-react";
+
+import { StatusPill } from "@/components/admin/StatusPill";
+import { Button } from "@/components/shared/Button";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { formatNumber } from "@/lib/formatters";
+import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { RetentionPolicy } from "@/lib/admin/types";
 
@@ -30,11 +36,12 @@ export function RetentionPolicyTable({
 
     if (policies.length === 0) {
         return (
-            <div className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)">
-                <p className="px-4 py-8 text-center text-(--ink-muted)">
-                    No retention policies configured.
-                </p>
-            </div>
+            <DataState
+                variant="detector-enabled-no-findings"
+                icon={<Clock aria-hidden="true" />}
+                title="No retention policies configured."
+                description="Add a policy to delete old records on a schedule."
+            />
         );
     }
 
@@ -47,10 +54,10 @@ export function RetentionPolicyTable({
 
     return (
         <>
-            <div className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)">
+            <div className="overflow-x-auto rounded-(--radius-md) border border-(--card-stroke)">
                 <table className="w-full text-sm">
                     <thead>
-                        <tr className="border-b border-(--card-stroke) bg-(--card-70) text-(--ink-muted)">
+                        <tr className="border-b border-(--card-stroke) bg-background text-label-caps uppercase text-(--ink-muted)">
                             <th className="px-4 py-3 text-left font-medium">Resource Type</th>
                             <th className="px-4 py-3 text-left font-medium">Retention</th>
                             <th className="px-4 py-3 text-left font-medium">Status</th>
@@ -71,58 +78,54 @@ export function RetentionPolicyTable({
                                 </td>
                                 <td className="px-4 py-3">{policy.retention_days} days</td>
                                 <td className="px-4 py-3">
-                                    <span
-                                        className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                                            policy.is_active
-                                                ? "bg-(--positive)/12 text-(--positive)"
-                                                : "bg-(--negative)/12 text-(--negative)"
-                                        }`}
-                                    >
-                                        {policy.is_active ? "Active" : "Inactive"}
-                                    </span>
+                                    {policy.is_active ? (
+                                        <StatusPill tone="positive" icon={CircleCheck}>
+                                            Active
+                                        </StatusPill>
+                                    ) : (
+                                        <StatusPill tone="negative" icon={CircleSlash}>
+                                            Inactive
+                                        </StatusPill>
+                                    )}
                                 </td>
                                 <td className="px-4 py-3 text-(--ink-muted)">
                                     {policy.last_run_at ? formatDate(policy.last_run_at) : "Never"}
                                 </td>
                                 <td className="px-4 py-3 text-(--ink-muted)">
-                                    {policy.last_run_deleted_count ?? "--"}
+                                    {policy.last_run_deleted_count == null
+                                        ? "—"
+                                        : formatNumber(policy.last_run_deleted_count)}
                                 </td>
                                 <td className="px-4 py-3 text-(--ink-muted)">
                                     {formatDate(policy.next_run_at)}
                                 </td>
                                 <td className="px-4 py-3 text-right">
                                     <div className="flex flex-wrap items-center justify-end gap-2">
-                                        <button
-                                            type="button"
-                                            onClick={() => onEditAction(policy)}
-                                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-1 text-xs font-medium"
-                                        >
+                                        <Button size="sm" onClick={() => onEditAction(policy)}>
                                             {CTA_LABELS.edit}
-                                        </button>
-                                        <button
-                                            type="button"
+                                        </Button>
+                                        <Button
+                                            size="sm"
                                             onClick={() => setConfirmToggle(policy)}
                                             disabled={togglingId === policy.id}
-                                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-1 text-xs font-medium disabled:opacity-50"
                                         >
                                             {policy.is_active
                                                 ? CTA_LABELS.disableEntry
                                                 : CTA_LABELS.enableEntry}
-                                        </button>
-                                        <button
-                                            type="button"
+                                        </Button>
+                                        <Button
+                                            size="sm"
                                             onClick={() => onRequestRunAction(policy)}
-                                            className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-3 py-1 text-xs font-medium"
                                         >
                                             {CTA_LABELS.runPolicyNow}
-                                        </button>
-                                        <button
-                                            type="button"
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="danger"
                                             onClick={() => setConfirmDelete(policy)}
-                                            className="rounded-lg bg-(--negative)/12 px-3 py-1 text-xs font-medium text-(--negative)"
                                         >
                                             {CTA_LABELS.delete}
-                                        </button>
+                                        </Button>
                                     </div>
                                 </td>
                             </tr>

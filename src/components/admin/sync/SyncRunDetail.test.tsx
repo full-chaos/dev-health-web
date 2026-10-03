@@ -725,9 +725,9 @@ describe("SyncRunDetailLive — CHAOS-4318 manual refresh (no timer-driven polli
         await clickRefresh();
 
         expect(getSyncRunStatus).toHaveBeenCalledTimes(1);
-        // Non-fatal error indicator renders with the surfaced message.
+        // Non-fatal error indicator renders with the plain read sentence, never the served text.
         expect(
-            screen.getByText(/Failed to load unit details: Unauthorized \(401\)/),
+            screen.getByText(/Failed to load unit details: Could not be read/),
         ).toBeInTheDocument();
         // Last good snapshot is retained — units were NOT fabricated/emptied.
         expect(screen.getByText(/Units \(4\)/)).toBeInTheDocument();

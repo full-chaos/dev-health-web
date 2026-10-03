@@ -85,7 +85,9 @@ describe("TeamExchangeChordSection", () => {
             />,
         );
 
-        expect(screen.getByRole("heading", { name: /team exchange chord/i })).toBeInTheDocument();
+        // The block has no title of its own: the section card around it carries the heading.
+        expect(screen.getByRole("region", { name: /team exchange chord/i })).toBeInTheDocument();
+        expect(screen.queryByRole("heading", { name: /team exchange chord/i })).toBeNull();
         expect(screen.getByLabelText(/group by/i)).toBeInTheDocument();
         expect(screen.getByTestId("mock-chord-chart")).toBeInTheDocument();
         expect(screen.getByTestId("mock-chord-summary")).toBeInTheDocument();

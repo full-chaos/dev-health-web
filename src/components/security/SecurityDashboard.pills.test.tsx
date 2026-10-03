@@ -42,6 +42,9 @@ describe("SecurityDashboard KPI pills", () => {
         const high = within(screen.getByTestId("kpi-high")).getByTestId("kpi-pill");
         expect(high).toHaveTextContent("High");
         expect(high).toHaveAttribute("data-tone", "caution");
+        // CHAOS-8214: both pills sit in the tile head slot, not in the meta line.
+        expect(critical.closest("[data-testid=metric-head-action]")).not.toBeNull();
+        expect(high.closest("[data-testid=metric-head-action]")).not.toBeNull();
         // Missing is not zero: no mean time to fix reads as text.
         expect(within(screen.getByTestId("kpi-mttf")).getByText("No data")).toBeInTheDocument();
     });

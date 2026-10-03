@@ -1,11 +1,16 @@
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { notFound } from "next/navigation";
 import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SyncStatusBadge } from "@/components/admin/sync/SyncStatusBadge";
 import { BackfillOperations } from "@/components/admin/sync/BackfillOperations";
 import { SyncJobHistory } from "@/components/admin/sync/SyncJobHistory";
+import { SyncHeaderBadge } from "@/components/admin/sync/SyncHeaderBadge";
+import { SyncConfigHeaderActions } from "@/components/admin/sync/SyncConfigHeaderActions";
 import { SyncProgressBar } from "@/components/admin/sync/SyncProgressBar";
 import { TestConnectionButton } from "@/components/admin/sync/TestConnectionButton";
+import { BackLink } from "@/components/shared/BackLink";
+import { Section } from "@/components/ui/Section";
 import { getServerEnv } from "@/lib/config";
 import {
     getSyncConfig,
@@ -21,6 +26,7 @@ import {
     SAMPLE_BACKFILL_JOBS,
     resolveSampleBackfillScenario,
 } from "@/data/syncCoverageSample";
+import { syncHeaderFacts } from "@/lib/admin/syncHeader";
 import type { BackfillJob, SyncConfig, SyncCoverageSummary, SyncJob } from "@/lib/admin/types";
 
 interface PageProps {
@@ -95,7 +101,7 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
         // explicit notice while the rest of the page still renders.
         if (coverageResult.error || !coverageResult.data) {
             coverage = null;
-            coverageError = coverageResult.error ?? "Coverage summary is unavailable.";
+            coverageError = READ_FAILED_MESSAGE;
         } else {
             coverage = coverageResult.data;
         }
@@ -107,12 +113,23 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
     };
 
     return (
-        <div className="space-y-8">
-            <AdminHeader title={config.name} description={`Provider: ${config.provider}`}>
-                <TestConnectionButton
-                    provider={config.provider}
-                    credentialId={config.credential_id}
-                />
+        <div className="space-y-8" data-testid="sync-detail">
+            <BackLink href="/org/admin/sync" label="Back to connections" />
+            <AdminHeader
+                title={config.name}
+                description={syncHeaderFacts(config)}
+                titleBadge={coverage ? <SyncHeaderBadge coverage={coverage} /> : undefined}
+            >
+                <div
+                    className="flex flex-wrap items-center gap-2"
+                    data-testid="sync-header-actions"
+                >
+                    <SyncConfigHeaderActions config={config} />
+                    <TestConnectionButton
+                        provider={config.provider}
+                        credentialId={config.credential_id}
+                    />
+                </div>
             </AdminHeader>
 
             <SyncProgressBar configId={config.id} testMode={isTestMode} />
@@ -126,7 +143,10 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
                 testMode={isTestMode}
             />
 
-            <details className="group space-y-4 rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
+            <details
+                data-testid="sync-details"
+                className="group space-y-4 rounded-xl border border-(--card-stroke) bg-(--card-80) p-6"
+            >
                 <summary className="cursor-pointer text-sm font-medium text-(--ink-muted) uppercase tracking-wider">
                     Sync details
                 </summary>
@@ -180,16 +200,19 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
 
                 {config.last_sync_error && (
                     <div className="mt-6 rounded-lg border border-(--negative)/20 bg-(--negative)/10 p-4 text-sm text-(--negative)">
-                        <span className="font-medium">Last sync error:</span>{" "}
-                        {config.last_sync_error}
+                        <ClientTimestamp
+                            className="font-medium"
+                            value={config.last_sync_at}
+                            prefix="Last sync failed "
+                            fallback=""
+                        />
                     </div>
                 )}
             </details>
 
-            <div className="space-y-4">
-                <h2 className="text-lg font-medium text-foreground">Job History</h2>
+            <Section title="Job History" data-testid="sync-job-history">
                 <SyncJobHistory jobs={jobs} configId={config.id} testMode={isTestMode} />
-            </div>
+            </Section>
         </div>
     );
 }
