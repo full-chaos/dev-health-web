@@ -93,9 +93,10 @@ export default async function DataHealthOverviewPage() {
     const failing = connectorRows?.filter((row) => row.lastFailure).length ?? 0;
     // Identity: the served count of unmapped identities.
     const unmapped = identity?.dataHealth.identityMapping.unmappedCount;
-    // Mapping: the served coverage fractions, as percent (the Mapping page does the same x100).
+    // Mapping: the served coverage is already a percent, 0-100 (ops queryapi/datahealth/coverage.go
+    // coverageStat: `covered / total * 100`); it is shown as served, never multiplied again.
     const coverage = mapping?.dataHealth.mappingCoverage;
-    const pct = (fraction: number) => `${Math.round(fraction * 100)}%`;
+    const pct = (percent: number) => `${Math.round(percent)}%`;
 
     return (
         <div className="space-y-8">

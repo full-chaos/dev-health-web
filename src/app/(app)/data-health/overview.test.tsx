@@ -58,8 +58,8 @@ describe("Data Confidence overview (CHAOS-8100)", () => {
                 { provider: "linear", lastFailure: { message: "y" } },
             ],
             unmappedCount: 9,
-            deployments: 0.83,
-            workItems: 0.5,
+            deployments: 83.3,
+            workItems: 50,
         });
         render(await DataHealthOverviewPage());
 
@@ -75,7 +75,7 @@ describe("Data Confidence overview (CHAOS-8100)", () => {
     });
 
     it("shows no pill when nothing fails or is unmapped, and builds no freshness or Good claim", async () => {
-        serve({ connectors: [{ provider: "github" }], unmappedCount: 0, deployments: 1 });
+        serve({ connectors: [{ provider: "github" }], unmappedCount: 0, deployments: 100 });
         const { container } = render(await DataHealthOverviewPage());
 
         expect(container.textContent).not.toContain("with a failure");
@@ -91,8 +91,8 @@ describe("Data Confidence overview (CHAOS-8100)", () => {
                 dataHealth: {
                     connectors: [],
                     mappingCoverage: {
-                        deployments: { coveragePct: 0.1 },
-                        workItems: { coveragePct: 0.1 },
+                        deployments: { coveragePct: 10 },
+                        workItems: { coveragePct: 10 },
                     },
                 },
             };

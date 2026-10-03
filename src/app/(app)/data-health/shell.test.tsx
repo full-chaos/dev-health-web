@@ -30,8 +30,8 @@ vi.mock("@/lib/graphql/urqlClient", () => ({
             connectors: [],
             identityMapping: { unmappedCount: 0 },
             mappingCoverage: {
-                deployments: { coveragePct: 0.5 },
-                workItems: { coveragePct: 0.25 },
+                deployments: { coveragePct: 50 },
+                workItems: { coveragePct: 25 },
             },
         },
     })),

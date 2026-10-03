@@ -16,6 +16,7 @@ export default async function MappingHealthPage() {
 
     const teamId = session.user.org_id || "default";
 
+    // `coveragePct` is served as a percent, 0-100 (ops queryapi/datahealth/coverage.go), not a fraction.
     let coverageData = null;
     let error: string | null = null;
 
@@ -57,7 +58,7 @@ export default async function MappingHealthPage() {
                         description="Percentage of deployments successfully mapped back to work items."
                     >
                         <CoverageBar
-                            coveragePercent={coverageData.deployments.coveragePct * 100}
+                            coveragePercent={coverageData.deployments.coveragePct}
                             label={`${coverageData.deployments.coveredRepos} of ${coverageData.deployments.totalRepos} Repos`}
                         />
                     </Section>
@@ -67,7 +68,7 @@ export default async function MappingHealthPage() {
                         description="Percentage of work items successfully mapped back to deployments."
                     >
                         <CoverageBar
-                            coveragePercent={coverageData.workItems.coveragePct * 100}
+                            coveragePercent={coverageData.workItems.coveragePct}
                             label={`${coverageData.workItems.coveredRepos} of ${coverageData.workItems.totalRepos} Repos`}
                         />
                     </Section>
