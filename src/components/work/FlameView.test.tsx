@@ -54,17 +54,22 @@ describe("FlameView", () => {
         expect(
             screen.getByRole("heading", { level: 2, name: "Elapsed Time Breakdown" }),
         ).toBeTruthy();
-        const modes = screen.getByRole("radiogroup", { name: "Breakdown" });
+        const modes = screen.getByRole("group", { name: "Breakdown" });
         expect(
             within(modes)
-                .getAllByRole("radio")
-                .map((radio) => radio.textContent),
+                .getAllByRole("button")
+                .map((button) => button.textContent),
         ).toEqual(["Elapsed Time Breakdown", "Throughput Breakdown", "Code Hotspots"]);
         expect(
-            within(modes).getByRole("radio", { name: "Elapsed Time Breakdown" }),
-        ).toHaveAttribute("aria-checked", "true");
-        // The old switch was a row of rounded caps pills with a dark fill.
-        expect(modes.innerHTML).not.toMatch(/rounded-full|color-mix/u);
+            within(modes).getByRole("button", { name: "Elapsed Time Breakdown" }),
+        ).toHaveAttribute("aria-pressed", "true");
+        expect(within(modes).getByRole("button", { name: "Throughput Breakdown" })).toHaveAttribute(
+            "aria-pressed",
+            "false",
+        );
+        // The shared segmented control (prototype `.segments`): sentence case, not caps pills.
+        expect(modes).toHaveAttribute("data-testid", "flame-mode-switch");
+        expect(modes.innerHTML).not.toMatch(/uppercase|tracking-|rounded-full|color-mix/u);
 
         // The chart sits in the section: the title row, the root row, no fixed 100vh canvas.
         expect(await screen.findByTestId("flame-title-row")).toBeTruthy();
@@ -72,7 +77,7 @@ describe("FlameView", () => {
         expect(screen.getByTestId("chart-flame").className).not.toMatch(/100vh/u);
         // The mode switch is drawn in the chart's control row.
         expect(
-            within(screen.getByTestId("chart-flame")).getByRole("radiogroup", {
+            within(screen.getByTestId("chart-flame")).getByRole("group", {
                 name: "Breakdown",
             }),
         ).toBeTruthy();
@@ -83,7 +88,7 @@ describe("FlameView", () => {
         render(<FlameView filters={filters} />);
         await screen.findByTestId("flame-title-row");
 
-        fireEvent.click(screen.getByRole("radio", { name: "Throughput Breakdown" }));
+        fireEvent.click(screen.getByRole("button", { name: "Throughput Breakdown" }));
         expect(replace).toHaveBeenCalledWith("/complexity?tab=flame&mode=throughput");
         await waitFor(() =>
             expect(getAggregatedFlame).toHaveBeenLastCalledWith(
@@ -126,7 +131,7 @@ describe("FlameView", () => {
         fireEvent.click(await screen.findByTitle("Waiting"));
         expect(screen.getByTestId("flame-root-row")).toHaveAttribute("title", "Waiting");
 
-        fireEvent.click(screen.getByRole("radio", { name: "Throughput Breakdown" }));
+        fireEvent.click(screen.getByRole("button", { name: "Throughput Breakdown" }));
         await waitFor(() =>
             expect(screen.getByTestId("flame-root-row")).toHaveAttribute("title", "Throughput"),
         );
@@ -139,7 +144,7 @@ describe("FlameView", () => {
         expect(
             await screen.findByText("No flame data available for this scope and window."),
         ).toBeTruthy();
-        expect(screen.getByRole("radiogroup", { name: "Breakdown" })).toBeTruthy();
+        expect(screen.getByRole("group", { name: "Breakdown" })).toBeTruthy();
         expect(screen.queryByTestId("flame-title-row")).toBeNull();
     });
 });
