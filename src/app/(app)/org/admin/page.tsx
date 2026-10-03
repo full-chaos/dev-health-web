@@ -1,6 +1,11 @@
-import { auth } from "@/lib/auth";
-import { AdminHeader } from "@/components/admin/AdminHeader";
 import Link from "next/link";
+import { ArrowRight, CircleAlert, CircleCheck, Info } from "lucide-react";
+
+import { AdminHeader } from "@/components/admin/AdminHeader";
+import { buttonClassName } from "@/components/shared/Button";
+import { Notice } from "@/components/ui/Notice";
+import { Section } from "@/components/ui/Section";
+import { STATUS_PILL } from "@/lib/statusPill";
 import {
     getPendingTeamChanges,
     listCredentials,
@@ -17,36 +22,46 @@ type SignalCardProps = {
     description: string;
     href: string;
     action: string;
-    tone?: "default" | "attention" | "positive";
+    /** Marks the tile with an "Attention" pill (a served count above zero). */
+    attention?: boolean;
 };
 
-function SignalCard({
-    title,
-    value,
-    description,
-    href,
-    action,
-    tone = "default",
-}: SignalCardProps) {
-    const toneClass =
-        tone === "attention"
-            ? "border-(--caution)/30 bg-(--caution)/12"
-            : tone === "positive"
-              ? "border-(--positive)/30 bg-(--positive)/12"
-              : "border-(--card-stroke) bg-(--card-80)";
-
+// One tile of the joined strip (design A1): caps label, value, sentence, link with the arrow first.
+function SignalCard({ title, value, description, href, action, attention }: SignalCardProps) {
     return (
-        <section className={`rounded-xl border p-6 ${toneClass}`}>
-            <p className="text-label-caps uppercase text-(--ink-muted)">{title}</p>
+        <section className="flex min-w-0 flex-col p-5.25">
+            <div className="flex items-start justify-between gap-2">
+                <p className="text-label-caps uppercase text-(--ink-muted)">{title}</p>
+                {attention ? (
+                    <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_PILL.caution}`}
+                    >
+                        <CircleAlert aria-hidden="true" className="h-3 w-3" />
+                        Attention
+                    </span>
+                ) : null}
+            </div>
             <p className="mt-3 text-3xl font-semibold text-foreground">{value}</p>
-            <p className="mt-2 min-h-11 text-sm text-(--ink-muted)">{description}</p>
+            <p className="mt-2 min-h-11 text-xs text-(--ink-muted)">{description}</p>
             <Link
                 href={href}
-                className="mt-4 inline-flex text-sm font-medium text-(--accent-2) hover:underline"
+                className={`${buttonClassName("ghost", "sm")} mt-4 w-fit gap-1.75 px-0`}
             >
+                <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
                 {action}
             </Link>
         </section>
+    );
+}
+
+// One line of the setup checklist: a check when the served condition holds, an info mark when not.
+function SetupLine({ done, children }: { done: boolean; children: string }) {
+    const Icon = done ? CircleCheck : Info;
+    return (
+        <li className="flex items-center gap-3 border-b border-(--card-stroke) py-2.5 text-sm last:border-b-0">
+            <Icon aria-hidden="true" className="h-4 w-4 shrink-0 text-(--ink-muted)" />
+            <span>{children}</span>
+        </li>
     );
 }
 
@@ -65,7 +80,6 @@ function isMalformedList(value: unknown): boolean {
 
 export default async function AdminDashboardPage() {
     const [
-        session,
         usersResult,
         teamsResult,
         identitiesResult,
@@ -73,7 +87,6 @@ export default async function AdminDashboardPage() {
         syncResult,
         pendingResult,
     ] = await Promise.all([
-        auth(),
         listUsers(),
         listTeams(),
         listIdentities(),
@@ -81,7 +94,6 @@ export default async function AdminDashboardPage() {
         listSyncConfigs(),
         getPendingTeamChanges(),
     ]);
-    const user = session?.user;
     const users = asList(usersResult.data);
     const teams = asList(teamsResult.data);
     const identities = asList(identitiesResult.data);
@@ -137,24 +149,27 @@ export default async function AdminDashboardPage() {
     return (
         <div className="space-y-8">
             <AdminHeader
-                title="Admin Dashboard"
-                description={`Welcome back, ${user?.name || user?.email}.`}
+                title="Organization"
+                description="System configuration and management for this organization."
             />
 
             {hasPartialSignals && (
-                <div className="rounded-2xl border border-(--caution)/30 bg-(--caution)/12 p-4 text-sm text-(--caution)">
+                <Notice variant="warn">
                     Some admin signals could not load. The available signals below may be partial.
-                </div>
+                </Notice>
             )}
 
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+            <div
+                data-testid="admin-signal-strip"
+                className="grid divide-y divide-(--card-stroke) overflow-hidden rounded-(--radius-md) border border-(--card-stroke) bg-card md:grid-cols-2 md:divide-y-0 xl:grid-cols-4 xl:divide-x"
+            >
                 <SignalCard
                     title="Needs attention"
                     value={needsAttention}
                     description={`${pendingTeamChanges} team mapping changes, ${failingCredentials} credential issues, ${failingSyncConfigs} sync failures.`}
                     href={attentionHref}
                     action={attentionAction}
-                    tone={needsAttention > 0 ? "attention" : "positive"}
+                    attention={needsAttention > 0}
                 />
                 <SignalCard
                     title="Connected sources"
@@ -169,7 +184,6 @@ export default async function AdminDashboardPage() {
                     description={`${unassignedIdentities} identities are not assigned to a team.`}
                     href="/org/admin/identities"
                     action={CTA_LABELS.reviewIdentities}
-                    tone={unassignedIdentities > 0 ? "attention" : "positive"}
                 />
                 <SignalCard
                     title="Active sync configs"
@@ -177,14 +191,12 @@ export default async function AdminDashboardPage() {
                     description={`${syncConfigs.length} total configs; ${failingSyncConfigs} reported a failed last run.`}
                     href="/org/admin/sync"
                     action={CTA_LABELS.openSyncStatus}
-                    tone={failingSyncConfigs > 0 ? "attention" : "default"}
                 />
             </div>
 
             <section className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
-                    <h2 className="text-lg font-medium text-foreground">Organization roster</h2>
-                    <dl className="mt-4 grid gap-4 sm:grid-cols-3">
+                <Section title="Organization roster">
+                    <dl className="grid gap-4 sm:grid-cols-3">
                         <div>
                             <dt className="text-label-caps uppercase text-(--ink-muted)">Users</dt>
                             <dd className="mt-1 text-2xl font-semibold">{users.length}</dd>
@@ -209,28 +221,27 @@ export default async function AdminDashboardPage() {
                             </p>
                         </div>
                     </dl>
-                </div>
+                </Section>
 
-                <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
-                    <h2 className="text-lg font-medium text-foreground">Setup progress</h2>
-                    <div className="mt-4 space-y-3 text-sm text-(--ink-muted)">
-                        <p>
+                <Section title="Setup progress">
+                    <ul data-testid="setup-checklist">
+                        <SetupLine done={credentials.length > 0}>
                             {credentials.length > 0
                                 ? "At least one integration credential is configured."
                                 : "No integration credentials are configured yet."}
-                        </p>
-                        <p>
+                        </SetupLine>
+                        <SetupLine done={syncConfigs.length > 0}>
                             {syncConfigs.length > 0
                                 ? "Sync configuration exists for connected sources."
                                 : "Create a sync configuration after connecting a source."}
-                        </p>
-                        <p>
+                        </SetupLine>
+                        <SetupLine done={teams.length > 0}>
                             {teams.length > 0
                                 ? "Team ownership mappings are available for review."
                                 : "Add teams so ownership and identity mapping can be reviewed."}
-                        </p>
-                    </div>
-                </div>
+                        </SetupLine>
+                    </ul>
+                </Section>
             </section>
         </div>
     );
