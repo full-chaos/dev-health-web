@@ -19,6 +19,7 @@
  */
 
 import { useState } from "react";
+import { Button } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 // ============================================================================
@@ -53,7 +54,13 @@ const EMPTY_ADMIN_FILTER: AdminAuditFilter = {
 // Variant: admin — labelled inputs, explicit Apply + Reset controls
 // ============================================================================
 
-function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) => void }) {
+function AdminAuditLogFilters({
+    onFilter,
+    framed = true,
+}: {
+    onFilter: (f: AdminAuditFilter) => void;
+    framed?: boolean;
+}) {
     const [action, setAction] = useState("");
     const [resourceType, setResourceType] = useState("");
     const [status, setStatus] = useState("");
@@ -81,7 +88,7 @@ function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) =>
                     end_date: endDate || undefined,
                 });
             }}
-            className="mb-6 grid gap-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4 sm:grid-cols-2 lg:grid-cols-6"
+            className={`mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6 ${framed ? "rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4" : ""}`}
         >
             <div>
                 <label
@@ -164,19 +171,12 @@ function AdminAuditLogFilters({ onFilter }: { onFilter: (f: AdminAuditFilter) =>
                 />
             </div>
             <div className="flex items-end gap-2">
-                <button
-                    type="submit"
-                    className="w-full rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90"
-                >
+                <Button type="submit" variant="primary" className="w-full">
                     {CTA_LABELS.applyFilters}
-                </button>
-                <button
-                    type="button"
-                    onClick={handleReset}
-                    className="w-full rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium hover:border-(--ink-muted)"
-                >
+                </Button>
+                <Button onClick={handleReset} className="w-full">
                     {CTA_LABELS.resetFilters}
-                </button>
+                </Button>
             </div>
         </form>
     );
@@ -262,16 +262,19 @@ type AuditLogFiltersProps =
           variant: "admin";
           onFilter: (filters: AdminAuditFilter) => void;
           onApply?: never;
+          /** `false` drops the form's own card frame (the page puts it in a section card). */
+          framed?: boolean;
       }
     | {
           variant: "billing";
           onApply: (filters: BillingAuditFilter) => void;
           onFilter?: never;
+          framed?: never;
       };
 
-export function AuditLogFilters({ variant, onFilter, onApply }: AuditLogFiltersProps) {
+export function AuditLogFilters({ variant, onFilter, onApply, framed }: AuditLogFiltersProps) {
     if (variant === "billing") {
         return <BillingAuditLogFilters onApply={onApply} />;
     }
-    return <AdminAuditLogFilters onFilter={onFilter} />;
+    return <AdminAuditLogFilters onFilter={onFilter} framed={framed} />;
 }

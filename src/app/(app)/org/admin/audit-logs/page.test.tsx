@@ -99,4 +99,35 @@ describe("OrgAuditLogPage", () => {
 
         expect(screen.queryByTestId("audit-log-detail-drawer")).not.toBeInTheDocument();
     });
+
+    it("has the h1 Organization, a section card 'Audit events' and the shared pager", async () => {
+        mockListAuditLogs.mockResolvedValue(respondWith([makeEntry()]));
+        render(<OrgAuditLogPage />);
+        await waitFor(() => expect(screen.getByText("org.create")).toBeInTheDocument());
+
+        expect(screen.getByRole("heading", { level: 1, name: "Organization" })).toBeInTheDocument();
+        expect(screen.getByRole("heading", { level: 2, name: "Audit events" })).toBeInTheDocument();
+        expect(screen.getByTestId("admin-pager")).toHaveTextContent("Showing 1–1");
+    });
+
+    it("says one plain sentence with a Retry that re-runs the fetch, and never prints the backend text", async () => {
+        mockListAuditLogs.mockResolvedValueOnce({
+            data: undefined,
+            error: "GET /api/v1/admin/audit 502 upstream",
+        });
+        const user = userEvent.setup();
+        const { container } = render(<OrgAuditLogPage />);
+
+        expect(
+            await screen.findByText(/Audit logs could not be loaded\. Retry/u),
+        ).toBeInTheDocument();
+        expect(container.textContent).not.toContain("502");
+        expect(container.textContent).not.toContain("Error loading audit logs");
+
+        mockListAuditLogs.mockResolvedValueOnce(respondWith([makeEntry()]));
+        await user.click(screen.getByRole("button", { name: "Retry" }));
+
+        await waitFor(() => expect(screen.getByText("org.create")).toBeInTheDocument());
+        expect(screen.queryByText(/could not be loaded/u)).toBeNull();
+    });
 });
