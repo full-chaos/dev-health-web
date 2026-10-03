@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { ArrowRight } from "lucide-react";
 
-import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { HeatmapPanel } from "@/components/charts/HeatmapPanel";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import {
@@ -124,10 +123,12 @@ export default async function CodePage({ searchParams }: CodePageProps) {
 
     // Churn per repository, from the churn explain contributors. It is churn, NOT the hotspot score
     // (a different metric: the heatmap's "hotspot score"), so it never fills the Hotspot score column.
-    const churnOf = (repo: { repoId: string; repoName: string }) => {
-        const match = (churnExplain?.contributors ?? []).find(
+    const contributorOf = (repo: { repoId: string; repoName: string }) =>
+        (churnExplain?.contributors ?? []).find(
             (item) => item.id === repo.repoId || item.label === repo.repoName,
         );
+    const churnOf = (repo: { repoId: string; repoName: string }) => {
+        const match = contributorOf(repo);
         return match && churnExplain
             ? formatMetricValue(match.value, churnExplain.unit)
             : undefined;
@@ -137,8 +138,23 @@ export default async function CodePage({ searchParams }: CodePageProps) {
         facts: {
             repoName: repo.repoName,
             churn: churnOf(repo),
+            // The served evidence link of this repository's churn contributor (it was a row of the
+            // removed "Hotspots" card); it opens from the row drawer.
+            evidenceHref: contributorOf(repo)?.evidence_link
+                ? buildExploreUrl({
+                      api: contributorOf(repo)?.evidence_link,
+                      filters,
+                      role: activeRole,
+                  })
+                : undefined,
             busFactor: String(repo.value),
             samples: formatNumber(repo.evidenceSampleCount),
+            // Ownership facts as served for this repository: the name and its share, in the order
+            // served (not a ranking on the page); they open in the row drawer only.
+            maintainers: repo.topMaintainers.map((m) => ({
+                name: m.author,
+                share: `${formatNumber(m.sharePercent, { maximumFractionDigits: 1 })}%`,
+            })),
         },
     }));
 
@@ -170,9 +186,7 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                 title="Churn and Ownership"
                 subtitle="Hotspots and ownership concentration in the selected window."
                 actions={<PageFactsEvidenceAction title="Code" facts={pageFacts} />}
-            >
-                <p className="text-sm text-(--ink-muted)">Open a card to investigate.</p>
-            </PageHeader>
+            />
 
             <ScopeBar view="code" />
 
@@ -335,54 +349,6 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                     emptyState="Quadrant data unavailable for this scope."
                 />
             </section>
-
-            <Section
-                data-testid="code-hotspots-card"
-                title="Hotspots"
-                description="The churn contributors behind the repository values."
-                action={
-                    <Link
-                        href={buildExploreUrl({ metric: "ownership", filters, role: activeRole })}
-                        className={buttonClassName("ghost", "sm")}
-                    >
-                        <ArrowRight aria-hidden="true" className="h-4 w-4" />
-                        {CTA_LABELS.openEvidence}
-                    </Link>
-                }
-            >
-                {hotspots.length ? (
-                    <div className="space-y-4">
-                        <HorizontalBarChart
-                            categories={hotspots.map((item) => item.label)}
-                            values={hotspots.map((item) => item.value)}
-                        />
-                        <div className="space-y-2 text-sm">
-                            {hotspots.map((item) => (
-                                <Link
-                                    key={item.id}
-                                    href={buildExploreUrl({
-                                        api: item.evidence_link,
-                                        filters,
-                                        role: activeRole,
-                                    })}
-                                    className="flex items-center justify-between rounded-sm bg-background px-3.5 py-2.5"
-                                >
-                                    <span>{item.label}</span>
-                                    <span className="text-xs text-(--ink-muted)">
-                                        {churnExplain
-                                            ? formatMetricValue(item.value, churnExplain.unit)
-                                            : "Not reported"}
-                                    </span>
-                                </Link>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <p className="text-sm text-(--ink-muted)">
-                        Hotspot detail will appear once data is ingested.
-                    </p>
-                )}
-            </Section>
         </div>
     );
 }

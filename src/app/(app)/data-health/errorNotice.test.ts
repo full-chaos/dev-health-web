@@ -13,10 +13,12 @@ const read = (page: string) => readFileSync(join(__dirname, page, "page.tsx"), "
 describe.each(["connectors", "mapping"])("data-health/%s error box", (page) => {
     const source = read(page);
 
-    it("is a danger Notice with the same text", () => {
+    it("is a danger Notice with one plain sentence and Retry, no backend text", () => {
         expect(source).toMatch(
-            /<Notice variant="danger" live=\{false\}>\s*Failed to load data: \{error\}\s*<\/Notice>/u,
+            /<Notice variant="danger" live=\{false\} action=\{<RetryButton \/>\}>/u,
         );
+        expect(source).toMatch(/could not be loaded\. Retry, or check again in a moment\./u);
+        expect(source).not.toContain("{error}");
     });
 
     it("has no raw palette class", () => {

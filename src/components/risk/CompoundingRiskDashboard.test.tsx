@@ -310,3 +310,38 @@ describe("CompoundingRiskDashboard drawing", () => {
         expect((fillOf("component-review-latency") as HTMLElement).style.width).toBe("100%");
     });
 });
+
+describe("CompoundingRiskDashboard on the shared Section", () => {
+    it("draws the hero sentence on the type scale, not a display size", () => {
+        renderDashboard();
+        const title = screen.getByTestId("compounding-hero-title");
+        expect(title.tagName).toBe("H2");
+        expect(title.className).toContain("text-h1");
+        expect(title.className).not.toMatch(/text-5xl|text-3xl/);
+    });
+
+    it("draws Component breakdown as a section card with the thresholds in its head", () => {
+        renderDashboard();
+        const card = screen.getByTestId("component-breakdown");
+        expect(card.tagName).toBe("SECTION");
+        expect(within(card).getByRole("heading", { level: 2 })).toHaveTextContent(
+            "Component breakdown",
+        );
+        const thresholds = within(card).getByTestId("component-breakdown-thresholds");
+        expect(thresholds).toHaveTextContent(/thresholds: elevated ≥ \d\.\d\d · high ≥ \d\.\d\d/);
+        // The thresholds line sits in the card head, before the bars.
+        expect(
+            thresholds.compareDocumentPosition(within(card).getAllByText(/Churn/)[0]) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
+    it("draws the scope table as a section card with the sort line and the By repo / By team segment in its head", () => {
+        renderDashboard();
+        const card = screen.getByTestId("compounding-scope-table");
+        expect(card.tagName).toBe("SECTION");
+        expect(within(card).getByRole("heading", { level: 2 })).toHaveTextContent("By repo");
+        expect(card).toHaveTextContent(/sorted by score · \d+ repo/);
+        expect(within(card).getByRole("table")).toBeInTheDocument();
+    });
+});
