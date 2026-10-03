@@ -39,7 +39,7 @@ describe("HeatmapPanel — axis captions on the hours by weekdays grid (CHAOS-85
         { x: "Mon", y: "auth", value: 5 },
         { x: "Tue", y: "billing", value: 9 },
     ]);
-    const draw = (type: "temporal_load" | "risk") =>
+    const draw = (type: "temporal_load" | "individual" | "risk" | "context_switch") =>
         render(
             <HeatmapPanel
                 title="Review wait density"
@@ -56,7 +56,7 @@ describe("HeatmapPanel — axis captions on the hours by weekdays grid (CHAOS-85
         );
     });
 
-    it("turns the weekHours layout on for the temporal grid only", () => {
+    it("turns the weekHours layout on for the two hour-by-weekday grids only (team and person)", () => {
         chartProps.mockClear();
         draw("temporal_load");
         expect((chartProps.mock.calls.at(-1)?.[0] as { weekHours?: boolean }).weekHours).toBe(true);
@@ -64,6 +64,13 @@ describe("HeatmapPanel — axis captions on the hours by weekdays grid (CHAOS-85
         draw("risk");
         expect((chartProps.mock.calls.at(-1)?.[0] as { weekHours?: boolean }).weekHours).toBe(
             false,
+        );
+    });
+
+    it("captions the person grid the same way", () => {
+        draw("individual");
+        expect(screen.getByTestId("heatmap-axis-captions")).toHaveTextContent(
+            "Hour of day · day of weekReview wait density · team scope",
         );
     });
 

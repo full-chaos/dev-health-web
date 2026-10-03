@@ -186,8 +186,9 @@ export function HeatmapPanel({
 
     const data = initialData;
     const unit = data?.legend.unit;
-    // The temporal grid is hours by weekdays: it gets the prototype's axes and captions.
-    const isWeekHours = request.type === "temporal_load";
+    // The team grid and the person grid are both hours by weekdays: one rule for both, the
+    // prototype's axes and captions.
+    const isWeekHours = request.type === "temporal_load" || request.type === "individual";
 
     // A cell is a mark on the chart canvas, not a focusable element: when the drawer closes, focus
     // goes back to the chart region.
