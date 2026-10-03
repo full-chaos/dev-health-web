@@ -10,7 +10,7 @@ import { CTA_LABELS } from "@/lib/design/cta";
 /** What the drawer shows for one repository row: the served values only. */
 export type RepoEvidenceFacts = {
     repoName: string;
-    hotspotScore?: string;
+    churn?: string;
     busFactor: string;
     samples: string;
 };
@@ -31,8 +31,10 @@ export function RepoEvidenceButton({ repo }: { repo: RepoEvidenceFacts }) {
                     content: (
                         <EvidenceFactList aria-label="Repository" testId="repo-evidence-facts">
                             <EvidenceFact label="Repository" value={repo.repoName} />
-                            <EvidenceFact label="Hotspot score" value={repo.hotspotScore} />
+                            {/* Not served per repository: never filled from another metric. */}
+                            <EvidenceFact label="Hotspot score" />
                             <EvidenceFact label="Bus factor" value={repo.busFactor} />
+                            <EvidenceFact label="Churn" value={repo.churn} />
                             <EvidenceFact label="File-change samples" value={repo.samples} />
                         </EvidenceFactList>
                     ),

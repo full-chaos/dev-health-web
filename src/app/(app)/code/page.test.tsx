@@ -209,6 +209,7 @@ describe("CodePage", () => {
                 "Repository",
                 "Hotspot score",
                 "Bus factor",
+                "Churn",
                 "File-change samples",
                 "Evidence",
             ]);
@@ -223,7 +224,7 @@ describe("CodePage", () => {
             }
         });
 
-        it("shows a served repository hotspot score from the churn explain", async () => {
+        it("shows a served repository churn from the churn explain, and never puts it in the Hotspot score column", async () => {
             setup({ ...base, value: 1, evidenceSampleCount: 3773 });
             getExplainDataMock.mockResolvedValue({
                 unit: "loc",
@@ -232,9 +233,13 @@ describe("CodePage", () => {
                 ],
             });
             await renderPage();
-            const scores = screen.getAllByTestId("repo-hotspot-score").map((c) => c.textContent);
-            expect(scores[0]).toBe("67.1K");
-            expect(scores[1]).toBe("Not reported");
+            const churn = screen.getAllByTestId("repo-churn").map((c) => c.textContent);
+            expect(churn[0]).toBe("67.1K");
+            expect(churn[1]).toBe("Not reported");
+            // The hotspot score is a different metric: not served per repository.
+            for (const cell of screen.getAllByTestId("repo-hotspot-score")) {
+                expect(cell).toHaveTextContent("Not reported");
+            }
         });
 
         it("opens the shared drawer from a row's Evidence button with the repository's values", async () => {
@@ -251,6 +256,7 @@ describe("CodePage", () => {
                 ["Repository", "org/ops"],
                 ["Hotspot score", "Not reported"],
                 ["Bus factor", "1"],
+                ["Churn", "Not reported"],
                 ["File-change samples", "1,947"],
             ]);
         });
