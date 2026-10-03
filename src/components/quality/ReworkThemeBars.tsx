@@ -31,7 +31,7 @@ export function ReworkThemeBars({ rows }: ReworkThemeBarsProps) {
                                 {formatNumber(row.allocation_pct, { maximumFractionDigits: 1 })}%
                             </span>
                         </div>
-                        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-r-(--radius-sm) bg-(--card-stroke)">
+                        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-r-(--radius-sm) bg-background">
                             {width > 0 ? (
                                 <div
                                     aria-hidden="true"

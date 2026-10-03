@@ -1,6 +1,7 @@
 import type { JWT } from "next-auth/jwt";
 import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 import { getBackendUrl } from "@/lib/origin";
+import { processMemo } from "@/lib/processMemo";
 
 const VALIDATION_INTERVAL_MS = 5 * 60 * 1000;
 const VALIDATION_BACKOFF_BASE_MS = 60 * 1000;
@@ -17,7 +18,8 @@ type ValidationMemoEntry =
     | { readonly kind: "valid"; readonly validUntil: number; readonly checkedAt: number }
     | { readonly kind: "transient"; readonly retryAfter: number; readonly failures: number };
 
-const validationMemo = new Map<string, ValidationMemoEntry>();
+// One Map per process, not per bundle: the proxy, the page render and the route handlers share it.
+const validationMemo = processMemo<ValidationMemoEntry>("authValidationMemo");
 
 export async function applyBackendValidationMemo(token: JWT, now: number): Promise<void> {
     const accessToken = token.access_token;
