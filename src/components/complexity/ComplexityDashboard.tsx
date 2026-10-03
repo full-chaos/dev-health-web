@@ -27,7 +27,7 @@ import { LineChart } from "echarts/charts";
 
 import { Chart } from "@/components/charts/Chart";
 import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/chartConventions";
-import { TreemapChart } from "@/components/charts/TreemapChart";
+import { HotspotColumnTreemap } from "@/components/complexity/HotspotColumnTreemap";
 import type { TreemapNode } from "@/components/charts/TreemapChart";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import {
@@ -492,37 +492,7 @@ function HotspotsView({ hotspotRows }: { hotspotRows: HotspotRow[] }) {
                     description="Files sized by risk score (churn × complexity × ownership concentration). Grouped by repo."
                     testId="hotspot-panel"
                 >
-                    <TreemapChart
-                        data={treemapData}
-                        unit="risk"
-                        height={400}
-                        tooltipFormatterAction={(params: unknown, _total, unit) => {
-                            const p = params as {
-                                data?: {
-                                    name?: string;
-                                    value?: number;
-                                    cyclomaticAvg?: number;
-                                    churnLoc30d?: number;
-                                    filePath?: string;
-                                };
-                            };
-                            const node = p.data;
-                            if (!node?.name) return "";
-                            const lines = [`<strong>${node.filePath ?? node.name}</strong>`];
-                            if (typeof node.value === "number") {
-                                lines.push(
-                                    `Risk score: ${formatNumber(node.value, { maximumFractionDigits: 3 })} ${unit}`,
-                                );
-                            }
-                            if (typeof node.cyclomaticAvg === "number") {
-                                lines.push(`Cyclomatic avg: ${formatNumber(node.cyclomaticAvg)}`);
-                            }
-                            if (typeof node.churnLoc30d === "number") {
-                                lines.push(`Churn LOC 30d: ${formatNumber(node.churnLoc30d)}`);
-                            }
-                            return lines.join("<br/>");
-                        }}
-                    />
+                    <HotspotColumnTreemap data={treemapData} />
                 </Panel>
             )}
 

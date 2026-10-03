@@ -34,8 +34,8 @@ vi.mock("@/components/charts/Chart", () => ({
     ),
 }));
 
-vi.mock("@/components/charts/TreemapChart", () => ({
-    TreemapChart: ({ data }: { data: { children?: unknown[] } }) => (
+vi.mock("@/components/complexity/HotspotColumnTreemap", () => ({
+    HotspotColumnTreemap: ({ data }: { data: { children?: unknown[] } }) => (
         <div data-testid="treemap-chart" data-children={data?.children?.length ?? 0} />
     ),
 }));
