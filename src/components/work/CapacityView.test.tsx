@@ -34,6 +34,8 @@ const forecast = (over: Partial<CapacityForecast> = {}): CapacityForecast => ({
     forecastId: "f1",
     computedAt: "2026-06-01T00:00:00Z",
     backlogSize: 42,
+    // The count the simulation ran on. It differs from the backlog on purpose.
+    targetItems: 40,
     p50Date: "2026-06-10",
     p85Date: "2026-06-20",
     p95Date: "2026-07-01",
@@ -175,7 +177,7 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         ).toBeInTheDocument();
         expect(card.getByTestId("range-chart")).toBeInTheDocument();
         expect(card.getByTestId("completion-range-note")).toHaveTextContent(
-            "Monte Carlo forecast: each step is the share of the 100 simulation runs in which all 42 items were done by that day.",
+            "Monte Carlo forecast: each step is the share of the 100 simulation runs in which all 40 items were done by that day.",
         );
         expect(
             card.getByText(

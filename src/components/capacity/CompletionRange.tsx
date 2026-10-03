@@ -20,8 +20,11 @@ const percentText = (share: number) =>
  *
  * Every value is served. The curve is the bins of `completionDistribution.days` (the day and the
  * `cumulativeShare` the API computed); the markers and the planning range are the forecast's own
- * P50 / P85 / P95 days and dates; the axis names the served remaining items; the run total in the
- * words is the served `runs`. The web adds nothing up and puts no point on the curve.
+ * P50 / P85 / P95 days and dates; the axis names the served `targetItems` (the item count the
+ * simulation ran on: a fixed-scope target when the request gave one, else the backlog; it is NOT
+ * `backlogSize`, which is always the whole loaded backlog of the scope); the run total in the
+ * words is the served `runs`. The web adds nothing up and puts no point on the curve. A count
+ * that is not served is left out of the words: no other number takes its place.
  *
  * A forecast with no stored distribution (or with no days mode) reads "Not reported": the card
  * never draws an empty or a made-up curve.
@@ -31,8 +34,8 @@ export function CompletionRange({ forecast }: { forecast: CapacityForecast }) {
     const bins = distribution?.days && distribution.days.length > 0 ? distribution.days : null;
     const runs =
         typeof distribution?.runs === "number" && distribution.runs > 0 ? distribution.runs : null;
-    const { computedAt, backlogSize, p50Days, p85Days, p95Days, p50Date, p85Date, p95Date } =
-        forecast;
+    const { computedAt, p50Days, p85Days, p95Days, p50Date, p85Date, p95Date } = forecast;
+    const simulatedItems = typeof forecast.targetItems === "number" ? forecast.targetItems : null;
 
     const points = useMemo(
         (): RangePoint[] =>
@@ -112,9 +115,14 @@ export function CompletionRange({ forecast }: { forecast: CapacityForecast }) {
         );
     }
 
-    const allItems = backlogSize === 1 ? "the 1 item" : `all ${formatNumber(backlogSize)} items`;
-    const isOrAre = backlogSize === 1 ? "is" : "are";
-    const wasOrWere = backlogSize === 1 ? "was" : "were";
+    const allItems =
+        simulatedItems === null
+            ? "all items"
+            : simulatedItems === 1
+              ? "the 1 item"
+              : `all ${formatNumber(simulatedItems)} items`;
+    const isOrAre = simulatedItems === 1 ? "is" : "are";
+    const wasOrWere = simulatedItems === 1 ? "was" : "were";
 
     return (
         <div data-testid="completion-range">

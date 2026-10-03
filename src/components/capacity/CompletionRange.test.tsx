@@ -58,7 +58,10 @@ type Distribution = NonNullable<CapacityForecast["completionDistribution"]>;
 const base = (over: Partial<CapacityForecast> = {}): CapacityForecast => ({
     forecastId: "f1",
     computedAt: "2026-06-01T08:30:00Z",
-    backlogSize: 42,
+    // The two counts differ on purpose (a fixed-scope target): the simulation ran on the served
+    // `targetItems`; `backlogSize` is the whole loaded backlog of the scope.
+    backlogSize: 55,
+    targetItems: 40,
     p50Date: "2026-06-20",
     p85Date: "2026-06-25",
     p95Date: "2026-06-28",
@@ -128,10 +131,10 @@ describe("CompletionRange — the curve is the served points", () => {
         expect(curve().data.map(([day]) => day)).toEqual([18, 19, 27]);
     });
 
-    it("names the chance axis with the served remaining items, from 0 to 100%", () => {
+    it("names the chance axis with the served simulated item count (`targetItems`, not the backlog), from 0 to 100%", () => {
         render(<CompletionRange forecast={base()} />);
         expect(option().yAxis).toMatchObject({
-            name: "Chance all 42 items are done",
+            name: "Chance all 40 items are done",
             min: 0,
             max: 1,
         });
@@ -139,9 +142,33 @@ describe("CompletionRange — the curve is the served points", () => {
         expect(option().yAxis.axisLabel.formatter(1)).toBe("100%");
     });
 
-    it("says item, not items, for one remaining item", () => {
-        render(<CompletionRange forecast={base({ backlogSize: 1 })} />);
+    it("says item, not items, for one simulated item", () => {
+        render(<CompletionRange forecast={base({ targetItems: 1 })} />);
         expect(option().yAxis.name).toBe("Chance the 1 item is done");
+        expect(screen.getByTestId("completion-range-note")).toHaveTextContent(
+            "in which the 1 item was done by that day.",
+        );
+    });
+
+    it.each([
+        ["null", null as unknown as undefined],
+        ["absent", undefined],
+    ])(
+        "gives no count when the simulated item count is not served (%s): the backlog size is not put in its place",
+        (_name, targetItems) => {
+            render(<CompletionRange forecast={base({ targetItems })} />);
+            expect(option().yAxis.name).toBe("Chance all items are done");
+            const note = screen.getByTestId("completion-range-note");
+            expect(note).toHaveTextContent(
+                "Monte Carlo forecast: each step is the share of the 200 simulation runs in which all items were done by that day.",
+            );
+            expect(note.textContent).not.toContain("55");
+        },
+    );
+
+    it("prints a served count of zero as it is served", () => {
+        render(<CompletionRange forecast={base({ targetItems: 0 })} />);
+        expect(option().yAxis.name).toBe("Chance all 0 items are done");
     });
 
     it("starts the day axis at the day the forecast was computed and labels days as dates", () => {
@@ -194,7 +221,7 @@ describe("CompletionRange — words", () => {
     it("says what a point is, with the served run total", () => {
         render(<CompletionRange forecast={base()} />);
         expect(screen.getByTestId("completion-range-note")).toHaveTextContent(
-            "Monte Carlo forecast: each step is the share of the 200 simulation runs in which all 42 items were done by that day.",
+            "Monte Carlo forecast: each step is the share of the 200 simulation runs in which all 40 items were done by that day.",
         );
     });
 
@@ -216,7 +243,7 @@ describe("CompletionRange — words", () => {
         render(<CompletionRange forecast={{ ...forecast, completionDistribution: withoutRuns }} />);
 
         expect(screen.getByTestId("completion-range-note")).toHaveTextContent(
-            "Monte Carlo forecast: each step is the share of the simulation runs in which all 42 items were done by that day.",
+            "Monte Carlo forecast: each step is the share of the simulation runs in which all 40 items were done by that day.",
         );
         const text = option().tooltip.formatter({ data: [19, 0.85] });
         expect(text).toContain("120 runs ended on this day");
