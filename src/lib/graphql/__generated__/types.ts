@@ -252,8 +252,12 @@ export type AiOpportunity = {
   opportunityId: Scalars['String']['output'];
   rationale: Scalars['String']['output'];
   repoId?: Maybe<Scalars['String']['output']>;
+  /** The repository's full name in the org's repository catalogue (CHAOS-8114). Null = the catalogue holds no name for ``repoId``, or the catalogue could not be read. It is never the id. */
+  repoName?: Maybe<Scalars['String']['output']>;
   score: Scalars['Float']['output'];
   teamId?: Maybe<Scalars['String']['output']>;
+  /** The name of the team ``teamId`` names, from the org's team catalogue (CHAOS-8114). Null = the opportunity has no team, the catalogue holds no name for it, or the catalogue could not be read. It is never the id. */
+  teamName?: Maybe<Scalars['String']['output']>;
   title: Scalars['String']['output'];
   workGraphDrilldowns: Array<AiWorkGraphDrilldownRef>;
 };
@@ -489,13 +493,36 @@ export type CapacityDistribution = {
   days?: Maybe<Array<CapacityDistributionBin>>;
   /** Fixed-date mode: items completed by the target date, one bin per distinct total. */
   items?: Maybe<Array<CapacityDistributionBin>>;
+  /**
+   * The number of simulation runs behind each mode (CHAOS-8477): the counts of one
+   * mode's bins sum to it. The modes of one forecast come from one simulation and
+   * hold the same number of runs. The running share of the runs is served on each
+   * bin (cumulativeShare).
+   */
+  runs: Scalars['Int']['output'];
 };
 
 export type CapacityDistributionBin = {
   __typename?: 'CapacityDistributionBin';
   /** How many simulation runs ended on this value. */
   count: Scalars['Int']['output'];
-  /** The outcome: a day count (days) or an item count (items). */
+  /**
+   * The share of the mode's simulation runs that completed on this value or a
+   * lower one (CHAOS-8477), from the same Monte Carlo distribution as p50Days /
+   * p85Days / p95Days: 0 to 1, never lower than on the bin before, and 1 on the
+   * last bin. In the days mode it is the share of the runs in which the target
+   * items were done on or before that day. The percentile days are an
+   * interpolated rank of the same runs: the day on which this share first reaches
+   * 0.50 and p50Days both lie between the outcomes of the same two consecutive
+   * ranked runs, so they are the same day unless those two runs ended on
+   * different days (and so for 0.85 and p85Days, 0.95 and p95Days).
+   */
+  cumulativeShare: Scalars['Float']['output'];
+  /**
+   * The outcome: a day count (days) or an item count (items). A day count is the
+   * number of days after the day the forecast was computed: the same axis as
+   * p50Days, p85Days and p95Days (p50Date is that day plus p50Days).
+   */
   value: Scalars['Int']['output'];
 };
 
@@ -1871,10 +1898,20 @@ export type ReportRunType = {
 
 export type ReviewEdgeRow = {
   __typename?: 'ReviewEdgeRow';
+  /** The stored identity of the author: the pull request's author e-mail address when there is one, else its author name, else "unknown". It can be an e-mail address. Deprecated in favour of authorName and authorKey (CHAOS-8485): a client that may not show an e-mail address must not select it. */
   author: Scalars['String']['output'];
+  /** An opaque key of the author inside the org (CHAOS-8485); see reviewerKey. */
+  authorKey: Scalars['String']['output'];
+  /** The author's display name (CHAOS-8485): the display name of the org's identity the stored author belongs to; else, for an author stored by e-mail address, the author name the provider gave on the pull request; else the stored author itself when it is not an e-mail address. Never an e-mail address. Null = no name is known. */
+  authorName?: Maybe<Scalars['String']['output']>;
   day: Scalars['Date']['output'];
   repoId?: Maybe<Scalars['String']['output']>;
+  /** The stored identity of the reviewer: a provider login or a display name. Deprecated in favour of reviewerName and reviewerKey (CHAOS-8485); it stays for clients that still read it. */
   reviewer: Scalars['String']['output'];
+  /** An opaque key of the reviewer inside the org (CHAOS-8485): the same person has the same key in every answer, as reviewer and as author when the identity resolves. It is not an e-mail address and not a name; use it only to tell people apart and to join rows. */
+  reviewerKey: Scalars['String']['output'];
+  /** The reviewer's display name (CHAOS-8485): the display name of the org's identity the stored reviewer belongs to; else the stored reviewer itself when it is not an e-mail address (a provider login). Never an e-mail address. Null = no name is known. */
+  reviewerName?: Maybe<Scalars['String']['output']>;
   reviewsCount: Scalars['Int']['output'];
 };
 

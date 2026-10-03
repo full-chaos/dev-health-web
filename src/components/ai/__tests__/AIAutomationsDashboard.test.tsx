@@ -83,8 +83,11 @@ describe("AIAutomationsDashboard", () => {
         expect(within(items[0]).getByText("Rationale 1")).toBeInTheDocument();
         expect(within(items[0]).getByText(/72%/)).toBeInTheDocument();
         expect(items[0]).toHaveTextContent("repeat work");
-        // A7 (EntityLabel): a repo path shows its last segment.
-        expect(items[0]).toHaveTextContent("web-app");
+        // The fixture serves no repository name: the line says so and shows no part of the id.
+        expect(within(items[0]).getByTestId("ai-opportunity-scope")).toHaveTextContent(
+            "Repository: Not reported",
+        );
+        expect(items[0]).not.toHaveTextContent("web-app");
         expect(screen.queryByText("Candidate 6")).not.toBeInTheDocument();
     });
 

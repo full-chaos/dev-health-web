@@ -620,7 +620,9 @@ query AIOpportunities($orgId: String!, $scope: AIScopeInput, $limit: Int! = 5) {
       opportunityId
       kind
       repoId
+      repoName
       teamId
+      teamName
       title
       rationale
       score

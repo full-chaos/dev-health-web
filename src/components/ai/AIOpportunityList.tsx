@@ -4,7 +4,7 @@ import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useState } from "react";
 
 import { STATUS_PILL } from "@/lib/statusPill";
-import { EntityLabel } from "@/components/labels/EntityLabel";
+import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { edgeTypeWords } from "@/lib/ai/edgeLabels";
 import { scrubIdentifiers } from "@/lib/labels/entityLabel";
 import type { AiOpportunity, AiWorkGraphDrilldownRef } from "@/lib/graphql/__generated__/types";
@@ -15,6 +15,10 @@ import { useAIWorkflowDrilldown } from "@/lib/graphql/hooks/useAIReviewRisk";
  * short token (`#920f9442`), and the full original text is the tooltip. Text with no id is untouched
  * and has no tooltip. No name is made up here.
  */
+/** The served name, or what is missing: "Repository: Not reported". Never an id. */
+const servedName = (what: string, name: string | null | undefined): string =>
+    name?.trim() || `${what}: ${NOT_REPORTED}`;
+
 function readable(text: string): { text: string; title?: string } {
     const scrubbed = scrubIdentifiers(text);
     return scrubbed.changed ? { text: scrubbed.text, title: text } : { text };
@@ -138,20 +142,17 @@ export function AIOpportunityList({
                                 Fit {Math.round(item.score * 100)}%
                             </span>
                         </div>
-                        <p className="mt-2 text-label-caps uppercase text-(--ink-muted)">
-                            {item.kind.replace(/_/g, " ")}{" "}
-                            {item.repoId ? (
-                                <>
-                                    {"· "}
-                                    <EntityLabel id={item.repoId} />
-                                </>
-                            ) : null}{" "}
-                            {item.teamId ? (
-                                <>
-                                    {"· "}
-                                    <EntityLabel id={item.teamId} />
-                                </>
-                            ) : null}
+                        {/* The served names of the row's repository and team (CHAOS-8114). A name
+                            that is not served reads "Not reported"; an id is never drawn as a name. */}
+                        <p
+                            className="mt-2 text-label-caps uppercase text-(--ink-muted)"
+                            data-testid="ai-opportunity-scope"
+                        >
+                            {[
+                                item.kind.replace(/_/g, " "),
+                                ...(item.repoId ? [servedName("Repository", item.repoName)] : []),
+                                ...(item.teamId ? [servedName("Team", item.teamName)] : []),
+                            ].join(" · ")}
                         </p>
                         {item.workGraphDrilldowns.length > 0 && (
                             <div className="mt-3 flex flex-wrap gap-2">

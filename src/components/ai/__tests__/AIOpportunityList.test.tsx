@@ -118,4 +118,85 @@ describe("AIOpportunityList", () => {
             );
         });
     });
+
+    // CHAOS-8114: the API serves the repository and team names of an opportunity. A name that is not
+    // served reads "Not reported"; the id is never drawn as a name.
+    describe("repository and team names", () => {
+        const scope = () => screen.getByTestId("ai-opportunity-scope").textContent;
+
+        it("shows the served repository and team names, and no id", () => {
+            render(
+                <AIOpportunityList
+                    detectorReady
+                    recommendations={[
+                        { ...recommendation, repoName: "acme/alpha", teamName: "Platform" },
+                    ]}
+                />,
+            );
+            expect(scope()).toBe("HIGH REVIEW LOAD · acme/alpha · Platform");
+        });
+
+        it.each([null, undefined, "", "   "])(
+            "reads 'Not reported' for a repository name that is %j, never the id",
+            (repoName) => {
+                render(
+                    <AIOpportunityList
+                        detectorReady
+                        recommendations={[{ ...recommendation, repoName, teamName: "Platform" }]}
+                    />,
+                );
+                expect(scope()).toBe("HIGH REVIEW LOAD · Repository: Not reported · Platform");
+                expect(scope()).not.toContain("repo-1");
+            },
+        );
+
+        it.each([null, undefined, "", "   "])(
+            "reads 'Not reported' for a team name that is %j, never the id",
+            (teamName) => {
+                render(
+                    <AIOpportunityList
+                        detectorReady
+                        recommendations={[{ ...recommendation, repoName: "acme/alpha", teamName }]}
+                    />,
+                );
+                expect(scope()).toBe("HIGH REVIEW LOAD · acme/alpha · Team: Not reported");
+                expect(scope()).not.toContain("team-platform");
+            },
+        );
+
+        it("draws no repository or team part for a row that has no repository or team", () => {
+            render(
+                <AIOpportunityList
+                    detectorReady
+                    recommendations={[
+                        {
+                            ...recommendation,
+                            repoId: null,
+                            teamId: null,
+                            repoName: null,
+                            teamName: null,
+                        },
+                    ]}
+                />,
+            );
+            expect(scope()).toBe("HIGH REVIEW LOAD");
+        });
+
+        it("does not draw a name for a row with no team, even if one is served", () => {
+            render(
+                <AIOpportunityList
+                    detectorReady
+                    recommendations={[
+                        {
+                            ...recommendation,
+                            repoName: "acme/alpha",
+                            teamId: null,
+                            teamName: "Stray",
+                        },
+                    ]}
+                />,
+            );
+            expect(scope()).toBe("HIGH REVIEW LOAD · acme/alpha");
+        });
+    });
 });
