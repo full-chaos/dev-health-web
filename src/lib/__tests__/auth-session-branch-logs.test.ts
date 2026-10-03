@@ -213,7 +213,7 @@ describe("validation branches name themselves in the log", () => {
         ]);
     });
 
-    it.each([400, 401, 403, 404])(
+    it.each([401, 403])(
         "user_invalid: status %i ends the session and the line shows the status",
         async (status) => {
             backendAnswers(status);
@@ -227,7 +227,7 @@ describe("validation branches name themselves in the log", () => {
         },
     );
 
-    it.each([429, 500, 503])(
+    it.each([400, 404, 422, 429, 500, 503])(
         "validate_transient: status %i keeps the session and says so",
         async (status) => {
             backendAnswers(status);
@@ -241,6 +241,26 @@ describe("validation branches name themselves in the log", () => {
             ]);
         },
     );
+
+    it.each([
+        ["an empty object", "{}"],
+        ["valid as a string", JSON.stringify({ valid: "false" })],
+        ["a JSON null", "null"],
+        ["a body that is not JSON", "<html>bad gateway</html>"],
+    ])("validate_transient: a 200 with %s is logged with its status", async (_name, body) => {
+        vi.stubGlobal(
+            "fetch",
+            vi.fn(async () => new Response(body, { status: 200 })),
+        );
+
+        const token = await run(validationDueToken());
+
+        expect(token.error).toBeUndefined();
+        expect(token.access_token).toBe(ACCESS_TOKEN);
+        expect(branchLines()).toEqual([
+            { operation: "validate", branch: "validate_transient", status: 200, failures: 1 },
+        ]);
+    });
 
     it("validate_call_failed: a thrown validation call keeps the session and logs the error name", async () => {
         backendThrows();
@@ -371,7 +391,8 @@ describe("a logger that throws never changes what happens to the session", () =>
             () => backendAnswers(200, { valid: false }),
             "user_invalid",
         ],
-        ["validate 404", validationDueToken, () => backendAnswers(404), "user_invalid"],
+        ["validate 401", validationDueToken, () => backendAnswers(401), "user_invalid"],
+        ["validate 404", validationDueToken, () => backendAnswers(404), undefined],
         ["validate 503", validationDueToken, () => backendAnswers(503), undefined],
         ["validate throws", validationDueToken, backendThrows, undefined],
     ];

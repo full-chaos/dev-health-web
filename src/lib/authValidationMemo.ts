@@ -90,25 +90,40 @@ async function validateBackendSession(
             body: JSON.stringify({ token: accessToken }),
         });
 
+        // The session ends only on an answer that refuses it (CHAOS-8444):
+        //  - a 2xx body with `valid: false`, the one way the validate endpoint
+        //    says "this user is no longer valid";
+        //  - 401 or 403. The endpoint does not send them today, but a refusal
+        //    of the credentials must never keep a session.
+        // Every other answer says nothing about the user: a 404 from a router
+        // that has no backend during a roll, a 400 or 422, a 429, a 5xx, a 2xx
+        // body without a boolean `valid` (a body that is not JSON included).
+        // Those keep the session, are logged with their status, and validation
+        // is retried after backoff. The access token still expires on its own
+        // clock, and then the refresh path decides.
         if (res.ok) {
-            const data = await res.json();
-            if (data.valid) return { kind: "valid", checkedAt: now };
+            const verdict = validVerdict(await readJson(res));
+            if (verdict === true) return { kind: "valid", checkedAt: now };
+            if (verdict === false) {
+                logSessionBranch({
+                    operation: "validate",
+                    branch: "user_invalid",
+                    status: res.status,
+                });
+                return { kind: "invalid" };
+            }
+        } else if (res.status === 401 || res.status === 403) {
             logSessionBranch({ operation: "validate", branch: "user_invalid", status: res.status });
             return { kind: "invalid" };
         }
 
-        if (res.status === 429 || res.status >= 500) {
-            logSessionBranch({
-                operation: "validate",
-                branch: "validate_transient",
-                status: res.status,
-                failures,
-            });
-            return transientOutcome(failures, now);
-        }
-
-        logSessionBranch({ operation: "validate", branch: "user_invalid", status: res.status });
-        return { kind: "invalid" };
+        logSessionBranch({
+            operation: "validate",
+            branch: "validate_transient",
+            status: res.status,
+            failures,
+        });
+        return transientOutcome(failures, now);
     } catch (error) {
         logSessionBranch({
             operation: "validate",
@@ -118,6 +133,26 @@ async function validateBackendSession(
         });
         return transientOutcome(failures, now);
     }
+}
+
+/**
+ * The JSON body of an answer, or undefined when it cannot be read. An answer
+ * that arrived but is not JSON is not a failed call: the caller logs it with
+ * its status, not as a network failure.
+ */
+async function readJson(res: Response): Promise<unknown> {
+    try {
+        return await res.json();
+    } catch {
+        return undefined;
+    }
+}
+
+/** The boolean `valid` of a validate answer, or undefined when the body does not carry one. */
+function validVerdict(body: unknown): boolean | undefined {
+    if (typeof body !== "object" || body === null) return undefined;
+    const valid = (body as { valid?: unknown }).valid;
+    return typeof valid === "boolean" ? valid : undefined;
 }
 
 function transientOutcome(failures: number, now: number): ValidationOutcome {
