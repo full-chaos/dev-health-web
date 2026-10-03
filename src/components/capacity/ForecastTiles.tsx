@@ -3,10 +3,15 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { STATUS_PILL } from "@/lib/statusPill";
 
-/** A served date as "Jun 10". The caller makes sure the date is served. */
+/**
+ * A served date as "Jun 10": the calendar day it names, in every time zone (CHAOS-8507). The API
+ * serves a forecast date as a UTC day (the day the forecast was computed plus N days), so it is
+ * printed in UTC: printed in the viewer's local time it was one day early west of UTC.
+ * The caller makes sure the date is served.
+ */
 export function formatForecastDate(dateStr: string): string {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 /**

@@ -225,7 +225,7 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         const range = within(screen.getByTestId("tile-range"));
         expect(range.getByText("Forecast range")).toBeInTheDocument();
         // The served date and the served days; no week count made in the web (CHAOS-8481).
-        expect(range.getByTestId("metric-value")).toHaveTextContent(/^Jun 1[45]$/u);
+        expect(range.getByTestId("metric-value")).toHaveTextContent(/^Jun 15$/u);
         expect(range.getByText("low variance · 14 days")).toBeInTheDocument();
         expect(range.queryByText(/week/iu)).toBeNull();
         expect(screen.queryByTestId("tile-p50")).toBeNull();
