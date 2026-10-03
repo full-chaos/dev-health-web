@@ -20,6 +20,16 @@ let child;
 let stopping = false;
 let requestedSignal;
 const ownedGroupMembers = new Map();
+// Test seam (run-owned-process.test.mjs): report the group as still alive for this many extra polls
+// after it is really gone, so a test can show the supervisor waits for the group (CHAOS-8457).
+let extraAlivePolls = Number(process.env.OWNED_PROCESS_TEST_GROUP_ALIVE_POLLS ?? 0) || 0;
+function groupExistsForCleanup(groupId) {
+    if (extraAlivePolls > 0) {
+        extraAlivePolls -= 1;
+        return true;
+    }
+    return processGroupExists(groupId);
+}
 const guardianCompletion = createGuardianCompletionCoordinator();
 
 function retainOwnedGroupMember(member) {
@@ -133,10 +143,14 @@ async function stopOwnedTree(signal) {
         console.error(
             "owned-process: the guardian exited before announcing drain; verifying the owned group is gone",
         );
-        await waitForProcessGroupGone(child.pid, {
+        const polls = await waitForProcessGroupGone(child.pid, {
             deadlineMs: SHUTDOWN_TIMEOUT_MS,
+            exists: groupExistsForCleanup,
             pollIntervalMs: POLL_INTERVAL_MS,
         });
+        console.error(
+            `owned-process: the owned group is gone (it was still there for ${polls} polls)`,
+        );
     }
 }
 

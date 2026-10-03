@@ -216,6 +216,23 @@ describe("run-owned-process", () => {
         expect(() => process.kill(listenerProcess.pid, 0)).toThrow();
     }, 15_000);
 
+    it("does not exit after SIGKILL until the owned group is gone, even when the guardian died first", async () => {
+        // Seam: the supervisor reports the group as still alive for 40 extra polls after SIGKILL
+        // (about 1 s). On the old code it exited as soon as the guardian's death was seen.
+        const tree = spawn("node", [runner, "node", "-e", stubbornGrandchildListener], {
+            env: { ...process.env, OWNED_PROCESS_TEST_GROUP_ALIVE_POLLS: "40" },
+            stdio: ["ignore", "pipe", "pipe"],
+        });
+        await waitForListener(tree);
+        const stderr = collectStderr(tree);
+
+        tree.kill("SIGTERM");
+        await waitForExit(tree);
+
+        const polls = /still there for (\d+) polls/u.exec(stderr())?.[1];
+        expect(Number(polls)).toBeGreaterThanOrEqual(40);
+    }, 15_000);
+
     it("cleans the verified owned group when its guardian exits unexpectedly", async () => {
         const tree = spawn("node", [runner, "node", "-e", grandchildListener], {
             stdio: ["ignore", "pipe", "pipe"],

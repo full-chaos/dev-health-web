@@ -41,7 +41,8 @@ export function processGroupIsOwned({ groupId, member }, inspectIdentity = proce
 }
 
 /**
- * Waits until the process group is gone. Throws at the deadline. `exists`, `wait` and `now` are
+ * Waits until the process group is gone and returns how many times it was still there. Throws at the
+ * deadline. `exists`, `wait` and `now` are
  * injectable so a test can drive it without a real group (CHAOS-8457).
  */
 export async function waitForProcessGroupGone(
@@ -55,9 +56,12 @@ export async function waitForProcessGroupGone(
     },
 ) {
     const deadline = now() + deadlineMs;
+    let polls = 0;
     while (exists(groupId)) {
         if (now() >= deadline)
             throw new Error("Verified owned POSIX process group remained alive after cleanup.");
+        polls += 1;
         await wait(pollIntervalMs);
     }
+    return polls;
 }
