@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
-import { render, screen } from "@/test/utils";
+import { render } from "@/test/utils";
 import { WipSaturationNotice } from "@/components/work/WipSaturationNotice";
 
 const read = (p: string) => readFileSync(join(process.cwd(), "src", p), "utf8");
