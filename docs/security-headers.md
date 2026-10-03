@@ -50,7 +50,12 @@ connect-src 'self' https://*.vercel.app https://*.sentry.io https://bugs.fullcha
 frame-ancestors 'none';
 ```
 
-`unsafe-eval` is intentionally excluded — Next.js 13+ App Router does not require it. ([`proxy.ts:92–94`](../src/proxy.ts#L92))
+`unsafe-eval` is excluded in production — the Next.js App Router does not require it there. `allowsScriptEval()` in `src/proxy.ts` adds it in exactly two cases, never in production (`NODE_ENV=production` always returns `false`):
+
+- the development server (`NODE_ENV=development`): React's development build calls `eval()` to rebuild server call stacks, and with Next.js 16.3 it does so on every page, so a development page without `unsafe-eval` reports one blocked eval per server stack frame;
+- browser test mode (`DEV_HEALTH_TEST_MODE=true`), which the e2e suites run against a development server.
+
+`src/lib/__tests__/proxy-csp.test.ts` pins all three modes.
 
 The nonce is injected on every response path in the middleware: redirects, rate-limit 429s, auth redirects, and proxied responses. ([`proxy.ts:177–260`](../src/proxy.ts#L177))
 
@@ -62,10 +67,12 @@ The nonce is injected on every response path in the middleware: redirects, rate-
 | Server-rendered (normal)           | `src/proxy.ts` middleware | No (nonce used instead)                            |
 | Local dev (`localhost:8800`)       | `src/proxy.ts` middleware | No; `connect-src` includes `http://localhost:8800` |
 
+`unsafe-eval` in `script-src`: development server and browser test mode only; never in production and never in the static export.
+
 ## Updating headers safely
 
 - **Static headers** (`X-Frame-Options`, `HSTS`, etc.): edit the `headers()` array in [`next.config.js`](../next.config.js#L24). Changes take effect on next build.
 - **CSP for server-rendered routes**: edit `buildCspHeader()` in [`src/proxy.ts`](../src/proxy.ts#L96). The nonce is generated per-request; only the directives need updating.
 - **CSP for static export**: edit the `value` string in [`next.config.js:44–46`](../next.config.js#L44). Keep it in sync with `buildCspHeader()` where possible.
-- Do not add `unsafe-eval` — it is intentionally absent.
+- Do not add `unsafe-eval` to the production policy — it is intentionally absent there. The development-only exception lives in `allowsScriptEval()`; do not widen it.
 - Do not remove `frame-ancestors 'none'` — it is the clickjacking defence.

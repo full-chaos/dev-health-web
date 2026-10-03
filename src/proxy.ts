@@ -152,16 +152,31 @@ function generateNonce(): string {
 }
 
 /**
+ * Whether script-src may carry 'unsafe-eval'.
+ *
+ * Production never does. The development server and browser test mode do:
+ * React's development build calls eval() to rebuild server call stacks, and
+ * with Next.js 16.3 it makes that call on every page, so a development page
+ * without 'unsafe-eval' reports one blocked eval per server stack frame
+ * (CHAOS-8445). React never calls eval() in its production build.
+ */
+function allowsScriptEval(): boolean {
+    if (process.env.NODE_ENV === "production") return false;
+    return process.env.NODE_ENV === "development" || process.env.DEV_HEALTH_TEST_MODE === "true";
+}
+
+/**
  * Build the Content-Security-Policy header value.
  *
- * unsafe-eval is intentionally excluded — Next.js 13+ App Router does not
- * require it. The nonce covers all first-party inline scripts (theme init,
- * runtime-config.js) so unsafe-inline is also removed from script-src.
+ * unsafe-eval is excluded in production — the Next.js App Router does not
+ * require it there (see allowsScriptEval for the development exception). The
+ * nonce covers all first-party inline scripts (theme init, runtime-config.js)
+ * so unsafe-inline is also removed from script-src.
  */
 function buildCspHeader(nonce: string): string {
     return [
         "default-src 'self'",
-        `script-src 'self' 'nonce-${nonce}'${process.env.DEV_HEALTH_TEST_MODE === "true" ? " 'unsafe-eval'" : ""}`,
+        `script-src 'self' 'nonce-${nonce}'${allowsScriptEval() ? " 'unsafe-eval'" : ""}`,
         "style-src 'self' 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",

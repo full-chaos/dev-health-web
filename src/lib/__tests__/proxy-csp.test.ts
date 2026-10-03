@@ -47,4 +47,35 @@ describe("proxy Content-Security-Policy", () => {
 
         expect(response.headers.get("Content-Security-Policy")).not.toContain("'unsafe-eval'");
     });
+
+    it("allows React development eval on the development server", async () => {
+        vi.stubEnv("NODE_ENV", "development");
+        vi.stubEnv("DEV_HEALTH_TEST_MODE", "false");
+
+        const response = await proxy(request());
+
+        expect(response.headers.get("Content-Security-Policy")).toMatch(
+            /script-src 'self' 'nonce-[A-Za-z0-9_-]+' 'unsafe-eval';/,
+        );
+    });
+
+    it("never allows eval in production", async () => {
+        vi.stubEnv("NODE_ENV", "production");
+        vi.stubEnv("DEV_HEALTH_TEST_MODE", "false");
+
+        const response = await proxy(request());
+        const csp = response.headers.get("Content-Security-Policy");
+
+        expect(csp).not.toContain("'unsafe-eval'");
+        expect(csp).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9_-]+';/);
+    });
+
+    it("never allows eval in production, even when browser test mode is set", async () => {
+        vi.stubEnv("NODE_ENV", "production");
+        vi.stubEnv("DEV_HEALTH_TEST_MODE", "true");
+
+        const response = await proxy(request());
+
+        expect(response.headers.get("Content-Security-Policy")).not.toContain("'unsafe-eval'");
+    });
 });
