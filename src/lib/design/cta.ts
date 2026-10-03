@@ -81,6 +81,12 @@ export const CTA_LABELS = {
     inspectThroughputBreakdown: "Inspect throughput breakdown",
     /** Landscape investigation: the code-hotspots flame (was a second "Inspect associations"). */
     inspectCodeHotspots: "Inspect code hotspots",
+    /** Code page: from the repository hotspots to the file-level hotspots (approved copy, app.js:103). */
+    fileLevelHotspots: "File-level hotspots",
+    /** Code page evidence row (approved copy, app.js:103). */
+    ownershipRisk: "Ownership risk",
+    /** Code page evidence row (approved copy, app.js:103). */
+    thirtyDayFileChurn: "30-day file churn",
     /** Open the Work Graph Artifacts tab (the table form of the graph's entities). */
     browseArtifacts: "Browse artifacts",
     /** Open a single artifact (flame diagram, PR, deployment, …). */
