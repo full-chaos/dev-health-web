@@ -882,7 +882,8 @@ export function orderFlowRows(serverRows: WorkGraphFlowRow[]): WorkGraphFlowRow[
 /** The page evidence of the Inflow / Outflow tab: the body rows, as served. */
 export function flowEvidenceFacts(serverRows: WorkGraphFlowRow[]): PageFact[] {
     return orderFlowRows(serverRows).map((row) => ({
-        label: NODE_TYPE_LABELS[row.nodeType],
+        // A type the page has no label for shows as "Unlabelled type", as the body leaves it blank.
+        label: NODE_TYPE_LABELS[row.nodeType] ?? "Unlabelled type",
         value: `Inflow ${formatNumber(row.inflow)} · Outflow ${formatNumber(row.outflow)} · ${balanceLabel(row.inflow, row.outflow)}`,
     }));
 }
@@ -890,7 +891,7 @@ export function flowEvidenceFacts(serverRows: WorkGraphFlowRow[]): PageFact[] {
 /** The page evidence of the Artifact browser: the body rows (type, entity, connections). No names of people. */
 export function artifactEvidenceFacts(rows: WorkGraphArtifactRow[]): PageFact[] {
     return rows.map((row) => ({
-        label: `${NODE_TYPE_LABELS[row.nodeType]} · ${row.displayName?.trim() || "Unresolved"}`,
+        label: `${NODE_TYPE_LABELS[row.nodeType] ?? "Unlabelled type"} · ${row.displayName?.trim() || "Unresolved"}`,
         value: `${formatNumber(row.degree)} connections`,
     }));
 }

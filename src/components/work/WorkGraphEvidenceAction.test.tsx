@@ -85,6 +85,23 @@ describe("WorkGraphEvidenceAction", () => {
         expect(JSON.stringify(all)).not.toContain("opaque-id-123");
     });
 
+    it("a type the page has no label for reads 'Unlabelled type', never undefined", async () => {
+        hooks.flow.mockReturnValue({
+            ...empty,
+            rows: [
+                { nodeType: "ISSUE", inflow: 3, outflow: 0 },
+                { nodeType: "NEW_TYPE", inflow: 5, outflow: 0 },
+                { nodeType: "OTHER_TYPE", inflow: 1, outflow: 0 },
+            ],
+        });
+        render(
+            <WorkGraphEvidenceAction filters={defaultMetricFilter} activeTab="inflow-outflow" />,
+        );
+
+        const labels = (await rows()).map(([label]) => label);
+        expect(labels).toEqual(["Unlabelled type", "Issue", "Unlabelled type"]);
+    });
+
     it("queries only the active tab's aggregate", () => {
         render(<WorkGraphEvidenceAction filters={defaultMetricFilter} activeTab="artifacts" />);
 
