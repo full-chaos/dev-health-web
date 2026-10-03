@@ -223,20 +223,16 @@ test.describe("AI area journey (CHAOS-2213)", () => {
         await expect(page.getByTestId("ai-evidence-panel")).toBeVisible();
     });
 
-    test("Improve opportunities cross-links to canonical AI Automations with filters intact", async ({
+    test("Improve automations cross-links to canonical AI Automations with filters intact", async ({
         page,
     }) => {
         test.slow();
-        await page.goto(`/opportunities?f=${populatedFilter}`);
+        await page.goto(`/improve/automations?f=${populatedFilter}`);
         await waitForHydration(page);
 
-        const crosslink = page.getByTestId("improve-ai-automations-crosslink");
+        const crosslink = page.getByTestId("improve-automations-head-link");
         await expect(crosslink).toBeVisible();
-        await clickUntilUrl(
-            page,
-            crosslink.getByRole("link", { name: /See AI Automations/ }),
-            /\/ai\/automations/,
-        );
+        await clickUntilUrl(page, crosslink, /\/ai\/automations/);
         await expect(page.getByTestId("ai-automations-dashboard")).toBeVisible();
         await expectFilterParam(page);
     });

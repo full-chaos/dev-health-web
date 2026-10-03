@@ -7,6 +7,8 @@ import { ForecastNotices } from "@/components/capacity/ForecastNotices";
 import { ForecastTiles } from "@/components/capacity/ForecastTiles";
 import { ConfidenceBandChart } from "@/components/charts/ConfidenceBandChart";
 import { ThroughputHistogram } from "@/components/charts/ThroughputHistogram";
+import { Inset } from "@/components/capacity/Inset";
+import { Section } from "@/components/ui/Section";
 import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
 import { useCapacityForecast } from "@/lib/graphql/hooks";
@@ -80,12 +82,11 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                 />
             )}
 
-            <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-                <div className={CARD}>
-                    <h3 className="text-sm font-medium text-foreground">Completion projection</h3>
-                    <p className="mb-4 mt-1 text-sm text-(--text-muted)">
-                        Monte Carlo forecast for work completion
-                    </p>
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <Section
+                    title="Completion projection"
+                    description="Monte Carlo forecast for work completion"
+                >
                     {chartData ? (
                         <>
                             <ConfidenceBandChart
@@ -115,17 +116,28 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                             No forecast data available
                         </div>
                     )}
-                </div>
+                </Section>
 
                 {forecast ? <ForecastInputsCard forecast={forecast} /> : null}
             </div>
 
             {forecast && (
-                <div className="grid gap-6 lg:grid-cols-2">
-                    <div className={CARD}>
-                        <h3 className="mb-4 text-sm font-medium text-foreground">
-                            Throughput Distribution
-                        </h3>
+                <>
+                    <Section title="Interpretation" data-testid="forecast-interpretation">
+                        <div className="grid gap-3 md:grid-cols-3">
+                            <Inset title="P50 (50%)" className="mt-0">
+                                Optimistic estimate. Half of simulations complete by this date.
+                            </Inset>
+                            <Inset title="P85 (85%)" className="mt-0">
+                                Recommended target. 85% confidence provides buffer for variability.
+                            </Inset>
+                            <Inset title="P95 (95%)" className="mt-0">
+                                Conservative estimate. Use for commitments with low risk tolerance.
+                            </Inset>
+                        </div>
+                    </Section>
+
+                    <Section title="Throughput Distribution">
                         <ThroughputHistogram
                             throughputMean={forecast.throughputMean}
                             throughputStddev={forecast.throughputStddev}
@@ -134,36 +146,8 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                         <p className="mt-3 text-xs text-(--text-muted)">
                             Based on {forecast.historyDays} days of historical data
                         </p>
-                    </div>
-
-                    <div className={CARD}>
-                        <h3 className="mb-3 text-sm font-medium text-foreground">
-                            How to Interpret
-                        </h3>
-                        <div className="grid gap-3 text-sm text-(--text-muted)">
-                            <div>
-                                <span className="font-medium text-foreground">P50 (50%)</span>
-                                <p className="mt-0.5 text-xs">
-                                    Optimistic estimate. Half of simulations complete by this date.
-                                </p>
-                            </div>
-                            <div>
-                                <span className="font-medium text-foreground">P85 (85%)</span>
-                                <p className="mt-0.5 text-xs">
-                                    Recommended target. 85% confidence provides buffer for
-                                    variability.
-                                </p>
-                            </div>
-                            <div>
-                                <span className="font-medium text-foreground">P95 (95%)</span>
-                                <p className="mt-0.5 text-xs">
-                                    Conservative estimate. Use for commitments with low risk
-                                    tolerance.
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    </Section>
+                </>
             )}
         </div>
     );
