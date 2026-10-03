@@ -17,6 +17,13 @@ describe("signedPercent", () => {
         expect(signedPercent(0)).toBe("0%");
         expect(signedPercent(0.3)).toBe("+0.3%");
     });
+
+    it("never reads a served non-zero change as 0: +0.04% is '+<0.1%', -0.04% is '-<0.1%'", () => {
+        expect(signedPercent(0.04)).toBe("+<0.1%");
+        expect(signedPercent(-0.04)).toBe("-<0.1%");
+        expect(signedPercent(0.05)).toBe("+0.1%");
+        expect(signedPercent(-0)).toBe("0%");
+    });
 });
 
 describe("associationMeterRows", () => {
