@@ -1,4 +1,5 @@
 import { graphqlFetch } from "./server";
+import { withoutPrEmailAddresses } from "./prDetailIdentities";
 import { AI_WORKFLOW_DRILLDOWN_QUERY, PR_DETAIL_QUERY, WORK_GRAPH_EDGES_QUERY } from "./queries";
 import type {
     AIWorkflowDrilldownQueryResponse,
@@ -62,7 +63,8 @@ export async function getPrDetailViaGraphQL(params: {
         { orgId: params.orgId, id: params.id },
         { orgId: params.orgId },
     );
-    return response.pr;
+    // CHAOS-8494: no e-mail address leaves the server on the PR detail read.
+    return response.pr ? withoutPrEmailAddresses(response.pr) : response.pr;
 }
 
 export function getWorkUnitInvestmentDistribution(params: {

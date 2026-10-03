@@ -45,6 +45,12 @@ const mix = {
     unit: "work_units",
 };
 
+// Bars carry no label, so they take the series colors (themeBarColorMap), not the darker tile colors.
+const BAR_COLORS = new Map([
+    ["feature_delivery", "var(--series-a)"],
+    ["maintenance", "var(--series-b)"],
+    ["risk", "var(--series-c)"],
+]);
 const COLORS = new Map([
     ["feature_delivery", "var(--chart-color-1)"],
     ["maintenance", "var(--chart-color-2)"],
@@ -67,6 +73,7 @@ function Harness() {
             setFocusTheme={setFocusTheme}
             setFocusSubcategory={setFocusSubcategory}
             themeColorMap={COLORS}
+            themeBarColorMap={BAR_COLORS}
         />
     );
 }
@@ -92,10 +99,8 @@ describe("Investment mix, Sunburst state", () => {
         ]);
         const fill = within(rows[0]).getByTestId("meter-fill");
         expect(fill.style.width).toBe("60%");
-        expect(fill.style.background).toBe("var(--chart-color-1)");
-        expect(within(rows[1]).getByTestId("meter-fill").style.background).toBe(
-            "var(--chart-color-2)",
-        );
+        expect(fill.style.background).toBe("var(--series-a)");
+        expect(within(rows[1]).getByTestId("meter-fill").style.background).toBe("var(--series-b)");
         expect(panel).not.toHaveTextContent("feature_delivery");
     });
 
