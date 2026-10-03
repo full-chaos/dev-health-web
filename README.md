@@ -165,7 +165,7 @@ Key patterns:
 
 ### Schema Contract Enforcement
 
-The Go gqlgen schema in `dev-health-ops` is the source of truth. The ops repo pins it at `contracts/graphql/v1/schema.graphql`, and `src/lib/graphql/schema.graphql` is a verbatim copy of that pin. The `live-e2e.yml` CI workflow checks out `dev-health-ops` and fails on any difference between the two files (`diff -u`); there is no skip path. If the files differ:
+The Go gqlgen schema in `dev-health-ops` is the source of truth. The ops repo pins it at `contracts/graphql/v1/schema.graphql`, and `src/lib/graphql/schema.graphql` is a verbatim copy of that pin. The `live-e2e.yml` CI workflow checks out `dev-health-ops` and its drift step fails on any difference between the two files (`diff -u`); the step has no condition. The job runs on every pull request that changes `src/**` or `codegen.ts`, so a change to the copy or to the generated types is always checked; a pull request that changes neither (documents only, for example) does not run it. If the files differ:
 
 1. Copy the pin: `cp ../dev-health-ops/contracts/graphql/v1/schema.graphql src/lib/graphql/schema.graphql`
 2. Regenerate types: `pnpm codegen`
