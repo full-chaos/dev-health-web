@@ -114,12 +114,15 @@ export default async function SyncConfigDetailPage({ params, searchParams }: Pag
     return (
         <div className="space-y-8" data-testid="sync-detail">
             <BackLink href="/org/admin/sync" label="Back to connections" />
-            <AdminHeader title={config.name} description={syncHeaderFacts(config)}>
+            <AdminHeader
+                title={config.name}
+                description={syncHeaderFacts(config)}
+                titleBadge={coverage ? <SyncHeaderBadge coverage={coverage} /> : undefined}
+            >
                 <div
                     className="flex flex-wrap items-center gap-2"
                     data-testid="sync-header-actions"
                 >
-                    <SyncHeaderBadge coverage={coverage} />
                     <SyncConfigHeaderActions config={config} />
                     <TestConnectionButton
                         provider={config.provider}

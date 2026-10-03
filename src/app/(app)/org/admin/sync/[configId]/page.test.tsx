@@ -15,14 +15,17 @@ vi.mock("@/components/admin/AdminHeader", () => ({
     AdminHeader: ({
         title,
         description,
+        titleBadge,
         children,
     }: {
         title: string;
         description?: string;
+        titleBadge?: React.ReactNode;
         children?: React.ReactNode;
     }) => (
         <header>
             <h1>{title}</h1>
+            {titleBadge ? <div data-testid="page-header-title-adornment">{titleBadge}</div> : null}
             <p data-testid="header-description">{description}</p>
             {children}
         </header>
@@ -86,10 +89,11 @@ describe("Sync detail page (CHAOS-8242)", () => {
 
     it("shows the coverage status label in the header, the label the coverage card shows (CHAOS-8265)", async () => {
         await renderPage();
-        const badge = within(screen.getByTestId("sync-header-actions")).getByTestId(
-            "sync-header-badge",
-        );
+        const badge = screen.getByTestId("sync-header-badge");
         expect(badge.textContent?.length).toBeGreaterThan(0);
+        // Beside the name (the title adornment slot), not among the action buttons.
+        expect(screen.getByTestId("page-header-title-adornment")).toContainElement(badge);
+        expect(screen.getByTestId("sync-header-actions")).not.toContainElement(badge);
     });
 
     it("shows no status badge when the coverage cannot be read: missing is not a status", async () => {
@@ -100,5 +104,6 @@ describe("Sync detail page (CHAOS-8242)", () => {
             }),
         );
         expect(screen.queryByTestId("sync-header-badge")).not.toBeInTheDocument();
+        expect(screen.queryByTestId("page-header-title-adornment")).not.toBeInTheDocument();
     });
 });
