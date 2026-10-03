@@ -13,16 +13,18 @@ describe("Plan route placement", () => {
         expect(source).toContain("getThroughputForecastViaGraphQL");
         expect(source).toContain("Open items");
         expect(source).toContain("Rolling throughput");
-        expect(source).toContain("Primary risk callout");
+        // The primary risk is folded into the Risk checks inset, not a stand-alone callout.
+        expect(source).toContain("forecast.primaryRisk.label");
+        expect(source).not.toContain("Primary risk callout");
         expect(source).not.toContain("AreaOverview");
     });
 
     it("labels forecast bands with the GraphQL percentile fields actually rendered", () => {
         const source = readRoute("plan");
 
-        expect(source).toContain('["P50", forecast.p50Weeks]');
-        expect(source).toContain('["P75", forecast.p75Weeks]');
-        expect(source).toContain('["P90", forecast.p90Weeks]');
+        expect(source).toContain('["P50 forecast", forecast.p50Weeks]');
+        expect(source).toContain('["P75 forecast", forecast.p75Weeks]');
+        expect(source).toContain('["P90 forecast", forecast.p90Weeks]');
         expect(source).not.toContain('["P85", forecast.p75Weeks]');
         expect(source).not.toContain('["P95", forecast.p90Weeks]');
     });

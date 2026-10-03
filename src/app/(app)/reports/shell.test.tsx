@@ -30,7 +30,7 @@ vi.mock("next-auth/react", () => ({
     signOut: vi.fn(),
 }));
 vi.mock("@/lib/reports/fetchers", () => ({
-    fetchSavedReports: vi.fn().mockResolvedValue({ items: [] }),
+    fetchSavedReportsChecked: vi.fn().mockResolvedValue({ items: [], total: 0, error: false }),
 }));
 vi.mock("@/lib/config", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/config")>()),

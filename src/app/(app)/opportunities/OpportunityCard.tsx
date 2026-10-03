@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight, FileText } from "lucide-react";
 
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import { Inset } from "@/components/capacity/Inset";
+import { Button, buttonClassName } from "@/components/shared/Button";
 import { Notice } from "@/components/ui/Notice";
+import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -38,17 +42,12 @@ export function OpportunityCard({ card, filters, activeRole }: OpportunityCardPr
     const backwards = metric !== undefined && getMetricPolarity(metric) === "higherIsBetter";
 
     return (
-        <div
-            className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-6"
-            data-testid="opportunity-detail"
-        >
-            <h2 className="font-(--font-display) text-xl">{card.title}</h2>
-
+        <Section title={card.title} data-testid="opportunity-detail">
             {backwards ? (
                 <Notice
                     variant="warn"
                     live={false}
-                    className="mt-3"
+                    className="mb-4"
                     data-testid="opportunity-direction-note"
                 >
                     The source suggests reducing {getMetricLabel(metric)}. For this metric a rise is
@@ -56,38 +55,41 @@ export function OpportunityCard({ card, filters, activeRole }: OpportunityCardPr
                 </Notice>
             ) : null}
 
-            <div className="mt-4" data-testid="opportunity-captured-change">
-                <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                    Captured change
-                </p>
+            <div data-testid="opportunity-captured-change">
+                <p className="text-label-caps uppercase text-(--ink-muted)">Captured change</p>
                 <p className="mt-2 text-sm text-(--ink-muted)">{card.rationale}</p>
             </div>
 
             {card.suggested_experiments.length > 0 && (
-                <div className="mt-4" data-testid="opportunity-card-next-step">
-                    <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                        Suggested next steps
-                    </p>
-                    <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-(--ink-muted)">
-                        {card.suggested_experiments.map((experiment) => (
-                            <li key={experiment}>{experiment}</li>
+                <Inset title="Suggested next steps" data-testid="opportunity-card-next-step">
+                    <ol className="mt-1 space-y-2">
+                        {card.suggested_experiments.map((experiment, index) => (
+                            <li key={experiment} className="flex items-start gap-3">
+                                <span
+                                    aria-hidden="true"
+                                    className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-(--action)/15 text-xs font-semibold text-(--accent-2)"
+                                >
+                                    {index + 1}
+                                </span>
+                                <span>{experiment}</span>
+                            </li>
                         ))}
                     </ol>
-                </div>
+                </Inset>
             )}
 
-            <div className="mt-5" data-testid="opportunity-card-evidence">
+            <div className="mt-4" data-testid="opportunity-card-evidence">
                 <div className="flex flex-wrap items-center gap-3">
                     {first ? (
-                        <button
-                            type="button"
+                        <Button
+                            variant="primary"
+                            icon={<FileText />}
                             onClick={() =>
                                 evidence.open({ title: card.title, apiUrl: first, filters })
                             }
-                            className="rounded-xl bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-foreground) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/60"
                         >
                             {CTA_LABELS.viewMetricEvidence}
-                        </button>
+                        </Button>
                     ) : (
                         <p
                             aria-disabled="true"
@@ -98,14 +100,15 @@ export function OpportunityCard({ card, filters, activeRole }: OpportunityCardPr
                     )}
                     <Link
                         href={withFilterParam("/improve/experiments", filters, activeRole)}
-                        className="rounded-xl border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--accent-2) hover:bg-(--card-70)"
+                        className={buttonClassName("secondary")}
                     >
+                        <ArrowRight aria-hidden="true" className="h-4 w-4" />
                         {CTA_LABELS.exploreExperiments}
                     </Link>
                 </div>
                 {more.length > 0 && (
                     <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-                        <span className="uppercase tracking-[0.2em] text-(--ink-muted)">
+                        <span className="text-label-caps uppercase text-(--ink-muted)">
                             More evidence
                         </span>
                         {more.map((link) => (
@@ -120,6 +123,6 @@ export function OpportunityCard({ card, filters, activeRole }: OpportunityCardPr
                     </div>
                 )}
             </div>
-        </div>
+        </Section>
     );
 }

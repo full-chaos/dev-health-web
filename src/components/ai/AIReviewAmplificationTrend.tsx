@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { Chart } from "@/components/charts/Chart";
+import { Section } from "@/components/ui/Section";
 import { useChartTheme } from "@/components/charts/chartTheme";
 import { buildTooltip, lineMark, withPointSymbols } from "@/components/charts/chartConventions";
 
@@ -87,15 +88,13 @@ export function AIReviewAmplificationTrend({ daily, loading }: AIReviewAmplifica
     );
 
     return (
-        <section
-            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+        <Section
+            as="h3"
+            title="Review amplification trend"
+            description="Daily review amplification split by AI attribution bucket."
             data-testid="ai-review-amplification-trend"
         >
-            <h3 className="font-(--font-display) text-lg">Review amplification trend</h3>
-            <p className="mt-1 text-sm text-(--ink-muted)">
-                Daily review amplification split by AI attribution bucket.
-            </p>
-            <div className="mt-4 h-72">
+            <div className="h-72">
                 {loading ? (
                     <p className="text-sm text-(--ink-muted)">Loading trend…</p>
                 ) : trend.days.length > 0 ? (
@@ -106,6 +105,6 @@ export function AIReviewAmplificationTrend({ daily, loading }: AIReviewAmplifica
                     </p>
                 )}
             </div>
-        </section>
+        </Section>
     );
 }
