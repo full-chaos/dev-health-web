@@ -131,6 +131,9 @@ async function stopOwnedTree(signal) {
     const drainSource = await waitForGuardianDrain();
     if (drainSource !== undefined) return;
 
+    // One budget for the whole SIGKILL phase (the drain wait and the group check together), so the two
+    // phases stay inside the 9 s the shutdown budget leaves for them.
+    const killStartedAt = Date.now();
     child.send({ signal: "SIGKILL", type: "stop" });
     const killSource = await waitForGuardianDrain();
     if (killSource === undefined) {
@@ -144,7 +147,7 @@ async function stopOwnedTree(signal) {
             "owned-process: the guardian exited before announcing drain; verifying the owned group is gone",
         );
         const polls = await waitForProcessGroupGone(child.pid, {
-            deadlineMs: SHUTDOWN_TIMEOUT_MS,
+            deadlineMs: Math.max(0, SHUTDOWN_TIMEOUT_MS - (Date.now() - killStartedAt)),
             exists: groupExistsForCleanup,
             pollIntervalMs: POLL_INTERVAL_MS,
         });

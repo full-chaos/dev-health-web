@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import net from "node:net";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { createGuardianCompletionCoordinator } from "../owned-process-guardian-completion.mjs";
 import { waitForProcessGroupGone } from "../owned-process-posix.mjs";
 import {
@@ -67,6 +67,29 @@ function collectStderr(tree) {
 function waitForExit(tree) {
     return new Promise((resolve) => tree.once("exit", resolve));
 }
+
+// Resolves on "close": the exit AND the end of the stdio pipes, so stderr is read to the end.
+function waitForClose(tree) {
+    return new Promise((resolve) => tree.once("close", resolve));
+}
+
+// Every process a test starts is recorded here and stopped in afterEach, so a failing or timed-out
+// test cannot leave a process group behind (CHAOS-8426).
+const started = [];
+function startSupervised(args, options = {}) {
+    const tree = spawn("node", [runner, ...args], {
+        stdio: ["ignore", "pipe", "pipe"],
+        ...options,
+    });
+    started.push({ kind: "supervisor", proc: tree });
+    return tree;
+}
+function startUnrelated() {
+    const proc = spawn("node", ["-e", unrelatedListener], { stdio: ["ignore", "pipe", "pipe"] });
+    started.push({ kind: "unrelated", proc });
+    return proc;
+}
+const isRunning = (proc) => proc.exitCode === null && proc.signalCode === null;
 
 function portIsReleased(port) {
     return new Promise((resolve) => {
@@ -174,10 +197,26 @@ describe("guardian completion coordinator", () => {
 });
 
 describe("run-owned-process", () => {
+    afterEach(async () => {
+        const leftovers = started.splice(0);
+        const leaked = [];
+        for (const { kind, proc } of leftovers) {
+            if (!isRunning(proc)) continue;
+            // A supervisor is stopped with SIGTERM so it can clean its own group; SIGKILL on it would
+            // leave the group behind. Only the unrelated listener (no group of its own) gets SIGKILL.
+            proc.kill(kind === "supervisor" ? "SIGTERM" : "SIGKILL");
+            const exited = await Promise.race([
+                waitForExit(proc).then(() => true),
+                new Promise((resolve) => setTimeout(() => resolve(false), 10_000)),
+            ]);
+            if (!exited) leaked.push(`${kind} ${proc.pid}`);
+        }
+        // Loud, not silent: a process that would not stop is a failure of the test, not a skipped cleanup.
+        expect(leaked).toEqual([]);
+    }, 30_000);
+
     it("returns the owned command exit code after its guardian has drained the group", async () => {
-        const tree = spawn("node", [runner, "node", "-e", "process.exit(7)"], {
-            stdio: ["ignore", "pipe", "pipe"],
-        });
+        const tree = startSupervised(["node", "-e", "process.exit(7)"]);
 
         const code = await waitForExit(tree);
 
@@ -185,9 +224,7 @@ describe("run-owned-process", () => {
     }, 15_000);
 
     it("releases an exact owned grandchild listener when its process group stops", async () => {
-        const tree = spawn("node", [runner, "node", "-e", grandchildListener], {
-            stdio: ["ignore", "pipe", "pipe"],
-        });
+        const tree = startSupervised(["node", "-e", grandchildListener]);
         const listenerProcess = await waitForListener(tree);
 
         tree.kill("SIGTERM");
@@ -198,15 +235,13 @@ describe("run-owned-process", () => {
     }, 15_000);
 
     it("kills a stubborn owned grandchild before the outer shutdown budget expires", async () => {
-        const tree = spawn("node", [runner, "node", "-e", stubbornGrandchildListener], {
-            stdio: ["ignore", "pipe", "pipe"],
-        });
+        const tree = startSupervised(["node", "-e", stubbornGrandchildListener]);
         const listenerProcess = await waitForListener(tree);
         const startedAt = Date.now();
         const stderr = collectStderr(tree);
 
         tree.kill("SIGTERM");
-        await waitForExit(tree);
+        await waitForClose(tree);
 
         expect(Date.now() - startedAt).toBeLessThan(10_000);
         // The SIGKILL path completes from the guardian's death (it kills itself with its group): the
@@ -219,24 +254,21 @@ describe("run-owned-process", () => {
     it("does not exit after SIGKILL until the owned group is gone, even when the guardian died first", async () => {
         // Seam: the supervisor reports the group as still alive for 40 extra polls after SIGKILL
         // (about 1 s). On the old code it exited as soon as the guardian's death was seen.
-        const tree = spawn("node", [runner, "node", "-e", stubbornGrandchildListener], {
+        const tree = startSupervised(["node", "-e", stubbornGrandchildListener], {
             env: { ...process.env, OWNED_PROCESS_TEST_GROUP_ALIVE_POLLS: "40" },
-            stdio: ["ignore", "pipe", "pipe"],
         });
         await waitForListener(tree);
         const stderr = collectStderr(tree);
 
         tree.kill("SIGTERM");
-        await waitForExit(tree);
+        await waitForClose(tree);
 
         const polls = /still there for (\d+) polls/u.exec(stderr())?.[1];
         expect(Number(polls)).toBeGreaterThanOrEqual(40);
     }, 15_000);
 
     it("cleans the verified owned group when its guardian exits unexpectedly", async () => {
-        const tree = spawn("node", [runner, "node", "-e", grandchildListener], {
-            stdio: ["ignore", "pipe", "pipe"],
-        });
+        const tree = startSupervised(["node", "-e", grandchildListener]);
         const listenerProcess = await waitForListener(tree);
         const guardianProcessId = childProcessId(tree.pid);
 
@@ -249,9 +281,7 @@ describe("run-owned-process", () => {
     }, 15_000);
 
     it("cleans a descendant when its target exited before its guardian unexpectedly exits", async () => {
-        const tree = spawn("node", [runner, "node", "-e", targetExitsBeforeListener], {
-            stdio: ["ignore", "pipe", "pipe"],
-        });
+        const tree = startSupervised(["node", "-e", targetExitsBeforeListener]);
         const listenerProcess = await waitForListener(tree);
         await new Promise((resolve) => setTimeout(resolve, 150));
         const guardianProcessId = childProcessId(tree.pid);
@@ -265,29 +295,16 @@ describe("run-owned-process", () => {
     }, 15_000);
 
     it("keeps an unrelated process alive while the guardian escalates its owned group", async () => {
-        const unrelated = spawn("node", ["-e", unrelatedListener], {
-            stdio: ["ignore", "pipe", "pipe"],
-        });
+        const unrelated = startUnrelated();
         const unrelatedProcess = await waitForListener(unrelated);
-        const tree = spawn("node", [runner, "node", "-e", stubbornGrandchildListener], {
-            stdio: ["ignore", "pipe", "pipe"],
-        });
-        try {
-            const ownedListener = await waitForListener(tree);
+        const tree = startSupervised(["node", "-e", stubbornGrandchildListener]);
+        const ownedListener = await waitForListener(tree);
 
-            tree.kill("SIGTERM");
-            await waitForExit(tree);
+        tree.kill("SIGTERM");
+        await waitForExit(tree);
 
-            expect(await portIsReleased(ownedListener.port)).toBe(true);
-            expect(await portIsReleased(unrelatedProcess.port)).toBe(false);
-        } finally {
-            // Always release the unrelated listener and the tree, even when an assertion fails: a
-            // failed run used to leave them (and their process groups) behind (CHAOS-8426).
-            if (tree.exitCode === null && tree.signalCode === null) tree.kill("SIGKILL");
-            if (unrelated.exitCode === null && unrelated.signalCode === null) {
-                unrelated.kill("SIGKILL");
-                await waitForExit(unrelated);
-            }
-        }
+        expect(await portIsReleased(ownedListener.port)).toBe(true);
+        expect(await portIsReleased(unrelatedProcess.port)).toBe(false);
+        // afterEach stops the unrelated listener (and a supervisor that is still running).
     }, 15_000);
 });
