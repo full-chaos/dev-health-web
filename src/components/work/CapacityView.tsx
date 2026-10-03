@@ -1,6 +1,7 @@
 "use client";
 
 import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
+import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { useMemo } from "react";
 
 import { ForecastInputsCard } from "@/components/capacity/ForecastInputsCard";
@@ -133,9 +134,10 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                             data-testid="forecast-chart-not-reported"
                             className="flex h-80 flex-col items-center justify-center gap-1 text-sm text-(--text-muted)"
                         >
-                            <p>Not reported</p>
+                            <p>{NOT_REPORTED}</p>
                             <p className="text-xs">
-                                The forecast has no P50 / P85 / P95 days, so no line is drawn.
+                                The forecast does not have all of the P50 / P85 / P95 days, so no
+                                line is drawn.
                             </p>
                         </div>
                     ) : (

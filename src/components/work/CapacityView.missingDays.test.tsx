@@ -118,7 +118,10 @@ describe("CapacityView — the projection card when a day percentile is not serv
 
         expect(screen.queryByTestId("band-chart")).toBeNull();
         expect(band.props).toEqual([]);
-        expect(screen.getByTestId("forecast-chart-not-reported")).toBeInTheDocument();
+        // The sentence is true for one missing value too: it does not say that all three are missing.
+        expect(screen.getByTestId("forecast-chart-not-reported")).toHaveTextContent(
+            "Not reportedThe forecast does not have all of the P50 / P85 / P95 days, so no line is drawn.",
+        );
     });
 
     it("draws a served zero: 0 days is a value, not a missing one", () => {
