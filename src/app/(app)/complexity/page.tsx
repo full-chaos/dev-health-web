@@ -12,6 +12,12 @@
 import { ViewSet, type ViewSetItem } from "@/components/navigation/ViewSet";
 import { getTabSet, tabHref } from "@/lib/navigation/tabs";
 import { ComplexityDashboard } from "@/components/complexity/ComplexityDashboard";
+import { computeKpis, computeRisingAreas } from "@/components/complexity/complexityKpis";
+import {
+    PageFactsEvidenceAction,
+    type PageFact,
+} from "@/components/evidence/PageFactsEvidenceAction";
+import { formatNumber } from "@/lib/formatters";
 import type {
     ComplexityPoint,
     ComplexityTab,
@@ -117,6 +123,15 @@ async function fetchHotspots(
 // Page
 // ---------------------------------------------------------------------------
 
+/** One line per tab, as the approved prototype words it (views 17 to 21). */
+const TAB_SUBTITLES: Record<string, string> = {
+    overview: "Code complexity over time, file hotspots, and high-risk areas.",
+    flame: "Analyze decomposition and bottlenecks in this surface.",
+    hotspots: "Files sized by risk score and grouped by repository.",
+    "ownership-risk": "Files ranked by blame concentration.",
+    churn: "Files ranked by lines changed over the last 30 days.",
+};
+
 export default async function ComplexityPage({ searchParams }: PageProps) {
     const session = await requireSession();
     const params = (await searchParams) ?? {};
@@ -150,6 +165,27 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
         fetchHotspots(orgId, sinceUtc, untilUtc, scopeInput),
     ]);
 
+    // The page's served values for the evidence drawer: the overview tiles, as they read there.
+    const { avgComplexity, totalHighComplexity, hotspotCount } = computeKpis(points, hotspotRows);
+    const pageFacts: PageFact[] = [
+        {
+            label: "Avg Complexity",
+            value:
+                avgComplexity === null
+                    ? undefined
+                    : `${formatNumber(avgComplexity, { maximumFractionDigits: 2 })} cyclomatic / kloc`,
+        },
+        { label: "Rising Areas", value: formatNumber(computeRisingAreas(points)) },
+        {
+            label: "High-Complexity Functions",
+            value: totalHighComplexity > 0 ? formatNumber(totalHighComplexity) : undefined,
+        },
+        {
+            label: "Hotspot Files",
+            value: hotspotCount > 0 ? formatNumber(hotspotCount) : undefined,
+        },
+    ];
+
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
@@ -159,7 +195,8 @@ export default async function ComplexityPage({ searchParams }: PageProps) {
         >
             <PageHeader
                 title="Complexity Trends"
-                subtitle="Code complexity over time, file hotspots, and high-risk areas."
+                subtitle={TAB_SUBTITLES[activeTab] ?? TAB_SUBTITLES.overview}
+                actions={<PageFactsEvidenceAction title="Complexity" facts={pageFacts} />}
             >
                 <p className="text-sm text-(--ink-muted)">
                     Every score traces to cyclomatic complexity and churn evidence.
