@@ -40,13 +40,27 @@ vi.mock("@/components/charts/SankeyChart", async (importOriginal) => {
             nodes,
             links,
         }: {
-            nodes: { name: string }[];
+            nodes: { name: string; group?: string; itemStyle?: { color?: string } }[];
             links: { source: string; target: string; value: number }[];
         }) => (
-            <div data-testid="sankey-chart" data-nodes={nodes.length} data-links={links.length} />
+            <div
+                data-testid="sankey-chart"
+                data-nodes={nodes.length}
+                data-links={links.length}
+                data-colors={JSON.stringify(
+                    Object.fromEntries(nodes.map((n) => [n.group, n.itemStyle?.color])),
+                )}
+            />
         ),
     };
 });
+
+// Fixed chart colours (the real hooks watch the theme through matchMedia, which jsdom lacks).
+vi.mock("@/components/charts/chartTheme", () => ({
+    useChartTheme: () => ({ muted: "#777777", text: "#111111" }),
+    useChartTokens: () => ({ caution: "#c98500", accentHighlight: "#e8650a" }),
+    useChartColors: () => ["#1", "#2", "#3"],
+}));
 
 vi.mock("@/components/charts/HorizontalBarChart", () => ({
     HorizontalBarChart: ({ categories }: { categories: string[] }) => (
@@ -55,8 +69,17 @@ vi.mock("@/components/charts/HorizontalBarChart", () => ({
 }));
 
 vi.mock("@/components/charts/TimeseriesChart", () => ({
-    TimeseriesChart: ({ data }: { data: Array<{ day: string; value: number | null }> }) => (
-        <div data-testid="timeseries-chart">{data.map((point) => point.value).join(",")}</div>
+    TimeseriesChart: ({
+        data,
+    }: {
+        data: Array<{ day: string; value: number | null; label?: string }>;
+    }) => (
+        <div
+            data-testid="timeseries-chart"
+            data-labels={data.map((point) => point.label ?? "").join("|")}
+        >
+            {data.map((point) => point.value).join(",")}
+        </div>
     ),
 }));
 
@@ -1070,6 +1093,88 @@ describe("IncidentCorrelationDashboard", () => {
             expect(within(body).getAllByTestId("evidence-fact")[2]).toHaveTextContent(
                 "Linked PRs0",
             );
+        });
+    });
+
+    describe("review follow-ups (arrow first, date axis, flow heads)", () => {
+        const incidentEdges = [
+            makeEdge("l1", "dep-a", "inc-1", "LINKED_INCIDENT", {
+                targetDisplayName: "INC-1 Checkout",
+                sourceDisplayName: "api · Sep 4",
+            }),
+        ];
+        const deploysEdges = [
+            makeEdge("d1", "pr-1", "dep-a", "DEPLOYS", { sourceDisplayName: "#1 Pool size" }),
+        ];
+
+        it("draws the arrow BEFORE the row action text", () => {
+            renderWithEvidenceDrawer(
+                <IncidentCorrelationDashboard {...baseProps} incidentEdges={incidentEdges} />,
+            );
+            const button = screen.getByTestId("incident-row-evidence");
+            expect(button.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+            expect(button.lastChild?.textContent).toBe("Open evidence");
+        });
+
+        it("labels the trend axis with formatted dates, never the raw timestamp", () => {
+            renderWithEvidenceDrawer(
+                <IncidentCorrelationDashboard
+                    {...baseProps}
+                    deltas={[
+                        {
+                            metric: "change_failure_rate",
+                            label: "Change Failure Rate",
+                            value: 2,
+                            unit: "%",
+                            delta_pct: 0,
+                            spark: [
+                                { ts: "2026-07-05T00:00:00", value: 1 },
+                                { ts: "2026-07-06T00:00:00", value: 2 },
+                            ],
+                        },
+                    ]}
+                />,
+            );
+            const labels = screen.getByTestId("timeseries-chart").getAttribute("data-labels");
+            expect(labels).toBe("Jul 5, 2026|Jul 6, 2026");
+            expect(labels).not.toContain("T00:00:00");
+        });
+
+        it("titles the flow columns and its legend from the served node types, and says a link is not a cause", () => {
+            renderWithEvidenceDrawer(
+                <IncidentCorrelationDashboard
+                    {...baseProps}
+                    deploysEdges={deploysEdges}
+                    incidentEdges={incidentEdges}
+                />,
+            );
+            const flow = screen.getByRole("region", { name: "Correlation flow diagram" });
+            expect(
+                Array.from(
+                    within(flow).getByTestId("sankey-column-titles").querySelectorAll("span"),
+                ).map((span) => span.textContent),
+            ).toEqual(["Pull request", "Deployment", "Incident"]);
+            expect(within(flow).getByTestId("sankey-legend")).toHaveTextContent(
+                "Pull requestDeploymentIncident",
+            );
+            expect(flow).toHaveTextContent(
+                "A link shows that the records are connected; it does not show cause.",
+            );
+            // The flow and the legend use the same colour per node type.
+            expect(
+                JSON.parse(screen.getByTestId("sankey-chart").getAttribute("data-colors") ?? "{}"),
+            ).toEqual({ pr: "#c98500", deployment: "#777777", incident: "#e8650a" });
+        });
+
+        it("titles only the node types the flow has (no PR column without DEPLOYS edges)", () => {
+            renderWithEvidenceDrawer(
+                <IncidentCorrelationDashboard {...baseProps} incidentEdges={incidentEdges} />,
+            );
+            const titles = screen.getByTestId("sankey-column-titles");
+            expect(Array.from(titles.querySelectorAll("span")).map((s) => s.textContent)).toEqual([
+                "Deployment",
+                "Incident",
+            ]);
         });
     });
 });

@@ -22,6 +22,7 @@ import { useMemo } from "react";
 
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { SankeyChart } from "@/components/charts/SankeyChart";
+import { useChartTheme, useChartTokens } from "@/components/charts/chartTheme";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
@@ -33,7 +34,7 @@ import { DataState } from "@/components/ui/DataState";
 import { Notice } from "@/components/ui/Notice";
 import { Section } from "@/components/ui/Section";
 import { buildExploreUrl } from "@/lib/filters/url";
-import { formatDelta, formatMetricValue, formatNumber } from "@/lib/formatters";
+import { formatDateUTC, formatDelta, formatMetricValue, formatNumber } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { Contributor, MetricDelta, SankeyLink, SankeyNode } from "@/lib/types";
@@ -121,6 +122,17 @@ export type IncidentCorrelationDashboardProps = {
 const DORA_METRIC_KEYS = ["change_failure_rate", "deployment_frequency", "mttr"] as const;
 
 const MAX_SANKEY_INCIDENTS = 10;
+
+/**
+ * The node types of the flow (from the served edge types: DEPLOYS = PR → deployment,
+ * LINKED_INCIDENT = deployment → incident), in flow order, with their column title.
+ */
+const SANKEY_GROUPS = [
+    { group: "pr", label: "Pull request" },
+    { group: "deployment", label: "Deployment" },
+    { group: "incident", label: "Incident" },
+] as const;
+type SankeyGroup = (typeof SANKEY_GROUPS)[number]["group"];
 const MAX_LINKS_PER_INCIDENT = 3;
 const OPAQUE_LABEL_RE =
     /^[0-9a-f]{32}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -327,7 +339,18 @@ export function IncidentCorrelationDashboard({
         [deploysEdges, incidentEdges],
     );
 
+    const chartTheme = useChartTheme();
+    const chartTokens = useChartTokens();
+    // One colour per served node type, shared by the flow and its legend.
+    const sankeyGroupColor: Record<SankeyGroup, string> = {
+        pr: chartTokens.caution,
+        deployment: chartTheme.muted,
+        incident: chartTokens.accentHighlight,
+    };
     const sankeyData = useMemo(() => buildSankeyData(incidentRows), [incidentRows]);
+    const sankeyGroups = SANKEY_GROUPS.filter(({ group }) =>
+        sankeyData?.nodes.some((node) => node.group === group),
+    );
 
     const doraMetrics = useMemo(
         () =>
@@ -426,6 +449,8 @@ export function IncidentCorrelationDashboard({
                     const cfrTrendData = cfrDelta.spark.map((point) => ({
                         day: point.ts,
                         value: isFiniteNumber(point.value) ? point.value : null,
+                        // Axis label in the shared date format, never the raw timestamp.
+                        label: formatDateUTC(point.ts),
                     }));
                     const hasCfrTrend = hasRenderableSeries(cfrTrendData);
                     return (
@@ -588,14 +613,45 @@ export function IncidentCorrelationDashboard({
                     </h2>
                     <p className="mt-1 text-xs text-(--ink-muted)">
                         Top {MAX_SANKEY_INCIDENTS} incidents by linkage. Labels are shortened so the
-                        flow remains readable.
+                        flow remains readable. A link shows that the records are connected; it does
+                        not show cause.
                     </p>
-                    <div className="mt-4">
+                    {/* Column titles: one per served node type, in flow order. */}
+                    <div
+                        className="mt-4 flex justify-between text-label-caps uppercase text-(--ink-muted)"
+                        data-testid="sankey-column-titles"
+                    >
+                        {sankeyGroups.map(({ group, label }) => (
+                            <span key={group}>{label}</span>
+                        ))}
+                    </div>
+                    <div className="mt-2">
                         <SankeyChart
-                            nodes={sankeyData.nodes}
+                            nodes={sankeyData.nodes.map((node) => ({
+                                ...node,
+                                itemStyle: {
+                                    ...node.itemStyle,
+                                    color: sankeyGroupColor[node.group as SankeyGroup],
+                                },
+                            }))}
                             links={sankeyData.links}
                             height={360}
                         />
+                    </div>
+                    <div
+                        className="mt-3 flex flex-wrap gap-4 text-xs text-(--ink-muted)"
+                        data-testid="sankey-legend"
+                    >
+                        {sankeyGroups.map(({ group, label }) => (
+                            <span key={group} className="inline-flex items-center gap-1.5">
+                                <i
+                                    aria-hidden="true"
+                                    className="inline-block h-2.5 w-2.5 rounded-xs"
+                                    style={{ backgroundColor: sankeyGroupColor[group] }}
+                                />
+                                {label}
+                            </span>
+                        ))}
                     </div>
                 </section>
             )}
@@ -664,8 +720,9 @@ function IncidentEvidenceAction({ row }: { row: IncidentRow }) {
             onClick={() => evidence.open({ title, content: <IncidentEvidence row={row} /> })}
             className={buttonClassName("ghost", "sm")}
         >
-            {CTA_LABELS.openEvidence}
+            {/* Prototype `btn()`: the icon comes before the text. */}
             <ArrowRight aria-hidden="true" className="h-4 w-4" />
+            {CTA_LABELS.openEvidence}
         </button>
     );
 }
