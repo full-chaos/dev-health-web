@@ -401,6 +401,12 @@ export const CTA_LABELS = {
     increaseEntities: "Increase entities",
     expandLegend: "Expand legend",
     collapseLegend: "Collapse legend",
+    /** Work Graph, layered drawing: one width step wider. */
+    zoomIn: "Zoom in",
+    /** Work Graph, layered drawing: one width step narrower. */
+    zoomOut: "Zoom out",
+    /** Work Graph, layered drawing: back to the width that fits the box. */
+    resetZoom: "Reset zoom",
     filters: "Filters",
     openAiWorkflows: "Open AI Workflows",
     startWithAiImpact: "Start with AI Impact",

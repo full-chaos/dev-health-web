@@ -8,6 +8,7 @@ import {
     OPERATION_MANIFEST,
     QUERY_ROUTE_PATHS,
     REGISTRYDUMP_PATHS,
+    checkSummary,
     compareRegistry,
     resolveOpsPath,
     sha256Trim,
@@ -146,8 +147,9 @@ describe("compareRegistry", () => {
 });
 
 // CHAOS-8000 dual accept / CHAOS-7977: registrydump lists a text an operation accepted BEFORE its current one
-// as an extra entry with `legacy: true`, AFTER the current entry. The gate compares the CURRENT document with the
-// wire form; a legacy entry must neither replace it nor count as another operation.
+// as an extra entry with `legacy: true`, AFTER the current entry. The gate compares the wire form with the
+// CURRENT document and with the legacy texts of the same operation; a legacy entry must neither replace the
+// current one nor count as another operation.
 describe("compareRegistry with legacy entries", () => {
     const legacyOf = (entry) => ({
         ...entry,
@@ -199,6 +201,150 @@ describe("compareRegistry with legacy entries", () => {
         const { errors } = compareRegistry([...others, legacyOf(current)], OPERATION_MANIFEST);
         expect(errors.join("\n")).toContain("capacityForecast");
         expect(errors.join("\n")).toContain("does not register");
+    });
+
+    // query-api accepts the current text AND each legacy text of an operation. A web tree that still sends a
+    // legacy text (web main, between the ops registration of a new text and the web change that sends it) is
+    // served, so it is a MATCH; the row says which text matched.
+    const withNewCurrent = (operation) => {
+        const entries = correctGoEntries();
+        const sent = entries.find((e) => e.operation === operation);
+        const others = entries.filter((e) => e !== sent);
+        const newCurrent = {
+            ...sent,
+            document: "query New { new }",
+            digest: sha256Trim("query New { new }"),
+        };
+        const sentAsLegacy = {
+            ...sent,
+            const_name: `registered${operation}V1Document`,
+            legacy: true,
+        };
+        return { sent, others, newCurrent, sentAsLegacy };
+    };
+
+    it("a manifest text that equals a LEGACY text of its operation is a match, and the row says legacy", () => {
+        const { sent, others, newCurrent, sentAsLegacy } = withNewCurrent("capacityForecast");
+        const { rows, errors } = compareRegistry(
+            [...others, newCurrent, sentAsLegacy],
+            OPERATION_MANIFEST,
+        );
+
+        expect(errors).toEqual([]);
+        const row = rows.find((r) => r.operation === "capacityForecast");
+        expect(row.match).toBe(true);
+        expect(row.matched).toBe("legacy");
+        // The printed Go digest stays the CURRENT one; the wire digest is the legacy text's.
+        expect(row.goDigest).toBe(newCurrent.digest);
+        expect(row.wireDigest).toBe(sent.digest);
+    });
+
+    it("a manifest text that equals the CURRENT text says current", () => {
+        const entries = correctGoEntries();
+        const current = entries.find((e) => e.operation === "capacityForecast");
+        const { rows } = compareRegistry([...entries, legacyOf(current)], OPERATION_MANIFEST);
+        expect(rows.find((r) => r.operation === "capacityForecast").matched).toBe("current");
+    });
+
+    it("any one of several legacy texts of the operation matches", () => {
+        const { others, newCurrent, sentAsLegacy } = withNewCurrent("capacityForecast");
+        const { rows } = compareRegistry(
+            [...others, newCurrent, legacyOf(newCurrent), sentAsLegacy],
+            OPERATION_MANIFEST,
+        );
+        const row = rows.find((r) => r.operation === "capacityForecast");
+        expect([row.match, row.matched]).toEqual([true, "legacy"]);
+    });
+
+    it("a legacy text of ANOTHER operation does not make a match", () => {
+        const { others, newCurrent, sentAsLegacy } = withNewCurrent("capacityForecast");
+        // The same digest, but filed under another operation.
+        const elsewhere = { ...sentAsLegacy, operation: "reviewEdges" };
+        const { rows } = compareRegistry([...others, newCurrent, elsewhere], OPERATION_MANIFEST);
+        const row = rows.find((r) => r.operation === "capacityForecast");
+        expect([row.match, row.matched]).toEqual([false, "none"]);
+    });
+
+    it("a text that equals neither the current nor a legacy text is a mismatch", () => {
+        const { others, newCurrent } = withNewCurrent("capacityForecast");
+        const { rows } = compareRegistry(
+            [...others, newCurrent, legacyOf(newCurrent)],
+            OPERATION_MANIFEST,
+        );
+        const row = rows.find((r) => r.operation === "capacityForecast");
+        expect([row.match, row.matched]).toEqual([false, "none"]);
+    });
+
+    it("a malformed legacy entry (legacy not exactly true) never makes a match", () => {
+        const { others, newCurrent, sentAsLegacy } = withNewCurrent("capacityForecast");
+        const { rows, errors } = compareRegistry(
+            [...others, newCurrent, { ...sentAsLegacy, legacy: "true" }],
+            OPERATION_MANIFEST,
+        );
+        expect(errors.join("\n")).toContain("legacy");
+        expect(rows.find((r) => r.operation === "capacityForecast").match).toBe(false);
+    });
+
+    // A legacy match is served, but it is loud: the web half that sends the current text is still owed.
+    describe("what check prints for the three cases", () => {
+        const threeCases = () => {
+            const entries = correctGoEntries();
+            const names = ["capacityForecast", "reviewEdges"];
+            const [legacyCase, mismatchCase] = names.map((n) =>
+                entries.find((e) => e.operation === n),
+            );
+            const others = entries.filter((e) => !names.includes(e.operation));
+            const moved = (e) => ({
+                ...e,
+                document: `query New${e.operation} { x }`,
+                digest: sha256Trim(`query New${e.operation} { x }`),
+            });
+            return compareRegistry(
+                [
+                    ...others,
+                    // capacityForecast: ops has a new current text, the web text is its legacy text.
+                    moved(legacyCase),
+                    {
+                        ...legacyCase,
+                        const_name: "registeredCapacityForecastV1Document",
+                        legacy: true,
+                    },
+                    // reviewEdges: ops has a new current text and the web text is nowhere.
+                    moved(mismatchCase),
+                ],
+                OPERATION_MANIFEST,
+            ).rows;
+        };
+
+        it("counts the rows as current, legacy and mismatch", () => {
+            const rows = threeCases();
+            const summary = checkSummary(rows);
+            expect([summary.current, summary.legacy, summary.mismatch]).toEqual([
+                rows.length - 2,
+                1,
+                1,
+            ]);
+            expect(summary.counts).toBe(`current ${rows.length - 2}, legacy 1, mismatch 1`);
+        });
+
+        it("prints one warning line per legacy match, by operation name, and none for the other rows", () => {
+            expect(checkSummary(threeCases()).warnings).toEqual([
+                "WARNING: capacityForecast: matches a LEGACY ops text; the web half is still owed",
+            ]);
+        });
+
+        it("prints no warning when every text is the current one", () => {
+            const { rows } = compareRegistry(correctGoEntries(), OPERATION_MANIFEST);
+            const summary = checkSummary(rows);
+            expect(summary.warnings).toEqual([]);
+            expect(summary.counts).toBe(`current ${rows.length}, legacy 0, mismatch 0`);
+        });
+
+        it("a text that matches neither still fails: it is in the mismatch count, not in the warnings", () => {
+            const summary = checkSummary(threeCases());
+            expect(summary.mismatch).toBe(1);
+            expect(summary.warnings.join("\n")).not.toContain("reviewEdges");
+        });
     });
 
     it.each([false, "true", 1, null])(

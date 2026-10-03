@@ -1,5 +1,4 @@
 import { bucketEquals, bucketKey } from "@/lib/ai/buckets";
-import { formatReviewTrendDay } from "./AIReviewAmplificationTrend";
 import type {
     AiImpactBucketRow,
     AiImpactBucketTotals,
@@ -77,6 +76,19 @@ export function assistedWorkShareRows(rows: AiImpactBucketTotals[]) {
             value: row.prsTotal,
             ...BUCKET_COLOR[bucketKey(row.bucket)],
         }));
+}
+
+/**
+ * A calendar day ("2026-05-05") as a short date ("May 5"), in UTC so the label is the served day.
+ * It lives in this neutral module: a server-safe helper must not be imported from a "use client"
+ * file (and that file imports this one).
+ */
+export function formatReviewTrendDay(day: string) {
+    return new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        timeZone: "UTC",
+    }).format(new Date(`${day}T00:00:00Z`));
 }
 
 /**

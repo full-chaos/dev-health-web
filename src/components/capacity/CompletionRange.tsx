@@ -26,6 +26,12 @@ const percentText = (share: number) =>
  * words is the served `runs`. The web adds nothing up and puts no point on the curve. A count
  * that is not served is left out of the words: no other number takes its place.
  *
+ * Runs that did not finish (CHAOS-8532): the simulation stops a run at the served `horizonDays`,
+ * and a run stopped there is not done. The served shares count the finished runs only, so the
+ * curve can end below 100%: the card never closes it. The served `unfinishedRuns` is said in one
+ * sentence. A bin, a marker or a tooltip at the horizon means "that many days or more" and names
+ * no finish date.
+ *
  * A forecast with no stored distribution (or with no days mode) reads "Not reported": the card
  * never draws an empty or a made-up curve.
  */
@@ -35,6 +41,10 @@ export function CompletionRange({ forecast }: { forecast: CapacityForecast }) {
     const runs =
         typeof distribution?.runs === "number" && distribution.runs > 0 ? distribution.runs : null;
     const { computedAt, p50Days, p85Days, p95Days, p50Date, p85Date, p95Date } = forecast;
+    const horizonDays =
+        typeof distribution?.horizonDays === "number" ? distribution.horizonDays : null;
+    const unfinishedRuns =
+        typeof distribution?.unfinishedRuns === "number" ? distribution.unfinishedRuns : null;
     const simulatedItems = typeof forecast.targetItems === "number" ? forecast.targetItems : null;
 
     const points = useMemo(
@@ -55,15 +65,20 @@ export function CompletionRange({ forecast }: { forecast: CapacityForecast }) {
                       {
                           name,
                           day,
-                          // "P85 · Jun 25 · 24 days": percentile, the served date, the served days.
-                          label: [name, date ? formatServedDay(date) : null, dayCount(day)]
-                              .filter(Boolean)
-                              .join(" · "),
+                          label:
+                              day === horizonDays
+                                  ? // At the horizon the percentile means "that many days or
+                                    // more": the served date is not a finish date, so no date.
+                                    `${name} · ${dayCount(day)} or more`
+                                  : // "P85 · Jun 25 · 24 days": the served date, the served days.
+                                    [name, date ? formatServedDay(date) : null, dayCount(day)]
+                                        .filter(Boolean)
+                                        .join(" · "),
                       },
                   ]
                 : [],
         );
-    }, [p50Date, p50Days, p85Date, p85Days, p95Date, p95Days]);
+    }, [horizonDays, p50Date, p50Days, p85Date, p85Days, p95Date, p95Days]);
 
     const planningRange = useMemo(
         () =>
@@ -73,30 +88,48 @@ export function CompletionRange({ forecast }: { forecast: CapacityForecast }) {
         [p50Days, p95Days],
     );
 
-    // A day of the axis as its date: the day the forecast was computed plus the day offset.
+    // A day of the axis as its date: the day the forecast was computed plus the day offset. The
+    // horizon day is "that date or later".
     const dayLabel = useCallback(
-        (day: number) => formatDayOffset(computedAt, day) ?? `Day ${day}`,
-        [computedAt],
+        (day: number) => {
+            const date = formatDayOffset(computedAt, day) ?? `Day ${day}`;
+            return day === horizonDays ? `${date} or later` : date;
+        },
+        [computedAt, horizonDays],
+    );
+
+    // "80 of 200 runs did not finish within 365 days": served numbers only; the run total is left
+    // out when it is not served.
+    const didNotFinish = useCallback(
+        (count: number, horizon: number) =>
+            runs === null
+                ? `${formatNumber(count)} ${count === 1 ? "run" : "runs"} did not finish within ${dayCount(horizon)}`
+                : `${formatNumber(count)} of ${formatNumber(runs)} runs did not finish within ${dayCount(horizon)}`,
+        [runs],
     );
 
     const tooltipLines = useCallback(
         (point: RangePoint) => {
             const count = bins?.find((bin) => bin.value === point.day)?.count;
+            // The bin at the horizon holds the runs that were stopped there: they did not end.
+            const atHorizon = horizonDays !== null && point.day === horizonDays;
             const ended =
                 count === undefined
                     ? []
-                    : [
-                          runs === null
-                              ? `${formatNumber(count)} ${count === 1 ? "run" : "runs"} ended on this day`
-                              : `${formatNumber(count)} of ${formatNumber(runs)} runs ended on this day`,
-                      ];
+                    : atHorizon
+                      ? [didNotFinish(count, point.day)]
+                      : [
+                            runs === null
+                                ? `${formatNumber(count)} ${count === 1 ? "run" : "runs"} ended on this day`
+                                : `${formatNumber(count)} of ${formatNumber(runs)} runs ended on this day`,
+                        ];
             return [
-                `${dayCount(point.day)} after the forecast`,
+                `${dayCount(point.day)}${atHorizon ? " or more" : ""} after the forecast`,
                 `${percentText(point.share)} of the runs were done by this day`,
                 ...ended,
             ];
         },
-        [bins, runs],
+        [bins, didNotFinish, horizonDays, runs],
     );
 
     if (!bins) {
@@ -140,6 +173,14 @@ export function CompletionRange({ forecast }: { forecast: CapacityForecast }) {
                 {runs === null ? "" : `${formatNumber(runs)} `}simulation runs in which {allItems}{" "}
                 {wasOrWere} done by that day.
             </p>
+            {unfinishedRuns !== null && unfinishedRuns > 0 && horizonDays !== null ? (
+                <p
+                    data-testid="completion-range-unfinished"
+                    className="mt-2 text-xs text-(--text-muted)"
+                >
+                    {didNotFinish(unfinishedRuns, horizonDays)}.
+                </p>
+            ) : null}
             <p className="mt-2 text-xs text-(--text-muted)">
                 Use the target and conservative dates as different planning choices, not as one
                 promise.

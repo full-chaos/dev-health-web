@@ -8,9 +8,11 @@ describe("CAPACITY_FORECAST_QUERY", () => {
     it("asks for the completion distribution: the run total and, per bin, value, count and served share", () => {
         const compact = CAPACITY_FORECAST_QUERY.replace(/\s+/g, " ");
         // CHAOS-8477: `cumulativeShare` is the served point of the chance curve; `runs` is the
-        // served run total. The web adds up neither.
+        // served run total. The web adds up neither. CHAOS-8532: `unfinishedRuns` and
+        // `horizonDays` are the served count of the runs that did not finish and the served
+        // horizon of the simulation.
         expect(compact).toContain(
-            "completionDistribution { runs days { value count cumulativeShare } items { value count cumulativeShare } }",
+            "completionDistribution { runs unfinishedRuns horizonDays days { value count cumulativeShare } items { value count cumulativeShare } }",
         );
     });
 

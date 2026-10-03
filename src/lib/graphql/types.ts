@@ -399,8 +399,10 @@ export interface CapacityDistributionBin {
     value: number;
     count: number;
     /**
-     * The share of the mode's runs that completed on this value or a lower one (CHAOS-8477): 0 to
-     * 1, computed by the API. The chance curve is these points as served.
+     * The share of ALL the mode's runs that FINISHED on this value or a lower one (CHAOS-8477): 0
+     * to 1, computed by the API. The chance curve is these points as served. In the days mode the
+     * bin at `horizonDays` adds nothing to it, so the last share is below 1 when runs did not
+     * finish inside the horizon.
      */
     cumulativeShare: number;
 }
@@ -413,6 +415,17 @@ export interface CapacityDistribution {
      * total and no share of its own.
      */
     runs: number;
+    /**
+     * The number of days-mode runs that did NOT finish inside the simulated horizon: the
+     * simulation stops a run after `horizonDays` days and records it in the `days` bin at
+     * `horizonDays`. Such a run is not done. Null = the days mode did not simulate.
+     */
+    unfinishedRuns?: number | null;
+    /**
+     * The horizon of the days simulation, in days, as served. A `days` bin with this value means
+     * "this many days or more". The web has no horizon constant of its own.
+     */
+    horizonDays: number;
     /** Fixed-scope mode: days to complete the target items. */
     days?: CapacityDistributionBin[] | null;
     /** Fixed-date mode: items completed by the target date. */
