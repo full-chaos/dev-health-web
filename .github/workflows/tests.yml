@@ -16,6 +16,7 @@ concurrency:
 jobs:
     changes:
         runs-on: ubuntu-latest
+        timeout-minutes: 5
         outputs:
             code: ${{ steps.filter.outputs.code }}
             e2e: ${{ steps.filter.outputs.e2e }}
@@ -82,6 +83,7 @@ jobs:
         needs: [changes]
         if: needs.changes.outputs.code == 'true'
         runs-on: ubuntu-latest
+        timeout-minutes: 5
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
               with:
@@ -99,6 +101,7 @@ jobs:
         needs: [changes]
         if: needs.changes.outputs.code == 'true'
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         env:
             WIRE_PARITY_OPS_ROOT: dev-health-ops-parity
         steps:
@@ -277,6 +280,7 @@ jobs:
         needs: [changes]
         if: needs.changes.outputs.code == 'true'
         runs-on: ubuntu-latest
+        timeout-minutes: 5
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
@@ -292,6 +296,7 @@ jobs:
         needs: [changes]
         if: needs.changes.outputs.code == 'true'
         runs-on: ubuntu-latest
+        timeout-minutes: 20
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
@@ -315,6 +320,7 @@ jobs:
         needs: [changes]
         if: needs.changes.outputs.e2e == 'true'
         runs-on: ubuntu-latest
+        timeout-minutes: 15
         strategy:
             fail-fast: false
             matrix:
@@ -354,6 +360,7 @@ jobs:
         needs: [changes]
         if: needs.changes.outputs.e2e == 'true'
         runs-on: ubuntu-latest
+        timeout-minutes: 25
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
@@ -388,6 +395,7 @@ jobs:
         needs: [changes]
         if: needs.changes.outputs.code == 'true'
         runs-on: ubuntu-latest
+        timeout-minutes: 5
         steps:
             - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
             - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86
@@ -405,6 +413,7 @@ jobs:
         needs: [changes, format, quality, build, unit, e2e-default, e2e-onboarding]
         if: always()
         runs-on: ubuntu-latest
+        timeout-minutes: 5
         steps:
             - name: Check change detection
               if: needs.changes.result != 'success'
