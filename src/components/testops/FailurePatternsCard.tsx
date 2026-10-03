@@ -26,7 +26,7 @@ export function FailurePatternsCard({ model, fetchFailed = false }: FailurePatte
     return (
         <Section
             title="Failure patterns"
-            description="Failure rate within each group: a different denominator from the headline Failure Rate."
+            description="Failure rate within each group: a different denominator from the headline Failure Rate, so the figures are not directly comparable."
             data-testid="testops-failure-patterns"
         >
             {fetchFailed ? (

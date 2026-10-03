@@ -27,9 +27,17 @@ describe("TestOps cards use the theme tokens", () => {
         expect(source).not.toMatch(/rounded-\(--radius-lg\) border border-\(--border\)/);
     });
 
-    it("keeps the Pipelines denominators note", () => {
+    it("keeps the Pipelines denominators note: with the trend chart and with Failure patterns", () => {
         const source = readFileSync(join(root, "pipelines/page.tsx"), "utf8").replace(/\s+/g, " ");
         expect(source).toContain("need not sum to 100%");
-        expect(source).toContain("a different denominator from the headline Failure Rate");
+        // The second half of the note is the description of the shared Failure patterns card.
+        expect(source).toContain("<FailurePatternsCard");
+        const card = readFileSync(
+            join(process.cwd(), "src/components/testops/FailurePatternsCard.tsx"),
+            "utf8",
+        ).replace(/\s+/g, " ");
+        expect(card).toContain(
+            "a different denominator from the headline Failure Rate, so the figures are not directly comparable",
+        );
     });
 });
