@@ -30,6 +30,26 @@ describe("TestOps Constants", () => {
         });
     });
 
+    it("gives a short tile note only where the approved tile has one", () => {
+        const notes = Object.fromEntries(
+            Object.values(TESTOPS_MEASURES).map((def) => [def.id, def.note]),
+        );
+        expect(notes).toEqual({
+            PIPELINE_SUCCESS_RATE: "completed pipeline runs",
+            PIPELINE_FAILURE_RATE: "completed pipeline runs",
+            PIPELINE_DURATION_P95: "pipeline execution",
+            PIPELINE_QUEUE_TIME: "waiting to start",
+            PIPELINE_RERUN_RATE: "pipelines rerun",
+            TEST_PASS_RATE: "tests passed",
+            TEST_FAILURE_RATE: undefined,
+            TEST_FLAKE_RATE: undefined,
+            TEST_SUITE_DURATION_P95: "test execution",
+            COVERAGE_LINE_PCT: undefined,
+            COVERAGE_BRANCH_PCT: undefined,
+            COVERAGE_DELTA_PCT: undefined,
+        });
+    });
+
     it("should have correct units for percentage measures", () => {
         expect(TESTOPS_MEASURES.PIPELINE_SUCCESS_RATE.unit).toBe("percentage");
         expect(TESTOPS_MEASURES.TEST_PASS_RATE.unit).toBe("percentage");

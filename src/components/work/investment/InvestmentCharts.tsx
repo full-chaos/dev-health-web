@@ -1,3 +1,4 @@
+import { Section } from "@/components/ui/Section";
 import { useMemo, useState } from "react";
 import {
     ChartTypeToggle,
@@ -133,16 +134,25 @@ export function InvestmentCharts({
         />
     );
 
+    // One section card for the allocation visual (approved prototype `allocation()`): the title
+    // and description follow the chart type, and the Sankey | Chord toggle sits in the head.
     const flowsSection = (
-        <>
-            <div className="flex justify-end">
+        <Section
+            data-testid="allocation-section"
+            title={chartType === "chord" ? "Team exchange chord" : "Allocation paths"}
+            description={
+                chartType === "chord"
+                    ? "Exchange of teams across repositories."
+                    : "How effort lands across teams, themes, and repositories."
+            }
+            action={
                 <ChartTypeToggle
                     options={INVESTMENT_SANKEY_CHORD_OPTIONS}
                     value={chartType}
                     onChangeAction={setChartType}
                 />
-            </div>
-
+            }
+        >
             {chartType === "chord" ? (
                 <TeamExchangeChordSection
                     filters={filters}
@@ -180,7 +190,7 @@ export function InvestmentCharts({
                     }}
                 />
             )}
-        </>
+        </Section>
     );
 
     if (section === "mix") {

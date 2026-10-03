@@ -1,15 +1,20 @@
 /**
- * Pins the /metrics page (Flow) as it is: header, the per-tab strip with its chips, the tile sets,
- * the three quadrants, the two association cards and the Summary table. Server component: it is
- * called as a function and its element tree is rendered, with its data and shell parts mocked.
+ * Pins the /metrics page (Flow) in the approved prototype layout (`flow(tab)`): header with the
+ * per-tab subtitle and "View evidence", the tile set of each tab, the quadrant card with its
+ * "Metric evidence" action, and the two association cards with an "Evidence" button each.
+ * Server component: it is called as a function and its element tree is rendered, with its data
+ * and shell parts mocked. The evidence drawer is the real shared provider.
  */
+import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { screen, userEvent, within } from "@/test/utils";
 
-const { tilesSpy, quadrantSpy, barSpy } = vi.hoisted(() => ({
+const { tilesSpy, quadrantSpy, barSpy, panelSpy } = vi.hoisted(() => ({
     tilesSpy: vi.fn(),
     quadrantSpy: vi.fn(),
     barSpy: vi.fn(),
+    panelSpy: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -21,7 +26,15 @@ vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => <div data-testid
 vi.mock("@/components/charts/QuadrantPanel", () => ({
     QuadrantPanel: (props: Record<string, unknown>) => {
         quadrantSpy(props);
-        return <div data-testid="quadrant-panel" />;
+        // The real panel places the caller's action in its head.
+        return <div data-testid="quadrant-panel">{props.action as ReactNode}</div>;
+    },
+}));
+// The request path of the shared drawer: this file checks which subject it is opened for.
+vi.mock("@/components/evidence/EvidencePanel", () => ({
+    EvidencePanel: (props: Record<string, unknown>) => {
+        panelSpy(props);
+        return <div data-testid="evidence-panel" />;
     },
 }));
 vi.mock("@/components/charts/HorizontalBarChart", () => ({
@@ -133,7 +146,10 @@ const explain = {
 vi.mock("@/lib/graphql/homeFetchers", () => ({
     getHomeDataViaGraphQL: async () => ({ deltas }),
 }));
-vi.mock("@/lib/api/home", () => ({ getExplainData: async () => explain }));
+const explainOverride = vi.hoisted(() => ({ value: null as null | Record<string, unknown> }));
+vi.mock("@/lib/api/home", () => ({
+    getExplainData: async () => explainOverride.value ?? explain,
+}));
 vi.mock("@/lib/api/visuals", () => ({ getQuadrant: async () => null }));
 
 import MetricsPage from "./page";
@@ -143,18 +159,46 @@ const renderTab = async (tab?: string) => {
     return render(ui);
 };
 
-describe("/metrics today", () => {
+describe("/metrics in the approved prototype layout (CHAOS-8066)", () => {
     beforeEach(() => {
         tilesSpy.mockClear();
         quadrantSpy.mockClear();
         barSpy.mockClear();
+        panelSpy.mockClear();
     });
 
-    it("header: title Flow, subtitle and the investigate line", async () => {
+    it("header: title Flow and the subtitle of the active tab; the legacy lines are gone", async () => {
+        const subtitles: Record<string, string> = {
+            dora: "Release speed and stability.",
+            flow: "From idea to merge.",
+            throughput: "Delivery volume and pacing.",
+        };
+        for (const [tab, subtitle] of Object.entries(subtitles)) {
+            const { unmount } = await renderTab(tab);
+            const header = within(screen.getByTestId("page-header"));
+            expect(header.getByRole("heading", { level: 1 })).toHaveTextContent("Flow");
+            expect(header.getByText(subtitle), tab).toBeInTheDocument();
+            // The subtitle is in the header only: it is not drawn again under the tabs.
+            expect(screen.getAllByText(subtitle), tab).toHaveLength(1);
+            expect(screen.queryByText("Trends over the selected window.")).toBeNull();
+            expect(screen.queryByText("Open a metric to investigate.")).toBeNull();
+            unmount();
+        }
+    });
+
+    it("header: one 'View evidence' action that opens the shared drawer for the tab's metric", async () => {
         await renderTab("flow");
-        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Flow");
-        expect(screen.getByText("Trends over the selected window.")).toBeInTheDocument();
-        expect(screen.getByText("Open a metric to investigate.")).toBeInTheDocument();
+        const actions = within(screen.getByTestId("page-header-actions"));
+        expect(actions.getAllByRole("button")).toHaveLength(1);
+        expect(screen.queryByTestId("evidence-panel")).toBeNull();
+
+        await userEvent.click(actions.getByRole("button", { name: "View evidence" }));
+
+        expect(screen.getByTestId("evidence-panel")).toBeInTheDocument();
+        expect(panelSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+            title: "Cycle Time",
+            metric: "cycle_time",
+        });
     });
 
     it("three tabs, the active one marked", async () => {
@@ -167,21 +211,21 @@ describe("/metrics today", () => {
         ).toEqual(["DORA", "Flow", "Throughput"]);
     });
 
-    it("tile sets and quadrants per tab (production sets and names)", async () => {
+    it("tile sets and quadrants per tab (prototype sets and order; production quadrant data)", async () => {
         const expected: Record<string, { tiles: string[]; title: string; description: string }> = {
             dora: {
-                tiles: ["deploy_freq", "cycle_time", "change_failure_rate", "review_latency"],
-                title: "Churn × Throughput landscape",
+                tiles: ["deploy_freq", "cycle_time", "review_latency", "change_failure_rate"],
+                title: "Churn × Throughput",
                 description: "Operating modes under change volume and delivery pace.",
             },
             flow: {
-                tiles: ["cycle_time", "review_latency", "throughput", "wip_saturation"],
-                title: "Cycle Time × Throughput landscape",
+                tiles: ["cycle_time", "review_latency", "wip_saturation", "blocked_work"],
+                title: "Cycle Time × Throughput",
                 description: "Coordination debt and delivery efficiency.",
             },
             throughput: {
-                tiles: ["throughput", "deploy_freq", "wip_saturation", "blocked_work"],
-                title: "WIP × Throughput landscape",
+                tiles: ["throughput", "wip_saturation", "blocked_work"],
+                title: "WIP × Throughput",
                 description: "Work-in-progress saturation and delivery capacity.",
             },
         };
@@ -189,9 +233,10 @@ describe("/metrics today", () => {
             tilesSpy.mockClear();
             quadrantSpy.mockClear();
             const { unmount } = await renderTab(tab);
-            expect((tilesSpy.mock.calls[0][0] as { metrics: string[] }).metrics).toEqual(
-                want.tiles,
-            );
+            const tiles = tilesSpy.mock.calls[0][0] as { metrics: string[]; deltas: unknown };
+            expect(tiles.metrics, tab).toEqual(want.tiles);
+            // The tiles get the served rows unchanged: the page makes no number.
+            expect(tiles.deltas, tab).toBe(deltas);
             const q = quadrantSpy.mock.calls[0][0] as { title: string; description: string };
             expect(q.title).toBe(want.title);
             expect(q.description).toBe(want.description);
@@ -199,86 +244,150 @@ describe("/metrics today", () => {
         }
     });
 
-    it("tab description under the tabs; Open evidence (highlight metric) above the tiles; no chip row, no strip eyebrow", async () => {
-        await renderTab("flow");
-        expect(screen.getByText("From idea to merge.")).toBeInTheDocument();
-        expect(screen.queryByText("Flow monitoring")).toBeNull();
-        const open = screen.getAllByRole("link", { name: "Open evidence" })[0];
-        expect(open.getAttribute("href")).toContain("metric=cycle_time");
-        expect(open.getAttribute("title")).toBe("Open evidence for Cycle Time");
-        // the chips were links with these labels in a rounded-full pill: none is left
-        const pills = screen
-            .queryAllByRole("link")
-            .filter((l) => l.className.includes("rounded-full"));
-        expect(pills).toHaveLength(0);
-    });
-
-    it("description sits after the tab row and before the tiles", async () => {
-        await renderTab("flow");
-        const tabs = screen.getByRole("navigation", { name: "Metrics views" });
-        const description = screen.getByText("From idea to merge.");
-        const tiles = screen.getByTestId("metric-tiles");
-        expect(
-            tabs.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
-        expect(
-            description.compareDocumentPosition(tiles) & Node.DOCUMENT_POSITION_FOLLOWING,
-        ).toBeTruthy();
-    });
-
-    it("Likely associations and Primary contributors: bars of |delta|, link rows, signed delta", async () => {
-        await renderTab("flow");
-        expect(screen.getByText("Likely associations")).toBeInTheDocument();
-        expect(screen.getByText("Primary contributors")).toBeInTheDocument();
-        expect(barSpy.mock.calls[0][0]).toMatchObject({ values: [20, 10] });
-        expect(screen.getByText("repo-alpha")).toBeInTheDocument();
-        expect(screen.getByText("repo-gamma")).toBeInTheDocument();
-    });
-
-    it("Summary table: Metric / Current / Delta / Explore, one row per tab metric", async () => {
-        await renderTab("flow");
-        const table = screen.getByRole("table");
-        expect(
-            within(table)
-                .getAllByRole("columnheader")
-                .map((h) => h.textContent),
-        ).toEqual(["Metric", "Current", "Delta", "Explore"]);
-        const rows = within(table).getAllByRole("row").slice(1);
-        expect(rows).toHaveLength(4);
-        expect(rows[0]).toHaveTextContent("Cycle Time");
-        expect(rows[0]).toHaveTextContent("4.2d");
-        expect(rows[0]).toHaveTextContent("-12%");
-        expect(rows[0]).toHaveTextContent("Open evidence");
-        for (const link of within(rows[0]).getAllByRole("link")) {
-            expect(link.getAttribute("href")).toContain("metric=cycle_time");
+    it("quadrant card action: 'Metric evidence' links to the evidence page of the tab's metric", async () => {
+        const metricOfTab: Record<string, string> = {
+            dora: "deploy_freq",
+            flow: "cycle_time",
+            throughput: "throughput",
+        };
+        for (const [tab, metric] of Object.entries(metricOfTab)) {
+            const { unmount } = await renderTab(tab);
+            const link = within(screen.getByTestId("quadrant-panel")).getByRole("link", {
+                name: "Metric evidence",
+            });
+            const url = new URL(link.getAttribute("href") ?? "", "https://app.example");
+            expect(url.pathname, tab).toBe("/explore");
+            expect(url.searchParams.get("metric"), tab).toBe(metric);
+            unmount();
         }
     });
 
-    it("Summary rows show each metric's current value and delta text, on every tab", async () => {
-        const expected: Record<string, Array<[string, string, string]>> = {
-            flow: [
-                ["Cycle Time", "4.2d", "-12%"],
-                ["Review Latency", "6h", "+30%"],
-                ["Throughput", "50 items", "+5%"],
-                ["WIP Saturation", "120%", "+8%"],
-            ],
-            dora: [
-                ["Deploy Frequency", "9", "0%"],
-                ["Cycle Time", "4.2d", "-12%"],
-                ["Change Failure Rate", "3%", "-1%"],
-                ["Review Latency", "6h", "+30%"],
-            ],
-        };
-        for (const [tab, rows] of Object.entries(expected)) {
-            const { unmount } = await renderTab(tab);
-            const body = within(screen.getByRole("table")).getAllByRole("row").slice(1);
-            expect(body, tab).toHaveLength(rows.length);
-            rows.forEach(([label, value, delta], index) => {
-                expect(body[index], `${tab} ${label}`).toHaveTextContent(label);
-                expect(body[index], `${tab} ${label}`).toHaveTextContent(value);
-                expect(body[index], `${tab} ${label}`).toHaveTextContent(delta);
+    it("has no free 'Open evidence' link above the tiles: the page's only links are the tabs and the quadrant action", async () => {
+        await renderTab("flow");
+        expect(screen.queryAllByRole("link", { name: "Open evidence" })).toHaveLength(0);
+        const links = screen.getAllByRole("link").map((l) => l.textContent);
+        expect(links).toEqual(["DORA", "Flow", "Throughput", "Metric evidence"]);
+    });
+
+    it("order: tabs, tiles, quadrant card, association cards", async () => {
+        await renderTab("flow");
+        const order = [
+            screen.getByRole("navigation", { name: "Metrics views" }),
+            screen.getByTestId("metric-tiles"),
+            screen.getByTestId("quadrant-panel"),
+            screen.getByTestId("association-cards"),
+        ];
+        for (let i = 0; i < order.length - 1; i += 1) {
+            expect(
+                order[i].compareDocumentPosition(order[i + 1]) & Node.DOCUMENT_POSITION_FOLLOWING,
+                `block ${i} before block ${i + 1}`,
+            ).toBeTruthy();
+        }
+    });
+
+    it("association cards: two section cards side by side, each with title, description and bars only", async () => {
+        await renderTab("flow");
+        const cards = screen.getByTestId("association-cards");
+        expect(cards.className).toContain("lg:grid-cols-2");
+        const sections = Array.from(cards.querySelectorAll(":scope > section"));
+        expect(sections).toHaveLength(2);
+
+        const [associations, contributors] = sections.map((el) => within(el as HTMLElement));
+        expect(
+            associations.getByRole("heading", { level: 2, name: "Likely associations" }),
+        ).toBeInTheDocument();
+        expect(associations.getByText("Selected-window associations")).toBeInTheDocument();
+        expect(
+            contributors.getByRole("heading", { level: 2, name: "Primary contributors" }),
+        ).toBeInTheDocument();
+        expect(
+            contributors.getByText("Where the impact concentrates in this window."),
+        ).toBeInTheDocument();
+
+        // Meter rows only: no axis chart, and the legacy link rows under each chart are gone
+        // (they live in the drawer).
+        expect(within(cards).queryAllByRole("link")).toHaveLength(0);
+        expect(barSpy).not.toHaveBeenCalled();
+        expect(associations.getByRole("list", { name: "Likely associations" })).toBeInTheDocument();
+        expect(
+            contributors.getByRole("list", { name: "Primary contributors" }),
+        ).toBeInTheDocument();
+    });
+
+    it("association meter rows: the fill is |delta| as production draws it; the value is the served signed change with its unit", async () => {
+        await renderTab("flow");
+        const rows = within(screen.getByTestId("association-meter-rows")).getAllByTestId(
+            "meter-row",
+        );
+        expect(rows.map((row) => row.textContent)).toEqual(["repo-alpha-20%", "repo-beta+10%"]);
+        const fills = rows.map((row) => within(row).getByTestId("meter-fill").style.width);
+        // |−20| is the largest, so it fills the track; |+10| fills half.
+        expect(fills).toEqual(["100%", "50%"]);
+    });
+
+    it("contributor meter rows: the served values with the served unit; the unit note is gone", async () => {
+        await renderTab("flow");
+        const rows = within(screen.getByTestId("contributor-meter-rows")).getAllByTestId(
+            "meter-row",
+        );
+        expect(rows.map((row) => row.textContent)).toEqual(["repo-gamma7d"]);
+        expect(within(rows[0]).getByTestId("meter-fill").style.width).toBe("100%");
+    });
+
+    it("data note: the unit and no causal conclusion under the associations only", async () => {
+        await renderTab("flow");
+        const [associations, contributors] = Array.from(
+            screen.getByTestId("association-cards").querySelectorAll(":scope > section"),
+        ).map((el) => within(el as HTMLElement));
+        expect(associations.getByTestId("data-note")).toHaveTextContent(
+            "Association values are percent change in the selected window; no causal conclusion is added.",
+        );
+        expect(contributors.queryByTestId("data-note")).toBeNull();
+        expect(screen.queryByText(/per contributor, in/)).toBeNull();
+        expect(screen.queryByText(/Preview of the selected window/)).toBeNull();
+    });
+
+    it("each card's 'Evidence' button opens the shared drawer for the tab's metric (one drawer, with the role)", async () => {
+        const ui = await MetricsPage({
+            searchParams: Promise.resolve({ tab: "flow", role: "manager" }),
+        });
+        render(ui);
+        for (const name of ["Evidence: Likely associations", "Evidence: Primary contributors"]) {
+            panelSpy.mockClear();
+            await userEvent.click(screen.getByRole("button", { name }));
+            expect(screen.getAllByTestId("evidence-panel")).toHaveLength(1);
+            expect(panelSpy.mock.calls.at(-1)?.[0], name).toMatchObject({
+                title: "Cycle Time",
+                metric: "cycle_time",
+                role: "manager",
             });
+        }
+    });
+
+    it("has no Summary table: the tiles carry the same served values", async () => {
+        for (const tab of ["dora", "flow", "throughput"]) {
+            const { unmount } = await renderTab(tab);
+            expect(screen.queryByRole("table"), tab).toBeNull();
+            expect(screen.queryByRole("heading", { name: "Summary" }), tab).toBeNull();
+            expect(screen.queryByText("Active window"), tab).toBeNull();
             unmount();
+        }
+    });
+
+    it("empty explain data: both cards say so and draw no meter rows and no unit note", async () => {
+        explainOverride.value = { ...explain, drivers: [], contributors: [] };
+        try {
+            await renderTab("flow");
+            expect(screen.queryAllByTestId("meter-row")).toHaveLength(0);
+            expect(
+                screen.getByText("Association detail will appear once data is ingested."),
+            ).toBeInTheDocument();
+            expect(
+                screen.getByText("Contributor detail will appear once data is ingested."),
+            ).toBeInTheDocument();
+            expect(screen.getAllByTestId("data-note")).toHaveLength(1);
+        } finally {
+            explainOverride.value = null;
         }
     });
 });

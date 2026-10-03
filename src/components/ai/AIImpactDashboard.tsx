@@ -105,7 +105,8 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
                 <MetricCard
                     label="Unknown attribution"
                     value={summary?.unknownPrs ?? undefined}
-                    deltaSlot={
+                    deltaSlot={<></>}
+                    headAction={
                         <span
                             data-testid="ai-unknown-pill"
                             className="rounded-full border border-dashed border-(--card-stroke) px-2 py-0.5 text-xs font-medium text-(--ink-muted)"

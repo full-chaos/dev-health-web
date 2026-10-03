@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockData, tileProps } = vi.hoisted(() => ({ mockData: vi.fn(), tileProps: vi.fn() }));
@@ -68,5 +68,45 @@ describe("Feature Flags page", () => {
         const pill = screen.getByTestId("release-friction-severity");
         expect(pill).toHaveTextContent("Unavailable");
         expect(pill).toHaveAttribute("data-severity", "unavailable");
+    });
+
+    it("draws the four tiles as one joined 2 x 2 metric strip", async () => {
+        mockData.mockResolvedValue(data("moderate"));
+        render(await FeatureFlagsPage({ searchParams: Promise.resolve({}) }));
+        const strip = screen.getByTestId("feature-flag-tiles");
+        expect(strip).toHaveAttribute("data-columns", "2");
+        expect(
+            within(strip)
+                .getAllByTestId("tile")
+                .map((t) => t.textContent),
+        ).toEqual([
+            "Active Flags",
+            "Release Friction Delta",
+            "Release Error Rate Delta",
+            "Impact Coverage Ratio",
+        ]);
+    });
+
+    it("puts the severity pill inside the Release Friction tile cell, and keeps the caption", async () => {
+        mockData.mockResolvedValue(data("moderate"));
+        render(await FeatureFlagsPage({ searchParams: Promise.resolve({}) }));
+        const cell = screen.getByTestId("release-friction-tile");
+        // The cell is a direct cell of the strip, and it holds both the tile and its pill.
+        expect(cell.parentElement).toBe(screen.getByTestId("feature-flag-tiles"));
+        expect(within(cell).getByTestId("tile")).toHaveTextContent("Release Friction Delta");
+        expect(within(cell).getByTestId("release-friction-severity")).toHaveTextContent("Moderate");
+        const friction = tileProps.mock.calls
+            .map(([props]) => props as { label: string; caption?: string })
+            .find((props) => props.label === "Release Friction Delta");
+        expect(friction?.caption).toBe("Severity: moderate");
+    });
+
+    it("draws the flag registry as a table card titled Flag Registry", async () => {
+        mockData.mockResolvedValue(data("low"));
+        render(await FeatureFlagsPage({ searchParams: Promise.resolve({}) }));
+        const card = screen.getByTestId("flag-registry");
+        expect(card.tagName).toBe("SECTION");
+        expect(within(card).getByRole("heading", { level: 2 })).toHaveTextContent("Flag Registry");
+        expect(within(card).getByTestId("flag-table")).toBeInTheDocument();
     });
 });

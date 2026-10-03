@@ -1,8 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
+import { ArrowRight } from "lucide-react";
 import { MetricCard } from "@/components/metrics/MetricCard";
-import { DataState } from "@/components/ui/DataState";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
+import { buttonClassName } from "@/components/shared/Button";
+import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import Link from "next/link";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
@@ -186,200 +189,218 @@ export function ConfidencePanel({
         [workUnits],
     );
 
+    const evidenceHref = withFilterParam("/investment?tab=evidence", filters, activeRole);
+    const pct = (value: number) => formatNumber(value * 100, { maximumFractionDigits: 0 });
+
     return (
-        <section className="flex flex-col gap-6">
-            <div>
-                <h2 className="font-(--font-display) text-xl">Confidence</h2>
-                <p className="mt-2 text-sm text-(--ink-muted)">
-                    How much to trust this investment picture: classification confidence, evidence
-                    quality, attribution coverage, and rework.
-                </p>
-                <Link
-                    href={withFilterParam("/investment?tab=evidence", filters, activeRole)}
-                    className="mt-2 inline-block text-xs uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
-                >
-                    {CTA_LABELS.openEvidence}
-                </Link>
-            </div>
-
-            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                <h3 className="font-(--font-display) text-lg">Classification confidence</h3>
-                {confidence ? (
-                    <div className="mt-3 flex flex-wrap items-center gap-3">
-                        <span
-                            className={`rounded-full px-2 py-0.5 text-xs uppercase ${confidenceToneClass(
-                                confidence.level,
-                            )}`}
-                        >
-                            {confidence.level ?? "unknown"}
+        <section className="flex flex-col gap-4.5" data-testid="investment-confidence">
+            {/* Approved prototype `investmentConfidence()`: three tiles, each a served value. */}
+            <MetricStrip data-testid="confidence-tiles">
+                <MetricCard
+                    testId="confidence-tile-mean"
+                    label="Mean evidence quality"
+                    hideTrend
+                    valueText={
+                        confidence?.quality_mean != null
+                            ? `${pct(confidence.quality_mean)}%`
+                            : undefined
+                    }
+                    deltaSlot={
+                        <span>
+                            {confidence?.quality_mean == null
+                                ? "Not reported"
+                                : confidence.quality_stddev != null
+                                  ? `± ${pct(confidence.quality_stddev)}%`
+                                  : "Spread not reported"}
                         </span>
-                        {confidence.quality_mean != null && (
-                            <span className="text-xs text-(--ink-muted)">
-                                Mean evidence quality:{" "}
-                                {formatNumber(confidence.quality_mean * 100, {
-                                    maximumFractionDigits: 0,
-                                })}
-                                %
-                                {confidence.quality_stddev != null &&
-                                    ` ± ${formatNumber(confidence.quality_stddev * 100, {
-                                        maximumFractionDigits: 0,
-                                    })}%`}
+                    }
+                />
+                <MetricCard
+                    testId="confidence-tile-level"
+                    label="Evidence quality"
+                    hideTrend
+                    valueText={confidence ? titleCase(confidence.level ?? "unknown") : undefined}
+                    deltaSlot={
+                        confidence ? (
+                            (confidence.drivers?.length ?? 0) > 0 ? (
+                                <span data-testid="confidence-drivers">
+                                    {(confidence.drivers ?? []).map((driver, index) => (
+                                        <span key={driver} title={DRIVER_COPY[driver] ?? driver}>
+                                            {index > 0 ? " · " : ""}
+                                            {driver.replace(/_/g, " ")}
+                                        </span>
+                                    ))}
+                                </span>
+                            ) : (
+                                <span>Classification confidence</span>
+                            )
+                        ) : (
+                            <span>
+                                Classification confidence appears once an investment explanation has
+                                been generated for this window.
                             </span>
-                        )}
-                        {(confidence.drivers?.length ?? 0) > 0 && (
-                            <div className="flex w-full flex-wrap gap-1">
-                                {(confidence.drivers ?? []).map((driver) => (
-                                    <span
-                                        key={driver}
-                                        title={DRIVER_COPY[driver] ?? driver}
-                                        className="rounded-full bg-(--card-stroke)/50 px-2 py-0.5 text-xs text-(--ink-muted)"
-                                    >
-                                        {driver.replace(/_/g, " ")}
-                                    </span>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                        )
+                    }
+                />
+                {reworkMetric ? (
+                    <MetricCard
+                        testId="confidence-tile-rework"
+                        label="PR Rework Ratio"
+                        href={buildExploreUrl({
+                            metric: "pr_rework_ratio",
+                            filters,
+                            role: activeRole,
+                        })}
+                        value={reworkMetric.value}
+                        unit={reworkMetric.unit}
+                        delta={reworkMetric.delta_pct}
+                        spark={reworkMetric.spark}
+                        caption="PRs requiring rework"
+                    />
                 ) : (
-                    <p className="mt-3 text-sm text-(--ink-muted)">
-                        Classification confidence appears once an investment explanation has been
-                        generated for this window.
-                    </p>
+                    <MetricCard
+                        testId="confidence-tile-rework"
+                        label="PR Rework Ratio"
+                        hideTrend
+                        deltaSlot={<span>Rework signal not available yet</span>}
+                    />
                 )}
-            </div>
+            </MetricStrip>
 
-            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                <h3 className="font-(--font-display) text-lg">Evidence quality bands</h3>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                    Share of work units at each evidence-quality band. Segment width is the share;
-                    opacity matches band strength.
-                </p>
-                <div className="mt-4">
+            <div className="grid gap-4.5 lg:grid-cols-2" data-testid="confidence-cards">
+                <Section
+                    title="Evidence quality bands"
+                    description="Share of work units at each evidence-quality band. Segment width is the share; opacity matches band strength."
+                >
                     <EvidenceQualityBands
                         evidenceQualityDistribution={investmentMix?.evidence_quality_distribution}
                     />
-                </div>
+                </Section>
+
+                <AllocationCoverage
+                    variant="facts"
+                    teamCategoryFlow={teamCategoryFlow}
+                    repoTeamFlow={repoTeamFlow}
+                    isLoading={isCategoryFlowLoading}
+                />
             </div>
 
-            <AllocationCoverage
-                teamCategoryFlow={teamCategoryFlow}
-                repoTeamFlow={repoTeamFlow}
-                isLoading={isCategoryFlowLoading}
-            />
-
-            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                <h3 className="font-(--font-display) text-lg">Low-confidence areas</h3>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                    Work units whose categorization leans on weaker evidence. These are the first
-                    places to corroborate before trusting the mix.
-                </p>
+            <Section
+                data-testid="low-confidence-areas"
+                title="Low-confidence areas"
+                description="Work units whose categorization leans on weaker evidence. These are the first places to corroborate before trusting the mix."
+                action={
+                    <Link href={evidenceHref} className={buttonClassName("ghost", "sm")}>
+                        <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                        {CTA_LABELS.evidenceDrilldown}
+                    </Link>
+                }
+            >
                 {lowConfidenceUnits.length === 0 ? (
-                    <p className="mt-3 text-sm text-(--ink-muted)">
+                    <p className="text-sm text-(--ink-muted)">
                         No low-confidence work units in the selected window.
                     </p>
                 ) : (
-                    <ul className="mt-3 space-y-2">
-                        {lowConfidenceUnits.map(({ unit, themeKey }) => (
-                            <li
-                                key={unit.work_unit_id}
-                                className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm"
-                            >
-                                <span className="min-w-0 truncate text-foreground">
-                                    {formatWorkUnitLabel(unit)}
-                                </span>
-                                <span className="flex items-center gap-3 text-xs text-(--ink-muted)">
-                                    {themeKey ? <span>{titleCase(themeKey)}</span> : null}
-                                    <span>
-                                        {unit.evidence_quality.value !== null
-                                            ? `${formatQuality(unit.evidence_quality.value)} (${formatBandLabel(unit.evidence_quality.band ?? "unknown")})`
-                                            : formatBandLabel("unknown")}
+                    <div className="overflow-hidden rounded-(--radius-md) border border-(--card-stroke)">
+                        <table className="w-full text-sm" data-testid="low-confidence-table">
+                            <thead className="bg-(--card-70) text-label-caps uppercase text-(--ink-muted)">
+                                <tr>
+                                    <th className="px-4 py-2 text-left font-medium">
+                                        Theme / quality
+                                    </th>
+                                    <th className="px-4 py-2 text-left font-medium">Band</th>
+                                    <th className="px-4 py-2 text-left font-medium">Work unit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {lowConfidenceUnits.map(({ unit, themeKey }) => {
+                                    const band = unit.evidence_quality.band ?? "unknown";
+                                    return (
+                                        <tr
+                                            key={unit.work_unit_id}
+                                            data-testid="low-confidence-row"
+                                            className="border-t border-(--card-stroke)"
+                                        >
+                                            <td className="whitespace-nowrap px-4 py-2 tabular-nums">
+                                                {[
+                                                    themeKey ? titleCase(themeKey) : null,
+                                                    unit.evidence_quality.value !== null
+                                                        ? formatQuality(unit.evidence_quality.value)
+                                                        : null,
+                                                ]
+                                                    .filter(Boolean)
+                                                    .join(" · ") || "Not reported"}
+                                            </td>
+                                            <td className="px-4 py-2">
+                                                <span
+                                                    data-testid="low-confidence-band"
+                                                    className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${confidenceToneClass(
+                                                        BAND_TO_LEVEL[band] ?? "unknown",
+                                                    )}`}
+                                                >
+                                                    {formatBandLabel(band)}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-2 text-foreground">
+                                                {formatWorkUnitLabel(unit)}
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </Section>
+
+            {/* Not drawn in the prototype: the served per-theme rework breakdown stays, last. */}
+            {reworkThemeAllocation.length > 0 && (
+                <Section
+                    data-testid="rework-by-theme"
+                    title="Rework by theme"
+                    description="Share of PRs that were reopened or required follow-up rework commits. The breakdown shows which investment themes carry the most rework pressure."
+                >
+                    <ul className="space-y-3">
+                        {reworkThemeAllocation.map((row) => (
+                            <li key={row.theme}>
+                                <div className="flex items-center justify-between text-sm">
+                                    <span className="font-medium">{row.label}</span>
+                                    <span className="text-xs text-(--ink-muted)">
+                                        {formatNumber(row.allocation_pct, {
+                                            maximumFractionDigits: 1,
+                                        })}
+                                        %
                                     </span>
-                                </span>
+                                </div>
+                                <div className="mt-1.5 h-2 w-full overflow-hidden rounded-r-(--radius-sm) bg-(--card-stroke)">
+                                    {row.allocation_pct > 0 && (
+                                        <div
+                                            aria-hidden
+                                            className="h-full rounded-r-(--radius-sm) bg-(--chart-color-1)"
+                                            style={{
+                                                width: `${Math.min(100, row.allocation_pct)}%`,
+                                                minWidth: 2,
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                                <div className="mt-1 flex gap-3 text-xs text-(--ink-muted)">
+                                    <span>
+                                        {row.prs_merged.toLocaleString()} PR
+                                        {row.prs_merged !== 1 ? "s" : ""}
+                                    </span>
+                                    <span>
+                                        {formatNumber(row.churn_loc / 1000, {
+                                            maximumFractionDigits: 1,
+                                        })}
+                                        k churn LOC
+                                    </span>
+                                </div>
                             </li>
                         ))}
                     </ul>
-                )}
-            </div>
-
-            <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-                <h3 className="font-(--font-display) text-lg">Rework</h3>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                    Share of PRs that were reopened or required follow-up rework commits. The
-                    breakdown shows which investment themes carry the most rework pressure.
-                </p>
-                {reworkMetric ? (
-                    <div className="mt-4 grid gap-4 sm:max-w-md">
-                        <MetricCard
-                            label="PR Rework Ratio"
-                            href={buildExploreUrl({
-                                metric: "pr_rework_ratio",
-                                filters,
-                                role: activeRole,
-                            })}
-                            value={reworkMetric.value}
-                            unit={reworkMetric.unit}
-                            delta={reworkMetric.delta_pct}
-                            spark={reworkMetric.spark}
-                            caption="PRs requiring rework"
-                        />
-                    </div>
-                ) : (
-                    <div className="mt-4">
-                        <DataState
-                            variant="detector-unavailable"
-                            compact
-                            title="Rework signal not available yet"
-                            description="A dedicated rework breakdown isn't wired for this scope yet."
-                        />
-                    </div>
-                )}
-                {reworkThemeAllocation.length > 0 && (
-                    <div className="mt-5">
-                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                            Rework by theme
-                        </p>
-                        <ul className="mt-3 space-y-3">
-                            {reworkThemeAllocation.map((row) => (
-                                <li key={row.theme}>
-                                    <div className="flex items-center justify-between text-sm">
-                                        <span className="font-medium">{row.label}</span>
-                                        <span className="text-xs text-(--ink-muted)">
-                                            {formatNumber(row.allocation_pct, {
-                                                maximumFractionDigits: 1,
-                                            })}
-                                            %
-                                        </span>
-                                    </div>
-                                    <div className="mt-1.5 h-2 w-full overflow-hidden rounded-r-(--radius-sm) bg-(--card-stroke)">
-                                        {row.allocation_pct > 0 && (
-                                            <div
-                                                aria-hidden
-                                                className="h-full rounded-r-(--radius-sm) bg-(--chart-color-1)"
-                                                style={{
-                                                    width: `${Math.min(100, row.allocation_pct)}%`,
-                                                    minWidth: 2,
-                                                }}
-                                            />
-                                        )}
-                                    </div>
-                                    <div className="mt-1 flex gap-3 text-xs text-(--ink-muted)">
-                                        <span>
-                                            {row.prs_merged.toLocaleString()} PR
-                                            {row.prs_merged !== 1 ? "s" : ""}
-                                        </span>
-                                        <span>
-                                            {formatNumber(row.churn_loc / 1000, {
-                                                maximumFractionDigits: 1,
-                                            })}
-                                            k churn LOC
-                                        </span>
-                                    </div>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
-            </div>
+                </Section>
+            )}
         </section>
     );
 }
