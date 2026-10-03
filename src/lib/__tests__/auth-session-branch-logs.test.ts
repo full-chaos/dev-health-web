@@ -200,7 +200,7 @@ describe("validation branches name themselves in the log", () => {
         ]);
     });
 
-    it.each([400, 401, 403, 404])(
+    it.each([401, 403])(
         "user_invalid: status %i ends the session and the line shows the status",
         async (status) => {
             backendAnswers(status);
@@ -214,7 +214,7 @@ describe("validation branches name themselves in the log", () => {
         },
     );
 
-    it.each([429, 500, 503])(
+    it.each([400, 404, 422, 429, 500, 503])(
         "validate_transient: status %i keeps the session and says so",
         async (status) => {
             backendAnswers(status);
