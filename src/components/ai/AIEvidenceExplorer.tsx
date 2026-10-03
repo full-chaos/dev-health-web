@@ -5,7 +5,9 @@ import { useMemo, useState } from "react";
 import type { AIFilter } from "@/lib/filters/ai";
 import type { AiAttributedPr } from "@/lib/graphql/__generated__/types";
 import { STATUS_PILL } from "@/lib/statusPill";
+import { edgeTypeWords, nodeTypeWords, pullRequestNumber } from "@/lib/ai/edgeLabels";
 import { prWorkflowRootId } from "@/lib/ai/workflowRootId";
+import { EntityLabel } from "@/components/labels/EntityLabel";
 import {
     useAIAttributedPrs,
     useAIWorkflowDrilldownForPr,
@@ -190,11 +192,14 @@ export function EvidencePanel({ selected }: { selected: AiAttributedPr | null })
                         key={edge.edgeId}
                         className="rounded-2xl border border-(--card-stroke) bg-background/40 px-3 py-2 text-sm"
                     >
-                        <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.12em] text-(--ink-muted)">
-                            <span className="font-semibold text-foreground">{edge.edgeType}</span>
-                            <span>
-                                {edge.sourceType}:{edge.sourceId} → {edge.targetType}:
-                                {edge.targetId}
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-(--ink-muted)">
+                            <span className="font-semibold text-foreground">
+                                {edgeTypeWords(edge.edgeType)}
+                            </span>
+                            <span data-testid="ai-edge-ends">
+                                <EdgeEnd type={edge.sourceType} id={edge.sourceId} />
+                                {" → "}
+                                <EdgeEnd type={edge.targetType} id={edge.targetId} />
                             </span>
                             {edge.provider && (
                                 <span className="rounded-full bg-background px-2 py-0.5">
@@ -208,6 +213,17 @@ export function EvidencePanel({ selected }: { selected: AiAttributedPr | null })
                 ))}
             </ul>
         </div>
+    );
+}
+
+/** One end of an edge in words: node type, then a number or a safe label for the id. */
+function EdgeEnd({ type, id }: { type: string; id: string }) {
+    const number = pullRequestNumber(type, id);
+    return (
+        <>
+            {nodeTypeWords(type)}{" "}
+            {number ? `#${number}` : <EntityLabel id={id} showUnresolvedBadge={false} />}
+        </>
     );
 }
 
