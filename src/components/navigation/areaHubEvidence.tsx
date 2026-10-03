@@ -2,10 +2,10 @@ import {
     PageFactsEvidenceAction,
     type PageFact,
 } from "@/components/evidence/PageFactsEvidenceAction";
-import { groupByCluster } from "@/lib/areaSignals/sort";
+import { areaHubLayout } from "@/lib/areaSignals/hubLayout";
 import type { AreaSignal } from "@/lib/areaSignals/types";
 
-import { areaOverviewFacts } from "./areaOverviewEvidence";
+import { signalFact } from "./areaOverviewEvidence";
 
 /**
  * The served signals of a grouped hub (`AreaHub`, for example the AI overview) as page facts, in the
@@ -14,9 +14,7 @@ import { areaOverviewFacts } from "./areaOverviewEvidence";
  * value and state as the card shows it; a signal with no data reads "Not reported".
  */
 export function areaHubFacts(signals: readonly AreaSignal[]): PageFact[] {
-    return groupByCluster(signals)
-        .flatMap((group) => group.signals)
-        .map((signal) => areaOverviewFacts([signal])[0]);
+    return areaHubLayout(signals).order.map(signalFact);
 }
 
 /** "View evidence" on a grouped hub page: the PAGE is the subject. */

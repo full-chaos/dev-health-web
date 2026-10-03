@@ -1,8 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+import { defaultMetricFilter } from "@/lib/filters/defaults";
+import { render } from "@/test/utils";
+
+import { AreaHub } from "./AreaHub";
 
 import type { AreaSignal } from "@/lib/areaSignals/types";
 
 import { areaHubFacts } from "./areaHubEvidence";
+
+vi.mock("next/link", () => ({
+    default: ({ href, children, ...props }: { href: string; children: React.ReactNode }) => (
+        <a href={href} {...props}>
+            {children}
+        </a>
+    ),
+}));
 
 const sig = (
     id: string,
@@ -49,5 +62,23 @@ describe("areaHubFacts (CHAOS-8091)", () => {
         const facts = areaHubFacts(signals);
         expect(facts[0].value).toBe("2.4× amplification · High");
         expect(facts[2].value).toBeUndefined();
+    });
+
+    it("is the order the AreaHub draws its cards in: both read the one layout rule", () => {
+        const mixed = [
+            sig("a1", "Action", "low", "1"),
+            sig("s1", "Signal", "unavailable", ""),
+            sig("s2", "Signal", "critical", "9"),
+            sig("a2", "Action", "high", "5"),
+            sig("s3", "Signal", "low", "2"),
+        ];
+        const { container } = render(
+            <AreaHub areaId="ai" signals={mixed} filters={defaultMetricFilter} />,
+        );
+        const drawn = Array.from(container.querySelectorAll("[data-signal-id]")).map((el) =>
+            el.getAttribute("data-signal-id"),
+        );
+        const facts = areaHubFacts(mixed).map((fact) => String(fact.label).split(" · ")[0]);
+        expect(facts).toEqual(drawn);
     });
 });
