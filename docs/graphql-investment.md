@@ -29,14 +29,7 @@ When disabled (default), all calls continue to use the existing REST endpoints.
 
 ### Backend (dev-health-ops)
 
-The GraphQL endpoint is `/graphql` of the Go `query-api` service. Start it with the root compose file of `dev-health-ops` (service `query-api`; it listens on `:8090` inside the compose network and the stack's router sends `/graphql` to it):
-
-```bash
-cd dev-health-ops
-docker compose up -d query-api
-```
-
-For a web dev server on the host, point `BACKEND_URL` at the stack's router (see `docs/agent-visual-testing.md` for the port and the sign-in account).
+The GraphQL endpoint is `/graphql` of the Go `query-api` service (compose service `query-api`, port `8090` inside the compose network). How the host reaches it depends on the compose file in use; read the ops compose file.
 
 To keep the schema in sync, copy the ops contract pin (`contracts/graphql/v1/schema.graphql` in `dev-health-ops`) verbatim to `src/lib/graphql/schema.graphql`, then run `pnpm codegen`.
 

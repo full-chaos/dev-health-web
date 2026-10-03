@@ -9,10 +9,12 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const read = (file) => fs.readFileSync(path.join(ROOT, file), "utf8");
 
 describe("web texts do not name the Python API", () => {
-    it("docs/graphql-investment.md starts the Go query-api, not `python cli.py api`", () => {
+    it("docs/graphql-investment.md names the Go query-api, not `python cli.py api`", () => {
         const doc = read("docs/graphql-investment.md");
         expect(doc).not.toMatch(/python\s+cli\.py\s+api/u);
-        expect(doc).toContain("docker compose up -d query-api");
+        expect(doc).toContain("Go `query-api` service");
+        expect(doc).not.toMatch(/router/iu);
+        expect(doc).not.toContain("agent-visual-testing");
     });
 
     it("src/lib/graphql/types.ts names the contract, not Strawberry", () => {
