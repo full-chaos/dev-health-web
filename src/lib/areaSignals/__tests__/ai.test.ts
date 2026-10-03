@@ -530,3 +530,35 @@ describe("getAISignals — source → AreaSignal mapping", () => {
         expect(mockGraphql).not.toHaveBeenCalled();
     });
 });
+
+describe("getAISignals — a failed read is not an empty read (CHAOS-8269)", () => {
+    const failing = (marker: string) => (query: unknown) =>
+        String(query).includes(marker)
+            ? (Promise.reject(new Error("source down")) as never)
+            : (routeQuery(query) as never);
+
+    it.each([
+        ["AIImpactSummary", "ai-impact"],
+        ["AIReviewLoad", "ai-review-load"],
+        ["AIGovernanceSummary", "ai-governance-risk"],
+        ["AIOpportunities", "ai-automations"],
+    ])("a failed %s read marks %s as failed, and only that card", async (marker, id) => {
+        mockGraphql.mockImplementation(failing(marker));
+        const signals = byId(await getAISignals(defaultMetricFilter));
+        expect(signals[id]).toMatchObject({ state: "unavailable", failed: true });
+        for (const other of Object.keys(signals).filter((k) => k !== id)) {
+            expect(signals[other].failed).toBeUndefined();
+        }
+    });
+
+    it("an answer with no data is unavailable but not failed", async () => {
+        mockGraphql.mockImplementation((query) =>
+            String(query).includes("AIImpactSummary")
+                ? (Promise.resolve(makeImpact({ dataAvailable: false })) as never)
+                : (routeQuery(query) as never),
+        );
+        const signals = byId(await getAISignals(defaultMetricFilter));
+        expect(signals["ai-impact"]).toMatchObject({ state: "unavailable" });
+        expect(signals["ai-impact"].failed).toBeUndefined();
+    });
+});

@@ -422,3 +422,64 @@ describe("getGovernSignals — null buckets are missing, not zero", () => {
         expect(signals["feature-flags"].state).toBe("unavailable");
     });
 });
+
+describe("getGovernSignals — a failed read is not an empty read (CHAOS-8269)", () => {
+    it("a failed home read marks Quality and Incident Correlation as failed, and no other card", async () => {
+        mockGetHomeData.mockRejectedValue(new Error("home down"));
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        for (const id of ["quality", "incident-correlation"]) {
+            expect(signals[id]).toMatchObject({ state: "unavailable", failed: true });
+        }
+        for (const id of ["testops", "security", "risk", "risk-compounding", "feature-flags"]) {
+            expect(signals[id].failed).toBeUndefined();
+        }
+    });
+
+    it("each other failed read marks its own card", async () => {
+        mockRisk.mockRejectedValue(new Error("risk down"));
+        mockFetchFlags.mockRejectedValue(new Error("flags down"));
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        for (const id of ["risk", "feature-flags"]) {
+            expect(signals[id]).toMatchObject({ state: "unavailable", failed: true });
+        }
+        expect(signals.quality.failed).toBeUndefined();
+    });
+
+    it("a failed security read marks Security; a failed compounding read marks Compounding Risk", async () => {
+        mockGraphql.mockRejectedValue(new Error("graphql down"));
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        for (const id of ["security", "risk-compounding"]) {
+            expect(signals[id]).toMatchObject({ state: "unavailable", failed: true });
+        }
+    });
+
+    it("TestOps is failed only when it has no value and a read it uses failed", async () => {
+        // Coverage read failed but the TestOps read answered: the card has a value, so it is not failed.
+        mockCoverage.mockRejectedValue(new Error("coverage down"));
+        let signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.testops.state).not.toBe("unavailable");
+        expect(signals.testops.failed).toBeUndefined();
+        // Both failed: no value, failed.
+        mockTestOps.mockRejectedValue(new Error("testops down"));
+        signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.testops).toMatchObject({ state: "unavailable", failed: true });
+    });
+
+    it("TestOps with an empty TestOps answer and a failed coverage read is failed, not empty", async () => {
+        mockTestOps.mockResolvedValue({
+            pipelines: emptyAnalytics,
+            tests: emptyAnalytics,
+            coverage: emptyAnalytics,
+        });
+        mockCoverage.mockRejectedValue(new Error("coverage down"));
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals.testops).toMatchObject({ state: "unavailable", failed: true });
+    });
+
+    it("an empty answer is not failed", async () => {
+        mockFetchFlags.mockResolvedValue({ summary: null } as never);
+        const signals = byId(await getGovernSignals(defaultMetricFilter));
+        expect(signals["feature-flags"]).toMatchObject({ state: "unavailable" });
+        expect(signals["feature-flags"].failed).toBeUndefined();
+    });
+});

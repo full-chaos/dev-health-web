@@ -474,3 +474,32 @@ describe("getImproveSignals — Improve area signals (CHAOS-2217)", () => {
         });
     });
 });
+
+describe("getImproveSignals — a failed read is not an empty read (CHAOS-8269)", () => {
+    it("a failed opportunities read marks Opportunities and Experiments as failed, not Automations", async () => {
+        mockGetOpportunities.mockRejectedValue(new Error("opportunities timed out"));
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        for (const id of ["opportunities", "experiments"]) {
+            expect(signals[id]).toMatchObject({ state: "unavailable", failed: true });
+        }
+        expect(signals["improve-automations"].failed).toBeUndefined();
+        expect(signals["improve-automations"].state).toBe("neutral");
+    });
+
+    it("a failed automations read marks only Automations", async () => {
+        mockGraphqlFetch.mockRejectedValue(new Error("graphql down"));
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        expect(signals["improve-automations"]).toMatchObject({
+            state: "unavailable",
+            failed: true,
+        });
+        expect(signals.opportunities.failed).toBeUndefined();
+    });
+
+    it("an answer with zero items is a healthy zero, never failed", async () => {
+        mockGetOpportunities.mockResolvedValue({ items: [] } as never);
+        const signals = byId(await getImproveSignals(defaultMetricFilter));
+        expect(signals.opportunities).toMatchObject({ state: "neutral", value: "0 open" });
+        expect(signals.opportunities.failed).toBeUndefined();
+    });
+});

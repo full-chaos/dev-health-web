@@ -49,6 +49,7 @@ import { formatNumber, formatPercent } from "@/lib/formatters";
 import { logger } from "@/lib/logger";
 
 import { BACKEND_LADDER, deriveState, type SeverityThresholds } from "./deriveState";
+import { markFailedSignals } from "./failedRead";
 import type { AreaSignal, AreaSignalState } from "./types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -98,14 +99,28 @@ async function resolveOrgId(): Promise<string> {
  * Run a source fetch, swallowing failures to `undefined` so one dead source
  * degrades to a single honest-empty card instead of failing the whole area.
  */
-async function safe<T>(fn: () => Promise<T>, source: string): Promise<T | undefined> {
+async function safe<T>(
+    fn: () => Promise<T>,
+    source: string,
+    failedSources: Set<string>,
+): Promise<T | undefined> {
     try {
         return await fn();
     } catch (error) {
+        // The backend text goes to the log only; the card says "could not be read" (CHAOS-8269).
         logger.error({ err: error, source }, "AI signal source failed");
+        failedSources.add(source);
         return undefined;
     }
 }
+
+/** The read each AI card depends on, so a failed read marks only its own card (CHAOS-8269). */
+const SIGNAL_SOURCES: Record<string, readonly string[]> = {
+    "ai-impact": ["ai-impact"],
+    "ai-review-load": ["ai-review-load"],
+    "ai-governance-risk": ["ai-governance-risk"],
+    "ai-automations": ["ai-automations"],
+};
 
 // ── Resolver ──────────────────────────────────────────────────────────────────
 
@@ -143,6 +158,7 @@ export async function getAISignals(
     // fetcher convention, src/lib/testops/fetchers.ts) so the hub renders a
     // realistic severity mix without hitting the API — the samples still flow
     // through the real derivation below, never bypassing it.
+    const failedSources = new Set<string>();
     const [impact, reviewLoad, governance, opportunities] = await Promise.all([
         safe(
             () =>
@@ -154,6 +170,7 @@ export async function getAISignals(
                           { orgId },
                       ).then((r) => r.aiImpactSummary),
             "ai-impact",
+            failedSources,
         ),
         safe(
             () =>
@@ -165,6 +182,7 @@ export async function getAISignals(
                           { orgId },
                       ).then((r) => r.aiReviewLoad),
             "ai-review-load",
+            failedSources,
         ),
         safe(
             () =>
@@ -176,6 +194,7 @@ export async function getAISignals(
                           { orgId },
                       ).then((r) => r.aiGovernanceSummary),
             "ai-governance-risk",
+            failedSources,
         ),
         safe(
             () =>
@@ -187,6 +206,7 @@ export async function getAISignals(
                           { orgId },
                       ).then((r) => r.aiOpportunities),
             "ai-automations",
+            failedSources,
         ),
     ]);
 
@@ -314,5 +334,5 @@ export async function getAISignals(
         push("ai-automations", UNAVAILABLE);
     }
 
-    return signals;
+    return markFailedSignals(signals, SIGNAL_SOURCES, failedSources);
 }
