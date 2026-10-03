@@ -5,6 +5,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import { expectStaticLogo } from "@/test/staticLogo";
 
 import { AppShell } from "./AppShell";
 
@@ -142,6 +143,21 @@ describe("AppShell — a route in the registry gets the shared shell", () => {
         ]);
         // There is no account bar: the sidebar and top bar carry the account menu.
         expect(screen.queryByRole("navigation", { name: "Account" })).toBeNull();
+    });
+
+    it("draws the logo of the sidebar and of the mobile bar from the small static file, in its 35 x 32 box (CHAOS-8545)", () => {
+        renderFrame(<ShellPage />);
+
+        const logoName = { name: "Full Chaos Dev Health logo" };
+        const logos = [
+            within(screen.getByTestId("shell-sidebar")).getByRole("img", logoName),
+            within(screen.getByTestId("shell-mobile-bar")).getByRole("img", logoName),
+        ];
+        expect(screen.getAllByRole("img", logoName)).toHaveLength(2);
+        for (const logo of logos) {
+            expectStaticLogo(logo, { file: "fc-logo-96.png", width: 35, height: 32 });
+            expect(logo).toHaveClass("h-8", "w-auto");
+        }
     });
 
     it("opens the slide-over from the menu button and closes it when the route changes", async () => {

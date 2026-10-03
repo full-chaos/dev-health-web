@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SessionProvider } from "@/components/auth/SessionProvider";
-import fcLogo from "@/assets/fc-logo.png";
+import fcLogo from "@/assets/fc-logo-120.png";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { Toaster } from "sonner";
 
@@ -22,6 +22,9 @@ export default function AuthLayout({
                         <Image
                             src={fcLogo}
                             alt="Full Chaos Dev Health logo"
+                            width={44}
+                            height={40}
+                            unoptimized
                             className="mr-2 h-10 w-auto"
                         />
                         <div className="flex flex-col">

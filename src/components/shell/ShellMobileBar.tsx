@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { RefObject } from "react";
 
-import fcLogo from "@/assets/fc-logo.png";
+import fcLogo from "@/assets/fc-logo-96.png";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -50,9 +50,9 @@ export function ShellMobileBar({ open, onToggle, controlRef }: ShellMobileBarPro
                     <Image
                         src={fcLogo}
                         alt="Full Chaos Dev Health logo"
-                        width={32}
+                        width={35}
                         height={32}
-                        sizes="32px"
+                        unoptimized
                         className="h-8 w-auto"
                         priority
                     />
