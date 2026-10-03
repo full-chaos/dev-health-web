@@ -119,22 +119,7 @@ describe("WorkGraphEvidenceAction", () => {
             ...empty,
             rows: [{ nodeType: "ISSUE", inflow: 1, outflow: 0 }],
         });
-        render(
-            <WorkGraphEvidenceAction filters={defaultMetricFilter} activeTab="review-network" />,
-        );
+        render(<WorkGraphEvidenceAction filters={defaultMetricFilter} activeTab="overview" />);
         expect(screen.queryByRole("button", { name: "View evidence" })).toBeNull();
     });
-
-    it.each(["overview", "dependencies"])(
-        "%s: View evidence lists the served entity-type aggregate",
-        async (tab) => {
-            hooks.flow.mockReturnValue({
-                ...empty,
-                rows: [{ nodeType: "ISSUE", inflow: 10, outflow: 2 }],
-            });
-            render(<WorkGraphEvidenceAction filters={defaultMetricFilter} activeTab={tab} />);
-
-            expect(await rows()).toEqual([["Issue", "Inflow 10 · Outflow 2 · More incoming"]]);
-        },
-    );
 });

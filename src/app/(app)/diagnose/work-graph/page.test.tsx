@@ -78,7 +78,7 @@ describe("Work Graph page header", () => {
         ]);
     });
 
-    it.each(["overview", "dependencies", "inflow-outflow", "artifacts"])(
+    it.each(["inflow-outflow", "artifacts"])(
         "tab %s has the page-head View evidence action",
         async (tab) => {
             await renderPage(tab);
@@ -91,14 +91,13 @@ describe("Work Graph page header", () => {
         },
     );
 
-    it("has the page-head View evidence action on the Overview, not an Open evidence link", async () => {
+    it("has no Open evidence link in the page head any more (it moved into the Overview body)", async () => {
         await renderPage();
 
-        expect(screen.queryByRole("link", { name: "Open evidence" })).toBeNull();
         expect(
-            within(screen.getByTestId("page-header")).getByRole("button", {
-                name: "View evidence",
+            within(screen.getByTestId("page-header")).queryByRole("link", {
+                name: "Open evidence",
             }),
-        ).toBeInTheDocument();
+        ).toBeNull();
     });
 });

@@ -11,10 +11,8 @@ import type { WorkGraphEdgeFilterInput } from "@/lib/graphql/types";
 
 import { artifactEvidenceFacts, flowEvidenceFacts, getGraphSearchState } from "./GraphView";
 
-const FLOW_TABS = new Set(["overview", "dependencies", "inflow-outflow"]);
-
 /**
- * "View evidence" for every Work Graph tab but Review Network (that one is built in the page): the page's served values as fact
+ * "View evidence" for the Inflow / Outflow and Artifact tabs: the page's served values as fact
  * rows, in the body's order. It reads the same aggregate as the tab (same scope, so the client
  * cache answers); each query is paused unless its tab is active. Nothing is drawn while the
  * aggregate is loading, failed or empty.
@@ -45,7 +43,7 @@ export function WorkGraphEvidenceAction({
     const flow = useWorkGraphFlow({
         orgId,
         filters: aggregate,
-        pause: !orgId || !FLOW_TABS.has(activeTab),
+        pause: !orgId || activeTab !== "inflow-outflow",
     });
     const artifacts = useWorkGraphArtifacts({
         orgId,
@@ -53,11 +51,6 @@ export function WorkGraphEvidenceAction({
         pause: !orgId || activeTab !== "artifacts",
     });
 
-    if (activeTab === "overview" || activeTab === "dependencies") {
-        // The graph tabs' evidence is the served entity-type aggregate for the same scope.
-        const facts = flowEvidenceFacts(flow.rows);
-        return facts.length ? <PageFactsEvidenceAction title="Work Graph" facts={facts} /> : null;
-    }
     if (activeTab === "inflow-outflow") {
         const facts = flowEvidenceFacts(flow.rows);
         return facts.length ? (

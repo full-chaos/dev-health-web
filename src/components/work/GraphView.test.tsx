@@ -3,6 +3,7 @@ import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GraphView } from "@/components/work/GraphView";
+import { WorkGraphFactsAction, WorkGraphFactsProvider } from "@/components/work/WorkGraphPageFacts";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 
@@ -822,6 +823,58 @@ describe("GraphView", () => {
         expect(inflow.className).toContain("bg-(--chart-color-1)");
         expect(outflow.className).toContain("bg-(--chart-color-2)");
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    it("Overview: the page-head View evidence lists the values the body shows, in body order", async () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: Array.from({ length: 800 }, (_, index) => ({
+                edgeId: `e${index}`,
+                sourceType: "ISSUE",
+                sourceId: `ISS-${index}`,
+                targetType: "PR",
+                targetId: `PR-${index}`,
+                edgeType: "FIXES",
+                provenance: "NATIVE",
+                confidence: 1.0,
+                evidence: "test",
+            })),
+            loading: false,
+            error: null,
+            totalCount: 1200,
+            refetch: vi.fn(),
+        });
+
+        render(
+            <WorkGraphFactsProvider>
+                <WorkGraphFactsAction />
+                <GraphView filters={filters} />
+            </WorkGraphFactsProvider>,
+        );
+
+        await userEvent.click(await screen.findByRole("button", { name: "View evidence" }));
+        const facts = within(await screen.findByTestId("page-evidence-facts"))
+            .getAllByTestId("evidence-fact")
+            .map((row) => [
+                row.querySelector("dt")?.textContent,
+                row.querySelector("dd")?.textContent,
+            ]);
+        expect(facts).toEqual([
+            ["Edges", "800"],
+            ["Edges drawn", "750"],
+            ["Summarized outside the canvas", "50"],
+            ["More in the backend (narrower filters)", "400"],
+            ["Window", "30 days"],
+            ["Connection type", expect.any(String)],
+        ]);
+    });
+
+    it("Overview keeps the scope-preserving Open evidence link in the body, arrow first", () => {
+        render(<GraphView filters={filters} />);
+        const link = within(screen.getByTestId("graph-context")).getByRole("link", {
+            name: "Open evidence",
+        });
+        expect(link.getAttribute("href")).toContain("/explore");
+        expect(link.firstElementChild?.tagName.toLowerCase()).toBe("svg");
     });
 
     it("pages the served artifact rows (10 per page), with no total", async () => {
@@ -1673,7 +1726,7 @@ describe("GraphView", () => {
         }
     });
 
-    it("no longer renders Open evidence in the explorer card (the page header owns it)", () => {
+    it("renders Open evidence in the Graph context card, not in the explorer card head", () => {
         mockUseWorkGraphEdges.mockReturnValue({
             edges: [],
             loading: false,
@@ -1682,7 +1735,8 @@ describe("GraphView", () => {
             refetch: vi.fn(),
         });
         render(<GraphView filters={filters} />);
-        expect(screen.queryByRole("link", { name: CTA_LABELS.openEvidence })).toBeNull();
+        const link = screen.getByRole("link", { name: CTA_LABELS.openEvidence });
+        expect(screen.getByTestId("graph-context")).toContainElement(link);
     });
 
     describe("Graph context card", () => {

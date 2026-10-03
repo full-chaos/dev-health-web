@@ -10,6 +10,7 @@ import {
     WorkGraphLayerToggles,
     WorkGraphLegend,
 } from "@/components/charts/WorkGraphExplorer";
+import { usePublishGraphFacts } from "./WorkGraphPageFacts";
 import { AdminPager } from "@/components/admin/AdminPager";
 import { Notice } from "@/components/ui/Notice";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
@@ -34,7 +35,7 @@ import type {
 import type { ReviewEdgeRow } from "@/lib/graphql/reviewEdgesFetchers";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { withFilterParam } from "@/lib/filters/url";
+import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { useOrgId } from "@/lib/graphql/provider";
 import { formatNumber } from "@/lib/formatters";
 import { nodeTypeDotClass } from "@/lib/workGraphNodeColors";
@@ -454,6 +455,19 @@ export function GraphView({
 
     const displayEdges = useMemo(() => tabEdges.slice(0, GRAPH_RENDER_EDGE_LIMIT), [tabEdges]);
     const hiddenEdgeCount = Math.max(0, tabEdges.length - displayEdges.length);
+    // The page-head "View evidence" lists what the graph tabs show, in body order (CHAOS-8340).
+    usePublishGraphFacts(
+        graphTabActive && !loading && !error
+            ? graphEvidenceFacts({
+                  tabEdgeCount: tabEdges.length,
+                  shownCount: displayEdges.length,
+                  hiddenCount: hiddenEdgeCount,
+                  backendMore: Math.max(0, totalCount - edges.length),
+                  window: filters.time,
+                  connection: activeTab === "overview" ? activeConnectionSlice.label : null,
+              })
+            : null,
+    );
     const visibleSubcategories = useMemo(
         () =>
             INVESTMENT_SUBCATEGORIES.filter(
@@ -859,6 +873,13 @@ export function GraphView({
                         <ArrowRight aria-hidden="true" className="h-4 w-4" />
                         {CTA_LABELS.browseArtifacts}
                     </Link>
+                    <Link
+                        href={buildExploreUrl({ metric: "throughput", filters, role: activeRole })}
+                        className={`mt-2 ${buttonClassName("ghost", "sm")}`}
+                    >
+                        <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                        {CTA_LABELS.openEvidence}
+                    </Link>
                 </aside>
             </div>
         </div>
@@ -874,6 +895,53 @@ type InflowOutflowViewProps = {
     loading: boolean;
     error: { message: string } | null;
 };
+
+/**
+ * The page evidence of the graph tabs (Overview, Dependencies): the values the body shows, in its
+ * order: the edge count in the card head, the sampling counts of the notice, then the Graph
+ * context rows. Counts the page already computed; no new number.
+ */
+export function graphEvidenceFacts(input: {
+    tabEdgeCount: number;
+    shownCount: number;
+    hiddenCount: number;
+    backendMore: number;
+    window: MetricFilter["time"];
+    connection: string | null;
+}): PageFact[] {
+    const { start_date: start, end_date: end, range_days: days } = input.window;
+    const windowLabel =
+        start && end ? `${start} to ${end}` : days ? `${formatNumber(days)} days` : undefined;
+    return [
+        { label: "Edges", value: formatNumber(input.tabEdgeCount) },
+        ...(input.hiddenCount > 0 || input.backendMore > 0
+            ? [
+                  {
+                      label: "Edges drawn",
+                      value: formatNumber(input.shownCount),
+                  },
+                  ...(input.hiddenCount > 0
+                      ? [
+                            {
+                                label: "Summarized outside the canvas",
+                                value: formatNumber(input.hiddenCount),
+                            },
+                        ]
+                      : []),
+                  ...(input.backendMore > 0
+                      ? [
+                            {
+                                label: "More in the backend (narrower filters)",
+                                value: formatNumber(input.backendMore),
+                            },
+                        ]
+                      : []),
+              ]
+            : []),
+        { label: "Window", value: windowLabel },
+        ...(input.connection ? [{ label: "Connection type", value: input.connection }] : []),
+    ];
+}
 
 /** Direction of a row, from its served inflow and outflow only (no threshold, no invented tolerance). */
 export function balanceLabel(inflow: number, outflow: number): string {

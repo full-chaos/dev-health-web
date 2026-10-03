@@ -1,6 +1,7 @@
 import { ViewSet } from "@/components/navigation/ViewSet";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { GraphView, type WorkGraphTab } from "@/components/work/GraphView";
+import { WorkGraphFactsAction, WorkGraphFactsProvider } from "@/components/work/WorkGraphPageFacts";
 import { WorkGraphEvidenceAction } from "@/components/work/WorkGraphEvidenceAction";
 import { buildWorkGraphTabs } from "./buildTabs";
 import { checkApiHealth } from "@/lib/api/system";
@@ -136,36 +137,42 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
-        <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
-            <PageHeader
-                title="Work Graph"
-                subtitle={TAB_SUBTITLES[activeTab] ?? TAB_SUBTITLES.overview}
-                actions={
-                    <>
-                        {reviewFacts ? (
-                            <PageFactsEvidenceAction title="Review Network" facts={reviewFacts} />
-                        ) : null}
-                        <WorkGraphEvidenceAction filters={filters} activeTab={activeTab} />
-                    </>
-                }
-            />
+        <WorkGraphFactsProvider>
+            <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
+                <PageHeader
+                    title="Work Graph"
+                    subtitle={TAB_SUBTITLES[activeTab] ?? TAB_SUBTITLES.overview}
+                    actions={
+                        <>
+                            {reviewFacts ? (
+                                <PageFactsEvidenceAction
+                                    title="Review Network"
+                                    facts={reviewFacts}
+                                />
+                            ) : null}
+                            <WorkGraphEvidenceAction filters={filters} activeTab={activeTab} />
+                            <WorkGraphFactsAction />
+                        </>
+                    }
+                />
 
-            <ScopeBar view="work" origin={activeOrigin} />
-            <ViewSet
-                orientation="tabs"
-                items={tabs}
-                activeId={activeTab}
-                overviewId="overview"
-                ariaLabel="Work Graph views"
-            />
-            <GraphView
-                filters={filters}
-                activeRole={activeRole}
-                activeTab={activeTab as WorkGraphTab}
-                reviewEdges={reviewEdgesData?.edges ?? null}
-                reviewEdgesLoading={false}
-                reviewEdgesError={reviewEdgesError}
-            />
-        </div>
+                <ScopeBar view="work" origin={activeOrigin} />
+                <ViewSet
+                    orientation="tabs"
+                    items={tabs}
+                    activeId={activeTab}
+                    overviewId="overview"
+                    ariaLabel="Work Graph views"
+                />
+                <GraphView
+                    filters={filters}
+                    activeRole={activeRole}
+                    activeTab={activeTab as WorkGraphTab}
+                    reviewEdges={reviewEdgesData?.edges ?? null}
+                    reviewEdgesLoading={false}
+                    reviewEdgesError={reviewEdgesError}
+                />
+            </div>
+        </WorkGraphFactsProvider>
     );
 }
