@@ -21,6 +21,10 @@ import {
     type TrendPoint,
 } from "@/components/cognitive-load/CognitiveLoadViews";
 import type { HeatmapResponse } from "@/lib/types";
+import {
+    PageFactsEvidenceAction,
+    type PageFact,
+} from "@/components/evidence/PageFactsEvidenceAction";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 
@@ -58,6 +62,15 @@ function dateRangeFromFilter(time: {
     const isoDate = (d: Date) => d.toISOString().slice(0, 10);
     return { sinceDate: isoDate(start), untilDate: isoDate(end) };
 }
+
+/** One line per tab, as the approved prototype words it (views 22 to 26). */
+const TAB_SUBTITLES: Record<string, string> = {
+    overview: "Focus fragmentation, not surveillance.",
+    heatmap: "Review wait density across hours and weekdays.",
+    "context-switching": "Context spread per day.",
+    "focus-pressure": "Interruptions and review demand over the window.",
+    "load-drivers": "Average daily contribution of each load signal.",
+};
 
 export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadPageProps) {
     const session = await requireSession();
@@ -264,6 +277,20 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
 
     const windowLabel = { sinceDate, untilDate };
 
+    // The page's served values for the evidence drawer: the tiles as they read, then each driver.
+    const pageFacts: PageFact[] = [
+        ...(signals ?? []).map((signal) => ({
+            label: signal.label,
+            value: `${signal.value} · ${signal.interpretation}`,
+        })),
+        ...(hasData
+            ? loadDrivers.map((driver) => ({
+                  label: `${driver.label} (avg per day)`,
+                  value: String(Math.round(driver.value * 10) / 10),
+              }))
+            : []),
+    ];
+
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
@@ -271,7 +298,15 @@ export default async function CognitiveLoadPage({ searchParams }: CognitiveLoadP
             className="flex min-w-0 flex-1 flex-col gap-6 text-foreground"
             data-testid="cognitive-load-dashboard"
         >
-            <PageHeader title="Cognitive Load" />
+            <PageHeader
+                title="Cognitive Load"
+                subtitle={TAB_SUBTITLES[activeTab] ?? TAB_SUBTITLES.overview}
+                actions={
+                    pageFacts.length ? (
+                        <PageFactsEvidenceAction title="Cognitive load" facts={pageFacts} />
+                    ) : undefined
+                }
+            />
 
             <PrivacyHeader />
 
