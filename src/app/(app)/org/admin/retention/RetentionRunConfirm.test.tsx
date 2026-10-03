@@ -21,6 +21,9 @@ function makePolicy(overrides: Partial<RetentionPolicy> = {}): RetentionPolicy {
     };
 }
 
+const HOSTILE_DB =
+    'pq: relation "audit_log_partitions" does not exist (SQLSTATE 42P01) at internal/apiservice/admin/retention.go:455';
+
 describe("RetentionRunConfirm", () => {
     it("renders nothing when no policy is targeted", () => {
         render(
@@ -105,7 +108,7 @@ describe("RetentionRunConfirm", () => {
         // just like a transport-level failure, and onExecuteAction must never fire.
         const onDryRunAction = vi
             .fn()
-            .mockResolvedValue({ data: { deleted_count: 0, error: "Policy is inactive" } });
+            .mockResolvedValue({ data: { deleted_count: 0, error: HOSTILE_DB } });
         const onExecuteAction = vi.fn();
         const user = userEvent.setup();
 
@@ -118,7 +121,12 @@ describe("RetentionRunConfirm", () => {
             />,
         );
 
-        await waitFor(() => expect(screen.getByText("Policy is inactive")).toBeInTheDocument());
+        await waitFor(() =>
+            expect(
+                screen.getByText("The retention run did not complete. Try again."),
+            ).toBeInTheDocument(),
+        );
+        expect(screen.queryByText(/SQLSTATE|audit_log_partitions/)).toBeNull();
         const confirmButton = screen.getByRole("button", { name: "Run Now" });
         expect(confirmButton).toBeDisabled();
         expect(screen.queryByText("0")).not.toBeInTheDocument();

@@ -1,5 +1,6 @@
 "use client";
 
+import { logger } from "@/lib/logger";
 import { useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { ReviewSummary, type ReviewSummaryRow } from "@/components/shared/ReviewSummary";
@@ -23,6 +24,9 @@ type RetentionRunConfirmProps = {
  * confirmation before the destructive, non-dry-run execution actually
  * deletes records.
  */
+/** The one sentence shown when a retention run reports a failure inside an HTTP 200 body. */
+export const RETENTION_RUN_FAILED_MESSAGE = "The retention run did not complete. Try again.";
+
 export function RetentionRunConfirm({
     policy,
     onDryRunAction,
@@ -65,7 +69,12 @@ export function RetentionRunConfirm({
                 return;
             }
             if (result.data.error) {
-                setDryRunError(result.data.error);
+                // A 200 body with an embedded error: a database or worker message. Never printed.
+                logger.error(
+                    { err: result.data.error, policyId: targetPolicyId },
+                    "Retention dry run failed",
+                );
+                setDryRunError(RETENTION_RUN_FAILED_MESSAGE);
                 return;
             }
             setDryRunResult(result.data);

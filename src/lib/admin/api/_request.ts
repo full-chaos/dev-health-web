@@ -5,6 +5,7 @@ export class AdminApiError extends Error {
         public status: number,
         public statusText: string,
         public detail?: string,
+        public method?: string,
     ) {
         super(detail || `${status} ${statusText}`);
         this.name = "AdminApiError";
@@ -73,7 +74,12 @@ export async function request<T>(
         } catch {
             detail = undefined;
         }
-        throw new AdminApiError(response.status, response.statusText, detail);
+        throw new AdminApiError(
+            response.status,
+            response.statusText,
+            detail,
+            options.method ?? "GET",
+        );
     }
 
     if (response.status === 204) {
@@ -118,7 +124,12 @@ export async function licensingRequest<T>(
         } catch {
             detail = undefined;
         }
-        throw new AdminApiError(response.status, response.statusText, detail);
+        throw new AdminApiError(
+            response.status,
+            response.statusText,
+            detail,
+            options.method ?? "GET",
+        );
     }
 
     if (response.status === 204) {
