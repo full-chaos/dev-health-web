@@ -11,6 +11,9 @@
  * whose stored identity is an address gets an opaque key and no name (the cell then reads
  * "Not reported"). No file in this module imports server code, so the view can use
  * `hasEmailAddress` as a second guard.
+ *
+ * Display names need the backend to serve them with the rows: CHAOS-8485. When it does, the name
+ * fields below take the served names and this step has no address left to take out.
  */
 
 /** A row as `reviewEdges` serves it. It stays on the server. */
