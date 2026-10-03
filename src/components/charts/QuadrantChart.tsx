@@ -152,6 +152,9 @@ export const percentAxisRange = (
         ? { min: 0, max: 100, interval: 25 }
         : undefined;
 
+/** Id of the label-only series that draws the team / repo point labels above every dot. */
+export const POINT_LABEL_SERIES_ID = "point-labels";
+
 /** Plot-area insets with no point labels (the axis labels are kept in by `containLabel`). */
 const GRID = { left: 48, right: 24, top: 24, bottom: 48 };
 /** Approximate advance of one character of a point label (11px at most). */
@@ -359,19 +362,7 @@ export const buildQuadrantOption = ({
                     color: chartTheme.muted,
                     opacity: backgroundOpacity,
                 },
-                label: showPointLabels
-                    ? {
-                          show: true,
-                          formatter: (params: DefaultLabelFormatterCallbackParams) => {
-                              const point = toPoint(params.data);
-                              return point ? chartEntityLabel(point.entity_label) : "";
-                          },
-                          color: chartTheme.muted,
-                          fontSize: 10,
-                          position: "top",
-                      }
-                    : undefined,
-                labelLayout: showPointLabels ? { hideOverlap: true } : undefined,
+                // The point labels are drawn by the label series below, above every dot.
                 markArea: backgroundData.length ? markArea : undefined,
                 emphasis: {
                     scale: true,
@@ -407,6 +398,41 @@ export const buildQuadrantOption = ({
                               itemStyle: { borderColor: chartTheme.text, borderWidth: 2 },
                           },
                           z: 6,
+                      },
+                  ]
+                : []),
+            // Team / repo point labels in their own silent series drawn above all dots, so another
+            // point's dot never covers a label; overlapping labels are moved, or hidden when they
+            // still overlap. Points, tooltips and clicks stay on the dot series. Display only.
+            ...(showPointLabels && backgroundData.length
+                ? [
+                      {
+                          type: "scatter" as const,
+                          id: POINT_LABEL_SERIES_ID,
+                          data: backgroundData,
+                          symbol: "circle",
+                          // Only team / repo charts have this series: the team / repo dot size.
+                          symbolSize: 10,
+                          // A transparent dot, not opacity 0: ECharts applies the item opacity to
+                          // its label too, which would hide every label.
+                          itemStyle: { color: "transparent" },
+                          silent: true,
+                          tooltip: { show: false },
+                          label: {
+                              show: true,
+                              formatter: (params: DefaultLabelFormatterCallbackParams) => {
+                                  const point = toPoint(params.data);
+                                  return point ? chartEntityLabel(point.entity_label) : "";
+                              },
+                              color: chartTheme.muted,
+                              fontSize: 10,
+                              position: "top" as const,
+                              // A halo in the chart background keeps the text readable over a dot.
+                              textBorderColor: chartTheme.background,
+                              textBorderWidth: 2,
+                          },
+                          labelLayout: { hideOverlap: true, moveOverlap: "shiftY" as const },
+                          z: 7,
                       },
                   ]
                 : []),

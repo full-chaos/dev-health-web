@@ -138,7 +138,7 @@ function SeverityChip({ severity }: { severity: CompoundingRiskSeverity }) {
         <span
             data-testid="severity-chip"
             data-severity={severity}
-            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${STATUS_PILL[tone]}`}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-semibold ${STATUS_PILL[tone]}`}
         >
             <Icon aria-hidden="true" className="h-3.5 w-3.5" />
             {label}

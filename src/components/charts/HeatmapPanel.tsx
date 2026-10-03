@@ -257,7 +257,10 @@ export function HeatmapPanel({
             </div>
             <div className="mt-4 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+                    <p
+                        data-testid="heatmap-evidence-title"
+                        className="text-xs font-medium text-(--ink-muted)"
+                    >
                         {evidenceTitle}
                     </p>
                     {headerNote ? (
