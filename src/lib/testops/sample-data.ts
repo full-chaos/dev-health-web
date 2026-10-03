@@ -237,7 +237,7 @@ export const SAMPLE_JOB_FAILURES_DATA = {
         {
             workflowName: "CI",
             jobName: "integration-tests",
-            provider: "github",
+            provider: "github_actions",
             runs: 48,
             failedRuns: 12,
             failureRate: 0.25,
@@ -245,7 +245,7 @@ export const SAMPLE_JOB_FAILURES_DATA = {
         {
             workflowName: "CI",
             jobName: "unit-tests",
-            provider: "github",
+            provider: "github_actions",
             runs: 52,
             failedRuns: 4,
             failureRate: 0.08,
@@ -253,7 +253,7 @@ export const SAMPLE_JOB_FAILURES_DATA = {
         {
             workflowName: "Deploy",
             jobName: "smoke",
-            provider: "github",
+            provider: "github_actions",
             runs: 20,
             failedRuns: 2,
             failureRate: 0.1,

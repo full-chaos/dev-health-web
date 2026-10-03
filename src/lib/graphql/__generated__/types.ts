@@ -2183,7 +2183,7 @@ export type TestOpsJobFailureGroup = {
   /** ``failedRuns / runs``: a share from 0 to 1, NOT a percent. Null = no run to divide by (not served today: every served group has a failed run). */
   failureRate?: Maybe<Scalars['Float']['output']>;
   jobName: Scalars['String']['output'];
-  /** The CI provider of the runs (``github``, ``gitlab``). Null = the job runs have no stored pipeline row. */
+  /** The CI provider of the runs, as the pipeline row stores it (for example ``github_actions``). Null = the job runs have no stored pipeline row. */
   provider?: Maybe<Scalars['String']['output']>;
   /** Job runs of this group that started in the window and reached a result (success, failure or cancelled). A skipped, queued or running job is not a run. */
   runs: Scalars['Int']['output'];
