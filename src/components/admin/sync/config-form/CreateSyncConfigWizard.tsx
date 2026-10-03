@@ -156,22 +156,33 @@ export function CreateSyncConfigWizard({
     const isRepoScoped = isRepoScopedProvider(formData.provider);
 
     return (
-        <form onSubmit={handleFormSubmit} className="max-w-2xl space-y-6">
+        <form onSubmit={handleFormSubmit} className="space-y-6">
             <div className="flex items-center justify-between gap-4">
                 <StepProgress
                     steps={visibleSteps}
                     currentStepId={currentStep.id}
                     onStepClickAction={goToStep}
                 />
-                <Link
-                    href="/org/admin/sync"
-                    className="shrink-0 text-sm font-medium text-(--ink-muted) hover:text-foreground"
-                >
-                    {CTA_LABELS.cancel}
-                </Link>
+                {/* The review step has its own footer; every other step carries Cancel in its footer (design). */}
+                {currentStep.id === "review" ? (
+                    <Link
+                        href="/org/admin/sync"
+                        className="shrink-0 text-sm font-medium text-(--ink-muted) hover:text-foreground"
+                    >
+                        {CTA_LABELS.cancel}
+                    </Link>
+                ) : null}
             </div>
 
-            <div className="space-y-6 rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+            {/* The steps are section cards themselves; only the review step keeps a frame around its content. */}
+            <div
+                data-testid="wizard-step-body"
+                className={`space-y-6 ${
+                    currentStep.id === "review"
+                        ? "rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6"
+                        : ""
+                }`.trim()}
+            >
                 {currentStep.id === "provider" && (
                     <IdentitySection
                         canCreatePagerDuty={canCreatePagerDuty}
@@ -297,6 +308,7 @@ export function CreateSyncConfigWizard({
                     onBackAction={clampedIndex > 0 ? goBack : undefined}
                     onContinueAction={goNext}
                     blockReason={blockReason}
+                    cancelHref="/org/admin/sync"
                 />
             )}
         </form>
