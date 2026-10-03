@@ -448,13 +448,13 @@ export default function SingleReportPage() {
                             type="text"
                             value={editName}
                             onChange={(e) => setEditName(e.target.value)}
-                            className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 font-(--font-display) text-2xl focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                            className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 font-(--font-display) text-2xl focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                         />
                         <textarea
                             value={editDescription}
                             onChange={(e) => setEditDescription(e.target.value)}
                             rows={2}
-                            className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                            className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                             placeholder="Description"
                         />
                         <div className="flex gap-2">
@@ -480,7 +480,7 @@ export default function SingleReportPage() {
                             type="text"
                             value={cloneName}
                             onChange={(e) => setCloneName(e.target.value)}
-                            className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent) focus:outline-none focus:ring-1 focus:ring-(--accent)"
+                            className="w-full rounded-xl border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm focus:border-(--accent-2) focus:outline-none focus:ring-1 focus:ring-(--accent-2)"
                             placeholder="Name for cloned report"
                         />
                         <div className="flex gap-2">

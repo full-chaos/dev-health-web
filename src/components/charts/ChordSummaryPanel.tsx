@@ -93,7 +93,7 @@ export function ChordSummaryPanel({
                                 key={item.id}
                                 type="button"
                                 onClick={() => handleSelect(item.id)}
-                                className="flex items-center justify-between w-full text-left px-2 py-1.5 -mx-2 rounded hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) transition-colors"
+                                className="flex items-center justify-between w-full text-left px-2 py-1.5 -mx-2 rounded hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) transition-colors"
                                 aria-label={`Rank ${idx + 1}: ${item.label}, +${formatCompactValue(item.net)} ${unit || ""} net imported`}
                             >
                                 <span className="flex items-center gap-2 overflow-hidden">
@@ -127,7 +127,7 @@ export function ChordSummaryPanel({
                                 key={item.id}
                                 type="button"
                                 onClick={() => handleSelect(item.id)}
-                                className="flex items-center justify-between w-full text-left px-2 py-1.5 -mx-2 rounded hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) transition-colors"
+                                className="flex items-center justify-between w-full text-left px-2 py-1.5 -mx-2 rounded hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) transition-colors"
                                 aria-label={`Rank ${idx + 1}: ${item.label}, -${formatCompactValue(item.net)} ${unit || ""} net exported`}
                             >
                                 <span className="flex items-center gap-2 overflow-hidden">
@@ -164,7 +164,7 @@ export function ChordSummaryPanel({
                                     key={`${item.a}-${item.b}`}
                                     type="button"
                                     onClick={() => handleSelect(item.a)}
-                                    className="flex items-center justify-between w-full text-left px-2 py-1.5 -mx-2 rounded hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) transition-colors"
+                                    className="flex items-center justify-between w-full text-left px-2 py-1.5 -mx-2 rounded hover:bg-(--card-70) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) transition-colors"
                                     aria-label={`Rank ${idx + 1}: ${nodeA} and ${nodeB}, ${formatCompactValue(item.bilateralValue)} ${unit || ""} exchanged`}
                                 >
                                     <span className="flex items-center gap-2 overflow-hidden">

@@ -62,7 +62,7 @@ export function UserMenu({ placement = "bar", detail }: UserMenuProps = {}) {
                 aria-controls={menuId}
                 aria-expanded={isOpen}
                 aria-label={CTA_LABELS.accountOptions}
-                className={`flex items-center gap-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50 ${
+                className={`flex items-center gap-2 text-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50 ${
                     inSidebar
                         ? "w-full min-w-0 rounded-(--radius-sm) px-2 py-1 text-left hover:bg-(--surface2)"
                         : "rounded-(--radius-pill) border border-(--card-stroke) bg-(--card) px-3 py-1.5 hover:bg-(--card-80)"
@@ -120,7 +120,7 @@ export function UserMenu({ placement = "bar", detail }: UserMenuProps = {}) {
                         {session.user?.is_superuser && (
                             <Link
                                 href="/superadmin"
-                                className="flex items-center gap-2 px-4 py-2 text-sm text-(--info) hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                                className="flex items-center gap-2 px-4 py-2 text-sm text-(--info) hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                                 onClick={() => setIsOpen(false)}
                             >
                                 <ShieldCheck
@@ -132,7 +132,7 @@ export function UserMenu({ placement = "bar", detail }: UserMenuProps = {}) {
                         )}
                         <Link
                             href="/settings"
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                             onClick={() => setIsOpen(false)}
                         >
                             <Settings2
@@ -143,7 +143,7 @@ export function UserMenu({ placement = "bar", detail }: UserMenuProps = {}) {
                         </Link>
                         <Link
                             href="/org/admin"
-                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                            className="flex items-center gap-2 px-4 py-2 text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                             onClick={() => setIsOpen(false)}
                         >
                             <Building2
@@ -157,7 +157,7 @@ export function UserMenu({ placement = "bar", detail }: UserMenuProps = {}) {
                         <button
                             type="button"
                             onClick={() => signOut()}
-                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                            className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                         >
                             <LogOut
                                 aria-hidden="true"
