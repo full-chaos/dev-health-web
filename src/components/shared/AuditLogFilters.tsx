@@ -88,7 +88,7 @@ function AdminAuditLogFilters({
                     end_date: endDate || undefined,
                 });
             }}
-            className={`mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6 ${framed ? "rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4" : ""}`}
+            className={`mb-6 grid gap-4 sm:grid-cols-2 ${framed ? "rounded-2xl border border-(--card-stroke) bg-(--card-80) p-4 lg:grid-cols-6" : "lg:grid-cols-[repeat(5,minmax(0,1fr))_auto]"}`}
         >
             <div>
                 <label
@@ -171,10 +171,10 @@ function AdminAuditLogFilters({
                 />
             </div>
             <div className="flex items-end gap-2">
-                <Button type="submit" variant="primary" className="w-full">
+                <Button type="submit" variant="primary" className={framed ? "w-full" : ""}>
                     {CTA_LABELS.applyFilters}
                 </Button>
-                <Button onClick={handleReset} className="w-full">
+                <Button onClick={handleReset} className={framed ? "w-full" : ""}>
                     {CTA_LABELS.resetFilters}
                 </Button>
             </div>
