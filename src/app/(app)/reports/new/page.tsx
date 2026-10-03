@@ -8,6 +8,7 @@ import { Button, buttonClassName } from "@/components/shared/Button";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { Notice } from "@/components/ui/Notice";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { useOrgId } from "@/lib/graphql/provider";
 import { createSavedReport } from "@/lib/reports/fetchers";
 import type { CreateSavedReportInput } from "@/lib/reports/types";
 
@@ -27,6 +28,8 @@ const AVAILABLE_METRICS = [
 ];
 
 export default function NewReportPage() {
+    // The org of the signed-in session (the layout's provider): the backend reads only the caller's own org.
+    const orgId = useOrgId() ?? "";
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -62,7 +65,7 @@ export default function NewReportPage() {
         };
 
         try {
-            await createSavedReport("default-org", input);
+            await createSavedReport(orgId, input);
             router.push("/reports");
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to create report");

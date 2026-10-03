@@ -16,6 +16,9 @@ import ReportsPage from "./page";
 const FILTERS = { ...defaultMetricFilter, scope: { level: "team" as const, ids: ["platform"] } };
 const F = encodeFilterParam(FILTERS);
 
+vi.mock("@/lib/auth", () => ({
+    requireSession: vi.fn().mockResolvedValue({ user: { org_id: "org-session-1" } }),
+}));
 vi.mock("next/navigation", () => ({
     usePathname: () => "/reports",
     useSearchParams: () => new URLSearchParams(`f=${F}&role=em`),

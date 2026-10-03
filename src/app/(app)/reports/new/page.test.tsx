@@ -4,6 +4,7 @@ import { act, fireEvent, render, screen } from "@/test/utils";
 import NewReportPage from "./page";
 
 const push = vi.fn();
+vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org-session-1" }));
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ push }),
     usePathname: () => "/reports/new",
@@ -25,6 +26,21 @@ describe("New report form (CHAOS-8096)", () => {
         const submit = screen.getByRole("button", { name: "Create report" });
         expect(submit).toHaveAttribute("type", "submit");
         expect(submit.className).toContain("bg-(--action)");
+    });
+
+    it("creates the report in the signed-in session's org, never a literal org id", async () => {
+        createSavedReport.mockResolvedValue({ id: "new" });
+        render(<NewReportPage />);
+
+        fireEvent.change(screen.getByLabelText("Report Name"), { target: { value: "R" } });
+        await act(async () => {
+            fireEvent.submit(
+                screen.getByRole("button", { name: "Create report" }).closest("form")!,
+            );
+        });
+
+        expect(createSavedReport).toHaveBeenCalledTimes(1);
+        expect(createSavedReport.mock.calls[0][0]).toBe("org-session-1");
     });
 
     it("shows a failed create as a danger notice, not a free-standing banner", async () => {

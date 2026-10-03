@@ -5,6 +5,7 @@ import { ReportStatus } from "@/lib/reports/types";
 import type { ReportRun, SavedReport } from "@/lib/reports/types";
 
 const mockPush = vi.fn();
+vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org-session-1" }));
 vi.mock("next/navigation", () => ({
     useParams: () => ({ id: "report-1" }),
     useRouter: () => ({ push: mockPush }),
@@ -74,6 +75,14 @@ describe("SingleReportPage — CHAOS-4318 manual refresh (no timer-driven pollin
         expect(mockFetchReportRuns).toHaveBeenCalledTimes(1);
         expect(screen.getByTestId("refresh-control-button")).toBeInTheDocument();
         expect(screen.getByText(/Last updated:/)).toBeInTheDocument();
+    });
+
+    it("reads the report and its runs in the signed-in session's org, never a literal org id", async () => {
+        render(<SingleReportPage />);
+        await flush();
+
+        expect(mockFetchSavedReport.mock.calls[0][0]).toBe("org-session-1");
+        expect(mockFetchReportRuns.mock.calls[0][0]).toBe("org-session-1");
     });
 
     it("never re-fetches run history on its own, however long the page stays open", async () => {

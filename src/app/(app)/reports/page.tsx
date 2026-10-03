@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { DataState } from "@/components/ui/DataState";
 import { RetryButton } from "@/components/ui/RetryButton";
 import { Section } from "@/components/ui/Section";
+import { requireSession } from "@/lib/auth";
 import { getServerEnv } from "@/lib/config";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { fetchSavedReportsChecked } from "@/lib/reports/fetchers";
@@ -18,8 +19,10 @@ export default async function ReportsPage() {
     const env = getServerEnv();
     const isTestMode =
         env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+    // The org of the signed-in session: the backend reads only the caller's own org.
+    const session = await requireSession();
     const reportsData = await fetchSavedReportsChecked(
-        "default-org",
+        session.user.org_id ?? "",
         undefined,
         undefined,
         isTestMode,

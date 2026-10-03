@@ -22,6 +22,7 @@ const TEAM_F = encodeFilterParam({
     scope: { level: "team", ids: ["platform"] },
 });
 
+vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org-session-1" }));
 vi.mock("next/navigation", () => ({
     useParams: () => ({ id: "report-1" }),
     usePathname: () => "/reports/report-1",

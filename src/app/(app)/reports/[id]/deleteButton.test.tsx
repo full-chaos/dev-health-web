@@ -10,6 +10,7 @@ import type { SavedReport } from "@/lib/reports/types";
 // Button variant's `text-foreground` beat the label token. Pins the winning classes and the
 // contrast of the token pair in both themes.
 
+vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org-session-1" }));
 vi.mock("next/navigation", () => ({
     useParams: () => ({ id: "report-1" }),
     useRouter: () => ({ push: vi.fn() }),
