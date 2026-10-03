@@ -26,30 +26,22 @@ describe("Bottlenecks page pass (CHAOS-7749)", () => {
         expect(page).not.toContain("WIP Saturation is indexed to a baseline");
     });
 
-    it("the two quadrants sit side by side from 1536 px and stack below", () => {
-        const section = page.match(
-            /<section className="([^"]*)" data-testid="bottleneck-quadrants">/u,
-        );
-        expect(section?.[1]).toContain("2xl:grid-cols-2");
-        expect(section?.[1]).not.toContain("min-[1150px]");
-        expect(section?.[1]).not.toMatch(/(?:^| )xl:grid-cols-2/u);
-        const body = page.slice(
-            page.indexOf('data-testid="bottleneck-quadrants"'),
-            page.indexOf("Review wait density"),
-        );
-        expect(body.match(/<QuadrantPanel /gu)?.length).toBe(2);
+    it("one quadrant now (CHAOS-8070): Review Load × Review Latency, full width; no WIP × Throughput", () => {
+        expect(page.match(/<QuadrantPanel /gu)?.length).toBe(1);
+        expect(page).toContain('title="Review Load × Review Latency"');
+        expect(page).not.toContain('data-testid="bottleneck-quadrants"');
+        expect(page).not.toContain('type: "wip_throughput"');
     });
 
-    it("the evidence cards use the token radii", () => {
-        const s = read("components/work/EvidenceView.tsx");
-        expect(s).not.toMatch(/rounded-(?:3xl|2xl)/u);
-        expect(s).toContain("rounded-(--radius-md)");
+    it("the legacy evidence cards are gone (CHAOS-8070): no EvidenceView, no Blocked Associations", () => {
+        expect(page).not.toContain("EvidenceView");
+        expect(page).not.toContain("Blocked Associations");
     });
 
     it("has no raw palette class", () => {
         for (const f of [
             "app/(app)/bottleneck/page.tsx",
-            "components/work/EvidenceView.tsx",
+            "app/(app)/bottleneck/BottleneckTiles.tsx",
             "components/work/WipSaturationNotice.tsx",
         ]) {
             expect(read(f), f).not.toMatch(

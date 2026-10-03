@@ -1,29 +1,38 @@
 /**
- * /bottleneck — Bottlenecks.
+ * /bottleneck — Bottlenecks (approved prototype `bottlenecks()`, view 27).
  *
- * RSC entry. Pre-fetches WIP saturation + review latency data and renders
- * KPI tiles, WIP × Throughput quadrant, Review Load × Latency quadrant,
- * review wait density heatmap, and the WIP/blocked evidence panel.
- *
- * Mirrors the structure of /work (work/page.tsx) and /risk/compounding.
+ * RSC entry: the header with "View evidence", one strip of three tiles (WIP Saturation, Blocked
+ * Work, Review Latency), the WIP note, the Review Load × Review Latency quadrant, the review wait
+ * density heatmap and the WIP associations as meter rows. Tiles, dots, cells and the associations
+ * card open the one shared evidence drawer.
  */
 
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { DataNote } from "@/components/charts/DataNote";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import { HeatmapPanel } from "@/components/charts/HeatmapPanel";
-import { EvidenceView } from "@/components/work/EvidenceView";
+import {
+    PageFactsEvidenceAction,
+    type PageFact,
+} from "@/components/evidence/PageFactsEvidenceAction";
+import { associationMeterRows } from "@/components/metrics/associationRows";
+import { MetricEvidenceButton } from "@/components/metrics/MetricEvidenceButton";
+import { MeterRows } from "@/components/ui/MeterRows";
+import { Section } from "@/components/ui/Section";
 import { WipSaturationNotice } from "@/components/work/WipSaturationNotice";
-import { MetricCard } from "@/components/metrics/MetricCard";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { getHeatmap, getQuadrant } from "@/lib/api/visuals";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
-import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
+import { withFilterParam } from "@/lib/filters/url";
+import { formatMetricParts } from "@/lib/formatters";
+import { resolveEntityLabels } from "@/lib/labels/entityLabel";
+import { FALLBACK_DELTAS, getMetricLabel } from "@/lib/metrics/catalog";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
+import { BOTTLENECK_TILES, BottleneckTiles } from "./BottleneckTiles";
 
 type BottleneckPageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -48,55 +57,38 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
               ? filters.scope.level
               : "org";
 
-    const [health, home, wipExplain, blockedExplain, wipQuadrant, reviewQuadrant, reviewHeatmap] =
-        await Promise.all([
-            checkApiHealth(),
-            fetchOrNull(getHomeDataViaGraphQL(filters), "bottleneck/home-data"),
-            fetchOrNull(
-                getExplainData({ metric: "wip_saturation", filters }),
-                "bottleneck/explain-wip_saturation",
-            ),
-            fetchOrNull(
-                getExplainData({ metric: "blocked_work", filters }),
-                "bottleneck/explain-blocked_work",
-            ),
-            fetchOrNull(
-                getQuadrant({
-                    type: "wip_throughput",
-                    scope_type: quadrantScope,
-                    scope_id: scopeId,
-                    range_days: filters.time.range_days,
-                    bucket: "week",
-                    start_date: filters.time.start_date,
-                    end_date: filters.time.end_date,
-                }),
-                "bottleneck/wip-throughput-quadrant",
-            ),
-            fetchOrNull(
-                getQuadrant({
-                    type: "review_load_latency",
-                    scope_type: quadrantScope,
-                    scope_id: scopeId,
-                    range_days: filters.time.range_days,
-                    bucket: "week",
-                    start_date: filters.time.start_date,
-                    end_date: filters.time.end_date,
-                }),
-                "bottleneck/review-load-latency-quadrant",
-            ),
-            fetchOrNull(
-                getHeatmap({
-                    type: "temporal_load",
-                    metric: "review_wait_density",
-                    scope_type: filters.scope.level,
-                    scope_id: scopeId,
-                    range_days: filters.time.range_days,
-                    start_date: filters.time.start_date,
-                    end_date: filters.time.end_date,
-                }),
-                "bottleneck/review-heatmap",
-            ),
-        ]);
+    const [health, home, wipExplain, reviewQuadrant, reviewHeatmap] = await Promise.all([
+        checkApiHealth(),
+        fetchOrNull(getHomeDataViaGraphQL(filters), "bottleneck/home-data"),
+        fetchOrNull(
+            getExplainData({ metric: "wip_saturation", filters }),
+            "bottleneck/explain-wip_saturation",
+        ),
+        fetchOrNull(
+            getQuadrant({
+                type: "review_load_latency",
+                scope_type: quadrantScope,
+                scope_id: scopeId,
+                range_days: filters.time.range_days,
+                bucket: "week",
+                start_date: filters.time.start_date,
+                end_date: filters.time.end_date,
+            }),
+            "bottleneck/review-load-latency-quadrant",
+        ),
+        fetchOrNull(
+            getHeatmap({
+                type: "temporal_load",
+                metric: "review_wait_density",
+                scope_type: filters.scope.level,
+                scope_id: scopeId,
+                range_days: filters.time.range_days,
+                start_date: filters.time.start_date,
+                end_date: filters.time.end_date,
+            }),
+            "bottleneck/review-heatmap",
+        ),
+    ]);
 
     if (!health.ok) {
         return <ServiceUnavailable landmark={false} />;
@@ -104,12 +96,33 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
 
     const deltas = home?.deltas?.length ? home.deltas : FALLBACK_DELTAS;
     const placeholderDeltas = !home?.deltas?.length;
+    // The way back to this page (scope and role kept): the drawer footer and "Return to
+    // investigation" on the metric evidence page lead here.
+    const pagePath = withFilterParam("/bottleneck", filters, activeRole);
 
-    const getMetric = (metric: string) => deltas.find((item) => item.metric === metric);
+    // "View evidence": the page's served tile values, as the tiles show them.
+    const pageFacts: PageFact[] = BOTTLENECK_TILES.map(({ metric }) => {
+        const row = deltas.find((item) => item.metric === metric);
+        const parts =
+            !placeholderDeltas && row?.value !== undefined
+                ? formatMetricParts(row.value, row.unit ?? "")
+                : null;
+        return {
+            label: row?.label ?? getMetricLabel(metric),
+            // As the tile shows it: the number, then the unit ("298%", "0.3 hours").
+            value: parts
+                ? parts.unit === "%"
+                    ? `${parts.value}%`
+                    : [parts.value, parts.unit].filter(Boolean).join(" ")
+                : undefined,
+        };
+    });
 
-    const wipMetric = getMetric("wip_saturation");
-    const blockedMetric = getMetric("blocked_work");
-    const reviewLatencyMetric = getMetric("review_latency");
+    const wipDrivers = (wipExplain?.drivers ?? []).slice(0, 10);
+    const wipDriverLabels = resolveEntityLabels(
+        wipDrivers.map((driver) => driver.label),
+        { unresolvedFallback: "Unresolved" },
+    );
 
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
@@ -118,91 +131,38 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
             <PageHeader
                 title="Bottlenecks"
                 subtitle="WIP saturation, review latency, and blocked work in one view."
-            >
-                <p className="text-sm text-(--ink-muted)">
-                    Where work is piling up and review is slowing delivery.
-                </p>
-            </PageHeader>
+                actions={<PageFactsEvidenceAction title="Bottlenecks" facts={pageFacts} />}
+            />
 
             <ScopeBar view="work" origin={activeOrigin} />
 
-            {/* KPI tiles */}
-            <section className="grid gap-4 lg:grid-cols-3">
-                <MetricCard
-                    label={wipMetric?.label ?? "WIP Saturation"}
-                    href={buildExploreUrl({
-                        metric: "wip_saturation",
-                        filters,
-                        role: activeRole,
-                    })}
-                    value={placeholderDeltas ? undefined : wipMetric?.value}
-                    unit={wipMetric?.unit}
-                    delta={placeholderDeltas ? undefined : wipMetric?.delta_pct}
-                    spark={wipMetric?.spark}
-                    caption="Work in progress"
-                />
-                <MetricCard
-                    label={blockedMetric?.label ?? "Blocked Work"}
-                    href={buildExploreUrl({
-                        metric: "blocked_work",
-                        filters,
-                        role: activeRole,
-                    })}
-                    value={placeholderDeltas ? undefined : blockedMetric?.value}
-                    unit={blockedMetric?.unit}
-                    delta={placeholderDeltas ? undefined : blockedMetric?.delta_pct}
-                    spark={blockedMetric?.spark}
-                    caption="Blocked items"
-                />
-                <MetricCard
-                    label={reviewLatencyMetric?.label ?? "Review Latency"}
-                    href={buildExploreUrl({
-                        metric: "review_latency",
-                        filters,
-                        role: activeRole,
-                    })}
-                    value={placeholderDeltas ? undefined : reviewLatencyMetric?.value}
-                    unit={reviewLatencyMetric?.unit}
-                    delta={placeholderDeltas ? undefined : reviewLatencyMetric?.delta_pct}
-                    spark={reviewLatencyMetric?.spark}
-                    caption="Time to first review"
-                />
-            </section>
+            <BottleneckTiles
+                deltas={deltas}
+                placeholderDeltas={placeholderDeltas}
+                filters={filters}
+                role={activeRole}
+                origin={pagePath}
+            />
 
             <WipSaturationNotice />
 
-            {/* Quadrant panels */}
-            {/* Side by side from 1536 px (the mapping said 1150; at 1280 the zone legend leaves a 90 px plot), stacked below. */}
-            <section className="grid gap-6 2xl:grid-cols-2" data-testid="bottleneck-quadrants">
-                <QuadrantPanel
-                    title="WIP × Throughput"
-                    description="Operating modes under work in flight and delivery pace."
-                    data={wipQuadrant}
-                    filters={filters}
-                    relatedLinks={[
-                        {
-                            label: "Explore work",
-                            href: withFilterParam("/work", filters, activeRole),
-                        },
-                    ]}
-                    emptyState="WIP saturation data will appear once work items are ingested."
-                />
-                <QuadrantPanel
-                    title="Review Load × Review Latency"
-                    description="Operating modes under review demand and turnaround."
-                    data={reviewQuadrant}
-                    filters={filters}
-                    relatedLinks={[
-                        {
-                            label: "Explore work",
-                            href: withFilterParam("/work", filters, activeRole),
-                        },
-                    ]}
-                    emptyState="Review load data will appear once PR data is ingested."
-                />
-            </section>
+            {/* The one quadrant the prototype draws. WIP × Throughput is the Throughput tab's
+                quadrant on Flow (/metrics?tab=throughput). */}
+            <QuadrantPanel
+                title="Review Load × Review Latency"
+                description="Operating modes under review demand and turnaround."
+                data={reviewQuadrant}
+                filters={filters}
+                relatedLinks={[
+                    {
+                        label: "Explore work",
+                        href: withFilterParam("/work", filters, activeRole),
+                    },
+                ]}
+                emptyState="Review load data will appear once PR data is ingested."
+            />
 
-            {/* Review wait density heatmap */}
+            {/* Review wait density heatmap: a cell opens the shared drawer. */}
             <HeatmapPanel
                 title="Review wait density"
                 description="Find the hours and weekdays where PRs accumulate review wait time."
@@ -220,13 +180,41 @@ export default async function BottleneckPage({ searchParams }: BottleneckPagePro
                 evidenceTitle="PR evidence"
             />
 
-            {/* WIP and blocked work evidence panel */}
-            <EvidenceView
-                filters={filters}
-                activeRole={activeRole}
-                wipExplain={wipExplain}
-                blockedExplain={blockedExplain}
-            />
+            {/* Prototype `section('WIP associations', bars(...))`: meter rows; the drawer lists the
+                drivers with their evidence links, its footer leads to the WIP evidence page. */}
+            <Section
+                data-testid="wip-associations"
+                title="WIP associations"
+                description="Association changes in the selected window; not causal attribution."
+                action={
+                    <MetricEvidenceButton
+                        subject={{
+                            title: wipExplain?.label ?? getMetricLabel("wip_saturation"),
+                            metric: "wip_saturation",
+                            filters,
+                            role: activeRole,
+                            origin: pagePath,
+                        }}
+                        section="WIP associations"
+                    />
+                }
+            >
+                {wipDrivers.length ? (
+                    <MeterRows
+                        aria-label="WIP associations"
+                        testId="wip-association-meter-rows"
+                        rows={associationMeterRows(wipDrivers, wipDriverLabels)}
+                    />
+                ) : (
+                    <p className="text-sm text-(--ink-muted)">
+                        WIP association detail will appear once data is ingested.
+                    </p>
+                )}
+                <DataNote>
+                    Association values are percent change in the selected window; no causal
+                    conclusion is added.
+                </DataNote>
+            </Section>
         </div>
     );
 }
