@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/shared/Button";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { deleteSyncConfig } from "@/lib/admin/server";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -61,15 +62,15 @@ export function SyncConfigDeleteControls({
 
     return (
         <>
-            <button
-                type="button"
+            <Button
+                variant="danger"
+                size="sm"
                 onClick={() => setConfirmOpen(true)}
                 disabled={disabled || isPending}
                 aria-label={`Delete ${targetName}`}
-                className="rounded-md px-3 py-1.5 text-xs font-medium text-(--negative) hover:bg-(--negative)/10 disabled:opacity-50"
             >
                 {CTA_LABELS.delete}
-            </button>
+            </Button>
             <ConfirmDialog
                 isOpen={showConfirm}
                 title={title}

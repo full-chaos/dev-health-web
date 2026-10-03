@@ -1,6 +1,6 @@
 import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
-import { MeterRows } from "@/components/testops/MeterRows";
+import { MeterRows } from "@/components/ui/MeterRows";
 import { formatPercent } from "@/lib/formatters";
 import type { RepositoryCoverageRow } from "@/lib/testops/coverageRepos";
 
@@ -61,7 +61,8 @@ export function CoverageBaselineCard({
                             </p>
                             <MeterRows
                                 max={100}
-                                rowTestId="testops-coverage-row"
+                                aria-label={`${repo.name} coverage`}
+                                testId="testops-coverage-meters"
                                 rows={[
                                     {
                                         label: "Line coverage",
