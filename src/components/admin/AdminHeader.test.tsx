@@ -30,6 +30,14 @@ describe("AdminHeader", () => {
         expect(screen.getByText("Manage plan, invoices, and payment methods.")).toBeInTheDocument();
     });
 
+    it("shows a status badge for the page subject beside the name (CHAOS-8265)", () => {
+        render(<AdminHeader title="github" titleBadge={<span>Healthy</span>} />);
+        const adornment = screen.getByTestId("page-header-title-adornment");
+        expect(adornment).toHaveTextContent("Healthy");
+        // It sits with the title, not with the actions.
+        expect(screen.queryByTestId("page-header-actions")).not.toContainElement(adornment);
+    });
+
     it("handles optional children gracefully", () => {
         render(
             <AdminHeader title="Billing">

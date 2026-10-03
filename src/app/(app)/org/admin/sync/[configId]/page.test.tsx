@@ -16,13 +16,16 @@ vi.mock("@/components/admin/AdminHeader", () => ({
         title,
         description,
         children,
+        titleBadge,
     }: {
         title: string;
         description?: string;
         children?: React.ReactNode;
+        titleBadge?: React.ReactNode;
     }) => (
         <header>
             <h1>{title}</h1>
+            <div data-testid="title-badge-slot">{titleBadge}</div>
             <p data-testid="header-description">{description}</p>
             {children}
         </header>
@@ -77,10 +80,31 @@ describe("Sync detail page (CHAOS-8242)", () => {
         expect(details).not.toHaveAttribute("open");
     });
 
-    it("has the header actions: status, Edit, Pause or Resume, Delete and Sync Now (CHAOS-8242)", async () => {
+    it("has the header actions: Edit, Pause or Resume, Delete and Sync Now (CHAOS-8242)", async () => {
         await renderPage();
         const actions = screen.getByTestId("sync-header-actions");
         expect(within(actions).getByTestId("header-actions-stub")).toBeInTheDocument();
         expect(within(actions).getByTestId("test-connection-stub")).toBeInTheDocument();
+    });
+
+    it("shows the coverage status label beside the name, the same label the coverage card shows (CHAOS-8265)", async () => {
+        await renderPage();
+        const slot = screen.getByTestId("title-badge-slot");
+        const badge = within(slot).getByTestId("sync-header-badge");
+        expect(badge).toHaveAttribute("data-source", "coverage");
+        expect(badge.textContent?.length).toBeGreaterThan(0);
+    });
+
+    it("falls back to the last sync result when the coverage cannot be read", async () => {
+        render(
+            await SyncConfigDetailPage({
+                params: Promise.resolve({ configId: "cfg-1" }),
+                searchParams: Promise.resolve({ coverage_scenario: "unavailable" }),
+            }),
+        );
+        const badge = within(screen.getByTestId("title-badge-slot")).getByTestId(
+            "sync-header-badge",
+        );
+        expect(badge).toHaveAttribute("data-source", "last-sync");
     });
 });
