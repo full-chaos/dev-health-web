@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/shared/Button";
 import { SettingsSection } from "./SettingsSection";
 import { getSecuritySettings, updateSecuritySetting } from "@/lib/admin/server";
 import type { Setting } from "@/lib/admin/types";
@@ -73,7 +74,7 @@ export function SecuritySettings() {
             title="Security"
             description="Configure security settings for your organization."
         >
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="max-w-3xl space-y-4">
                 <div>
                     <label
                         htmlFor="sessionTimeout"
@@ -97,13 +98,9 @@ export function SecuritySettings() {
                     </select>
                 </div>
                 <div className="flex justify-end">
-                    <button
-                        type="submit"
-                        disabled={isPending || !loaded}
-                        className="rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2 disabled:opacity-50"
-                    >
+                    <Button type="submit" variant="primary" disabled={isPending || !loaded}>
                         {isPending ? "Saving..." : "Save Security Settings"}
-                    </button>
+                    </Button>
                 </div>
             </form>
         </SettingsSection>
