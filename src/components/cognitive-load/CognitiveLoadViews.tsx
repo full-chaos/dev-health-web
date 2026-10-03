@@ -18,7 +18,7 @@ import { orderTimeseriesPoints } from "@/components/charts/timeseriesData";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
-import { Inset } from "@/components/capacity/Inset";
+import { Inset } from "@/components/ui/Inset";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { buttonClassName } from "@/components/shared/Button";
