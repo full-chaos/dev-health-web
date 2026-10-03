@@ -13,11 +13,17 @@
 import { Notice } from "@/components/ui/Notice";
 import { DataState } from "@/components/ui/DataState";
 import { ChartFrame } from "@/components/charts/ChartFrame";
-import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
 import { orderTimeseriesPoints } from "@/components/charts/timeseriesData";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+
+import { Inset } from "@/components/capacity/Inset";
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
+import { buttonClassName } from "@/components/shared/Button";
+import { MeterRows } from "@/components/ui/MeterRows";
+import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -164,114 +170,96 @@ export function OverviewView({
 }) {
     return (
         <>
-            <section className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
-                            Interpretive load view
-                        </p>
-                        <h2 className="mt-2 text-2xl font-semibold tracking-tight">
-                            What is pulling attention apart?
-                        </h2>
-                    </div>
-                    <div className="flex items-center gap-4">
+            {!signals ? (
+                <Section
+                    title="No data for this window"
+                    description="Read these as pressure cues, not scores."
+                >
+                    <p className="text-sm leading-6 text-(--ink-muted)">
+                        No cognitive-load signals found for{" "}
+                        <span className="font-medium text-foreground">{window.sinceDate}</span> to{" "}
+                        <span className="font-medium text-foreground">{window.untilDate}</span>. Try
+                        widening the date range or switching to a team scope.
+                    </p>
+                </Section>
+            ) : (
+                <MetricStrip data-testid="cognitive-load-tiles">
+                    {signals.map((signal) => (
+                        <MetricCard
+                            key={signal.label}
+                            as="article"
+                            testId="cognitive-load-tile"
+                            label={signal.label}
+                            valueText={signal.value}
+                            // The chip and the period text are the page's own strings and tone class.
+                            deltaSlot={
+                                <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+                                    <span className="rounded-full bg-(--accent-2)/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-(--accent-2)">
+                                        {signal.interpretation}
+                                    </span>
+                                    <span className={`font-medium ${signal.deltaTone}`}>
+                                        {signal.delta}
+                                    </span>
+                                </span>
+                            }
+                            description={signal.description}
+                            hideTrend
+                        />
+                    ))}
+                </MetricStrip>
+            )}
+
+            <div
+                className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]"
+                data-testid="cognitive-load-overview-lower"
+            >
+                <ContextSwitchingView
+                    trend={trend}
+                    window={window}
+                    title="What is pulling attention apart?"
+                />
+                <Section title="How to read this">
+                    <p className="text-sm leading-6 text-(--ink-muted)">
+                        Read these as pressure cues. The values point to review load, context
+                        spread, and time-boundary strain so teams can decide where to reduce
+                        interruption before it becomes burnout risk.
+                    </p>
+                    <p className="mt-4 text-label-caps uppercase text-(--ink-muted)">
+                        Aggregation contract
+                    </p>
+                    <Inset title="Team/repo-first by default" className="mt-2">
+                        Cognitive-load signals are presented as system pressure: review queues,
+                        context spread, after-hours trend, and weekend trend. They are coaching
+                        prompts, not performance judgments. Open the Context Switching, Focus
+                        Pressure, and Load Drivers tabs to see each signal broken out over the
+                        window.
+                    </Inset>
+                    <div className="mt-4 flex flex-wrap items-center gap-3">
+                        <Link
+                            href={withFilterParam(
+                                "/cognitive-load?tab=load-drivers",
+                                filters,
+                                activeRole,
+                            )}
+                            className={buttonClassName("primary")}
+                        >
+                            <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                            {CTA_LABELS.exploreLoadDrivers}
+                        </Link>
                         <Link
                             href={buildExploreUrl({
                                 metric: "review_latency",
                                 filters,
                                 role: activeRole,
                             })}
-                            className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
+                            className={buttonClassName("ghost")}
                         >
+                            <ArrowRight aria-hidden="true" className="h-4 w-4" />
                             {CTA_LABELS.openEvidence}
                         </Link>
-                        <span className="rounded-full border border-(--accent)/30 bg-(--accent)/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-(--accent-text)">
-                            Team signal
-                        </span>
                     </div>
-                </div>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-(--ink-muted)">
-                    Read these as pressure cues. The values point to review load, context spread,
-                    and time-boundary strain so teams can decide where to reduce interruption before
-                    it becomes burnout risk.
-                </p>
-
-                {!signals ? (
-                    <div className="mt-6 rounded-2xl border border-(--card-stroke) bg-(--card-60) p-5 text-(--ink-muted)">
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em]">
-                            No data for this window
-                        </p>
-                        <p className="mt-2 text-sm leading-6">
-                            No cognitive-load signals found for{" "}
-                            <span className="font-medium text-foreground">{window.sinceDate}</span>{" "}
-                            to{" "}
-                            <span className="font-medium text-foreground">{window.untilDate}</span>.
-                            Try widening the date range or switching to a team scope.
-                        </p>
-                    </div>
-                ) : (
-                    <div
-                        className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-5"
-                        data-testid="cognitive-load-tiles"
-                    >
-                        {signals.map((signal) => (
-                            <MetricCard
-                                key={signal.label}
-                                as="article"
-                                testId="cognitive-load-tile"
-                                label={signal.label}
-                                valueText={signal.value}
-                                // The chip and the period text are the page's own strings and tone class.
-                                deltaSlot={
-                                    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
-                                        <span className="rounded-full bg-(--accent-2)/10 px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-(--accent-2)">
-                                            {signal.interpretation}
-                                        </span>
-                                        <span className={`font-medium ${signal.deltaTone}`}>
-                                            {signal.delta}
-                                        </span>
-                                    </span>
-                                }
-                                description={signal.description}
-                                hideTrend
-                            />
-                        ))}
-                    </div>
-                )}
-            </section>
-
-            <section
-                className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]"
-                data-testid="cognitive-load-overview-lower"
-            >
-                <ContextSwitchingView trend={trend} window={window} />
-                <section className="rounded-(--radius-md) border border-(--card-stroke) bg-(--card-90) p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold tracking-tight">How to read this</h2>
-                    <p className="mt-4 text-xs font-semibold uppercase tracking-[0.24em] text-(--ink-muted)">
-                        Aggregation contract
-                    </p>
-                    <h3 className="mt-2 text-xl font-semibold tracking-tight">
-                        Team/repo-first by default
-                    </h3>
-                    <p className="mt-3 text-sm leading-6 text-(--ink-muted)">
-                        Cognitive-load signals are presented as system pressure: review queues,
-                        context spread, after-hours trend, and weekend trend. They are coaching
-                        prompts, not performance judgments. Open the Context Switching, Focus
-                        Pressure, and Load Drivers tabs to see each signal broken out over the
-                        window.
-                    </p>
-                    <Link
-                        href={withFilterParam(
-                            "/cognitive-load?tab=load-drivers",
-                            filters,
-                            activeRole,
-                        )}
-                        className="mt-4 inline-flex text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                    >
-                        {CTA_LABELS.exploreLoadDrivers}
-                    </Link>
-                </section>
-            </section>
+                </Section>
+            </div>
         </>
     );
 }
@@ -305,15 +293,18 @@ export function contextSpreadSummary(trend: TrendPoint[]): {
 export function ContextSwitchingView({
     trend,
     window,
+    title = "Context spread per day",
 }: {
     trend: TrendPoint[];
     window: WindowLabel;
+    /** The Overview calls this chart "What is pulling attention apart?". */
+    title?: string;
 }) {
     const { hasData, latest, peak } = contextSpreadSummary(trend);
 
     return (
         <ChartFrame
-            title="Context spread per day"
+            title={title}
             interpretation="Distinct repos, PRs, reviews, and touched file areas the team moved across each day. Higher spread means attention is split over more surfaces."
             threshold={
                 latest != null
@@ -446,7 +437,11 @@ export function LoadDriversView({
             )}
             data-testid="cognitive-load-load-drivers"
         >
-            <HorizontalBarChart categories={categories} values={values} height={220} />
+            <MeterRows
+                rows={categories.map((label, i) => ({ label, value: values[i] ?? null }))}
+                aria-label="Average daily contribution of each load driver"
+                testId="load-driver-meter-rows"
+            />
         </ChartFrame>
     );
 }

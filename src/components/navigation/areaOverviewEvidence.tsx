@@ -20,20 +20,26 @@ export function areaOverviewBodyOrder(
     return areaOverviewLayout(signals, area ? areaClusterOrder(area) : []).bodyOrder;
 }
 
+/** One signal as a page fact: the value and the state exactly as its card shows them. */
+export function signalFact(signal: AreaSignal): PageFact {
+    return {
+        label: `${signal.label} · ${signal.metricLabel}`,
+        // A failed read says so; an empty read has no value ("Not reported") (CHAOS-8168).
+        value: signal.failed
+            ? "Could not be read"
+            : signal.state === "unavailable"
+              ? undefined
+              : [signal.value, AREA_STATE_LABEL[signal.state]].filter(Boolean).join(" · "),
+    };
+}
+
 /**
  * The served signals of an area overview as page facts, in body order: the value and the state
  * exactly as the card shows them. A signal with no data has no value, so its row reads
  * "Not reported".
  */
 export function areaOverviewFacts(areaId: NavAreaId, signals: readonly AreaSignal[]): PageFact[] {
-    return areaOverviewBodyOrder(areaId, signals).map((signal) => ({
-        label: `${signal.label} · ${signal.metricLabel}`,
-        value: signal.failed
-            ? "Could not be read"
-            : signal.state === "unavailable"
-              ? undefined
-              : [signal.value, AREA_STATE_LABEL[signal.state]].filter(Boolean).join(" · "),
-    }));
+    return areaOverviewBodyOrder(areaId, signals).map(signalFact);
 }
 
 /**

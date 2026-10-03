@@ -137,3 +137,49 @@ describe("MeterRows (prototype bars())", () => {
         expect(screen.getByText("Maintenance")).toHaveAttribute("title", "Maintenance / Tech Debt");
     });
 });
+
+describe("MeterRows signed (K-5)", () => {
+    const rows = [
+        { label: "up", value: 40, display: "+40%" },
+        { label: "down", value: -20, display: "-20%" },
+        { label: "flat", value: 0, display: "0%" },
+        { label: "missing", value: null },
+    ];
+
+    it("fills right for an increase and left for a decrease, from a zero line, to half the track at most", () => {
+        render(<MeterRows rows={rows} signed />);
+
+        const fills = screen.getAllByTestId("meter-fill");
+        // 0 and the missing row draw no fill.
+        expect(fills).toHaveLength(2);
+        expect(fills.map((fill) => fill.getAttribute("data-direction"))).toEqual(["right", "left"]);
+        expect(fills.map((fill) => fill.style.width)).toEqual(["50%", "25%"]);
+        expect(screen.getAllByTestId("meter-zero-line")).toHaveLength(4);
+    });
+
+    it("keeps the served text and 'Not reported' for a missing value", () => {
+        render(<MeterRows rows={rows} signed />);
+
+        expect(screen.getAllByTestId("meter-value").map((v) => v.textContent)).toEqual([
+            "+40%",
+            "-20%",
+            "0%",
+            "Not reported",
+        ]);
+    });
+
+    it("leaves unsigned rows as before: fill from the left, no zero line, a negative value draws nothing", () => {
+        render(
+            <MeterRows
+                rows={[
+                    { label: "a", value: 10 },
+                    { label: "b", value: -5 },
+                ]}
+            />,
+        );
+
+        expect(screen.getAllByTestId("meter-fill")).toHaveLength(1);
+        expect(screen.getByTestId("meter-fill").style.width).toBe("100%");
+        expect(screen.queryByTestId("meter-zero-line")).toBeNull();
+    });
+});
