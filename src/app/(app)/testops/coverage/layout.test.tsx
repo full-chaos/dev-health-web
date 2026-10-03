@@ -170,7 +170,7 @@ describe("TestOps Coverage page — approved layout", () => {
         const repos = within(card).getAllByTestId("testops-coverage-baseline-repo");
         expect(repos).toHaveLength(2);
         expect(repos[0]).toHaveTextContent("dev-health-web");
-        const rows = within(repos[0]).getAllByTestId("testops-coverage-row");
+        const rows = within(repos[0]).getAllByTestId("meter-row");
         expect(rows.map((row) => row.textContent)).toEqual([
             "Line coverage60%",
             "Branch coverageNot reported",
@@ -178,7 +178,7 @@ describe("TestOps Coverage page — approved layout", () => {
         expect(rows[1]).toHaveAttribute("data-reported", "false");
         // An unresolved repository id is never shown as a bare UUID.
         expect(repos[1]).not.toHaveTextContent("0f2b9c1e-1111-4222-8333-944455556666");
-        expect(within(repos[1]).getAllByTestId("testops-coverage-row")[0]).toHaveTextContent(
+        expect(within(repos[1]).getAllByTestId("meter-row")[0]).toHaveTextContent(
             "72%",
         );
         expect(card).toHaveTextContent("per-repository baseline are not reported yet");

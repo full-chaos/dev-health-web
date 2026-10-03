@@ -127,7 +127,10 @@ test.describe("Journey 1 — coverage-first config detail", () => {
     }) => {
         await page.goto(`${DETAIL_URL}?coverage_scenario=insufficient_data`);
 
-        await expect(page.getByText("Insufficient data")).toBeVisible();
+        // The coverage status label is drawn twice on purpose: beside the name in the header and in the
+        // coverage card (CHAOS-8265, design MAPPING A12), so each place is asserted on its own.
+        await expect(page.getByTestId("sync-header-badge")).toContainText("Insufficient data");
+        await expect(summaryCard(page).getByText("Insufficient data")).toBeVisible();
         await expect(page.getByTestId("coverage-legacy-notice")).toContainText(
             "no planner-tracked sync runs yet",
         );
@@ -392,7 +395,8 @@ test.describe("Journey 3 — job history", () => {
         // disabled — there is nothing before or after the current page.
         await expect(table.locator("tbody tr")).toHaveCount(6);
         await expect(page.getByText("Showing 1-6", { exact: false })).toBeVisible();
-        const historyCard = table.locator("xpath=ancestor::div[contains(@class,'rounded-xl')]");
+        // CHAOS-8242: the table wrapper has no frame class of its own now (the Section is the frame).
+        const historyCard = page.getByTestId("sync-job-history-table");
         await expect(historyCard.getByRole("button", { name: /^Previous$/ })).toBeDisabled();
         await expect(historyCard.getByRole("button", { name: /^Next$/ })).toBeDisabled();
     });

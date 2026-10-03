@@ -44,13 +44,15 @@ export function SubscriptionSummaryCard({
         <div className="rounded-md border border-(--card-stroke) bg-(--background) p-4">
             <div className="flex items-start justify-between gap-4">
                 <div className="space-y-2">
-                    <p className="text-sm text-(--ink-muted)">Current Plan</p>
-                    <p className="text-2xl font-semibold text-(--foreground)">{planName}</p>
-                    <span
-                        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold capitalize ${statusClass}`}
-                    >
-                        {statusLabel}
-                    </span>
+                    <p className="text-label-caps uppercase text-(--ink-muted)">Current plan</p>
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <p className="text-2xl font-semibold text-(--foreground)">{planName}</p>
+                        <span
+                            className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold capitalize ${statusClass}`}
+                        >
+                            {statusLabel}
+                        </span>
+                    </div>
                     {hasSubscription ? (
                         <>
                             <p className="text-sm text-(--ink-muted)">

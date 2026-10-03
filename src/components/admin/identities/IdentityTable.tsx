@@ -2,8 +2,10 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { EntityLabel } from "@/components/labels/EntityLabel";
 import { ProviderBadge } from "./ProviderBadge";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
+import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 
 export type Identity = {
@@ -16,6 +18,8 @@ export type Identity = {
 
 type IdentityTableProps = {
     identities: Identity[];
+    /** Served team names by team id (from the team list). A team without a name reads short id + Unresolved. */
+    teamNames?: Record<string, string>;
     onDeleteAction?: (id: string) => void;
 };
 
@@ -23,7 +27,11 @@ function includesSearch(value: string | null | undefined, query: string): boolea
     return value?.toLowerCase().includes(query) ?? false;
 }
 
-function identityMatchesSearch(identity: Identity, query: string): boolean {
+function identityMatchesSearch(
+    identity: Identity,
+    query: string,
+    teamNames: Record<string, string>,
+): boolean {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) {
         return true;
@@ -33,7 +41,11 @@ function identityMatchesSearch(identity: Identity, query: string): boolean {
         includesSearch(identity.canonical_id, normalizedQuery) ||
         includesSearch(identity.display_name, normalizedQuery) ||
         includesSearch(identity.email, normalizedQuery) ||
-        identity.team_ids.some((teamId) => includesSearch(teamId, normalizedQuery)) ||
+        identity.team_ids.some(
+            (teamId) =>
+                includesSearch(teamId, normalizedQuery) ||
+                includesSearch(teamNames[teamId], normalizedQuery),
+        ) ||
         Object.entries(identity.provider_identities).some(
             ([provider, usernames]) =>
                 includesSearch(provider, normalizedQuery) ||
@@ -42,11 +54,14 @@ function identityMatchesSearch(identity: Identity, query: string): boolean {
     );
 }
 
-export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps) {
+export function IdentityTable({ identities, teamNames = {}, onDeleteAction }: IdentityTableProps) {
     const [searchQuery, setSearchQuery] = useState("");
     const filteredIdentities = useMemo(
-        () => identities.filter((identity) => identityMatchesSearch(identity, searchQuery)),
-        [identities, searchQuery],
+        () =>
+            identities.filter((identity) =>
+                identityMatchesSearch(identity, searchQuery, teamNames),
+            ),
+        [identities, searchQuery, teamNames],
     );
     const columns: DataTableColumn<Identity>[] = [
         {
@@ -57,7 +72,7 @@ export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps
             render: (identity) => (
                 <Link
                     href={`/org/admin/identities/${identity.canonical_id}/edit`}
-                    className="hover:underline"
+                    className="font-mono text-xs hover:underline"
                 >
                     {identity.canonical_id}
                 </Link>
@@ -67,15 +82,15 @@ export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps
             key: "display",
             header: "Display Name",
             headerClassName: "px-6 py-4 font-medium",
-            className: "px-6 py-4 text-(--ink-muted)",
-            render: (identity) => identity.display_name ?? "-",
+            className: "px-6 py-4 font-semibold text-foreground",
+            render: (identity) => identity.display_name ?? "—",
         },
         {
             key: "email",
             header: "Email",
             headerClassName: "px-6 py-4 font-medium",
             className: "px-6 py-4 text-(--ink-muted)",
-            render: (identity) => identity.email ?? "-",
+            render: (identity) => identity.email ?? "—",
         },
         {
             key: "team",
@@ -92,7 +107,7 @@ export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps
                                 href={`/org/admin/teams/${teamId}/edit`}
                                 className="text-(--accent-2) hover:underline"
                             >
-                                {teamId}
+                                <EntityLabel id={teamId} nameMap={teamNames} />
                             </Link>
                         ))}
                     </div>
@@ -150,25 +165,33 @@ export function IdentityTable({ identities, onDeleteAction }: IdentityTableProps
         },
     ];
 
+    const countNote =
+        filteredIdentities.length === identities.length
+            ? `${identities.length} ${identities.length === 1 ? "identity" : "identities"}`
+            : `${filteredIdentities.length} of ${identities.length} identities`;
+
     return (
-        <DataTable
-            accessibleLabel="Identities"
-            columns={columns}
-            data={filteredIdentities}
-            rowKeyAction={(identity) => identity.canonical_id}
-            emptyColSpan={6}
-            emptyMessage={
-                identities.length === 0
-                    ? "No identities found."
-                    : "No identities match your search."
-            }
-            search={{
-                value: searchQuery,
-                placeholder: "Search identities",
-                buttonLabel: CTA_LABELS.applyFilters,
-            }}
-            onSearchAction={setSearchQuery}
-            onSearchChangeAction={setSearchQuery}
-        />
+        <Section title="Identities">
+            <DataTable
+                accessibleLabel="Identities"
+                columns={columns}
+                data={filteredIdentities}
+                rowKeyAction={(identity) => identity.canonical_id}
+                emptyColSpan={6}
+                emptyMessage={
+                    identities.length === 0
+                        ? "No identities found."
+                        : "No identities match your search."
+                }
+                search={{
+                    value: searchQuery,
+                    placeholder: "Search identities",
+                    buttonLabel: CTA_LABELS.applyFilters,
+                }}
+                onSearchAction={setSearchQuery}
+                onSearchChangeAction={setSearchQuery}
+                footerNote={countNote}
+            />
+        </Section>
     );
 }

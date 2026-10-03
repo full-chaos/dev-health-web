@@ -77,11 +77,9 @@ describe("SyncCoverageSummaryCard", () => {
 
         expect(screen.getByText("Healthy")).toBeInTheDocument();
         expect(screen.getByText("Active")).toBeInTheDocument();
-        expect(screen.getByText("Sync Now")).toBeInTheDocument();
-        expect(screen.getByRole("link", { name: "Edit config" })).toHaveAttribute(
-            "href",
-            "/org/admin/sync/cfg-1/edit",
-        );
+        // CHAOS-8265: Edit and Sync Now live in the page header; the card keeps only Backfill.
+        expect(screen.queryByText("Sync Now")).not.toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Edit config" })).not.toBeInTheDocument();
 
         const backfillButton = screen.getByRole("button", { name: "Backfill" });
         await user.click(backfillButton);

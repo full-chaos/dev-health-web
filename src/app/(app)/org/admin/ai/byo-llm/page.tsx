@@ -31,7 +31,10 @@ export default function ByoLlmAISetupPage() {
                 removeSettingsAction={deleteLLMSettings}
                 runReadinessAction={runLLMSettingsReadiness}
             />
-            <ByoLlmSpendSummary loadSpendAction={getLLMSpendSummary} />
+            <ByoLlmSpendSummary
+                loadSpendAction={getLLMSpendSummary}
+                loadBudgetAction={getLLMBudget}
+            />
             <ByoLlmErrorStates />
         </div>
     );

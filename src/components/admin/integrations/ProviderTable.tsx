@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { buttonClassName } from "@/components/shared/Button";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { ConnectionStatus, type ConnectionStatusType } from "./ConnectionStatus";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -82,7 +83,7 @@ const COLUMNS: DataTableColumn<ProviderRow>[] = [
         render: (row) => (
             <Link
                 href={`/org/admin/integrations/${row.id}`}
-                className="rounded-md border border-(--card-stroke) px-3 py-1.5 text-xs font-medium text-foreground hover:bg-(--card-70)"
+                className={buttonClassName("secondary", "sm")}
             >
                 {CTA_LABELS.manageCredential}
             </Link>
@@ -118,7 +119,7 @@ export function ProviderTable({ providers }: ProviderTableProps) {
                         </div>
                         <Link
                             href={`/org/admin/integrations/${provider.id}`}
-                            className="mt-3 inline-flex w-full items-center justify-center rounded-md border border-(--card-stroke) px-3 py-1.5 text-xs font-medium text-foreground hover:bg-(--card-70)"
+                            className={`${buttonClassName("secondary", "sm")} mt-3 w-full`}
                         >
                             {CTA_LABELS.manageCredential}
                         </Link>
