@@ -16,11 +16,11 @@ import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchCoverageMetrics } from "@/lib/testops/fetchers";
 import { COVERAGE_LINE_TARGET_PCT, TESTOPS_MEASURES } from "@/lib/testops/constants";
-import { buildRepositoryCoverage } from "@/lib/testops/coverageRepos";
+import { BRANCH_BREAKDOWN_TOP_N, buildRepositoryCoverage } from "@/lib/testops/coverageRepos";
 import {
     TimeseriesResult,
     TimeseriesBucket,
-    BreakdownResult,
+    NullableBreakdownResult,
 } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
 
@@ -104,6 +104,16 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                         dateRange,
                         topN: 10,
                     },
+                    // Branch coverage by repository (CHAOS-8112): one more item of the same
+                    // request, so the request text does not change. It asks the largest topN
+                    // the API accepts: the answer then lists every repository whenever it can,
+                    // and a repository it does not list has no branch figure.
+                    {
+                        dimension: "REPO",
+                        measure: "COVERAGE_BRANCH_PCT",
+                        dateRange,
+                        topN: BRANCH_BREAKDOWN_TOP_N,
+                    },
                 ],
             },
             isTestMode,
@@ -147,8 +157,13 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
           }))
         : [];
 
+    const repoBreakdown = (measure: string) =>
+        coverageBreakdowns.find(
+            (b: NullableBreakdownResult) => b.dimension === "REPO" && b.measure === measure,
+        );
     const repositories = buildRepositoryCoverage(
-        coverageBreakdowns.find((b: BreakdownResult) => b.measure === "COVERAGE_LINE_PCT"),
+        repoBreakdown("COVERAGE_LINE_PCT"),
+        repoBreakdown("COVERAGE_BRANCH_PCT"),
     );
 
     return (

@@ -3,7 +3,11 @@ import { fileURLToPath } from "node:url";
 import { OWNED_PROCESS_WAIT_TIMEOUT_MS } from "./owned-process-lifecycle.mjs";
 import { selectOwnedTreeController } from "./owned-process-controller.mjs";
 import { createGuardianCompletionCoordinator } from "./owned-process-guardian-completion.mjs";
-import { processGroupExists, processGroupIsOwned } from "./owned-process-posix.mjs";
+import {
+    processGroupExists,
+    processGroupIsOwned,
+    waitForProcessGroupGone,
+} from "./owned-process-posix.mjs";
 
 const [command, ...args] = process.argv.slice(2);
 if (!command) throw new Error("Expected a command to supervise");
@@ -16,6 +20,16 @@ let child;
 let stopping = false;
 let requestedSignal;
 const ownedGroupMembers = new Map();
+// Test seam (run-owned-process.test.mjs): report the group as still alive for this many extra polls
+// after it is really gone, so a test can show the supervisor waits for the group (CHAOS-8457).
+let extraAlivePolls = Number(process.env.OWNED_PROCESS_TEST_GROUP_ALIVE_POLLS ?? 0) || 0;
+function groupExistsForCleanup(groupId) {
+    if (extraAlivePolls > 0) {
+        extraAlivePolls -= 1;
+        return true;
+    }
+    return processGroupExists(groupId);
+}
 const guardianCompletion = createGuardianCompletionCoordinator();
 
 function retainOwnedGroupMember(member) {
@@ -79,10 +93,6 @@ function errorMessage(error) {
     return error instanceof Error ? error.message : String(error);
 }
 
-function wait(milliseconds) {
-    return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
 function waitForGuardianDrain() {
     return new Promise((resolve) => {
         const timeout = setTimeout(() => {
@@ -110,12 +120,10 @@ async function stopOwnedTree(signal) {
             );
         }
         process.kill(-child.pid, signal);
-        const deadline = Date.now() + SHUTDOWN_TIMEOUT_MS;
-        while (processGroupExists(child.pid)) {
-            if (Date.now() >= deadline)
-                throw new Error("Verified owned POSIX process group remained alive after cleanup.");
-            await wait(POLL_INTERVAL_MS);
-        }
+        await waitForProcessGroupGone(child.pid, {
+            deadlineMs: SHUTDOWN_TIMEOUT_MS,
+            pollIntervalMs: POLL_INTERVAL_MS,
+        });
         return;
     }
 
@@ -123,9 +131,29 @@ async function stopOwnedTree(signal) {
     const drainSource = await waitForGuardianDrain();
     if (drainSource !== undefined) return;
 
+    // One budget for the whole SIGKILL phase (the drain wait and the group check together), so the two
+    // phases stay inside the 9 s the shutdown budget leaves for them.
+    const killStartedAt = Date.now();
     child.send({ signal: "SIGKILL", type: "stop" });
-    if ((await waitForGuardianDrain()) === undefined) {
+    const killSource = await waitForGuardianDrain();
+    if (killSource === undefined) {
         throw new Error("Owned process group remained alive after SIGKILL.");
+    }
+    if (killSource === "exit_event") {
+        // The guardian kills its own group, itself included, so after SIGKILL it can never announce
+        // "drained": its death is the only signal. Its death does not prove the other members are
+        // gone (their teardown can lag), so check the group before the supervisor exits.
+        console.error(
+            "owned-process: the guardian exited before announcing drain; verifying the owned group is gone",
+        );
+        const polls = await waitForProcessGroupGone(child.pid, {
+            deadlineMs: Math.max(0, SHUTDOWN_TIMEOUT_MS - (Date.now() - killStartedAt)),
+            exists: groupExistsForCleanup,
+            pollIntervalMs: POLL_INTERVAL_MS,
+        });
+        console.error(
+            `owned-process: the owned group is gone (it was still there for ${polls} polls)`,
+        );
     }
 }
 

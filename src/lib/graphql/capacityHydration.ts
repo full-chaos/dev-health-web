@@ -8,6 +8,7 @@
  */
 
 import type { SSRData } from "@urql/core";
+import { teamIdsForScope } from "@/lib/filters/capacityScope";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CAPACITY_FORECAST_QUERY } from "./queries";
 import { graphqlFetchForHydration } from "./server";
@@ -27,17 +28,12 @@ export function buildCapacityForecastVariables(
     filters: MetricFilter,
     orgId: string,
 ): { orgId: string; input: CapacityForecastInput } {
-    const teamId =
-        filters.scope.level === "team" && filters.scope.ids.length > 0
-            ? filters.scope.ids[0]
-            : undefined;
-
     const historyDays = filters.time.range_days ?? 90;
 
     return {
         orgId,
         input: {
-            teamId,
+            teamIds: teamIdsForScope(filters),
             historyDays,
         },
     };
