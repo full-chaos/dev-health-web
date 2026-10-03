@@ -45,9 +45,9 @@ beforeEach(() => {
 });
 
 describe("Sync configuration header actions (CHAOS-8242)", () => {
-    it("shows the status, then Edit (to the edit page), Pause, Delete and Sync Now", () => {
+    it("shows Edit (to the edit page), Pause, Delete and Sync Now, and no status badge (it sits beside the name)", () => {
         render(<SyncConfigHeaderActions config={config} />);
-        expect(screen.getByText("Success")).toBeInTheDocument();
+        expect(screen.queryByText("Success")).not.toBeInTheDocument();
         expect(screen.getByRole("link", { name: "Edit" })).toHaveAttribute(
             "href",
             "/org/admin/sync/cfg%201/edit",

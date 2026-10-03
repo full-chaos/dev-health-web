@@ -77,10 +77,28 @@ describe("Sync detail page (CHAOS-8242)", () => {
         expect(details).not.toHaveAttribute("open");
     });
 
-    it("has the header actions: status, Edit, Pause or Resume, Delete and Sync Now (CHAOS-8242)", async () => {
+    it("has the header actions: Edit, Pause or Resume, Delete and Sync Now (CHAOS-8242)", async () => {
         await renderPage();
         const actions = screen.getByTestId("sync-header-actions");
         expect(within(actions).getByTestId("header-actions-stub")).toBeInTheDocument();
         expect(within(actions).getByTestId("test-connection-stub")).toBeInTheDocument();
+    });
+
+    it("shows the coverage status label in the header, the label the coverage card shows (CHAOS-8265)", async () => {
+        await renderPage();
+        const badge = within(screen.getByTestId("sync-header-actions")).getByTestId(
+            "sync-header-badge",
+        );
+        expect(badge.textContent?.length).toBeGreaterThan(0);
+    });
+
+    it("shows no status badge when the coverage cannot be read: missing is not a status", async () => {
+        render(
+            await SyncConfigDetailPage({
+                params: Promise.resolve({ configId: "cfg-1" }),
+                searchParams: Promise.resolve({ coverage_scenario: "unavailable" }),
+            }),
+        );
+        expect(screen.queryByTestId("sync-header-badge")).not.toBeInTheDocument();
     });
 });
