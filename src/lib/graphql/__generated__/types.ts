@@ -2199,7 +2199,7 @@ export type TestOpsJobFailuresInput = {
   sinceDate: Scalars['Date']['input'];
   /** Team ids. Narrows the runs to the repositories these teams OWN (team_repo_ownership, as of now); person membership is never read. With ``repoIds`` both apply. */
   teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Last day of the window (UTC), included. A window longer than 90 days, or one that ends before it starts, is an error. */
+  /** Last day of the window (UTC), included. At most 90 days after ``sinceDate`` (a "90 days" window of today minus 90 days to today is served); a later day, or a day before ``sinceDate``, is an error, not a cut answer. */
   untilDate: Scalars['Date']['input'];
 };
 
