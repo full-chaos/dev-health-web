@@ -68,7 +68,9 @@ describe("MetricEvidenceCards evidence drawer", () => {
         render(tiles());
         const tile = screen.getByText("Review Latency").closest("article") as HTMLElement;
 
-        await userEvent.click(within(tile).getByRole("button", { name: "Open evidence" }));
+        await userEvent.click(
+            within(tile).getByRole("button", { name: "Review Latency: Open evidence" }),
+        );
 
         const drawer = screen.getByRole("dialog", { name: "Evidence & Context" });
         expect(within(drawer).getByTestId("evidence-subject")).toHaveTextContent("Review Latency");
@@ -83,10 +85,10 @@ describe("MetricEvidenceCards evidence drawer", () => {
         expect(url.searchParams.get("role")).toBe("em");
     });
 
-    it("Escape closes the drawer and focus returns to the tile's Open evidence button", async () => {
+    it("Escape closes the drawer and focus returns to the tile's button", async () => {
         render(tiles());
         const tile = screen.getByText("Review Latency").closest("article") as HTMLElement;
-        const opener = within(tile).getByRole("button", { name: "Open evidence" });
+        const opener = within(tile).getByRole("button", { name: "Review Latency: Open evidence" });
         await userEvent.click(opener);
         expect(screen.getByRole("dialog")).toBeInTheDocument();
 

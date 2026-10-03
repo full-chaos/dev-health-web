@@ -35,6 +35,9 @@ vi.mock("@/components/shell/ScopeBar", () => ({
 vi.mock("@/components/work/CapacityView", () => ({
     CapacityView: () => <div data-testid="capacity-view" />,
 }));
+vi.mock("@/components/capacity/ForecastEvidenceAction", () => ({
+    ForecastEvidenceAction: () => <button type="button">View evidence</button>,
+}));
 vi.mock("@/components/capacity/RefreshForecastButton", () => ({
     RefreshForecastButton: () => <button type="button">Refresh Forecast</button>,
 }));
@@ -137,6 +140,7 @@ describe("Completion Forecast in the shared app shell", () => {
         expect(
             within(header).getByRole("button", { name: "Refresh Forecast" }),
         ).toBeInTheDocument();
+        expect(within(header).getByRole("button", { name: "View evidence" })).toBeInTheDocument();
         expect(within(header).getByRole("heading", { level: 1 })).toHaveTextContent(
             "Completion Forecast",
         );
@@ -152,5 +156,6 @@ describe("Completion Forecast in the shared app shell", () => {
             }),
         ).toBeNull();
         expect(screen.queryByRole("button", { name: "Refresh Forecast" })).toBeNull();
+        expect(screen.queryByRole("button", { name: "View evidence" })).toBeNull();
     });
 });

@@ -41,6 +41,9 @@ vi.mock("@/components/improve/ImproveAutomationsDashboard", () => ({
         return <div data-testid="improve-automations-dashboard" />;
     },
 }));
+vi.mock("@/components/improve/AutomationsEvidenceAction", () => ({
+    AutomationsEvidenceAction: () => <button type="button">View evidence</button>,
+}));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({ ok: true }) }));
 
 async function renderPage() {

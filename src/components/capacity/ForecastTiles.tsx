@@ -1,4 +1,6 @@
 import type { CapacityForecast } from "@/lib/graphql/types";
+import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { STATUS_PILL } from "@/lib/statusPill";
 
 export function formatForecastDate(dateStr: string | undefined): string {
@@ -26,23 +28,24 @@ function Tile({
     testId: string;
 }) {
     return (
-        <div
-            data-testid={testId}
-            className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6"
-        >
-            <div className="flex min-h-6 items-center justify-between gap-2">
-                <p className="text-xs uppercase tracking-[0.18em] text-(--text-muted)">{label}</p>
-                {pill ? (
-                    <span
-                        className={`rounded-full border px-2 py-0.5 text-xs uppercase tracking-[0.16em] ${STATUS_PILL.muted}`}
-                    >
-                        {pill}
-                    </span>
-                ) : null}
-            </div>
-            <p className="mt-3 text-3xl font-semibold">{value}</p>
-            {caption ? <p className="mt-2 text-xs text-(--text-muted)">{caption}</p> : null}
-        </div>
+        <MetricCard
+            testId={testId}
+            label={label}
+            valueText={value}
+            hideTrend
+            deltaSlot={
+                <>
+                    {pill ? (
+                        <span
+                            className={`mr-2 rounded-full border px-2 py-0.5 text-xs ${STATUS_PILL.muted}`}
+                        >
+                            {pill}
+                        </span>
+                    ) : null}
+                    {caption ? <span>{caption}</span> : null}
+                </>
+            }
+        />
     );
 }
 
@@ -62,7 +65,9 @@ export function ForecastTiles({ forecast }: { forecast: CapacityForecast }) {
         forecast.p85Days === forecast.p95Days;
 
     return (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4" data-testid="forecast-tiles">
+        // The strip counts its direct children, and the three percentiles sit in one fragment:
+        // say the column count here (Remaining work + 3 percentile dates, or + 1 range tile).
+        <MetricStrip data-testid="forecast-tiles" columns={lowVariance ? 2 : 4}>
             <Tile
                 testId="tile-remaining"
                 label="Remaining work"
@@ -98,6 +103,6 @@ export function ForecastTiles({ forecast }: { forecast: CapacityForecast }) {
                     />
                 </>
             )}
-        </section>
+        </MetricStrip>
     );
 }

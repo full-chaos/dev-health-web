@@ -77,6 +77,24 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(screen.queryByText("50% chance")).toBeNull();
     });
 
+    it("draws the tiles as one joined strip with a column per tile", () => {
+        render(<CapacityView filters={filters} />);
+
+        expect(screen.getByTestId("forecast-tiles")).toHaveAttribute("data-columns", "4");
+        expect(screen.getAllByTestId(/^tile-/)).toHaveLength(4);
+    });
+
+    it("lays the projection beside the Forecast inputs card, and keeps the distribution below", () => {
+        render(<CapacityView filters={filters} />);
+
+        for (const name of ["Completion projection", "Forecast inputs", "Interpretation"]) {
+            expect(screen.getByRole("heading", { level: 2, name })).toBeInTheDocument();
+        }
+        expect(
+            screen.getByRole("heading", { name: "Throughput Distribution" }),
+        ).toBeInTheDocument();
+    });
+
     it("sends only the first team id and the filter's range as history days", () => {
         render(<CapacityView filters={filters} />);
 
@@ -139,10 +157,14 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         ).toBeInTheDocument();
     });
 
-    it("keeps the How to Interpret texts", () => {
+    it("shows the Interpretation section with the three percentile texts", () => {
         render(<CapacityView filters={filters} />);
 
-        expect(screen.getByText("How to Interpret")).toBeInTheDocument();
+        const interp = within(screen.getByTestId("forecast-interpretation"));
+        expect(interp.getByRole("heading", { name: "Interpretation" })).toBeInTheDocument();
+        expect(screen.queryByText("How to Interpret")).toBeNull();
+        // Three inset cards, one per percentile.
+        expect(interp.getAllByRole("heading", { level: 4 })).toHaveLength(3);
         expect(
             screen.getByText("Optimistic estimate. Half of simulations complete by this date."),
         ).toBeInTheDocument();
