@@ -171,7 +171,7 @@ describe("AppShell — a route in the registry gets the shared shell", () => {
     });
 });
 
-describe("AppShell — the status chip states what the organization card knows", () => {
+describe("AppShell — the data fact is under the account name, not in the top bar (CHAOS-8432)", () => {
     function organizationsResponse(active: { has_data: boolean; last_metrics_at?: string | null }) {
         return {
             ok: true,
@@ -185,11 +185,7 @@ describe("AppShell — the status chip states what the organization card knows",
         };
     }
 
-    function chip() {
-        return screen.getByTestId("shell-status-chip");
-    }
-
-    it("asks for the organizations once: the card and the chip share one request", async () => {
+    it("asks for the organizations once, shows 'Data through' in the sidebar account block only", async () => {
         const fetchMock = vi
             .fn()
             .mockResolvedValue(
@@ -198,65 +194,13 @@ describe("AppShell — the status chip states what the organization card knows",
         vi.stubGlobal("fetch", fetchMock);
         renderFrame(<ShellPage />);
 
-        await waitFor(() => expect(chip()).toHaveAttribute("data-status", "synced"));
-        expect(chip()).toHaveTextContent(/^Data through /);
+        await waitFor(() =>
+            expect(screen.getByTestId("account-detail")).toHaveTextContent(/^Data through /),
+        );
+        expect(screen.getByTestId("shell-top-bar")).not.toHaveTextContent("Data through");
+        expect(screen.queryByTestId("shell-status-chip")).toBeNull();
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(screen.getByRole("combobox", { name: /organization/i })).toBeInTheDocument();
-    });
-
-    it("shows 'No data yet' only when the active organization has no data", async () => {
-        vi.stubGlobal(
-            "fetch",
-            vi.fn().mockResolvedValue(organizationsResponse({ has_data: false })),
-        );
-        renderFrame(<ShellPage />);
-
-        await waitFor(() => expect(chip()).toHaveAttribute("data-status", "empty"));
-        expect(chip()).toHaveTextContent("No data yet");
-    });
-
-    it.each([
-        ["the request is refused", () => vi.fn().mockResolvedValue({ ok: false })],
-        ["the request throws", () => vi.fn().mockRejectedValue(new Error("network"))],
-        [
-            "the active organization is not in the list",
-            () =>
-                vi.fn().mockResolvedValue({
-                    ok: true,
-                    json: async () => ({
-                        active_org_id: "org-9",
-                        organizations: [
-                            {
-                                id: "org-2",
-                                slug: "other",
-                                name: "Other",
-                                role: "member",
-                                has_data: true,
-                                last_metrics_at: "2026-09-30T10:00:00Z",
-                            },
-                        ],
-                    }),
-                }),
-        ],
-    ])("shows the neutral 'Status unavailable' state when %s", async (_label, makeFetch) => {
-        vi.stubGlobal("fetch", makeFetch());
-        renderFrame(<ShellPage />);
-
-        await waitFor(() => expect(chip()).toHaveAttribute("data-status", "unknown"));
-        expect(chip()).toHaveTextContent("Status unavailable");
-        expect(chip()).not.toHaveTextContent("Data through");
-        expect(chip()).not.toHaveTextContent("No data yet");
-    });
-
-    it("is neutral while the request is open", () => {
-        vi.stubGlobal(
-            "fetch",
-            vi.fn(() => new Promise(() => {})),
-        );
-        renderFrame(<ShellPage />);
-
-        expect(chip()).toHaveAttribute("data-status", "loading");
-        expect(chip()).not.toHaveTextContent("Data through");
     });
 });
 
