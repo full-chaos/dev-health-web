@@ -229,14 +229,28 @@ describe("getGovernSignals — source → AreaSignal mapping", () => {
         expect(signals["risk-compounding"]).toMatchObject({ state: "critical" });
     });
 
-    it("maps feature-flag friction severity and flags it demoted (R4)", async () => {
+    it("maps feature-flag friction severity as a normal Risk card (not demoted)", async () => {
         const signals = byId(await getGovernSignals(defaultMetricFilter));
-        // "moderate" → "medium"; activeFlags count as value; demoted secondary.
+        // "moderate" → "medium"; activeFlags count as value.
         expect(signals["feature-flags"]).toMatchObject({
             state: "medium",
             value: "7",
-            demoted: true,
+            cluster: "Risk",
         });
+        // The approved Govern overview draws Feature Flags as the 4th Risk card, at equal billing.
+        expect(signals["feature-flags"].demoted).not.toBe(true);
+    });
+
+    it("returns the Risk signals in the approved overview order (it decides equal severity)", async () => {
+        const signals = await getGovernSignals(defaultMetricFilter);
+        const risk = signals.filter((s) => s.cluster === "Risk").map((s) => s.id);
+        expect(risk).toEqual([
+            "security",
+            "risk",
+            "risk-compounding",
+            "incident-correlation",
+            "feature-flags",
+        ]);
     });
 
     it("emits an honest 'unavailable' signal (no fabricated value) when a source is empty", async () => {

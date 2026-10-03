@@ -1,10 +1,12 @@
 import { FeatureFlagTable } from "@/components/feature-flags/FeatureFlagTable";
 import { SeverityPill } from "@/components/feature-flags/SeverityPill";
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { DataState } from "@/components/ui/DataState";
+import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchFeatureFlagsData, fetchFeatureFlagList } from "@/lib/feature-flags/fetchers";
@@ -78,7 +80,8 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
 
             <ScopeBar view="feature-flags" pageFilters={false} />
 
-            <section className="grid gap-4 lg:grid-cols-2">
+            {/* Four tiles as one joined 2 x 2 metric strip (MAPPING F2-F5), no self-link (D10). */}
+            <MetricStrip columns={2} data-testid="feature-flag-tiles">
                 <MetricCard
                     label={FF_MEASURES.ACTIVE_FLAGS.label}
                     value={summary.activeFlags}
@@ -88,17 +91,21 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
                     caption={FF_MEASURES.ACTIVE_FLAGS.description}
                 />
 
-                <div className="relative">
+                {/* The severity pill sits in this tile's cell, at the head right (MAPPING F3). The
+                    shared tile has no head slot, so the cell holds the tile and the pill; the tile
+                    drops its own border here (the strip draws the seams). */}
+                <div className="relative bg-card" data-testid="release-friction-tile">
                     <MetricCard
                         label={FF_MEASURES.RELEASE_FRICTION_DELTA.label}
                         value={summary.releaseFrictionDelta ?? undefined}
                         unit="%"
                         spark={summary.releaseFrictionSpark}
                         caption={`Severity: ${summary.releaseFrictionSeverity ?? "unavailable"}`}
+                        className="h-full rounded-none! border-0!"
                     />
                     <SeverityPill
                         severity={summary.releaseFrictionSeverity}
-                        className="absolute right-4 top-4"
+                        className="absolute right-5 top-4.5"
                     />
                 </div>
 
@@ -118,14 +125,12 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
                     spark={summary.coverageRatioSpark}
                     caption={FF_MEASURES.COVERAGE_RATIO.description}
                 />
-            </section>
+            </MetricStrip>
 
-            <section>
-                <h2 className="mb-4 text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                    Flag Registry
-                </h2>
+            {/* The flag registry as a table card (MAPPING F6). */}
+            <Section title="Flag Registry" data-testid="flag-registry">
                 <FeatureFlagTable initialData={flagList} fetchAction={fetchFlagPage} />
-            </section>
+            </Section>
         </div>
     );
 }

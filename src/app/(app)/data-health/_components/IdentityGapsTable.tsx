@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { gql, useQuery } from "urql";
 import {
     DataHealthIdentityDocument,
@@ -7,6 +9,12 @@ import {
     type DataHealthIdentityQueryVariables,
 } from "@/lib/graphql/__generated__/graphql";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
+import { buttonClassName } from "@/components/shared/Button";
+import { DataState } from "@/components/ui/DataState";
+import { RetryButton } from "@/components/ui/RetryButton";
+import { Section } from "@/components/ui/Section";
+import { CTA_LABELS } from "@/lib/design/cta";
+import { logger } from "@/lib/logger";
 import { ProviderBadge } from "@/components/admin/identities/ProviderBadge";
 
 import { AliasSuggestionRow } from "./AliasSuggestionRow";
@@ -23,8 +31,19 @@ export function IdentityGapsTable() {
 
     const { data, fetching, error } = result;
 
-    if (fetching) return <div className="p-4 text-(--ink-muted)">Loading identity gaps...</div>;
-    if (error) return <div className="p-4 text-(--accent-negative)">Error: {error.message}</div>;
+    if (fetching) return <DataState variant="loading" title="Loading identity gaps..." />;
+    if (error) {
+        // The failure goes to the log; the page says one plain sentence + Retry.
+        logger.error({ err: error }, "Failed to load identity health");
+        return (
+            <DataState
+                variant="error"
+                title="Identity coverage unavailable"
+                message="Identity coverage could not be loaded. Retry, or check again in a moment."
+                action={<RetryButton />}
+            />
+        );
+    }
 
     const health = data?.dataHealth?.identityMapping;
     if (!health) return null;
@@ -65,42 +84,50 @@ export function IdentityGapsTable() {
             className: "px-6 py-4 text-right text-(--ink-muted)",
             render: (id) => id.observedCount || 0,
         },
+        {
+            key: "map",
+            header: <span className="sr-only">Map identity</span>,
+            headerClassName: "px-6 py-4 font-medium",
+            className: "px-6 py-4 text-right",
+            render: () => (
+                <Link
+                    href="/org/admin/identities/new"
+                    className={`${buttonClassName("ghost", "sm")} px-0`}
+                >
+                    {CTA_LABELS.mapIdentity}
+                    <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+                </Link>
+            ),
+        },
     ];
 
     return (
-        <div className="space-y-12">
-            <section>
-                <h2 className="text-xl font-semibold mb-2">
-                    Unmapped Identities ({health.unmappedCount})
-                </h2>
-                <p className="text-sm text-(--ink-muted) mb-6">
-                    These identities have been observed in events but are not mapped to any
-                    canonical user.
-                </p>
-                <div className="rounded-xl border border-(--card-stroke) bg-card overflow-hidden">
-                    <DataTable
-                        accessibleLabel="Unmapped identities"
-                        data={health.unmappedIdentities}
-                        columns={columns}
-                        rowKeyAction={(r) => (r as { email?: string | null }).email ?? ""}
-                        emptyMessage="No unmapped identities."
-                    />
-                </div>
-            </section>
+        <div className="space-y-6">
+            <Section
+                title={`Unmapped Identities (${health.unmappedCount})`}
+                description="These identities have been observed in events but are not mapped to any canonical user."
+            >
+                <DataTable
+                    accessibleLabel="Unmapped identities"
+                    data={health.unmappedIdentities}
+                    columns={columns}
+                    rowKeyAction={(r) => (r as { email?: string | null }).email ?? ""}
+                    emptyMessage="No unmapped identities."
+                    footerNote="Events = events waiting for a mapping. The count shows which mapping matters most; it is not a measure of a person."
+                />
+            </Section>
 
             {health.suggestedAliases.length > 0 && (
-                <section>
-                    <h2 className="text-xl font-semibold mb-2">Suggested Aliases</h2>
-                    <p className="text-sm text-(--ink-muted) mb-6">
-                        Heuristic suggestions based on name/email similarity. Requires manual
-                        confirmation.
-                    </p>
-                    <div className="rounded-xl border border-(--card-stroke) bg-card divide-y divide-(--card-stroke)">
+                <Section
+                    title="Suggested Aliases"
+                    description="Heuristic suggestions based on name/email similarity. Requires manual confirmation."
+                >
+                    <div className="divide-y divide-(--card-stroke) rounded-(--radius-md) border border-(--card-stroke)">
                         {health.suggestedAliases.map((suggestion, idx) => (
                             <AliasSuggestionRow key={idx} suggestion={suggestion} />
                         ))}
                     </div>
-                </section>
+                </Section>
             )}
         </div>
     );

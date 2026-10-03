@@ -16,10 +16,13 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
     unknown: { label: "Unknown", className: STATUS_PILL.muted },
 };
 
+/** A date the provider did not record reads "Not recorded" (MAPPING F6), never "--" or a made-up date. */
+const NOT_RECORDED = "Not recorded";
+
 function formatDate(iso: string | null): string {
-    if (!iso) return "--";
+    if (!iso) return NOT_RECORDED;
     const d = new Date(iso);
-    if (isNaN(d.getTime())) return "--";
+    if (isNaN(d.getTime())) return NOT_RECORDED;
     return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
 }
 
