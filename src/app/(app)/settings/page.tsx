@@ -5,9 +5,9 @@ import { PageHeader } from "@/components/shell/PageHeader";
 // padding and the `<main>` landmark; the trail ("Admin / Settings") replaces the in-page trail.
 export default function UserPreferencesPage() {
     return (
-        <div className="flex w-full max-w-3xl flex-col gap-8">
+        <div className="flex w-full flex-col gap-8" data-testid="settings-page">
             <PageHeader
-                title="Preferences"
+                title="Settings"
                 subtitle="Personal display settings stored in your browser."
             />
 
