@@ -73,7 +73,8 @@ function PrDetailSummary({ pr }: { pr: PullRequestDetail }) {
                         {pr.title ?? "Untitled pull request"}
                     </h2>
                     <p className="mt-2 text-sm text-(--ink-muted)">
-                        {pr.authorName ?? pr.authorEmail ?? "Unknown author"} opened{" "}
+                        {pr.authorName ?? "Author not reported"}{" "}
+                        {pr.authorName ? "opened" : "· opened"}{" "}
                         <ClientTimestamp value={pr.createdAt} />
                     </p>
                 </div>
