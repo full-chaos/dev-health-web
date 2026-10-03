@@ -80,7 +80,6 @@ export default async function CodePage({ searchParams }: CodePageProps) {
     const placeholderDeltas = !home?.deltas?.length;
 
     const churnMetric = getMetric(deltas, "churn");
-    const hotspots = (churnExplain?.contributors ?? []).slice(0, 6);
     const hasBusFactorEvidence = (busFactor?.evidenceSampleCount ?? 0) > 0;
     const topMaintainers = (busFactor?.topMaintainers ?? []).slice(0, 5);
     const riskyRepos = (busFactor?.repos ?? [])
