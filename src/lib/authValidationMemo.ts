@@ -1,4 +1,5 @@
 import type { JWT } from "next-auth/jwt";
+import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 import { getBackendUrl } from "@/lib/origin";
 
 const VALIDATION_INTERVAL_MS = 5 * 60 * 1000;
@@ -91,15 +92,30 @@ async function validateBackendSession(
 
         if (res.ok) {
             const data = await res.json();
-            return data.valid ? { kind: "valid", checkedAt: now } : { kind: "invalid" };
+            if (data.valid) return { kind: "valid", checkedAt: now };
+            logSessionBranch({ operation: "validate", branch: "user_invalid", status: res.status });
+            return { kind: "invalid" };
         }
 
         if (res.status === 429 || res.status >= 500) {
+            logSessionBranch({
+                operation: "validate",
+                branch: "validate_transient",
+                status: res.status,
+                failures,
+            });
             return transientOutcome(failures, now);
         }
 
+        logSessionBranch({ operation: "validate", branch: "user_invalid", status: res.status });
         return { kind: "invalid" };
-    } catch {
+    } catch (error) {
+        logSessionBranch({
+            operation: "validate",
+            branch: "validate_call_failed",
+            errorName: thrownErrorName(error),
+            failures,
+        });
         return transientOutcome(failures, now);
     }
 }

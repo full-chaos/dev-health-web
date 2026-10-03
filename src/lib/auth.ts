@@ -10,6 +10,7 @@ import { logger } from "@/lib/logger";
 import { getServerEnv } from "@/lib/config";
 import { resolveActiveOrgId } from "@/lib/impersonation";
 import { applyBackendValidationMemo } from "@/lib/authValidationMemo";
+import { logSessionBranch, thrownErrorName } from "@/lib/authSessionLog";
 
 const authLogger = logger.child({ module: "auth" });
 
@@ -299,6 +300,11 @@ const nextAuth = NextAuth({
                             token.is_superuser = data.user.is_superuser ?? false;
                         }
                     } else if (res.status === 401) {
+                        logSessionBranch({
+                            operation: "refresh",
+                            branch: "refresh_failed",
+                            status: res.status,
+                        });
                         token.access_token = undefined;
                         token.refresh_token = undefined;
                         token.error = "refresh_failed";
@@ -310,6 +316,12 @@ const nextAuth = NextAuth({
                         token.access_token = undefined;
                         const failures = ((token.refresh_failures as number | undefined) ?? 0) + 1;
                         token.refresh_failures = failures;
+                        logSessionBranch({
+                            operation: "refresh",
+                            branch: "refresh_unavailable",
+                            status: res.status,
+                            failures,
+                        });
                         const cappedDelay = Math.min(
                             REFRESH_BACKOFF_CAP,
                             REFRESH_BACKOFF_BASE * Math.pow(2, failures - 1),
@@ -322,12 +334,18 @@ const nextAuth = NextAuth({
                         token.error = "refresh_unavailable";
                         return token;
                     }
-                } catch {
+                } catch (error) {
                     // Network error — revoke access_token to prevent exposing an expired bearer
                     // token, but keep refresh_token so a later JWT callback can retry after backoff.
                     token.access_token = undefined;
                     const failures = ((token.refresh_failures as number | undefined) ?? 0) + 1;
                     token.refresh_failures = failures;
+                    logSessionBranch({
+                        operation: "refresh",
+                        branch: "refresh_call_failed",
+                        errorName: thrownErrorName(error),
+                        failures,
+                    });
                     const cappedDelay = Math.min(
                         REFRESH_BACKOFF_CAP,
                         REFRESH_BACKOFF_BASE * Math.pow(2, failures - 1),
