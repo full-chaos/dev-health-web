@@ -3,7 +3,7 @@ import { screen, within } from "@/test/utils";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import { OpportunityCard, metricFromEvidenceLink } from "./OpportunityCard";
+import { OpportunityCard } from "./OpportunityCard";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { OpportunityCard as OpportunityCardData } from "@/lib/types";
 
@@ -116,26 +116,19 @@ describe("OpportunityCard (the selected opportunity)", () => {
         expect(screen.getByTestId("opportunity-card-next-step")).toBeInTheDocument();
     });
 
-    it("warns only when the title says reduce for a metric where higher is better", () => {
-        const throughput: OpportunityCardData = {
-            ...reduceReviewLatency,
-            title: "Reduce Throughput",
-            evidence_links: ["/api/v1/explain?metric=throughput"],
-        };
-        const { unmount } = render(
-            <OpportunityCard card={throughput} filters={filters} activeRole="eng" />,
-        );
-        expect(screen.getByTestId("opportunity-direction-note")).toHaveTextContent(
-            "For this metric a rise is usually good; read the evidence before acting.",
-        );
-        unmount();
-        render(<OpportunityCard card={reduceReviewLatency} filters={filters} activeRole="eng" />);
-        expect(screen.queryByTestId("opportunity-direction-note")).toBeNull();
-    });
+    // CHAOS-8486: the API names an opportunity by the metric's polarity (CHAOS-7776): "Recover" for a
+    // metric where higher is better, "Reduce" where lower is better. The web adds no direction warning.
+    it.each([
+        ["Recover Throughput", "/api/v1/explain?metric=throughput"],
+        ["Reduce Review Latency", "/api/v1/explain?metric=review_latency"],
+    ])("draws the served title %j as it comes, with no direction warning", (title, link) => {
+        const card: OpportunityCardData = { ...reduceReviewLatency, title, evidence_links: [link] };
+        render(<OpportunityCard card={card} filters={filters} activeRole="eng" />);
 
-    it("reads the metric from an explain link only", () => {
-        expect(metricFromEvidenceLink("/api/v1/explain?metric=cycle_time")).toBe("cycle_time");
-        expect(metricFromEvidenceLink("/api/v1/home?metric=cycle_time")).toBeUndefined();
-        expect(metricFromEvidenceLink(undefined)).toBeUndefined();
+        const detail = screen.getByTestId("opportunity-detail");
+        expect(within(detail).getByRole("heading", { name: title })).toBeInTheDocument();
+        expect(screen.queryByTestId("opportunity-direction-note")).toBeNull();
+        expect(detail).not.toHaveTextContent(/suggests reducing/i);
+        expect(detail).not.toHaveTextContent(/a rise is usually good/i);
     });
 });
