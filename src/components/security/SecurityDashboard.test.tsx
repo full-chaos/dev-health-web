@@ -114,7 +114,7 @@ describe("SecurityDashboard", () => {
         expect(screen.getByTestId("trend-chart")).toHaveTextContent("ready");
     });
 
-    it("defaults KPIs to zero / no data when securityOverview.kpis is missing", () => {
+    it("shows 'Not reported', never 0, when securityOverview.kpis is missing (missing is not zero)", () => {
         mockUseSecurityOverview.mockReturnValue({
             data: { securityOverview: {} },
             fetching: false,
@@ -123,8 +123,41 @@ describe("SecurityDashboard", () => {
 
         render(<SecurityDashboard filter={filter} />);
 
-        expect(screen.getAllByText("0").length).toBeGreaterThanOrEqual(3);
+        for (const id of ["kpi-open", "kpi-critical", "kpi-high"]) {
+            const value = within(screen.getByTestId(id)).getByTestId("metric-value");
+            expect(value).toHaveTextContent("Not reported");
+            expect(value).not.toHaveTextContent("0");
+        }
         expect(screen.getByText("No data")).toBeInTheDocument();
+    });
+
+    it("keeps a served 0 as 0", () => {
+        mockUseSecurityOverview.mockReturnValue({
+            data: {
+                securityOverview: {
+                    kpis: {
+                        openTotal: 0,
+                        openDelta30d: 0,
+                        critical: 0,
+                        high: 0,
+                        meanDaysToFix30d: null,
+                    },
+                    severityBreakdown: [],
+                    topRepos: [],
+                    trend: [],
+                },
+            },
+            fetching: false,
+            error: undefined,
+        });
+
+        render(<SecurityDashboard filter={filter} />);
+
+        for (const id of ["kpi-open", "kpi-critical", "kpi-high"]) {
+            expect(within(screen.getByTestId(id)).getByTestId("metric-value")).toHaveTextContent(
+                /^0$/,
+            );
+        }
     });
 
     it("does not render an error banner when there is no error", () => {
