@@ -37,4 +37,22 @@ describe("FeatureFlagTable status", () => {
         expect(statuses[2].className).not.toContain(STATUS_PILL.negative);
         expect(screen.queryByText("--", { selector: "[data-testid=flag-status]" })).toBeNull();
     });
+
+    it("reads a date the provider did not record as 'Not recorded', and formats a recorded one", () => {
+        const recorded = {
+            ...flag("d", true),
+            createdAt: "2026-06-23T10:00:00Z",
+            lastToggledAt: null,
+        } as FeatureFlagListItem;
+        render(
+            <FeatureFlagTable
+                initialData={{ items: [recorded], totalCount: 1, hasNextPage: false }}
+                fetchAction={vi.fn()}
+            />,
+        );
+        const cells = screen.getAllByRole("cell").map((cell) => cell.textContent);
+        expect(cells).toContain("Jun 23, 2026");
+        expect(cells).toContain("Not recorded");
+        expect(cells).not.toContain("--");
+    });
 });
