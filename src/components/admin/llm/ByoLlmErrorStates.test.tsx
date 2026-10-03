@@ -1,6 +1,6 @@
 /** ByoLlmErrorStates component tests — CHAOS-2563. */
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@/test/utils";
+import { render, screen, within } from "@/test/utils";
 import { ByoLlmErrorStates } from "./ByoLlmErrorStates";
 
 describe("ByoLlmErrorStates", () => {
@@ -37,6 +37,27 @@ describe("ByoLlmErrorStates", () => {
         const lockedState = screen.getByTestId("byo-llm-error-state-402");
         expect(lockedState).toHaveTextContent("Not licensed");
         expect(lockedState).toHaveTextContent("Tier gate");
+    });
+
+    it("is a reference table with the columns Code, State, Class and What happens (CHAOS-8240)", () => {
+        render(<ByoLlmErrorStates />);
+        const table = screen.getByTestId("byo-llm-error-states");
+        expect(
+            within(table)
+                .getAllByRole("columnheader")
+                .map((th) => th.textContent),
+        ).toEqual(["Code", "State", "Class", "What happens"]);
+        expect(within(table).getAllByRole("row")).toHaveLength(6);
+        // Rows are in the order of the reference: success first, the tier gate last.
+        const codes = within(table)
+            .getAllByRole("row")
+            .slice(1)
+            .map((row) => within(row).getAllByRole("cell")[0].textContent);
+        expect(codes).toEqual(["200", "422", "429", "503", "402"]);
+        // A state with no exception class shows a dash, not an empty cell.
+        expect(
+            within(screen.getByTestId("byo-llm-error-state-200")).getAllByRole("cell")[2],
+        ).toHaveTextContent("—");
     });
 
     it("renders nothing interactive — purely presentational output", () => {

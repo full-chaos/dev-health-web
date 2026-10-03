@@ -14,6 +14,8 @@ describe("MetricCard headAction (CHAOS-8214)", () => {
         const slot = within(head).getByTestId("metric-head-action");
         expect(slot).toHaveTextContent("High");
         expect(slot.className).toContain("ml-auto");
+        // The slot must not make the head taller: the value rows of tiles with and without a pill stay level.
+        expect(slot.className).toContain("-my-1");
         // It is a mark: the title text and the slot are siblings in the head.
         expect(within(head).getByText("Open alerts")).toBeInTheDocument();
     });

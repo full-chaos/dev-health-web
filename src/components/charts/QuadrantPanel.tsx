@@ -11,7 +11,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { Info } from "lucide-react";
+import { ArrowRight, Info } from "lucide-react";
 
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { buttonClassName } from "@/components/shared/Button";
@@ -613,13 +613,16 @@ export function QuadrantPanel({
                     </div>
 
                     {supplementalLinks.length > 0 && (
-                        <div className="flex flex-wrap gap-3 text-xs">
+                        <div data-testid="quadrant-related-links" className="flex flex-wrap gap-3">
                             {supplementalLinks.map((link) => (
+                                // A ghost small button with the arrow first (prototype `btn()`),
+                                // not the legacy upper-case pill.
                                 <Link
                                     key={`${link.href}-${link.label}`}
                                     href={link.href}
-                                    className="rounded-full border border-(--card-stroke) bg-(--card-80) px-4 py-2 uppercase tracking-[0.2em] text-(--accent-2) hover:bg-(--accent-2)/5 transition"
+                                    className={buttonClassName("ghost", "sm")}
                                 >
+                                    <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
                                     {link.label}
                                 </Link>
                             ))}

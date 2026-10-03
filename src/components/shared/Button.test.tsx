@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, it, expect, vi } from "vitest";
 import { render, screen } from "@/test/utils";
 import { Button, buttonClassName } from "./Button";
@@ -94,5 +96,56 @@ describe("Button", () => {
     it("buttonClassName uses the square size only when iconOnly", () => {
         expect(buttonClassName("ghost", "sm", "", true)).toContain("w-7");
         expect(buttonClassName("ghost", "sm")).not.toContain(" w-7 ");
+    });
+
+    // CHAOS-8254: the destructive variants.
+    describe("danger variants", () => {
+        const themes = readFileSync(join(process.cwd(), "src/app/fc-infinity-themes.css"), "utf8");
+        const tokens = (theme: "light" | "dark") => {
+            const sel = `:root[data-palette="infinity"][data-theme="${theme}"] {`;
+            const start = themes.indexOf(sel);
+            const body = themes.slice(start + sel.length, themes.indexOf("\n}", start));
+            return Object.fromEntries(
+                [...body.matchAll(/(--[a-z0-9-]+):\s*(#[0-9a-f]{6});/gu)].map((m) => [m[1], m[2]]),
+            );
+        };
+        const lin = (v: number) =>
+            (v /= 255) <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+        const lum = (h: string) =>
+            [1, 3, 5]
+                .map((i) => lin(parseInt(h.slice(i, i + 2), 16)))
+                .reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+        const ratio = (a: string, b: string) => {
+            const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+            return (hi + 0.05) / (lo + 0.05);
+        };
+
+        it("danger is red text and a red outline, and carries no foreground ink of its own", () => {
+            const c = buttonClassName("danger");
+            expect(c).toContain("text-(--negative)");
+            expect(c).toContain("border-(--negative)");
+            expect(c).not.toContain("text-foreground");
+        });
+
+        it("dangerSolid is the negative fill with the label token", () => {
+            const c = buttonClassName("dangerSolid");
+            expect(c).toContain("bg-(--negative)");
+            expect(c).toContain("text-(--accent-foreground)");
+            expect(c).not.toContain("text-foreground");
+        });
+
+        it("the danger text on the card is 4.5:1 or more, and so is the label on the fill, in both themes", () => {
+            for (const theme of ["light", "dark"] as const) {
+                const t = tokens(theme);
+                expect(
+                    ratio(t["--negative"], t["--card"]),
+                    `${theme} outline`,
+                ).toBeGreaterThanOrEqual(4.5);
+                expect(
+                    ratio(t["--accent-foreground"], t["--negative"]),
+                    `${theme} fill`,
+                ).toBeGreaterThanOrEqual(4.5);
+            }
+        });
     });
 });
