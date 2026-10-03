@@ -8,8 +8,9 @@ import { describe, expect, it } from "vitest";
  * solid var(--blueInk)`). This scan fails on a focus-state class that uses the bare --accent token.
  */
 const SRC = join(process.cwd(), "src");
+// Both spellings of the token: `-(--accent)` and `-[var(--accent)]`; also `group-` / `peer-` prefixes.
 const ORANGE_FOCUS =
-    /(?:^|[\s"'`:])(?:[a-z-]+:)*(?:focus|focus-visible|focus-within):(?:ring|border|outline)(?:-[0-9a-z]+)?-\(--accent\)(?![\w-])/gu;
+    /(?:^|[\s"'`:])(?:[a-z-]+:)*(?:(?:group|peer)-)?(?:focus|focus-visible|focus-within):(?:ring|border|outline)(?:-[0-9a-z]+)?-(?:\(--accent\)|\[var\(--accent\)\])(?![\w-])/gu;
 
 function walk(dir: string, out: string[] = []): string[] {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -34,6 +35,10 @@ describe("focus ring colour", () => {
         expect(orangeFocusHits("focus-visible:ring-(--accent)/50")).toHaveLength(1);
         expect(orangeFocusHits("focus:border-(--accent) x")).toHaveLength(1);
         expect(orangeFocusHits("focus-visible:outline-(--accent)")).toHaveLength(1);
+        expect(orangeFocusHits('className="x focus:ring-[var(--accent)]"')).toHaveLength(1);
+        expect(orangeFocusHits("focus:border-[var(--accent)]/50")).toHaveLength(1);
+        expect(orangeFocusHits("group-focus-visible:ring-(--accent)")).toHaveLength(1);
+        expect(orangeFocusHits("peer-focus:ring-[var(--accent)]")).toHaveLength(1);
     });
 
     it("accepts the action teal and other accent tokens", () => {
@@ -41,6 +46,7 @@ describe("focus ring colour", () => {
         expect(orangeFocusHits("focus-visible:ring-(--accent-2)/60")).toHaveLength(0);
         expect(orangeFocusHits("focus:border-(--accent-positive)")).toHaveLength(0);
         expect(orangeFocusHits("hover:border-(--accent)")).toHaveLength(0);
+        expect(orangeFocusHits("focus:ring-[var(--accent-2)]")).toHaveLength(0);
     });
 
     it("no source file sets an orange focus ring or focus border", () => {
