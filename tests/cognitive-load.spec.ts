@@ -56,7 +56,7 @@ test.describe("Cognitive Load dashboard", () => {
         await expect(dashboard.getByText("Review request load", { exact: true })).toBeVisible();
         await expect(dashboard.getByText("After-hours trend", { exact: true })).toBeVisible();
         await expect(dashboard.getByText("Weekend trend", { exact: true })).toBeVisible();
-        await expect(dashboard.getByText("Interpretive load view")).toBeVisible();
+        await expect(dashboard.getByText("What is pulling attention apart?")).toBeVisible();
         await expect(dashboard.getByText("Sample data")).not.toBeVisible();
     });
 

@@ -62,8 +62,18 @@ beforeEach(() => {
     vi.mocked(fetchReportRuns).mockResolvedValue({ items: [], total: 0 });
 });
 
-describe("Delete confirm button (CHAOS-8096)", () => {
-    it("takes the label token and the negative fill with the important suffix", async () => {
+describe("Delete confirm button (CHAOS-8096, CHAOS-8254)", () => {
+    it("the outlined Delete is the danger variant: red text and outline, no page-class override", async () => {
+        render(<SingleReportPage />);
+        await screen.findByRole("heading", { level: 1, name: "Weekly DORA" });
+        const del = screen.getByRole("button", { name: "Delete" });
+        expect(del).toHaveClass("text-(--negative)");
+        expect(del).toHaveClass("border-(--negative)");
+        expect(del).not.toHaveClass("text-foreground");
+        expect(del.className).not.toContain("!");
+    });
+
+    it("is the dangerSolid variant: the label token on the negative fill, no important overrides", async () => {
         render(<SingleReportPage />);
         await screen.findByRole("heading", { level: 1, name: "Weekly DORA" });
         await act(async () => {
@@ -73,8 +83,11 @@ describe("Delete confirm button (CHAOS-8096)", () => {
             name: "Delete",
         });
 
-        expect(confirm).toHaveClass("text-(--accent-foreground)!");
-        expect(confirm).toHaveClass("bg-(--negative)!");
+        expect(confirm).toHaveClass("text-(--accent-foreground)");
+        expect(confirm).toHaveClass("bg-(--negative)");
+        expect(confirm.className).not.toContain("!");
+        // The secondary variant's ink is not on it, so nothing has to win by `!`.
+        expect(confirm).not.toHaveClass("text-foreground");
     });
 
     it("keeps the label token on the negative fill at 4.5:1 or more in both themes", () => {

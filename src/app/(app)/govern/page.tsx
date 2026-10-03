@@ -8,7 +8,6 @@ import { getGovernSignals } from "@/lib/areaSignals";
 import { getServerEnv } from "@/lib/config";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchTestOpsData } from "@/lib/testops/fetchers";
-import { getAreaById } from "@/lib/navigation/areas";
 
 import { governEvidenceFacts } from "./governEvidenceFacts";
 
@@ -74,14 +73,7 @@ export default async function GovernPage({ searchParams }: GovernPageProps) {
     }
 
     // The page is the subject of its "View evidence": its served signals, in body order.
-    const clusterOrder = [
-        ...new Set(
-            (getAreaById("govern")?.hubItems ?? []).flatMap((item) =>
-                item.cluster ? [item.cluster] : [],
-            ),
-        ),
-    ];
-    const evidenceFacts = governEvidenceFacts(governSignals, clusterOrder);
+    const evidenceFacts = governEvidenceFacts(governSignals);
 
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the

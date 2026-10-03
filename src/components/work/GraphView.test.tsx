@@ -1,4 +1,5 @@
-import { cleanup, fireEvent, render, screen, within } from "@/test/utils";
+import { cleanup, fireEvent, screen, within } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
 import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { GraphView } from "@/components/work/GraphView";
@@ -220,6 +221,9 @@ describe("GraphView", () => {
 
         render(<GraphView filters={filters} />);
 
+        // The three filters are one segmented group (prototype `.segments`).
+        const segments = within(screen.getByTestId("graph-segments"));
+        expect(segments.getAllByRole("combobox")).toHaveLength(3);
         expect(screen.getByLabelText(/Connection type/i)).toHaveValue("work-to-change");
         // The TOUCHES edge is sliced out by the default work-to-change connection,
         // leaving a single FIXES edge counted in the active view.
@@ -782,6 +786,110 @@ describe("GraphView", () => {
         expect(inflow.className).toContain("bg-(--chart-color-1)");
         expect(outflow.className).toContain("bg-(--chart-color-2)");
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
+    });
+
+    it("inflow-outflow rows carry the prototype balance pill, from the served inflow and outflow only", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphFlow.mockReturnValue({
+            rows: [
+                { nodeType: "ISSUE", inflow: 10, outflow: 2 },
+                { nodeType: "PR", inflow: 0, outflow: 9 },
+                { nodeType: "COMMIT", inflow: 4, outflow: 4 },
+            ],
+            loading: false,
+            error: null,
+            degradedReason: null,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="inflow-outflow" />);
+
+        expect(screen.getAllByTestId("balance-pill").map((pill) => pill.textContent)).toEqual([
+            "More incoming",
+            "More outgoing",
+            "Balanced",
+        ]);
+        const panel = within(screen.getByTestId("inflow-outflow-panel"));
+        expect(
+            panel.getByText("Outflow originates from an entity type; inflow points into it."),
+        ).toBeInTheDocument();
+    });
+
+    it("artifacts tab is the 'Artifact browser' section with the prototype description", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+        render(<GraphView filters={filters} activeTab="artifacts" />);
+
+        const panel = within(screen.getByTestId("artifacts-panel"));
+        expect(panel.getByRole("heading", { name: "Artifact browser" })).toBeInTheDocument();
+        expect(
+            panel.getByText(/Entities ranked by how many relationships they carry/),
+        ).toBeInTheDocument();
+    });
+
+    it("'Browse artifacts' is a ghost button with the arrow first, not an uppercase link", () => {
+        render(<GraphView filters={filters} />);
+
+        const link = screen.getByRole("link", { name: CTA_LABELS.browseArtifacts });
+        expect(link.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+        expect(link.className).not.toContain("uppercase");
+        expect(link.className).toContain("text-(--accent-2)");
+    });
+
+    it("an artifact row's Evidence button opens the shared drawer with the served fields, the raw reference only there", async () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphArtifacts.mockReturnValue({
+            rows: [
+                {
+                    nodeType: "PR",
+                    nodeId: "PR-1",
+                    displayName: "PR-1: Add login form",
+                    degree: 2,
+                    evidence: "commit_message_squash_pr_ref",
+                },
+            ],
+            loading: false,
+            error: null,
+            degradedReason: null,
+            refetch: vi.fn(),
+        });
+        const user = userEvent.setup();
+        render(<GraphView filters={filters} activeTab="artifacts" />);
+
+        // The raw token is not in the row any more.
+        expect(
+            within(screen.getByTestId("artifact-row")).queryByText("commit_message_squash_pr_ref"),
+        ).toBeNull();
+        await user.click(screen.getByTestId("artifact-evidence-button"));
+        const rows = within(await screen.findByTestId("artifact-evidence-facts"))
+            .getAllByTestId("evidence-fact")
+            .map((row) => [
+                row.querySelector("dt")?.textContent,
+                row.querySelector("dd")?.textContent,
+            ]);
+        expect(rows).toEqual([
+            ["Type", "Pull Request"],
+            ["Entity", "PR-1: Add login form"],
+            ["Connections", "2"],
+            ["Evidence reference", "commit_message_squash_pr_ref"],
+        ]);
     });
 
     it("artifacts tab renders rows from the workGraphArtifacts aggregate", () => {
@@ -1654,8 +1762,12 @@ describe("GraphView", () => {
             const { unmount } = renderReview(pairs);
             expect(screen.getByText("Review Network")).toBeInTheDocument();
             expect(screen.getByTestId("review-network-table")).toBeInTheDocument();
+            // Guardrail wording: collaboration pairs, not a ranking of people.
             expect(screen.getByTestId("review-network-panel")).toHaveTextContent(
-                "Reviewer→author collaboration pairs from code review activity, ranked by review count.",
+                "Reviewer-to-author collaboration—not a performance ranking.",
+            );
+            expect(screen.getByTestId("review-network-panel")).not.toHaveTextContent(
+                "ranked by review count",
             );
             unmount();
             renderReview(null, { loading: true });

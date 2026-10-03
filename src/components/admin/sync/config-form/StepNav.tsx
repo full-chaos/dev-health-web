@@ -1,3 +1,6 @@
+import Link from "next/link";
+
+import { Button, buttonClassName } from "@/components/shared/Button";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { PrerequisiteCallout } from "./PrerequisiteCallout";
 
@@ -5,10 +8,12 @@ type StepNavProps = {
     onBackAction?: () => void;
     onContinueAction: () => void;
     blockReason: string | null;
+    /** Where Cancel goes; the footer shows a Cancel next to Continue when it is given. */
+    cancelHref?: string;
 };
 
 /** Back/Continue footer for a non-review wizard step (CHAOS-2838). */
-export function StepNav({ onBackAction, onContinueAction, blockReason }: StepNavProps) {
+export function StepNav({ onBackAction, onContinueAction, blockReason, cancelHref }: StepNavProps) {
     return (
         <div className="space-y-3">
             {blockReason ? (
@@ -16,24 +21,20 @@ export function StepNav({ onBackAction, onContinueAction, blockReason }: StepNav
             ) : null}
             <div className="flex items-center justify-between gap-3">
                 {onBackAction ? (
-                    <button
-                        type="button"
-                        onClick={onBackAction}
-                        className="rounded-lg border border-(--card-stroke) px-4 py-2 text-sm font-medium text-(--ink-muted) hover:bg-(--card-70) hover:text-foreground"
-                    >
-                        {CTA_LABELS.backButton}
-                    </button>
+                    <Button onClick={onBackAction}>{CTA_LABELS.backButton}</Button>
                 ) : (
                     <span />
                 )}
-                <button
-                    type="button"
-                    onClick={onContinueAction}
-                    disabled={!!blockReason}
-                    className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                    {CTA_LABELS.continueStep}
-                </button>
+                <div className="flex items-center gap-2">
+                    {cancelHref ? (
+                        <Link href={cancelHref} className={buttonClassName("secondary")}>
+                            {CTA_LABELS.cancel}
+                        </Link>
+                    ) : null}
+                    <Button variant="primary" onClick={onContinueAction} disabled={!!blockReason}>
+                        {CTA_LABELS.continueStep}
+                    </Button>
+                </div>
             </div>
         </div>
     );
