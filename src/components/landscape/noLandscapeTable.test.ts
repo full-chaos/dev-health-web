@@ -1,7 +1,9 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
+
+import { sourceEntries } from "@/test/sourceTree";
 
 // CHAOS-7765: the Landscape tabs use the shared DataTable. The local
 // `LandscapeTable` is gone: nothing may import or define it.
@@ -9,10 +11,9 @@ import { describe, expect, it } from "vitest";
 const root = join(process.cwd(), "src");
 
 function files(dir: string): string[] {
-    return readdirSync(dir).flatMap((entry) => {
-        const full = join(dir, entry);
-        if (statSync(full).isDirectory()) return files(full);
-        return /\.(ts|tsx)$/u.test(entry) ? [full] : [];
+    return sourceEntries(dir).flatMap(({ name, path, isDirectory }) => {
+        if (isDirectory) return files(path);
+        return /\.(ts|tsx)$/u.test(name) ? [path] : [];
     });
 }
 

@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
@@ -27,6 +27,7 @@ import { LEGACY_WORK_TAB_REDIRECTS, resolveLegacyWorkRedirect } from "../workPag
 import { shellHref } from "@/components/shell/shellHref";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { encodeFilterParam } from "@/lib/filters/encode";
+import { sourceEntries } from "@/test/sourceTree";
 
 type VisibleChildDestination = {
     area: NavArea;
@@ -145,15 +146,11 @@ const expectDistributedDeepLink = (
     expect(url.searchParams.get("tab"), `${href} tab target`).toBe(expectedTab);
 };
 
-const listRouteFiles = (directory: string): string[] => {
-    const entries = readdirSync(directory);
-    return entries.flatMap((entry) => {
-        const fullPath = join(directory, entry);
-        const stats = statSync(fullPath);
-        if (stats.isDirectory()) return listRouteFiles(fullPath);
-        return entry === "page.tsx" || entry === "layout.tsx" ? [fullPath] : [];
+const listRouteFiles = (directory: string): string[] =>
+    sourceEntries(directory).flatMap(({ name, path, isDirectory }) => {
+        if (isDirectory) return listRouteFiles(path);
+        return name === "page.tsx" || name === "layout.tsx" ? [path] : [];
     });
-};
 
 const mountsGlobalContextBar = (source: string) =>
     /<GlobalContextBar(?:Client)?[\s/>]/.test(source);
@@ -622,10 +619,9 @@ describe("IA preservation invariant #7 — reachable redirect aliases stay guard
     };
 
     const scanRedirectOnlyRoutes = (dir: string): string[] =>
-        readdirSync(dir).flatMap((entry) => {
-            const full = join(dir, entry);
-            if (statSync(full).isDirectory()) return scanRedirectOnlyRoutes(full);
-            if (entry !== "page.tsx") return [];
+        sourceEntries(dir).flatMap(({ name, path: full, isDirectory }) => {
+            if (isDirectory) return scanRedirectOnlyRoutes(full);
+            if (name !== "page.tsx") return [];
             const src = readFileSync(full, "utf8");
             return /\bredirect\s*\(/.test(src) && src.includes("next/navigation")
                 ? [routeForPageFile(full)]
