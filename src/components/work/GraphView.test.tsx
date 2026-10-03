@@ -187,6 +187,42 @@ describe("GraphView", () => {
         expect(screen.getByText(/additional backend edges are available/i)).toBeInTheDocument();
     });
 
+    it("draws the sampling notice above both cards, not inside the explorer card (prototype app.js:84)", () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: Array.from({ length: 800 }, (_, index) => ({
+                edgeId: `e${index}`,
+                sourceType: "ISSUE",
+                sourceId: `ISS-${index}`,
+                targetType: "PR",
+                targetId: `PR-${index}`,
+                edgeType: "FIXES",
+                provenance: "NATIVE",
+                confidence: 1.0,
+                evidence: "test",
+            })),
+            loading: false,
+            error: null,
+            totalCount: 1200,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} />);
+
+        const notice = screen
+            .getByText(/for browser responsiveness/i)
+            .closest("[data-notice-variant]");
+        expect(notice).not.toBeNull();
+        expect(notice).toHaveAttribute("data-notice-variant", "info");
+        const explorerCard = screen.getByTestId("work-graph-panel").parentElement as HTMLElement;
+        expect(explorerCard.contains(notice)).toBe(false);
+        expect(screen.getByTestId("graph-context").contains(notice)).toBe(false);
+        // Above both cards: it comes before the explorer in document order.
+        expect(
+            notice!.compareDocumentPosition(screen.getByTestId("work-graph-panel")) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+    });
+
     it("defaults to a connection hierarchy slice instead of rendering every edge type", () => {
         mockUseWorkGraphEdges.mockReturnValue({
             edges: [
@@ -788,6 +824,54 @@ describe("GraphView", () => {
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
     });
 
+    it("pages the served artifact rows (10 per page), with no total", async () => {
+        mockUseWorkGraphEdges.mockReturnValue({
+            edges: [],
+            loading: false,
+            error: null,
+            totalCount: 0,
+            refetch: vi.fn(),
+        });
+        mockUseWorkGraphArtifacts.mockReturnValue({
+            rows: Array.from({ length: 23 }, (_, i) => ({
+                nodeType: "PR",
+                nodeId: `PR-${i}`,
+                displayName: `PR-${i}: change ${i}`,
+                degree: 100 - i,
+            })),
+            loading: false,
+            error: null,
+            degradedReason: null,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="artifacts" />);
+
+        expect(screen.getAllByTestId("artifact-row")).toHaveLength(10);
+        expect(screen.getByText("PR-0: change 0")).toBeInTheDocument();
+        expect(screen.getByTestId("admin-pager")).toHaveTextContent("Showing 1–10");
+        await userEvent.click(screen.getByRole("button", { name: CTA_LABELS.nextPage }));
+        expect(screen.getByText("PR-10: change 10")).toBeInTheDocument();
+        await userEvent.click(screen.getByRole("button", { name: CTA_LABELS.nextPage }));
+        expect(screen.getAllByTestId("artifact-row")).toHaveLength(3);
+        expect(screen.getByTestId("admin-pager")).toHaveTextContent("Showing 21–23");
+        expect(screen.getByRole("button", { name: CTA_LABELS.nextPage })).toBeDisabled();
+        // The entity is in sentence type, not mono.
+        expect(screen.getAllByTestId("artifact-entity")[0].className).not.toContain("font-mono");
+    });
+
+    it("shows no pager when the served rows fit one page", () => {
+        mockUseWorkGraphArtifacts.mockReturnValue({
+            rows: [{ nodeType: "PR", nodeId: "PR-1", displayName: "PR-1: a", degree: 1 }],
+            loading: false,
+            error: null,
+            degradedReason: null,
+            refetch: vi.fn(),
+        });
+        render(<GraphView filters={filters} activeTab="artifacts" />);
+        expect(screen.queryByTestId("admin-pager")).toBeNull();
+    });
+
     it("shows a type the page has no label for as 'Unlabelled type', never a blank cell", () => {
         mockUseWorkGraphFlow.mockReturnValue({
             rows: [{ nodeType: "MYSTERY", inflow: 1, outflow: 0 }],
@@ -854,13 +938,13 @@ describe("GraphView", () => {
         ).toBeInTheDocument();
     });
 
-    it("'Browse artifacts' is a ghost button with the arrow first, not an uppercase link", () => {
+    it("'Browse artifacts' is the primary button with the arrow first, not an uppercase link", () => {
         render(<GraphView filters={filters} />);
 
         const link = screen.getByRole("link", { name: CTA_LABELS.browseArtifacts });
         expect(link.firstElementChild?.tagName.toLowerCase()).toBe("svg");
         expect(link.className).not.toContain("uppercase");
-        expect(link.className).toContain("text-(--accent-2)");
+        expect(link.className).toContain("bg-(--action)");
     });
 
     it("an artifact row's Evidence button opens the shared drawer with the served fields, the raw reference only there", async () => {

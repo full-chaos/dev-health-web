@@ -18,9 +18,7 @@ vi.mock("@/components/work/GraphView", () => ({
 }));
 vi.mock("@/components/work/WorkGraphEvidenceAction", () => ({
     WorkGraphEvidenceAction: ({ activeTab }: { activeTab: string }) =>
-        activeTab === "inflow-outflow" || activeTab === "artifacts" ? (
-            <button type="button">View evidence</button>
-        ) : null,
+        activeTab !== "review-network" ? <button type="button">View evidence</button> : null,
 }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({ ok: true }) }));
 vi.mock("@/lib/auth", () => ({
@@ -80,7 +78,7 @@ describe("Work Graph page header", () => {
         ]);
     });
 
-    it.each(["inflow-outflow", "artifacts"])(
+    it.each(["overview", "dependencies", "inflow-outflow", "artifacts"])(
         "tab %s has the page-head View evidence action",
         async (tab) => {
             await renderPage(tab);
@@ -93,13 +91,14 @@ describe("Work Graph page header", () => {
         },
     );
 
-    it("keeps the Open evidence link on the Overview, with the arrow first", async () => {
+    it("has the page-head View evidence action on the Overview, not an Open evidence link", async () => {
         await renderPage();
 
-        const link = within(screen.getByTestId("page-header")).getByRole("link", {
-            name: "Open evidence",
-        });
-        expect(link.firstElementChild?.tagName.toLowerCase()).toBe("svg");
-        expect(screen.queryByRole("button", { name: "View evidence" })).toBeNull();
+        expect(screen.queryByRole("link", { name: "Open evidence" })).toBeNull();
+        expect(
+            within(screen.getByTestId("page-header")).getByRole("button", {
+                name: "View evidence",
+            }),
+        ).toBeInTheDocument();
     });
 });
