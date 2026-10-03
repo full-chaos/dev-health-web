@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
 import { DataNote } from "@/components/charts/DataNote";
+import { BlockedWorkEvidence } from "./BlockedWorkEvidence";
 import { associationMeterRows, contributorMeterRows } from "@/components/metrics/associationRows";
 import { MeterRows } from "@/components/ui/MeterRows";
 import { safeReturnTo } from "@/lib/onboarding/returnTo";
@@ -232,6 +233,12 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
             ? { title: metricLabel, apiUrl: apiParam, filters, role: activeRole }
             : { title: metricLabel, metric: metricFromApi, filters, role: activeRole };
 
+    // "Return to investigation": the served origin (an internal path only), else the metric's Flow tab.
+    const returnHref =
+        servedOrigin ?? withFilterParam(investigationPath(metricFromApi), filters, activeRole);
+    // Blocked Work has its own evidence page (approved prototype `blockedEvidence()`, view 28).
+    const isBlockedWork = view === "explain" && metricFromApi === "blocked_work";
+
     const contextCard = (
         <Section
             data-testid="explore-context"
@@ -254,10 +261,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
             </EvidenceFactList>
             <div className="mt-4 flex flex-wrap items-center gap-2">
                 <Link
-                    href={
-                        servedOrigin ??
-                        withFilterParam(investigationPath(metricFromApi), filters, activeRole)
-                    }
+                    href={returnHref}
                     data-testid="explore-return"
                     className={buttonClassName("primary", "md")}
                 >
@@ -290,13 +294,39 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
                 title={metricLabel}
-                subtitle="Evidence detail for the selected metric."
+                subtitle={
+                    isBlockedWork
+                        ? "Evidence table for the selected metric."
+                        : "Evidence detail for the selected metric."
+                }
                 actions={<PageHeaderEvidenceAction subject={evidenceSubject} />}
             />
 
             <ScopeBar view="explore" />
 
-            {view === "explain" ? (
+            {isBlockedWork ? (
+                <>
+                    {/* Prototype `blockedEvidence()`: one tile, then the evidence section. */}
+                    <MetricStrip data-testid="explore-metric-tile">
+                        <MetricCard
+                            label={metricLabel}
+                            value={data?.value}
+                            unit={data?.unit}
+                            delta={data?.delta_pct}
+                            inverseGood={metricInverseGood(metricFromApi)}
+                            caption="vs previous window"
+                            hideTrend
+                        />
+                    </MetricStrip>
+                    <BlockedWorkEvidence
+                        label={metricLabel}
+                        value={data?.value}
+                        unit={data?.unit}
+                        rangeDays={filters.time.range_days}
+                        returnHref={returnHref}
+                    />
+                </>
+            ) : view === "explain" ? (
                 <>
                     {/* Static guidance, not a status update: no live region. */}
                     <Notice variant="info" live={false} data-testid="explore-notice">

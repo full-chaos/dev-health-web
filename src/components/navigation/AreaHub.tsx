@@ -1,7 +1,7 @@
 import type { MetricFilter } from "@/lib/filters/types";
 import { getAreaById, type NavAreaId } from "@/lib/navigation/areas";
 import type { AreaSignal } from "@/lib/areaSignals/types";
-import { groupByCluster, sortBySeverity } from "@/lib/areaSignals/sort";
+import { areaHubLayout } from "@/lib/areaSignals/hubLayout";
 
 import { AreaSignalCard } from "./AreaSignalCard";
 
@@ -45,19 +45,8 @@ export function AreaHub({ areaId, signals, filters, role, title, description }: 
     const area = getAreaById(areaId);
     if (!area || signals.length === 0) return null;
 
-    const clusters = groupByCluster(signals);
-    const isClustered = clusters.some((group) => group.cluster != null);
-
-    // The single most-severe *severity-bearing* signal across the WHOLE area gets
-    // the emphasized treatment — sorted globally so a critical in a later cluster
-    // still wins over a high in an earlier one. Identified by id so it renders
-    // emphasized exactly once wherever it falls. Neutral (navigational) and
-    // unavailable cards never claim the emphasized "top signal" slot.
-    const SEVERITY_STATES = new Set(["critical", "high", "medium", "low"]);
-    const [topSignal] = sortBySeverity(
-        signals.filter((signal) => SEVERITY_STATES.has(signal.state)),
-    );
-    const topSignalId = topSignal?.id;
+    // The one layout rule of the hub, shared with the "View evidence" facts of the page.
+    const { clusters, isClustered, topSignalId } = areaHubLayout(signals);
 
     return (
         <section
