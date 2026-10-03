@@ -397,7 +397,10 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
         expect(landscapePageSource).not.toContain("wip_throughput");
         expect(landscapePageSource).not.toContain("review_load_latency");
 
-        expect(bottleneckPageSource).toContain("wip_throughput");
+        // CHAOS-8070: Bottlenecks draws only the prototype's Review Load × Review Latency quadrant.
+        // The WIP × Throughput quadrant is still reachable: it is the Flow Throughput tab quadrant.
+        expect(bottleneckPageSource).not.toContain("wip_throughput");
+        expect(metricsPageSource).toMatch(/throughput: \{[\s\S]*?type: "wip_throughput"/u);
         expect(bottleneckPageSource).toContain("review_load_latency");
         expect(bottleneckPageSource).not.toContain("churn_throughput");
         expect(bottleneckPageSource).not.toContain("cycle_throughput");
