@@ -6,7 +6,6 @@ import { useMemo } from "react";
 
 import { ForecastInputsCard } from "@/components/capacity/ForecastInputsCard";
 import { ForecastNotices } from "@/components/capacity/ForecastNotices";
-import { CompletionSpread } from "@/components/capacity/CompletionSpread";
 import { ForecastTiles } from "@/components/capacity/ForecastTiles";
 import { ConfidenceBandChart } from "@/components/charts/ConfidenceBandChart";
 import { Inset } from "@/components/capacity/Inset";
@@ -116,8 +115,7 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                             />
                             <p className="mt-2 text-xs text-(--text-muted)">
                                 Line = backlog burned at the mean throughput; markers = the
-                                forecast&apos;s P50 / P85 / P95 days. The spread of the simulated
-                                outcomes is shown below.
+                                forecast&apos;s P50 / P85 / P95 days. No distribution is drawn.
                             </p>
                         </>
                     ) : isLoading ? (
@@ -158,29 +156,19 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
             </div>
 
             {forecast && (
-                <>
-                    <Section
-                        title="Simulated outcomes"
-                        description="How the simulation runs behind the forecast spread."
-                        data-testid="completion-spread-card"
-                    >
-                        <CompletionSpread forecast={forecast} />
-                    </Section>
-
-                    <Section title="Interpretation" data-testid="forecast-interpretation">
-                        <div className="grid gap-3 md:grid-cols-3">
-                            <Inset title="P50 (50%)" className="mt-0">
-                                Optimistic estimate. Half of simulations complete by this date.
-                            </Inset>
-                            <Inset title="P85 (85%)" className="mt-0">
-                                Recommended target. 85% confidence provides buffer for variability.
-                            </Inset>
-                            <Inset title="P95 (95%)" className="mt-0">
-                                Conservative estimate. Use for commitments with low risk tolerance.
-                            </Inset>
-                        </div>
-                    </Section>
-                </>
+                <Section title="Interpretation" data-testid="forecast-interpretation">
+                    <div className="grid gap-3 md:grid-cols-3">
+                        <Inset title="P50 (50%)" className="mt-0">
+                            Optimistic estimate. Half of simulations complete by this date.
+                        </Inset>
+                        <Inset title="P85 (85%)" className="mt-0">
+                            Recommended target. 85% confidence provides buffer for variability.
+                        </Inset>
+                        <Inset title="P95 (95%)" className="mt-0">
+                            Conservative estimate. Use for commitments with low risk tolerance.
+                        </Inset>
+                    </div>
+                </Section>
             )}
         </div>
     );
