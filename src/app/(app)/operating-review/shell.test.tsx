@@ -4,7 +4,7 @@ import { render, screen, within } from "@testing-library/react";
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { AppShell } from "@/components/shell/AppShell";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
-import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
+import { encodeFilterParam } from "@/lib/filters/encode";
 
 import OperatingReviewPage from "./page";
 
@@ -69,7 +69,8 @@ describe("Operating Review in the shared app shell", () => {
         expect(screen.getAllByRole("main")).toHaveLength(1);
         const headings = screen.getAllByRole("heading", { level: 1 });
         expect(headings).toHaveLength(1);
-        expect(headings[0]).toHaveTextContent("Engineering Operating Review");
+        expect(headings[0]).toHaveTextContent("Operating Review");
+        expect(headings[0]).not.toHaveTextContent("Engineering");
         const header = within(screen.getByTestId("page-header"));
         expect(
             header.getByText(
@@ -81,19 +82,16 @@ describe("Operating Review in the shared app shell", () => {
         ).toBeInTheDocument();
     });
 
-    it("keeps 'Back to Plan' with the filter and the origin: its trail has no link to Plan", async () => {
+    it("shows a Preview pill and no back link: the breadcrumb is the way back", async () => {
         await renderPage();
 
+        const header = within(screen.getByTestId("page-header"));
+        expect(header.getByTestId("operating-review-preview-pill")).toHaveTextContent("Preview");
+        expect(header.queryByRole("link", { name: "Back to Plan" })).toBeNull();
         const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
-        expect(within(trail).queryAllByRole("link")).toHaveLength(0);
-
-        const back = within(screen.getByTestId("page-header")).getByRole("link", {
-            name: "Back to Plan",
-        });
-        const url = new URL(back.getAttribute("href") ?? "", "https://app.example");
-        expect(url.pathname).toBe("/plan");
-        expect(decodeFilter(url.searchParams.get("f"))).toEqual(FILTERS);
-        expect(url.searchParams.get("origin")).toBe("cockpit");
+        expect(within(trail).getByText("Plan")).toHaveAttribute("aria-current", "page");
+        // The Plan area stays one click away in the sidebar.
+        expect(screen.getByTestId("nav-children-plan")).toBeInTheDocument();
     });
 
     it("has no in-page breadcrumb trail: the top bar has the one trail", async () => {
