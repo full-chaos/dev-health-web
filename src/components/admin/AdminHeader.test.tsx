@@ -72,7 +72,7 @@ describe("AdminHeader", () => {
     it("shows the Platform Admin pill only to a platform admin", () => {
         navigation.pathname = "/org/admin";
         const { unmount } = render(<AdminHeader title="Admin Dashboard" />);
-        expect(screen.queryByText("Platform Admin")).toBeNull();
+        expect(screen.queryByText("Platform admin")).toBeNull();
         unmount();
 
         render(
@@ -80,10 +80,11 @@ describe("AdminHeader", () => {
                 <AdminHeader title="Admin Dashboard" />
             </AdminNavProvider>,
         );
-        const marks = screen.getAllByText("Platform Admin");
-        // The pill in the header meta row, and the link at the end of the Organization row.
-        expect(marks).toHaveLength(2);
-        expect(screen.getByTestId("page-header")).toContainElement(marks[0]);
+        // The pill (design text "Platform admin") in the header meta row, and the link
+        // "Platform Admin" at the end of the Organization row.
+        const pill = screen.getByText("Platform admin");
+        expect(screen.getByTestId("page-header")).toContainElement(pill);
+        expect(pill.className).not.toContain("uppercase");
         expect(screen.getByRole("link", { name: "Platform Admin" })).toHaveAttribute(
             "href",
             "/superadmin",

@@ -26,7 +26,8 @@ type SignalCardProps = {
     attention?: boolean;
 };
 
-// One tile of the joined strip (design A1): caps label, value, sentence, link with the arrow first.
+// One tile of the joined strip (design A1): caps label, value, sentence, link with the arrow after
+// the text (as the design shot draws these tile links).
 function SignalCard({ title, value, description, href, action, attention }: SignalCardProps) {
     return (
         <section className="flex min-w-0 flex-col gap-0 p-5.25">
@@ -47,8 +48,8 @@ function SignalCard({ title, value, description, href, action, attention }: Sign
                 href={href}
                 className={`${buttonClassName("ghost", "sm")} mt-auto w-fit gap-1.75 px-0`}
             >
-                <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
                 {action}
+                <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
             </Link>
         </section>
     );
@@ -145,6 +146,15 @@ export default async function AdminDashboardPage() {
         pendingResult.error,
     ].filter(Boolean);
     const hasPartialSignals = loadErrors.length > 0 || malformedSignals > 0;
+    // A list that failed or came back malformed is not "0": its tile says "Not reported".
+    const failed = (result: { data?: unknown; error?: string }) =>
+        Boolean(result.error) || isMalformedList(result.data);
+    const credentialsFailed = failed(credentialsResult);
+    const syncFailed = failed(syncResult);
+    const identitiesFailed = failed(identitiesResult);
+    const attentionFailed = Boolean(pendingResult.error) || credentialsFailed || syncFailed;
+    const NOT_REPORTED = "Not reported";
+    const COULD_NOT_LOAD = "This signal could not load.";
 
     return (
         <div className="space-y-8">
@@ -165,30 +175,50 @@ export default async function AdminDashboardPage() {
             >
                 <SignalCard
                     title="Needs attention"
-                    value={needsAttention}
-                    description={`${pendingTeamChanges} team mapping changes, ${failingCredentials} credential issues, ${failingSyncConfigs} sync failures.`}
+                    value={attentionFailed ? NOT_REPORTED : needsAttention}
+                    description={
+                        attentionFailed
+                            ? COULD_NOT_LOAD
+                            : `${pendingTeamChanges} team mapping changes, ${failingCredentials} credential issues, ${failingSyncConfigs} sync failures.`
+                    }
                     href={attentionHref}
                     action={attentionAction}
-                    attention={needsAttention > 0}
+                    attention={!attentionFailed && needsAttention > 0}
                 />
                 <SignalCard
                     title="Connected sources"
-                    value={activeCredentials}
-                    description={`${credentials.length} saved credentials across ${new Set(credentials.map((credential) => credential.provider)).size} providers.`}
+                    value={credentialsFailed ? NOT_REPORTED : activeCredentials}
+                    description={
+                        credentialsFailed
+                            ? COULD_NOT_LOAD
+                            : `${credentials.length} saved credentials across ${new Set(credentials.map((credential) => credential.provider)).size} providers.`
+                    }
                     href="/org/admin/integrations"
                     action={CTA_LABELS.manageConnections}
                 />
                 <SignalCard
                     title="Identity coverage"
-                    value={`${Math.max(0, identities.length - unassignedIdentities)}/${identities.length}`}
-                    description={`${unassignedIdentities} identities are not assigned to a team.`}
+                    value={
+                        identitiesFailed
+                            ? NOT_REPORTED
+                            : `${Math.max(0, identities.length - unassignedIdentities)}/${identities.length}`
+                    }
+                    description={
+                        identitiesFailed
+                            ? COULD_NOT_LOAD
+                            : `${unassignedIdentities} identities are not assigned to a team.`
+                    }
                     href="/org/admin/identities"
                     action={CTA_LABELS.reviewIdentities}
                 />
                 <SignalCard
                     title="Active sync configs"
-                    value={activeSyncConfigs}
-                    description={`${syncConfigs.length} total configs; ${failingSyncConfigs} reported a failed last run.`}
+                    value={syncFailed ? NOT_REPORTED : activeSyncConfigs}
+                    description={
+                        syncFailed
+                            ? COULD_NOT_LOAD
+                            : `${syncConfigs.length} total configs; ${failingSyncConfigs} reported a failed last run.`
+                    }
                     href="/org/admin/sync"
                     action={CTA_LABELS.openSyncStatus}
                 />

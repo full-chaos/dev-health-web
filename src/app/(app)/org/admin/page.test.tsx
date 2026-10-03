@@ -139,3 +139,41 @@ describe("AdminDashboardPage", () => {
         ).toHaveAttribute("data-notice-variant", "warn");
     });
 });
+
+describe("AdminDashboardPage — a failed list is not zero (CHAOS-8098)", () => {
+    beforeEach(() => {
+        vi.mocked(listUsers).mockResolvedValue({ data: [] });
+        vi.mocked(listTeams).mockResolvedValue({ data: [] });
+        vi.mocked(listCredentials).mockResolvedValue({ data: [] });
+        vi.mocked(listSyncConfigs).mockResolvedValue({ data: [] });
+        vi.mocked(getPendingTeamChanges).mockResolvedValue({ data: { changes: [], total: 0 } });
+    });
+
+    it("shows 'Not reported' instead of 0/0 when the identity request failed", async () => {
+        vi.mocked(listIdentities).mockResolvedValue({ error: "backend unavailable" });
+        render(await AdminDashboardPage());
+
+        const tile = screen.getByText("Identity coverage").closest("section")!;
+        expect(tile).toHaveTextContent("Not reported");
+        expect(tile).not.toHaveTextContent("0/0");
+        expect(tile).toHaveTextContent("This signal could not load.");
+    });
+
+    it("shows a real empty identity list as 0/0", async () => {
+        vi.mocked(listIdentities).mockResolvedValue({ data: [] });
+        render(await AdminDashboardPage());
+
+        const tile = screen.getByText("Identity coverage").closest("section")!;
+        expect(tile).toHaveTextContent("0/0");
+        expect(tile).not.toHaveTextContent("Not reported");
+    });
+
+    it("puts the arrow after the link text on the tiles", async () => {
+        vi.mocked(listIdentities).mockResolvedValue({ data: [] });
+        render(await AdminDashboardPage());
+
+        const link = screen.getByRole("link", { name: "Review identities" });
+        expect(link.lastElementChild?.tagName.toLowerCase()).toBe("svg");
+        expect(link.firstChild?.nodeType).toBe(Node.TEXT_NODE);
+    });
+});
