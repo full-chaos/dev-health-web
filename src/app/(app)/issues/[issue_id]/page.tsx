@@ -1,3 +1,4 @@
+import { NoOrgNotice } from "@/components/NoOrgNotice";
 import { FlameDiagram } from "@/components/charts/FlameDiagram";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -24,7 +25,9 @@ export default async function IssueDetailPage({ params }: IssueDetailPageProps) 
 
     const { issue_id: issueId } = await params;
     const session = await requireSession();
-    const orgId = session.user.org_id ?? "default-org";
+    const orgId = session.user.org_id;
+    // No org on the session: ask for nothing (never an empty or made-up org).
+    if (!orgId) return <NoOrgNotice />;
     const [flame, drilldown] = await Promise.all([
         fetchOrNull(getFlame({ entity_type: "issue", entity_id: issueId }), "issue-flame"),
         getAIWorkflowDrilldownViaGraphQL({

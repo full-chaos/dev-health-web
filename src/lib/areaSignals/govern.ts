@@ -217,7 +217,29 @@ export async function getGovernSignals(
     // Resolve the org scope server-side (the client hooks rely on a provider; the
     // analytics/feature-flag fetchers resolve it internally, but the direct
     // GraphQL calls below need it threaded in as a variable AND `X-Org-Id`).
+    // No org on the session: the org-scoped reads below are skipped (cards read
+    // "unavailable"), never sent with an empty or made-up org.
     const orgId = isTestMode ? "default-org" : await resolveOrgId();
+
+    // No org on the session (CHAOS-8272): nothing can be read and nothing FAILED. Every card is
+    // unavailable ("No data for this window"), never "Could not be read", and no read is made, not even
+    // the ones that resolve the org themselves (CHAOS-8269).
+    if (!orgId) {
+        const noOrg: AreaSignal[] = [];
+        for (const id of [
+            "testops",
+            "quality",
+            "security",
+            "risk",
+            "risk-compounding",
+            "incident-correlation",
+            "feature-flags",
+        ]) {
+            const d = descriptor(id);
+            if (d) noOrg.push(buildSignal(d, UNAVAILABLE));
+        }
+        return noOrg;
+    }
 
     // ── Fetch every source in parallel (no serial N+1) ──────────────────────────
     // When the calling page has already fetched testOpsData with a batch that
@@ -229,22 +251,34 @@ export async function getGovernSignals(
             safe(() => getHomeDataViaGraphQL(filters), "home", failedSources),
             prefetched?.testOpsData
                 ? Promise.resolve(prefetched.testOpsData)
-                : safe(
-                      () => fetchTestOpsData(analyticsBatch, isTestMode),
-                      "testops",
+                : orgId
+                  ? safe(
+                        () => fetchTestOpsData(analyticsBatch, isTestMode),
+                        "testops",
+                        failedSources,
+                    )
+                  : Promise.resolve(undefined),
+            orgId
+                ? safe(
+                      () => fetchCoverageMetrics(analyticsBatch, isTestMode),
+                      "coverage",
                       failedSources,
-                  ),
-            safe(() => fetchCoverageMetrics(analyticsBatch, isTestMode), "coverage", failedSources),
-            safe(() => fetchRiskMetrics(analyticsBatch, isTestMode), "risk", failedSources),
+                  )
+                : Promise.resolve(undefined),
+            orgId
+                ? safe(() => fetchRiskMetrics(analyticsBatch, isTestMode), "risk", failedSources)
+                : Promise.resolve(undefined),
             safe(
                 () =>
                     isTestMode
                         ? Promise.resolve(SAMPLE_GOVERN_SECURITY_OVERVIEW)
-                        : graphqlFetch<{ securityOverview: SecurityOverview }>(
-                              SECURITY_OVERVIEW_QUERY,
-                              { orgId, filters: { openOnly: true } },
-                              { orgId },
-                          ).then((r) => r.securityOverview),
+                        : !orgId
+                          ? Promise.resolve(undefined)
+                          : graphqlFetch<{ securityOverview: SecurityOverview }>(
+                                SECURITY_OVERVIEW_QUERY,
+                                { orgId, filters: { openOnly: true } },
+                                { orgId },
+                            ).then((r) => r.securityOverview),
                 "security",
                 failedSources,
             ),
@@ -252,11 +286,13 @@ export async function getGovernSignals(
                 () =>
                     isTestMode
                         ? Promise.resolve(SAMPLE_GOVERN_COMPOUNDING_RISK)
-                        : graphqlFetch<{ compoundingRisk: CompoundingRiskResult }>(
-                              COMPOUNDING_RISK_QUERY,
-                              { orgId, filter: null },
-                              { orgId },
-                          ).then((r) => r.compoundingRisk),
+                        : !orgId
+                          ? Promise.resolve(undefined)
+                          : graphqlFetch<{ compoundingRisk: CompoundingRiskResult }>(
+                                COMPOUNDING_RISK_QUERY,
+                                { orgId, filter: null },
+                                { orgId },
+                            ).then((r) => r.compoundingRisk),
                 "compounding",
                 failedSources,
             ),
@@ -447,9 +483,9 @@ function pickWorstCompoundingRow(
 }
 
 /** Resolve the org scope from the auth session (mirrors the area fetchers). */
-async function resolveOrgId(): Promise<string> {
+async function resolveOrgId(): Promise<string | null> {
     const session = await auth();
-    return (session?.user?.org_id as string | undefined) ?? "default-org";
+    return (session?.user?.org_id as string | undefined) || null;
 }
 
 /**

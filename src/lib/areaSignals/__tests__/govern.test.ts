@@ -25,6 +25,7 @@ import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { fetchFeatureFlagsData } from "@/lib/feature-flags/fetchers";
 import { graphqlFetch } from "@/lib/graphql/server";
 import { fetchCoverageMetrics, fetchRiskMetrics, fetchTestOpsData } from "@/lib/testops/fetchers";
+import { auth } from "@/lib/auth";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { getGovernSignals } from "../govern";
@@ -481,5 +482,48 @@ describe("getGovernSignals — a failed read is not an empty read (CHAOS-8269)",
         const signals = byId(await getGovernSignals(defaultMetricFilter));
         expect(signals["feature-flags"]).toMatchObject({ state: "unavailable" });
         expect(signals["feature-flags"].failed).toBeUndefined();
+    });
+});
+
+describe("getGovernSignals — no org on the session is unavailable, never a failed read (CHAOS-8269)", () => {
+    it("every card is unavailable and none is failed; no read is made at all", async () => {
+        vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
+        const signals = await getGovernSignals(defaultMetricFilter);
+        expect(signals.map((s) => s.id)).toEqual([
+            "testops",
+            "quality",
+            "security",
+            "risk",
+            "risk-compounding",
+            "incident-correlation",
+            "feature-flags",
+        ]);
+        for (const signal of signals) {
+            expect(signal).toMatchObject({ state: "unavailable", value: "" });
+            expect(signal.failed).toBeUndefined();
+        }
+        // Not even the reads that resolve the org themselves.
+        expect(mockGraphql).not.toHaveBeenCalled();
+        expect(mockTestOps).not.toHaveBeenCalled();
+        expect(mockCoverage).not.toHaveBeenCalled();
+        expect(mockRisk).not.toHaveBeenCalled();
+        expect(mockGetHomeData).not.toHaveBeenCalled();
+        expect(mockFetchFlags).not.toHaveBeenCalled();
+    });
+});
+
+describe("getGovernSignals — org scope comes from the session (CHAOS-8272)", () => {
+    it("makes no request when the session has no org", async () => {
+        vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
+        await getGovernSignals(defaultMetricFilter);
+        expect(mockGraphql).not.toHaveBeenCalled();
+        expect(mockTestOps).not.toHaveBeenCalled();
+        expect(mockCoverage).not.toHaveBeenCalled();
+        expect(mockRisk).not.toHaveBeenCalled();
+    });
+
+    it("sends the session org when present", async () => {
+        await getGovernSignals(defaultMetricFilter);
+        expect(JSON.stringify(mockGraphql.mock.calls)).toContain("org-test");
     });
 });

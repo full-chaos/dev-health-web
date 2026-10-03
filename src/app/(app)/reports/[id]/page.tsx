@@ -16,6 +16,7 @@ import { Section } from "@/components/ui/Section";
 import { MarkdownRenderer } from "@/components/reports/MarkdownRenderer";
 import { StatusBadge } from "@/components/reports/StatusBadge";
 import { formatDateUTC } from "@/lib/formatters";
+import { useOrgId } from "@/lib/graphql/provider";
 import { logger } from "@/lib/logger";
 import { SavedReport, ReportRun } from "@/lib/reports/types";
 import {
@@ -28,15 +29,6 @@ import {
 } from "@/lib/reports/fetchers";
 import { publicEnv } from "@/lib/config";
 import { backToArea, CTA_LABELS } from "@/lib/design/cta";
-
-// Danger tone for the Delete action (theme tokens only): outlined, negative ink.
-const DANGER_BUTTON = "border-(--negative)/40 text-(--negative) hover:bg-(--negative-wash)";
-
-// Filled Delete (confirm panel). The secondary Button variant sets `text-foreground`, so the fill and
-// the label token carry `!` to win. Label token `--accent-foreground` on `--negative`: 7.64:1 (light),
-// 7.39:1 (dark); pinned in `deleteButton.test.tsx`.
-const DANGER_FILL_BUTTON =
-    "border-(--negative)! bg-(--negative)! text-(--accent-foreground)! hover:brightness-110";
 
 type ReportParameters = {
     scope?: string;
@@ -208,6 +200,8 @@ const RUN_COLUMNS: readonly DataTableColumn<ReportRun>[] = [
 ];
 
 export default function SingleReportPage() {
+    // The org of the signed-in session (the layout's provider): the backend reads only the caller's own org.
+    const orgId = useOrgId();
     const params = useParams();
     const router = useRouter();
     const id =
@@ -238,19 +232,21 @@ export default function SingleReportPage() {
     const [isRefreshingRuns, setIsRefreshingRuns] = useState(false);
 
     useEffect(() => {
-        async function loadData() {
+        // No org yet: no request (the page keeps its loading state until the session org arrives).
+        if (!orgId) return;
+        async function loadData(orgId: string) {
             const isTestMode = publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
             const [reportData, runsData] = await Promise.all([
-                fetchSavedReport("default-org", id, isTestMode),
-                fetchReportRuns("default-org", id, undefined, isTestMode),
+                fetchSavedReport(orgId, id, isTestMode),
+                fetchReportRuns(orgId, id, undefined, isTestMode),
             ]);
             setReport(reportData);
             setRuns(runsData.items);
             setRunsLastUpdatedAt(new Date().toISOString());
             setIsLoading(false);
         }
-        loadData();
-    }, [id]);
+        loadData(orgId);
+    }, [id, orgId]);
 
     // Shared by the Run History Refresh control AND the post-trigger
     // follow-up fetch in handleRunNow — a sequence guard so a slower,
@@ -267,12 +263,13 @@ export default function SingleReportPage() {
     // fetch races the mutation and can read stale data), letting a second
     // click fire a duplicate report generation.
     const refreshRuns = useCallback(async () => {
+        if (!orgId) return;
         runsFetchSeqRef.current += 1;
         const mySeq = runsFetchSeqRef.current;
         setIsRefreshingRuns(true);
         try {
             const isTestMode = publicEnv.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
-            const runsData = await fetchReportRuns("default-org", id, undefined, isTestMode);
+            const runsData = await fetchReportRuns(orgId, id, undefined, isTestMode);
             if (mySeq !== runsFetchSeqRef.current) return;
 
             setRuns(runsData.items);
@@ -284,7 +281,7 @@ export default function SingleReportPage() {
                 setIsRefreshingRuns(false);
             }
         }
-    }, [id]);
+    }, [id, orgId]);
 
     if (isLoading) {
         return (
@@ -319,11 +316,12 @@ export default function SingleReportPage() {
     // the Run History card's Refresh control (with a last-updated
     // timestamp) is for.
     const handleRunNow = async () => {
+        if (!orgId) return;
         setIsRunning(true);
         setError(null);
 
         try {
-            await triggerReport("default-org", id);
+            await triggerReport(orgId, id);
             await refreshRuns();
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to trigger report");
@@ -340,10 +338,11 @@ export default function SingleReportPage() {
     };
 
     const handleEditSave = async () => {
+        if (!orgId) return;
         setIsSaving(true);
         setError(null);
         try {
-            const updated = await updateSavedReport("default-org", id, {
+            const updated = await updateSavedReport(orgId, id, {
                 name: editName,
                 description: editDescription || undefined,
             });
@@ -368,10 +367,11 @@ export default function SingleReportPage() {
     };
 
     const handleCloneConfirm = async () => {
+        if (!orgId) return;
         setIsCloning(true);
         setError(null);
         try {
-            const cloned = await cloneSavedReport("default-org", {
+            const cloned = await cloneSavedReport(orgId, {
                 sourceReportId: id,
                 newName: cloneName || undefined,
             });
@@ -383,10 +383,11 @@ export default function SingleReportPage() {
     };
 
     const handleDeleteConfirm = async () => {
+        if (!orgId) return;
         setIsDeleting(true);
         setError(null);
         try {
-            await deleteSavedReport("default-org", id);
+            await deleteSavedReport(orgId, id);
             router.push("/reports");
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed to delete report");
@@ -421,8 +422,8 @@ export default function SingleReportPage() {
                                 {CTA_LABELS.clone}
                             </Button>
                             <Button
+                                variant="danger"
                                 onClick={() => setShowDeleteConfirm(true)}
-                                className={DANGER_BUTTON}
                                 icon={<Trash2 className="h-3.5 w-3.5" />}
                             >
                                 {CTA_LABELS.delete}
@@ -506,9 +507,9 @@ export default function SingleReportPage() {
                     action={
                         <div className="flex gap-2">
                             <Button
+                                variant="dangerSolid"
                                 onClick={handleDeleteConfirm}
                                 disabled={isDeleting}
-                                className={DANGER_FILL_BUTTON}
                                 icon={<Trash2 className="h-3.5 w-3.5" />}
                             >
                                 {isDeleting ? "Deleting..." : CTA_LABELS.delete}

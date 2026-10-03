@@ -90,9 +90,9 @@ function buildSignal(
 }
 
 /** Resolve the org scope from the auth session. */
-async function resolveOrgId(): Promise<string> {
+async function resolveOrgId(): Promise<string | null> {
     const session = await auth();
-    return (session?.user?.org_id as string | undefined) ?? "default-org";
+    return (session?.user?.org_id as string | undefined) || null;
 }
 
 /**
@@ -141,6 +141,8 @@ export async function getAISignals(
     const byId = new Map(ai.hubItems.map((item) => [item.id, item]));
     const descriptor = (id: string): NavAreaHubItem | undefined => byId.get(id);
 
+    // No org on the session: the org-scoped reads below are skipped (cards read
+    // "unavailable"), never sent with an empty or made-up org.
     const orgId = isTestMode ? "default-org" : await resolveOrgId();
 
     // Derive AI query variables from the canonical metric filter.
@@ -164,11 +166,13 @@ export async function getAISignals(
             () =>
                 isTestMode
                     ? Promise.resolve(SAMPLE_AI_IMPACT_SUMMARY)
-                    : graphqlFetch<{ aiImpactSummary: AiImpactSummary }>(
-                          AI_IMPACT_SUMMARY_QUERY,
-                          { orgId, dateRange, scope },
-                          { orgId },
-                      ).then((r) => r.aiImpactSummary),
+                    : !orgId
+                      ? Promise.resolve(undefined)
+                      : graphqlFetch<{ aiImpactSummary: AiImpactSummary }>(
+                            AI_IMPACT_SUMMARY_QUERY,
+                            { orgId, dateRange, scope },
+                            { orgId },
+                        ).then((r) => r.aiImpactSummary),
             "ai-impact",
             failedSources,
         ),
@@ -176,11 +180,13 @@ export async function getAISignals(
             () =>
                 isTestMode
                     ? Promise.resolve(SAMPLE_AI_REVIEW_LOAD)
-                    : graphqlFetch<{ aiReviewLoad: AiReviewLoadResult }>(
-                          AI_REVIEW_LOAD_QUERY,
-                          { orgId, dateRange, scope },
-                          { orgId },
-                      ).then((r) => r.aiReviewLoad),
+                    : !orgId
+                      ? Promise.resolve(undefined)
+                      : graphqlFetch<{ aiReviewLoad: AiReviewLoadResult }>(
+                            AI_REVIEW_LOAD_QUERY,
+                            { orgId, dateRange, scope },
+                            { orgId },
+                        ).then((r) => r.aiReviewLoad),
             "ai-review-load",
             failedSources,
         ),
@@ -188,11 +194,13 @@ export async function getAISignals(
             () =>
                 isTestMode
                     ? Promise.resolve(SAMPLE_AI_GOVERNANCE_SUMMARY)
-                    : graphqlFetch<{ aiGovernanceSummary: AiGovernanceSummary }>(
-                          AI_GOVERNANCE_SUMMARY_QUERY,
-                          { orgId, dateRange, scope, violationLimit: 50 },
-                          { orgId },
-                      ).then((r) => r.aiGovernanceSummary),
+                    : !orgId
+                      ? Promise.resolve(undefined)
+                      : graphqlFetch<{ aiGovernanceSummary: AiGovernanceSummary }>(
+                            AI_GOVERNANCE_SUMMARY_QUERY,
+                            { orgId, dateRange, scope, violationLimit: 50 },
+                            { orgId },
+                        ).then((r) => r.aiGovernanceSummary),
             "ai-governance-risk",
             failedSources,
         ),
@@ -200,11 +208,13 @@ export async function getAISignals(
             () =>
                 isTestMode
                     ? Promise.resolve(SAMPLE_AI_OPPORTUNITIES)
-                    : graphqlFetch<{ aiOpportunities: AiOpportunitiesResult }>(
-                          AI_OPPORTUNITIES_QUERY,
-                          { orgId, scope, limit: 5 },
-                          { orgId },
-                      ).then((r) => r.aiOpportunities),
+                    : !orgId
+                      ? Promise.resolve(undefined)
+                      : graphqlFetch<{ aiOpportunities: AiOpportunitiesResult }>(
+                            AI_OPPORTUNITIES_QUERY,
+                            { orgId, scope, limit: 5 },
+                            { orgId },
+                        ).then((r) => r.aiOpportunities),
             "ai-automations",
             failedSources,
         ),

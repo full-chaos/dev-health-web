@@ -84,6 +84,8 @@ describe("AdminHeader", () => {
         // "Platform Admin" at the end of the Organization row.
         const pill = screen.getByText("Platform admin");
         expect(screen.getByTestId("page-header")).toContainElement(pill);
+        // Beside the title (the title adornment slot), not under the subtitle.
+        expect(screen.getByTestId("page-header-title-adornment")).toContainElement(pill);
         expect(pill.className).not.toContain("uppercase");
         expect(screen.getByRole("link", { name: "Platform Admin" })).toHaveAttribute(
             "href",
@@ -109,5 +111,30 @@ describe("AdminHeader", () => {
         render(<AdminHeader title="Demo" />);
 
         expect(screen.queryByRole("tablist")).toBeNull();
+    });
+
+    it("draws a title badge beside the name, after the Platform admin pill, and nothing when there is none", () => {
+        const { unmount } = render(
+            <AdminNavProvider isPlatformAdmin>
+                <AdminHeader title="Sync" titleBadge={<span>Healthy</span>} />
+            </AdminNavProvider>,
+        );
+        const slot = screen.getByTestId("page-header-title-adornment");
+        expect(slot).toContainElement(screen.getByText("Healthy"));
+        expect(slot).toContainElement(screen.getByText("Platform admin"));
+        expect(
+            screen
+                .getByText("Platform admin")
+                .compareDocumentPosition(screen.getByText("Healthy")) &
+                Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+        unmount();
+
+        render(
+            <AdminNavProvider isPlatformAdmin={false}>
+                <AdminHeader title="Sync" />
+            </AdminNavProvider>,
+        );
+        expect(screen.queryByTestId("page-header-title-adornment")).toBeNull();
     });
 });

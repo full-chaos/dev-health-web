@@ -13,6 +13,7 @@ vi.mock("@/lib/logger", () => ({
 }));
 
 import { graphqlFetch } from "@/lib/graphql/server";
+import { auth } from "@/lib/auth";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { getAISignals } from "../ai";
@@ -560,5 +561,31 @@ describe("getAISignals — a failed read is not an empty read (CHAOS-8269)", () 
         const signals = byId(await getAISignals(defaultMetricFilter));
         expect(signals["ai-impact"]).toMatchObject({ state: "unavailable" });
         expect(signals["ai-impact"].failed).toBeUndefined();
+    });
+});
+
+describe("getAISignals — no org on the session is unavailable, never a failed read (CHAOS-8269)", () => {
+    it("every card is unavailable and none is failed", async () => {
+        vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
+        const signals = await getAISignals(defaultMetricFilter);
+        expect(signals).toHaveLength(4);
+        for (const signal of signals) {
+            expect(signal).toMatchObject({ state: "unavailable", value: "" });
+            expect(signal.failed).toBeUndefined();
+        }
+        expect(mockGraphql).not.toHaveBeenCalled();
+    });
+});
+
+describe("getAISignals — org scope comes from the session (CHAOS-8272)", () => {
+    it("makes no request when the session has no org", async () => {
+        vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
+        await getAISignals(defaultMetricFilter);
+        expect(mockGraphql).not.toHaveBeenCalled();
+    });
+
+    it("sends the session org when present", async () => {
+        await getAISignals(defaultMetricFilter);
+        expect(JSON.stringify(mockGraphql.mock.calls)).toContain("org-test");
     });
 });
