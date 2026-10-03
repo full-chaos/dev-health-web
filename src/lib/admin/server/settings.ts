@@ -2,7 +2,6 @@
 
 import { failureFromError } from "@/lib/actionFailure";
 import { adminApi } from "../api";
-import { AdminApiError } from "../api";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { getClientIpFromEnv } from "@/lib/client-ip";
