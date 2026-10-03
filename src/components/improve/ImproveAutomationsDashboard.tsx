@@ -1,6 +1,6 @@
 "use client";
 
-import { readFailureMessage } from "@/lib/readFailure";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 
@@ -37,7 +37,7 @@ export function ImproveAutomationsDashboard({
             <DataState
                 variant="error"
                 title="Flow opportunities could not load"
-                message={readFailureMessage(error, "improveOpportunities")}
+                message={READ_FAILED_MESSAGE}
                 action={
                     <Button onClick={retry} data-testid="improve-automations-retry">
                         {CTA_LABELS.retry}

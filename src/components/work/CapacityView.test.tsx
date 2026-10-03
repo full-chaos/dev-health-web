@@ -200,7 +200,11 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         const first = render(<CapacityView filters={filters} />);
         expect(screen.getByText("Forecast unavailable")).toBeInTheDocument();
         expect(screen.queryByText(HOSTILE)).toBeNull();
-        expect(screen.getByText("Could not be read")).toBeInTheDocument();
+        // The notice and the projection card both say it: a failed read is never drawn as an empty one.
+        expect(screen.getAllByText("Could not be read")).toHaveLength(2);
+        expect(screen.getByTestId("forecast-chart-failed")).toBeInTheDocument();
+        expect(screen.queryByText("No forecast data available")).toBeNull();
+        expect(screen.queryByText("No Forecast Available")).toBeNull();
         first.unmount();
 
         hook.state = { ...hook.state, data: null, error: null };

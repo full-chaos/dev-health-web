@@ -1,6 +1,6 @@
 "use client";
 
-import { readFailureMessage } from "@/lib/readFailure";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useState } from "react";
 
 import { ErrorCard } from "@/components/ui/ErrorCard";
@@ -41,12 +41,7 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
     const reviewerMissing = missingState(reviewLoad?.missingStates, "reviewer_concentration");
 
     if (error) {
-        return (
-            <ErrorCard
-                title="Failed to load AI review load"
-                message={readFailureMessage(error, "aiReviewLoad")}
-            />
-        );
+        return <ErrorCard title="Failed to load AI review load" message={READ_FAILED_MESSAGE} />;
     }
 
     if (!fetching && reviewLoad && !reviewLoad.dataAvailable) {

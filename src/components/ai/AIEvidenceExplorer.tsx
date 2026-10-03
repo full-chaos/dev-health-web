@@ -1,6 +1,6 @@
 "use client";
 
-import { readFailureMessage } from "@/lib/readFailure";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { Search } from "lucide-react";
 
 import { useMemo, useState, type ReactNode } from "react";
@@ -184,7 +184,7 @@ export function EvidencePanel({
                 className={`rounded-2xl border px-4 py-3 text-sm ${STATUS_PILL.negative}`}
                 data-testid="ai-drilldown-evidence-error"
             >
-                Evidence unavailable. {readFailureMessage(error, "aiDrilldownEvidence")}
+                Evidence unavailable. {READ_FAILED_MESSAGE}
             </p>
         );
     } else if (!drilldown || !drilldown.dataAvailable) {
@@ -347,8 +347,7 @@ export function AIEvidenceExplorer({ filter, layout = "side" }: AIEvidenceExplor
                             className={`rounded-2xl border px-4 py-3 text-sm ${STATUS_PILL.negative}`}
                             data-testid="ai-drilldown-error"
                         >
-                            AI-attributed PRs unavailable.{" "}
-                            {readFailureMessage(error, "aiAttributedPrs")}
+                            AI-attributed PRs unavailable. {READ_FAILED_MESSAGE}
                         </p>
                     ) : (
                         <PrTable
