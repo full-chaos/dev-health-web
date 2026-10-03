@@ -70,11 +70,11 @@ export function SyncConfigDeleteControls({
     return (
         <>
             <Button
+                variant="danger"
                 size={size}
                 onClick={() => setConfirmOpen(true)}
                 disabled={disabled || isPending}
                 aria-label={`Delete ${targetName}`}
-                className="border-(--negative)/40! text-(--negative)! hover:bg-(--negative-wash)!"
             >
                 {CTA_LABELS.delete}
             </Button>

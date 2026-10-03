@@ -141,12 +141,7 @@ export function CredentialsTable({
                                 {manageCredentialLabel ?? manageLabel}
                             </Button>
                         )}
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => setDeleting(row)}
-                            className="border border-(--negative)/30 text-(--negative) hover:bg-(--negative)/10"
-                        >
+                        <Button variant="danger" size="sm" onClick={() => setDeleting(row)}>
                             {CTA_LABELS.delete}
                         </Button>
                     </div>

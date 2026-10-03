@@ -1,24 +1,19 @@
-import Link from "next/link";
-
-import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
-import { buttonClassName } from "@/components/shared/Button";
-import { Section } from "@/components/ui/Section";
+import { associationMeterRows, contributorMeterRows } from "@/components/metrics/associationRows";
+import { MetricEvidenceButton } from "@/components/metrics/MetricEvidenceButton";
 import { QualityEvidenceTiles } from "@/components/quality/QualityEvidenceTiles";
+import { ReworkThemeBars } from "@/components/quality/ReworkThemeBars";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
-import { ReworkThemeBars } from "@/components/quality/ReworkThemeBars";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
+import { MeterRows } from "@/components/ui/MeterRows";
+import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
-import { CTA_LABELS } from "@/lib/design/cta";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
-import { buildExploreUrl } from "@/lib/filters/url";
-import { formatDelta, formatMetricValue } from "@/lib/formatters";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
-import { EntityLabel } from "@/components/labels/EntityLabel";
 import { resolveEntityLabels } from "@/lib/labels/entityLabel";
 
 type QualityPageProps = {
@@ -71,12 +66,30 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
         }),
     );
 
-    // The Explore view of change failure rate: the head action of both association cards.
-    const cfrEvidenceHref = buildExploreUrl({
+    // Contributors kept their short id token when the name is not resolved ("#8dc7d5fc",
+    // as the old rows' entity label showed it), so unresolved rows stay apart; never a raw id.
+    const contributorResolved = resolveEntityLabels(
+        contributors.map((c) => c.id),
+        (_id, i) => ({
+            name: contributors[i]?.display_name ?? undefined,
+            unresolvedFallback: "Unresolved",
+        }),
+    );
+    const contributorChartLabels = {
+        labels: contributorResolved.results.map((r) =>
+            r.resolved || !r.short ? r.label : `${r.short} · Unresolved`,
+        ),
+        titles: contributorResolved.titles,
+    };
+
+    // Change failure rate: the subject of both association cards' evidence action. The shared
+    // drawer lists the drivers and contributors with their evidence links and links to Explore.
+    const cfrSubject = {
+        title: changeFailureMetric?.label ?? "Change Failure Rate",
         metric: "change_failure_rate",
         filters,
         role: activeRole,
-    });
+    };
 
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
@@ -140,40 +153,21 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                     title="Change Failure Associations"
                     data-testid="quality-associations"
                     action={
-                        <Link href={cfrEvidenceHref} className={buttonClassName("ghost", "sm")}>
-                            {CTA_LABELS.openEvidence}
-                        </Link>
+                        <MetricEvidenceButton
+                            subject={cfrSubject}
+                            section="Change Failure Associations"
+                        />
                     }
                 >
                     {drivers.length ? (
-                        <div className="space-y-4">
-                            <HorizontalBarChart
-                                categories={driverChartLabels.labels}
-                                values={drivers.map((driver) => Math.abs(driver.delta_pct))}
-                                categoryTitles={driverChartLabels.titles}
-                            />
-                            <div className="space-y-2 text-sm">
-                                {drivers.map((driver) => (
-                                    <Link
-                                        key={driver.id}
-                                        href={buildExploreUrl({
-                                            api: driver.evidence_link,
-                                            filters,
-                                            role: activeRole,
-                                        })}
-                                        className="flex items-center justify-between rounded-(--radius-md) border border-(--border) bg-(--surface-raised) px-4 py-2"
-                                    >
-                                        <EntityLabel
-                                            id={driver.id}
-                                            displayName={driver.display_name}
-                                        />
-                                        <span className="text-xs text-(--ink-muted)">
-                                            {formatDelta(driver.delta_pct)}
-                                        </span>
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
+                        // Meter rows (prototype `bars()`): the fill is |delta| as production draws
+                        // it; the value is the served signed percent change. Each driver's own
+                        // evidence link is in the drawer the head action opens.
+                        <MeterRows
+                            aria-label="Change failure associations"
+                            testId="association-meter-rows"
+                            rows={associationMeterRows(drivers, driverChartLabels)}
+                        />
                     ) : (
                         <p className="text-sm text-(--ink-muted)">
                             Association detail will appear once data is ingested.
@@ -184,36 +178,19 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                 <Section
                     title="Contributors"
                     data-testid="quality-contributors"
-                    action={
-                        <Link href={cfrEvidenceHref} className={buttonClassName("ghost", "sm")}>
-                            {CTA_LABELS.openEvidence}
-                        </Link>
-                    }
+                    action={<MetricEvidenceButton subject={cfrSubject} section="Contributors" />}
                 >
                     {contributors.length ? (
-                        <div className="space-y-2 text-sm">
-                            {contributors.map((contributor) => (
-                                <Link
-                                    key={contributor.id}
-                                    href={buildExploreUrl({
-                                        api: contributor.evidence_link,
-                                        filters,
-                                        role: activeRole,
-                                    })}
-                                    className="flex items-center justify-between rounded-(--radius-md) border border-(--border) bg-(--surface-raised) px-4 py-2"
-                                >
-                                    <EntityLabel
-                                        id={contributor.id}
-                                        displayName={contributor.display_name}
-                                    />
-                                    <span className="text-xs text-(--ink-muted)">
-                                        {explain
-                                            ? formatMetricValue(contributor.value, explain.unit)
-                                            : "--"}
-                                    </span>
-                                </Link>
-                            ))}
-                        </div>
+                        // Meter rows: the served contributor values, each with the served unit.
+                        <MeterRows
+                            aria-label="Contributors"
+                            testId="contributor-meter-rows"
+                            rows={contributorMeterRows(
+                                contributors,
+                                explain?.unit,
+                                contributorChartLabels,
+                            )}
+                        />
                     ) : (
                         <p className="text-sm text-(--ink-muted)">
                             Contributor detail will appear once data is ingested.
