@@ -29,7 +29,7 @@ type SignalCardProps = {
 // One tile of the joined strip (design A1): caps label, value, sentence, link with the arrow first.
 function SignalCard({ title, value, description, href, action, attention }: SignalCardProps) {
     return (
-        <section className="flex min-w-0 flex-col p-5.25">
+        <section className="flex min-w-0 flex-col gap-0 p-5.25">
             <div className="flex items-start justify-between gap-2">
                 <p className="text-label-caps uppercase text-(--ink-muted)">{title}</p>
                 {attention ? (
@@ -42,10 +42,10 @@ function SignalCard({ title, value, description, href, action, attention }: Sign
                 ) : null}
             </div>
             <p className="mt-3 text-3xl font-semibold text-foreground">{value}</p>
-            <p className="mt-2 min-h-11 text-xs text-(--ink-muted)">{description}</p>
+            <p className="mt-2 mb-4 text-xs text-(--ink-muted)">{description}</p>
             <Link
                 href={href}
-                className={`${buttonClassName("ghost", "sm")} mt-4 w-fit gap-1.75 px-0`}
+                className={`${buttonClassName("ghost", "sm")} mt-auto w-fit gap-1.75 px-0`}
             >
                 <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
                 {action}
