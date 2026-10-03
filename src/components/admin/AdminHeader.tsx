@@ -36,7 +36,7 @@ export function AdminHeader({ title, description, titleBadge, children }: AdminH
                         <div className="flex flex-wrap items-center gap-2">
                             {isPlatformAdmin ? (
                                 <span
-                                    className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_PILL.info}`}
+                                    className={`inline-flex w-fit items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${STATUS_PILL.muted}`}
                                 >
                                     Platform admin
                                 </span>

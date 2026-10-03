@@ -788,6 +788,22 @@ describe("GraphView", () => {
         expect(screen.queryByTestId("work-graph-explorer")).not.toBeInTheDocument();
     });
 
+    it("shows a type the page has no label for as 'Unlabelled type', never a blank cell", () => {
+        mockUseWorkGraphFlow.mockReturnValue({
+            rows: [{ nodeType: "MYSTERY", inflow: 1, outflow: 0 }],
+            loading: false,
+            error: null,
+            degradedReason: null,
+            refetch: vi.fn(),
+        });
+
+        render(<GraphView filters={filters} activeTab="inflow-outflow" />);
+
+        expect(screen.getByTestId("inflow-outflow-row").querySelector("td")).toHaveTextContent(
+            "Unlabelled type",
+        );
+    });
+
     it("inflow-outflow rows carry the prototype balance pill, from the served inflow and outflow only", () => {
         mockUseWorkGraphEdges.mockReturnValue({
             edges: [],
