@@ -89,4 +89,36 @@ describe("IpAllowlistTable", () => {
         await user.click(within(dialog).getByRole("button", { name: "Delete" }));
         expect(onDeleteAction).toHaveBeenCalledWith(entry);
     });
+
+    it("draws the design columns (IP Range, Description, Added, Actions) and keeps every served element", async () => {
+        renderTable({
+            entries: [
+                makeEntry({
+                    description: null,
+                    created_at: "2025-01-01T00:00:00Z",
+                    expires_at: "2026-12-31T00:00:00Z",
+                }),
+            ],
+        });
+
+        const headers = screen.getAllByRole("columnheader").map((h) => h.textContent);
+        expect(headers).toEqual(["IP Range", "Description", "Added", "Actions"]);
+        const row = screen.getByText("192.168.1.0/24").closest("tr")!;
+        // Status pill in the range cell, Expires as a caption under Added, em dash for no description.
+        expect(within(row).getAllByRole("cell")[0]).toHaveTextContent("Active");
+        expect(within(row).getAllByRole("cell")[1]).toHaveTextContent("—");
+        expect(within(row).getAllByRole("cell")[2]).toHaveTextContent(
+            "Expires 2026-12-31T00:00:00Z",
+        );
+        // No loss of working actions.
+        for (const name of ["Edit", "Disable", "Delete"]) {
+            expect(within(row).getByRole("button", { name })).toBeInTheDocument();
+        }
+    });
+
+    it("shows no Expires caption when the rule does not expire", () => {
+        renderTable({ entries: [makeEntry({ expires_at: null })] });
+
+        expect(screen.queryByText(/^Expires/u)).toBeNull();
+    });
 });

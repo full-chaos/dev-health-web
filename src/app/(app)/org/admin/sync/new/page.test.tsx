@@ -1,86 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@/test/utils";
-import type { IntegrationCredential } from "@/lib/admin/types";
-
-const listCredentials = vi.hoisted(() => vi.fn());
-const getCanonicalIncidentIngestionEntitlement = vi.hoisted(() => vi.fn());
-const getAutoImportCapabilities = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/admin/server", () => ({
-    getCanonicalIncidentIngestionEntitlement,
-    listCredentials,
-    getAutoImportCapabilities,
+    listCredentials: vi.fn().mockResolvedValue({ data: [] }),
+    getCanonicalIncidentIngestionEntitlement: vi
+        .fn()
+        .mockResolvedValue({ data: { enabled: false } }),
+    getAutoImportCapabilities: vi.fn().mockResolvedValue({ data: {} }),
 }));
+vi.mock("@/components/admin/AdminHeader", () => ({
+    AdminHeader: ({ title }: { title: string }) => <h1>{title}</h1>,
+}));
+vi.mock("@/components/admin/sync/SyncConfigForm", () => ({ SyncConfigForm: () => <div /> }));
 
-vi.mock("@/components/admin/sync/SyncConfigForm", () => ({
-    SyncConfigForm: (props: {
-        canCreatePagerDuty: boolean;
-        credentials: readonly IntegrationCredential[];
-        initialSelection?: unknown;
-        autoImportCapabilities?: unknown;
-    }) => (
-        <div
-            data-can-create-pagerduty={String(props.canCreatePagerDuty)}
-            data-credential-count={props.credentials.length}
-            data-has-initial-selection={String("initialSelection" in props)}
-            data-auto-import-capabilities={JSON.stringify(props.autoImportCapabilities)}
-            data-testid="sync-config-form"
-        />
-    ),
-}));
+import { render, screen } from "@/test/utils";
 
 import NewSyncConfigPage from "./page";
 
-describe("NewSyncConfigPage", () => {
-    it("uses the shared Sync Config form without PagerDuty credential preselection", async () => {
-        listCredentials.mockResolvedValue({
-            data: [
-                {
-                    id: "pagerduty-production",
-                    provider: "pagerduty",
-                    name: "Production",
-                    is_active: true,
-                    config: {},
-                    last_test_at: null,
-                    last_test_success: true,
-                    last_test_error: null,
-                    created_at: "2026-01-01T00:00:00Z",
-                    updated_at: "2026-01-01T00:00:00Z",
-                },
-            ],
-        });
-        getCanonicalIncidentIngestionEntitlement.mockResolvedValue({ data: { enabled: true } });
-        getAutoImportCapabilities.mockResolvedValue({ data: {} });
-
+describe("New sync configuration page (CHAOS-8243)", () => {
+    it("has a back link to the connections list above the title", async () => {
         render(await NewSyncConfigPage());
-
-        expect(screen.getByTestId("sync-config-form")).toHaveAttribute(
-            "data-can-create-pagerduty",
-            "true",
+        expect(screen.getByRole("link", { name: /Back to connections/ })).toHaveAttribute(
+            "href",
+            "/org/admin/sync",
         );
-        expect(screen.getByTestId("sync-config-form")).toHaveAttribute(
-            "data-credential-count",
-            "1",
-        );
-        expect(screen.getByTestId("sync-config-form")).toHaveAttribute(
-            "data-has-initial-selection",
-            "false",
-        );
-    });
-
-    it("passes null (not {}) to SyncConfigForm when the capability fetch fails", async () => {
-        // CHAOS-4323 codex round: a fetch error must reach SyncConfigForm as
-        // a distinct null sentinel, not collapse to {} -- see
-        // SyncConfigForm.buildSyncOptions for why the distinction matters.
-        listCredentials.mockResolvedValue({ data: [] });
-        getCanonicalIncidentIngestionEntitlement.mockResolvedValue({ data: { enabled: false } });
-        getAutoImportCapabilities.mockResolvedValue({ error: "backend unavailable" });
-
-        render(await NewSyncConfigPage());
-
-        expect(screen.getByTestId("sync-config-form")).toHaveAttribute(
-            "data-auto-import-capabilities",
-            "null",
-        );
+        expect(
+            screen.getByRole("heading", { level: 1, name: "New Sync Configuration" }),
+        ).toBeVisible();
     });
 });

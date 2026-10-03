@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, userEvent } from "@/test/utils";
+import { render, screen, userEvent, within } from "@/test/utils";
 
 import { IdentityTable, type Identity } from "./IdentityTable";
 
@@ -56,5 +56,74 @@ describe("IdentityTable", () => {
 
         expect(screen.getByText("No identities match your search.")).toBeInTheDocument();
         expect(screen.queryByText("No identities found.")).not.toBeInTheDocument();
+    });
+
+    it("is a section card with the served count; 'n of N identities' while searching", async () => {
+        const user = userEvent.setup();
+        render(<IdentityTable identities={identities} />);
+
+        expect(screen.getByRole("heading", { level: 2, name: "Identities" })).toBeInTheDocument();
+        expect(screen.getByText("2 identities")).toBeInTheDocument();
+
+        await user.type(screen.getByPlaceholderText("Search identities"), "octoalice");
+
+        expect(screen.getByText("1 of 2 identities")).toBeInTheDocument();
+    });
+
+    it("shows the canonical id in mono, the name in semibold and an em dash for none", () => {
+        render(
+            <IdentityTable
+                identities={[
+                    ...identities,
+                    {
+                        canonical_id: "no-name",
+                        display_name: null,
+                        email: null,
+                        team_ids: [],
+                        provider_identities: {},
+                    },
+                ]}
+            />,
+        );
+
+        expect(screen.getByRole("link", { name: "alice-smith" }).className).toContain("font-mono");
+        expect(screen.getByText("Alice Smith").className).toContain("font-semibold");
+        const row = screen.getByRole("link", { name: "no-name" }).closest("tr")!;
+        expect(within(row).getAllByText("—")).toHaveLength(2);
+    });
+
+    it("shows a team by its served name through the shared label, linked to the team", () => {
+        render(<IdentityTable identities={[identities[0]]} teamNames={{ platform: "Platform" }} />);
+
+        const link = screen.getByRole("link", { name: "Platform" });
+        expect(link).toHaveAttribute("href", "/org/admin/teams/platform/edit");
+        expect(screen.queryByText("platform")).toBeNull();
+        expect(screen.queryByText("Unresolved")).toBeNull();
+    });
+
+    it("shows a team id with no served name as a short id + Unresolved (an opaque id), still linked", () => {
+        const TEAM = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
+        render(
+            <IdentityTable identities={[{ ...identities[0], team_ids: [TEAM] }]} teamNames={{}} />,
+        );
+
+        const link = screen.getByRole("link", { name: /Unresolved/u });
+        expect(link).toHaveAttribute("href", `/org/admin/teams/${TEAM}/edit`);
+        expect(link.textContent).not.toContain(TEAM);
+    });
+
+    it("searches by team name too", async () => {
+        const user = userEvent.setup();
+        render(
+            <IdentityTable
+                identities={identities}
+                teamNames={{ platform: "Platform Core", growth: "Growth" }}
+            />,
+        );
+
+        await user.type(screen.getByPlaceholderText("Search identities"), "Platform Core");
+
+        expect(screen.getByRole("link", { name: "alice-smith" })).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "bo-brown" })).not.toBeInTheDocument();
     });
 });

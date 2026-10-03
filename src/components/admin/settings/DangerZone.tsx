@@ -2,7 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
+
+import { Button } from "@/components/shared/Button";
 import { SettingsSection } from "./SettingsSection";
 import { deleteCurrentOrg, dryRunDeleteCurrentOrg } from "@/lib/admin/server";
 import { DeletionPlanPreview, type DeletionResult } from "./DeletionPlanPreview";
@@ -51,24 +54,24 @@ export function DangerZone({ orgName }: DangerZoneProps) {
             danger
         >
             {!showConfirm ? (
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-4">
                     <div>
                         <p className="text-sm font-medium text-(--foreground)">
                             Delete Organization
                         </p>
-                        <p className="text-sm text-(--ink-muted)">
-                            Once you delete an organization, there is no going back. Please be
-                            certain.
+                        <p className="text-xs text-(--ink-muted)">
+                            Once you delete an organization, there is no going back. A preview of
+                            what is deleted comes first; then type the organization name to confirm.
                         </p>
                     </div>
-                    <button
-                        type="button"
+                    <Button
+                        variant="danger"
                         onClick={handleStartDelete}
                         disabled={isPending}
-                        className="rounded-md bg-(--negative) px-4 py-2 text-sm font-medium text-(--accent-foreground) hover:bg-(--negative)/90 focus:outline-none focus:ring-2 focus:ring-(--negative) focus:ring-offset-2 disabled:opacity-50"
+                        icon={<Trash2 />}
                     >
                         {isPending ? "Loading..." : "Delete Organization"}
-                    </button>
+                    </Button>
                 </div>
             ) : plan ? (
                 <DeletionPlanPreview

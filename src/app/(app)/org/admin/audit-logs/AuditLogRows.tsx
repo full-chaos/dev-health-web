@@ -1,5 +1,8 @@
 "use client";
 
+import { ArrowRight } from "lucide-react";
+
+import { buttonClassName } from "@/components/shared/Button";
 import type { AuditLog } from "@/lib/admin/types";
 import { formatDateTimeUTC } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -26,9 +29,9 @@ type AuditLogRowsProps = {
  */
 export function AuditLogRows({ entries, onRowSelectAction }: AuditLogRowsProps) {
     return (
-        <div className="overflow-x-auto rounded-2xl border border-(--card-stroke) bg-(--card-80)">
+        <div className="overflow-x-auto rounded-(--radius-md) border border-(--card-stroke)">
             <table className="w-full text-left text-sm">
-                <thead className="border-b border-(--card-stroke) bg-(--card-70) text-(--ink-muted)">
+                <thead className="border-b border-(--card-stroke) bg-background text-label-caps uppercase text-(--ink-muted)">
                     <tr>
                         <th className="px-6 py-4 font-medium">Timestamp</th>
                         <th className="px-6 py-4 font-medium">Action</th>
@@ -80,9 +83,10 @@ export function AuditLogRows({ entries, onRowSelectAction }: AuditLogRowsProps) 
                                         event.stopPropagation();
                                         onRowSelectAction(entry);
                                     }}
-                                    className="rounded-full border border-(--card-stroke) px-3 py-1.5 text-xs font-medium text-(--ink-muted) transition-colors hover:border-(--ink-muted) hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)"
+                                    className={`${buttonClassName("ghost", "sm")} px-0`}
                                 >
                                     {CTA_LABELS.openDetails}
+                                    <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
                                 </button>
                             </td>
                         </tr>

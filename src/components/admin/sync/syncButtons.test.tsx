@@ -46,10 +46,11 @@ describe("sync row buttons: contrast in both themes", () => {
         });
     }
 
-    it("the Delete label token carries `!` so it wins over the secondary Button text class", () => {
+    it("Delete is the shared danger variant: no page classes and no `!` override (CHAOS-8254)", () => {
         const s = root("components/admin/sync/SyncConfigDeleteControls.tsx");
-        expect(s).toContain("text-(--negative)!");
-        expect(s).toContain("hover:bg-(--negative-wash)!");
+        expect(s).toContain('variant="danger"');
+        expect(s).not.toContain("text-(--negative)!");
+        expect(s).not.toContain("--negative-wash)!");
     });
 
     it("Sync Now is the primary Button variant, with no label override", () => {
