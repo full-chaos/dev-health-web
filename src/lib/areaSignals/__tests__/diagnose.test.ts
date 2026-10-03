@@ -680,8 +680,14 @@ describe("Investment card (CHAOS-7612 5.2b)", () => {
 describe("getDiagnoseSignals — org scope comes from the session (CHAOS-8272)", () => {
     it("makes no request when the session has no org", async () => {
         vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
-        await getDiagnoseSignals(defaultMetricFilter);
+        const signals = await getDiagnoseSignals(defaultMetricFilter);
         expect(mockGraphql).not.toHaveBeenCalled();
+        expect(mockGetHomeData).not.toHaveBeenCalled();
+        expect(mockGetBusFactorData).not.toHaveBeenCalled();
+        expect(mockGetCognitiveLoad).not.toHaveBeenCalled();
+        expect(mockGetInvestment).not.toHaveBeenCalled();
+        expect(signals.length).toBeGreaterThan(0);
+        for (const s of signals) expect(s.state).toBe("unavailable");
     });
 
     it("sends the session org when present", async () => {

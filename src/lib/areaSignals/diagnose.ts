@@ -235,6 +235,9 @@ export async function getDiagnoseSignals(
     // No org on the session: the org-scoped reads below are skipped (cards read
     // "unavailable"), never sent with an empty or made-up org.
     const orgId = isTestMode ? "default-org" : await resolveOrgId();
+    // Short-circuit BEFORE any read: every source below is org-scoped, so with no
+    // org nothing is asked and every card is unavailable (not failed).
+    if (!orgId) return diagnose.hubItems.map((d) => buildSignal(d, UNAVAILABLE));
     const complexityScopeInput = complexityScopeInputFromFilter(filters);
 
     // cognitiveLoad only supports org-wide or team aggregation (the resolver takes orgId

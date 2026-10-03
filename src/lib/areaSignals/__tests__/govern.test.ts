@@ -429,6 +429,9 @@ describe("getGovernSignals — org scope comes from the session (CHAOS-8272)", (
         vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
         await getGovernSignals(defaultMetricFilter);
         expect(mockGraphql).not.toHaveBeenCalled();
+        expect(mockTestOps).not.toHaveBeenCalled();
+        expect(mockCoverage).not.toHaveBeenCalled();
+        expect(mockRisk).not.toHaveBeenCalled();
     });
 
     it("sends the session org when present", async () => {

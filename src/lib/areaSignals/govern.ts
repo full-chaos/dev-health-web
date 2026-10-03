@@ -218,9 +218,15 @@ export async function getGovernSignals(
             safe(() => getHomeDataViaGraphQL(filters), "home"),
             prefetched?.testOpsData
                 ? Promise.resolve(prefetched.testOpsData)
-                : safe(() => fetchTestOpsData(analyticsBatch, isTestMode), "testops"),
-            safe(() => fetchCoverageMetrics(analyticsBatch, isTestMode), "coverage"),
-            safe(() => fetchRiskMetrics(analyticsBatch, isTestMode), "risk"),
+                : orgId
+                  ? safe(() => fetchTestOpsData(analyticsBatch, isTestMode), "testops")
+                  : Promise.resolve(undefined),
+            orgId
+                ? safe(() => fetchCoverageMetrics(analyticsBatch, isTestMode), "coverage")
+                : Promise.resolve(undefined),
+            orgId
+                ? safe(() => fetchRiskMetrics(analyticsBatch, isTestMode), "risk")
+                : Promise.resolve(undefined),
             safe(
                 () =>
                     isTestMode
