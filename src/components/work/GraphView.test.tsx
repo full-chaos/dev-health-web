@@ -6,6 +6,7 @@ import { GraphView } from "@/components/work/GraphView";
 import { WorkGraphFactsAction, WorkGraphFactsProvider } from "@/components/work/WorkGraphPageFacts";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { withoutEmailAddresses } from "@/lib/graphql/reviewEdgeIdentities";
 
 const {
     mockUseSearchParams,
@@ -1482,29 +1483,31 @@ describe("GraphView", () => {
             refetch: vi.fn(),
         });
 
-        const reviewEdges = [
+        // Rows as the page hands them over: the served rows after the server step that takes
+        // e-mail addresses out (CHAOS-7973). These people have a login, so the login is the name.
+        const reviewEdges = withoutEmailAddresses([
             {
-                reviewer: "alice@example.com",
-                author: "bob@example.com",
+                reviewer: "alice",
+                author: "bob",
                 reviewsCount: 12,
                 day: "2026-05-01",
                 repoId: "repo-1",
             },
             {
-                reviewer: "alice@example.com",
-                author: "bob@example.com",
+                reviewer: "alice",
+                author: "bob",
                 reviewsCount: 5,
                 day: "2026-05-02",
                 repoId: "repo-1",
             },
             {
-                reviewer: "carol@example.com",
-                author: "bob@example.com",
+                reviewer: "carol",
+                author: "bob",
                 reviewsCount: 3,
                 day: "2026-05-01",
                 repoId: "repo-1",
             },
-        ];
+        ]);
 
         render(
             <GraphView
@@ -1867,18 +1870,18 @@ describe("GraphView", () => {
 
     // ── Review Network today (pinned before the CHAOS-7733 restyle) ──────────────
     describe("Review Network tab today", () => {
-        const row = (
-            reviewer: string,
-            author: string,
-            reviewsCount: number,
-            day = "2026-09-01",
-        ) => ({
-            reviewer,
-            author,
-            reviewsCount,
-            day,
-            repoId: "repo-1",
-        });
+        // A row as the page hands it over: the served row after the server step that takes
+        // e-mail addresses out (CHAOS-7973).
+        const row = (reviewer: string, author: string, reviewsCount: number, day = "2026-09-01") =>
+            withoutEmailAddresses([
+                {
+                    reviewer,
+                    author,
+                    reviewsCount,
+                    day,
+                    repoId: "repo-1",
+                },
+            ])[0];
         const renderReview = (
             edges: ReturnType<typeof row>[] | null,
             extra: { loading?: boolean; error?: string | null } = {},
@@ -1901,10 +1904,10 @@ describe("GraphView", () => {
             );
         };
         const pairs = [
-            row("ana.fake@example.test", "bo.fake@example.test", 6, "2026-09-01"),
-            row("ana.fake@example.test", "bo.fake@example.test", 4, "2026-09-02"),
-            row("cy.fake@example.test", "bo.fake@example.test", 5),
-            row("ana.fake@example.test", "di.fake@example.test", 2),
+            row("ana.fake", "bo.fake", 6, "2026-09-01"),
+            row("ana.fake", "bo.fake", 4, "2026-09-02"),
+            row("cy.fake", "bo.fake", 5),
+            row("ana.fake", "di.fake", 2),
         ];
 
         it("sums daily rows per reviewer to author pair and sorts by reviews, high to low", () => {
@@ -1920,11 +1923,25 @@ describe("GraphView", () => {
             expect(rows[2]).toHaveTextContent("2");
         });
 
-        it("names both people in every row, with the full identity in the tooltip", () => {
+        it("names both people in every row; no tooltip holds an identity", () => {
             renderReview(pairs);
             const first = screen.getAllByTestId("review-network-row")[0];
-            expect(within(first).getByTitle("ana.fake@example.test")).toBeInTheDocument();
-            expect(within(first).getByTitle("bo.fake@example.test")).toBeInTheDocument();
+            const [reviewer, author] = within(first).getAllByRole("cell");
+            expect(reviewer).toHaveTextContent(/^ana\.fake$/u);
+            expect(author).toHaveTextContent(/^bo\.fake$/u);
+            expect(first.querySelectorAll("[title]")).toHaveLength(0);
+        });
+
+        it("a person whose stored identity is an e-mail address reads Not reported; the address is not in the page", () => {
+            renderReview([row("ana.fake@example.test", "bo.fake", 3)]);
+            const panel = screen.getByTestId("review-network-panel");
+            const [reviewer, author] = within(
+                screen.getByTestId("review-network-row"),
+            ).getAllByRole("cell");
+            expect(reviewer).toHaveTextContent(/^Not reported$/u);
+            expect(author).toHaveTextContent(/^bo\.fake$/u);
+            expect(panel.innerHTML).not.toContain("@");
+            expect(panel.innerHTML).not.toContain("ana.fake");
         });
 
         it("three tiles: distinct reviewers, distinct authors, total reviews, with the singular form", () => {
@@ -1940,7 +1957,7 @@ describe("GraphView", () => {
                 { label: "Total reviews", value: "17" },
             ]);
             unmount();
-            renderReview([row("ana.fake@example.test", "bo.fake@example.test", 3)]);
+            renderReview([row("ana.fake", "bo.fake", 3)]);
             expect(tiles()).toEqual([
                 { label: "Reviewer", value: "1" },
                 { label: "Author", value: "1" },

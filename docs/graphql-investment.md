@@ -39,7 +39,7 @@ python cli.py api --port 8000 --db "$DATABASE_URI"
 # GraphiQL is available only in dev at http://localhost:8000/graphql
 ```
 
-To keep the schema in sync, use the `dev_health_ops.api.graphql.export_schema` CLI from `dev-health-ops`.
+To keep the schema in sync, copy the ops contract pin (`contracts/graphql/v1/schema.graphql` in `dev-health-ops`) verbatim to `src/lib/graphql/schema.graphql`, then run `pnpm codegen`.
 
 ### Frontend (dev-health-web)
 
