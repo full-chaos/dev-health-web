@@ -25,15 +25,20 @@ export function AdminHeader({ title, description, children }: AdminHeaderProps) 
 
     return (
         <div className="flex flex-col gap-4">
-            <PageHeader title={title} subtitle={description} actions={children}>
-                {isPlatformAdmin ? (
-                    <span
-                        className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_PILL.info}`}
-                    >
-                        Platform admin
-                    </span>
-                ) : null}
-            </PageHeader>
+            <PageHeader
+                title={title}
+                subtitle={description}
+                actions={children}
+                titleAdornment={
+                    isPlatformAdmin ? (
+                        <span
+                            className={`inline-flex w-fit items-center rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_PILL.info}`}
+                        >
+                            Platform admin
+                        </span>
+                    ) : undefined
+                }
+            />
             <AdminTabs />
         </div>
     );

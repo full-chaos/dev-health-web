@@ -84,6 +84,8 @@ describe("AdminHeader", () => {
         // "Platform Admin" at the end of the Organization row.
         const pill = screen.getByText("Platform admin");
         expect(screen.getByTestId("page-header")).toContainElement(pill);
+        // Beside the title (the title adornment slot), not under the subtitle.
+        expect(screen.getByTestId("page-header-title-adornment")).toContainElement(pill);
         expect(pill.className).not.toContain("uppercase");
         expect(screen.getByRole("link", { name: "Platform Admin" })).toHaveAttribute(
             "href",
