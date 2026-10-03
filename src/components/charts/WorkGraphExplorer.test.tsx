@@ -331,6 +331,38 @@ describe("layered mode with links inside a column", () => {
         expect(namesShift()).toBe("translateX(-150px)");
     });
 
+    it("a zoom try at the end of the range keeps no point for later: a resize after it does not move the box", () => {
+        // jsdom has no ResizeObserver: a stand-in that the test calls as the browser does
+        const observers: Array<(entries: Array<{ contentRect: { width: number } }>) => void> = [];
+        const original = globalThis.ResizeObserver;
+        globalThis.ResizeObserver = class {
+            constructor(callback: (entries: Array<{ contentRect: { width: number } }>) => void) {
+                observers.push(callback);
+            }
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        } as unknown as typeof ResizeObserver;
+        try {
+            open();
+            for (let step = 1; step < ZOOM_LEVELS.length; step += 1) {
+                fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+            }
+            expect(box().dataset.zoom).toBe(String(ZOOM_LEVELS.at(-1)));
+            // at the widest step: one more zoom in changes nothing
+            box().scrollLeft = 1000;
+            wheel({ deltaY: -100, ctrlKey: true, clientX: 300 });
+            expect(box().dataset.zoom).toBe(String(ZOOM_LEVELS.at(-1)));
+            // the viewer scrolls on, then the card gets narrower
+            box().scrollLeft = 2000;
+            act(() => observers.at(-1)!([{ contentRect: { width: 800 } }]));
+            expect(chartProps().style.width).toBe(800 * ZOOM_LEVELS.at(-1)!);
+            expect(box().scrollLeft).toBe(2000);
+        } finally {
+            globalThis.ResizeObserver = original;
+        }
+    });
+
     it("a drag moves the drawing: the box scrolls with the pointer, both ways, and stops at the end of the drag", () => {
         open();
         box().scrollLeft = 300;
@@ -394,6 +426,17 @@ describe("layered mode with links inside a column", () => {
         fireEvent.mouseUp(window);
         expect(box().scrollLeft).toBe(0);
         expect(box().scrollTop).toBe(0);
+    });
+
+    it("the wheel zoom works on a graph that got its edges after the first draw", () => {
+        // first no edge (the box is not drawn), then a small graph that opens in the layered mode
+        const { rerender } = render(<WorkGraphExplorer edges={[]} />);
+        expect(screen.queryByTestId("work-graph-scroll")).toBeNull();
+        rerender(<WorkGraphExplorer edges={edges} />);
+        expect(box().dataset.zoom).toBe("1");
+        const event = wheel({ deltaY: -100, ctrlKey: true });
+        expect(event.defaultPrevented).toBe(true);
+        expect(box().dataset.zoom).toBe("1.5");
     });
 
     it("Network mode keeps its own pan and zoom (roam): no hint, no zoom buttons", () => {

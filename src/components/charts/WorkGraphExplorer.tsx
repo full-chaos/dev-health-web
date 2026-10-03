@@ -340,6 +340,10 @@ export function WorkGraphExplorer({
     // One rule picks the opening mode (see defaultGraphMode); an explicit choice always wins.
     const layoutMode: WorkGraphLayoutMode = chosenMode ?? defaultGraphMode(layered.columns);
     const setLayoutMode = setChosenMode;
+    // The scroll box is on the page only in the layered mode of a graph that has edges. The
+    // effects that need the box run again when this changes (a graph can get its edges after the
+    // first draw).
+    const boxDrawn = layoutMode === "layered" && edges.length > 0;
     const layeredHeight =
         layered.height + 2 * MARGIN_Y > BOX_HEIGHT ? layered.height + 2 * MARGIN_Y : BOX_HEIGHT;
 
@@ -353,7 +357,7 @@ export function WorkGraphExplorer({
         });
         observer.observe(element);
         return () => observer.disconnect();
-    }, [layoutMode]);
+    }, [boxDrawn]);
 
     const categories = useMemo(
         () =>
@@ -573,18 +577,21 @@ export function WorkGraphExplorer({
     // the middle of the box for the buttons.
     const changeZoom = useCallback(
         (direction: 1 | -1 | 0, offset?: number) => {
+            const next =
+                direction === 0
+                    ? 0
+                    : Math.min(ZOOM_LEVELS.length - 1, Math.max(0, zoomStep + direction));
+            // At an end of the range nothing changes, so no point is kept: a kept point would
+            // move the box at the next change of the width (a resize of the card).
+            if (next === zoomStep) return;
             const box = scrollRef.current;
             if (box && canvasWidth > 0) {
                 const at = offset ?? box.clientWidth / 2;
                 zoomAnchor.current = { share: (box.scrollLeft + at) / canvasWidth, offset: at };
             }
-            setZoomStep((step) =>
-                direction === 0
-                    ? 0
-                    : Math.min(ZOOM_LEVELS.length - 1, Math.max(0, step + direction)),
-            );
+            setZoomStep(next);
         },
-        [canvasWidth],
+        [canvasWidth, zoomStep],
     );
 
     // After the width changed: put the kept point back at its place, then the column names.
@@ -594,7 +601,7 @@ export function WorkGraphExplorer({
         zoomAnchor.current = null;
         if (box && anchor) box.scrollLeft = Math.max(0, anchor.share * canvasWidth - anchor.offset);
         syncColumnNames();
-    }, [canvasWidth, layoutMode, syncColumnNames]);
+    }, [canvasWidth, boxDrawn, syncColumnNames]);
 
     // Ctrl (or the Command key) + wheel, which is also what a pinch on a trackpad sends, zooms.
     // The plain wheel is NOT touched: it scrolls the box. The listener is added by hand because
@@ -612,7 +619,7 @@ export function WorkGraphExplorer({
         };
         box.addEventListener("wheel", onWheel, { passive: false });
         return () => box.removeEventListener("wheel", onWheel);
-    }, [layoutMode, changeZoom]);
+    }, [boxDrawn, changeZoom]);
 
     // A drag with the mouse scrolls the box (touch and trackpad scroll it without help).
     const startDrag = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
