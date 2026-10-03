@@ -1,5 +1,8 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { Notice } from "@/components/ui/Notice";
+import { RetryButton } from "@/components/ui/RetryButton";
+import { Section } from "@/components/ui/Section";
+import { logger } from "@/lib/logger";
 import { CoverageBar } from "../_components/CoverageBar";
 import { graphqlFetch } from "@/lib/graphql/urqlClient";
 import {
@@ -23,19 +26,21 @@ export default async function MappingHealthPage() {
         );
         coverageData = res.dataHealth.mappingCoverage;
     } catch (e) {
-        error = e instanceof Error ? e.message : "Failed to load mapping coverage";
+        // The failure goes to the log; the page says one plain sentence + Retry.
+        logger.error({ err: e }, "Failed to load mapping coverage");
+        error = "Failed to load mapping coverage";
     }
 
     return (
         <div className="space-y-8">
             <AdminHeader
-                title="Mapping Coverage"
+                title="Data Confidence"
                 description="Deployment to work-item mapping and overall traceability."
             />
 
             {error && (
-                <Notice variant="danger" live={false}>
-                    Failed to load data: {error}
+                <Notice variant="danger" live={false} action={<RetryButton />}>
+                    Mapping coverage could not be loaded. Retry, or check again in a moment.
                 </Notice>
             )}
 
@@ -47,27 +52,25 @@ export default async function MappingHealthPage() {
 
             {coverageData && (
                 <div className="grid gap-6 md:grid-cols-2">
-                    <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
-                        <h3 className="font-semibold text-lg mb-4">Deployments Coverage</h3>
-                        <p className="text-sm text-(--ink-muted) mb-4">
-                            Percentage of deployments successfully mapped back to work items.
-                        </p>
+                    <Section
+                        title="Deployments Coverage"
+                        description="Percentage of deployments successfully mapped back to work items."
+                    >
                         <CoverageBar
                             coveragePercent={coverageData.deployments.coveragePct * 100}
                             label={`${coverageData.deployments.coveredRepos} of ${coverageData.deployments.totalRepos} Repos`}
                         />
-                    </div>
+                    </Section>
 
-                    <div className="rounded-xl border border-(--card-stroke) bg-(--card-80) p-6">
-                        <h3 className="font-semibold text-lg mb-4">Work Items Coverage</h3>
-                        <p className="text-sm text-(--ink-muted) mb-4">
-                            Percentage of work items successfully mapped back to deployments.
-                        </p>
+                    <Section
+                        title="Work Items Coverage"
+                        description="Percentage of work items successfully mapped back to deployments."
+                    >
                         <CoverageBar
                             coveragePercent={coverageData.workItems.coveragePct * 100}
                             label={`${coverageData.workItems.coveredRepos} of ${coverageData.workItems.totalRepos} Repos`}
                         />
-                    </div>
+                    </Section>
                 </div>
             )}
         </div>

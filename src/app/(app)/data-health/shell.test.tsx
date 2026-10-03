@@ -22,6 +22,19 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/auth", () => ({
     requireRole: vi.fn(async () => ({ user: { org_id: "org-1", role: "admin" } })),
+    requireSession: vi.fn(async () => ({ user: { org_id: "org-1", role: "admin" } })),
+}));
+vi.mock("@/lib/graphql/urqlClient", () => ({
+    graphqlFetch: vi.fn(async () => ({
+        dataHealth: {
+            connectors: [],
+            identityMapping: { unmappedCount: 0 },
+            mappingCoverage: {
+                deployments: { coveragePct: 0.5 },
+                workItems: { coveragePct: 0.25 },
+            },
+        },
+    })),
 }));
 vi.mock("@/lib/admin/server", () => ({
     getOrgEntitlements: vi.fn(async () => ({ data: { tier: "team", features: {} } })),
@@ -54,17 +67,17 @@ beforeEach(() => {
 
 describe("Data Confidence in the shared app shell (CHAOS-7966)", () => {
     it("the overview has one sidebar, one main with the page in it, and one h1", async () => {
-        await renderAt("/data-health", <DataHealthOverviewPage />);
+        await renderAt("/data-health", await DataHealthOverviewPage());
 
         expect(document.querySelectorAll("aside")).toHaveLength(1);
         const mains = screen.getAllByRole("main");
         expect(mains).toHaveLength(1);
         expect(within(mains[0]).getAllByRole("heading", { level: 1 })).toHaveLength(1);
-        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Data Health & Trust");
+        expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Data Confidence");
     });
 
     it("marks Data Confidence in the expanded Admin area and the Overview tab", async () => {
-        await renderAt("/data-health", <DataHealthOverviewPage />);
+        await renderAt("/data-health", await DataHealthOverviewPage());
 
         const children = screen.getByTestId("nav-children-admin");
         expect(within(children).getByRole("link", { name: "Data Confidence" })).toHaveAttribute(
@@ -93,7 +106,7 @@ describe("Data Confidence in the shared app shell (CHAOS-7966)", () => {
         expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
         expect(
             within(screen.getByTestId("page-header")).getByRole("heading", { level: 1 }),
-        ).toHaveTextContent("Identity Health");
+        ).toHaveTextContent("Data Confidence");
         expect(screen.getByRole("tab", { name: "Identity" })).toHaveAttribute(
             "aria-selected",
             "true",
