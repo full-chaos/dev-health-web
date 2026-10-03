@@ -44,7 +44,7 @@ jobs:
                   else
                     TAG="v${VERSION}"
                   fi
-                  if ! printf "%s" "$TAG" | grep -Eq '^v[0-9]+\\.[0-9]+\\.[0-9]+([-.][0-9A-Za-z]+)*$'; then
+                  if ! printf "%s" "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z]+)*$'; then
                     echo "Tag must match vX.Y.Z (optionally with pre-release/build). Got: $TAG"
                     exit 1
                   fi
