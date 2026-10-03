@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
-import { MetricCard } from "@/components/metrics/MetricCard";
+import { buttonClassName } from "@/components/shared/Button";
+import { Section } from "@/components/ui/Section";
+import { QualityEvidenceTiles } from "@/components/quality/QualityEvidenceTiles";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { ReworkThemeBars } from "@/components/quality/ReworkThemeBars";
@@ -69,6 +71,13 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
         }),
     );
 
+    // The Explore view of change failure rate: the head action of both association cards.
+    const cfrEvidenceHref = buildExploreUrl({
+        metric: "change_failure_rate",
+        filters,
+        role: activeRole,
+    });
+
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
@@ -82,78 +91,62 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
 
             <ScopeBar view="quality" />
 
-            <section className="grid gap-4 lg:grid-cols-3">
-                <MetricCard
-                    label={changeFailureMetric?.label ?? "Change Failure Rate"}
-                    href={buildExploreUrl({
+            <QualityEvidenceTiles
+                filters={filters}
+                role={activeRole}
+                tiles={[
+                    {
                         metric: "change_failure_rate",
-                        filters,
-                        role: activeRole,
-                    })}
-                    value={placeholderDeltas ? undefined : changeFailureMetric?.value}
-                    unit={changeFailureMetric?.unit}
-                    delta={placeholderDeltas ? undefined : changeFailureMetric?.delta_pct}
-                    spark={changeFailureMetric?.spark}
-                    caption="Change failure rate"
-                />
-                <MetricCard
-                    label={ciMetric?.label ?? "CI Success Rate"}
-                    href={buildExploreUrl({
+                        label: changeFailureMetric?.label ?? "Change Failure Rate",
+                        value: placeholderDeltas ? undefined : changeFailureMetric?.value,
+                        unit: changeFailureMetric?.unit,
+                        delta: placeholderDeltas ? undefined : changeFailureMetric?.delta_pct,
+                        spark: changeFailureMetric?.spark,
+                        description: "Change failure rate",
+                    },
+                    {
                         metric: "ci_success",
-                        filters,
-                        role: activeRole,
-                    })}
-                    value={placeholderDeltas ? undefined : ciMetric?.value}
-                    unit={ciMetric?.unit}
-                    delta={placeholderDeltas ? undefined : ciMetric?.delta_pct}
-                    spark={ciMetric?.spark}
-                    caption="Pipeline success"
-                />
-                <MetricCard
-                    label={reworkMetric?.label ?? "PR Rework Ratio"}
-                    href={buildExploreUrl({
+                        label: ciMetric?.label ?? "CI Success Rate",
+                        value: placeholderDeltas ? undefined : ciMetric?.value,
+                        unit: ciMetric?.unit,
+                        delta: placeholderDeltas ? undefined : ciMetric?.delta_pct,
+                        spark: ciMetric?.spark,
+                        description: "Pipeline success",
+                    },
+                    {
                         metric: "pr_rework_ratio",
-                        filters,
-                        role: activeRole,
-                    })}
-                    value={placeholderDeltas ? undefined : reworkMetric?.value}
-                    unit={reworkMetric?.unit}
-                    delta={placeholderDeltas ? undefined : reworkMetric?.delta_pct}
-                    spark={reworkMetric?.spark}
-                    caption="PRs requiring rework"
-                />
-            </section>
+                        label: reworkMetric?.label ?? "PR Rework Ratio",
+                        value: placeholderDeltas ? undefined : reworkMetric?.value,
+                        unit: reworkMetric?.unit,
+                        delta: placeholderDeltas ? undefined : reworkMetric?.delta_pct,
+                        spark: reworkMetric?.spark,
+                        description: "PRs requiring rework",
+                    },
+                ]}
+            />
 
             {reworkThemeAllocation.length > 0 && (
-                <section className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
-                    <h2 className="font-(--font-display) text-xl">Rework by Theme</h2>
-                    <p className="mt-1 text-sm text-(--ink-muted)">
-                        Distribution of rework pressure across investment themes in the selected
-                        window.
-                    </p>
+                <Section
+                    title="Rework by Theme"
+                    description="Distribution of rework pressure across investment themes in the selected window."
+                    data-testid="quality-rework-by-theme"
+                >
                     <ReworkThemeBars rows={reworkThemeAllocation} />
-                </section>
+                </Section>
             )}
 
-            <section className="grid gap-6 lg:grid-cols-2">
-                <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
-                    <div className="flex items-center justify-between">
-                        <h2 className="font-(--font-display) text-xl">
-                            Change Failure Associations
-                        </h2>
-                        <Link
-                            href={buildExploreUrl({
-                                metric: "change_failure_rate",
-                                filters,
-                                role: activeRole,
-                            })}
-                            className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                        >
+            <div className="grid gap-4.5 lg:grid-cols-2">
+                <Section
+                    title="Change Failure Associations"
+                    data-testid="quality-associations"
+                    action={
+                        <Link href={cfrEvidenceHref} className={buttonClassName("ghost", "sm")}>
                             {CTA_LABELS.openEvidence}
                         </Link>
-                    </div>
+                    }
+                >
                     {drivers.length ? (
-                        <div className="mt-4 space-y-4">
+                        <div className="space-y-4">
                             <HorizontalBarChart
                                 categories={driverChartLabels.labels}
                                 values={drivers.map((driver) => Math.abs(driver.delta_pct))}
@@ -182,28 +175,23 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                             </div>
                         </div>
                     ) : (
-                        <p className="mt-4 text-sm text-(--ink-muted)">
+                        <p className="text-sm text-(--ink-muted)">
                             Association detail will appear once data is ingested.
                         </p>
                     )}
-                </div>
+                </Section>
 
-                <div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
-                    <div className="flex items-center justify-between">
-                        <h2 className="font-(--font-display) text-xl">Contributors</h2>
-                        <Link
-                            href={buildExploreUrl({
-                                metric: "change_failure_rate",
-                                filters,
-                                role: activeRole,
-                            })}
-                            className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                        >
+                <Section
+                    title="Contributors"
+                    data-testid="quality-contributors"
+                    action={
+                        <Link href={cfrEvidenceHref} className={buttonClassName("ghost", "sm")}>
                             {CTA_LABELS.openEvidence}
                         </Link>
-                    </div>
+                    }
+                >
                     {contributors.length ? (
-                        <div className="mt-4 space-y-2 text-sm">
+                        <div className="space-y-2 text-sm">
                             {contributors.map((contributor) => (
                                 <Link
                                     key={contributor.id}
@@ -227,12 +215,12 @@ export default async function QualityPage({ searchParams }: QualityPageProps) {
                             ))}
                         </div>
                     ) : (
-                        <p className="mt-4 text-sm text-(--ink-muted)">
+                        <p className="text-sm text-(--ink-muted)">
                             Contributor detail will appear once data is ingested.
                         </p>
                     )}
-                </div>
-            </section>
+                </Section>
+            </div>
         </div>
     );
 }
