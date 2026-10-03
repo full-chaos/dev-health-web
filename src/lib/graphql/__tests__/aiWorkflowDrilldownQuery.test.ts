@@ -21,8 +21,8 @@ function fieldsOf(field: string): string[] {
 // request asks for it. The request text is registered on the API side: a change here needs the new
 // text registered there.
 describe("AI_WORKFLOW_DRILLDOWN_QUERY", () => {
-    it("asks for the type, id and display name of each node", () => {
-        expect(fieldsOf("nodes")).toEqual(["nodeType", "nodeId", "displayName"]);
+    it("asks for the type, id, display name and the name-expected flag of each node", () => {
+        expect(fieldsOf("nodes")).toEqual(["nodeType", "nodeId", "displayName", "nameExpected"]);
     });
 
     it("asks for no name on the edges: an edge end is named by its node", () => {

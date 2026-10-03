@@ -112,7 +112,7 @@ export function MeterRows({
                         <span
                             aria-hidden="true"
                             data-testid="meter-track"
-                            className="relative h-2 rounded-r-sm bg-(--surface2)"
+                            className="relative h-2 rounded-r-sm bg-background"
                         >
                             {signed ? (
                                 <span

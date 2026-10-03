@@ -9,6 +9,7 @@ import {
     type BaselineCell,
     type CoverageBaselinesState,
 } from "@/lib/testops/coverageBaselines";
+import { Inset } from "@/components/ui/Inset";
 import { BRANCH_BREAKDOWN_TOP_N, type RepositoryCoverageRow } from "@/lib/testops/coverageRepos";
 
 type CoverageBaselineCardProps = {
@@ -113,14 +114,15 @@ export function CoverageBaselineCard({
                             ) : null}
                         </div>
                     ))}
-                    <div
+                    <Inset
+                        flush
+                        className="text-xs text-(--ink-muted)"
                         data-testid="testops-coverage-baseline-note"
-                        className="rounded-(--radius-sm) bg-background p-3.75 text-xs text-(--ink-muted)"
                     >
                         The baseline of a repository is its own average coverage over the 30 days
                         that end on the last day of the window. A repository with fewer than 7 days
                         of coverage in those 30 days has no baseline.
-                    </div>
+                    </Inset>
                 </div>
             )}
         </Section>

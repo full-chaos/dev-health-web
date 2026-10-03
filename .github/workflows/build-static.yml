@@ -33,6 +33,7 @@ env:
 jobs:
     changes:
         runs-on: ubuntu-latest
+        timeout-minutes: 5
         outputs:
             code: ${{ steps.filter.outputs.code }}
         steps:
@@ -71,6 +72,7 @@ jobs:
         name: Build Static Assets
         needs: [changes]
         runs-on: ubuntu-latest
+        timeout-minutes: 25
         outputs:
             version: ${{ steps.meta.outputs.version }}
             artifact_name: ${{ steps.meta.outputs.artifact_name }}

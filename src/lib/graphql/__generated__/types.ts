@@ -375,8 +375,10 @@ export type AiWorkflowGraphEdgeOut = {
 
 export type AiWorkflowGraphNodeOut = {
   __typename?: 'AIWorkflowGraphNodeOut';
-  /** The node's display name (CHAOS-8113). By ``nodeType``: ``pr`` = the pull request's title; ``deployment`` = "<environment> deploy"; ``incident`` = "<title> (<status>)"; ``issue`` = the issue's own id when it is a readable key. Null = no name is known: the catalogue does not name the node, the type has no name (a review outcome, an AI workflow run), or the name read failed. It is never an id that is, or holds, a UUID or an opaque hash. Every end of an edge in ``edges`` that has an id has a node in ``nodes`` with the same type and id, so a client names an edge end by that node. */
+  /** The node's display name (CHAOS-8113). By ``nodeType``: ``pr`` = the pull request's title; ``deployment`` = "<environment> deploy"; ``incident`` = "<title> (<status>)"; ``issue`` = the issue's own id when it is a readable key. Null = no name is known: the catalogue does not name the node, the name read failed, or the type carries no name (see ``nameExpected``). It is never an id that is, or holds, a UUID or an opaque hash. Every end of an edge in ``edges`` that has an id has a node in ``nodes`` with the same type and id, so a client names an edge end by that node. */
   displayName?: Maybe<Scalars['String']['output']>;
+  /** True = nodes of this type carry a name (``pr``, ``deployment``, ``incident``, ``issue``): a null ``displayName`` is then a gap, and a client draws "Not reported". False = the type has no name by design (a review outcome, an AI workflow run, a diff): a client draws the type words alone. */
+  nameExpected: Scalars['Boolean']['output'];
   nodeId: Scalars['String']['output'];
   nodeType: Scalars['String']['output'];
 };
@@ -493,37 +495,58 @@ export type CapacityDistribution = {
   __typename?: 'CapacityDistribution';
   /** Fixed-scope mode: days to complete the target items, one bin per distinct day count. */
   days?: Maybe<Array<CapacityDistributionBin>>;
+  /**
+   * The horizon of the days simulation, in days (CHAOS-8477): 365. A ``days`` bin
+   * with this value means "this many days or more".
+   */
+  horizonDays: Scalars['Int']['output'];
   /** Fixed-date mode: items completed by the target date, one bin per distinct total. */
   items?: Maybe<Array<CapacityDistributionBin>>;
   /**
    * The number of simulation runs behind each mode (CHAOS-8477): the counts of one
-   * mode's bins sum to it. The modes of one forecast come from one simulation and
-   * hold the same number of runs. The running share of the runs is served on each
-   * bin (cumulativeShare).
+   * mode's bins sum to it, the runs that did not finish included. The modes of one
+   * forecast come from one simulation and hold the same number of runs. The share
+   * of the runs that finished is served on each bin (cumulativeShare).
    */
   runs: Scalars['Int']['output'];
+  /**
+   * The number of days-mode runs that did NOT finish inside the simulated horizon
+   * (CHAOS-8477): the simulation stops a run after ``horizonDays`` days, with
+   * items still open, and records it in the ``days`` bin at ``horizonDays``. Such
+   * a run is not done. A run that needs exactly ``horizonDays`` days is recorded
+   * in the same bin and cannot be told apart, so it is counted here too. Null =
+   * the days mode did not simulate (``days`` is null).
+   */
+  unfinishedRuns?: Maybe<Scalars['Int']['output']>;
 };
 
 export type CapacityDistributionBin = {
   __typename?: 'CapacityDistributionBin';
-  /** How many simulation runs ended on this value. */
+  /** How many simulation runs ended on this value. In the days bin at horizonDays: how many runs were stopped there. */
   count: Scalars['Int']['output'];
   /**
-   * The share of the mode's simulation runs that completed on this value or a
-   * lower one (CHAOS-8477), from the same Monte Carlo distribution as p50Days /
-   * p85Days / p95Days: 0 to 1, never lower than on the bin before, and 1 on the
-   * last bin. In the days mode it is the share of the runs in which the target
-   * items were done on or before that day. The percentile days are an
-   * interpolated rank of the same runs: the day on which this share first reaches
-   * 0.50 and p50Days both lie between the outcomes of the same two consecutive
-   * ranked runs, so they are the same day unless those two runs ended on
-   * different days (and so for 0.85 and p85Days, 0.95 and p95Days).
+   * The share of ALL the mode's simulation runs (CHAOS-8477), from the same Monte
+   * Carlo distribution as p50Days / p85Days / p95Days: 0 to 1, never lower than
+   * on the bin before. In the days mode it is the share of the runs that FINISHED
+   * (the target items were done) on or before that day. A run that reached the
+   * horizon is not done: the bin at horizonDays adds nothing to the share, so the
+   * last share is below 1 when any run reached the horizon (unfinishedRuns), and
+   * it is 1 only when every run finished. In the items mode it is the share of
+   * the runs with this many items or fewer, and 1 on the last bin. The percentile
+   * days are an interpolated rank of the same runs: the day on which this share
+   * first reaches 0.50 and p50Days both lie between the outcomes of the same two
+   * consecutive ranked runs, so they are the same day unless those two runs ended
+   * on different days (and so for 0.85 and p85Days, 0.95 and p95Days). When so
+   * many runs reached the horizon that the share never reaches a percentile, that
+   * percentile day is horizonDays and means "horizonDays or more".
    */
   cumulativeShare: Scalars['Float']['output'];
   /**
    * The outcome: a day count (days) or an item count (items). A day count is the
    * number of days after the day the forecast was computed: the same axis as
-   * p50Days, p85Days and p95Days (p50Date is that day plus p50Days).
+   * p50Days, p85Days and p95Days (p50Date is that day plus p50Days). A day count
+   * equal to the distribution's horizonDays means "that many days or more": the
+   * simulation stops a run there, done or not.
    */
   value: Scalars['Int']['output'];
 };
@@ -2206,7 +2229,7 @@ export type TestOpsJobFailureGroup = {
   /** ``failedRuns / runs``: a share from 0 to 1, NOT a percent. Null = no run to divide by (not served today: every served group has a failed run). */
   failureRate?: Maybe<Scalars['Float']['output']>;
   jobName: Scalars['String']['output'];
-  /** The CI provider of the runs (``github``, ``gitlab``). Null = the job runs have no stored pipeline row. */
+  /** The CI provider of the runs, as the pipeline row stores it (for example ``github_actions``). Null = the job runs have no stored pipeline row. */
   provider?: Maybe<Scalars['String']['output']>;
   /** Job runs of this group that started in the window and reached a result (success, failure or cancelled). A skipped, queued or running job is not a run. */
   runs: Scalars['Int']['output'];
@@ -2222,7 +2245,7 @@ export type TestOpsJobFailuresInput = {
   sinceDate: Scalars['Date']['input'];
   /** Team ids. Narrows the runs to the repositories these teams OWN (team_repo_ownership, as of now); person membership is never read. With ``repoIds`` both apply. */
   teamIds?: InputMaybe<Array<Scalars['String']['input']>>;
-  /** Last day of the window (UTC), included. A window longer than 90 days, or one that ends before it starts, is an error. */
+  /** Last day of the window (UTC), included. At most 90 days after ``sinceDate`` (a "90 days" window of today minus 90 days to today is served); a later day, or a day before ``sinceDate``, is an error, not a cut answer. */
   untilDate: Scalars['Date']['input'];
 };
 

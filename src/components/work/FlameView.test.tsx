@@ -17,7 +17,11 @@ vi.mock("@/lib/api/visuals", () => ({ getAggregatedFlame }));
 vi.mock("@/components/charts/chartTheme", () => ({
     useChartTheme: () => ({ background: "#161c20" }),
     useChartColors: () => ["#0b8fb0", "#c98500", "#da2100", "#02a2bc", "#e8650a"],
-    useChartTokens: () => ({ themeOperational: "#0b8fb0", accentHighlight: "#ffab66" }),
+    useChartTokens: () => ({
+        themeOperational: "#0b8fb0",
+        accentHighlight: "#ffab66",
+        flameBranch: ["#0b8fb0", "#c98500", "#da2100", "#02a2bc", "#e8650a"],
+    }),
 }));
 
 const filters = {

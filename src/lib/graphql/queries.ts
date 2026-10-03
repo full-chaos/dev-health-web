@@ -257,6 +257,16 @@ query CapacityForecast($orgId: String!, $input: CapacityForecastInput) {
     historyDays
     insufficientHistory
     highVariance
+    completionDistribution {
+      days {
+        value
+        count
+      }
+      items {
+        value
+        count
+      }
+    }
   }
 }
 `;
@@ -673,6 +683,7 @@ query AIWorkflowDrilldown($orgId: String!, $rootType: AIWorkflowRootTypeInput!, 
       nodeType
       nodeId
       displayName
+      nameExpected
     }
     edges {
       edgeId
@@ -923,6 +934,7 @@ query AIAttributedPrs($orgId: String!, $dateRange: AIDateRangeInput!, $scope: AI
     dataAvailable
     rows {
       repoId
+      repoName
       number
       title
       kind

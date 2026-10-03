@@ -189,7 +189,11 @@ export async function fetchRiskMetrics(
     }
 }
 
-/** The input of `testopsJobFailures`: a window of at most 90 days and an optional scope. */
+/**
+ * The input of `testopsJobFailures`: a window and an optional scope. The API serves a window whose
+ * last day is at most 90 days after its first day (the page's "90d" window, today minus 90 days to
+ * today, is served); a longer one is a GraphQL error, which reads as a failed read.
+ */
 export type JobFailuresInput = {
     /** First day of the window, included ("YYYY-MM-DD"). */
     sinceDate: string;

@@ -4,20 +4,12 @@ export type Coverage = {
     issues_with_cycle_states_pct: number;
 };
 
-export type MetaResponse = {
-    backend: "clickhouse" | "postgres" | "sqlite" | "mongo";
-    version: string;
-    last_ingest_at: string | null;
-    coverage: Record<string, number>;
-    limits: Record<string, number>;
-    supported_endpoints: string[];
-};
-
 export type Freshness = {
     last_ingested_at: string | null;
     latest_successful_sync_at?: string | null;
     sources: Record<string, "ok" | "degraded" | "down">;
-    coverage: Coverage;
+    /** null = the API served no coverage. Missing is not 0%. */
+    coverage: Coverage | null;
 };
 
 export type SparkPoint = {
