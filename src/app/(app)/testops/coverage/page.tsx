@@ -1,234 +1,236 @@
 import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { PageHeader } from "@/components/shell/PageHeader";
+import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { ChartFrame } from "@/components/charts/ChartFrame";
 import { TimeseriesChart } from "@/components/charts/TimeseriesChart";
-import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
+import { CoverageBaselineCard } from "@/components/testops/CoverageBaselineCard";
+import { RepositoryCoverageTable } from "@/components/testops/RepositoryCoverageTable";
+import { DataState } from "@/components/ui/DataState";
+import { Section } from "@/components/ui/Section";
 import { checkApiHealth } from "@/lib/api/system";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchCoverageMetrics } from "@/lib/testops/fetchers";
 import { COVERAGE_LINE_TARGET_PCT, TESTOPS_MEASURES } from "@/lib/testops/constants";
+import { buildRepositoryCoverage } from "@/lib/testops/coverageRepos";
 import {
-	TimeseriesResult,
-	TimeseriesBucket,
-	BreakdownResult,
-	BreakdownItem,
+    TimeseriesResult,
+    TimeseriesBucket,
+    BreakdownResult,
 } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
-import { resolveEntityLabels } from "@/lib/labels/entityLabel";
 
+import { testOpsEvidenceSubject, type TestOpsTile } from "../testOpsEvidence";
 import { TestOpsTabs } from "../TestOpsTabs";
 
 type CoveragePageProps = {
-	searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
+    searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
+// The Coverage tab reads the FIRST served series of a measure (not the team roll-up of the other
+// TestOps tabs). That is production data logic and stays as it is.
 function getLatestValue(timeseries: TimeseriesResult[], measureId: string) {
-	const series = timeseries.find((s) => s.measure === measureId);
-	if (!series || !series.buckets || series.buckets.length === 0)
-		return undefined;
-	// A null latest bucket is "no value" (rendered "--"), never a 0.
-	return series.buckets[series.buckets.length - 1].value ?? undefined;
+    const series = timeseries.find((s) => s.measure === measureId);
+    if (!series || !series.buckets || series.buckets.length === 0) return undefined;
+    // A null latest bucket is "no value" (rendered "--"), never a 0.
+    return series.buckets[series.buckets.length - 1].value ?? undefined;
 }
 
 function getSparkline(timeseries: TimeseriesResult[], measureId: string) {
-	const series = timeseries.find((s) => s.measure === measureId);
-	if (!series || !series.buckets) return undefined;
-	return series.buckets.map((b: TimeseriesBucket) => ({
-		ts: b.date,
-		value: b.value,
-	}));
+    const series = timeseries.find((s) => s.measure === measureId);
+    if (!series || !series.buckets) return undefined;
+    return series.buckets.map((b: TimeseriesBucket) => ({
+        ts: b.date,
+        value: b.value,
+    }));
 }
 
-export default async function CoveragePage({
-	searchParams,
-}: CoveragePageProps) {
-	const params = (await searchParams) ?? {};
-	const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
-	const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
-	const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+const COVERAGE_TILES = ["COVERAGE_LINE_PCT", "COVERAGE_BRANCH_PCT", "COVERAGE_DELTA_PCT"];
 
-	const filters = encodedFilter
-		? decodeFilter(encodedFilter)
-		: filterFromQueryParams(params);
+export default async function CoveragePage({ searchParams }: CoveragePageProps) {
+    const params = (await searchParams) ?? {};
+    const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
+    const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
+    const activeRole = typeof roleParam === "string" ? roleParam : undefined;
 
-	const env = getServerEnv();
-	const isTestMode =
-		env.DEV_HEALTH_TEST_MODE === "true" ||
-		env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+    const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
-	const rangeDays = filters?.time?.range_days ?? 14;
-	const today = new Date();
-	const endDate = filters?.time?.end_date ?? today.toISOString().slice(0, 10);
-	const startDate =
-		filters?.time?.start_date ??
-		new Date(today.getTime() - rangeDays * 86_400_000)
-			.toISOString()
-			.slice(0, 10);
-	const dateRange = { startDate, endDate };
+    const env = getServerEnv();
+    const isTestMode =
+        env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
 
-	const [health, coverageData] = await Promise.all([
-		checkApiHealth(),
-		fetchCoverageMetrics(
-			{
-				timeseries: [
-					{
-						dimension: "TEAM",
-						measure: "COVERAGE_LINE_PCT",
-						interval: "DAY",
-						dateRange,
-					},
-					{
-						dimension: "TEAM",
-						measure: "COVERAGE_BRANCH_PCT",
-						interval: "DAY",
-						dateRange,
-					},
-					{
-						dimension: "TEAM",
-						measure: "COVERAGE_DELTA_PCT",
-						interval: "DAY",
-						dateRange,
-					},
-				],
-				breakdowns: [
-					{
-						dimension: "REPO",
-						measure: "COVERAGE_LINE_PCT",
-						dateRange,
-						topN: 10,
-					},
-				],
-			},
-			isTestMode,
-		),
-	]);
+    const rangeDays = filters?.time?.range_days ?? 14;
+    const today = new Date();
+    const endDate = filters?.time?.end_date ?? today.toISOString().slice(0, 10);
+    const startDate =
+        filters?.time?.start_date ??
+        new Date(today.getTime() - rangeDays * 86_400_000).toISOString().slice(0, 10);
+    const dateRange = { startDate, endDate };
 
-	if (!health.ok && !isTestMode) {
-		return <ServiceUnavailable landmark={false} />;
-	}
+    const [health, coverageData] = await Promise.all([
+        checkApiHealth(),
+        fetchCoverageMetrics(
+            {
+                timeseries: [
+                    {
+                        dimension: "TEAM",
+                        measure: "COVERAGE_LINE_PCT",
+                        interval: "DAY",
+                        dateRange,
+                    },
+                    {
+                        dimension: "TEAM",
+                        measure: "COVERAGE_BRANCH_PCT",
+                        interval: "DAY",
+                        dateRange,
+                    },
+                    {
+                        dimension: "TEAM",
+                        measure: "COVERAGE_DELTA_PCT",
+                        interval: "DAY",
+                        dateRange,
+                    },
+                ],
+                breakdowns: [
+                    {
+                        dimension: "REPO",
+                        measure: "COVERAGE_LINE_PCT",
+                        dateRange,
+                        topN: 10,
+                    },
+                ],
+            },
+            isTestMode,
+        ),
+    ]);
 
-	const coverageTimeseries = coverageData.timeseries || [];
-	const coverageBreakdowns = coverageData.breakdowns || [];
-	const fetchFailed = Boolean(coverageData.fetchFailed);
+    if (!health.ok && !isTestMode) {
+        return <ServiceUnavailable landmark={false} />;
+    }
 
-	const measures = [
-		{ id: "COVERAGE_LINE_PCT", ts: coverageTimeseries },
-		{ id: "COVERAGE_BRANCH_PCT", ts: coverageTimeseries },
-		{ id: "COVERAGE_DELTA_PCT", ts: coverageTimeseries },
-	];
+    const coverageTimeseries = coverageData.timeseries || [];
+    const coverageBreakdowns = coverageData.breakdowns || [];
+    const fetchFailed = Boolean(coverageData.fetchFailed);
 
-	const lineCoverageSeries = coverageTimeseries.find(
-		(s: TimeseriesResult) => s.measure === "COVERAGE_LINE_PCT",
-	);
-	const repoBreakdown = coverageBreakdowns.find(
-		(b: BreakdownResult) => b.measure === "COVERAGE_LINE_PCT",
-	);
+    const tiles: TestOpsTile[] = COVERAGE_TILES.flatMap((id) => {
+        const def = TESTOPS_MEASURES[id];
+        if (!def) return [];
+        return [
+            {
+                id,
+                label: def.label,
+                description: def.description,
+                note: def.note,
+                unit: def.unit === "percentage" ? "%" : def.unit === "duration" ? "m" : "",
+                inverseGood: def.goodDirection === "down",
+                value: getLatestValue(coverageTimeseries, id),
+                // No change value is served on this tab: the tile reads "No prior period".
+                delta: undefined,
+                spark: getSparkline(coverageTimeseries, id),
+            },
+        ];
+    });
 
-	const timeseriesData = lineCoverageSeries?.buckets
-		? lineCoverageSeries.buckets.map((b: TimeseriesBucket) => ({
-				day: b.date,
-				value: b.value,
-			}))
-		: [];
+    const lineCoverageSeries = coverageTimeseries.find(
+        (s: TimeseriesResult) => s.measure === "COVERAGE_LINE_PCT",
+    );
+    const timeseriesData = lineCoverageSeries?.buckets
+        ? lineCoverageSeries.buckets.map((b: TimeseriesBucket) => ({
+              day: b.date,
+              value: b.value,
+          }))
+        : [];
 
-	const repoItems = repoBreakdown?.items ?? [];
-	const repoIds = repoItems.map((item: BreakdownItem) => item.key);
-	const repoValues = repoItems.map((item: BreakdownItem) => item.value);
-	// Render-safe labels (A7): prefer the server-resolved display name; a
-	// genuinely-unresolved repo id degrades to a stable short label with the full
-	// id in the tooltip — never a bare UUID as the axis label.
-	const { labels: repoCategories, titles: repoTitles } = resolveEntityLabels(
-		repoIds,
-		(_id, i) => ({
-			name: repoItems[i]?.label ?? undefined,
-			unresolvedFallback: "Unresolved",
-		}),
-	);
+    const repositories = buildRepositoryCoverage(
+        coverageBreakdowns.find((b: BreakdownResult) => b.measure === "COVERAGE_LINE_PCT"),
+    );
 
-	return (
+    return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
         // page padding and the `<main>` landmark.
         <div className="flex min-w-0 flex-1 flex-col gap-8">
-            <PageHeader title="TestOps" subtitle="Code coverage metrics and trends."></PageHeader>
+            <PageHeader
+                title="TestOps"
+                subtitle="Code coverage metrics and trends."
+                actions={
+                    <PageHeaderEvidenceAction
+                        subject={testOpsEvidenceSubject("TestOps coverage", tiles)}
+                    />
+                }
+            ></PageHeader>
 
-            <TestOpsTabs
-						activeId="coverage"
-						filters={filters}
-						role={activeRole}
-					/>
-
+            {/* Approved order: header, scope bar, tab row, content. */}
             <ScopeBar view="testops" />
-					<section className="grid gap-4 lg:grid-cols-3">
-						{measures.map(({ id, ts }) => {
-							const def = TESTOPS_MEASURES[id];
-							if (!def) return null;
 
-							const value = getLatestValue(ts, id);
-							const spark = getSparkline(ts, id);
+            <TestOpsTabs activeId="coverage" filters={filters} role={activeRole} />
 
-							return (
-								<MetricCard
-									key={id}
-									label={def.label}
-									value={value}
-									unit={
-										def.unit === "percentage"
-											? "%"
-											: def.unit === "duration"
-												? "m"
-												: ""
-									}
-									spark={spark}
-									caption={def.description}
-								/>
-							);
-						})}
-					</section>
+            <MetricStrip data-testid="testops-coverage-tiles">
+                {tiles.map((tile) => (
+                    <MetricCard
+                        key={tile.id}
+                        label={tile.label}
+                        value={tile.value}
+                        unit={tile.unit}
+                        // The approved Line Coverage tile has no sparkline; its trend is the
+                        // "Line Coverage Trend" card below. The other tiles keep their served spark.
+                        spark={tile.id === "COVERAGE_LINE_PCT" ? undefined : tile.spark}
+                        hideTrend={tile.id === "COVERAGE_LINE_PCT"}
+                        caption={tile.note}
+                    />
+                ))}
+            </MetricStrip>
 
-					<section className="grid gap-6 lg:grid-cols-2">
-						<ChartFrame
-							title="Line Coverage Trend"
-							headingLevel="h2"
-							interpretation="Line coverage appears over time so drops are visible before they become release risk."
-							direction={TESTOPS_MEASURES.COVERAGE_LINE_PCT.goodDirection}
-							threshold={{
-								label: "Target baseline",
-								value: `${COVERAGE_LINE_TARGET_PCT}%`,
-								tone: "info",
-							}}
-							isError={fetchFailed}
-							stateMessage="Coverage analytics could not be loaded. Coverage history will reappear once the data service recovers."
-							isEmpty={!timeseriesData.some((p) => p.value !== null)}
-							stateTitle="Coverage trend not populated"
-							stateDescription="Coverage history appears here once connected CI coverage data is available for this scope."
-						>
-							<div className="h-64">
-								<TimeseriesChart
-									data={timeseriesData}
-									valueFormat="percent"
-									baseline={{
-										value: COVERAGE_LINE_TARGET_PCT,
-										label: "Target baseline",
-									}}
-								/>
-							</div>
-						</ChartFrame>
-						<div className="rounded-(--radius-lg) border border-(--border) bg-(--surface) p-5">
-							<h2 className="font-(--font-display) text-xl mb-4">
-								Coverage by Repository
-							</h2>
-							<div className="h-64">
-								<HorizontalBarChart
-									categories={repoCategories}
-									values={repoValues}
-									categoryTitles={repoTitles}
-									valueFormat="percent"
-								/>
-							</div>
-						</div>
-					</section>
+            <CoverageBaselineCard
+                repositories={repositories}
+                baselinePct={COVERAGE_LINE_TARGET_PCT}
+                fetchFailed={fetchFailed}
+            />
+
+            <Section title="Repository coverage" data-testid="testops-repository-coverage">
+                {fetchFailed ? (
+                    <DataState
+                        variant="error"
+                        title="Repository coverage could not be loaded"
+                        message="Coverage analytics could not be loaded. The repositories will reappear once the data service recovers."
+                    />
+                ) : (
+                    <RepositoryCoverageTable
+                        rows={repositories}
+                        baselinePct={COVERAGE_LINE_TARGET_PCT}
+                    />
+                )}
+            </Section>
+
+            {/* Not in the approved view: kept as a secondary card below it (it is served data). */}
+            <ChartFrame
+                title="Line Coverage Trend"
+                headingLevel="h2"
+                interpretation="Line coverage appears over time so drops are visible before they become release risk."
+                direction={TESTOPS_MEASURES.COVERAGE_LINE_PCT.goodDirection}
+                threshold={{
+                    label: "Target baseline",
+                    value: `${COVERAGE_LINE_TARGET_PCT}%`,
+                    tone: "info",
+                }}
+                isError={fetchFailed}
+                stateMessage="Coverage analytics could not be loaded. Coverage history will reappear once the data service recovers."
+                isEmpty={!timeseriesData.some((p) => p.value !== null)}
+                stateTitle="Coverage trend not populated"
+                stateDescription="Coverage history appears here once connected CI coverage data is available for this scope."
+            >
+                <div className="h-64">
+                    <TimeseriesChart
+                        data={timeseriesData}
+                        valueFormat="percent"
+                        baseline={{
+                            value: COVERAGE_LINE_TARGET_PCT,
+                            label: "Target baseline",
+                        }}
+                    />
+                </div>
+            </ChartFrame>
         </div>
     );
 }
