@@ -43,8 +43,8 @@ test.describe("Improve Overview landing", () => {
 
         // The hero must NOT just be "Opportunities", and it routes to a real opportunity.
         await expect(heroCard).not.toHaveAttribute("data-signal-id", "opportunities");
-        // The hero is one link into the sub-area (no action text is set for this signal).
-        await expect(hero.getByTestId("area-signal-hero-link")).toHaveAttribute(
+        // The hero has the prototype's own button into the sub-area.
+        await expect(hero.getByRole("link", { name: "Review opportunities" })).toHaveAttribute(
             "href",
             /\/opportunities/,
         );
