@@ -11,13 +11,14 @@ import { SegmentedControl } from "@/components/shared/SegmentedControl";
 import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
+import type { TabIdOf } from "@/lib/navigation/tabs";
 import { METRIC_TABS } from "@/lib/metrics/metricTabs";
 import type { MetricFilter } from "@/lib/filters/types";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { getMetricLabel, metricInverseGood } from "@/lib/metrics/catalog";
 import type { HomeResponse } from "@/lib/types";
 
-export type MonitoringView = "flow" | "throughput" | "dora";
+export type MonitoringView = TabIdOf<"metrics">;
 
 /** The three metric groups (approved prototype `.segments`, `app.js:100`; group rows from `flow()`). */
 const MONITORING_VIEWS: ReadonlyArray<{ id: MonitoringView; label: string; href: string }> = [
@@ -48,11 +49,19 @@ const VIEW_PRIORITY: Record<string, readonly string[]> = {
  * The tiles of each group, in the approved order: the same rows as the `/metrics` tab of that name
  * (one source, `metricTabs.ts`; prototype `flow(tab)`). Each is one served `HomeResponse.deltas` entry.
  */
-export const MONITORING_GROUP_METRICS: Record<MonitoringView, readonly string[]> =
-    Object.fromEntries(METRIC_TABS.map((tab) => [tab.id, tab.metrics])) as Record<
-        MonitoringView,
-        readonly string[]
-    >;
+function tabMetrics(id: MonitoringView): readonly string[] {
+    const tab = METRIC_TABS.find((item) => item.id === id);
+    // Loud, never an empty group: a renamed or removed tab must not pass unseen.
+    if (!tab) throw new Error(`Monitoring group "${id}" has no Metrics tab`);
+    return tab.metrics;
+}
+
+// Three typed keys: a tab id added to or removed from `MonitoringView` is a compile error here.
+export const MONITORING_GROUP_METRICS: Record<MonitoringView, readonly string[]> = {
+    flow: tabMetrics("flow"),
+    throughput: tabMetrics("throughput"),
+    dora: tabMetrics("dora"),
+};
 
 /** Tile note (approved prototype `M.*.note`). The change compares with the window before. */
 export const MONITORING_TILE_NOTE = "vs previous window";
