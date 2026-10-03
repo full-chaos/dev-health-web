@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@/test/utils";
+import { cleanup, render, screen, within } from "@/test/utils";
 
 import { DiagnoseQuestions } from "./DiagnoseQuestions";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
@@ -26,20 +26,48 @@ afterEach(cleanup);
 const filters = defaultMetricFilter;
 const draw = (role?: string) => render(<DiagnoseQuestions filters={filters} role={role} />);
 
-describe("DiagnoseQuestions (CHAOS-7612, new from the approved concept)", () => {
-    it("has the concept heading and the triage note", () => {
+describe("DiagnoseQuestions (approved prototype diagnoseHub, CHAOS-8065)", () => {
+    it("is one section card: the heading, then the triage line under it, then the buttons", () => {
         draw();
-        expect(
-            screen.getByRole("heading", { level: 2, name: "Follow a question into evidence" }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByText(/The overview is a triage surface\. Each destination retains/),
-        ).toBeInTheDocument();
+        const section = screen.getByTestId("diagnose-questions");
+        expect(section.tagName).toBe("SECTION");
+        const heading = within(section).getByRole("heading", {
+            level: 2,
+            name: "Follow a question into evidence",
+        });
+        const note = within(section).getByText(
+            "The overview is a triage surface. Each destination retains its own tabs and investigation views.",
+        );
+        const row = within(section).getByTestId("diagnose-question-row");
+        // Section head order: title, description, then the body (the description is not a footnote).
+        expect(heading.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        );
+        expect(note.compareDocumentPosition(row) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        );
+    });
+
+    it("has the three prototype buttons in one row, in the prototype order, each with an icon", () => {
+        draw();
+        const row = screen.getByTestId("diagnose-question-row");
+        const links = within(row).getAllByRole("link");
+        expect(links.map((a) => a.textContent)).toEqual([
+            "Explore the work graph",
+            "Inspect review latency",
+            "Trace effort allocation",
+        ]);
+        expect(row.className).toContain("md:grid-cols-3");
+        for (const link of links) {
+            // A direct child of the grid, so it fills its column like the prototype's buttons.
+            expect(link.parentElement).toBe(row);
+            expect(link.querySelector("svg[aria-hidden='true']")).not.toBeNull();
+        }
     });
 
     it("links the work graph with the filters and role", () => {
         draw("manager");
-        expect(screen.getByRole("link", { name: /Work graph/ })).toHaveAttribute(
+        expect(screen.getByRole("link", { name: "Explore the work graph" })).toHaveAttribute(
             "href",
             withFilterParam("/diagnose/work-graph", filters, "manager"),
         );
@@ -47,7 +75,7 @@ describe("DiagnoseQuestions (CHAOS-7612, new from the approved concept)", () => 
 
     it("links the review latency evidence page with the filters and role", () => {
         draw("manager");
-        expect(screen.getByRole("link", { name: /Review latency/ })).toHaveAttribute(
+        expect(screen.getByRole("link", { name: "Inspect review latency" })).toHaveAttribute(
             "href",
             buildExploreUrl({ metric: "review_latency", filters, role: "manager" }),
         );
@@ -55,26 +83,9 @@ describe("DiagnoseQuestions (CHAOS-7612, new from the approved concept)", () => 
 
     it("links the investment allocation tab with the filters and role", () => {
         draw("manager");
-        expect(screen.getByRole("link", { name: /Effort allocation/ })).toHaveAttribute(
+        expect(screen.getByRole("link", { name: "Trace effort allocation" })).toHaveAttribute(
             "href",
             withFilterParam("/investment?tab=allocation", filters, "manager"),
         );
-    });
-
-    it("uses registry labels, and each accessible name tells the three apart", () => {
-        draw();
-        const names = screen.getAllByRole("link").map((a) => a.getAttribute("aria-labelledby"));
-        expect(names).toHaveLength(3);
-        const accessible = screen.getAllByRole("link").map((a) => a.textContent);
-        expect(accessible).toEqual(["Open Work Graph", "Open evidence", "Open Investment"]);
-        expect(
-            screen.getByRole("link", { name: "Review latency Open evidence" }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole("link", { name: "Work graph Open Work Graph" }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole("link", { name: "Effort allocation Open Investment" }),
-        ).toBeInTheDocument();
     });
 });

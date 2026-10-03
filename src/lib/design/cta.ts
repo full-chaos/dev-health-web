@@ -87,6 +87,12 @@ export const CTA_LABELS = {
     openWorkGraph: "Open Work Graph",
     /** Open the Investment view (allocation tab from the Diagnose overview). */
     openInvestment: "Open Investment",
+    /** Diagnose overview "Follow a question into evidence": the Work Graph (approved copy, app.js line 97). */
+    exploreWorkGraph: "Explore the work graph",
+    /** Diagnose overview "Follow a question into evidence": the Review Latency evidence page (approved copy, app.js line 97). */
+    inspectReviewLatency: "Inspect review latency",
+    /** Diagnose overview "Follow a question into evidence": the Investment Allocation tab (approved copy, app.js line 97). */
+    traceEffortAllocation: "Trace effort allocation",
     openMetrics: "Open metrics",
     /** Row action of the Home investigation threads (approved copy, app.js line 100). */
     inspect: "Inspect",

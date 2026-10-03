@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 import { AppShell } from "@/components/shell/AppShell";
 
 import DiagnosePage from "./page";
@@ -45,11 +46,13 @@ vi.mock("@/lib/config", async (importOriginal) => ({
 async function renderPage() {
     return render(
         <AdminTierProvider tier="community" features={{}}>
-            <AppShell>
-                {await DiagnosePage({
-                    searchParams: Promise.resolve({ role: "em", origin: "cockpit" }),
-                })}
-            </AppShell>
+            <EvidenceDrawerProvider>
+                <AppShell>
+                    {await DiagnosePage({
+                        searchParams: Promise.resolve({ role: "em", origin: "cockpit" }),
+                    })}
+                </AppShell>
+            </EvidenceDrawerProvider>
         </AdminTierProvider>,
     );
 }
@@ -78,7 +81,7 @@ describe("Diagnose overview in the shared app shell", () => {
         expect(screen.getByTestId("page-header-eyebrow")).toHaveTextContent("Diagnose / Overview");
         expect(
             header.getByText(
-                "Investigate flow, investment, landscape, work graph, complexity, cognitive load, bottlenecks, and code from one durable area.",
+                "Investigate flow, investment, landscape, work graph, complexity, cognitive load, bottlenecks, and code.",
             ),
         ).toBeInTheDocument();
     });
