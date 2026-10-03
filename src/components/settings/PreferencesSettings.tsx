@@ -2,6 +2,7 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 import { SettingsSection } from "./SettingsSection";
+import { SegmentedControl } from "@/components/shared/SegmentedControl";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { isServer } from "@/lib/env";
 import {
@@ -65,47 +66,17 @@ export function PreferencesSettings() {
             <div className="space-y-6">
                 <div>
                     <p className="block text-sm font-medium text-(--foreground) mb-2">Theme</p>
-                    <div className="flex gap-3">
-                        <button
-                            type="button"
-                            aria-pressed={choice === "light"}
-                            onClick={() => applyPreference("light")}
-                            className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
-                                choice === "light"
-                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
-                                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
-                            }`}
-                        >
-                            <span className="block text-lg mb-1">☀️</span>
-                            {CTA_LABELS.lightTheme}
-                        </button>
-                        <button
-                            type="button"
-                            aria-pressed={choice === "dark"}
-                            onClick={() => applyPreference("dark")}
-                            className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
-                                choice === "dark"
-                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
-                                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
-                            }`}
-                        >
-                            <span className="block text-lg mb-1">🌙</span>
-                            {CTA_LABELS.darkTheme}
-                        </button>
-                        <button
-                            type="button"
-                            aria-pressed={choice === "system"}
-                            onClick={() => applyPreference("system")}
-                            className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
-                                choice === "system"
-                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
-                                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
-                            }`}
-                        >
-                            <span className="block text-lg mb-1">🖥️</span>
-                            {CTA_LABELS.systemTheme}
-                        </button>
-                    </div>
+                    <SegmentedControl<ThemePreference>
+                        ariaLabel="Theme"
+                        testId="theme-segments"
+                        value={choice}
+                        onChange={applyPreference}
+                        options={[
+                            { id: "light", label: CTA_LABELS.lightTheme },
+                            { id: "dark", label: CTA_LABELS.darkTheme },
+                            { id: "system", label: CTA_LABELS.systemTheme },
+                        ]}
+                    />
                     <p className="mt-2 text-sm text-(--ink-muted)">
                         The theme switch in the top bar changes the same setting.
                     </p>
@@ -115,38 +86,22 @@ export function PreferencesSettings() {
                     <p className="block text-sm font-medium text-(--foreground) mb-2">
                         Product telemetry
                     </p>
-                    <p className="mb-3 text-sm text-(--ink-muted)">
+                    <p className="mb-3 max-w-3xl text-sm text-(--ink-muted)">
                         Privacy-safe product events help improve Dev Health. We collect route
                         patterns, stable feature IDs, counts, and chart actions only — no names,
                         emails, query strings, or user-entered text. Browser Do Not Track is
                         respected.
                     </p>
-                    <div className="flex gap-3">
-                        <button
-                            type="button"
-                            aria-pressed={!telemetryOptedOut}
-                            onClick={() => applyTelemetryOptOut(false)}
-                            className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
-                                !telemetryOptedOut
-                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
-                                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
-                            }`}
-                        >
-                            {CTA_LABELS.enabled}
-                        </button>
-                        <button
-                            type="button"
-                            aria-pressed={telemetryOptedOut}
-                            onClick={() => applyTelemetryOptOut(true)}
-                            className={`flex-1 rounded-lg border px-4 py-3 text-sm font-medium transition ${
-                                telemetryOptedOut
-                                    ? "border-(--accent) bg-(--accent)/10 text-(--accent-text)"
-                                    : "border-(--card-stroke) bg-(--card-70) text-(--ink-muted) hover:border-(--accent)/50"
-                            }`}
-                        >
-                            {CTA_LABELS.disabled}
-                        </button>
-                    </div>
+                    <SegmentedControl<"enabled" | "disabled">
+                        ariaLabel="Product telemetry"
+                        testId="telemetry-segments"
+                        value={telemetryOptedOut ? "disabled" : "enabled"}
+                        onChange={(next) => applyTelemetryOptOut(next === "disabled")}
+                        options={[
+                            { id: "enabled", label: CTA_LABELS.enabled },
+                            { id: "disabled", label: CTA_LABELS.disabled },
+                        ]}
+                    />
                 </div>
             </div>
         </SettingsSection>
