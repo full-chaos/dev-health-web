@@ -24,3 +24,15 @@ describe("StatusBadge", () => {
         expect(screen.getByText("Running")).toBeInTheDocument();
     });
 });
+
+describe("StatusBadge icons", () => {
+    it("draws an icon beside each status word, and a dashed pill for 'Never run'", () => {
+        const { container, rerender } = render(<StatusBadge status={ReportStatus.SUCCESS} />);
+        expect(container.querySelector("svg")).not.toBeNull();
+        rerender(<StatusBadge status={ReportStatus.PENDING} />);
+        expect(screen.getByText("Pending")).toBeInTheDocument();
+        rerender(<StatusBadge />);
+        expect(container.querySelector("svg")).not.toBeNull();
+        expect(screen.getByText("Never run").className).toContain("border-dashed");
+    });
+});

@@ -33,6 +33,25 @@ vi.mock("@/components/shell/ScopeBar", () => ({
     ScopeBar: () => <section data-testid="scope-bar" />,
 }));
 vi.mock("@/lib/areaSignals", () => ({ getGovernSignals: getGovernSignalsMock }));
+// The header action opens the shared drawer; here its facts are drawn in place.
+vi.mock("@/components/evidence/PageFactsEvidenceAction", () => ({
+    PageFactsEvidenceAction: ({
+        title,
+        facts,
+    }: {
+        title: string;
+        facts: Array<{ label: string; value?: React.ReactNode }>;
+    }) => (
+        <ul data-testid="page-evidence" data-title={title}>
+            {facts.map((fact) => (
+                <li key={fact.label} data-testid="page-fact">
+                    {fact.label}={fact.value ?? "Not reported"}
+                </li>
+            ))}
+        </ul>
+    ),
+}));
+
 vi.mock("@/lib/testops/fetchers", () => ({
     fetchTestOpsData: vi.fn().mockResolvedValue({}),
 }));
@@ -205,5 +224,33 @@ describe("Govern overview page — approved layout", () => {
             within(screen.getByTestId("area-overview-hero")).getByTestId("area-signal-card"),
         ).toHaveAttribute("data-signal-id", "security");
         expect(clusterIds("Risk")[0]).toBe("risk-compounding");
+    });
+
+    it("gives the header a 'View evidence' with the served signals in body order (hero, Quality, Risk)", async () => {
+        getGovernSignalsMock.mockResolvedValue(
+            governSignals({
+                security: "critical",
+                "risk-compounding": "high",
+                testops: "low",
+                quality: "medium",
+                "feature-flags": "unavailable",
+            }),
+        );
+        await renderPage();
+        const evidence = screen.getByTestId("page-evidence");
+        expect(evidence).toHaveAttribute("data-title", "Govern overview");
+        expect(
+            within(evidence)
+                .getAllByTestId("page-fact")
+                .map((li) => li.textContent),
+        ).toEqual([
+            "Security — Open criticals=7",
+            "Quality — Change failure rate=7",
+            "TestOps — Worst TestOps signal=7",
+            "Compounding Risk — Worst risk score=7",
+            "Delivery Risk — Release confidence=7",
+            "Incident Correlation — Change failure rate=7",
+            "Feature Flags — Active flags=Not reported",
+        ]);
     });
 });
