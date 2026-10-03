@@ -92,11 +92,15 @@ describe("Plan overview — what the page shows (pins)", () => {
         // The first tile is "Open items" (the concept's name; production said "Delivery confidence").
         expect(screen.getByText("Open items")).toBeInTheDocument();
         expect(screen.queryByText("Delivery confidence")).toBeNull();
-        expect(screen.getAllByText("51").length).toBeGreaterThan(0);
-        expect(screen.getByText("1 week")).toBeInTheDocument();
-        expect(screen.queryByText("1 weeks")).toBeNull();
-        expect(screen.getByText("2 weeks")).toBeInTheDocument();
-        expect(screen.getByText("4 weeks")).toBeInTheDocument();
+        const values = within(screen.getByTestId("plan-tiles"))
+            .getAllByTestId("metric-value")
+            .map((el) => el.textContent);
+        // Number and unit apart in each tile; "1 week" is singular.
+        expect(values).toEqual(["51", "1 week", "2 weeks", "4 weeks"]);
+        const units = within(screen.getByTestId("plan-tiles"))
+            .getAllByTestId("metric-unit")
+            .map((el) => el.textContent);
+        expect(units).toEqual(["week", "weeks", "weeks"]);
         expect(screen.getAllByText("throughput-based")).toHaveLength(3);
         expect(screen.getByText("Derived from current filters")).toBeInTheDocument();
         // The four tiles are one joined strip, one column per tile.
@@ -105,13 +109,13 @@ describe("Plan overview — what the page shows (pins)", () => {
         expect(within(strip).getAllByTestId("percentile-tile")).toHaveLength(3);
     });
 
-    it("shows a missing percentile as a dash with its reason, never a number", async () => {
+    it("shows a missing percentile as 'Not reported' with its reason, never a number", async () => {
         mockForecast.mockResolvedValue(forecast({ p75Weeks: null }));
         await renderPage();
 
         // The value is a dash (missing is not zero) and the caption says why.
         const tiles = screen.getAllByTestId("percentile-tile");
-        expect(within(tiles[1]).getByText("—")).toBeInTheDocument();
+        expect(within(tiles[1]).getByTestId("metric-value")).toHaveTextContent("Not reported");
         expect(within(tiles[1]).getByText("Not enough throughput")).toBeInTheDocument();
         expect(within(tiles[1]).queryByText(/weeks/)).toBeNull();
     });
