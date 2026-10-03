@@ -32,6 +32,12 @@ import { backToArea, CTA_LABELS } from "@/lib/design/cta";
 // Danger tone for the Delete action (theme tokens only): outlined, negative ink.
 const DANGER_BUTTON = "border-(--negative)/40 text-(--negative) hover:bg-(--negative-wash)";
 
+// Filled Delete (confirm panel). The secondary Button variant sets `text-foreground`, so the fill and
+// the label token carry `!` to win. Label token `--accent-foreground` on `--negative`: 7.64:1 (light),
+// 7.39:1 (dark); pinned in `deleteButton.test.tsx`.
+const DANGER_FILL_BUTTON =
+    "border-(--negative)! bg-(--negative)! text-(--accent-foreground)! hover:brightness-110";
+
 type ReportParameters = {
     scope?: string;
     dateRange?: string;
@@ -502,7 +508,7 @@ export default function SingleReportPage() {
                             <Button
                                 onClick={handleDeleteConfirm}
                                 disabled={isDeleting}
-                                className="border-(--negative) bg-(--negative) text-(--on-action) hover:brightness-110"
+                                className={DANGER_FILL_BUTTON}
                                 icon={<Trash2 className="h-3.5 w-3.5" />}
                             >
                                 {isDeleting ? "Deleting..." : CTA_LABELS.delete}
