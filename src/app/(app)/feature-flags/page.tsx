@@ -91,23 +91,16 @@ export default async function FeatureFlagsPage({ searchParams }: FeatureFlagsPag
                     caption={FF_MEASURES.ACTIVE_FLAGS.description}
                 />
 
-                {/* The severity pill sits in this tile's cell, at the head right (MAPPING F3). The
-                    shared tile has no head slot, so the cell holds the tile and the pill; the tile
-                    drops its own border here (the strip draws the seams). */}
-                <div className="relative bg-card" data-testid="release-friction-tile">
-                    <MetricCard
-                        label={FF_MEASURES.RELEASE_FRICTION_DELTA.label}
-                        value={summary.releaseFrictionDelta ?? undefined}
-                        unit="%"
-                        spark={summary.releaseFrictionSpark}
-                        caption={`Severity: ${summary.releaseFrictionSeverity ?? "unavailable"}`}
-                        className="h-full rounded-none! border-0!"
-                    />
-                    <SeverityPill
-                        severity={summary.releaseFrictionSeverity}
-                        className="absolute right-5 top-4.5"
-                    />
-                </div>
+                {/* The severity pill sits in the tile head, right end (MAPPING F3), through the shared tile's headAction. */}
+                <MetricCard
+                    label={FF_MEASURES.RELEASE_FRICTION_DELTA.label}
+                    value={summary.releaseFrictionDelta ?? undefined}
+                    unit="%"
+                    spark={summary.releaseFrictionSpark}
+                    caption={`Severity: ${summary.releaseFrictionSeverity ?? "unavailable"}`}
+                    testId="release-friction-tile"
+                    headAction={<SeverityPill severity={summary.releaseFrictionSeverity} />}
+                />
 
                 <MetricCard
                     label={FF_MEASURES.RELEASE_ERROR_RATE_DELTA.label}

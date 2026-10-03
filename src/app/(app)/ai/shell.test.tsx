@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 import { AppShell } from "@/components/shell/AppShell";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam } from "@/lib/filters/encode";
@@ -51,11 +52,13 @@ vi.mock("@/lib/config", async (importOriginal) => ({
 async function renderPage() {
     return render(
         <AdminTierProvider tier="community" features={{}}>
-            <AppShell>
-                {await AIWorkflowsPage({
-                    searchParams: Promise.resolve({ f: F, role: "em" }),
-                })}
-            </AppShell>
+            <EvidenceDrawerProvider>
+                <AppShell>
+                    {await AIWorkflowsPage({
+                        searchParams: Promise.resolve({ f: F, role: "em" }),
+                    })}
+                </AppShell>
+            </EvidenceDrawerProvider>
         </AdminTierProvider>,
     );
 }

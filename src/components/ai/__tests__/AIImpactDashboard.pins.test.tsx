@@ -226,7 +226,9 @@ describe("AI Impact page pinned (CHAOS-7768)", () => {
     it("keeps the footer: last computed time and the system-health sentence", () => {
         setup();
         render(<AIImpactDashboard filter={filter} />);
-        expect(screen.getByText(/Last computed 2026-05-19T00:00:00Z\./)).toBeInTheDocument();
+        // CHAOS-8214: the shared date helper, not the raw ISO string.
+        expect(screen.getByText(/Last computed May 19, 2026, 12:00 AM UTC\./)).toBeInTheDocument();
+        expect(screen.queryByText(/2026-05-19T00:00:00Z/)).not.toBeInTheDocument();
         expect(
             screen.getByText(
                 /values suggest patterns and should be interpreted with local context/,

@@ -1,8 +1,10 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { readFileSync } from "node:fs";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
+
+import { sourceFiles } from "@/test/sourceTree";
 
 /**
  * CHAOS-4318 — no timer-driven polling against the Python API.
@@ -49,17 +51,11 @@ const SETINTERVAL_ALLOWLIST = new Set<string>([
 const TEST_FILE_PATTERN = /\.(test|spec)\.[jt]sx?$/;
 const SOURCE_FILE_PATTERN = /\.[jt]sx?$/;
 
+// `sourceFiles` skips dot-entries and files deleted mid-scan by other test workers (CHAOS-8258).
 function listSourceFiles(dir: string): string[] {
-    const entries = readdirSync(dir, { recursive: true }) as string[];
-    const files: string[] = [];
-    for (const entry of entries) {
-        const abs = join(dir, entry);
-        if (!statSync(abs).isFile()) continue;
-        if (!SOURCE_FILE_PATTERN.test(abs)) continue;
-        if (TEST_FILE_PATTERN.test(abs)) continue;
-        files.push(abs);
-    }
-    return files;
+    return sourceFiles(dir).filter(
+        (abs) => SOURCE_FILE_PATTERN.test(abs) && !TEST_FILE_PATTERN.test(abs),
+    );
 }
 
 interface Violation {

@@ -22,7 +22,14 @@
 // ============================================================================
 
 /** Discriminated union for typed error handling without exceptions. */
-export type Result<T> = { data: T; error?: never } | { data?: never; error: string };
+export type Result<T> =
+    | { data: T; error?: never; status?: never }
+    | {
+          data?: never;
+          error: string;
+          /** HTTP status of the failed request, when the failure came from an HTTP answer. */
+          status?: number;
+      };
 
 /**
  * @deprecated Alias kept for backward compatibility with existing callers.

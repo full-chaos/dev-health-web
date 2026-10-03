@@ -4,10 +4,12 @@
  * them. A URL written before the removal still decodes: `encode.ts` drops the five keys (tested in
  * `encode.test.ts`).
  */
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 import { describe, expect, it } from "vitest";
+
+import { sourceFiles } from "@/test/sourceTree";
 
 const ROOT = join(__dirname, "..", "..", "..", "..");
 
@@ -30,10 +32,12 @@ const REMOVED =
 const isTest = (path: string) =>
     /\.(test|spec)\.[tj]sx?$/.test(path) || path.includes("__snapshots__");
 
+// A listed root must exist (statSync throws); below it, `sourceFiles` skips dot-entries and files
+// deleted mid-scan by other test workers (CHAOS-8258).
 const files = (path: string): string[] => {
     const full = join(ROOT, path);
     if (statSync(full).isFile()) return [path];
-    return readdirSync(full).flatMap((name) => files(join(path, name)));
+    return sourceFiles(full).map((abs) => relative(ROOT, abs));
 };
 
 describe("the never-read filters are gone from the web (CHAOS-7799)", () => {
