@@ -156,13 +156,13 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
             {forecast && (
                 <Section title="Interpretation" data-testid="forecast-interpretation">
                     <div className="grid gap-3 md:grid-cols-3">
-                        <Inset title="P50 (50%)" className="mt-0">
+                        <Inset title="P50 (50%)">
                             Optimistic estimate. Half of simulations complete by this date.
                         </Inset>
-                        <Inset title="P85 (85%)" className="mt-0">
+                        <Inset title="P85 (85%)">
                             Recommended target. 85% confidence provides buffer for variability.
                         </Inset>
-                        <Inset title="P95 (95%)" className="mt-0">
+                        <Inset title="P95 (95%)">
                             Conservative estimate. Use for commitments with low risk tolerance.
                         </Inset>
                     </div>
