@@ -54,9 +54,9 @@ export function FailurePatternsCard({ model, fetchFailed = false }: FailurePatte
                 />
             ) : (
                 <>
-                    <div className="h-64">
-                        <HeatmapChart data={model.heatmap} />
-                    </div>
+                    {/* No fixed-height wrapper: the heatmap sets its own height and has a legend
+                        under it; a 16rem box let it run out of the card. */}
+                    <HeatmapChart data={model.heatmap} />
                     {model.hasUnattributed ? (
                         <p className="mt-3 text-xs text-(--ink-muted)">
                             &ldquo;{UNATTRIBUTED_LABEL}&rdquo; groups failures with no attribution
