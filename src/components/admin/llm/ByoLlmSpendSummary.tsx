@@ -4,9 +4,16 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { AIPanelCard } from "@/components/ai/AIPanelCard";
 import { AIEmptyState } from "@/components/ai/AIEmptyState";
+import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { DataState } from "@/components/ui/DataState";
+import { formatMicroUsd } from "@/lib/admin/llmBudgetFormat";
 import { CTA_LABELS } from "@/lib/design/cta";
-import type { LLMSettingsActionResult, LLMSpendSummaryResponse } from "@/lib/admin/types";
+import type {
+    LLMBudgetResponse,
+    LLMSettingsActionResult,
+    LLMSpendSummaryResponse,
+} from "@/lib/admin/types";
 
 type LockState = {
     reason: "not_licensed" | "not_enabled";
@@ -15,6 +22,12 @@ type LockState = {
 
 export type ByoLlmSpendSummaryProps = {
     loadSpendAction: () => Promise<LLMSettingsActionResult<LLMSpendSummaryResponse>>;
+    /**
+     * The same budget request the settings card makes. When given, the card opens with the three
+     * spend tiles (design): used or reserved, monthly limit, remaining. A tile whose value is not
+     * served reads "Not reported". When it fails, the tiles are left out.
+     */
+    loadBudgetAction?: () => Promise<LLMSettingsActionResult<LLMBudgetResponse>>;
 };
 
 const PANEL_TITLE = "AI / LLM Spend Summary (BYO-LLM)";
@@ -52,6 +65,18 @@ function FailureBadges({ failuresByClass }: { failuresByClass: Record<string, nu
     );
 }
 
+/** One spend tile: the served amount in dollars, or "Not reported" when the budget does not serve it. */
+function SpendTile({ label, micro }: { label: string; micro: number | null | undefined }) {
+    return (
+        <MetricCard
+            label={label}
+            valueText={micro == null ? undefined : formatMicroUsd(micro)}
+            deltaSlot={<></>}
+            hideTrend
+        />
+    );
+}
+
 /**
  * Org-scoped "AI / LLM Spend Summary (BYO-LLM)" admin panel (CHAOS-2564).
  * Consumes `GET /admin/llm-settings/spend` via the injected server action,
@@ -61,11 +86,12 @@ function FailureBadges({ failuresByClass }: { failuresByClass: Record<string, nu
  * tracking began) are never folded into the per-run table — they surface as
  * a distinct legacy state (`legacy` rows), per plan §6.3 / §7 C4.
  */
-export function ByoLlmSpendSummary({ loadSpendAction }: ByoLlmSpendSummaryProps) {
+export function ByoLlmSpendSummary({ loadSpendAction, loadBudgetAction }: ByoLlmSpendSummaryProps) {
     const [loading, setLoading] = useState(true);
     const [locked, setLocked] = useState<LockState>(null);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [summary, setSummary] = useState<LLMSpendSummaryResponse | null>(null);
+    const [budget, setBudget] = useState<LLMBudgetResponse | null>(null);
 
     const fetchSpend = useCallback(async () => {
         setLoading(true);
@@ -94,6 +120,25 @@ export function ByoLlmSpendSummary({ loadSpendAction }: ByoLlmSpendSummaryProps)
         // eslint-disable-next-line react-hooks/set-state-in-effect -- fetchSpend coordinates async loading state after mount.
         fetchSpend();
     }, [fetchSpend]);
+
+    useEffect(() => {
+        if (!loadBudgetAction) return;
+        let active = true;
+        loadBudgetAction().then((result) => {
+            if (active) setBudget(result.data ?? null);
+        });
+        return () => {
+            active = false;
+        };
+    }, [loadBudgetAction]);
+
+    const tiles = budget ? (
+        <MetricStrip columns={3} data-testid="byo-llm-spend-tiles" className="mb-4">
+            <SpendTile label="Used or reserved" micro={budget.used_micro_usd} />
+            <SpendTile label="Monthly limit" micro={budget.limit_micro_usd} />
+            <SpendTile label="Remaining" micro={budget.remaining_micro_usd} />
+        </MetricStrip>
+    ) : null;
 
     let body: ReactNode;
 
@@ -212,6 +257,7 @@ export function ByoLlmSpendSummary({ loadSpendAction }: ByoLlmSpendSummaryProps)
 
     return (
         <AIPanelCard title={PANEL_TITLE} description={PANEL_DESCRIPTION}>
+            {tiles}
             {body}
         </AIPanelCard>
     );

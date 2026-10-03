@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { DataState } from "@/components/ui/DataState";
 import { Button } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
+import { formatMicroUsd } from "@/lib/admin/llmBudgetFormat";
 import { CTA_LABELS } from "@/lib/design/cta";
 import {
     LLM_PROVIDERS,
@@ -80,16 +81,6 @@ const BADGE_DOT_CLASSES: Record<BadgeTone, string> = {
 };
 
 const MICRO_USD_PER_USD = 1_000_000;
-
-function formatMicroUsd(value: number | null): string {
-    if (value === null) return "Unavailable";
-    return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 6,
-    }).format(value / MICRO_USD_PER_USD);
-}
 
 function formatMicroUsdInput(value: number | null): string {
     if (value === null) return "";
