@@ -5,6 +5,11 @@
   document.documentElement.dataset.palette = "infinity";
   try {
     var storedTheme = localStorage.getItem("theme");
+    // "system" follows the operating system (resolved here before first paint, then followed live by
+    // ThemeToggle). Nothing stored keeps the page's own default (dark).
+    if (storedTheme === "system") {
+      storedTheme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
     if (storedTheme === "light" || storedTheme === "dark") {
       document.documentElement.dataset.theme = storedTheme;
       document.documentElement.style.colorScheme = storedTheme;

@@ -62,4 +62,19 @@ describe("PreferencesSettings", () => {
             "true",
         );
     });
+
+    it("draws theme and telemetry as segmented controls: no emoji option cards, no wide buttons (CHAOS-8257)", () => {
+        render(<PreferencesSettings />);
+        const theme = screen.getByTestId("theme-segments");
+        const telemetry = screen.getByTestId("telemetry-segments");
+        for (const group of [theme, telemetry]) {
+            expect(group.className).toContain("inline-flex");
+            for (const button of Array.from(group.querySelectorAll("button"))) {
+                expect(button.className).not.toContain("flex-1");
+            }
+        }
+        expect(theme.textContent).toBe("LightDarkSystem");
+        expect(telemetry.textContent).toBe("EnabledDisabled");
+        expect(document.body.textContent).not.toMatch(/[\u2600-\u27BF\u{1F300}-\u{1FAFF}]/u);
+    });
 });
