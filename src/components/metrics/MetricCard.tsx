@@ -181,7 +181,7 @@ export function MetricCard({
                 <span>{label}</span>
                 {lineageMetricId && <LineagePopover metricId={lineageMetricId} />}
                 {headAction ? (
-                    <span data-testid="metric-head-action" className="ml-auto pl-2">
+                    <span data-testid="metric-head-action" className="-my-1 ml-auto pl-2">
                         {headAction}
                     </span>
                 ) : null}

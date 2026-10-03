@@ -12,6 +12,7 @@ import { useAIComparison, useAIImpactSummary } from "@/lib/graphql/hooks/useAIIm
 import type { AIFilter } from "@/lib/filters/ai";
 import { bucketEquals } from "@/lib/ai/buckets";
 import { CTA_LABELS } from "@/lib/design/cta";
+import { formatDateTimeUTC } from "@/lib/formatters";
 import { AIComparisonCard } from "./AIComparisonCard";
 import { AILeverageBars } from "./AILeverageBars";
 import { AIPanelCard } from "./AIPanelCard";
@@ -269,8 +270,10 @@ export function AIImpactDashboard({ filter, evidenceHref }: AIImpactDashboardPro
             </Notice>
 
             <p className="flex items-start gap-1.5 text-xs text-(--ink-muted)">
-                Last computed {summary?.computedAt ?? "not yet available"}. Copy uses system-health
-                language: values suggest patterns and should be interpreted with local context.
+                Last computed{" "}
+                {summary?.computedAt ? formatDateTimeUTC(summary.computedAt) : "not yet available"}.
+                Copy uses system-health language: values suggest patterns and should be interpreted
+                with local context.
             </p>
         </div>
     );

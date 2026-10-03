@@ -324,7 +324,8 @@ describe("/explore in the approved prototype layout (CHAOS-8068)", () => {
     });
 
     it("'Return to investigation' picks the tab that shows the metric when it is no tab's headline", async () => {
-        await renderExplore({ metric: "blocked_work" });
+        // WIP Saturation is no tab's headline; the first tab that shows it is Flow.
+        await renderExplore({ metric: "wip_saturation" });
         const back = within(screen.getByTestId("explore-context")).getByRole("link", {
             name: "Return to investigation",
         });
@@ -411,5 +412,144 @@ describe("/explore in the approved prototype layout (CHAOS-8068)", () => {
         expect(
             within(screen.getByTestId("explore-context")).getAllByTestId("evidence-fact").at(-1),
         ).toHaveTextContent("SourceEvidence drilldown");
+    });
+});
+
+describe("/explore?metric=blocked_work: the Blocked Work evidence page (prototype blockedEvidence(), CHAOS-8069)", () => {
+    const BLOCKED = {
+        metric: "blocked_work",
+        label: "Blocked Work",
+        unit: "hours",
+        value: 0,
+        delta_pct: 0,
+        drivers: [],
+        contributors: [],
+        drilldown_links: {
+            prs: "/api/v1/drilldown/prs?metric=blocked_work",
+            issues: "/api/v1/drilldown/issues?metric=blocked_work",
+        },
+    };
+    beforeEach(() => {
+        explain.value = { ...BLOCKED };
+    });
+
+    it("header: the metric label and the prototype subtitle; View evidence stays", async () => {
+        await renderExplore({ metric: "blocked_work" });
+        const header = within(screen.getByTestId("page-header"));
+        expect(header.getByRole("heading", { level: 1 })).toHaveTextContent("Blocked Work");
+        expect(header.getByText("Evidence table for the selected metric.")).toBeInTheDocument();
+        expect(header.getByRole("button", { name: "View evidence" })).toBeInTheDocument();
+    });
+
+    it("body: one tile with the served value, then the evidence section; no legacy blocks", async () => {
+        await renderExplore({ metric: "blocked_work" });
+        const strip = screen.getByTestId("explore-metric-tile");
+        expect(strip).toHaveAttribute("data-columns", "1");
+        expect(within(strip).getByTestId("metric-value")).toHaveTextContent(/^0 hours$/);
+        const section = screen.getByTestId("blocked-work-evidence");
+        expect(follows(strip, section)).toBe(true);
+        expect(
+            within(section).getByRole("heading", { level: 2, name: "Blocked Work evidence" }),
+        ).toBeInTheDocument();
+        for (const gone of [
+            "explore-notice",
+            "read-the-signal",
+            "explore-context",
+            "association-cards",
+            "explore-signal-row",
+        ]) {
+            expect(screen.queryByTestId(gone), gone).toBeNull();
+        }
+    });
+
+    it("the count and the result table are not served: 'Not reported', and no 'Open complete table'", async () => {
+        await renderExplore({ metric: "blocked_work" });
+        expect(screen.getByTestId("blocked-work-count")).toHaveTextContent(
+            "Captured work items: Not reported",
+        );
+        expect(screen.queryByText(/Open complete table/)).toBeNull();
+        const rows = within(screen.getByTestId("blocked-work-table")).getAllByTestId(
+            "blocked-evidence-row",
+        );
+        expect(rows.map((row) => row.textContent)).toEqual([
+            "Metric headlineBlocked Work · 0 hours",
+            "Result tableNot reported",
+            expect.stringMatching(/^Time window\d+ days$/),
+        ]);
+        expect(rows[1]).toHaveAttribute("data-reported", "false");
+        // No web-made number: the served headline is the only value in the table.
+        expect(screen.queryByText(/captured work items$/i)).toBeNull();
+    });
+
+    it("a headline the explain read did not serve is 'Not reported', never 0", async () => {
+        explain.value = null;
+        await renderExplore({ metric: "blocked_work" });
+        const rows = within(screen.getByTestId("blocked-work-table")).getAllByTestId(
+            "blocked-evidence-row",
+        );
+        expect(rows[0]).toHaveTextContent("Metric headlineNot reported");
+        expect(rows[0]).toHaveAttribute("data-reported", "false");
+    });
+
+    it("the inset says that zero is not evidence of no blocked work", async () => {
+        await renderExplore({ metric: "blocked_work" });
+        const inset = screen.getByTestId("blocked-work-inset");
+        expect(
+            within(inset).getByRole("heading", { name: "Zero is not a substitute for evidence" }),
+        ).toBeInTheDocument();
+        expect(inset).toHaveTextContent("does not show that no work is blocked");
+    });
+
+    it("the section head action is 'Return to investigation' (ghost, arrow first) to the Flow tab with the role", async () => {
+        await renderExplore({ metric: "blocked_work", role: "manager" });
+        const section = within(screen.getByTestId("blocked-work-evidence"));
+        const back = section.getByRole("link", { name: "Return to investigation" });
+        expect(back.className).toContain("border-transparent");
+        expect(back.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+        const url = new URL(back.getAttribute("href") ?? "", "https://app.example");
+        expect(url.pathname).toBe("/metrics");
+        expect(url.searchParams.get("tab")).toBe("flow");
+        expect(url.searchParams.get("role")).toBe("manager");
+    });
+
+    it("'Return to investigation' goes to a served internal origin (the Bottlenecks page), and rejects an external one", async () => {
+        const { unmount } = await renderExplore({
+            metric: "blocked_work",
+            origin: "/bottleneck?tab=evidence",
+        });
+        expect(screen.getByRole("link", { name: "Return to investigation" })).toHaveAttribute(
+            "href",
+            "/bottleneck?tab=evidence",
+        );
+        unmount();
+        await renderExplore({ metric: "blocked_work", origin: "//evil.example/x" });
+        const href =
+            screen.getByRole("link", { name: "Return to investigation" }).getAttribute("href") ??
+            "";
+        expect(href).not.toContain("evil");
+        expect(new URL(href, "https://app.example").pathname).toBe("/metrics");
+    });
+
+    it("the served evidence shortcuts stay, last", async () => {
+        await renderExplore({ metric: "blocked_work" });
+        const shortcuts = screen.getByTestId("evidence-shortcuts");
+        expect(follows(screen.getByTestId("blocked-work-evidence"), shortcuts)).toBe(true);
+        expect(
+            within(shortcuts)
+                .getAllByRole("link")
+                .map((l) => l.textContent),
+        ).toEqual(["prs", "issues"]);
+    });
+
+    it("another metric keeps the metric evidence layout (no Blocked Work section)", async () => {
+        explain.value = { ...FULL };
+        await renderExplore({ metric: "cycle_time" });
+        expect(screen.queryByTestId("blocked-work-evidence")).toBeNull();
+        expect(screen.getByTestId("explore-context")).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId("page-header")).getByText(
+                "Evidence detail for the selected metric.",
+            ),
+        ).toBeInTheDocument();
     });
 });
