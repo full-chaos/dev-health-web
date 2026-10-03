@@ -501,18 +501,21 @@ Refresh tokens are single-use with family-based reuse detection.
 
 The web JWT callback refreshes the access token and validates the session against the backend. Every branch that takes a token away from a session, or keeps a session on a fallback, writes one `warn` line (`module: "auth-session"`, `src/lib/authSessionLog.ts`). Read these lines to find which branch ended a session.
 
-| `branch`               | `operation` | Backend answer                                                                  | Effect on the session                                 |
-| ---------------------- | ----------- | ------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `refresh_failed`       | `refresh`   | 401                                                                             | Both tokens are removed; the user must sign in again  |
-| `refresh_unavailable`  | `refresh`   | any other answer that is not 200                                                | Access token removed; refresh token kept; retry later |
-| `refresh_call_failed`  | `refresh`   | none (the call threw)                                                           | Access token removed; refresh token kept; retry later |
-| `user_invalid`         | `validate`  | a 2xx with `valid: false`, or 401 / 403                                         | Both tokens are removed                               |
-| `validate_transient`   | `validate`  | any other answer: 404, 400, 422, 429, 5xx, a 2xx body without a boolean `valid` | Session kept; validation retried after backoff        |
-| `validate_call_failed` | `validate`  | none (the call threw)                                                           | Session kept; validation retried after backoff        |
+| `branch`                  | `operation` | Backend answer                                                                  | Effect on the session                                 |
+| ------------------------- | ----------- | ------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| `refresh_failed`          | `refresh`   | 401                                                                             | Both tokens are removed; the user must sign in again  |
+| `refresh_unavailable`     | `refresh`   | any other answer that is not 200                                                | Access token removed; refresh token kept; retry later |
+| `refresh_call_failed`     | `refresh`   | none (the call threw)                                                           | Access token removed; refresh token kept; retry later |
+| `refresh_no_access_token` | `refresh`   | 2xx with no access token in the body                                            | Access token removed; no error is set                 |
+| `user_invalid`            | `validate`  | a 2xx with `valid: false`, or 401 / 403                                         | Both tokens are removed                               |
+| `validate_transient`      | `validate`  | any other answer: 404, 400, 422, 429, 5xx, a 2xx body without a boolean `valid` | Session kept; validation retried after backoff        |
+| `validate_call_failed`    | `validate`  | none (the call threw)                                                           | Session kept; validation retried after backoff        |
 
 Validation ends a session only on an answer that refuses it. The backend says "this user is no longer valid" in one way: HTTP 200 with `valid: false`. 401 and 403 also end the session, so that a refusal of the credentials never keeps one. Every other answer says nothing about the user — for example a 404 from a router that has no backend while a service restarts — and keeps both tokens; validation is retried after backoff (60 s base, 15 min cap). The session is not kept without end: the access token expires on its own clock (60 minutes), and then the refresh path decides.
 
-Each line carries only `operation`, `branch`, `status` (HTTP status of the backend answer), `errorName` (the constructor name of a thrown error, never its message) and `failures` (consecutive failures for that token). A token, a cookie, an e-mail address or text served by the backend is never logged; `src/lib/__tests__/auth-session-branch-logs.test.ts` pins both the branch names and that rule.
+The refresh has no memo: the proxy, the page render and each route handler that see the same expired cookie each call the backend and each write a line, so one page load can produce several lines.
+
+Each line carries only `operation`, `branch`, `status` (HTTP status of the backend answer), `errorName` (the `name` of a thrown error, for example `TypeError`; never its message) and `failures` (consecutive failures for that token). A token, a cookie, an e-mail address or text served by the backend is never logged, and a log line that fails never changes what happens to the session; `src/lib/__tests__/auth-session-branch-logs.test.ts` pins both the branch names and that rule.
 
 #### Logout
 
