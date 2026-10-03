@@ -8,6 +8,7 @@ import {
     OPERATION_MANIFEST,
     QUERY_ROUTE_PATHS,
     REGISTRYDUMP_PATHS,
+    checkSummary,
     compareRegistry,
     resolveOpsPath,
     sha256Trim,
@@ -282,6 +283,68 @@ describe("compareRegistry with legacy entries", () => {
         );
         expect(errors.join("\n")).toContain("legacy");
         expect(rows.find((r) => r.operation === "capacityForecast").match).toBe(false);
+    });
+
+    // A legacy match is served, but it is loud: the web half that sends the current text is still owed.
+    describe("what check prints for the three cases", () => {
+        const threeCases = () => {
+            const entries = correctGoEntries();
+            const names = ["capacityForecast", "reviewEdges"];
+            const [legacyCase, mismatchCase] = names.map((n) =>
+                entries.find((e) => e.operation === n),
+            );
+            const others = entries.filter((e) => !names.includes(e.operation));
+            const moved = (e) => ({
+                ...e,
+                document: `query New${e.operation} { x }`,
+                digest: sha256Trim(`query New${e.operation} { x }`),
+            });
+            return compareRegistry(
+                [
+                    ...others,
+                    // capacityForecast: ops has a new current text, the web text is its legacy text.
+                    moved(legacyCase),
+                    {
+                        ...legacyCase,
+                        const_name: "registeredCapacityForecastV1Document",
+                        legacy: true,
+                    },
+                    // reviewEdges: ops has a new current text and the web text is nowhere.
+                    moved(mismatchCase),
+                ],
+                OPERATION_MANIFEST,
+            ).rows;
+        };
+
+        it("counts the rows as current, legacy and mismatch", () => {
+            const rows = threeCases();
+            const summary = checkSummary(rows);
+            expect([summary.current, summary.legacy, summary.mismatch]).toEqual([
+                rows.length - 2,
+                1,
+                1,
+            ]);
+            expect(summary.counts).toBe(`current ${rows.length - 2}, legacy 1, mismatch 1`);
+        });
+
+        it("prints one warning line per legacy match, by operation name, and none for the other rows", () => {
+            expect(checkSummary(threeCases()).warnings).toEqual([
+                "WARNING: capacityForecast: matches a LEGACY ops text; the web half is still owed",
+            ]);
+        });
+
+        it("prints no warning when every text is the current one", () => {
+            const { rows } = compareRegistry(correctGoEntries(), OPERATION_MANIFEST);
+            const summary = checkSummary(rows);
+            expect(summary.warnings).toEqual([]);
+            expect(summary.counts).toBe(`current ${rows.length}, legacy 0, mismatch 0`);
+        });
+
+        it("a text that matches neither still fails: it is in the mismatch count, not in the warnings", () => {
+            const summary = checkSummary(threeCases());
+            expect(summary.mismatch).toBe(1);
+            expect(summary.warnings.join("\n")).not.toContain("reviewEdges");
+        });
     });
 
     it.each([false, "true", 1, null])(
