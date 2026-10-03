@@ -132,6 +132,16 @@ describe("AI Impact page pinned (CHAOS-7768)", () => {
         expect(within(strip).getAllByTestId("metric-value")).toHaveLength(3);
     });
 
+    it("marks the unknown-attribution tile with a dashed Unknown pill; the other tiles have none", () => {
+        setup();
+        render(<AIImpactDashboard filter={filter} />);
+        const strip = screen.getByTestId("ai-impact-stat-tiles");
+        const pill = within(strip).getByTestId("ai-unknown-pill");
+        expect(pill).toHaveTextContent("Unknown");
+        expect(pill.className).toContain("border-dashed");
+        expect(within(strip).getAllByTestId("ai-unknown-pill")).toHaveLength(1);
+    });
+
     it("shows Not reported, never 0, when the summary does not serve the counts", () => {
         setup({
             ...summary,

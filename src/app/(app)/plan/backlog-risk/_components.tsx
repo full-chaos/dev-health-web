@@ -72,12 +72,22 @@ type StaleWip = ThroughputForecast["staleWip"];
 function Tile({
     label,
     value,
+    unit,
+    valueText,
     caption,
     pill,
     testId,
 }: {
     label: string;
-    value: string;
+    /** The served number; undefined reads "Not reported". */
+    value?: number;
+    /** The unit word, drawn small beside the number. */
+    unit?: string;
+    /**
+     * A ready text, for the congestion ratio only: the shared formatter keeps one decimal, and the
+     * ratio needs two ("1.25×", as its threshold caption reads).
+     */
+    valueText?: string;
     caption: string;
     pill?: ReactNode;
     testId: string;
@@ -86,7 +96,9 @@ function Tile({
         <MetricCard
             testId={testId}
             label={label}
-            valueText={value}
+            value={value}
+            unit={unit}
+            valueText={valueText}
             hideTrend
             deltaSlot={
                 <>
@@ -104,15 +116,31 @@ type TilesProps = {
     estimateCoverage: EstimateCoverage;
 };
 
-/** The unestimated tile: a count, "No data" (a dash, never 0) when coverage is unavailable, or a real 0 for an empty backlog. */
-function unestimatedTile(estimateCoverage: EstimateCoverage): { value: string; caption: string } {
-    if (!estimateCoverage) return { value: "—", caption: "No data" };
-    if (estimateCoverage.backlogSize === 0 && estimateCoverage.ratio == null) {
-        return { value: "0", caption: "No open backlog" };
+/** An age as a number and a unit word: hours under 24, else days with one decimal (as `formatAgeHours`). */
+function ageParts(hours: number | null | undefined): { value?: number; unit?: string } {
+    if (hours == null) return {};
+    if (hours < 24) {
+        const rounded = Math.round(hours);
+        return { value: rounded, unit: rounded === 1 ? "hour" : "hours" };
     }
-    if (estimateCoverage.ratio == null) return { value: "—", caption: "No data" };
+    const days = Math.round((hours / 24) * 10) / 10;
+    return { value: days, unit: days === 1 ? "day" : "days" };
+}
+
+/** The unestimated tile: a count, "Not reported" when coverage is unavailable, or a real 0 for an empty backlog. */
+function unestimatedTile(estimateCoverage: EstimateCoverage): {
+    value?: number;
+    unit?: string;
+    caption: string;
+} {
+    if (!estimateCoverage) return { caption: "No data" };
+    if (estimateCoverage.backlogSize === 0 && estimateCoverage.ratio == null) {
+        return { value: 0, caption: "No open backlog" };
+    }
+    if (estimateCoverage.ratio == null) return { caption: "No data" };
     return {
-        value: `${formatNumber(estimateCoverage.unestimatedCount)} items`,
+        value: estimateCoverage.unestimatedCount,
+        unit: estimateCoverage.unestimatedCount === 1 ? "item" : "items",
         caption: `${formatRatioAsPercent(estimateCoverage.ratio)} estimate coverage`,
     };
 }
@@ -127,26 +155,27 @@ export function BacklogTiles({ overlay, staleWip, estimateCoverage }: TilesProps
             <Tile
                 testId="tile-wip-congestion"
                 label="WIP congestion"
-                value={formatCongestion(overlay.value)}
+                valueText={formatCongestion(overlay.value)}
                 pill={<StatusBadge active={overlay.active} />}
                 caption={`vs typical · threshold ${formatCongestion(overlay.threshold)}`}
             />
             <Tile
                 testId="tile-stale-wip"
                 label="Stale WIP · P90"
-                value={p90 == null ? "—" : formatAgeHours(p90)}
+                {...ageParts(p90)}
                 caption={p90 == null ? "No data" : "90th percentile age of in-progress items"}
             />
             <Tile
                 testId="tile-median-wip-age"
                 label="Median WIP age"
-                value={p50 == null ? "—" : formatAgeHours(p50)}
+                {...ageParts(p50)}
                 caption={p50 == null ? "No data" : "Median in-progress age"}
             />
             <Tile
                 testId="tile-unestimated"
                 label="Unestimated work"
                 value={unestimated.value}
+                unit={unestimated.unit}
                 caption={unestimated.caption}
             />
         </MetricStrip>

@@ -147,6 +147,16 @@ describe("ImproveAutomationsDashboard", () => {
         expect(row).toHaveTextContent("Not reported");
     });
 
+    it("draws the arrow before 'View AI automations' (prototype btn())", () => {
+        hook.mockReturnValue(result());
+        render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
+
+        const link = screen.getByTestId("improve-automations-ai-link");
+        expect(link.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+        expect(link).toHaveTextContent("View AI automations");
+        expect(link.textContent).not.toContain("→");
+    });
+
     it("writes severity as a word with an icon", () => {
         hook.mockReturnValue(result());
         render(<ImproveAutomationsDashboard aiAutomationsHref={AI} />);
