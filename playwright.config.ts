@@ -1,17 +1,4 @@
-import path from "node:path";
 import { defineConfig } from "@playwright/test";
-
-// TEMPORARY PLANT for the CHAOS-8538 proof run. The next commit removes it.
-// The web server is started with a preload that never answers the request for
-// the 32 px app-shell logo (tests/plant-stuck-logo.cjs): the state of the
-// 2026-10-03 incident, made on purpose.
-// - Shards 1/3 and 2/3 keep the logo canary: it must fail and name the URL.
-// - Shard 3/3 runs WITHOUT the canary, as before this change: the timed-out
-//   tests must print the pending-requests block and `maxFailures` must stop
-//   the job. `--list` is left out so that the shard contract test still sees
-//   the real project graph.
-const plantedPreload = `--require=${path.resolve("tests/plant-stuck-logo.cjs")}`;
-const plantedShardWithoutCanary = process.argv.includes("3/3") && !process.argv.includes("--list");
 
 const isCI = process.env.CI === "true" || process.env.CI === "1";
 const resultsDirectory = process.env.PLAYWRIGHT_RESULTS_DIR ?? "test-results/playwright/default";
@@ -132,9 +119,7 @@ export default defineConfig({
                 /pagerduty-final-qa-p[0-3]\.spec\.ts/,
                 /acr-device-fresh-session\.spec\.ts/,
             ],
-            dependencies: plantedShardWithoutCanary
-                ? ["auth-setup"]
-                : ["auth-setup", "shell-logo-canary"],
+            dependencies: ["auth-setup", "shell-logo-canary"],
             use: {
                 storageState: authFile,
             },
@@ -178,7 +163,6 @@ export default defineConfig({
             stdout: serverStdout,
             stderr: "pipe",
             env: {
-                NODE_OPTIONS: plantedPreload,
                 PLAYWRIGHT_TEST: "true",
                 DEV_HEALTH_TEST_MODE: "true",
                 NEXT_PUBLIC_DEV_HEALTH_TEST_MODE: "true",
