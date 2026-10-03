@@ -164,7 +164,8 @@ describe("ResetPasswordForm", () => {
         await userEvent.click(screen.getByRole("button", { name: /reset password/i }));
 
         await waitFor(() => {
-            expect(screen.getByText(/Server error/i)).toBeInTheDocument();
+            expect(screen.getByText(/Failed to reset password/i)).toBeInTheDocument();
+            expect(screen.queryByText(/Server error/i)).toBeNull();
         });
     });
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useState } from "react";
 
 import { DataState } from "@/components/ui/DataState";
@@ -73,7 +74,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
     );
 
     if (risk.error) {
-        return <ErrorCard title="Failed to load AI risk" message={risk.error.message} />;
+        return <ErrorCard title="Failed to load AI risk" message={READ_FAILED_MESSAGE} />;
     }
 
     if (!risk.fetching && riskData && !riskData.dataAvailable) {
@@ -220,7 +221,7 @@ export function AIRiskDashboard({ filter }: AIRiskDashboardProps) {
                 <p
                     className={`rounded-(--radius-md) border px-4 py-3 text-sm ${STATUS_PILL.negative}`}
                 >
-                    Governance findings unavailable: {governance.error.message}
+                    Governance findings unavailable. {READ_FAILED_MESSAGE}
                 </p>
             )}
 

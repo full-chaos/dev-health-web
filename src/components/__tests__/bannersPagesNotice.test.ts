@@ -16,19 +16,19 @@ const BANNERS: Array<{ file: string; text: string; title?: string }> = [
     },
     {
         file: "app/(app)/org/admin/integrations/[provider]/customer-push/[source_id]/batches/page.tsx",
-        text: "Failed to load batches: {batchesResult.error}",
+        text: "Failed to load batches. {READ_FAILED_MESSAGE}",
     },
     {
         file: "app/(app)/org/admin/integrations/[provider]/customer-push/[source_id]/credentials/page.tsx",
-        text: "Failed to load credentials: {tokensResult.error}",
+        text: "Failed to load credentials. {READ_FAILED_MESSAGE}",
     },
     {
         file: "app/(app)/org/admin/integrations/[provider]/page.tsx",
-        text: "Failed to load credentials: {credentialsResult.error}",
+        text: "Failed to load credentials. {READ_FAILED_MESSAGE}",
     },
     {
         file: "app/(app)/org/admin/integrations/[provider]/page.tsx",
-        text: "Failed to load customer-push sources: {customerPushSourcesResult.error}",
+        text: "Failed to load customer-push sources. {READ_FAILED_MESSAGE}",
     },
     {
         // A11: one plain sentence + Retry; the backend text goes to the server log.
@@ -39,34 +39,47 @@ const BANNERS: Array<{ file: string; text: string; title?: string }> = [
     { file: "app/(app)/org/admin/teams/page.tsx", text: "Teams could not be loaded." },
     // One plain sentence + Retry; the backend text goes to the server log (CHAOS-8235).
     { file: "app/(app)/org/admin/users/page.tsx", text: "Users could not be loaded." },
-    { file: "app/(app)/superadmin/audit/page.tsx", text: "Error loading audit logs: {error}" },
+    {
+        file: "app/(app)/superadmin/audit/page.tsx",
+        text: "Error loading audit logs. {READ_FAILED_MESSAGE}",
+    },
     {
         file: "app/(app)/superadmin/billing/invoices/page.tsx",
-        text: "Failed to load invoices: {result.error}",
+        text: "Failed to load invoices. {READ_FAILED_MESSAGE}",
     },
     {
         file: "app/(app)/superadmin/billing/plans/page.tsx",
-        text: "Failed to load plans: {plansResult.error}",
+        text: "Failed to load plans. {READ_FAILED_MESSAGE}",
     },
     {
         file: "app/(app)/superadmin/billing/refunds/page.tsx",
-        text: "Failed to load refunds: {result.error}",
+        text: "Failed to load refunds. {READ_FAILED_MESSAGE}",
     },
     {
         file: "app/(app)/superadmin/billing/subscriptions/page.tsx",
-        text: "Failed to load subscriptions: {result.error}",
+        text: "Failed to load subscriptions. {READ_FAILED_MESSAGE}",
     },
     {
         file: "app/(app)/superadmin/licensing/page.tsx",
-        text: "Error loading organizations: {error}",
+        text: "Error loading organizations. {READ_FAILED_MESSAGE}",
     },
-    { file: "app/(app)/superadmin/orgs/page.tsx", text: "Error loading organizations: {error}" },
-    { file: "app/(app)/superadmin/page.tsx", text: "{error}", title: "Error loading stats" },
+    {
+        file: "app/(app)/superadmin/orgs/page.tsx",
+        text: "Error loading organizations. {READ_FAILED_MESSAGE}",
+    },
+    {
+        file: "app/(app)/superadmin/page.tsx",
+        text: "{READ_FAILED_MESSAGE}",
+        title: "Error loading stats",
+    },
     {
         file: "app/(app)/superadmin/settings/page.tsx",
-        text: "Error loading settings: {categoriesError}",
+        text: "Error loading settings. {READ_FAILED_MESSAGE}",
     },
-    { file: "app/(app)/superadmin/users/page.tsx", text: "Error loading users: {error}" },
+    {
+        file: "app/(app)/superadmin/users/page.tsx",
+        text: "Error loading users. {READ_FAILED_MESSAGE}",
+    },
 ];
 const CLIENT_PAGES = new Set<string>();
 const src = (p: string) =>

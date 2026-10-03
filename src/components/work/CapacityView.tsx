@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useMemo } from "react";
 
 import { ForecastInputsCard } from "@/components/capacity/ForecastInputsCard";
@@ -65,8 +66,8 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                     ))}
                 </div>
             ) : error ? (
-                <Notice variant="danger" live={false} titleAs="h3" title="Forecast Unavailable">
-                    {error.message}
+                <Notice variant="danger" live={false} titleAs="h3" title="Forecast unavailable">
+                    {READ_FAILED_MESSAGE}
                 </Notice>
             ) : forecast ? (
                 <>
@@ -110,6 +111,13 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                             <div className="animate-pulse text-sm text-(--text-muted)">
                                 Loading chart...
                             </div>
+                        </div>
+                    ) : error ? (
+                        <div
+                            data-testid="forecast-chart-failed"
+                            className="flex h-80 items-center justify-center text-sm text-(--text-muted)"
+                        >
+                            {READ_FAILED_MESSAGE}
                         </div>
                     ) : (
                         <div className="flex h-80 items-center justify-center text-sm text-(--text-muted)">

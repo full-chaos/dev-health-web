@@ -73,7 +73,8 @@ describe("SecurityDashboard", () => {
         render(<SecurityDashboard filter={filter} />);
 
         expect(screen.getByText(/Failed to load security overview/i)).toBeInTheDocument();
-        expect(screen.getByText(/boom/i)).toBeInTheDocument();
+        expect(screen.queryByText(/boom/i)).toBeNull();
+        expect(screen.getByText("Could not be read")).toBeInTheDocument();
         expect(screen.getAllByText(/could not be loaded/i).length).toBeGreaterThanOrEqual(4);
     });
 

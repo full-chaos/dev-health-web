@@ -31,9 +31,17 @@ describe("SyncConfigDeleteControls", () => {
     });
 
     it.each([
-        ["a returned error", () => mockDeleteSyncConfig.mockResolvedValueOnce({ error: "Denied" })],
-        ["a thrown error", () => mockDeleteSyncConfig.mockRejectedValueOnce(new Error("Offline"))],
-    ])("closes without refreshing after %s", async (_case, configureFailure) => {
+        [
+            "a returned error",
+            () => mockDeleteSyncConfig.mockResolvedValueOnce({ error: "Denied" }),
+            "Denied",
+        ],
+        [
+            "a thrown error",
+            () => mockDeleteSyncConfig.mockRejectedValueOnce(new Error("Offline")),
+            "The change was not saved. Try again.",
+        ],
+    ])("closes without refreshing after %s", async (_case, configureFailure, shown) => {
         configureFailure();
         renderControls();
 
@@ -43,7 +51,8 @@ describe("SyncConfigDeleteControls", () => {
         await waitFor(() => {
             expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
         });
-        expect(screen.getByText(/Denied|Offline/)).toBeInTheDocument();
+        expect(screen.getByText(shown)).toBeInTheDocument();
+        expect(screen.queryByText(/Offline/)).toBeNull();
         expect(mockRefresh).not.toHaveBeenCalled();
     });
 });

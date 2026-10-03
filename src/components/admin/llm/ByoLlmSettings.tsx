@@ -1,5 +1,7 @@
 "use client";
 
+import { isPlanGateMessage } from "@/lib/actionFailure";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -242,7 +244,7 @@ export function ByoLlmSettings({
             setBudgetUsd(formatMicroUsdInput(result.data.limit_micro_usd));
         } else {
             setBudget(null);
-            setBudgetLoadError(result.error ?? "Could not load the organization budget.");
+            setBudgetLoadError(READ_FAILED_MESSAGE);
         }
         setBudgetLoading(false);
     }, [loadBudgetAction]);
@@ -269,16 +271,19 @@ export function ByoLlmSettings({
         if (result.status === 402) {
             setLocked({
                 reason: "not_licensed",
-                message:
-                    result.error ?? "BYO-LLM requires Team tier or higher for this organization.",
+                message: isPlanGateMessage(result.error)
+                    ? result.error
+                    : "BYO-LLM requires Team tier or higher for this organization.",
             });
         } else if (result.status === 403) {
             setLocked({
                 reason: "not_enabled",
-                message: result.error ?? "BYO-LLM is not enabled for this organization.",
+                message: isPlanGateMessage(result.error)
+                    ? result.error
+                    : "BYO-LLM is not enabled for this organization.",
             });
         } else if (result.error) {
-            setLoadError(result.error);
+            setLoadError(READ_FAILED_MESSAGE);
         } else if (result.data) {
             applySettings(result.data);
             void fetchStatus();

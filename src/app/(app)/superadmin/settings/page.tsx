@@ -1,3 +1,4 @@
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SettingsSection } from "@/components/admin/settings/SettingsSection";
@@ -16,7 +17,7 @@ export default async function SettingsPage() {
                     description="Global platform configuration."
                 />
                 <Notice variant="danger" live={false}>
-                    Error loading settings: {categoriesError}
+                    Error loading settings. {READ_FAILED_MESSAGE}
                 </Notice>
             </div>
         );

@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useState, useTransition, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -29,7 +30,7 @@ export function PendingChangesPanel() {
         setLoading(true);
         const result = await getPendingTeamChanges();
         if (result.error) {
-            toast.error("Failed to load pending changes: " + result.error);
+            toast.error(`Failed to load pending changes. ${READ_FAILED_MESSAGE}`);
         } else if (result.data) {
             setChanges(result.data.changes);
         }

@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidationStatus } from "@/lib/actionFailure";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -61,7 +62,12 @@ export function SignupForm({ plan, trialIntent = false, callbackUrl }: SignupFor
                 }
                 try {
                     const data = await res.json();
-                    toast.error(extractErrorMessage(data.detail, "Registration failed"));
+                    toast.error(
+                        extractErrorMessage(
+                            isValidationStatus(res.status) ? data.detail : undefined,
+                            "Registration failed",
+                        ),
+                    );
                 } catch {
                     toast.error("Registration failed");
                 }

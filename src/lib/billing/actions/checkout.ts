@@ -1,5 +1,6 @@
 "use server";
 
+import { failureResult } from "@/lib/actionFailure";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import type { ActionResult } from "@/lib/result";
@@ -76,13 +77,16 @@ export async function listBillingPlans(
         });
         if (!res.ok) {
             const error = await res.json().catch(() => ({ detail: res.statusText }));
-            return { error: error.detail || `Failed to load plans (${res.status})` };
+            return failureResult("read", "listBillingPlans", {
+                status: res.status,
+                served: error.detail,
+            });
         }
 
         const data = (await res.json()) as BillingPlanRecord[];
         return { data };
     } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureResult("read", "listBillingPlans", { error: err });
     }
 }
 
@@ -106,14 +110,17 @@ export async function createBillingPlan(
 
         if (!res.ok) {
             const error = await res.json().catch(() => ({ detail: res.statusText }));
-            return { error: error.detail || `Failed to create plan (${res.status})` };
+            return failureResult("action", "createBillingPlan", {
+                status: res.status,
+                served: error.detail,
+            });
         }
 
         const plan = (await res.json()) as BillingPlanRecord;
         revalidatePath("/marketing/pricing");
         return { data: plan };
     } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureResult("action", "createBillingPlan", { error: err });
     }
 }
 
@@ -138,14 +145,17 @@ export async function updateBillingPlan(
 
         if (!res.ok) {
             const error = await res.json().catch(() => ({ detail: res.statusText }));
-            return { error: error.detail || `Failed to update plan (${res.status})` };
+            return failureResult("action", "updateBillingPlan", {
+                status: res.status,
+                served: error.detail,
+            });
         }
 
         const plan = (await res.json()) as BillingPlanRecord;
         revalidatePath("/marketing/pricing");
         return { data: plan };
     } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureResult("action", "updateBillingPlan", { error: err });
     }
 }
 
@@ -167,14 +177,17 @@ export async function deleteBillingPlan(
 
         if (!res.ok) {
             const error = await res.json().catch(() => ({ detail: res.statusText }));
-            return { error: error.detail || `Failed to delete plan (${res.status})` };
+            return failureResult("action", "deleteBillingPlan", {
+                status: res.status,
+                served: error.detail,
+            });
         }
 
         const result = (await res.json()) as { deleted: boolean };
         revalidatePath("/marketing/pricing");
         return { data: result };
     } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureResult("action", "deleteBillingPlan", { error: err });
     }
 }
 
@@ -199,14 +212,17 @@ export async function syncBillingPlanToStripe(
 
         if (!res.ok) {
             const error = await res.json().catch(() => ({ detail: res.statusText }));
-            return { error: error.detail || `Failed to sync plan (${res.status})` };
+            return failureResult("action", "syncBillingPlanToStripe", {
+                status: res.status,
+                served: error.detail,
+            });
         }
 
         const plan = (await res.json()) as BillingPlanRecord;
         revalidatePath("/marketing/pricing");
         return { data: plan };
     } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureResult("action", "syncBillingPlanToStripe", { error: err });
     }
 }
 

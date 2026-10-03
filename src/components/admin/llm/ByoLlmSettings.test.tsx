@@ -115,7 +115,8 @@ describe("ByoLlmSettings", () => {
 
         renderForm();
 
-        expect(await screen.findByText("Budget service unavailable")).toBeInTheDocument();
+        expect(await screen.findByText("Could not be read")).toBeInTheDocument();
+        expect(screen.queryByText("Budget service unavailable")).toBeNull();
         expect(screen.getByRole("button", { name: "Edit" })).toBeInTheDocument();
         await userEvent.click(screen.getByRole("button", { name: "Retry" }));
         expect(await screen.findByText("Budget enforced")).toBeInTheDocument();
@@ -548,7 +549,8 @@ describe("ByoLlmSettings", () => {
             .mockResolvedValueOnce({ data: { provider: "openai" } });
         renderForm();
 
-        expect(await screen.findByText("temporary backend failure")).toBeInTheDocument();
+        expect(await screen.findByText("Could not be read")).toBeInTheDocument();
+        expect(screen.queryByText("temporary backend failure")).toBeNull();
         expect(screen.queryByRole("button", { name: "Save" })).not.toBeInTheDocument();
         expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
 
@@ -594,7 +596,8 @@ describe("ByoLlmSettings", () => {
 
         mockLoad.mockResolvedValue({ error: "fetch failed", status: 500 });
         renderForm();
-        await screen.findByText("fetch failed");
+        await screen.findByText("Could not be read");
+        expect(screen.queryByText("fetch failed")).toBeNull();
         expect(cardOf()).toHaveTextContent("Bring your own model provider");
     });
 

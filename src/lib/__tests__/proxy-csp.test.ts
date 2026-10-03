@@ -31,20 +31,60 @@ beforeEach(() => {
     vi.unstubAllEnvs();
 });
 
+const WITH_EVAL = /script-src 'self' 'nonce-[A-Za-z0-9_-]+' 'unsafe-eval';/;
+const WITHOUT_EVAL = /script-src 'self' 'nonce-[A-Za-z0-9_-]+';/;
+
+/** The policy the proxy sends for one NODE_ENV and one test-mode value (undefined = unset). */
+async function policyFor(nodeEnv: string | undefined, testMode: string | undefined) {
+    vi.stubEnv("NODE_ENV", nodeEnv);
+    vi.stubEnv("DEV_HEALTH_TEST_MODE", testMode);
+
+    const response = await proxy(request());
+
+    return response.headers.get("Content-Security-Policy") ?? "";
+}
+
 describe("proxy Content-Security-Policy", () => {
     it("allows React development eval when browser test mode is enabled", async () => {
-        vi.stubEnv("DEV_HEALTH_TEST_MODE", "true");
+        const csp = await policyFor("test", "true");
 
-        const response = await proxy(request());
-
-        expect(response.headers.get("Content-Security-Policy")).toContain("'unsafe-eval'");
+        expect(csp).toMatch(WITH_EVAL);
     });
 
     it("does not allow eval when browser test mode is disabled", async () => {
-        vi.stubEnv("DEV_HEALTH_TEST_MODE", "false");
+        const csp = await policyFor("test", "false");
 
-        const response = await proxy(request());
+        expect(csp).toMatch(WITHOUT_EVAL);
+        expect(csp).not.toContain("'unsafe-eval'");
+    });
 
-        expect(response.headers.get("Content-Security-Policy")).not.toContain("'unsafe-eval'");
+    it("does not allow eval in the test runner when browser test mode is unset", async () => {
+        const csp = await policyFor("test", undefined);
+
+        expect(csp).toMatch(WITHOUT_EVAL);
+        expect(csp).not.toContain("'unsafe-eval'");
+    });
+
+    it.each([["false"], [undefined]])(
+        "allows React development eval on the development server (test mode %s)",
+        async (testMode) => {
+            const csp = await policyFor("development", testMode);
+
+            expect(csp).toMatch(WITH_EVAL);
+        },
+    );
+
+    it.each([
+        ["production", "false"],
+        ["production", "true"],
+        ["staging", "true"],
+        ["", "true"],
+        [undefined, "true"],
+        [undefined, undefined],
+    ])("never allows eval when NODE_ENV is %s and test mode is %s", async (nodeEnv, testMode) => {
+        const csp = await policyFor(nodeEnv, testMode);
+
+        expect(csp).toMatch(WITHOUT_EVAL);
+        expect(csp).not.toContain("'unsafe-eval'");
     });
 });

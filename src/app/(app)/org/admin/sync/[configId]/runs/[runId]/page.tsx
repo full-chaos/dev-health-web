@@ -1,3 +1,4 @@
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { AdminHeader } from "@/components/admin/AdminHeader";
@@ -48,7 +49,7 @@ export default async function SyncRunDetailPage({ params }: PageProps) {
         // (successful) run header still shows.
         if (unitsResult.error || !unitsResult.data) {
             summary = null;
-            unitsError = unitsResult.error ?? "Unit details are unavailable.";
+            unitsError = READ_FAILED_MESSAGE;
         } else {
             summary = unitsResult.data;
         }

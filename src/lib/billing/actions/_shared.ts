@@ -1,5 +1,7 @@
 // Shared internal helpers for billing actions — NOT a server action file.
 // Do not re-export from the barrel; these are implementation details.
+import { failureFromError } from "@/lib/actionFailure";
+import { AdminApiError } from "@/lib/admin/api";
 import { auth } from "@/lib/auth";
 import { getServerEnv } from "@/lib/config";
 import { AuthErrors, ValidationErrors, requestFailedMessage } from "@/lib/constants/errors";
@@ -71,7 +73,7 @@ export async function withErrorHandling<T>(fn: () => Promise<T>): Promise<Action
     try {
         return { data: await fn() };
     } catch (err) {
-        return { error: err instanceof Error ? err.message : "Unknown error" };
+        return failureFromError("billingRequest", err);
     }
 }
 
@@ -88,7 +90,12 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
 
     if (!response.ok) {
         const detail = await response.json().catch(() => ({ detail: response.statusText }));
-        throw new Error(detail.detail || requestFailedMessage(response.status));
+        throw new AdminApiError(
+            response.status,
+            requestFailedMessage(response.status),
+            typeof detail.detail === "string" ? detail.detail : undefined,
+            init?.method ?? "GET",
+        );
     }
 
     return (await response.json()) as T;

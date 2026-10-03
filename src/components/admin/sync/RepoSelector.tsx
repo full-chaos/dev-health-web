@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useCallback, useEffect, useReducer, useState } from "react";
 import { SkeletonLine } from "@/components/ui/Skeleton";
 import { listReposForCredential } from "@/lib/admin/server";
@@ -128,7 +129,7 @@ export function RepoSelector({
     }
 
     if (error) {
-        return <Notice variant="danger">Failed to load repositories: {error}</Notice>;
+        return <Notice variant="danger">Failed to load repositories. {READ_FAILED_MESSAGE}</Notice>;
     }
 
     if (repos.length === 0) {

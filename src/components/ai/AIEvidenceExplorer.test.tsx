@@ -213,9 +213,8 @@ describe("AIEvidenceExplorer", () => {
 
         render(<AIEvidenceExplorer filter={filter} />);
 
-        expect(screen.getByTestId("ai-drilldown-error")).toHaveTextContent(
-            /ClickHouse unavailable/,
-        );
+        expect(screen.getByTestId("ai-drilldown-error")).toHaveTextContent(/Could not be read/);
+        expect(screen.queryByText(/ClickHouse unavailable/)).toBeNull();
     });
 
     it("filters PR rows by the search input", async () => {
