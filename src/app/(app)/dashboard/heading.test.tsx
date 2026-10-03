@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 import { AppShell } from "@/components/shell/AppShell";
 import { checkApiHealth, getApiMeta } from "@/lib/api/system";
 import { getSetupStatus } from "@/lib/admin/server";
@@ -10,8 +12,8 @@ import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import Home from "./page";
 
 // The Home's header is the shared PageHeader: one h1 for the page, the
-// eyebrow from the navigation trail. The health summary is rendered for real
-// here, because it used to bring a second h1.
+// eyebrow from the navigation trail. The primary-signal hero is rendered for real
+// here, because the block it replaced used to bring a second h1.
 
 vi.mock("next/navigation", () => ({
     usePathname: () => "/dashboard",
@@ -34,13 +36,11 @@ vi.mock("@/lib/auth", () => ({
     auth: vi.fn(async () => ({ user: { org_id: "org-1" } })),
 }));
 
-vi.mock("@/components/home/AiWorkflowCallout", () => ({ AiWorkflowCallout: () => null }));
-vi.mock("@/components/home/BackendBanner", () => ({ BackendBanner: () => null }));
-vi.mock("@/components/home/CockpitClient", () => ({ CockpitClient: () => null }));
+vi.mock("@/components/home/HomeMonitoring", () => ({ HomeMonitoring: () => null }));
+vi.mock("@/components/home/InvestigationThreads", () => ({ InvestigationThreads: () => null }));
 vi.mock("@/components/home/DataConfidenceIndicator", () => ({
     DataConfidenceIndicator: () => null,
 }));
-vi.mock("@/components/home/InvestmentPreview", () => ({ InvestmentPreview: () => null }));
 vi.mock("@/components/home/RankedSignals", () => ({ RankedSignals: () => null }));
 vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => null }));
 vi.mock("@/components/onboarding/SetupBanner", () => ({ SetupBanner: () => null }));
@@ -48,7 +48,9 @@ vi.mock("@/components/onboarding/SetupBanner", () => ({ SetupBanner: () => null 
 async function renderCockpit() {
     return render(
         <AdminTierProvider tier="community" features={{}}>
-            <AppShell>{await Home({ searchParams: Promise.resolve({}) })}</AppShell>
+            <EvidenceDrawerProvider>
+                <AppShell>{await Home({ searchParams: Promise.resolve({}) })}</AppShell>
+            </EvidenceDrawerProvider>
         </AdminTierProvider>,
     );
 }
@@ -73,12 +75,51 @@ describe("Home page header", () => {
         );
     });
 
-    it("keeps the health headline as a section heading under the title", async () => {
+    it("has no health headline: the body shows only the approved blocks (CHAOS-8063)", async () => {
         await renderCockpit();
 
-        const headline = screen.getByTestId("cockpit-headline");
-        expect(headline.tagName).toBe("H2");
-        expect(headline).toHaveTextContent("Engineering health is steady this week");
+        expect(screen.queryByTestId("cockpit-headline")).toBeNull();
+        expect(screen.queryByTestId("cockpit-health-status")).toBeNull();
+        expect(screen.queryByText("Engineering health is steady this week")).toBeNull();
+    });
+
+    it("names the primary signal in a section heading (h2) right under the title", async () => {
+        vi.mocked(getHomeDataViaGraphQL).mockResolvedValue({
+            freshness: { last_ingested_at: null, sources: {}, coverage: {} },
+            deltas: [],
+            summary: [],
+            tiles: {},
+            constraint: { title: "", claim: "", evidence: [], experiments: [] },
+            events: [],
+            signals: [
+                {
+                    id: "metric:review_latency",
+                    title: "Review Latency appears up",
+                    metric: "review_latency",
+                    current_value: "0.9 hours",
+                    prior_value: "0.1 hours",
+                    delta: "+1,041%",
+                    direction: "up",
+                    severity: "critical",
+                    confidence: "medium",
+                    affected_scope: "org-wide",
+                    evidence_count: 7,
+                    why_it_matters: "w",
+                    recommended_action: "a",
+                    category: "delivery",
+                },
+            ],
+        } as never);
+        await renderCockpit();
+
+        const levels = within(screen.getByRole("main"))
+            .getAllByRole("heading")
+            .map((heading) => `${heading.tagName}:${heading.textContent}`);
+        expect(levels.slice(0, 3)).toEqual([
+            "H1:Home",
+            "H2:Review Latency appears up",
+            "H2:Evidence & context",
+        ]);
     });
 
     it("has no eyebrow: the h1 is the nav label, so the eyebrow would only repeat it (A8)", async () => {
@@ -88,14 +129,126 @@ describe("Home page header", () => {
         expect(screen.queryByText("Status")).toBeNull();
     });
 
-    it("keeps the subtitle and the last-updated row in the header, and shows no BackLink", async () => {
+    it("keeps the subtitle in the header, has no last-updated row there, and shows no BackLink", async () => {
         await renderCockpit();
 
         const header = screen.getByTestId("page-header");
         expect(
             within(header).getByText(/System patterns over the last \d+ days\./),
         ).toBeInTheDocument();
-        expect(within(header).getByText(/Last updated:/)).toBeInTheDocument();
+        // "Last sync" is a row of the "Evidence & context" card (CHAOS-8063).
+        expect(within(header).queryByText(/Last updated:/)).toBeNull();
         expect(within(header).queryAllByRole("link")).toHaveLength(0);
+    });
+
+    it("opens the page evidence from the header: the Home payload for the page scope and window", async () => {
+        await renderCockpit();
+
+        const action = within(screen.getByTestId("page-header-actions")).getByRole("button", {
+            name: "View evidence",
+        });
+        expect(screen.queryByRole("dialog")).toBeNull();
+        await userEvent.click(action);
+
+        const drawer = screen.getByRole("dialog", { name: "Evidence & Context" });
+        expect(within(drawer).getByTestId("evidence-subject")).toHaveTextContent("Home");
+        const days = screen
+            .getByTestId("page-header")
+            .textContent?.match(/over the last (\d+) days/)?.[1];
+        const call = vi
+            .mocked(global.fetch)
+            .mock.calls.map(([input]) => new URL(String(input), "http://local"))
+            .find((url) => url.pathname === "/api/v1/home");
+        expect(call).toBeDefined();
+        // The page as a whole: no thread. Same window as the subtitle states.
+        expect(call?.searchParams.has("thread")).toBe(false);
+        expect(call?.searchParams.get("range_days")).toBe(days);
+    });
+
+    it("lists the served meta coverage counts in the page evidence drawer, not in the header (CHAOS-8064)", async () => {
+        vi.mocked(getApiMeta).mockResolvedValue({
+            backend: "clickhouse",
+            version: "test",
+            last_ingest_at: "2026-07-12T00:07:00Z",
+            coverage: { repos: 1200, prs: 0, note: "n/a" as never },
+            limits: {},
+            supported_endpoints: [],
+        });
+        await renderCockpit();
+
+        // The old header strip ("Synced …", coverage counts) is not on the page.
+        const header = screen.getByTestId("page-header");
+        expect(header).not.toHaveTextContent("Synced");
+        expect(header).not.toHaveTextContent("repos");
+
+        await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
+        const rows = within(
+            within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage"),
+        )
+            .getAllByTestId("evidence-fact")
+            .map((row) => [
+                row.querySelector("dt")?.textContent,
+                row.querySelector("dd")?.textContent,
+            ]);
+        // Every served number, zero included (zero is a served value, not a missing one).
+        expect(rows).toEqual([
+            ["Coverage", "Not reported"],
+            ["Coverage: repos", "1,200"],
+            ["Coverage: prs", "0"],
+        ]);
+    });
+
+    it("adds no meta coverage row when the meta endpoint served none", async () => {
+        vi.mocked(getApiMeta).mockResolvedValue({
+            backend: "clickhouse",
+            version: "test",
+            last_ingest_at: null,
+            coverage: {},
+            limits: {},
+            supported_endpoints: [],
+        });
+        await renderCockpit();
+        await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
+        expect(
+            within(
+                within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage"),
+            ).getAllByTestId("evidence-fact"),
+        ).toHaveLength(1);
+    });
+
+    it("shows the served source coverage in the page evidence drawer, or Not reported", async () => {
+        const home = (coveragePct: number | null) =>
+            ({
+                freshness: { last_ingested_at: null, sources: {}, coverage: {} },
+                deltas: [],
+                summary: [],
+                tiles: {},
+                constraint: { title: "", claim: "", evidence: [], experiments: [] },
+                events: [],
+                data_confidence: {
+                    level: "high",
+                    coverage_pct: coveragePct,
+                    connected_sources: [],
+                    missing_sources: [],
+                    caveats: [],
+                },
+            }) as never;
+
+        vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(home(91.6));
+        const served = await renderCockpit();
+        // The coverage is not a body element (the banner is mocked out; the card has no such row).
+        expect(screen.queryByText("92%")).toBeNull();
+        await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
+        const coverage = within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage");
+        expect(within(coverage).getByText("Coverage")).toBeInTheDocument();
+        expect(within(coverage).getByTestId("evidence-fact")).toHaveTextContent("92%");
+        served.unmount();
+
+        vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(home(null));
+        await renderCockpit();
+        await userEvent.click(screen.getByRole("button", { name: "View evidence" }));
+        expect(
+            within(screen.getByRole("dialog")).getByTestId("home-evidence-coverage"),
+        ).toHaveTextContent("Not reported");
     });
 });

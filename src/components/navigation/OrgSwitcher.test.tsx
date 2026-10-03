@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { render } from "@/test/utils";
-import { OrgSwitcher } from "./OrgSwitcher";
+import { OrgSwitcher, describeOrganizationData } from "./OrgSwitcher";
 
 const mockRefresh = vi.fn();
 const mockUpdate = vi.fn();
@@ -68,7 +68,14 @@ describe("OrgSwitcher", () => {
         render(<OrgSwitcher />);
 
         const select = await screen.findByLabelText(/organization/i);
-        expect(screen.getByText(/no data yet/i)).toBeInTheDocument();
+        expect(screen.getByText("Organization workspace")).toBeInTheDocument();
+        // The data line lives under the account name now, not in this card.
+        expect(screen.queryByText(/no data yet/i)).toBeNull();
+        // Prototype `.workspace`: an initials mark, the name in the select, one line under it.
+        expect(screen.getByTestId("org-mark")).toHaveTextContent("EO");
+        expect(screen.getByRole("option", { name: "Data Org" })).toBeInTheDocument();
+        expect(select.className).toContain("border-0");
+        expect(screen.getByText("Organization")).toHaveClass("sr-only");
 
         fireEvent.change(select, { target: { value: "org-data" } });
 
@@ -105,6 +112,35 @@ describe("OrgSwitcher", () => {
 
         const select = await screen.findByLabelText(/current organization/i);
         expect(select).toBeDisabled();
-        expect(screen.getByText(/only organization on this account/i)).toBeInTheDocument();
+        expect(screen.getByText(/only one on this account/i)).toBeInTheDocument();
+    });
+});
+
+describe("describeOrganizationData", () => {
+    it("keeps unknown, empty and loaded apart (missing is not healthy)", () => {
+        expect(describeOrganizationData(undefined)).toBeNull();
+        expect(describeOrganizationData(null)).toBe("Data status unavailable");
+        expect(describeOrganizationData({ name: "A", hasData: false, lastMetricsAt: null })).toBe(
+            "No data yet",
+        );
+        expect(describeOrganizationData({ name: "A", hasData: true, lastMetricsAt: null })).toBe(
+            "Has data",
+        );
+        expect(
+            describeOrganizationData({
+                name: "A",
+                hasData: true,
+                lastMetricsAt: "2026-05-02T12:00:00Z",
+            }),
+        ).toMatch(/^Data through /);
+    });
+
+    it("a timestamp that is not a date never prints 'Data through Invalid Date'", () => {
+        const text = describeOrganizationData({
+            name: "A",
+            hasData: true,
+            lastMetricsAt: "soon",
+        });
+        expect(text).toBe("Has data");
     });
 });

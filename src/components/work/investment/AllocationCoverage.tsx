@@ -1,7 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { DataState } from "@/components/ui/DataState";
+import { Section } from "@/components/ui/Section";
 import { formatNumber } from "@/lib/formatters";
 import {
     COVERAGE_UNAVAILABLE_REASON,
@@ -15,6 +19,11 @@ type AllocationCoverageProps = {
     teamCategoryFlow: SankeyResponse | null | undefined;
     repoTeamFlow: SankeyResponse | null | undefined;
     isLoading: boolean;
+    /**
+     * `strip` (default): three joined tiles, for the Allocation tab. `facts`: a "Coverage gaps"
+     * card of fact rows, for the Confidence tab. Both print the same reading.
+     */
+    variant?: "strip" | "facts";
 };
 
 type CoverageReading = {
@@ -189,6 +198,7 @@ export function AllocationCoverage({
     teamCategoryFlow,
     repoTeamFlow,
     isLoading,
+    variant = "strip",
 }: AllocationCoverageProps) {
     const reading = useMemo(
         () => combineCoverage(teamCategoryFlow, repoTeamFlow),
@@ -229,66 +239,71 @@ export function AllocationCoverage({
         },
     ];
 
-    return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
-            <div>
-                <h3 className="font-(--font-display) text-lg">
-                    Coverage gaps &amp; unassigned ownership
-                </h3>
-                <p className="mt-1 text-sm text-(--ink-muted)">
-                    How much of the distributed effort resolved to a known team and repository. Gaps
-                    appear in the allocation paths as unassigned nodes.
+    if (variant === "facts") {
+        // Confidence tab (approved prototype "Coverage gaps"): the same reading as fact rows.
+        return (
+            <Section title="Coverage gaps" data-testid="coverage-gaps">
+                <EvidenceFactList aria-label="Coverage" testId="coverage-facts">
+                    {cards.map((card) => (
+                        <EvidenceFact
+                            key={card.id}
+                            label={card.label}
+                            value={card.value !== null ? `${asPct(card.value)}%` : undefined}
+                        />
+                    ))}
+                    <EvidenceFact
+                        label="Unassigned ownership"
+                        value={
+                            reading.unassignedShare !== null
+                                ? `${asPct(reading.unassignedShare)}%`
+                                : "none detected"
+                        }
+                    />
+                </EvidenceFactList>
+                <p className="mt-4 rounded-(--radius-sm) border border-(--card-stroke) bg-(--card-70) p-3.5 text-xs text-(--ink-muted)">
+                    Unassigned is visible and inspectable. It is not silently redistributed to known
+                    teams or repositories.
                 </p>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                {cards.map((card) => (
-                    <div
-                        key={card.id}
-                        className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4"
-                    >
-                        <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                            {card.label}
-                        </p>
-                        {card.value !== null ? (
-                            <>
-                                <p className="mt-2 text-2xl font-(--font-display)">
-                                    {asPct(card.value)}%
-                                </p>
-                                <p className="mt-1 text-xs text-(--ink-muted)">
-                                    {asPct(Math.max(0, (card.value <= 1 ? 1 : 100) - card.value))}%{" "}
-                                    {card.gapLabel}
-                                </p>
-                            </>
-                        ) : (
-                            <>
-                                <p className="mt-2 text-sm font-medium text-(--ink)">Unavailable</p>
-                                <p className="mt-1 text-xs text-(--ink-muted)">
-                                    {COVERAGE_UNAVAILABLE_REASON}
-                                </p>
-                            </>
-                        )}
-                    </div>
-                ))}
-                <div className="rounded-2xl border border-(--card-stroke) bg-(--card-70) p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                        Unassigned ownership
-                    </p>
-                    {reading.unassignedShare !== null ? (
-                        <>
-                            <p className="mt-2 text-2xl font-(--font-display)">
-                                {asPct(reading.unassignedShare)}%
-                            </p>
-                            <p className="mt-1 text-xs text-(--ink-muted)">
-                                of effort flows through unassigned nodes
-                            </p>
-                        </>
-                    ) : (
-                        <p className="mt-2 text-sm text-(--ink-muted)">
-                            No unassigned nodes detected
-                        </p>
-                    )}
-                </div>
-            </div>
-        </div>
+            </Section>
+        );
+    }
+
+    // Allocation tab (approved prototype `coverageStrip()`): three joined tiles.
+    return (
+        <MetricStrip data-testid="allocation-coverage-strip">
+            {cards.map((card) => (
+                <MetricCard
+                    key={card.id}
+                    testId={`coverage-tile-${card.id}`}
+                    label={card.label}
+                    hideTrend
+                    valueText={card.value !== null ? `${asPct(card.value)}%` : "Unavailable"}
+                    deltaSlot={
+                        <span>
+                            {card.value !== null
+                                ? `${asPct(Math.max(0, (card.value <= 1 ? 1 : 100) - card.value))}% ${card.gapLabel}`
+                                : COVERAGE_UNAVAILABLE_REASON}
+                        </span>
+                    }
+                />
+            ))}
+            <MetricCard
+                testId="coverage-tile-unassigned"
+                label="Unassigned ownership"
+                hideTrend
+                valueText={
+                    reading.unassignedShare !== null
+                        ? `${asPct(reading.unassignedShare)}%`
+                        : undefined
+                }
+                deltaSlot={
+                    <span>
+                        {reading.unassignedShare !== null
+                            ? "of effort flows through unassigned nodes"
+                            : "No unassigned nodes detected"}
+                    </span>
+                }
+            />
+        </MetricStrip>
     );
 }

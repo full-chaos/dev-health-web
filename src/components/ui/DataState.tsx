@@ -102,8 +102,10 @@ type DataStateProps = {
      * DataState adds the "Data source needed:" label automatically.
      */
     detail?: string;
-    /** Smaller box for use inside a card (concept `.empty.compact`); empty variants only. */
+    /** Smaller box for use inside a card (concept `.empty.compact`); empty and error variants. */
     compact?: boolean;
+    /** Level of the error title heading (error variant only); default 2. Inside a card with an h3 title pass 4. */
+    headingLevel?: 2 | 3 | 4 | 5 | 6;
     /** Test hook; defaults to a stable per-variant id. */
     "data-testid"?: string;
 };
@@ -118,6 +120,7 @@ export function DataState({
     className,
     detail,
     compact,
+    headingLevel,
     "data-testid": testId,
 }: DataStateProps) {
     if (variant === "loading") {
@@ -153,6 +156,8 @@ export function DataState({
                         "The request could not be completed. Please retry."
                     }
                     action={action}
+                    compact={compact}
+                    headingLevel={headingLevel}
                 />
             </div>
         );

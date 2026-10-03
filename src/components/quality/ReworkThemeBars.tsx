@@ -1,7 +1,7 @@
 "use client";
 
 import { investmentThemeColor, useChartTokens } from "@/components/charts/chartTheme";
-import { formatNumber } from "@/lib/formatters";
+import { formatMetricValue, formatNumber } from "@/lib/formatters";
 import type { ReworkThemeAllocation } from "@/lib/types";
 
 type ReworkThemeBarsProps = {
@@ -55,8 +55,9 @@ export function ReworkThemeBars({ rows }: ReworkThemeBarsProps) {
                                 {row.prs_merged !== 1 ? "s" : ""}
                             </span>
                             <span>
-                                {formatNumber(row.churn_loc / 1000, { maximumFractionDigits: 1 })}k
-                                churn LOC
+                                {/* The shared metric format: compact, and a served non-zero value
+                                    is never shown as 0 (it was "0k" under 50 lines). */}
+                                {formatMetricValue(row.churn_loc, "loc")} churn LOC
                             </span>
                         </div>
                     </li>

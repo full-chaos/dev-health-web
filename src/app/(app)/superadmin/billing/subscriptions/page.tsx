@@ -1,3 +1,4 @@
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SubscriptionList } from "@/components/admin/billing/SubscriptionList";
 import { requireSuperuser } from "@/lib/auth";
@@ -34,7 +35,7 @@ export default async function SuperadminSubscriptionsPage({
 
             {result.error ? (
                 <Notice variant="danger" live={false}>
-                    Failed to load subscriptions: {result.error}
+                    Failed to load subscriptions. {READ_FAILED_MESSAGE}
                 </Notice>
             ) : (
                 <SubscriptionList initialData={initialData} initialOrgFilter={orgId ?? ""} />

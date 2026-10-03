@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@/test/utils";
+import { cleanup, render, screen, within } from "@/test/utils";
 
 const { mockSummary, mockComparison } = vi.hoisted(() => ({
     mockSummary: vi.fn(),
@@ -120,12 +120,49 @@ describe("AI Impact page pinned (CHAOS-7768)", () => {
         render(<AIImpactDashboard filter={filter} />);
         const root = screen.getByTestId("ai-impact-dashboard");
         expect(root).toHaveTextContent("AI-assisted work share");
-        expect(root).toHaveTextContent("40.0%");
+        expect(root).toHaveTextContent("40 %");
         expect(root).toHaveTextContent("8 of 20 PRs lean AI-assisted.");
         expect(root).toHaveTextContent("Agent-created work share");
         expect(root).toHaveTextContent("15.0% of PRs appear agent-created.");
         expect(root).toHaveTextContent("Unknown attribution");
         expect(root).toHaveTextContent("Kept visible so data coverage gaps stay inspectable.");
+        // CHAOS-8094: the three tiles are the shared MetricCard in one MetricStrip.
+        const strip = screen.getByTestId("ai-impact-stat-tiles");
+        expect(strip).toHaveAttribute("data-columns", "3");
+        expect(within(strip).getAllByTestId("metric-value")).toHaveLength(3);
+    });
+
+    it("marks the unknown-attribution tile with a dashed Unknown pill; the other tiles have none", () => {
+        setup();
+        render(<AIImpactDashboard filter={filter} />);
+        const strip = screen.getByTestId("ai-impact-stat-tiles");
+        const pill = within(strip).getByTestId("ai-unknown-pill");
+        expect(pill).toHaveTextContent("Unknown");
+        expect(pill.className).toContain("border-dashed");
+        expect(within(strip).getAllByTestId("ai-unknown-pill")).toHaveLength(1);
+        // CHAOS-8214: the pill sits in the tile head (right end of the title line), not in the meta line.
+        expect(pill.closest("[data-testid=metric-title]")).not.toBeNull();
+        expect(pill.closest("[data-testid=metric-head-action]")).not.toBeNull();
+    });
+
+    it("shows Not reported, never 0, when the summary does not serve the counts", () => {
+        setup({
+            ...summary,
+            aiAssistedPrRatio: null,
+            aiAssistedPrs: null,
+            totalPrs: null,
+            agentCreatedPrs: null,
+            unknownPrs: null,
+        });
+        render(<AIImpactDashboard filter={filter} />);
+        const strip = screen.getByTestId("ai-impact-stat-tiles");
+        const values = within(strip).getAllByTestId("metric-value");
+        expect(values.map((v) => v.textContent)).toEqual([
+            "Not reported",
+            "Not reported",
+            "Not reported",
+        ]);
+        expect(strip).not.toHaveTextContent("0 of 0");
     });
 
     it("has the panels in this order, each as an h2 (the automations card is a notice)", () => {
@@ -189,7 +226,9 @@ describe("AI Impact page pinned (CHAOS-7768)", () => {
     it("keeps the footer: last computed time and the system-health sentence", () => {
         setup();
         render(<AIImpactDashboard filter={filter} />);
-        expect(screen.getByText(/Last computed 2026-05-19T00:00:00Z\./)).toBeInTheDocument();
+        // CHAOS-8214: the shared date helper, not the raw ISO string.
+        expect(screen.getByText(/Last computed May 19, 2026, 12:00 AM UTC\./)).toBeInTheDocument();
+        expect(screen.queryByText(/2026-05-19T00:00:00Z/)).not.toBeInTheDocument();
         expect(
             screen.getByText(
                 /values suggest patterns and should be interpreted with local context/,

@@ -1,3 +1,4 @@
+import { NoOrgNotice } from "@/components/NoOrgNotice";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { checkApiHealth } from "@/lib/api/system";
 import { requireSession } from "@/lib/auth";
@@ -6,7 +7,9 @@ import { getThroughputForecastViaGraphQL } from "@/lib/graphql/capacityFetchers"
 import type { ThroughputForecast } from "@/lib/graphql/types";
 import { logger } from "@/lib/logger";
 
-import { ForecastContent, ForecastErrorState, NoForecastState } from "./_components";
+import { PageFactsEvidenceAction } from "@/components/evidence/PageFactsEvidenceAction";
+
+import { ForecastContent, ForecastErrorState, NoForecastState, backlogFacts } from "./_components";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 
@@ -30,7 +33,9 @@ export default async function BacklogRiskPage({ searchParams }: BacklogRiskPageP
     const [health, session] = await Promise.all([checkApiHealth(), requireSession()]);
     if (!health.ok) return <ServiceUnavailable landmark={false} />;
 
-    const orgId = session.user.org_id ?? "default-org";
+    const orgId = session.user.org_id;
+    // No org on the session: ask for nothing (never an empty or made-up org).
+    if (!orgId) return <NoOrgNotice />;
     let forecast: ThroughputForecast | null = null;
     let forecastFetchFailed = false;
     try {
@@ -53,6 +58,14 @@ export default async function BacklogRiskPage({ searchParams }: BacklogRiskPageP
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
                 title="Backlog Risk"
+                actions={
+                    forecast ? (
+                        <PageFactsEvidenceAction
+                            title="Backlog risk"
+                            facts={backlogFacts(forecast)}
+                        />
+                    ) : undefined
+                }
                 subtitle="WIP congestion, stale items, and unestimated debt — signals that reduce delivery predictability before they appear in cycle time."
             />
 

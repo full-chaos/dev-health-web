@@ -1,18 +1,33 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
-import { HorizontalBarChart } from "@/components/charts/HorizontalBarChart";
+import { DataNote } from "@/components/charts/DataNote";
+import { BlockedWorkEvidence } from "./BlockedWorkEvidence";
+import { associationMeterRows, contributorMeterRows } from "@/components/metrics/associationRows";
+import { MeterRows } from "@/components/ui/MeterRows";
+import { safeReturnTo } from "@/lib/onboarding/returnTo";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricEvidenceButton } from "@/components/metrics/MetricEvidenceButton";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { ReadTheSignal } from "@/components/metrics/ReadTheSignal";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { buttonClassName } from "@/components/shared/Button";
+import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
+import { Notice } from "@/components/ui/Notice";
+import { Section } from "@/components/ui/Section";
+import { getCurrentOrg } from "@/lib/admin/server";
 import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData, getHomeData } from "@/lib/api/home";
 import { getDrilldown } from "@/lib/api/investment";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
-import { formatDelta, formatMetricValue, formatNumber, formatTimestamp } from "@/lib/formatters";
+import { formatNumber, formatTimestamp } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { getMetricLabel } from "@/lib/metrics/catalog";
+import { getMetricLabel, metricInverseGood } from "@/lib/metrics/catalog";
+import { METRIC_TABS } from "@/lib/metrics/metricTabs";
+import { getTabSet, tabHref } from "@/lib/navigation/tabs";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 
@@ -90,6 +105,17 @@ const getItemHref = (item: Record<string, unknown>, fallback: string) => {
     return fallback;
 };
 
+/**
+ * Where "Return to investigation" goes when the URL carries no usable `origin`: the Flow tab whose
+ * headline metric this is, else the first tab that shows it, else the Flow page.
+ */
+const investigationPath = (metric: string): string => {
+    const tab =
+        METRIC_TABS.find((entry) => entry.highlight === metric) ??
+        METRIC_TABS.find((entry) => entry.metrics.includes(metric));
+    return tab ? tabHref(getTabSet("metrics"), tab.id) : "/metrics";
+};
+
 type ExplorePageProps = {
     searchParams?: Promise<{ [key: string]: string | string[] | undefined }>;
 };
@@ -99,6 +125,10 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
     const encodedFilter = Array.isArray(params.f) ? params.f[0] : params.f;
     const roleParam = Array.isArray(params.role) ? params.role[0] : params.role;
     const activeRole = typeof roleParam === "string" ? roleParam : undefined;
+    const originParam = Array.isArray(params.origin) ? params.origin[0] : params.origin;
+    // The page the reader came from, accepted only as an internal path ("/…", not "//…", no
+    // scheme, no backslash or control character). Anything else falls back to the Flow tab.
+    const servedOrigin = safeReturnTo(originParam);
 
     const filters = encodedFilter ? decodeFilter(encodedFilter) : filterFromQueryParams(params);
 
@@ -138,8 +168,13 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
         dataPromise = Promise.resolve(null);
     }
 
-    // Run health check and data fetch in parallel.
-    const [health, rawResult] = await Promise.all([checkApiHealth(), dataPromise]);
+    // Run health check, data fetch and the organization name in parallel.
+    const [health, rawResult, orgResult] = await Promise.all([
+        checkApiHealth(),
+        dataPromise,
+        getCurrentOrg().catch(() => ({ data: undefined })),
+    ]);
+    const orgName = orgResult?.data?.name || undefined;
 
     if (!health.ok) {
         return <ServiceUnavailable landmark={false} />;
@@ -167,18 +202,22 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
     const repos = filters.what.repos ?? [];
     const workCategory = filters.why.work_category ?? [];
 
-    const chips = [
-        `Scope: ${filters.scope.level}`,
-        filters.scope.ids.length ? `IDs: ${filters.scope.ids.join(", ")}` : "All IDs",
-        `Range: ${filters.time.range_days}d`,
-        `Compare: ${filters.time.compare_days}d`,
-        developers.length ? `Devs: ${developers.join(", ")}` : null,
-        repos.length ? `Repos: ${repos.join(", ")}` : null,
-        workCategory.length ? `Work type: ${workCategory.join(", ")}` : null,
-        categoryParam ? `Category: ${categoryParam}` : null,
-        streamParam ? `Stream: ${streamParam}` : null,
-        breakdownParam ? `Breakdown: ${breakdownParam}` : null,
-    ].filter(Boolean) as string[];
+    // The active filters a query reads, one fact row each (were chips). Removed filters are not
+    // shown (CHAOS-7799).
+    const filterFacts: Array<{ label: string; value: string }> = [
+        {
+            label: "Scope",
+            value: filters.scope.ids.length
+                ? `${filters.scope.level}: ${filters.scope.ids.join(", ")}`
+                : filters.scope.level,
+        },
+        developers.length ? { label: "Developers", value: developers.join(", ") } : null,
+        repos.length ? { label: "Repositories", value: repos.join(", ") } : null,
+        workCategory.length ? { label: "Work type", value: workCategory.join(", ") } : null,
+        categoryParam ? { label: "Category", value: categoryParam } : null,
+        streamParam ? { label: "Stream", value: streamParam } : null,
+        breakdownParam ? { label: "Breakdown", value: breakdownParam } : null,
+    ].filter((fact): fact is { label: string; value: string } => fact !== null);
 
     const drivers = (data?.drivers ?? []).slice(0, 5);
     const contributors = (data?.contributors ?? []).slice(0, 5);
@@ -188,7 +227,66 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
             : view === "home"
               ? "Snapshot of the Home payload for this scope."
               : `This view explains ${metricLabel} for ${scopeDetail} over the last ${filters.time.range_days} days.`;
-    const breakdownNote = breakdownParam ? `Breakdown: ${breakdownParam}.` : null;
+    // What "View evidence" explains: a served drilldown when the page shows one, else the metric.
+    const evidenceSubject =
+        view === "drilldown"
+            ? { title: metricLabel, apiUrl: apiParam, filters, role: activeRole }
+            : { title: metricLabel, metric: metricFromApi, filters, role: activeRole };
+
+    // "Return to investigation": the served origin (an internal path only), else the metric's Flow tab.
+    const returnHref =
+        servedOrigin ?? withFilterParam(investigationPath(metricFromApi), filters, activeRole);
+    // Blocked Work has its own evidence page (approved prototype `blockedEvidence()`, view 28).
+    const isBlockedWork = view === "explain" && metricFromApi === "blocked_work";
+
+    const contextCard = (
+        <Section
+            data-testid="explore-context"
+            title="Context"
+            description={explanation}
+            className="text-sm"
+        >
+            <EvidenceFactList aria-label="Context" testId="explore-context-facts">
+                <EvidenceFact label="Metric" value={metricLabel} />
+                <EvidenceFact label="Organization" value={orgName} />
+                <EvidenceFact label="Window" value={`${filters.time.range_days} days`} />
+                <EvidenceFact
+                    label="Compared with"
+                    value={`the previous ${filters.time.compare_days} days`}
+                />
+                {filterFacts.map((fact) => (
+                    <EvidenceFact key={fact.label} label={fact.label} value={fact.value} />
+                ))}
+                <EvidenceFact label="Source" value={sourceLabel} />
+            </EvidenceFactList>
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+                <Link
+                    href={returnHref}
+                    data-testid="explore-return"
+                    className={buttonClassName("primary", "md")}
+                >
+                    <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                    {CTA_LABELS.returnToInvestigation}
+                </Link>
+                <Link
+                    href={withFilterParam(
+                        "/work?tab=flame&mode=cycle_breakdown",
+                        filters,
+                        activeRole,
+                    )}
+                    className={buttonClassName("ghost", "md")}
+                >
+                    {CTA_LABELS.flameDiagram}
+                </Link>
+                <Link
+                    href={withFilterParam("/landscape", filters, activeRole)}
+                    className={buttonClassName("ghost", "md")}
+                >
+                    {CTA_LABELS.landscape}
+                </Link>
+            </div>
+        </Section>
+    );
 
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
@@ -196,207 +294,140 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
                 title={metricLabel}
-                subtitle="Evidence detail for the selected metric."
-                back={{
-                    href: withFilterParam("/metrics", filters, activeRole),
-                    area: "Metrics",
-                }}
-                actions={
-                    <>
-                        <Link
-                            href={withFilterParam(
-                                "/work?tab=flame&mode=cycle_breakdown",
-                                filters,
-                                activeRole,
-                            )}
-                            className={buttonClassName("primary")}
-                        >
-                            {CTA_LABELS.flameDiagram}
-                        </Link>
-                        <Link
-                            href={withFilterParam("/landscape", filters, activeRole)}
-                            className={buttonClassName("secondary")}
-                        >
-                            {CTA_LABELS.landscape}
-                        </Link>
-                    </>
+                subtitle={
+                    isBlockedWork
+                        ? "Evidence table for the selected metric."
+                        : "Evidence detail for the selected metric."
                 }
-            >
-                <p className="text-sm text-(--ink-muted)">Select evidence to investigate.</p>
-            </PageHeader>
+                actions={<PageHeaderEvidenceAction subject={evidenceSubject} />}
+            />
 
             <ScopeBar view="explore" />
 
-            <div
-                className={
-                    view === "explain" ? "grid gap-6 lg:grid-cols-[1.2fr_0.8fr] lg:items-start" : ""
-                }
-            >
-                {view === "explain" && (
-                    <ReadTheSignal
+            {isBlockedWork ? (
+                <>
+                    {/* Prototype `blockedEvidence()`: one tile, then the evidence section. */}
+                    <MetricStrip data-testid="explore-metric-tile">
+                        <MetricCard
+                            label={metricLabel}
+                            value={data?.value}
+                            unit={data?.unit}
+                            delta={data?.delta_pct}
+                            inverseGood={metricInverseGood(metricFromApi)}
+                            caption="vs previous window"
+                            hideTrend
+                        />
+                    </MetricStrip>
+                    <BlockedWorkEvidence
                         label={metricLabel}
                         value={data?.value}
-                        unit={data?.unit ?? ""}
-                        deltaPct={data?.delta_pct}
+                        unit={data?.unit}
+                        rangeDays={filters.time.range_days}
+                        returnHref={returnHref}
                     />
-                )}
-                <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5 text-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Context
-                            </p>
-                            <p className="mt-1 text-sm font-semibold">{metricLabel}</p>
-                        </div>
-                        <span className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                            {view.toUpperCase()}
-                        </span>
-                    </div>
-                    <div className="mt-4 grid gap-4 lg:grid-cols-[1.3fr_0.7fr]">
-                        <div>
-                            <p className="text-sm text-(--ink-muted)">{explanation}</p>
-                            <p className="mt-2 text-xs text-(--ink-muted)">Source: {sourceLabel}</p>
-                            {breakdownNote ? (
-                                <p className="mt-2 text-xs text-(--ink-muted)">{breakdownNote}</p>
-                            ) : null}
-                        </div>
-                        <div>
-                            <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                                Active filters
-                            </p>
-                            <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                                {chips.map((chip) => (
-                                    <span
-                                        key={chip}
-                                        className="rounded-full border border-(--card-stroke) bg-(--card-70) px-3 py-1"
-                                    >
-                                        {chip}
-                                    </span>
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                </section>
-            </div>
+                </>
+            ) : view === "explain" ? (
+                <>
+                    {/* Static guidance, not a status update: no live region. */}
+                    <Notice variant="info" live={false} data-testid="explore-notice">
+                        <strong className="font-semibold text-foreground">
+                            Metric evidence is a full destination as well as a contextual drawer.
+                        </strong>{" "}
+                        Keep the metric, scope, and source together.
+                    </Notice>
 
-            {view === "explain" && (
-                <section id="evidence" className="grid gap-6 lg:grid-cols-3">
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
-                        <p className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
-                            Snapshot
-                        </p>
-                        <div className="mt-3 flex flex-wrap items-baseline gap-3">
-                            <span className="text-3xl font-semibold metric-hero">
-                                {data ? formatMetricValue(data.value, data.unit) : "--"}
-                            </span>
-                            <span className="text-sm text-(--ink-muted)">
-                                {data ? formatDelta(data.delta_pct) : "--"} vs previous window
-                            </span>
-                        </div>
-                        <p className="mt-3 text-xs text-(--ink-muted)">
-                            Evidence links below stay in this scope.
-                        </p>
+                    {/* One tile (prototype `metrics([...], 1)`): the served value and change. */}
+                    <MetricStrip data-testid="explore-metric-tile">
+                        <MetricCard
+                            label={metricLabel}
+                            value={data?.value}
+                            unit={data?.unit}
+                            delta={data?.delta_pct}
+                            inverseGood={metricInverseGood(metricFromApi)}
+                            caption="vs previous window"
+                            hideTrend
+                        />
+                    </MetricStrip>
+
+                    <div
+                        data-testid="explore-signal-row"
+                        className="grid gap-4.5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start"
+                    >
+                        <ReadTheSignal
+                            label={metricLabel}
+                            value={data?.value}
+                            unit={data?.unit ?? ""}
+                            deltaPct={data?.delta_pct}
+                        />
+                        {contextCard}
                     </div>
 
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
-                        <div className="flex items-center justify-between">
-                            <h2 className="font-(--font-display) text-xl">Top Associations</h2>
-                            <Link
-                                href={buildExploreUrl({
-                                    metric: metricFromApi,
-                                    filters,
-                                    role: activeRole,
-                                })}
-                                className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                            >
-                                {CTA_LABELS.openEvidence}
-                            </Link>
-                        </div>
-                        {drivers.length ? (
-                            <div className="mt-4 space-y-4">
-                                <HorizontalBarChart
-                                    categories={drivers.map((driver) => driver.label)}
-                                    values={drivers.map((driver) => Math.abs(driver.delta_pct))}
+                    <div data-testid="association-cards" className="grid gap-4.5 lg:grid-cols-2">
+                        <Section
+                            title="Likely associations"
+                            description="Selected-window associations"
+                            action={
+                                <MetricEvidenceButton
+                                    subject={{
+                                        title: metricLabel,
+                                        metric: metricFromApi,
+                                        filters,
+                                        role: activeRole,
+                                    }}
+                                    section="Likely associations"
                                 />
-                                <div className="space-y-2 text-sm">
-                                    {drivers.map((driver) => (
-                                        <Link
-                                            key={driver.id}
-                                            href={buildExploreUrl({
-                                                api: driver.evidence_link,
-                                                filters,
-                                                role: activeRole,
-                                            })}
-                                            className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
-                                        >
-                                            <span>{driver.label}</span>
-                                            <span className="text-xs text-(--ink-muted)">
-                                                {formatDelta(driver.delta_pct)}
-                                            </span>
-                                        </Link>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : (
-                            <p className="mt-4 text-sm text-(--ink-muted)">
-                                Association detail will appear once data is ingested.
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="rounded-3xl border border-(--card-stroke) bg-(--card) p-4">
-                        <div className="flex items-center justify-between">
-                            <h2 className="font-(--font-display) text-xl">Contributors</h2>
-                            <Link
-                                href={buildExploreUrl({
-                                    metric: metricFromApi,
-                                    filters,
-                                    role: activeRole,
-                                })}
-                                className="text-xs uppercase tracking-[0.2em] text-(--accent-2)"
-                            >
-                                {CTA_LABELS.openEvidence}
-                            </Link>
-                        </div>
-                        {contributors.length ? (
-                            <div className="mt-4 space-y-4">
-                                <HorizontalBarChart
-                                    categories={contributors.map(
-                                        (contributor) => contributor.label,
-                                    )}
-                                    values={contributors.map((contributor) => contributor.value)}
+                            }
+                        >
+                            {drivers.length ? (
+                                <MeterRows
+                                    signed
+                                    aria-label="Likely associations"
+                                    testId="association-meter-rows"
+                                    rows={associationMeterRows(drivers, undefined, {
+                                        signed: true,
+                                    })}
                                 />
-                                <div className="space-y-2 text-sm">
-                                    {contributors.map((contributor) => (
-                                        <Link
-                                            key={contributor.id}
-                                            href={buildExploreUrl({
-                                                api: contributor.evidence_link,
-                                                filters,
-                                                role: activeRole,
-                                            })}
-                                            className="flex items-center justify-between rounded-2xl border border-(--card-stroke) bg-(--card-70) px-3 py-2"
-                                        >
-                                            <span>{contributor.label}</span>
-                                            <span className="text-xs text-(--ink-muted)">
-                                                {data
-                                                    ? formatMetricValue(
-                                                          contributor.value,
-                                                          data.unit,
-                                                      )
-                                                    : "--"}
-                                            </span>
-                                        </Link>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : (
-                            <p className="mt-4 text-sm text-(--ink-muted)">
-                                Contributor detail will appear once data is ingested.
-                            </p>
-                        )}
+                            ) : (
+                                <p className="text-sm text-(--ink-muted)">
+                                    Association detail will appear once data is ingested.
+                                </p>
+                            )}
+                            <DataNote>
+                                Association values are percent change in the selected window; no
+                                causal conclusion is added.
+                            </DataNote>
+                        </Section>
+                        <Section
+                            title="Primary contributors"
+                            description="Where the impact concentrates in this window."
+                            action={
+                                <MetricEvidenceButton
+                                    subject={{
+                                        title: metricLabel,
+                                        metric: metricFromApi,
+                                        filters,
+                                        role: activeRole,
+                                    }}
+                                    section="Primary contributors"
+                                />
+                            }
+                        >
+                            {contributors.length ? (
+                                <MeterRows
+                                    aria-label="Primary contributors"
+                                    testId="contributor-meter-rows"
+                                    rows={contributorMeterRows(contributors, data?.unit)}
+                                />
+                            ) : (
+                                <p className="text-sm text-(--ink-muted)">
+                                    Contributor detail will appear once data is ingested.
+                                </p>
+                            )}
+                        </Section>
                     </div>
-                </section>
+                </>
+            ) : (
+                contextCard
             )}
 
             {view === "drilldown" && (
@@ -509,10 +540,14 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                 </section>
             )}
 
+            {/* Not drawn in the prototype, and the drawer does not list these links: kept, last. */}
             {view === "explain" && (
-                <section className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-5">
-                    <h2 className="font-(--font-display) text-xl">Evidence shortcuts</h2>
-                    <div className="mt-3 flex flex-wrap gap-3 text-sm">
+                <Section
+                    data-testid="evidence-shortcuts"
+                    title="Evidence shortcuts"
+                    description="Evidence links stay in this scope."
+                >
+                    <div className="flex flex-wrap gap-2 text-sm">
                         {Object.entries(data?.drilldown_links ?? {}).map(([label, link]) => (
                             <Link
                                 key={label}
@@ -521,7 +556,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                                     filters,
                                     role: activeRole,
                                 })}
-                                className="rounded-full border border-(--card-stroke) bg-(--card) px-4 py-2"
+                                className={buttonClassName("secondary", "sm")}
                             >
                                 {label}
                             </Link>
@@ -532,7 +567,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
                             </p>
                         )}
                     </div>
-                </section>
+                </Section>
             )}
         </div>
     );

@@ -1,4 +1,7 @@
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+
+import { buttonClassName } from "@/components/shared/Button";
 
 import type { AllocationEntityKind, SelectedPathNumbers } from "@/lib/allocationSelection";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -109,19 +112,29 @@ export function SelectedPathPanel({
                     {shareUnavailableReason && (
                         <p className="mt-2 text-xs text-(--ink-muted)">{shareUnavailableReason}</p>
                     )}
-                    <div className="mt-3 border-l-2 border-(--card-stroke) pl-3 text-xs leading-relaxed text-(--ink-muted)">
-                        <strong className="text-(--ink)">Attribution, not dependency.</strong> This
-                        path shows where effort appears to land. It does not assert downstream
-                        impact or a technical dependency.
-                    </div>
-                    <Link
-                        href={evidenceHref}
-                        className="mt-3 inline-block text-xs uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
-                    >
-                        {CTA_LABELS.openEvidence}
-                    </Link>
                 </>
             )}
+            {/* Prototype `allocation()` aside: the washed inset, then ONE primary action. */}
+            <div
+                data-testid="selected-path-inset"
+                className="mt-3.5 rounded-sm bg-background p-3.75 text-xs leading-relaxed text-(--ink-muted)"
+            >
+                <h4 className="text-sm font-semibold text-foreground">
+                    Attribution, not dependency
+                </h4>
+                <p className="mt-1.5">
+                    This path shows where effort appears to land. It does not assert downstream
+                    impact or a technical dependency.
+                </p>
+            </div>
+            <Link
+                href={evidenceHref}
+                data-testid="selected-path-evidence"
+                className={buttonClassName("primary", "md", "mt-4")}
+            >
+                <ArrowRight aria-hidden="true" className="h-4 w-4" />
+                {CTA_LABELS.inspectAllocationEvidence}
+            </Link>
         </aside>
     );
 }

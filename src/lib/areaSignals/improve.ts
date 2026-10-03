@@ -64,6 +64,7 @@ async function resolveOrgId(): Promise<string | undefined> {
     }
 }
 
+import { markFailedSignals } from "./failedRead";
 import type { AreaSignal, AreaSignalState } from "./types";
 import { sortBySeverity } from "./sort";
 import { getMetricPolarity } from "@/lib/metrics/catalog";
@@ -128,15 +129,28 @@ function buildSignal(
     };
 }
 
+/** The reads each Improve card depends on, so a failed read marks only its own cards (CHAOS-8269). */
+const SIGNAL_SOURCES: Record<string, readonly string[]> = {
+    opportunities: ["opportunities"],
+    experiments: ["opportunities"],
+    "improve-automations": ["improve-automations"],
+};
+
 /**
  * Run a source fetch, swallowing failures to `undefined` so one dead source
  * degrades to a single honest-empty card instead of failing the whole area.
  */
-async function safe<T>(fn: () => Promise<T>, source: string): Promise<T | undefined> {
+async function safe<T>(
+    fn: () => Promise<T>,
+    source: string,
+    failedSources: Set<string>,
+): Promise<T | undefined> {
     try {
         return await fn();
     } catch (error) {
+        // The backend text goes to the log only; the card says "could not be read" (CHAOS-8269).
         logger.error({ err: error, source }, "Improve signal source failed");
+        failedSources.add(source);
         return undefined;
     }
 }
@@ -167,29 +181,46 @@ export async function getImproveSignals(
     // Resolve the org id for GraphQL calls (Automations signal).
     const orgId = isTestMode ? "test-org" : await resolveOrgId();
 
+    // No org in the session: nothing can be read, and nothing FAILED. Every card is unavailable (not
+    // "could not be read") and no read is made (CHAOS-8269; same rule as the other area resolvers).
+    if (!orgId) {
+        const noOrg: AreaSignal[] = [];
+        const add = (id: string, metricLabel: string) => {
+            const d = descriptor(id);
+            if (d) noOrg.push(buildSignal(d, { ...UNAVAILABLE, metricLabel }));
+        };
+        add("opportunities", "Opportunities");
+        add("experiments", "Experiments");
+        add("improve-automations", "Automations");
+        return sortBySeverity(noOrg);
+    }
+
     // ── Fetch every source in parallel (no serial N+1) ──────────────────────────
     // home `deltas[]` drives the synthesized top signal (worst worsened metric);
     // opportunities drives the Opportunities workflow card + gates the top signal.
     // automations data comes from FlowOpportunityDetector via GraphQL.
+    const failedSources = new Set<string>();
     const [opportunitiesData, homeData, automationsData] = await Promise.all([
-        safe(() => getOpportunities(filters), "opportunities"),
-        safe(() => getHomeDataViaGraphQL(filters), "home"),
-        safe(() => {
-            // Test mode: deterministic sample data (CHAOS-2223), same convention as
-            // Govern/Diagnose's GraphQL-direct sources — bypasses the network so the
-            // Overview renders a real Automations card without depending on the mock
-            // backend having an `improveOpportunities` handler.
-            if (isTestMode) return Promise.resolve(SAMPLE_IMPROVE_AUTOMATIONS);
-            // Guard: without an org in session, require_org_id will reject the
-            // request server-side. Short-circuit here so safe() → UNAVAILABLE
-            // rather than a false "0 detected / all green" (Warning 4, CHAOS-2220).
-            if (!orgId) throw new Error("session missing org_id");
-            return graphqlFetch<{ improveOpportunities: ImproveOpportunitiesResult }>(
-                IMPROVE_OPPORTUNITIES_QUERY,
-                { scope: null, limit: 10, windowDays: 30 },
-                { orgId },
-            ).then((r) => r.improveOpportunities);
-        }, "improve-automations"),
+        safe(() => getOpportunities(filters), "opportunities", failedSources),
+        safe(() => getHomeDataViaGraphQL(filters), "home", failedSources),
+        safe(
+            () => {
+                // Test mode: deterministic sample data (CHAOS-2223), same convention as
+                // Govern/Diagnose's GraphQL-direct sources — bypasses the network so the
+                // Overview renders a real Automations card without depending on the mock
+                // backend having an `improveOpportunities` handler.
+                if (isTestMode) return Promise.resolve(SAMPLE_IMPROVE_AUTOMATIONS);
+                // No org in session never gets here: the resolver returned above (CHAOS-2220 /
+                // CHAOS-8269), so there is no false "0 detected / all green" and no failed read.
+                return graphqlFetch<{ improveOpportunities: ImproveOpportunitiesResult }>(
+                    IMPROVE_OPPORTUNITIES_QUERY,
+                    { scope: null, limit: 10, windowDays: 30 },
+                    { orgId },
+                ).then((r) => r.improveOpportunities);
+            },
+            "improve-automations",
+            failedSources,
+        ),
     ]);
 
     const signals: AreaSignal[] = [];
@@ -279,5 +310,5 @@ export async function getImproveSignals(
         push("improve-automations", { ...UNAVAILABLE, metricLabel: "Automations" });
     }
 
-    return sortBySeverity(signals);
+    return sortBySeverity(markFailedSignals(signals, SIGNAL_SOURCES, failedSources));
 }

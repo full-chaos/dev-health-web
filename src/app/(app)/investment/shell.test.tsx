@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 import { AppShell } from "@/components/shell/AppShell";
 
 import InvestmentPage from "./page";
@@ -11,9 +12,13 @@ import InvestmentPage from "./page";
 // the old source checks stood for: the role context (and the filter and origin
 // scope) survives on standalone /investment in the sidebar links, in the
 // Diagnose crumb and in every in-page link that is left.
+//
+// Layout (approved prototype, views 5 to 10): one subtitle per tab, the "View evidence" header
+// action, and the perspective notice under the tabs.
 
 const scopeBarSpy = vi.hoisted(() => vi.fn());
 const gatedBodySpy = vi.hoisted(() => vi.fn());
+const evidencePanelSpy = vi.hoisted(() => vi.fn());
 const SEARCH = "role=em&origin=cockpit";
 
 vi.mock("next/navigation", () => ({
@@ -35,6 +40,13 @@ vi.mock("@/components/shell/ScopeBar", () => ({
         return <section data-testid="scope-bar" />;
     },
 }));
+// The request path of the shared drawer: this file checks which subject it is opened for.
+vi.mock("@/components/evidence/EvidencePanel", () => ({
+    EvidencePanel: (props: Record<string, unknown>) => {
+        evidencePanelSpy(props);
+        return <div data-testid="evidence-panel" />;
+    },
+}));
 vi.mock("./_components/InvestmentGatedBody", () => ({
     InvestmentGatedBody: (props: Record<string, unknown>) => {
         gatedBodySpy(props);
@@ -52,14 +64,20 @@ vi.mock("@/lib/graphql/homeFetchers", () => ({
     getHomeDataViaGraphQL: vi.fn().mockResolvedValue(null),
 }));
 
-async function renderPage() {
+async function renderPage(tab?: string) {
     return render(
         <AdminTierProvider tier="team" features={{ investment_view: true }}>
-            <AppShell>
-                {await InvestmentPage({
-                    searchParams: Promise.resolve({ role: "em", origin: "cockpit" }),
-                })}
-            </AppShell>
+            <EvidenceDrawerProvider>
+                <AppShell>
+                    {await InvestmentPage({
+                        searchParams: Promise.resolve({
+                            role: "em",
+                            origin: "cockpit",
+                            ...(tab ? { tab } : {}),
+                        }),
+                    })}
+                </AppShell>
+            </EvidenceDrawerProvider>
         </AdminTierProvider>,
     );
 }
@@ -71,11 +89,12 @@ function paramsOf(link: HTMLElement) {
 beforeEach(() => {
     scopeBarSpy.mockClear();
     gatedBodySpy.mockClear();
+    evidencePanelSpy.mockClear();
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false }));
 });
 
 describe("Investment in the shared app shell", () => {
-    it("has one main, one h1 and the header text it had", async () => {
+    it("has one main, one h1 and the header text of the Overview tab", async () => {
         await renderPage();
 
         expect(screen.getAllByRole("main")).toHaveLength(1);
@@ -89,38 +108,85 @@ describe("Investment in the shared app shell", () => {
         expect(
             header.getByText("Effort and attention allocation over the selected window."),
         ).toBeInTheDocument();
-        expect(header.getByText("Select a segment to investigate.")).toBeInTheDocument();
+        // The legacy meta line under the subtitle is gone.
+        expect(screen.queryByText("Select a segment to investigate.")).toBeNull();
     });
 
-    it("keeps the perspective note, the tabs and the body", async () => {
+    it("has one subtitle per tab (approved prototype, views 5 to 10)", async () => {
+        const subtitles: Record<string, string> = {
+            overview: "Effort and attention allocation over the selected window.",
+            allocation: "How effort is distributed across teams, repositories, and themes.",
+            evidence: "The work units behind the investment mix.",
+            confidence:
+                "Classification confidence, evidence quality, attribution coverage, and rework.",
+        };
+        for (const [tab, subtitle] of Object.entries(subtitles)) {
+            const { unmount } = await renderPage(tab);
+            const header = within(screen.getByTestId("page-header"));
+            expect(header.getByText(subtitle), tab).toBeInTheDocument();
+            expect(gatedBodySpy, tab).toHaveBeenLastCalledWith(
+                expect.objectContaining({ activeTab: tab }),
+            );
+            unmount();
+        }
+    });
+
+    it("has the perspective notice with the prototype text, the tabs and the body", async () => {
         await renderPage();
 
-        expect(screen.getByText("Perspective:")).toBeInTheDocument();
-        expect(
-            screen.getByText(/Investment reflects effort and attention \(not spend\)/),
-        ).toBeInTheDocument();
+        const notice = screen.getByTestId("investment-perspective");
+        expect(notice).toHaveAttribute("data-notice-variant", "info");
+        expect(notice).toHaveTextContent(
+            "Investment reflects effort and attention—not spend. Allocation paths move from allocation to streams to items.",
+        );
+        // Static guidance: not announced as a status update.
+        expect(notice).not.toHaveAttribute("role");
+        // The legacy "Perspective:" box and its wording are gone.
+        expect(screen.queryByText("Perspective:")).toBeNull();
+        expect(screen.queryByText(/\(not spend\)/)).toBeNull();
         expect(screen.getByRole("tablist", { name: "Investment views" })).toBeInTheDocument();
         expect(screen.getByTestId("investment-body")).toBeInTheDocument();
     });
 
-    it("has one scope bar for the investment view, with the origin, before the note", async () => {
+    it("order: one scope bar (with the origin), then the tabs, then the notice, then the body", async () => {
         await renderPage();
 
         expect(scopeBarSpy).toHaveBeenCalledWith({ view: "investment", origin: "cockpit" });
         expect(screen.getAllByTestId("scope-bar")).toHaveLength(1);
-        const bar = screen.getByTestId("scope-bar");
-        const note = screen.getByText("Perspective:");
-        expect(bar.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        const order = [
+            screen.getByTestId("scope-bar"),
+            screen.getByRole("tablist", { name: "Investment views" }),
+            screen.getByTestId("investment-perspective"),
+            screen.getByTestId("investment-body"),
+        ];
+        for (let i = 0; i < order.length - 1; i += 1) {
+            expect(
+                order[i].compareDocumentPosition(order[i + 1]) & Node.DOCUMENT_POSITION_FOLLOWING,
+                `block ${i} before block ${i + 1}`,
+            ).toBeTruthy();
+        }
     });
 
-    it("has the 'Inspect associations' action in the header's actions slot", async () => {
+    it("has one header action, 'View evidence', and no 'Inspect associations' pill", async () => {
         await renderPage();
 
-        const action = within(screen.getByTestId("page-header-actions")).getByRole("link", {
-            name: "Inspect associations",
-        });
-        expect(paramsOf(action).pathname).toBe("/explore");
-        expect(paramsOf(action).searchParams.get("metric")).toBe("throughput");
+        const actions = within(screen.getByTestId("page-header-actions"));
+        expect(actions.getAllByRole("button")).toHaveLength(1);
+        expect(actions.getByRole("button", { name: "View evidence" })).toBeInTheDocument();
+        expect(screen.queryByRole("link", { name: "Inspect associations" })).toBeNull();
+    });
+
+    it("View evidence opens the shared drawer for the throughput metric (the former header link's subject), with the role", async () => {
+        await renderPage();
+        expect(screen.queryByTestId("evidence-panel")).toBeNull();
+
+        fireEvent.click(screen.getByRole("button", { name: "View evidence" }));
+
+        expect(screen.getByTestId("evidence-panel")).toBeInTheDocument();
+        const props = evidencePanelSpy.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+        // The drawer footer links to /explore?metric=throughput with this role (see EvidencePanel).
+        expect(props).toMatchObject({ title: "Throughput", metric: "throughput", role: "em" });
+        expect(props.filters).toBeDefined();
     });
 
     it("has no in-page BackLink: the Diagnose crumb is the return path", async () => {
@@ -160,13 +226,8 @@ describe("Investment — role context survives on standalone /investment", () =>
         expect(url.searchParams.get("origin")).toBe("cockpit");
     });
 
-    it("in every in-page link that is left: the header action and the tabs", async () => {
+    it("in every in-page link that is left: the tabs (the header action is now a drawer button)", async () => {
         await renderPage();
-
-        const main = within(screen.getByRole("main"));
-        const action = main.getByRole("link", { name: "Inspect associations" });
-        expect(paramsOf(action).searchParams.get("role")).toBe("em");
-        expect(paramsOf(action).searchParams.get("origin")).toBe("cockpit");
 
         const tabs = within(screen.getByRole("tablist", { name: "Investment views" })).getAllByRole(
             "tab",

@@ -1,4 +1,5 @@
-import { render, screen } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { screen } from "@/test/utils";
 import { describe, expect, it, vi } from "vitest";
 
 import { describeArtifact, HeatmapPanel } from "./HeatmapPanel";
@@ -50,6 +51,47 @@ describe("HeatmapPanel — hotspot evidence contract (CHAOS-2035)", () => {
             "No hotspot variance in this window",
         );
         expect(screen.queryByTestId("heatmap-chart")).not.toBeInTheDocument();
+    });
+
+    it("shows the served unit in the head as an info pill (prototype pill('hours', 'info')), not caps text", () => {
+        const data = {
+            ...baseResponse([
+                { x: "Mon", y: "auth", value: 5 },
+                { x: "Tue", y: "billing", value: 9 },
+            ]),
+            legend: { unit: "hours", scale: "linear" as const },
+        };
+        render(
+            <HeatmapPanel
+                title="Review wait density"
+                description="Where review wait accumulates."
+                request={request}
+                initialData={data}
+            />,
+        );
+        const pill = screen.getByTestId("heatmap-unit");
+        expect(pill.textContent).toBe("hours");
+        expect(pill.className).toContain("bg-(--info-wash)");
+        expect(pill.className).toContain("text-(--info)");
+        expect(pill.className).not.toMatch(/uppercase|tracking-/u);
+    });
+
+    it("heads the evidence box in sentence case, not caps", () => {
+        render(
+            <HeatmapPanel
+                title="Review wait density"
+                description="Where review wait accumulates."
+                request={request}
+                initialData={baseResponse([
+                    { x: "Mon", y: "auth", value: 5 },
+                    { x: "Tue", y: "billing", value: 9 },
+                ])}
+                evidenceTitle="PR evidence"
+            />,
+        );
+        const head = screen.getByTestId("heatmap-evidence-title");
+        expect(head.textContent).toBe("PR evidence");
+        expect(head.className).not.toMatch(/uppercase|tracking-/u);
     });
 
     it("renders a default summary and human-readable typed artifacts — never raw paths/UUIDs/JSON", () => {
@@ -122,5 +164,51 @@ describe("describeArtifact — unresolved-id crash guard (heatmap cell click)", 
     it("prefers an explicit name when present", () => {
         const out = describeArtifact({ work_item_id: UUID, name: "Login flow" }, 0);
         expect(out.label).toBe("Login flow");
+    });
+});
+
+describe("HeatmapPanel — failed and embedded", () => {
+    it("shows the shared error card, not the dashed empty box, when the read failed", () => {
+        render(
+            <HeatmapPanel
+                title="T"
+                description="D"
+                request={request}
+                initialData={null}
+                emptyState="empty words"
+                failed
+            />,
+        );
+        expect(screen.getByRole("heading", { name: "Could not be read" })).toBeInTheDocument();
+        expect(screen.queryByText("empty words")).toBeNull();
+    });
+
+    it("keeps the empty words for an empty read", () => {
+        render(
+            <HeatmapPanel
+                title="T"
+                description="D"
+                request={request}
+                initialData={null}
+                emptyState="empty words"
+            />,
+        );
+        expect(screen.getByText("empty words")).toBeInTheDocument();
+        expect(screen.queryByText("Could not be read")).toBeNull();
+    });
+
+    it("embedded draws no own heading and no unit pill (the Section card owns them)", () => {
+        render(
+            <HeatmapPanel
+                title="Own title"
+                description="D"
+                request={request}
+                initialData={baseResponse([{ x: "Mon", y: "auth", value: 5 }])}
+                embedded
+            />,
+        );
+        expect(screen.queryByRole("heading", { name: "Own title" })).toBeNull();
+        expect(screen.queryByTestId("heatmap-unit")).toBeNull();
+        expect(screen.getByTestId("heatmap-chart")).toBeInTheDocument();
     });
 });

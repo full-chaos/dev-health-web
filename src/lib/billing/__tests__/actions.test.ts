@@ -61,7 +61,9 @@ describe("getSubscription", () => {
 
         const result = await getSubscription();
         expect(result.error).toBeDefined();
-        expect(result.error).toBe("Not found");
+        // A failed read: the plain sentence, never the served text; the status stays for the caller.
+        expect(result.error).toBe("Could not be read");
+        expect(result.status).toBe(404);
         expect(result.data).toBeUndefined();
 
         fetchSpy.mockRestore();
@@ -111,7 +113,8 @@ describe("getSubscription", () => {
 
         const result = await getSubscription();
         expect(result.error).toBeDefined();
-        expect(result.error).toBe("Network error");
+        expect(result.error).toBe("The change was not saved. Try again.");
+        expect(result.error).not.toContain("Network error");
 
         fetchSpy.mockRestore();
     });

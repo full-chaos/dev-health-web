@@ -1,12 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    useSyncExternalStore,
+    useTransition,
+} from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { addDays, formatDateInput, parseDateInput, toLocalDate } from "@/lib/dateUtils";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { decodeFilter, encodeFilterParam, filterFromQueryParams } from "@/lib/filters/encode";
 import type { MetricFilter } from "@/lib/filters/types";
+import { useReportFilterPending } from "@/components/shell/FilterPending";
 import { type FilterBarClientProps, resolveScopeLock, resolveVisibility } from "./filterBarConfig";
 import { DATE_PRESETS, formatSelection, scopeLabelMap } from "./filterBarUtils";
 import { useFilterOptions } from "./useFilterOptions";
@@ -67,6 +76,10 @@ export function useFilterBarState({
     const queryParam = searchParams.get("q") ?? "";
     const [peopleQuery, setPeopleQuery] = useState(queryParam);
     const options = useFilterOptions();
+    // The URL write is a transition: it stays pending until the server has rendered the page for the new
+    // filter, so the shell can mark the old values busy meanwhile (CHAOS-8184).
+    const [isPending, startTransition] = useTransition();
+    useReportFilterPending(isPending);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect -- filters mirror URL-derived initial state.
@@ -112,7 +125,9 @@ export function useFilterBarState({
         (nextFilters: MetricFilter) => {
             const params = new URLSearchParams(searchParams.toString());
             params.set("f", encodeFilterParam(nextFilters));
-            router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+            startTransition(() => {
+                router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+            });
         },
         [pathname, router, searchParams],
     );
@@ -264,6 +279,7 @@ export function useFilterBarState({
         filters,
         handleDatePreset,
         isCustomDateRange,
+        isPending,
         openMenu,
         options,
         peopleQuery,

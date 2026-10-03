@@ -1,4 +1,5 @@
 import { AreaOverview } from "@/components/navigation/AreaOverview";
+import { AreaOverviewEvidenceAction } from "@/components/navigation/areaOverviewEvidence";
 import { DiagnoseQuestions } from "./DiagnoseQuestions";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -40,7 +41,15 @@ export default async function DiagnosePage({ searchParams }: DiagnosePageProps) 
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
                 title="Diagnose"
-                subtitle="Investigate flow, investment, landscape, work graph, complexity, cognitive load, bottlenecks, and code from one durable area."
+                subtitle="Investigate flow, investment, landscape, work graph, complexity, cognitive load, bottlenecks, and code."
+                actions={
+                    // The subject is the page: every served signal, in body order.
+                    <AreaOverviewEvidenceAction
+                        title="Diagnose"
+                        areaId="diagnose"
+                        signals={diagnoseSignals}
+                    />
+                }
             />
 
             <ScopeBar view="work" origin={activeOrigin} />
@@ -50,8 +59,6 @@ export default async function DiagnosePage({ searchParams }: DiagnosePageProps) 
                 signals={diagnoseSignals}
                 filters={filters}
                 role={activeRole}
-                title="Related workflows"
-                description="Diagnostic sub-areas, ordered by severity."
             />
 
             <DiagnoseQuestions filters={filters} role={activeRole} />

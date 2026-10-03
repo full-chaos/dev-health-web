@@ -127,7 +127,7 @@ export function UserForm({
                             checked={formData.is_active}
                             onChange={handleChange}
                             disabled={isLoading}
-                            className="h-4 w-4 rounded border-(--card-stroke) text-(--accent) focus:ring-(--accent)"
+                            className="h-4 w-4 rounded border-(--card-stroke) text-(--accent) focus:ring-(--accent-2)"
                         />
                         <label htmlFor="is_active" className="text-sm text-foreground">
                             Active

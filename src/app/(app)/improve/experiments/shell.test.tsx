@@ -3,6 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
+import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 import { AppShell } from "@/components/shell/AppShell";
 
 import ExperimentsPage from "./page";
@@ -51,9 +52,11 @@ vi.mock("@/lib/config", async (importOriginal) => ({
 async function renderPage() {
     return render(
         <AdminTierProvider tier="community" features={{}}>
-            <AppShell>
-                {await ExperimentsPage({ searchParams: Promise.resolve({ role: "em" }) })}
-            </AppShell>
+            <EvidenceDrawerProvider>
+                <AppShell>
+                    {await ExperimentsPage({ searchParams: Promise.resolve({ role: "em" }) })}
+                </AppShell>
+            </EvidenceDrawerProvider>
         </AdminTierProvider>,
     );
 }
@@ -196,5 +199,39 @@ describe("Experiments in the shared app shell", () => {
         const box = screen.getByTestId("experiments-empty");
         expect(box).not.toHaveAttribute("data-variant", "error");
         expect(box).toHaveTextContent("No experiments in this window");
+    });
+
+    it("has a View evidence action listing the suggestion count and each hypothesis with its metric", async () => {
+        getExperimentsMock.mockResolvedValue({
+            items: [
+                experiment("e1", "review_latency", "Trial a 24h review SLA"),
+                experiment("e2", "", "Cap WIP per squad"),
+            ],
+        });
+        await renderPage();
+
+        await userEvent.click(
+            within(screen.getByTestId("page-header")).getByRole("button", {
+                name: "View evidence",
+            }),
+        );
+        const rows = within(await screen.findByTestId("page-evidence-facts"))
+            .getAllByTestId("evidence-fact")
+            .map((row) => [
+                row.querySelector("dt")?.textContent,
+                row.querySelector("dd")?.textContent,
+            ]);
+        expect(rows).toEqual([
+            ["Suggested experiments", "2"],
+            ["Suggestion 1", "Trial a 24h review SLA (review_latency)"],
+            ["Suggestion 2", "Cap WIP per squad"],
+        ]);
+    });
+
+    it("has no View evidence action when the experiments could not load", async () => {
+        getExperimentsMock.mockResolvedValue(null);
+        await renderPage();
+
+        expect(screen.queryByRole("button", { name: "View evidence" })).toBeNull();
     });
 });

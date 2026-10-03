@@ -39,11 +39,11 @@ BACKEND_URL="http://127.0.0.1:8000" npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-> **First checkout?** The GraphQL schema file (`src/lib/graphql/schema.graphql`) is exported from the `dev-health-ops` backend and is not generated locally. If it is missing, `npm run codegen` will fail. To obtain it, start the backend API and run:
+> **First checkout?** The GraphQL schema file (`src/lib/graphql/schema.graphql`) is a verbatim copy of the `dev-health-ops` contract pin (`contracts/graphql/v1/schema.graphql`) and is not generated locally. If it is missing, `pnpm codegen` will fail. To obtain it, copy the pin from a `dev-health-ops` checkout beside this one (no running API is needed):
 >
 > ```bash
-> PYTHONPATH=../dev-health-ops/src python3 -m dev_health_ops.api.graphql.export_schema --out src/lib/graphql/schema.graphql
-> npm run codegen
+> cp ../dev-health-ops/contracts/graphql/v1/schema.graphql src/lib/graphql/schema.graphql
+> pnpm codegen
 > ```
 >
 > See [Schema Contract Enforcement](#schema-contract-enforcement) for details.
@@ -165,12 +165,13 @@ Key patterns:
 
 ### Schema Contract Enforcement
 
-The `live-e2e.yml` CI workflow includes a GraphQL schema drift detection step that exports the backend Strawberry schema and diffs it against `src/lib/graphql/schema.graphql`. If the schemas diverge:
+The Go gqlgen schema in `dev-health-ops` is the source of truth. The ops repo pins it at `contracts/graphql/v1/schema.graphql`, and `src/lib/graphql/schema.graphql` is a verbatim copy of that pin. The `live-e2e.yml` CI workflow checks out `dev-health-ops` and its drift step fails on any difference between the two files (`diff -u`); the step has no condition. The job runs on every pull request that changes `src/**` or `codegen.ts`, so a change to the copy or to the generated types is always checked; a pull request that changes neither (documents only, for example) does not run it. If the files differ:
 
-1. Start the `dev-health-ops` API locally.
-2. Re-export: `PYTHONPATH=../dev-health-ops/src python3 -m dev_health_ops.api.graphql.export_schema --out src/lib/graphql/schema.graphql`
-3. Regenerate types: `npm run codegen`
-4. Commit `schema.graphql` + `__generated__/` together.
+1. Copy the pin: `cp ../dev-health-ops/contracts/graphql/v1/schema.graphql src/lib/graphql/schema.graphql`
+2. Regenerate types: `pnpm codegen`
+3. Commit `schema.graphql` + `__generated__/` together.
+
+The copy is never edited by hand. A field the pin does not have is added in `dev-health-ops` first. A pull request whose branch has the same name as a `dev-health-ops` branch is checked against that branch, not against ops `main`.
 
 MSW mock handlers in `tests/mocks/handlers.ts` are typed with interfaces from `tests/mocks/types.ts` and generated GraphQL types, so TypeScript catches response shape mismatches at compile time.
 

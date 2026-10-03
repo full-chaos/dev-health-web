@@ -96,7 +96,7 @@ describe("platform admin pages in the shared app shell (CHAOS-7967)", () => {
         ).toHaveAttribute("aria-selected", "true");
         // The Platform Admin pill of the old sidebar is in the page header.
         expect(
-            within(screen.getByTestId("page-header")).getByText("Platform Admin"),
+            within(screen.getByTestId("page-header")).getByText("Platform admin"),
         ).toBeInTheDocument();
     });
 

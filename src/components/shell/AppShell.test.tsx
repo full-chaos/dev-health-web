@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -22,18 +24,6 @@ vi.mock("next-auth/react", () => ({
     }),
     signOut: vi.fn(),
 }));
-
-/** A page outside the shell: it renders its own navigation and `<main>`, as the Admin layout does. */
-function LegacyPage() {
-    return (
-        <div>
-            <nav aria-label="Admin navigation" />
-            <main>
-                <h1>Legacy page</h1>
-            </main>
-        </div>
-    );
-}
 
 /** A migrated page: content only. */
 function ShellPage() {
@@ -150,7 +140,7 @@ describe("AppShell — a route in the registry gets the shared shell", () => {
             "account-options",
             "account-options-sidebar",
         ]);
-        // The legacy account bar is not rendered on a shell route.
+        // There is no account bar: the sidebar and top bar carry the account menu.
         expect(screen.queryByRole("navigation", { name: "Account" })).toBeNull();
     });
 
@@ -181,7 +171,7 @@ describe("AppShell — a route in the registry gets the shared shell", () => {
     });
 });
 
-describe("AppShell — the status chip states what the organization card knows", () => {
+describe("AppShell — the data fact is under the account name, not in the top bar (CHAOS-8432)", () => {
     function organizationsResponse(active: { has_data: boolean; last_metrics_at?: string | null }) {
         return {
             ok: true,
@@ -195,11 +185,7 @@ describe("AppShell — the status chip states what the organization card knows",
         };
     }
 
-    function chip() {
-        return screen.getByTestId("shell-status-chip");
-    }
-
-    it("asks for the organizations once: the card and the chip share one request", async () => {
+    it("asks for the organizations once, shows 'Data through' in the sidebar account block only", async () => {
         const fetchMock = vi
             .fn()
             .mockResolvedValue(
@@ -208,8 +194,11 @@ describe("AppShell — the status chip states what the organization card knows",
         vi.stubGlobal("fetch", fetchMock);
         renderFrame(<ShellPage />);
 
-        await waitFor(() => expect(chip()).toHaveAttribute("data-status", "synced"));
-        expect(chip()).toHaveTextContent(/^Data through /);
+        await waitFor(() =>
+            expect(screen.getByTestId("account-detail")).toHaveTextContent(/^Data through /),
+        );
+        expect(screen.getByTestId("shell-top-bar")).not.toHaveTextContent("Data through");
+        expect(screen.queryByTestId("shell-status-chip")).toBeNull();
         expect(fetchMock).toHaveBeenCalledTimes(1);
         expect(screen.getByRole("combobox", { name: /organization/i })).toBeInTheDocument();
     });
@@ -221,8 +210,9 @@ describe("AppShell — the status chip states what the organization card knows",
         );
         renderFrame(<ShellPage />);
 
-        await waitFor(() => expect(chip()).toHaveAttribute("data-status", "empty"));
-        expect(chip()).toHaveTextContent("No data yet");
+        await waitFor(() =>
+            expect(screen.getByTestId("account-detail")).toHaveTextContent("No data yet"),
+        );
     });
 
     it.each([
@@ -248,94 +238,63 @@ describe("AppShell — the status chip states what the organization card knows",
                     }),
                 }),
         ],
-    ])("shows the neutral 'Status unavailable' state when %s", async (_label, makeFetch) => {
+    ])("shows 'Data status unavailable' (not 'No data yet') when %s", async (_label, makeFetch) => {
         vi.stubGlobal("fetch", makeFetch());
         renderFrame(<ShellPage />);
 
-        await waitFor(() => expect(chip()).toHaveAttribute("data-status", "unknown"));
-        expect(chip()).toHaveTextContent("Status unavailable");
-        expect(chip()).not.toHaveTextContent("Data through");
-        expect(chip()).not.toHaveTextContent("No data yet");
+        await waitFor(() =>
+            expect(screen.getByTestId("account-detail")).toHaveTextContent(
+                "Data status unavailable",
+            ),
+        );
+        expect(screen.getByTestId("account-detail")).not.toHaveTextContent("No data yet");
+        expect(screen.getByTestId("account-detail")).not.toHaveTextContent("Data through");
     });
 
-    it("is neutral while the request is open", () => {
+    it("shows no data line while the request is open", () => {
         vi.stubGlobal(
             "fetch",
             vi.fn(() => new Promise(() => {})),
         );
         renderFrame(<ShellPage />);
 
-        expect(chip()).toHaveAttribute("data-status", "loading");
-        expect(chip()).not.toHaveTextContent("Data through");
+        expect(screen.getByTestId("shell-top-bar")).not.toHaveTextContent("Data through");
+        expect(screen.queryByText(/Data through|No data yet|Data status unavailable/)).toBeNull();
     });
 });
 
-describe("AppShell — a route outside the registry keeps today's chrome", () => {
-    beforeEach(() => {
-        navigationMock.pathname = "/demo";
-    });
-
-    it("renders no shell part: no sidebar, no top bar, no skip link, no shell main", () => {
-        renderFrame(<LegacyPage />);
-
-        expect(screen.queryByTestId("app-shell")).toBeNull();
-        expect(screen.queryByTestId("shell-sidebar")).toBeNull();
-        expect(screen.queryByTestId("shell-top-bar")).toBeNull();
-        expect(screen.queryByRole("link", { name: "Skip to main content" })).toBeNull();
-        expect(document.getElementById("main-content")).toBeNull();
-    });
-
-    it("lets the page render its own navigation and its own main", () => {
-        renderFrame(<LegacyPage />);
-
-        expect(screen.getAllByRole("navigation", { name: "Admin navigation" })).toHaveLength(1);
-        expect(screen.getAllByRole("main")).toHaveLength(1);
-        expect(
-            within(screen.getByRole("main")).getByRole("heading", { name: "Legacy page" }),
-        ).toBeInTheDocument();
-    });
-
-    it("renders the legacy account bar with the structure it had in the layout", () => {
-        const { container } = renderFrame(<ShellPage />);
-
-        // Frame order: banners, account bar, page. Nothing else.
-        expect(Array.from(container.children).map((child) => child.tagName)).toEqual([
-            "DIV",
-            "HEADER",
-            "H1",
-        ]);
-        expect(container.children[0]).toHaveAttribute("data-testid", "banners");
-
-        const header = container.querySelector("header");
-        expect(header).not.toBeNull();
-        expect(structureOf(header as Element)).toEqual([
-            "header",
-            '  nav aria-label="Account"',
-            '    a aria-label="Full Chaos Dev Health home" href="/dashboard"',
-            '      img alt="Full Chaos Dev Health logo"',
-            '      span "Full Chaos Dev Health"',
-            // The light / dark toggle was mounted next to the account menu after
-            // the shell was built; it is part of the legacy bar now.
-            "    div",
-            '      button aria-label="Light theme" type="button"',
-            "        span",
-            '        span "Dark"',
-            "      div",
-            '        button aria-label="Account options" aria-controls="account-options" aria-expanded="false" type="button"',
-            '          div "A"',
-            '          span "Account"',
-            '          span "admin"',
-        ]);
-    });
-
-    it.each(["/demo", "/demo/charts", "/dashboards", "/superadmins"])(
-        "keeps %s on the legacy chrome",
+describe("AppShell — every authed route renders in the shell", () => {
+    it.each(["/demo", "/demo/charts", "/dashboards", "/superadmins", "/not-a-route"])(
+        "renders the sidebar, top bar, skip link and one main on %s, with no account bar",
         (pathname) => {
             navigationMock.pathname = pathname;
             renderFrame(<ShellPage />);
 
-            expect(screen.queryByTestId("app-shell")).toBeNull();
-            expect(screen.getByRole("navigation", { name: "Account" })).toBeInTheDocument();
+            expect(screen.getByTestId("app-shell")).toBeInTheDocument();
+            expect(screen.getByTestId("shell-sidebar")).toBeInTheDocument();
+            expect(screen.getByTestId("shell-top-bar")).toBeInTheDocument();
+            expect(screen.getByRole("link", { name: "Skip to main content" })).toBeInTheDocument();
+            expect(screen.getAllByRole("main")).toHaveLength(1);
+            expect(screen.queryByRole("navigation", { name: "Account" })).toBeNull();
         },
     );
+
+    it("defines --ribbon once, with the prototype stops, outside the pinned theme blocks", () => {
+        const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8").replace(
+            /\s+/g,
+            " ",
+        );
+        expect(css).toMatch(/--ribbon: linear-gradient\( ?90deg, #f92c00 0%[^;]*#01718d 100% ?\);/);
+    });
+
+    it("draws the 2px ribbon along the top edge with the --ribbon token, as the prototype does", () => {
+        renderFrame(<ShellPage />);
+        const ribbon = screen.getByTestId("shell-ribbon");
+        expect(ribbon).toHaveAttribute("aria-hidden", "true");
+        expect(ribbon.className).toContain("h-0.5");
+        expect(ribbon.className).toContain("fixed");
+        // Over the top bar (z-30), under the slide-over, drawers and dialogs (z-40/z-50).
+        expect(ribbon.className).toContain("z-35");
+        expect(ribbon.className).toContain("bg-(image:--ribbon)");
+    });
 });

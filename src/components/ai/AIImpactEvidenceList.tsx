@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useMemo, useState } from "react";
 
 import { DataState } from "@/components/ui/DataState";
@@ -64,7 +65,7 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
     );
 
     if (error) {
-        return <ErrorCard title="Failed to load AI-attributed PRs" message={error.message} />;
+        return <ErrorCard title="Failed to load AI-attributed PRs" message={READ_FAILED_MESSAGE} />;
     }
 
     if (!fetching && data && !data.dataAvailable) {
@@ -205,7 +206,7 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
             <section className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-5 xl:sticky xl:top-4">
                 <h3 className="font-(--font-display) text-lg">Work Graph evidence</h3>
                 <div className="mt-3">
-                    <EvidencePanel selected={selected} />
+                    <EvidencePanel selected={selected} showTitle={false} />
                 </div>
             </section>
         </div>

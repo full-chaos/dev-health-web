@@ -1,5 +1,6 @@
 "use client";
 
+import { isValidationStatus } from "@/lib/actionFailure";
 import { useState } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -61,7 +62,12 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                 toast.error("Invalid or expired token");
             } else {
                 const data = await response.json().catch(() => ({}));
-                toast.error(extractErrorMessage(data?.detail, "Failed to reset password"));
+                toast.error(
+                    extractErrorMessage(
+                        isValidationStatus(response.status) ? data?.detail : undefined,
+                        "Failed to reset password",
+                    ),
+                );
             }
         } catch {
             toast.error("An unexpected error occurred");
@@ -107,7 +113,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                         maxLength={128}
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                        className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-(--accent-2)"
                         disabled={isLoading}
                     />
                 </div>
@@ -130,7 +136,7 @@ export function ResetPasswordForm({ token }: ResetPasswordFormProps) {
                         maxLength={128}
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
+                        className="w-full px-3 py-2 border rounded-md border-[var(--card-stroke)] bg-[var(--card)] text-[var(--foreground)] focus:outline-none focus:ring-2 focus:ring-(--accent-2)"
                         disabled={isLoading}
                     />
                 </div>

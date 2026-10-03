@@ -9,7 +9,7 @@ import type { FeedbackPayload, FeedbackResponse, FeedbackType } from "@/componen
 import { CTA_LABELS } from "@/lib/design/cta";
 
 const inputClassName =
-    "w-full rounded-(--radius-md) border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground placeholder:text-(--ink-muted) focus:border-(--accent) focus:outline-none";
+    "w-full rounded-(--radius-md) border border-(--card-stroke) bg-(--card-70) px-3 py-2 text-sm text-foreground placeholder:text-(--ink-muted) focus:border-(--accent-2) focus:outline-none";
 
 type FeedbackFormState = {
     title: string;
@@ -114,7 +114,7 @@ export function BugReportButton() {
             <button
                 type="button"
                 data-testid="bug-report-trigger"
-                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent)/50"
+                className="flex w-full items-center gap-2 px-4 py-2 text-left text-sm text-foreground hover:bg-(--card-80) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)/50"
                 onClick={openPanel}
             >
                 <Bug aria-hidden="true" className="h-4 w-4 shrink-0 text-(--ink-muted)" />

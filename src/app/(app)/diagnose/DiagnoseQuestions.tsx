@@ -1,5 +1,8 @@
 import Link from "next/link";
+import { ArrowRight, Clock, Network } from "lucide-react";
 
+import { buttonClassName } from "@/components/shared/Button";
+import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import type { MetricFilter } from "@/lib/filters/types";
@@ -10,65 +13,52 @@ type DiagnoseQuestionsProps = {
 };
 
 /**
- * "Follow a question into evidence" (approved concept, no data): three static
- * routes out of the Diagnose overview. Links carry the filters and role like the
- * area cards do. Each link's accessible name is its caption plus its registry
- * label, so "Open evidence" reads differently from the other two.
+ * "Follow a question into evidence" (approved prototype `diagnoseHub()`, no data): one section
+ * card with the triage line under the title and a row of three buttons, each a route out of the
+ * Diagnose overview. The button text is the prototype's own. Links carry the filters and role
+ * like the area cards do.
  */
 export function DiagnoseQuestions({ filters, role }: DiagnoseQuestionsProps) {
     const items = [
         {
             id: "work-graph",
-            caption: "Work graph",
-            label: CTA_LABELS.openWorkGraph,
+            label: CTA_LABELS.exploreWorkGraph,
+            icon: Network,
             href: withFilterParam("/diagnose/work-graph", filters, role),
         },
         {
             id: "review-latency",
-            caption: "Review latency",
-            label: CTA_LABELS.openEvidence,
+            label: CTA_LABELS.inspectReviewLatency,
+            icon: Clock,
             href: buildExploreUrl({ metric: "review_latency", filters, role }),
         },
         {
             id: "effort-allocation",
-            caption: "Effort allocation",
-            label: CTA_LABELS.openInvestment,
+            label: CTA_LABELS.traceEffortAllocation,
+            icon: ArrowRight,
             href: withFilterParam("/investment?tab=allocation", filters, role),
         },
     ];
 
     return (
-        <section aria-labelledby="diagnose-questions-title" data-testid="diagnose-questions">
-            <h2 id="diagnose-questions-title" className="text-h3 font-semibold text-foreground">
-                Follow a question into evidence
-            </h2>
-            <div className="mt-3 grid gap-3.5 md:grid-cols-3">
-                {items.map((item) => (
-                    <div
-                        key={item.id}
-                        className="flex flex-col items-start gap-3 rounded-(--radius-md) border border-(--card-stroke) bg-(--card) p-4.75"
+        <Section
+            data-testid="diagnose-questions"
+            title="Follow a question into evidence"
+            description="The overview is a triage surface. Each destination retains its own tabs and investigation views."
+        >
+            <div data-testid="diagnose-question-row" className="grid gap-4.5 md:grid-cols-3">
+                {items.map(({ id, label, icon: Icon, href }) => (
+                    <Link
+                        key={id}
+                        href={href}
+                        data-question={id}
+                        className={buttonClassName("secondary", "md")}
                     >
-                        <p
-                            id={`diagnose-q-${item.id}`}
-                            className="text-label-caps uppercase text-(--ink-muted)"
-                        >
-                            {item.caption}
-                        </p>
-                        <Link
-                            id={`diagnose-q-${item.id}-link`}
-                            href={item.href}
-                            aria-labelledby={`diagnose-q-${item.id} diagnose-q-${item.id}-link`}
-                            className="rounded-(--radius-sm) border border-(--card-stroke) px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-(--surface-raised) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2)"
-                        >
-                            {item.label}
-                        </Link>
-                    </div>
+                        <Icon aria-hidden="true" className="h-4 w-4 shrink-0" />
+                        {label}
+                    </Link>
                 ))}
             </div>
-            <p className="mt-3 text-xs text-(--ink-muted)">
-                The overview is a triage surface. Each destination retains its own tabs and
-                investigation views.
-            </p>
-        </section>
+        </Section>
     );
 }

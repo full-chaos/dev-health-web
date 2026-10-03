@@ -1,12 +1,17 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useSecurityOverview } from "@/lib/graphql/hooks/useSecurity";
 import type { SecurityFilter } from "@/lib/filters/security";
 import { SECURITY_KPI_LABELS } from "@/lib/security/kpiLabels";
-import { KpiTile } from "./KpiTile";
 import { SeverityStackedBar } from "./SeverityStackedBar";
 import { TopReposChart } from "./TopReposChart";
 import { TrendChart } from "./TrendChart";
+import { OctagonAlert, TriangleAlert } from "lucide-react";
+
+import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
+import { STATUS_PILL } from "@/lib/statusPill";
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import { DataState } from "@/components/ui/DataState";
 import type { SeverityBucketData, RepoAlertCountData, TrendPointData } from "./types";
@@ -24,6 +29,51 @@ function DegradedTile({ label }: { label: string }) {
             message="This security view could not be loaded. Please retry."
         />
     );
+}
+
+/**
+ * The 30-day change of the open-alert COUNT, as the tile always showed it: "↑ +n", "↓ -n" or
+ * "· no change". A count change, not a percent (so not `MetricDelta`).
+ */
+function CountDelta({ delta }: { delta: number }) {
+    if (delta === 0) {
+        return <span className="text-xs text-(--ink-muted)">· no change</span>;
+    }
+    if (delta > 0) {
+        return <span className="text-xs text-(--negative)">↑ +{delta}</span>;
+    }
+    return <span className="text-xs text-(--positive)">↓ {delta}</span>;
+}
+
+const PILL_ICON = { negative: OctagonAlert, caution: TriangleAlert } as const;
+
+/**
+ * The strip draws the seams and the outer border; a tile inside its testid wrapper (kept for the
+ * e2e tests) drops its own border and radius, as the strip does for its direct children.
+ */
+const IN_STRIP = "h-full rounded-none! border-0!";
+
+/** A severity pill on the tile: icon + word, so color is never the only signal (MAPPING S4). */
+function SeverityPill({ label, tone }: { label: string; tone: "negative" | "caution" }) {
+    const Icon = PILL_ICON[tone];
+    return (
+        <span
+            data-testid="kpi-pill"
+            data-tone={tone}
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${STATUS_PILL[tone]}`}
+        >
+            <Icon aria-hidden="true" className="h-3 w-3" />
+            {label}
+        </span>
+    );
+}
+
+// A KPI the API did not serve (no `kpis` in the answer) is passed as undefined, so the shared
+// tile reads "Not reported"; a served 0 stays "0" (missing is not zero, ruling 84).
+
+/** A KPI slot while the overview loads: the shared loading block, never a value. */
+function LoadingTile({ label }: { label: string }) {
+    return <DataState variant="loading" title={`${label} loading`} className="bg-card p-4" />;
 }
 
 export function SecurityDashboard({ filter }: SecurityDashboardProps) {
@@ -46,67 +96,89 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
         <div className="flex flex-col gap-6">
             {/* Banner-level error notice — does NOT replace the grid structure */}
             {error && (
-                <ErrorCard title="Failed to load security overview" message={error.message} />
+                <ErrorCard title="Failed to load security overview" message={READ_FAILED_MESSAGE} />
             )}
 
-            {/* Row 1: KPI tiles — testid wrappers always in the DOM (required by Playwright) */}
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                <div data-testid="kpi-open">
+            {/* Row 1: KPI tiles in the shared metric strip (the one metric tile, MAPPING S3-S5).
+                The testid wrappers are always in the DOM (required by Playwright). */}
+            <MetricStrip columns={4} data-testid="security-kpi-strip">
+                <div data-testid="kpi-open" className="bg-card">
                     {error ? (
                         <DegradedTile label={SECURITY_KPI_LABELS.open} />
+                    ) : fetching ? (
+                        <LoadingTile label={SECURITY_KPI_LABELS.open} />
                     ) : (
-                        <KpiTile
+                        <MetricCard
                             label={SECURITY_KPI_LABELS.open}
-                            value={kpis?.openTotal ?? 0}
-                            delta={fetching ? undefined : kpis?.openDelta30d}
-                            loading={fetching}
+                            value={kpis?.openTotal}
+                            deltaSlot={
+                                kpis?.openDelta30d !== undefined && kpis?.openDelta30d !== null ? (
+                                    <CountDelta delta={kpis.openDelta30d} />
+                                ) : (
+                                    false
+                                )
+                            }
+                            hideTrend
+                            className={IN_STRIP}
                         />
                     )}
                 </div>
-                <div data-testid="kpi-critical">
+                <div data-testid="kpi-critical" className="bg-card">
                     {error ? (
                         <DegradedTile label={SECURITY_KPI_LABELS.critical} />
+                    ) : fetching ? (
+                        <LoadingTile label={SECURITY_KPI_LABELS.critical} />
                     ) : (
-                        <KpiTile
+                        <MetricCard
                             label={SECURITY_KPI_LABELS.critical}
-                            value={kpis?.critical ?? 0}
-                            pill={
-                                kpis && kpis.critical > 0
-                                    ? { label: "Critical", tone: "negative" }
-                                    : undefined
+                            value={kpis?.critical}
+                            deltaSlot={false}
+                            headAction={
+                                kpis && kpis.critical > 0 ? (
+                                    <SeverityPill label="Critical" tone="negative" />
+                                ) : undefined
                             }
-                            loading={fetching}
+                            hideTrend
+                            className={IN_STRIP}
                         />
                     )}
                 </div>
-                <div data-testid="kpi-high">
+                <div data-testid="kpi-high" className="bg-card">
                     {error ? (
                         <DegradedTile label={SECURITY_KPI_LABELS.high} />
+                    ) : fetching ? (
+                        <LoadingTile label={SECURITY_KPI_LABELS.high} />
                     ) : (
-                        <KpiTile
+                        <MetricCard
                             label={SECURITY_KPI_LABELS.high}
-                            value={kpis?.high ?? 0}
-                            pill={
-                                kpis && kpis.high > 0
-                                    ? { label: "High", tone: "caution" }
-                                    : undefined
+                            value={kpis?.high}
+                            deltaSlot={false}
+                            headAction={
+                                kpis && kpis.high > 0 ? (
+                                    <SeverityPill label="High" tone="caution" />
+                                ) : undefined
                             }
-                            loading={fetching}
+                            hideTrend
+                            className={IN_STRIP}
                         />
                     )}
                 </div>
-                <div data-testid="kpi-mttf">
+                <div data-testid="kpi-mttf" className="bg-card">
                     {error ? (
                         <DegradedTile label="Mean Days to Fix (30d)" />
+                    ) : fetching ? (
+                        <LoadingTile label="Mean Days to Fix (30d)" />
                     ) : (
-                        <KpiTile
+                        <MetricCard
                             label="Mean Days to Fix (30d)"
-                            value={mttfValue}
-                            loading={fetching}
+                            valueText={mttfValue}
+                            deltaSlot={false}
+                            hideTrend
+                            className={IN_STRIP}
                         />
                     )}
                 </div>
-            </div>
+            </MetricStrip>
 
             {/* Row 2: Severity breakdown + Top repos */}
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">

@@ -1,21 +1,38 @@
-import type { ButtonHTMLAttributes, ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "dangerSolid";
 export type ButtonSize = "sm" | "md";
 
+// Approved prototype `.btn` (style.css + theme.css): sentence case, 6px radius, weight 550, 7px
+// icon gap, 35px high (28px small), 13px text (12px small). Theme tokens only.
 const BASE =
-    "inline-flex items-center justify-center gap-1.5 rounded-full font-medium uppercase tracking-[0.2em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-50";
+    "inline-flex items-center justify-center gap-1.75 whitespace-nowrap rounded-sm border font-[550] no-underline transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent-2) disabled:cursor-not-allowed disabled:opacity-50";
 
 const SIZES: Record<ButtonSize, string> = {
-    sm: "px-3 py-1.5 text-[10px]",
-    md: "px-4 py-2 text-xs",
+    sm: "min-h-7 px-2.25 py-1.25 text-xs",
+    md: "min-h-8.75 px-3.25 py-2 text-[0.8125rem]",
+};
+
+/** Circle icon button (`.btn.circle`): 35px wide (28px small), no padding, same 6px radius. */
+const ICON_ONLY_SIZES: Record<ButtonSize, string> = {
+    sm: "min-h-7 w-7 p-0 text-xs",
+    md: "min-h-8.75 w-8.75 p-0 text-[0.8125rem]",
 };
 
 const VARIANTS: Record<ButtonVariant, string> = {
-    primary: "border border-(--accent-2) bg-(--accent-2) text-white hover:bg-(--accent-2)/90",
-    secondary:
-        "border border-(--card-stroke) bg-(--card-70) text-foreground hover:border-(--ink-muted)",
-    ghost: "border border-transparent text-(--ink-muted) hover:text-foreground hover:bg-(--card-80)",
+    // Filled action: the approved `--blue` fill with white text (teal = action, orange = selection).
+    primary: "border-(--action) bg-(--action) text-(--on-action) hover:brightness-110",
+    secondary: "border-(--card-stroke) bg-(--card) text-foreground hover:bg-(--card-80)",
+    // Link-like: the action/link token (approved `--blueInk`), never the orange selection token.
+    ghost: "border-transparent bg-transparent text-(--accent-2) hover:bg-(--card-80)",
+    // Destructive outline: red outline, red text and icon (`--negative` on `--card`: 4.5:1 or more in both
+    // themes, pinned in Button.test.tsx). A page does not re-colour a button with its own class: the variant
+    // carries the text colour, so no class-order override is needed.
+    danger: "border-(--negative) bg-(--card) text-(--negative) hover:bg-(--negative-wash)",
+    // Destructive confirm: filled with `--negative`, the label token `--accent-foreground` on it (7.64:1 light,
+    // 7.39:1 dark, pinned in Button.test.tsx).
+    dangerSolid:
+        "border-(--negative) bg-(--negative) text-(--accent-foreground) hover:brightness-110",
 };
 
 /**
@@ -32,27 +49,62 @@ export function buttonClassName(
     variant: ButtonVariant = "secondary",
     size: ButtonSize = "md",
     className = "",
+    iconOnly = false,
 ): string {
-    return `${BASE} ${SIZES[size]} ${VARIANTS[variant]} ${className}`.trim();
+    const sizing = iconOnly ? ICON_ONLY_SIZES[size] : SIZES[size];
+    return `${BASE} ${sizing} ${VARIANTS[variant]} ${className}`.trim();
 }
 
-export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
+type ButtonBaseProps = ButtonHTMLAttributes<HTMLButtonElement> & {
     variant?: ButtonVariant;
     size?: ButtonSize;
-    children: ReactNode;
+    /** React 19 passes `ref` as a prop; it reaches the `<button>` through the rest spread. */
+    ref?: Ref<HTMLButtonElement>;
+    /** Decorative icon element (for example a lucide icon). Rendered `aria-hidden`. */
+    icon?: ReactNode;
+    /** Which side of the label the icon sits on. Default `start`. */
+    iconPosition?: "start" | "end";
 };
 
-export function Button({
-    variant = "secondary",
-    size = "md",
-    className,
-    type = "button",
-    children,
-    ...rest
-}: ButtonProps) {
+/**
+ * Either a labelled button (children, optional icon) or an icon-only circle button.
+ * The icon-only form requires an `aria-label` because it has no visible text.
+ */
+export type ButtonProps =
+    | (ButtonBaseProps & { iconOnly?: false; children: ReactNode })
+    | (ButtonBaseProps & {
+          iconOnly: true;
+          icon: ReactNode;
+          "aria-label": string;
+          children?: never;
+      });
+
+export function Button(props: ButtonProps) {
+    const {
+        variant = "secondary",
+        size = "md",
+        className,
+        type = "button",
+        icon,
+        iconPosition = "start",
+        iconOnly = false,
+        children,
+        ...rest
+    } = props;
+    const iconNode = icon ? (
+        <span aria-hidden="true" className="inline-flex shrink-0 [&>svg]:h-4 [&>svg]:w-4">
+            {icon}
+        </span>
+    ) : null;
     return (
-        <button type={type} className={buttonClassName(variant, size, className)} {...rest}>
-            {children}
+        <button
+            type={type}
+            className={buttonClassName(variant, size, className, iconOnly)}
+            {...rest}
+        >
+            {iconPosition === "start" ? iconNode : null}
+            {iconOnly ? null : children}
+            {iconPosition === "end" ? iconNode : null}
         </button>
     );
 }

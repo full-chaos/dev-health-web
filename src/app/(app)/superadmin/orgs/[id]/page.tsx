@@ -1,3 +1,4 @@
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { notFound } from "next/navigation";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { SettingsSection } from "@/components/admin/settings/SettingsSection";
@@ -34,7 +35,9 @@ export default async function OrgDetailPage({ params }: PageProps) {
                 description="Users who are members of this organization."
             >
                 {membersError ? (
-                    <div className="text-(--negative)">Error loading members: {membersError}</div>
+                    <div className="text-(--negative)">
+                        Error loading members. {READ_FAILED_MESSAGE}
+                    </div>
                 ) : (
                     <div className="overflow-x-auto rounded-lg border border-(--card-stroke)">
                         <table className="w-full text-left text-sm">

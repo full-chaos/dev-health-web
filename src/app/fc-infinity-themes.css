@@ -22,8 +22,14 @@
     --accent-foreground: #ffffff;
     /* Orange used as TEXT (selection, eyebrow): darker than --accent so it reads on cards and tints. */
     --accent-text: #b1361a;
+    /* Selected control (segmented toggle, window button): prototype --accentWash with the AA ink. */
+    --accent-wash: #ffe9da;
+    --accent-ink: #b1361a;
     --accent-1: #d6421f;
     --accent-2: #03627d;
+    /* Filled action (primary button): approved `--blue` with white text. */
+    --action: #037493;
+    --on-action: #ffffff;
     --accent-3: #7d4f00;
     --accent-negative: #a61708;
     --accent-highlight: #f06a00;
@@ -70,6 +76,13 @@
     --caution: #7d4f00;
     --negative: #a61708;
     --info: #03627d;
+    /* Status washes (prototype greenWash, amberWash, redWash, blueWash: theme.css:20-22) */
+    --positive-wash: #e1f2eb;
+    --caution-wash: #fff0d0;
+    --negative-wash: #fbe6e1;
+    --info-wash: #dcf0f4;
+    /* De-emphasised line (prototype sparkline stroke) */
+    --deemph: #9aa2a9;
     --accent-ai: #074757;
     --hero-gradient: none;
     --app-gradient: none;
@@ -82,9 +95,13 @@
     --ink-muted: #a7afb5;
     --accent: #f47b20;
     --accent-foreground: #15171a;
-    --accent-text: #f47b20;
+    --accent-text: #ffab66;
+    --accent-wash: #3a2110;
+    --accent-ink: #ffab66;
     --accent-1: #f47b20;
     --accent-2: #4fd3df;
+    --action: #0a7f9c;
+    --on-action: #ffffff;
     --accent-3: #f2b84b;
     --accent-negative: #ff8266;
     --accent-highlight: #ffab66;
@@ -131,6 +148,12 @@
     --caution: #f2b84b;
     --negative: #ff8266;
     --info: #4fd3df;
+    /* Status washes (prototype dark-tokens.css:6-7) */
+    --positive-wash: #13322a;
+    --caution-wash: #33290f;
+    --negative-wash: #3b1b15;
+    --info-wash: #11333c;
+    --deemph: #5f6a72;
     --accent-ai: #4fd3df;
     --hero-gradient: none;
     --app-gradient: none;

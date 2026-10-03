@@ -108,6 +108,26 @@ describe("Cognitive Load page pass (CHAOS-7618)", () => {
         expect(screen.getByRole("heading", { name: "How to read this" })).toBeInTheDocument();
     });
 
+    it("draws the tiles as one strip, the main-aside grid, an inset and the primary button with the arrow first", () => {
+        render(
+            <OverviewView
+                signals={signals}
+                window={window}
+                filters={filters}
+                trend={[{ day: "2026-05-01", value: 3, label: "05-01" }]}
+            />,
+        );
+        expect(screen.getByTestId("cognitive-load-tiles")).toHaveAttribute("data-columns", "1");
+        const lower = screen.getByTestId("cognitive-load-overview-lower");
+        expect(lower.className).toContain("lg:grid-cols-[minmax(0,1fr)_320px]");
+        expect(
+            screen.getByRole("heading", { level: 4, name: "Team/repo-first by default" }),
+        ).toBeInTheDocument();
+        const button = screen.getByRole("link", { name: "Explore load drivers" });
+        expect(button.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+        expect(button.className).toContain("bg-(--action)");
+    });
+
     it("with no per-day value the line says it is unavailable (no value is never 0)", () => {
         render(<OverviewView signals={signals} window={window} filters={filters} trend={[]} />);
         expect(screen.getByText("No context-spread data")).toBeInTheDocument();

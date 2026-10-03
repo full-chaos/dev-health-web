@@ -1,5 +1,8 @@
 "use client";
 
+import { ChartTypeToggle } from "@/components/charts/ChartTypeToggle";
+import { DataNote } from "@/components/charts/DataNote";
+import { Section } from "@/components/ui/Section";
 import { useMemo, useState } from "react";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
@@ -80,6 +83,9 @@ function groupKeyForUnit(dimension: GroupDimension, unit: WorkUnitInvestment): s
  * "Metadata only" toggle is subsumed: metadata is always surfaced in the
  * expandable rows instead of being gated behind a control that changed nothing.
  */
+/** One column template for the head and every group row, so the four columns line up. */
+const EVIDENCE_COLUMNS = "grid-cols-[minmax(0,1fr)_7.5rem_4rem_10rem]";
+
 export function InvestmentEvidenceTable({
     workUnits,
     effortUnit,
@@ -150,51 +156,28 @@ export function InvestmentEvidenceTable({
     };
 
     return (
-        <div
+        <Section
             data-testid="investment-evidence-table"
-            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
+            title="Evidence drilldown"
+            description="Work units grouped by their strongest persisted classification."
         >
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h3 className="font-(--font-display) text-lg">Evidence drilldown</h3>
-                    <p className="mt-1 text-sm text-(--ink-muted)">
-                        Work units that back the investment mix, grouped by their strongest
-                        persisted classification. Expand a row to read the rationale and the linked
-                        metadata behind it.
-                    </p>
-                </div>
-                <div className="flex items-center gap-2">
-                    <span className="text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                        Group by
-                    </span>
-                    <div
-                        role="radiogroup"
-                        aria-label="Group evidence by"
-                        className="flex gap-1 rounded-full border border-(--card-stroke) bg-(--card-70) p-1"
-                    >
-                        {GROUP_OPTIONS.map((option) => (
-                            <button
-                                key={option.id}
-                                type="button"
-                                role="radio"
-                                aria-checked={groupBy === option.id}
-                                onClick={() => setGroupBy(option.id)}
-                                className={`rounded-full px-3 py-1 text-xs uppercase tracking-[0.2em] ${
-                                    groupBy === option.id
-                                        ? "bg-[color-mix(in_srgb,var(--accent-2)_55%,black)] text-white shadow-sm"
-                                        : "text-(--ink-muted)"
-                                }`}
-                            >
-                                {option.label}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                <ChartTypeToggle
+                    options={[...GROUP_OPTIONS]}
+                    value={groupBy}
+                    onChangeAction={setGroupBy}
+                    ariaLabel="Group evidence by"
+                />
+                <span className="text-xs text-(--ink-muted)">Group the same work units</span>
             </div>
 
-            <div className="mt-4 overflow-hidden rounded-2xl border border-(--card-stroke)">
-                <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 border-b border-(--card-stroke) bg-(--card-70) px-4 py-2 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
+            <div className="mt-4 overflow-hidden rounded-(--radius-md) border border-(--card-stroke)">
+                <div
+                    data-testid="evidence-table-head"
+                    className={`grid ${EVIDENCE_COLUMNS} items-center gap-3 border-b border-(--card-stroke) bg-(--card-70) px-4 py-2 text-label-caps uppercase text-(--ink-muted)`}
+                >
                     <span>{GROUP_OPTIONS.find((o) => o.id === groupBy)?.label}</span>
+                    <span className="text-right">Average quality</span>
                     <span className="text-right">Units</span>
                     <span className="text-right">Weighted effort</span>
                 </div>
@@ -215,7 +198,8 @@ export function InvestmentEvidenceTable({
                                     type="button"
                                     aria-expanded={isOpen}
                                     onClick={() => toggleGroup(group.key)}
-                                    className="grid w-full grid-cols-[1fr_auto_auto] items-center gap-3 px-4 py-3 text-left transition hover:bg-(--card-70)"
+                                    data-testid="evidence-group-row"
+                                    className={`grid w-full ${EVIDENCE_COLUMNS} items-center gap-3 px-4 py-3 text-left transition hover:bg-(--card-70)`}
                                 >
                                     <span className="flex min-w-0 items-center gap-2">
                                         <span
@@ -227,12 +211,15 @@ export function InvestmentEvidenceTable({
                                         <span className="truncate text-sm font-medium text-foreground">
                                             {group.label}
                                         </span>
-                                        <span className="shrink-0 text-xs text-(--ink-muted)">
-                                            avg quality:{" "}
-                                            {group.avgQuality !== null
-                                                ? formatQuality(group.avgQuality)
-                                                : "Unknown"}
-                                        </span>
+                                    </span>
+                                    {/* The same value the group row printed inline before. */}
+                                    <span
+                                        data-testid="evidence-group-quality"
+                                        className="text-right text-sm tabular-nums text-(--ink-muted)"
+                                    >
+                                        {group.avgQuality !== null
+                                            ? formatQuality(group.avgQuality)
+                                            : "Unknown"}
                                     </span>
                                     <span className="text-right text-sm tabular-nums text-(--ink-muted)">
                                         {group.entries.length}
@@ -432,6 +419,13 @@ export function InvestmentEvidenceTable({
                     })
                 )}
             </div>
-        </div>
+            {/* The list of work units is capped by its query, so a group can hold fewer units than
+                the window has. The note says what the average is taken over. */}
+            <DataNote>
+                Expand a group to read each unit&apos;s rationale and linked metadata. Average
+                quality is the mean evidence quality of the work units listed in the group; the list
+                may not hold every work unit of the window.
+            </DataNote>
+        </Section>
     );
 }

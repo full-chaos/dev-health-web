@@ -30,7 +30,7 @@ export function DatasetsSection({
                                 type="checkbox"
                                 checked={selectedTargets.includes(target.id)}
                                 onChange={(e) => onTargetChange(target.id, e.target.checked)}
-                                className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent)"
+                                className="h-4 w-4 rounded border-(--card-stroke) bg-(--card-80) text-(--accent) focus:ring-(--accent-2)"
                             />
                             <span className="text-sm">{target.label}</span>
                         </label>

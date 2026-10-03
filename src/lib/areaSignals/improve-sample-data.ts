@@ -30,6 +30,11 @@ export const SAMPLE_IMPROVE_AUTOMATIONS: ImproveOpportunitiesResult = {
             score: 0.72,
             severity: "medium",
             evidenceRefs: ["git_pull_requests:sample-repo-web:512"],
+            // The rule's own numbers (ops flow_opportunities.go): rework churn ratio above 0.30.
+            value: 0.56,
+            threshold: 0.3,
+            unit: "RATIO",
+            thresholdDirection: "ABOVE",
         },
         {
             opportunityId: "sample-improve-opp-2",
@@ -42,6 +47,11 @@ export const SAMPLE_IMPROVE_AUTOMATIONS: ImproveOpportunitiesResult = {
             score: 0.58,
             severity: "low",
             evidenceRefs: ["git_pull_requests:sample-repo-api:88"],
+            // Median cycle time above 120 hours.
+            value: 160.5,
+            threshold: 120,
+            unit: "HOURS",
+            thresholdDirection: "ABOVE",
         },
     ],
 };

@@ -16,7 +16,8 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { fireEvent } from "@testing-library/react";
-import { render, screen, cleanup } from "@/test/utils";
+import { renderWithEvidenceDrawer as render } from "@/test/evidenceDrawer";
+import { screen, cleanup, within } from "@/test/utils";
 import type { MetricFilter } from "@/lib/filters/types";
 import type { MetricDelta, WorkUnitInvestment } from "@/lib/types";
 import type { UseInvestmentDataResult } from "./useInvestmentData";
@@ -163,7 +164,10 @@ describe("InvestmentView — Confidence tab", () => {
         );
 
         expect(screen.getByText("PR Rework Ratio")).toBeInTheDocument();
-        expect(screen.getByText(/96%/)).toBeInTheDocument();
+        // The tile shows the number and its unit as two elements.
+        const rework = screen.getByTestId("confidence-tile-rework");
+        expect(within(rework).getByTestId("metric-value")).toHaveTextContent(/^96 %$/);
+        expect(within(rework).getByTestId("metric-unit")).toHaveTextContent(/^%$/);
         expect(screen.getByText(/\+4%/)).toBeInTheDocument();
         expect(screen.getByTestId("sparkline")).toBeInTheDocument();
         expect(screen.queryByText(/Rework signal not available yet/i)).not.toBeInTheDocument();
@@ -183,12 +187,19 @@ describe("InvestmentView — Confidence tab", () => {
         expect(link).toHaveAttribute("href", expect.stringContaining("metric=pr_rework_ratio"));
     });
 
-    it("renders the honest empty state when no rework metric is available", () => {
+    it("renders the honest empty tile when no rework metric is available: a name, no number", () => {
         useInvestmentDataMock.mockReturnValue(makeData());
         render(<InvestmentView filters={baseFilters} activeTab="confidence" />);
 
-        expect(screen.getByText(/Rework signal not available yet/i)).toBeInTheDocument();
-        expect(screen.queryByText("PR Rework Ratio")).not.toBeInTheDocument();
+        // The third tile is always drawn (prototype layout). Without a metric it shows the
+        // "no value" mark and says so; it never shows a number, a delta or a link.
+        const tile = screen.getByTestId("confidence-tile-rework");
+        expect(within(tile).getByText("PR Rework Ratio")).toBeInTheDocument();
+        expect(within(tile).getByText(/Rework signal not available yet/i)).toBeInTheDocument();
+        expect(within(tile).getByText("Not reported")).toBeInTheDocument();
+        expect(tile.textContent).not.toMatch(/\d/);
+        expect(within(tile).queryByRole("link")).toBeNull();
+        expect(tile.tagName).not.toBe("A");
     });
 
     // Contract: allocation_pct from ops is already in 0-100 range; NO ×100 multiplication.

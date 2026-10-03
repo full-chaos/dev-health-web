@@ -16,7 +16,7 @@ describe("CTA registry (Part D)", () => {
             continue: "Continue",
             back: "Back",
             saving: "Saving...",
-            runNow: "Run Now",
+            runNow: "Run now",
             confirmMapping: "Confirm Mapping",
             deleteUser: "Delete User",
             editUser: "Edit User",

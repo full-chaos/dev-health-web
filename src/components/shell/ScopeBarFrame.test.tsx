@@ -71,7 +71,7 @@ describe("ScopeBarFrame — organization and repository only", () => {
         const inRow = within(row());
         expect(inRow.getByRole("button", { name: "Test" })).toBeInTheDocument();
         expect(inRow.getByRole("button", { name: /^Repo/ })).toHaveTextContent("All");
-        expect(inRow.getByRole("button", { name: "Reset filters" })).toBeInTheDocument();
+        expect(inRow.getByRole("button", { name: "Reset" })).toBeInTheDocument();
         expect(inRow.getByRole("button", { name: "Copy link" })).toBeInTheDocument();
     });
 
@@ -307,11 +307,11 @@ describe("ScopeBarFrame — a repository fixed by the route", () => {
 });
 
 describe("ScopeBarFrame — actions", () => {
-    it("Reset filters calls the owner's reset", async () => {
+    it("Reset calls the owner's reset", async () => {
         const user = userEvent.setup();
         const { onReset, onChange } = renderFrame();
 
-        await user.click(screen.getByRole("button", { name: "Reset filters" }));
+        await user.click(screen.getByRole("button", { name: "Reset" }));
 
         expect(onReset).toHaveBeenCalledTimes(1);
         expect(onChange).not.toHaveBeenCalled();
@@ -371,5 +371,17 @@ describe("ScopeBarFrame — page-control rows", () => {
 
         expect(screen.queryByTestId("scope-bar-rows")).toBeNull();
         expect(screen.getByTestId("scope-bar").children).toHaveLength(1);
+    });
+
+    it("draws the actions as the prototype does: Reset ghost small, Copy link small with an icon", () => {
+        renderFrame();
+        const reset = screen.getByRole("button", { name: "Reset" });
+        const copy = screen.getByRole("button", { name: "Copy link" });
+        expect(reset.querySelector("svg")).toBeNull();
+        expect(reset.className).toContain("bg-transparent");
+        expect(reset.className).toContain("min-h-7");
+        expect(copy.querySelector("svg.lucide-copy")).not.toBeNull();
+        expect(copy.className).toContain("min-h-7");
+        expect(copy.className).not.toContain("bg-transparent");
     });
 });

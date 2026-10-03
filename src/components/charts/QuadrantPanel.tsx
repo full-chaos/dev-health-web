@@ -7,10 +7,14 @@ import {
     useRef,
     useState,
     type CSSProperties,
+    type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+import { ArrowRight, Info } from "lucide-react";
 
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import { buttonClassName } from "@/components/shared/Button";
 import type { MetricFilter } from "@/lib/filters/types";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getQuadrantDefinition, getZoneOverlay } from "@/lib/quadrantZones";
@@ -83,6 +87,22 @@ type QuadrantPanelProps = {
     emptyState?: string;
     chartHeight?: number;
     showViewGuide?: boolean;
+    /**
+     * Optional action in the head, at the right of the title (a link or a button from the caller).
+     * The panel only places it; without it the head is unchanged.
+     */
+    action?: ReactNode;
+    /**
+     * A chip beside the card title (for example "Primary for this lens", sentence case). Without it the
+     * title is unchanged.
+     */
+    headChip?: ReactNode;
+    /**
+     * Put "View guide" and the related links (Open evidence) in the card head, at the right, as the
+     * approved concept does for Landscape (MAPPING-CHAOS-7627 L13). Default false: they stay under the
+     * title and under the chart, as on every other page.
+     */
+    actionsInHead?: boolean;
 };
 
 type ZoneLegendItem = {
@@ -102,6 +122,9 @@ export function QuadrantPanel({
     emptyState = "Quadrant data unavailable.",
     chartHeight = 340,
     showViewGuide = true,
+    action,
+    headChip,
+    actionsInHead = false,
 }: QuadrantPanelProps) {
     const scopeType = filters.scope.level === "developer" ? "person" : filters.scope.level;
     const isPersonScope = scopeType === "person";
@@ -205,7 +228,34 @@ export function QuadrantPanel({
     const zoneIgnoredLogged = useRef(false);
     const axesKey = scopedData ? `${scopedData.axes.x.metric}:${scopedData.axes.y.metric}` : null;
 
-    const handlePointSelect = (point: QuadrantPoint) => {
+    const evidence = useEvidenceDrawer();
+    // A dot is a mark on the chart canvas, not a focusable element: when the drawer closes, focus
+    // goes back to the chart region. A point chip is a button and gets focus back itself.
+    const chartRegionRef = useRef<HTMLDivElement>(null);
+    // A dot (or a point chip) opens the shared evidence drawer for that point. The selection stays
+    // while the drawer is open and is cleared when it closes.
+    const handlePointSelect = (point: QuadrantPoint, from: "chart" | "chip") => {
+        if (!scopedData) {
+            return;
+        }
+        evidence.open({
+            title: point.entity_label,
+            content: (
+                <InvestigationPanel
+                    point={point}
+                    data={scopedData}
+                    filters={filters}
+                    title={title}
+                />
+            ),
+            returnFocusRef: from === "chart" ? chartRegionRef : undefined,
+            onClose: () => {
+                setSelectedPoint(null);
+                setSelectedPointKey(null);
+            },
+        });
+        // After `open`: opening tells the subject before this one that it closed (its `onClose`
+        // clears the selection), so the new selection is set last.
         setSelectedPoint(point);
         setSelectedPointKey(dataKey);
     };
@@ -255,10 +305,45 @@ export function QuadrantPanel({
         }
     }, [isGuideOpen]);
 
+    // The head of the card, in the shared Section look: title, one-line description, and the
+    // caller's action at the right. The card keeps its head when there are no points, so a missing
+    // quadrant is an explicit state of a named card.
+    const headText = (
+        <div className="min-w-0">
+            {headChip ? (
+                <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-h3 font-semibold">{title}</h2>
+                    {headChip}
+                </div>
+            ) : (
+                <h2 className="text-h3 font-semibold">{title}</h2>
+            )}
+            <p className="mt-1 text-xs text-(--ink-muted)">{description}</p>
+        </div>
+    );
+    const actionNode = action ? (
+        <div data-testid="quadrant-panel-action" className="normal-case tracking-normal">
+            {action}
+        </div>
+    ) : null;
+
     if (!scopedData || !scopedData.points?.length) {
         return (
-            <div className="rounded-3xl border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)">
-                {emptyState}
+            <div
+                data-testid="quadrant-panel"
+                data-empty="true"
+                className="min-w-0 rounded-(--radius-md) border border-(--card-stroke) bg-card p-5.25"
+            >
+                <div className="flex flex-wrap items-start justify-between gap-4">
+                    {headText}
+                    {actionNode}
+                </div>
+                <div
+                    data-testid="quadrant-empty"
+                    className="mt-4.25 rounded-(--radius-md) border border-dashed border-(--card-stroke) bg-(--card-70) p-5 text-sm text-(--ink-muted)"
+                >
+                    {emptyState}
+                </div>
             </div>
         );
     }
@@ -278,6 +363,38 @@ export function QuadrantPanel({
     const supplementalLinks = (relatedLinks ?? []).filter(
         (link) => !link.label.toLowerCase().includes("heatmap"),
     );
+
+    // In the head (Landscape, L13) the two actions are bordered buttons, as the concept draws them;
+    // everywhere else they stay ghost buttons under the head.
+    const actionVariant = actionsInHead ? "secondary" : "ghost";
+    const guideButton = showViewGuide ? (
+        <button
+            ref={triggerRef}
+            type="button"
+            onClick={() => setIsGuideOpen(true)}
+            className={buttonClassName(actionVariant, "sm")}
+        >
+            <Info aria-hidden="true" className="h-3.5 w-3.5" />
+            {CTA_LABELS.viewGuide}
+        </button>
+    ) : null;
+    const relatedLinksNode =
+        supplementalLinks.length > 0 ? (
+            <div data-testid="quadrant-related-links" className="flex flex-wrap gap-3">
+                {supplementalLinks.map((link) => (
+                    // A ghost small button with the arrow first (prototype `btn()`),
+                    // not the legacy upper-case pill.
+                    <Link
+                        key={`${link.href}-${link.label}`}
+                        href={link.href}
+                        className={buttonClassName(actionVariant, "sm")}
+                    >
+                        <ArrowRight aria-hidden="true" className="h-3.5 w-3.5" />
+                        {link.label}
+                    </Link>
+                ))}
+            </div>
+        ) : null;
 
     const showZoneLegend = showZoneOverlay && zoneLegendItems.length > 0;
     const handleZoneToggle = (next: boolean) => {
@@ -319,28 +436,35 @@ export function QuadrantPanel({
     };
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div
+            data-testid="quadrant-panel"
+            data-empty="false"
+            className="min-w-0 rounded-(--radius-md) border border-(--card-stroke) bg-card p-5.25"
+        >
+            {/* Prototype `.sectionhead`: title and description left, ONE action right. With
+                `actionsInHead` the guide and the related links sit in the head (L13). */}
             <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                    <h2 className="font-(--font-display) text-xl">{title}</h2>
-                    <p className="mt-2 text-sm text-(--ink-muted)">{description}</p>
-                </div>
-                <div className="flex flex-col items-end gap-2 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                    <span>Select a dot to investigate</span>
-                    {showViewGuide ? (
-                        <button
-                            ref={triggerRef}
-                            type="button"
-                            onClick={() => setIsGuideOpen(true)}
-                            className="flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-xs uppercase tracking-[0.25em] text-(--ink-muted) btn-help"
-                        >
-                            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-card text-xs text-foreground">
-                                ⓘ
+                {headText}
+                {actionsInHead ? (
+                    <div
+                        data-testid="quadrant-head-actions"
+                        className="flex flex-wrap items-center gap-2"
+                    >
+                        {actionNode}
+                        {isPersonScope ? null : (
+                            <span
+                                data-testid="quadrant-head-hint"
+                                className="text-xs text-(--ink-muted)"
+                            >
+                                Select a dot to investigate
                             </span>
-                            {CTA_LABELS.viewGuide}
-                        </button>
-                    ) : null}
-                </div>
+                        )}
+                        {guideButton}
+                        {relatedLinksNode}
+                    </div>
+                ) : (
+                    actionNode
+                )}
             </div>
             {showViewGuide && isGuideOpen && typeof document !== "undefined"
                 ? createPortal(
@@ -401,7 +525,12 @@ export function QuadrantPanel({
                       document.body,
                   )
                 : null}
-            <div className="mt-3 flex flex-wrap items-start gap-3 text-xs text-(--ink-muted)">
+            {/* Control row under the head: the guide (ghost, small) and the overlay toggle. */}
+            <div
+                data-testid="quadrant-controls"
+                className="mt-3 flex flex-wrap items-start gap-3 text-xs text-(--ink-muted)"
+            >
+                {actionsInHead ? null : guideButton}
                 {hasInterpretationOverlay ? (
                     <div className="space-y-1">
                         <label className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-xs">
@@ -428,12 +557,19 @@ export function QuadrantPanel({
                                 : "grid-cols-1"
                         }`}
                     >
-                        <div className="min-w-0">
+                        <div
+                            ref={chartRegionRef}
+                            tabIndex={-1}
+                            role="group"
+                            aria-label={`${title} chart`}
+                            data-testid="quadrant-chart-region"
+                            className="min-w-0"
+                        >
                             <QuadrantChart
                                 data={scopedData}
                                 height={chartHeight}
                                 className="w-full min-w-0"
-                                onPointSelectAction={handlePointSelect}
+                                onPointSelectAction={(point) => handlePointSelect(point, "chart")}
                                 focusEntityIds={focusEntityIds}
                                 scopeType={scopeType}
                                 zoneOverlay={zoneOverlay}
@@ -503,69 +639,43 @@ export function QuadrantPanel({
                         ) : null}
                     </div>
 
-                    {!activeSelectedPoint && (
-                        <div className="text-xs text-(--ink-muted) bg-(--card-80) rounded-2xl p-4 border border-dashed border-(--card-stroke)">
-                            <p>
-                                {isPersonScope
-                                    ? "Individual in view."
-                                    : "Select a dot in the chart above to investigate patterns."}
-                            </p>
-                            {selectablePoints.length > 0 && (
-                                <div className="mt-3 flex flex-wrap gap-2">
-                                    {selectablePoints.map((point, index) => {
-                                        const pointKey = `${point.entity_id}:${point.window_start}:${point.window_end}:${index}`;
-                                        return isPersonScope ? (
-                                            <span
-                                                key={pointKey}
-                                                className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2)"
-                                            >
-                                                {point.entity_label}
-                                            </span>
-                                        ) : (
-                                            <button
-                                                key={pointKey}
-                                                type="button"
-                                                onClick={() => handlePointSelect(point)}
-                                                className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2) hover:bg-(--accent-2)/5 transition"
-                                            >
-                                                {point.entity_label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </div>
-                    )}
+                    {/* Always shown: the chips stay in the page while the drawer is open, so the
+                        chip that opened it gets focus back on close. */}
+                    <div className="text-xs text-(--ink-muted) bg-(--card-80) rounded-2xl p-4 border border-dashed border-(--card-stroke)">
+                        <p>
+                            {isPersonScope
+                                ? "Individual in view."
+                                : "Select a dot in the chart above to investigate patterns."}
+                        </p>
+                        {selectablePoints.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                                {selectablePoints.map((point, index) => {
+                                    const pointKey = `${point.entity_id}:${point.window_start}:${point.window_end}:${index}`;
+                                    return isPersonScope ? (
+                                        <span
+                                            key={pointKey}
+                                            className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2)"
+                                        >
+                                            {point.entity_label}
+                                        </span>
+                                    ) : (
+                                        <button
+                                            key={pointKey}
+                                            type="button"
+                                            aria-pressed={activeSelectedPoint === point}
+                                            onClick={() => handlePointSelect(point, "chip")}
+                                            className="rounded-full border border-(--card-stroke) bg-card px-3 py-1 text-(--accent-2) hover:bg-(--accent-2)/5 transition"
+                                        >
+                                            {point.entity_label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
 
-                    {supplementalLinks.length > 0 && (
-                        <div className="flex flex-wrap gap-3 text-xs">
-                            {supplementalLinks.map((link) => (
-                                <Link
-                                    key={`${link.href}-${link.label}`}
-                                    href={link.href}
-                                    className="rounded-full border border-(--card-stroke) bg-(--card-80) px-4 py-2 uppercase tracking-[0.2em] text-(--accent-2) hover:bg-(--accent-2)/5 transition"
-                                >
-                                    {link.label}
-                                </Link>
-                            ))}
-                        </div>
-                    )}
+                    {actionsInHead ? null : relatedLinksNode}
                 </div>
-
-                {activeSelectedPoint && scopedData && (
-                    <aside className="w-full shrink-0 overflow-hidden rounded-3xl border border-(--card-stroke) shadow-2xl lg:w-96">
-                        <InvestigationPanel
-                            point={activeSelectedPoint}
-                            data={scopedData}
-                            filters={filters}
-                            title={title}
-                            onCloseAction={() => {
-                                setSelectedPoint(null);
-                                setSelectedPointKey(null);
-                            }}
-                        />
-                    </aside>
-                )}
             </div>
         </div>
     );

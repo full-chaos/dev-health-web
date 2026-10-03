@@ -1,5 +1,6 @@
 "use client";
 
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { ErrorCard } from "@/components/ui/ErrorCard";
 import type { AIFilter } from "@/lib/filters/ai";
 import { useAIOpportunities } from "@/lib/graphql/hooks/useAIImpact";
@@ -18,7 +19,7 @@ export function AIAutomationsDashboard({ filter }: AIAutomationsDashboardProps) 
         return (
             <ErrorCard
                 title="AI automation opportunities could not load"
-                message={opportunitiesResult.error.message ?? "Please retry the request."}
+                message={READ_FAILED_MESSAGE}
             />
         );
     }

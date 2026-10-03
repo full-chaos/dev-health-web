@@ -2,7 +2,7 @@ import {
     CompletionSpreadChart,
     type SpreadMarker,
 } from "@/components/charts/CompletionSpreadChart";
-import { Notice } from "@/components/ui/Notice";
+import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import type { CapacityDistributionBin, CapacityForecast } from "@/lib/graphql/types";
 
 const present = (bins?: CapacityDistributionBin[] | null) =>
@@ -46,18 +46,24 @@ function SpreadChart({
 /**
  * How the simulated outcomes behind the forecast spread (CHAOS-7977). Draws only the
  * distribution the API returned (`completionDistribution`): nothing is computed here. A forecast
- * stored before the distribution existed, or one where neither mode simulated, has none, and says
- * so instead of drawing an empty chart.
+ * stored before the distribution existed, or one where neither mode simulated, has none: it reads
+ * "Not reported" instead of drawing an empty chart.
  */
 export function CompletionSpread({ forecast }: { forecast: CapacityForecast }) {
     const days = present(forecast.completionDistribution?.days);
     const items = present(forecast.completionDistribution?.items);
 
     if (!days && !items) {
+        // Not served: the rule's state word, then why. Never an empty chart.
         return (
-            <Notice variant="info" live={false} data-testid="completion-spread">
-                No simulation spread was stored for this forecast.
-            </Notice>
+            <div
+                data-testid="completion-spread"
+                data-reported="false"
+                className="flex flex-col gap-1 text-sm text-(--text-muted)"
+            >
+                <p>{NOT_REPORTED}</p>
+                <p className="text-xs">No simulation spread is stored for this forecast.</p>
+            </div>
         );
     }
 

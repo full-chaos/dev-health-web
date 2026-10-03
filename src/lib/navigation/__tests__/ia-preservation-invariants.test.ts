@@ -1,4 +1,4 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 
 import { describe, expect, it, vi } from "vitest";
@@ -27,6 +27,7 @@ import { LEGACY_WORK_TAB_REDIRECTS, resolveLegacyWorkRedirect } from "../workPag
 import { shellHref } from "@/components/shell/shellHref";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { encodeFilterParam } from "@/lib/filters/encode";
+import { sourceEntries } from "@/test/sourceTree";
 
 type VisibleChildDestination = {
     area: NavArea;
@@ -74,19 +75,19 @@ const testOpsTabRoutes = [
         id: "overview",
         label: "Overview",
         path: "/testops",
-        contentGuard: "TestOps summary",
+        contentGuard: "CI and test health",
     },
     {
         id: "pipelines",
         label: "Pipelines",
         path: "/testops/pipelines",
-        contentGuard: "Success Rate Trend",
+        contentGuard: "Pipeline trends",
     },
     {
         id: "tests",
         label: "Tests",
         path: "/testops/tests",
-        contentGuard: "Pass Rate Trend",
+        contentGuard: "Test trends",
     },
     {
         id: "coverage",
@@ -145,15 +146,11 @@ const expectDistributedDeepLink = (
     expect(url.searchParams.get("tab"), `${href} tab target`).toBe(expectedTab);
 };
 
-const listRouteFiles = (directory: string): string[] => {
-    const entries = readdirSync(directory);
-    return entries.flatMap((entry) => {
-        const fullPath = join(directory, entry);
-        const stats = statSync(fullPath);
-        if (stats.isDirectory()) return listRouteFiles(fullPath);
-        return entry === "page.tsx" || entry === "layout.tsx" ? [fullPath] : [];
+const listRouteFiles = (directory: string): string[] =>
+    sourceEntries(directory).flatMap(({ name, path, isDirectory }) => {
+        if (isDirectory) return listRouteFiles(path);
+        return name === "page.tsx" || name === "layout.tsx" ? [path] : [];
     });
-};
 
 const mountsGlobalContextBar = (source: string) =>
     /<GlobalContextBar(?:Client)?[\s/>]/.test(source);
@@ -397,7 +394,10 @@ describe("IA preservation invariant #2 — no redirect-only tabs", () => {
         expect(landscapePageSource).not.toContain("wip_throughput");
         expect(landscapePageSource).not.toContain("review_load_latency");
 
-        expect(bottleneckPageSource).toContain("wip_throughput");
+        // CHAOS-8070: Bottlenecks draws only the prototype's Review Load × Review Latency quadrant.
+        // The WIP × Throughput quadrant is still reachable: it is the Flow Throughput tab quadrant.
+        expect(bottleneckPageSource).not.toContain("wip_throughput");
+        expect(metricsPageSource).toMatch(/throughput: \{[\s\S]*?type: "wip_throughput"/u);
         expect(bottleneckPageSource).toContain("review_load_latency");
         expect(bottleneckPageSource).not.toContain("churn_throughput");
         expect(bottleneckPageSource).not.toContain("cycle_throughput");
@@ -619,10 +619,9 @@ describe("IA preservation invariant #7 — reachable redirect aliases stay guard
     };
 
     const scanRedirectOnlyRoutes = (dir: string): string[] =>
-        readdirSync(dir).flatMap((entry) => {
-            const full = join(dir, entry);
-            if (statSync(full).isDirectory()) return scanRedirectOnlyRoutes(full);
-            if (entry !== "page.tsx") return [];
+        sourceEntries(dir).flatMap(({ name, path: full, isDirectory }) => {
+            if (isDirectory) return scanRedirectOnlyRoutes(full);
+            if (name !== "page.tsx") return [];
             const src = readFileSync(full, "utf8");
             return /\bredirect\s*\(/.test(src) && src.includes("next/navigation")
                 ? [routeForPageFile(full)]
