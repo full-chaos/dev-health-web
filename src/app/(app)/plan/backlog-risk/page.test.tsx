@@ -148,12 +148,16 @@ const tiles = (over: Partial<ThroughputForecast> = {}) => {
 };
 
 const tile = (id: string) => within(screen.getByTestId(id));
+/** The tile's value as it reads: the number, then the small unit ("4 days", "0.69 ×"). */
+const valueOf = (id: string) => tile(id).getByTestId("metric-value").textContent;
+const unitOf = (id: string) => tile(id).queryByTestId("metric-unit");
 
 describe("BacklogTiles", () => {
     it("writes the congestion ratio as 'N.NN×' like /plan, with 'vs typical' and the threshold, never a raw count", () => {
         tiles({ wipCongestion: makeWipOverlay({ value: 1.25, threshold: 1.25 }) });
 
-        expect(tile("tile-wip-congestion").getByText("1.25×")).toBeInTheDocument();
+        // Two decimals, as the threshold caption: the shared tile formatter keeps one.
+        expect(valueOf("tile-wip-congestion")).toBe("1.25×");
         expect(
             tile("tile-wip-congestion").getByText("vs typical · threshold 1.25×"),
         ).toBeInTheDocument();
@@ -177,25 +181,25 @@ describe("BacklogTiles", () => {
     it("renders WIP ages as ages, not counts: P90 and median", () => {
         tiles({ staleWip: { p50AgeHours: 24, p90AgeHours: 96 } });
 
-        expect(tile("tile-stale-wip").getByText("4 days")).toBeInTheDocument();
+        expect(valueOf("tile-stale-wip")).toBe("4 days");
+        expect(unitOf("tile-stale-wip")).toHaveTextContent("days");
         expect(
             tile("tile-stale-wip").getByText("90th percentile age of in-progress items"),
         ).toBeInTheDocument();
-        expect(tile("tile-median-wip-age").getByText("1 day")).toBeInTheDocument();
+        expect(valueOf("tile-median-wip-age")).toBe("1 day");
         expect(screen.queryByText(/items stuck/i)).not.toBeInTheDocument();
     });
 
     it("pluralizes rounded day labels from the displayed value", () => {
         tiles({ staleWip: { p50AgeHours: null, p90AgeHours: 24.1 } });
-        expect(screen.getByText("1 day")).toBeInTheDocument();
-        expect(screen.queryByText("1 days")).not.toBeInTheDocument();
+        expect(valueOf("tile-stale-wip")).toBe("1 day");
     });
 
-    it("shows a dash and 'No data' (never 0) when WIP age is missing", () => {
+    it("shows 'Not reported' and 'No data' (never 0) when WIP age is missing", () => {
         tiles({ staleWip: null });
 
         for (const id of ["tile-stale-wip", "tile-median-wip-age"]) {
-            expect(tile(id).getByText("—")).toBeInTheDocument();
+            expect(valueOf(id)).toBe("Not reported");
             expect(tile(id).getByText("No data")).toBeInTheDocument();
         }
     });
@@ -203,7 +207,7 @@ describe("BacklogTiles", () => {
     it("shows the unestimated count and the coverage in the fourth tile", () => {
         tiles();
 
-        expect(tile("tile-unestimated").getByText("28 items")).toBeInTheDocument();
+        expect(valueOf("tile-unestimated")).toBe("28 items");
         expect(tile("tile-unestimated").getByText("72% estimate coverage")).toBeInTheDocument();
     });
 
@@ -222,9 +226,9 @@ describe("BacklogTiles", () => {
         expect(screen.queryByText(/0%/)).toBeNull();
     });
 
-    it("shows a dash and 'No data' when estimate coverage is missing or not computed", () => {
+    it("shows 'Not reported' and 'No data' when estimate coverage is missing or not computed", () => {
         const first = tiles({ estimateCoverage: null });
-        expect(tile("tile-unestimated").getByText("—")).toBeInTheDocument();
+        expect(valueOf("tile-unestimated")).toBe("Not reported");
         expect(tile("tile-unestimated").getByText("No data")).toBeInTheDocument();
         first.unmount();
 
@@ -236,7 +240,7 @@ describe("BacklogTiles", () => {
                 backlogSize: 5,
             },
         });
-        expect(tile("tile-unestimated").getByText("—")).toBeInTheDocument();
+        expect(valueOf("tile-unestimated")).toBe("Not reported");
         expect(tile("tile-unestimated").getByText("No data")).toBeInTheDocument();
     });
 });
@@ -445,15 +449,15 @@ describe("ForecastContent", () => {
             />,
         );
         expect(
-            within(screen.getByTestId("tile-wip-congestion")).getByText("1.50×"),
-        ).toBeInTheDocument();
+            within(screen.getByTestId("tile-wip-congestion")).getByTestId("metric-value"),
+        ).toHaveTextContent("1.50×");
         expect(screen.getByText("Elevated")).toBeInTheDocument();
     });
 
     it("renders live stale WIP and live unestimated work", () => {
         render(<ForecastContent forecast={makeForecast()} />);
-        expect(screen.getAllByText("4 days").length).toBeGreaterThan(0);
-        expect(screen.getByText("28 items")).toBeInTheDocument();
+        expect(valueOf("tile-stale-wip")).toBe("4 days");
+        expect(valueOf("tile-unestimated")).toBe("28 items");
         expect(screen.getByText("72% estimate coverage")).toBeInTheDocument();
     });
 
@@ -539,7 +543,9 @@ describe("BacklogRiskPage GraphQL states", () => {
             workScopeId: null,
             historyWeeks: 12,
         });
-        expect(screen.getByText("20 items")).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId("tile-unestimated")).getByTestId("metric-value"),
+        ).toHaveTextContent("20 items");
         expect(screen.getByText("60% estimate coverage")).toBeInTheDocument();
     });
 

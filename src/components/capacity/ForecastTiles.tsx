@@ -17,12 +17,17 @@ function lowVarianceWeeks(days: number): string {
 function Tile({
     label,
     value,
+    unit,
+    valueText,
     caption,
     pill,
     testId,
 }: {
     label: string;
-    value: string;
+    /** A number and its unit apart (the tile draws the unit small), or a ready text (a date). */
+    value?: number;
+    unit?: string;
+    valueText?: string;
     caption?: string;
     pill?: string;
     testId: string;
@@ -31,7 +36,9 @@ function Tile({
         <MetricCard
             testId={testId}
             label={label}
-            valueText={value}
+            value={value}
+            unit={unit}
+            valueText={valueText}
             hideTrend
             deltaSlot={
                 <>
@@ -71,13 +78,14 @@ export function ForecastTiles({ forecast }: { forecast: CapacityForecast }) {
             <Tile
                 testId="tile-remaining"
                 label="Remaining work"
-                value={`${forecast.backlogSize} ${forecast.backlogSize === 1 ? "item" : "items"}`}
+                value={forecast.backlogSize}
+                unit={forecast.backlogSize === 1 ? "item" : "items"}
             />
             {lowVariance ? (
                 <Tile
                     testId="tile-range"
                     label="Forecast range"
-                    value={lowVarianceWeeks(forecast.p50Days ?? 0)}
+                    valueText={lowVarianceWeeks(forecast.p50Days ?? 0)}
                     caption={`low variance · ${formatForecastDate(forecast.p50Date)}`}
                 />
             ) : (
@@ -85,20 +93,20 @@ export function ForecastTiles({ forecast }: { forecast: CapacityForecast }) {
                     <Tile
                         testId="tile-p50"
                         label="P50 · optimistic"
-                        value={formatForecastDate(forecast.p50Date)}
+                        valueText={formatForecastDate(forecast.p50Date)}
                         caption={daysCaption(forecast.p50Days)}
                     />
                     <Tile
                         testId="tile-p85"
                         label="P85 · target"
                         pill="Target"
-                        value={formatForecastDate(forecast.p85Date)}
+                        valueText={formatForecastDate(forecast.p85Date)}
                         caption={daysCaption(forecast.p85Days)}
                     />
                     <Tile
                         testId="tile-p95"
                         label="P95 · conservative"
-                        value={formatForecastDate(forecast.p95Date)}
+                        valueText={formatForecastDate(forecast.p95Date)}
                         caption={daysCaption(forecast.p95Days)}
                     />
                 </>
