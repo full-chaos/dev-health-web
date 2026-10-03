@@ -130,3 +130,17 @@ describe("AreaOverviewEvidenceAction (the 'View evidence' action of an overview 
         expect(dialog.queryByTestId("evidence-panel")).toBeNull();
     });
 });
+
+describe("areaOverviewFacts for a failed read (CHAOS-8168)", () => {
+    it("says Could not be read for a failed read and keeps Not reported for an empty one", () => {
+        const facts = areaOverviewFacts("diagnose", [
+            signal("failed-one", "unavailable", { failed: true }),
+            signal("empty-one", "unavailable"),
+        ]);
+        const byLabel = Object.fromEntries(
+            facts.map((f) => [String(f.label).split(" · ")[0], f.value]),
+        );
+        expect(byLabel["failed-one"]).toBe("Could not be read");
+        expect(byLabel["empty-one"]).toBeUndefined(); // undefined value renders "Not reported"
+    });
+});
