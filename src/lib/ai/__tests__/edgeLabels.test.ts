@@ -12,7 +12,7 @@ describe("edgeLabels", () => {
         expect(nodeTypeWords("custom_node")).toBe("Custom node");
     });
     it("names node types", () => {
-        expect(nodeTypeWords("pr")).toBe("Pull request");
+        expect(nodeTypeWords("pr")).toBe("PR");
         expect(nodeTypeWords("ai_workflow_run")).toBe("AI workflow run");
     });
     it("reads the PR number only from a pr node id", () => {

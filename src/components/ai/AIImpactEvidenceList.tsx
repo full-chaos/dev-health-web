@@ -202,7 +202,7 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
             <section className="rounded-(--radius-md) border border-(--card-stroke) bg-card p-5 xl:sticky xl:top-4">
                 <h3 className="font-(--font-display) text-lg">Work Graph evidence</h3>
                 <div className="mt-3">
-                    <EvidencePanel selected={selected} />
+                    <EvidencePanel selected={selected} showTitle={false} />
                 </div>
             </section>
         </div>
