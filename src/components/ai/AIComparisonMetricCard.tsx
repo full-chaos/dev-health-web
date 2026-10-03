@@ -102,7 +102,7 @@ export function AIComparisonMetricCard({
                     <button
                         type="button"
                         onClick={onDrilldown}
-                        className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-(--accent-2) hover:underline"
+                        className="mt-4 text-xs font-semibold text-(--accent-2) hover:underline"
                     >
                         {CTA_LABELS.openEvidence}
                     </button>
