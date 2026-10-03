@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, userEvent } from "@/test/utils";
+import { render, screen, userEvent, within } from "@/test/utils";
 
 import { TeamTable, type Team } from "./TeamTable";
 
@@ -56,5 +56,43 @@ describe("TeamTable", () => {
 
         expect(screen.getByText("No teams match your search.")).toBeInTheDocument();
         expect(screen.queryByText("No teams found.")).not.toBeInTheDocument();
+    });
+
+    it("is a section card with the count and the ownership sentence; 'n of N teams' while searching", async () => {
+        const user = userEvent.setup();
+        render(<TeamTable teams={teams} />);
+
+        expect(screen.getByRole("heading", { level: 2, name: "Teams" })).toBeInTheDocument();
+        expect(
+            screen.getByText(
+                "2 teams · team ownership comes from synced project and repository ownership",
+            ),
+        ).toBeInTheDocument();
+
+        await user.type(screen.getByPlaceholderText("Search teams"), "dev-health");
+
+        expect(screen.getByText(/^1 of 2 teams · /u)).toBeInTheDocument();
+    });
+
+    it("shows patterns and keys as mono chips, and a dash for none", () => {
+        render(
+            <TeamTable
+                teams={[
+                    ...teams,
+                    {
+                        team_id: "core",
+                        name: "Core",
+                        description: null,
+                        repo_patterns: [],
+                        project_keys: [],
+                    },
+                ]}
+            />,
+        );
+
+        expect(screen.getByText("full-chaos/dev-health").className).toContain("font-mono");
+        expect(screen.getByText("CHAOS").className).toContain("font-mono");
+        const coreRow = screen.getByRole("link", { name: "Core" }).closest("tr")!;
+        expect(within(coreRow).getAllByText("—").length).toBeGreaterThanOrEqual(2);
     });
 });

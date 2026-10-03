@@ -91,7 +91,7 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
     const canGoNext = testMode ? offset + PAGE_SIZE < jobs.length : hasMore;
 
     return (
-        <div className="overflow-x-auto rounded-xl border border-(--card-stroke) bg-(--card-80)">
+        <div className="overflow-x-auto" data-testid="sync-job-history-table">
             {fetchError && (
                 <div
                     role="alert"
@@ -107,14 +107,14 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                             <th
                                 key={heading}
                                 scope="col"
-                                className="px-4 py-3 text-left text-xs font-medium text-(--ink-muted) uppercase tracking-wider"
+                                className="px-3 py-3 text-left text-xs font-medium text-(--ink-muted) uppercase tracking-wider"
                             >
                                 {heading}
                             </th>
                         ))}
                     </tr>
                 </thead>
-                <tbody className="divide-y divide-(--card-stroke) bg-(--card-80)">
+                <tbody className="divide-y divide-(--card-stroke)">
                     {visibleJobs.map((job) => {
                         const runId = getRunId(job);
                         const href = runId ? `/org/admin/sync/${configId}/runs/${runId}` : null;
@@ -134,19 +134,19 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                                         : undefined
                                 }
                             >
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">
+                                <td className="px-3 py-3 whitespace-nowrap text-sm text-foreground">
                                     {sr?.triggered_by ?? job.triggered_by ?? "—"}
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
+                                <td className="px-3 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
                                     {sr?.mode ?? "—"}
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
+                                <td className="px-3 py-3 text-sm text-(--ink-muted)">
                                     {formatRange(sr?.requested_range)}
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
+                                <td className="px-3 py-3 text-sm text-(--ink-muted)">
                                     {formatRange(sr?.covered_range)}
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap">
+                                <td className="px-3 py-3 whitespace-nowrap">
                                     {coverageResult ? (
                                         <CoverageBadge
                                             tone={jobCoverageTone(coverageResult)}
@@ -159,21 +159,21 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                                         />
                                     )}
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
+                                <td className="px-3 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
                                     {getScopeLabel(job)}
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
+                                <td className="px-3 py-3 text-sm text-(--ink-muted)">
                                     {sr
                                         ? `${formatNumber(sr.completed_units)} done · ${formatNumber(sr.failed_units)} failed · ${formatNumber(sr.total_units)} total`
                                         : (job.items_synced ?? "—")}
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-foreground">
+                                <td className="px-3 py-3 whitespace-nowrap text-sm text-foreground">
                                     <ClientTimestamp value={job.started_at} fallback="—" />
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
+                                <td className="px-3 py-3 whitespace-nowrap text-sm text-(--ink-muted)">
                                     {getDuration(job)}
                                 </td>
-                                <td className="px-4 py-3 whitespace-nowrap text-sm">
+                                <td className="px-3 py-3 whitespace-nowrap text-sm">
                                     {href ? (
                                         <Link
                                             href={href}
@@ -192,7 +192,7 @@ export function SyncJobHistory({ jobs, configId, testMode = false }: SyncJobHist
                 </tbody>
             </table>
 
-            <div className="flex items-center justify-between border-t border-(--card-stroke) px-6 py-4">
+            <div className="flex items-center justify-between border-t border-(--card-stroke) px-3 py-4">
                 <span className="text-sm text-(--ink-muted)">
                     Showing {offset + 1}-{offset + visibleJobs.length}
                     {isPending ? " · Loading…" : ""}

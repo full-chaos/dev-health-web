@@ -63,7 +63,7 @@ const signals: LoadKpi[] = [
 const window = { sinceDate: "2026-05-01", untilDate: "2026-05-31" };
 
 describe("Overview strings (pin)", () => {
-    it("keeps the section head, the Team signal pill and the Open evidence link", () => {
+    it("keeps the section head and the Open evidence link; the 'Interpretive load view' eyebrow and the 'Team signal' pill are not in the approved layout", () => {
         render(
             <OverviewView
                 signals={signals}
@@ -73,9 +73,9 @@ describe("Overview strings (pin)", () => {
                 trend={[]}
             />,
         );
-        expect(screen.getByText("Interpretive load view")).toBeInTheDocument();
+        expect(screen.queryByText("Interpretive load view")).toBeNull();
         expect(screen.getByText("What is pulling attention apart?")).toBeInTheDocument();
-        expect(screen.getByText("Team signal")).toBeInTheDocument();
+        expect(screen.queryByText("Team signal")).toBeNull();
         expect(screen.getByRole("link", { name: "Open evidence" })).toBeInTheDocument();
         expect(
             screen.getByText(

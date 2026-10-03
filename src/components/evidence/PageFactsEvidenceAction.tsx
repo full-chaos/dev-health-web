@@ -23,8 +23,12 @@ export function PageFactsEvidenceAction({ title, facts }: { title: string; facts
                 title,
                 content: (
                     <EvidenceFactList aria-label={title} testId="page-evidence-facts">
-                        {facts.map((fact) => (
-                            <EvidenceFact key={fact.label} label={fact.label} value={fact.value} />
+                        {facts.map((fact, index) => (
+                            <EvidenceFact
+                                key={`${fact.label}-${index}`}
+                                label={fact.label}
+                                value={fact.value}
+                            />
                         ))}
                     </EvidenceFactList>
                 ),

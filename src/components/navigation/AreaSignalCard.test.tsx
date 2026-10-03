@@ -178,4 +178,36 @@ describe("AreaSignalCard approved look (CHAOS-8062)", () => {
         expect(screen.getByRole("heading", { name: "Feature Flags" })).toBeInTheDocument();
         expect(screen.getByTestId("area-signal-unavailable")).toBeInTheDocument();
     });
+
+    describe("three different states (CHAOS-8168)", () => {
+        const empty: AreaSignal = { ...base, state: "unavailable", value: "" };
+
+        it('an empty window says "No data for this window", with no error', () => {
+            draw(empty);
+            expect(screen.getByTestId("area-signal-unavailable")).toHaveTextContent(
+                "No data for this window",
+            );
+            expect(screen.queryByTestId("area-signal-failed")).not.toBeInTheDocument();
+        });
+
+        it("a failed read says it could not be read, in one plain sentence, and is not the empty state", () => {
+            draw({ ...empty, failed: true });
+            const failed = screen.getByTestId("area-signal-failed");
+            expect(failed).toHaveTextContent("Could not be read");
+            expect(failed).toHaveTextContent("The data for this view could not be read.");
+            expect(screen.queryByText("No data for this window")).not.toBeInTheDocument();
+            expect(screen.getByTestId("area-signal-card")).toHaveAttribute("data-failed", "true");
+            expect(screen.getByTestId("area-signal-card")).toHaveAttribute(
+                "data-state",
+                "unavailable",
+            );
+        });
+
+        it("a served value is drawn as the value, with neither state", () => {
+            draw(base);
+            expect(screen.queryByTestId("area-signal-failed")).not.toBeInTheDocument();
+            expect(screen.queryByTestId("area-signal-unavailable")).not.toBeInTheDocument();
+            expect(screen.getByTestId("area-signal-value")).toHaveTextContent("9");
+        });
+    });
 });

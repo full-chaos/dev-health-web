@@ -459,6 +459,30 @@ describe("getDiagnoseSignals — source → AreaSignal mapping", () => {
             expect(signals.landscape.state).toBe("medium");
         });
 
+        it("marks a card whose read FAILED as failed, and only the cards of that read (CHAOS-8168)", async () => {
+            mockGetCognitiveLoad.mockRejectedValue(new Error("cognitive-load down"));
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals["cognitive-load"]).toMatchObject({ state: "unavailable", failed: true });
+            // The other reads answered: none of their cards is failed.
+            for (const id of ["flow", "landscape"]) expect(signals[id].failed).toBeUndefined();
+        });
+
+        it("does NOT mark a card failed when its read answered with nothing (empty is not failed)", async () => {
+            mockGetBusFactorData.mockResolvedValue(null as never);
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            expect(signals.landscape).toMatchObject({ state: "unavailable" });
+            expect(signals.landscape.failed).toBeUndefined();
+        });
+
+        it("a failed home read marks the three cards that share it, and no other (CHAOS-8168)", async () => {
+            mockGetHomeData.mockRejectedValue(new Error("home timed out"));
+            const signals = byId(await getDiagnoseSignals(defaultMetricFilter));
+            for (const id of ["flow", "code", "bottleneck"]) {
+                expect(signals[id]).toMatchObject({ state: "unavailable", failed: true });
+            }
+            expect(signals.landscape.failed).toBeUndefined();
+        });
+
         it("Cognitive Load is unavailable for unsupported scopes (developer) and skips the fetch", async () => {
             const developerFilter = {
                 ...defaultMetricFilter,

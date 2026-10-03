@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+
+import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
 
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { encodeFilterParam } from "@/lib/filters/encode";
@@ -22,7 +24,12 @@ vi.mock("next/link", () => ({
     ),
 }));
 vi.mock("@/components/shell/PageHeader", () => ({
-    PageHeader: ({ title }: { title: string }) => <h1>{title}</h1>,
+    PageHeader: ({ title, actions }: { title: string; actions?: React.ReactNode }) => (
+        <>
+            <h1>{title}</h1>
+            <div data-testid="page-actions">{actions}</div>
+        </>
+    ),
 }));
 vi.mock("@/components/shell/ScopeBar", () => ({ ScopeBar: () => <section /> }));
 vi.mock("@/lib/areaSignals", () => ({
@@ -51,7 +58,9 @@ const sig = (
 });
 
 async function renderPage() {
-    return render(await AIWorkflowsPage({ searchParams: Promise.resolve({ f: F, role: "em" }) }));
+    return render(await AIWorkflowsPage({ searchParams: Promise.resolve({ f: F, role: "em" }) }), {
+        wrapper: EvidenceDrawerProvider,
+    });
 }
 
 const cards = () => screen.getAllByTestId("area-signal-card");
@@ -121,6 +130,20 @@ describe("AI overview cards", () => {
         expect(drivers).toHaveLength(1);
         expect(drivers[0]).toHaveTextContent("Rework drag 12% · AI-assisted work");
         expect(drivers[0].closest("[data-signal-id]")).toHaveAttribute("data-signal-id", "impact");
+    });
+
+    it("has a View evidence action in the header that opens the page facts in the cards' order", async () => {
+        await renderPage();
+        const action = within(screen.getByTestId("page-actions")).getByTestId(
+            "page-header-view-evidence",
+        );
+        fireEvent.click(action);
+        const facts = await screen.findByTestId("page-evidence-facts");
+        const text = facts.textContent ?? "";
+        expect(text.indexOf("Review Load")).toBeLessThan(text.indexOf("Impact"));
+        expect(text.indexOf("Impact")).toBeLessThan(text.indexOf("Governance Risk"));
+        expect(text.indexOf("Governance Risk")).toBeLessThan(text.indexOf("Automations"));
+        expect(within(facts).getByText("Not reported")).toBeInTheDocument();
     });
 
     it("emphasizes the most severe severity-bearing card, once", async () => {
