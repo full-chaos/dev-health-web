@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
+import { Button } from "@/components/shared/Button";
 import { SettingsSection } from "./SettingsSection";
 import { updateOrgProfile } from "@/lib/admin/server";
 import type { Organization } from "@/lib/admin/types";
@@ -81,13 +82,9 @@ export function GeneralSettings({ org }: GeneralSettingsProps) {
                     />
                 </div>
                 <div className="flex justify-end">
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="rounded-md bg-(--accent) px-4 py-2 text-sm font-medium text-white hover:bg-(--accent)/90 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2 disabled:opacity-50"
-                    >
+                    <Button type="submit" variant="primary" disabled={isLoading}>
                         {isLoading ? "Saving..." : "Save Changes"}
-                    </button>
+                    </Button>
                 </div>
             </form>
         </SettingsSection>
