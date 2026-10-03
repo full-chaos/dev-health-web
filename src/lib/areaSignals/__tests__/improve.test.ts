@@ -496,6 +496,22 @@ describe("getImproveSignals — a failed read is not an empty read (CHAOS-8269)"
         expect(signals.opportunities.failed).toBeUndefined();
     });
 
+    it("a session with no org: every card unavailable, none failed, and no read is made", async () => {
+        const { auth } = await import("@/lib/auth");
+        vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
+        const signals = await getImproveSignals(defaultMetricFilter);
+        expect(signals.map((s) => s.id).sort()).toEqual(
+            ["experiments", "improve-automations", "opportunities"].sort(),
+        );
+        for (const signal of signals) {
+            expect(signal).toMatchObject({ state: "unavailable", value: "" });
+            expect(signal.failed).toBeUndefined();
+        }
+        expect(mockGetOpportunities).not.toHaveBeenCalled();
+        expect(mockGetHomeData).not.toHaveBeenCalled();
+        expect(mockGraphqlFetch).not.toHaveBeenCalled();
+    });
+
     it("an answer with zero items is a healthy zero, never failed", async () => {
         mockGetOpportunities.mockResolvedValue({ items: [] } as never);
         const signals = byId(await getImproveSignals(defaultMetricFilter));

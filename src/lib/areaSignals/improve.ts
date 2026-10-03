@@ -181,6 +181,20 @@ export async function getImproveSignals(
     // Resolve the org id for GraphQL calls (Automations signal).
     const orgId = isTestMode ? "test-org" : await resolveOrgId();
 
+    // No org in the session: nothing can be read, and nothing FAILED. Every card is unavailable (not
+    // "could not be read") and no read is made (CHAOS-8269; same rule as the other area resolvers).
+    if (!orgId) {
+        const noOrg: AreaSignal[] = [];
+        const add = (id: string, metricLabel: string) => {
+            const d = descriptor(id);
+            if (d) noOrg.push(buildSignal(d, { ...UNAVAILABLE, metricLabel }));
+        };
+        add("opportunities", "Opportunities");
+        add("experiments", "Experiments");
+        add("improve-automations", "Automations");
+        return sortBySeverity(noOrg);
+    }
+
     // ── Fetch every source in parallel (no serial N+1) ──────────────────────────
     // home `deltas[]` drives the synthesized top signal (worst worsened metric);
     // opportunities drives the Opportunities workflow card + gates the top signal.
@@ -196,10 +210,8 @@ export async function getImproveSignals(
                 // Overview renders a real Automations card without depending on the mock
                 // backend having an `improveOpportunities` handler.
                 if (isTestMode) return Promise.resolve(SAMPLE_IMPROVE_AUTOMATIONS);
-                // Guard: without an org in session, require_org_id will reject the
-                // request server-side. Short-circuit here so safe() → UNAVAILABLE
-                // rather than a false "0 detected / all green" (Warning 4, CHAOS-2220).
-                if (!orgId) throw new Error("session missing org_id");
+                // No org in session never gets here: the resolver returned above (CHAOS-2220 /
+                // CHAOS-8269), so there is no false "0 detected / all green" and no failed read.
                 return graphqlFetch<{ improveOpportunities: ImproveOpportunitiesResult }>(
                     IMPROVE_OPPORTUNITIES_QUERY,
                     { scope: null, limit: 10, windowDays: 30 },
