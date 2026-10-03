@@ -303,4 +303,17 @@ describe("IPAllowlistPage design A6/A7 (CHAOS-8239)", () => {
         expect(del).toHaveClass("text-(--negative)!");
         expect(del).toHaveClass("hover:bg-(--negative-wash)!");
     });
+
+    it("shows dates as 'Sep 29, 2026' (shared UTC date) and a missing date as an em dash", async () => {
+        mockListIPAllowlistEntries.mockResolvedValue(
+            respondWith([makeEntry({ created_at: "2025-09-29T12:00:00Z", description: null })]),
+        );
+        render(<IPAllowlistPage />);
+
+        const row = (await screen.findByText("192.168.1.0/24")).closest("tr")!;
+        expect(row).toHaveTextContent("Sep 29, 2025");
+        expect(row.textContent).not.toContain("--");
+        expect(row).toHaveTextContent("—");
+        expect(row.textContent).not.toMatch(/\d+\/\d+\/\d+/u);
+    });
 });

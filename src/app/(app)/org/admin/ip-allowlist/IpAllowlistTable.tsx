@@ -69,9 +69,7 @@ export function IpAllowlistTable({
                         <tr className="border-b border-(--card-stroke) bg-background text-label-caps uppercase text-(--ink-muted)">
                             <th className="px-4 py-3 text-left font-medium">IP Range</th>
                             <th className="px-4 py-3 text-left font-medium">Description</th>
-                            <th className="px-4 py-3 text-left font-medium">Status</th>
-                            <th className="px-4 py-3 text-left font-medium">Created</th>
-                            <th className="px-4 py-3 text-left font-medium">Expires</th>
+                            <th className="px-4 py-3 text-left font-medium">Added</th>
                             <th className="px-4 py-3 text-right font-medium">Actions</th>
                         </tr>
                     </thead>
@@ -81,26 +79,30 @@ export function IpAllowlistTable({
                                 key={entry.id}
                                 className="border-b border-(--card-stroke) last:border-0"
                             >
-                                <td className="px-4 py-3 font-mono text-xs">{entry.ip_range}</td>
-                                <td className="px-4 py-3 text-(--ink-muted)">
-                                    {entry.description ?? "--"}
-                                </td>
                                 <td className="px-4 py-3">
-                                    {entry.is_active ? (
-                                        <StatusPill tone="positive" icon={CircleCheck}>
-                                            Active
-                                        </StatusPill>
-                                    ) : (
-                                        <StatusPill tone="negative" icon={CircleSlash}>
-                                            Inactive
-                                        </StatusPill>
-                                    )}
+                                    <div className="flex flex-col items-start gap-1">
+                                        <span className="font-mono text-xs">{entry.ip_range}</span>
+                                        {entry.is_active ? (
+                                            <StatusPill tone="positive" icon={CircleCheck}>
+                                                Active
+                                            </StatusPill>
+                                        ) : (
+                                            <StatusPill tone="negative" icon={CircleSlash}>
+                                                Inactive
+                                            </StatusPill>
+                                        )}
+                                    </div>
                                 </td>
                                 <td className="px-4 py-3 text-(--ink-muted)">
-                                    {formatDate(entry.created_at)}
+                                    {entry.description ?? "—"}
                                 </td>
                                 <td className="px-4 py-3 text-(--ink-muted)">
-                                    {formatDate(entry.expires_at)}
+                                    <div>{formatDate(entry.created_at)}</div>
+                                    {entry.expires_at ? (
+                                        <div className="mt-0.5 text-xs">
+                                            Expires {formatDate(entry.expires_at)}
+                                        </div>
+                                    ) : null}
                                 </td>
                                 <td className="px-4 py-3 text-right">
                                     <div className="flex items-center justify-end gap-2">

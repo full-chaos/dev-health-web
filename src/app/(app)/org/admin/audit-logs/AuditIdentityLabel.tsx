@@ -40,7 +40,7 @@ export function AuditIdentityLabel({
     }
 
     const containerClass =
-        layout === "stacked" ? "flex flex-col gap-1" : "flex flex-wrap items-center gap-2";
+        layout === "stacked" ? "flex items-center gap-1.5" : "flex flex-wrap items-center gap-2";
 
     return (
         <div className={containerClass}>

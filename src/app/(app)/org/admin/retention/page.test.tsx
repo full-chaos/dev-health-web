@@ -339,4 +339,33 @@ describe("RetentionPolicyPage design A6/A7 (CHAOS-8239)", () => {
         expect(del).toHaveClass("text-(--negative)!");
         expect(del).toHaveClass("hover:bg-(--negative-wash)!");
     });
+
+    it("formats the deleted count with a thousands separator, dates as 'Sep 29, 2026' and empty values as an em dash", async () => {
+        mockListRetentionPolicies.mockResolvedValue(
+            respondWith([
+                makePolicy({
+                    last_run_at: "2025-09-29T03:00:00Z",
+                    last_run_deleted_count: 1204,
+                    next_run_at: null,
+                }),
+            ]),
+        );
+        render(<RetentionPolicyPage />);
+
+        const row = (await screen.findByText("audit_logs")).closest("tr")!;
+        expect(row).toHaveTextContent("1,204");
+        expect(row).toHaveTextContent("Sep 29, 2025");
+        expect(row.textContent).not.toContain("--");
+        expect(row).toHaveTextContent("—");
+    });
+
+    it("reads an em dash, not '--', for a policy that never deleted anything", async () => {
+        mockListRetentionPolicies.mockResolvedValue(
+            respondWith([makePolicy({ last_run_deleted_count: null })]),
+        );
+        render(<RetentionPolicyPage />);
+
+        const row = (await screen.findByText("audit_logs")).closest("tr")!;
+        expect(row.textContent).not.toContain("--");
+    });
 });

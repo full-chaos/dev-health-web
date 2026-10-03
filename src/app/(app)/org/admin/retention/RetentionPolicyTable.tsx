@@ -6,6 +6,7 @@ import { CircleCheck, CircleSlash, Clock } from "lucide-react";
 import { StatusPill } from "@/components/admin/StatusPill";
 import { Button } from "@/components/shared/Button";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { formatNumber } from "@/lib/formatters";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import type { RetentionPolicy } from "@/lib/admin/types";
@@ -91,7 +92,9 @@ export function RetentionPolicyTable({
                                     {policy.last_run_at ? formatDate(policy.last_run_at) : "Never"}
                                 </td>
                                 <td className="px-4 py-3 text-(--ink-muted)">
-                                    {policy.last_run_deleted_count ?? "--"}
+                                    {policy.last_run_deleted_count == null
+                                        ? "—"
+                                        : formatNumber(policy.last_run_deleted_count)}
                                 </td>
                                 <td className="px-4 py-3 text-(--ink-muted)">
                                     {formatDate(policy.next_run_at)}
