@@ -135,7 +135,7 @@ describe("PrDetailPage", () => {
             reviews: [{ ...samplePr.reviews[0], reviewer: "Not reported" }],
         });
         await renderPage();
-        expect(screen.getByText(/Not reported opened/u)).toBeInTheDocument();
+        expect(screen.getByText(/Author not reported\s*· opened/u)).toBeInTheDocument();
         expect(document.body.textContent ?? "").not.toContain("@");
     });
 

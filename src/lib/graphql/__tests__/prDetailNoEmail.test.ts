@@ -67,6 +67,25 @@ describe("getPrDetailViaGraphQL: no e-mail address", () => {
         expect(pr?.authorName).toBeNull();
     });
 
+    it("cuts an address out of the title, body and a commit message (Co-authored-by trailer)", async () => {
+        mockedFetch.mockResolvedValueOnce({
+            pr: served({
+                title: "Fix by ada@example.com",
+                body: "cc <grace@example.com> please",
+                commits: [
+                    {
+                        hash: "abc",
+                        message: "Fix it\n\nCo-authored-by: Grace Hopper <grace@example.com>",
+                    },
+                ],
+            }),
+        });
+        const pr = await getPrDetailViaGraphQL({ orgId: "org-1", id: "repo#pr1" });
+        expect(JSON.stringify(pr)).not.toContain("@");
+        expect(pr?.commits[0].message).toBe("Fix it\n\nCo-authored-by: Grace Hopper");
+        expect(pr?.title).toBe("Fix by");
+    });
+
     it("passes a missing PR through", async () => {
         mockedFetch.mockResolvedValueOnce({ pr: null });
         expect(await getPrDetailViaGraphQL({ orgId: "org-1", id: "x" })).toBeNull();
