@@ -76,7 +76,7 @@ function servicePort(yaml: string, name: string): string {
 /** The alternatives of the `PathRegexp` rule of one path router, and the port of its service. */
 function route(yaml: string, name: string): { paths: string[]; port: string } {
     const rule = yaml.match(
-        new RegExp(`\\n    ${name}:\\n      rule: "PathRegexp\\(\`\\^\\((.*)\\)\\$\`\\)"`),
+        new RegExp(`\\n    ${name}:\\n      rule: 'PathRegexp\\(\`\\^\\((.*)\\)\\$\`\\)'\\n`),
     );
     if (!rule) throw new Error(`router ${name} not found in:\n${yaml}`);
     return { paths: rule[1].split("|"), port: servicePort(yaml, name) };
@@ -114,9 +114,29 @@ describe("generate-live-e2e-plane-router", () => {
         // A path of the public host list (an exact path, so its dot is escaped).
         expect(route(result.stdout, "go-api-paths").paths).toContain("/openapi\\.json");
         expect(result.stdout).toContain(
-            'api-catchall:\n      rule: "PathRegexp(`^/.*$`)"\n      entryPoints: [web]\n      priority: 1\n',
+            "api-catchall:\n      rule: 'PathRegexp(`^/.*$`)'\n      entryPoints: [web]\n      priority: 1\n",
         );
         expect(result.stdout).toContain(`# ${ops.contract} -- do not hand-edit`);
+    });
+
+    it("writes each rule as a YAML single-quoted scalar, so a regex backslash is not a YAML escape", () => {
+        const ops = opsTree({ contract: true });
+
+        const yaml = generate([ops.contract]).stdout;
+
+        // traefik refused the file with a rule in double quotes: "/openapi\\.json"
+        // has a backslash, and "\\." is not a YAML escape.
+        const rules = yaml.split("\n").filter((line) => line.trimStart().startsWith("rule:"));
+        expect(rules).toHaveLength(3);
+        for (const rule of rules) expect(rule).toMatch(/^      rule: 'PathRegexp\(`\^.*\$`\)'$/);
+        expect(yaml.match(/"[^"\n]*\\[^"\n]*"/g)).toBeNull();
+
+        // The backslash reaches the regex as it is: the dot is a literal dot.
+        const goPaths = route(yaml, "go-api-paths").paths;
+        expect(goPaths).toContain("/openapi\\.json");
+        const goRegex = new RegExp(`^(${goPaths.join("|")})$`);
+        expect(goRegex.test("/openapi.json")).toBe(true);
+        expect(goRegex.test("/openapiXjson")).toBe(false);
     });
 
     it("reads the contract and not the ledger when the ops checkout has both (ops main)", () => {
