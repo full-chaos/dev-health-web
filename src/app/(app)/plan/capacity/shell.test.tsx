@@ -124,12 +124,15 @@ describe("Completion Forecast in the shared app shell", () => {
         entitlements.features = {};
         await renderPage();
 
-        // The gate shows the forecast as a blurred preview that is hidden from
-        // assistive technology. The header and the scope bar are not in it.
+        // The gate is a warn notice and an empty card: the forecast is not drawn at all.
+        // The header and the scope bar are outside the gate.
         expect(screen.getByRole("heading", { name: "Unlock capacity forecast" })).toBeVisible();
-        expect(screen.getByTestId("capacity-view").closest('[aria-hidden="true"]')).not.toBeNull();
-        expect(screen.getByTestId("page-header").closest('[aria-hidden="true"]')).toBeNull();
-        expect(screen.getByTestId("scope-bar").closest('[aria-hidden="true"]')).toBeNull();
+        expect(screen.queryByTestId("capacity-view")).toBeNull();
+        expect(screen.getByTestId("upgrade-gate-empty")).toBeInTheDocument();
+        expect(
+            screen.getByTestId("page-header").closest('[data-testid="upgrade-gate"]'),
+        ).toBeNull();
+        expect(screen.getByTestId("scope-bar").closest('[data-testid="upgrade-gate"]')).toBeNull();
         expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Completion Forecast");
     });
 

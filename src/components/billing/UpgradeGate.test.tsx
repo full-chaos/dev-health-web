@@ -6,7 +6,7 @@
  * description, and link to /org/admin/settings.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { renderWithToaster, screen, cleanup } from "@/test/utils";
+import { renderWithToaster, screen, cleanup, within } from "@/test/utils";
 import { UpgradeGate } from "./UpgradeGate";
 
 vi.mock("@/components/admin/AdminTierContext", () => ({
@@ -69,6 +69,31 @@ describe("UpgradeGate", () => {
         expect(
             screen.getByText(/Unlock advanced insights, team-level metrics/i),
         ).toBeInTheDocument();
+    });
+
+    it("closed state is a warn Notice plus an empty Section card, and the gated children are not drawn", () => {
+        const { container } = renderWithToaster(
+            <UpgradeGate
+                feature="advanced_insights"
+                requiredTier="team"
+                features={{ advanced_insights: false }}
+            >
+                <p>Secret feature content</p>
+            </UpgradeGate>,
+        );
+
+        expect(container.querySelector('[data-notice-variant="warn"]')).not.toBeNull();
+        // The upgrade link is the Notice's action; no frosted overlay, no blurred preview.
+        expect(
+            within(screen.getByTestId("upgrade-gate-notice")).getByRole("link", {
+                name: /upgrade to team/i,
+            }),
+        ).toBeInTheDocument();
+        const card = within(screen.getByTestId("upgrade-gate-empty"));
+        expect(card.getByRole("heading", { name: "Advanced insights" })).toBeInTheDocument();
+        expect(card.getByText("Not available on the community plan.")).toBeInTheDocument();
+        expect(screen.queryByText("Secret feature content")).not.toBeInTheDocument();
+        expect(container.querySelector(".backdrop-blur-sm")).toBeNull();
     });
 
     it("renders a link to /org/admin/settings with the required tier label", () => {

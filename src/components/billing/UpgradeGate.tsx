@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useAdminTier } from "@/components/admin/AdminTierContext";
+import { buttonClassName } from "@/components/shared/Button";
+import { Notice } from "@/components/ui/Notice";
+import { Section } from "@/components/ui/Section";
 import { TIER_FEATURES } from "@/lib/billing/tiers";
 import { upgradeToPlan } from "@/lib/design/cta";
 
@@ -45,60 +48,53 @@ export function UpgradeGate({
         currentTierRank >= requiredTierRank;
     const featureLabel = feature.replace(/_/g, " ");
 
+    const sentenceFeature = featureLabel.charAt(0).toUpperCase() + featureLabel.slice(1);
+
     return (
-        <div className="relative min-h-56 w-full overflow-hidden rounded-3xl border border-(--card-stroke) bg-(--card) sm:min-h-80">
-            {/* Frosted overlay effect */}
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-(--card)/80 p-5 text-center backdrop-blur-sm sm:p-8">
-                <div className="max-w-md space-y-4 sm:space-y-6">
-                    <div className="space-y-2">
-                        <p className="text-xs font-semibold uppercase tracking-wider text-(--accent-text)">
-                            {upgradeUnavailable
-                                ? `${requiredTierLabel} plan feature unavailable`
-                                : `${requiredTierLabel} plan feature`}
-                        </p>
-                        <h2 className="text-h2 text-(--foreground)">
-                            {upgradeUnavailable ? "Feature unavailable" : `Unlock ${featureLabel}`}
-                        </h2>
-                        <p className="text-body text-(--ink-muted)">
-                            {upgradeUnavailable
-                                ? `Contact an administrator to enable ${featureLabel} for this plan.`
-                                : featureDescription}
-                        </p>
-                    </div>
-
-                    {upgradeUnavailable ? null : (
-                        <div className="rounded-xl border border-(--card-stroke) bg-(--background) p-4 text-sm">
-                            <div className="flex items-center justify-between gap-4">
-                                <span className="text-(--ink-muted)">Current Plan</span>
-                                <span className="font-medium text-(--foreground) capitalize">
-                                    {currentTier}
-                                </span>
-                            </div>
-                            <div className="my-2 border-t border-(--card-stroke)" />
-                            <div className="flex items-center justify-between gap-4">
-                                <span className="text-(--ink-muted)">Required Plan</span>
-                                <span className="font-medium text-(--accent-text)">
-                                    {requiredTierLabel}
-                                </span>
-                            </div>
-                        </div>
-                    )}
-
-                    {upgradeUnavailable ? null : (
+        <div className="flex flex-col gap-4" data-testid="upgrade-gate">
+            <Notice
+                variant="warn"
+                live={false}
+                titleAs="h2"
+                title={upgradeUnavailable ? "Feature unavailable" : `Unlock ${featureLabel}`}
+                action={
+                    upgradeUnavailable ? undefined : (
                         <Link
                             href="/org/admin/settings"
-                            className="inline-flex items-center justify-center rounded-full bg-(--accent) px-8 py-3 text-sm font-medium text-(--accent-foreground) transition-colors hover:bg-(--accent)/90 focus:outline-none focus:ring-2 focus:ring-(--accent) focus:ring-offset-2"
+                            className={buttonClassName("secondary", "sm")}
                         >
                             {upgradeToPlan(requiredTierLabel)}
                         </Link>
-                    )}
-                </div>
-            </div>
-
-            {/* Blurred background content preview */}
-            <div className="opacity-20 pointer-events-none select-none" aria-hidden="true">
-                {children}
-            </div>
+                    )
+                }
+                data-testid="upgrade-gate-notice"
+            >
+                <p className="text-label-caps uppercase">
+                    {upgradeUnavailable
+                        ? `${requiredTierLabel} plan feature unavailable`
+                        : `${requiredTierLabel} plan feature`}
+                </p>
+                <p className="mt-1">
+                    {upgradeUnavailable
+                        ? `Contact an administrator to enable ${featureLabel} for this plan.`
+                        : featureDescription}
+                </p>
+                {upgradeUnavailable ? null : (
+                    <p className="mt-2">
+                        <span>Current Plan</span>{" "}
+                        <span className="font-semibold capitalize">{currentTier}</span>
+                        {" · "}
+                        <span>Required Plan</span>{" "}
+                        <span className="font-semibold">{requiredTierLabel}</span>
+                    </p>
+                )}
+            </Notice>
+            {/* The gated content is not drawn (and not mounted): an empty card holds its place. */}
+            <Section as="h3" title={sentenceFeature} data-testid="upgrade-gate-empty">
+                <p className="text-sm text-(--ink-muted)">
+                    {`Not available on the ${currentTier} plan.`}
+                </p>
+            </Section>
         </div>
     );
 }
