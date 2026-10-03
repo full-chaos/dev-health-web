@@ -349,7 +349,14 @@ test.describe("Ingest status — batch list + drilldown", () => {
             .click();
         // The navigation signal (30 s nav timeout), not the 5 s expect default: the click is a client-side
         // navigation that is finished when the URL changes.
+        // The wait has the 30 s navigation timeout, so a slow step would be invisible: its duration is printed
+        // (like the warm-up lines) and a step over the 5 s that used to fail is named in the log.
+        const navStartedAt = Date.now();
         await page.waitForURL(new RegExp(`/batches/${COMPLETED_BATCH_ID}$`));
+        const navMs = Date.now() - navStartedAt;
+        console.log(`customer-push batch drilldown navigation: ${navMs} ms`);
+        if (navMs > 5_000)
+            console.warn(`customer-push batch drilldown navigation took ${navMs} ms (over 5 s)`);
         await expect(page).toHaveURL(new RegExp(`/batches/${COMPLETED_BATCH_ID}$`));
     });
 
