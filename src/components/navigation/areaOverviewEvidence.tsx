@@ -28,10 +28,11 @@ export function areaOverviewBodyOrder(
 export function areaOverviewFacts(areaId: NavAreaId, signals: readonly AreaSignal[]): PageFact[] {
     return areaOverviewBodyOrder(areaId, signals).map((signal) => ({
         label: `${signal.label} · ${signal.metricLabel}`,
-        value:
-            signal.state === "unavailable"
-                ? undefined
-                : [signal.value, AREA_STATE_LABEL[signal.state]].filter(Boolean).join(" · "),
+        value: signal.failed
+            ? "Could not be read"
+            : signal.state === "unavailable"
+              ? undefined
+              : [signal.value, AREA_STATE_LABEL[signal.state]].filter(Boolean).join(" · "),
     }));
 }
 
