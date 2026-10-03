@@ -3,16 +3,23 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { STATUS_PILL } from "@/lib/statusPill";
 
-export function formatForecastDate(dateStr: string | undefined): string {
-    if (!dateStr) return "—";
+/**
+ * A served date as "Jun 10": the calendar day it names, in every time zone (CHAOS-8507). The API
+ * serves a forecast date as a UTC day (the day the forecast was computed plus N days), so it is
+ * printed in UTC: printed in the viewer's local time it was one day early west of UTC.
+ * The caller makes sure the date is served.
+ */
+export function formatForecastDate(dateStr: string): string {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
-function lowVarianceWeeks(days: number): string {
-    const weeks = Math.max(1, Math.round(days / 7));
-    return `≈${weeks} ${weeks === 1 ? "week" : "weeks"}`;
-}
+/**
+ * A percentile date for a tile: the served date, or nothing when the API did not serve it. A tile
+ * with no value reads "Not reported" (CHAOS-8480); the web shows no dash and no made-up date.
+ */
+const servedDate = (dateStr: string | undefined) =>
+    dateStr ? formatForecastDate(dateStr) : undefined;
 
 function Tile({
     label,
@@ -56,20 +63,26 @@ function Tile({
     );
 }
 
+/** A served day count as "1 day" / "14 days". */
+const daysText = (days: number) => `${days} ${days === 1 ? "day" : "days"}`;
+
 const daysCaption = (days: number | undefined) =>
-    typeof days === "number" ? `${days} ${days === 1 ? "day" : "days"}` : undefined;
+    typeof days === "number" ? daysText(days) : undefined;
 
 /**
  * The forecast as tiles: remaining work and the three percentile dates. The
  * percentiles are neutral text (a later date is not an error); "Target" marks
- * P85. When P50, P85 and P95 are the same, one "Forecast range" tile says so,
- * as the old card did. Values come from the same fields as before.
+ * P85. When P50, P85 and P95 are the same, one "Forecast range" tile says so:
+ * it shows the served date and the served days (CHAOS-8481: no week count made
+ * in the web). Values come from the served fields only.
  */
 export function ForecastTiles({ forecast }: { forecast: CapacityForecast }) {
-    const lowVariance =
-        typeof forecast.p50Days === "number" &&
-        forecast.p50Days === forecast.p85Days &&
-        forecast.p85Days === forecast.p95Days;
+    const { p50Days, p85Days, p95Days } = forecast;
+    // The one day count of a low-variance forecast, or null when the percentiles differ or a day
+    // count is not served.
+    const lowVarianceDays =
+        typeof p50Days === "number" && p50Days === p85Days && p85Days === p95Days ? p50Days : null;
+    const lowVariance = lowVarianceDays !== null;
 
     return (
         // The strip counts its direct children, and the three percentiles sit in one fragment:
@@ -81,32 +94,32 @@ export function ForecastTiles({ forecast }: { forecast: CapacityForecast }) {
                 value={forecast.backlogSize}
                 unit={forecast.backlogSize === 1 ? "item" : "items"}
             />
-            {lowVariance ? (
+            {lowVarianceDays !== null ? (
                 <Tile
                     testId="tile-range"
                     label="Forecast range"
-                    valueText={lowVarianceWeeks(forecast.p50Days ?? 0)}
-                    caption={`low variance · ${formatForecastDate(forecast.p50Date)}`}
+                    valueText={servedDate(forecast.p50Date)}
+                    caption={`low variance · ${daysText(lowVarianceDays)}`}
                 />
             ) : (
                 <>
                     <Tile
                         testId="tile-p50"
                         label="P50 · optimistic"
-                        valueText={formatForecastDate(forecast.p50Date)}
+                        valueText={servedDate(forecast.p50Date)}
                         caption={daysCaption(forecast.p50Days)}
                     />
                     <Tile
                         testId="tile-p85"
                         label="P85 · target"
                         pill="Target"
-                        valueText={formatForecastDate(forecast.p85Date)}
+                        valueText={servedDate(forecast.p85Date)}
                         caption={daysCaption(forecast.p85Days)}
                     />
                     <Tile
                         testId="tile-p95"
                         label="P95 · conservative"
-                        valueText={formatForecastDate(forecast.p95Date)}
+                        valueText={servedDate(forecast.p95Date)}
                         caption={daysCaption(forecast.p95Days)}
                     />
                 </>

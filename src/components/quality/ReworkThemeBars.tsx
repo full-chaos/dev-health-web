@@ -1,6 +1,6 @@
 "use client";
 
-import { investmentThemeColor, useChartTokens } from "@/components/charts/chartTheme";
+import { investmentSeriesColor, useChartColors } from "@/components/charts/chartTheme";
 import { formatMetricValue, formatNumber } from "@/lib/formatters";
 import type { ReworkThemeAllocation } from "@/lib/types";
 
@@ -17,7 +17,7 @@ const UNKNOWN_THEME_COLOR = "var(--text-muted)";
  * passes them. A bar has the fixed color of its investment theme.
  */
 export function ReworkThemeBars({ rows }: ReworkThemeBarsProps) {
-    const tokens = useChartTokens();
+    const chartColors = useChartColors();
 
     return (
         <ul className="mt-4 space-y-4" data-testid="rework-theme-bars">
@@ -31,7 +31,7 @@ export function ReworkThemeBars({ rows }: ReworkThemeBarsProps) {
                                 {formatNumber(row.allocation_pct, { maximumFractionDigits: 1 })}%
                             </span>
                         </div>
-                        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-r-(--radius-sm) bg-(--card-stroke)">
+                        <div className="mt-1.5 h-2 w-full overflow-hidden rounded-r-(--radius-sm) bg-background">
                             {width > 0 ? (
                                 <div
                                     aria-hidden="true"
@@ -40,9 +40,9 @@ export function ReworkThemeBars({ rows }: ReworkThemeBarsProps) {
                                     style={{
                                         width: `${width}%`,
                                         minWidth: 2,
-                                        backgroundColor: investmentThemeColor(
+                                        backgroundColor: investmentSeriesColor(
                                             row.theme,
-                                            tokens,
+                                            chartColors,
                                             UNKNOWN_THEME_COLOR,
                                         ),
                                     }}
