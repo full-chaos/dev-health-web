@@ -1,10 +1,8 @@
 import { DataState } from "@/components/ui/DataState";
 import { Section } from "@/components/ui/Section";
+import { MeterRows } from "@/components/testops/MeterRows";
 import { formatPercent } from "@/lib/formatters";
 import type { RepositoryCoverageRow } from "@/lib/testops/coverageRepos";
-
-/** Shown for a value the API does not serve. */
-const NOT_REPORTED = "Not reported";
 
 type CoverageBaselineCardProps = {
     repositories: RepositoryCoverageRow[];
@@ -55,16 +53,25 @@ export function CoverageBaselineCard({
                 <div className="space-y-5">
                     {repositories.map((repo) => (
                         <div key={repo.id} data-testid="testops-coverage-baseline-repo">
-                            <p className="text-sm font-semibold text-foreground" title={repo.title}>
+                            <p
+                                className="mb-2.5 text-sm font-semibold text-foreground"
+                                title={repo.title}
+                            >
                                 {repo.name}
                             </p>
-                            <dl className="mt-2 text-xs">
-                                <CoverageRow
-                                    label="Line coverage"
-                                    value={formatPercent(repo.lineCoverage)}
-                                />
-                                <CoverageRow label="Branch coverage" />
-                            </dl>
+                            <MeterRows
+                                max={100}
+                                rowTestId="testops-coverage-row"
+                                rows={[
+                                    {
+                                        label: "Line coverage",
+                                        value: repo.lineCoverage,
+                                        display: formatPercent(repo.lineCoverage),
+                                    },
+                                    // Branch coverage by repository is not served yet (B11).
+                                    { label: "Branch coverage", value: null },
+                                ]}
+                            />
                         </div>
                     ))}
                     <div className="rounded-(--radius-sm) bg-background p-3.75 text-xs text-(--ink-muted)">
@@ -75,26 +82,5 @@ export function CoverageBaselineCard({
                 </div>
             )}
         </Section>
-    );
-}
-
-/** One coverage row: label left, the served value right ("Not reported" when not served). */
-function CoverageRow({ label, value }: { label: string; value?: string }) {
-    const reported = value !== undefined;
-    return (
-        <div
-            data-testid="testops-coverage-row"
-            data-reported={reported}
-            className="flex items-center gap-3 border-b border-(--card-stroke) py-2 last:border-b-0"
-        >
-            <dt className="text-(--ink-muted)">{label}</dt>
-            <dd
-                className={`ml-auto tabular-nums ${
-                    reported ? "font-semibold text-foreground" : "text-(--ink-muted)"
-                }`}
-            >
-                {reported ? value : NOT_REPORTED}
-            </dd>
-        </div>
     );
 }
