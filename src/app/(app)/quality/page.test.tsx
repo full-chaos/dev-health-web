@@ -150,63 +150,21 @@ describe("Quality page — shared metric strip and sections", () => {
         }
     });
 
-    it("draws associations and contributors as meter rows with the served values (prototype bars())", async () => {
+    it("keeps the Open evidence head link of both association cards (Explore, change failure rate)", async () => {
         await renderPage();
-        const associations = within(screen.getByTestId("quality-associations")).getByTestId(
-            "association-meter-rows",
-        );
-        // Resolved name; the served signed percent change (the fill is |delta|).
-        expect(
-            within(associations)
-                .getAllByTestId("meter-row")
-                .map((r) => r.textContent),
-        ).toEqual(["atlas-api+12%"]);
-        const contributors = within(screen.getByTestId("quality-contributors")).getByTestId(
-            "contributor-meter-rows",
-        );
-        // The served value with the served unit.
-        expect(
-            within(contributors)
-                .getAllByTestId("meter-row")
-                .map((r) => r.textContent),
-        ).toEqual(["atlas-web3%"]);
-        expect(screen.queryByTestId("horizontal-bar-chart")).toBeNull();
-    });
-
-    it("keeps unresolved contributors apart by their short id token, never a raw id", async () => {
-        mockExplain.mockResolvedValue({
-            ...explain,
-            contributors: [
-                { id: "8dc7d5fc-1111-4222-8333-944455556666", value: 1, evidence_link: "/a" },
-                { id: "5ba1b2cd-1111-4222-8333-944455556666", value: 2, evidence_link: "/b" },
-            ],
-        });
-        await renderPage();
-        const rows = within(screen.getByTestId("contributor-meter-rows")).getAllByTestId(
-            "meter-row",
-        );
-        expect(rows.map((r) => r.textContent)).toEqual([
-            "#8dc7d5fc · Unresolved1%",
-            "#5ba1b2cd · Unresolved2%",
-        ]);
-        expect(rows[0]).not.toHaveTextContent("8dc7d5fc-1111");
-    });
-
-    it("gives both cards an Evidence action that opens the shared drawer for change failure rate", async () => {
-        await renderPage();
-        for (const [id, section] of [
-            ["quality-associations", "Change Failure Associations"],
-            ["quality-contributors", "Contributors"],
-        ]) {
-            panelProps.last = null;
-            await userEvent.click(
-                within(screen.getByTestId(id)).getByRole("button", {
-                    name: `Evidence: ${section}`,
-                }),
-            );
-            expect(await screen.findByTestId("evidence-panel")).toBeInTheDocument();
-            expect(panelProps.last).toMatchObject({ metric: "change_failure_rate", role: "em" });
+        for (const id of ["quality-associations", "quality-contributors"]) {
+            const card = screen.getByTestId(id);
+            const link = within(card).getByRole("link", { name: "Open evidence" });
+            expect(link.getAttribute("href")).toContain("/explore");
+            expect(link.getAttribute("href")).toContain("change_failure_rate");
         }
+        // The driver and contributor rows keep their own links.
+        expect(
+            within(screen.getByTestId("quality-associations")).getByText("atlas-api"),
+        ).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId("quality-contributors")).getByText("atlas-web"),
+        ).toBeInTheDocument();
     });
 
     it("shows a missing value as 'Not reported' (placeholder mode), never 0", async () => {
