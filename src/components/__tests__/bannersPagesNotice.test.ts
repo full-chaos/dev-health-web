@@ -36,10 +36,6 @@ const BANNERS: Array<{ file: string; text: string; title?: string }> = [
     },
     { file: "app/(app)/org/admin/ip-allowlist/page.tsx", text: "{error}" },
     { file: "app/(app)/org/admin/retention/page.tsx", text: "{error}" },
-    {
-        file: "app/(app)/org/admin/settings/page.tsx",
-        text: "Failed to load organization: {result.error}",
-    },
     { file: "app/(app)/org/admin/teams/page.tsx", text: "Failed to load teams: {result.error}" },
     // One plain sentence + Retry; the backend text goes to the server log (CHAOS-8235).
     { file: "app/(app)/org/admin/users/page.tsx", text: "Users could not be loaded." },
