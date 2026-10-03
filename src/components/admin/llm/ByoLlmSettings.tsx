@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { DataState } from "@/components/ui/DataState";
+import { Button } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import {
@@ -737,7 +738,7 @@ export function ByoLlmSettings({
                     </div>
                 </div>
             ) : (
-                <div className="rounded-2xl border border-(--card-stroke) bg-(--card-80) p-6">
+                <div data-testid="byo-llm-edit-body">
                     <div className="grid gap-5 sm:grid-cols-2">
                         <div>
                             <label htmlFor="byo-provider" className={labelClass}>
@@ -861,23 +862,13 @@ export function ByoLlmSettings({
                     </div>
 
                     <div className="mt-6 flex flex-wrap gap-2">
-                        <button
-                            type="button"
-                            onClick={handleSave}
-                            disabled={saving}
-                            className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-                        >
+                        <Button variant="primary" onClick={handleSave} disabled={saving}>
                             {saving ? "Saving…" : CTA_LABELS.save}
-                        </button>
+                        </Button>
                         {hasSavedSettings && (
-                            <button
-                                type="button"
-                                onClick={handleCancel}
-                                disabled={saving}
-                                className="rounded-lg border border-(--card-stroke) bg-(--card-70) px-4 py-2 text-sm font-medium text-foreground disabled:opacity-50"
-                            >
+                            <Button onClick={handleCancel} disabled={saving}>
                                 {CTA_LABELS.cancel}
-                            </button>
+                            </Button>
                         )}
                         {deleteButton}
                     </div>

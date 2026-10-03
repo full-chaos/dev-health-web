@@ -598,6 +598,17 @@ describe("ByoLlmSettings", () => {
         expect(cardOf()).toHaveTextContent("Bring your own model provider");
     });
 
+    it("edit mode has no second card inside the section, and Save is the shared primary button (CHAOS-8240)", async () => {
+        mockLoad.mockResolvedValue({ data: {} });
+        renderForm();
+        await screen.findByText("Not configured");
+        const body = screen.getByTestId("byo-llm-edit-body");
+        expect(body.className).not.toMatch(/border|bg-/);
+        const save = screen.getByRole("button", { name: "Save" });
+        expect(save.className).toContain("bg-(--action)");
+        expect(save.className).not.toContain("bg-(--accent)");
+    });
+
     it("renders a locked state without an upgrade link when the flag is off (403)", async () => {
         mockLoad.mockResolvedValue({
             error: "BYO LLM is not enabled for this organization",
