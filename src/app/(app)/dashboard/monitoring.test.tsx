@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { screen, within } from "@testing-library/react";
 
-import { checkApiHealth, getApiMeta } from "@/lib/api/system";
+import { checkApiHealth } from "@/lib/api/system";
 import { getSetupStatus } from "@/lib/admin/server";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { DEFAULT_ROLE } from "@/lib/lensContext";
@@ -19,7 +19,7 @@ vi.mock("next/navigation", () => ({
     useRouter: () => ({ refresh: vi.fn(), replace: vi.fn(), push: vi.fn() }),
 }));
 vi.mock("@/lib/graphql/homeFetchers", () => ({ getHomeDataViaGraphQL: vi.fn() }));
-vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn(), getApiMeta: vi.fn() }));
+vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn() }));
 vi.mock("@/lib/admin/server", () => ({ getSetupStatus: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ auth: vi.fn(async () => ({ user: { org_id: "org-1" } })) }));
 vi.mock("@/components/charts/SparklineChart", () => ({
@@ -61,7 +61,6 @@ const HOME = {
 
 beforeEach(() => {
     vi.mocked(checkApiHealth).mockResolvedValue({ ok: true, data: null });
-    vi.mocked(getApiMeta).mockResolvedValue(null);
     vi.mocked(getSetupStatus).mockResolvedValue({ error: "not needed" });
     vi.mocked(getHomeDataViaGraphQL).mockResolvedValue(HOME);
 });
