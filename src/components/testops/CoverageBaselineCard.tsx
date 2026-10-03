@@ -13,10 +13,15 @@ type CoverageBaselineCardProps = {
 
 /**
  * The approved "Coverage against baseline" card: per repository, its name, then one row per
- * coverage kind with the served value. Line coverage is the served breakdown value. Branch
- * coverage by repository is not served by the API yet, so its row reads "Not reported" (never a
- * made-up value). The baseline is the one product target, shown once in the card head.
+ * coverage kind with the served value. Line and branch coverage are the served breakdown values
+ * of the repository; a value that is not served reads "Not reported" (never a made-up value, never
+ * 0). The baseline is the one product target, shown once in the card head.
  */
+
+/** One meter row of a served percent; null = not served ("Not reported", empty track). */
+const percentRow = (label: string, value: number | null) =>
+    value === null ? { label, value } : { label, value, display: formatPercent(value) };
+
 export function CoverageBaselineCard({
     repositories,
     baselinePct,
@@ -26,7 +31,7 @@ export function CoverageBaselineCard({
     return (
         <Section
             title="Coverage against baseline"
-            description="Line coverage of each repository against the one target baseline."
+            description="Coverage of each repository; the baseline is the one line-coverage target."
             action={
                 <span
                     data-testid="testops-coverage-baseline-pill"
@@ -64,21 +69,16 @@ export function CoverageBaselineCard({
                                 aria-label={`${repo.name} coverage`}
                                 testId="testops-coverage-meters"
                                 rows={[
-                                    {
-                                        label: "Line coverage",
-                                        value: repo.lineCoverage,
-                                        display: formatPercent(repo.lineCoverage),
-                                    },
-                                    // Branch coverage by repository is not served yet (B11).
-                                    { label: "Branch coverage", value: null },
+                                    percentRow("Line coverage", repo.lineCoverage),
+                                    percentRow("Branch coverage", repo.branchCoverage),
                                 ]}
                             />
                         </div>
                     ))}
                     <div className="rounded-(--radius-sm) bg-background p-3.75 text-xs text-(--ink-muted)">
                         The baseline is one product target ({formatPercent(baselinePct)} line
-                        coverage) for every repository. Branch coverage and a per-repository
-                        baseline are not reported yet.
+                        coverage) for every repository. A per-repository baseline is not reported
+                        yet.
                     </div>
                 </div>
             )}

@@ -20,7 +20,7 @@ import { buildRepositoryCoverage } from "@/lib/testops/coverageRepos";
 import {
     TimeseriesResult,
     TimeseriesBucket,
-    BreakdownResult,
+    NullableBreakdownResult,
 } from "@/lib/graphql/schemas/analytics";
 import { getServerEnv } from "@/lib/config";
 
@@ -104,6 +104,14 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
                         dateRange,
                         topN: 10,
                     },
+                    // Branch coverage by repository (CHAOS-8112): one more item of the same
+                    // request, so the request text does not change.
+                    {
+                        dimension: "REPO",
+                        measure: "COVERAGE_BRANCH_PCT",
+                        dateRange,
+                        topN: 10,
+                    },
                 ],
             },
             isTestMode,
@@ -147,8 +155,13 @@ export default async function CoveragePage({ searchParams }: CoveragePageProps) 
           }))
         : [];
 
+    const repoBreakdown = (measure: string) =>
+        coverageBreakdowns.find(
+            (b: NullableBreakdownResult) => b.dimension === "REPO" && b.measure === measure,
+        );
     const repositories = buildRepositoryCoverage(
-        coverageBreakdowns.find((b: BreakdownResult) => b.measure === "COVERAGE_LINE_PCT"),
+        repoBreakdown("COVERAGE_LINE_PCT"),
+        repoBreakdown("COVERAGE_BRANCH_PCT"),
     );
 
     return (

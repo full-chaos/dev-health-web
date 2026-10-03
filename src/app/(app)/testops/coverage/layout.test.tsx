@@ -161,7 +161,85 @@ describe("TestOps Coverage page — approved layout", () => {
         expect(tiles.map((tile) => tile.getAttribute("data-caption"))).toEqual(["", "", ""]);
     });
 
-    it("shows each repository against the one baseline: served line coverage, branch coverage not reported", async () => {
+    it("asks for branch coverage by repository beside line coverage, in the same request", async () => {
+        await renderPage();
+        expect(mockFetchCoverageMetrics).toHaveBeenCalledTimes(1);
+        const batch = mockFetchCoverageMetrics.mock.calls[0][0] as {
+            breakdowns: Array<{ dimension: string; measure: string; topN: number; dateRange: unknown }>;
+        };
+        expect(batch.breakdowns.map(({ dimension, measure, topN }) => [dimension, measure, topN])).toEqual([
+            ["REPO", "COVERAGE_LINE_PCT", 10],
+            ["REPO", "COVERAGE_BRANCH_PCT", 10],
+        ]);
+        // Both read the same window.
+        expect(batch.breakdowns[1].dateRange).toEqual(batch.breakdowns[0].dateRange);
+    });
+
+    it("draws each repository's served branch coverage, joined by repository key; a null value reads 'Not reported'", async () => {
+        mockFetchCoverageMetrics.mockResolvedValue({
+            ...served,
+            breakdowns: [
+                ...served.breakdowns,
+                {
+                    dimension: "REPO",
+                    measure: "COVERAGE_BRANCH_PCT",
+                    // Ordered by its own measure, and the unresolved repository has no branch figure.
+                    items: [
+                        { key: "0f2b9c1e-1111-4222-8333-944455556666", value: null },
+                        { key: "repo-1", label: "dev-health-web", value: 54 },
+                    ],
+                },
+            ],
+        });
+        await renderPage();
+        const repos = within(screen.getByTestId("testops-coverage-baseline")).getAllByTestId(
+            "testops-coverage-baseline-repo",
+        );
+        expect(
+            within(repos[0])
+                .getAllByTestId("meter-row")
+                .map((row) => row.textContent),
+        ).toEqual(["Line coverage60%", "Branch coverage54%"]);
+        const second = within(repos[1]).getAllByTestId("meter-row");
+        expect(second[1]).toHaveTextContent("Branch coverageNot reported");
+        expect(second[1]).toHaveAttribute("data-reported", "false");
+        // The table keeps its three approved columns.
+        expect(
+            within(screen.getByTestId("testops-repository-coverage-table"))
+                .getAllByRole("columnheader")
+                .map((th) => th.textContent),
+        ).toEqual(["Repository", "Line coverage", "Baseline"]);
+    });
+
+    it("reads a line coverage that is not served as 'Not reported' in the card and in the table, never 0%", async () => {
+        mockFetchCoverageMetrics.mockResolvedValue({
+            ...served,
+            breakdowns: [
+                {
+                    dimension: "REPO",
+                    measure: "COVERAGE_LINE_PCT",
+                    items: [{ key: "repo-1", label: "dev-health-web", value: null }],
+                },
+            ],
+        });
+        await renderPage();
+        const [repo] = within(screen.getByTestId("testops-coverage-baseline")).getAllByTestId(
+            "testops-coverage-baseline-repo",
+        );
+        expect(within(repo).getAllByTestId("meter-row")[0]).toHaveTextContent(
+            "Line coverageNot reported",
+        );
+        const [row] = within(screen.getByTestId("testops-repository-coverage-table")).getAllByTestId(
+            "testops-repository-coverage-row",
+        );
+        expect(
+            within(row)
+                .getAllByRole("cell")
+                .map((td) => td.textContent),
+        ).toEqual(["dev-health-web", "Not reported", "80%"]);
+    });
+
+    it("shows each repository against the one baseline: served line coverage; branch coverage not reported when no branch answer is served", async () => {
         await renderPage();
         const card = screen.getByTestId("testops-coverage-baseline");
         expect(within(card).getByRole("heading", { level: 2 })).toHaveTextContent(
@@ -184,7 +262,7 @@ describe("TestOps Coverage page — approved layout", () => {
         expect(within(repos[1]).getAllByTestId("meter-row")[0]).toHaveTextContent(
             "72%",
         );
-        expect(card).toHaveTextContent("per-repository baseline are not reported yet");
+        expect(card).toHaveTextContent("A per-repository baseline is not reported yet.");
     });
 
     it("lists the repositories in the 'Repository coverage' table: Repository, Line coverage, Baseline", async () => {
