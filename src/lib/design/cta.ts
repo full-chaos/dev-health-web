@@ -98,6 +98,8 @@ export const CTA_LABELS = {
     inspect: "Inspect",
     openWorkView: "Open Work view",
     evidence: "Evidence",
+    /** Section action on a Flow tab: the evidence page of the tab's metric (approved copy, app.js line 98). */
+    metricEvidence: "Metric evidence",
     aiImpact: "Impact",
     aiReviewLoad: "Review Load",
     aiRisk: "Risk",
