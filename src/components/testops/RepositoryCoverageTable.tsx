@@ -1,5 +1,6 @@
 "use client";
 
+import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { DataTable, type DataTableColumn } from "@/components/shared/DataTable";
 import { formatPercent } from "@/lib/formatters";
 import type { RepositoryCoverageRow } from "@/lib/testops/coverageRepos";
@@ -26,7 +27,9 @@ export function RepositoryCoverageTable({ rows, baselinePct }: RepositoryCoverag
             key: "line",
             header: "Line coverage",
             numeric: true,
-            render: (row) => formatPercent(row.lineCoverage),
+            // A line coverage that is not served is "Not reported", never 0%.
+            render: (row) =>
+                row.lineCoverage === null ? NOT_REPORTED : formatPercent(row.lineCoverage),
         },
         {
             key: "baseline",
