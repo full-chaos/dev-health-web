@@ -1,6 +1,7 @@
 import type { CapacityForecast } from "@/lib/graphql/types";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
+import { dayFormat } from "@/lib/capacityDates";
 import { STATUS_PILL } from "@/lib/statusPill";
 
 /**
@@ -13,13 +14,8 @@ import { STATUS_PILL } from "@/lib/statusPill";
  */
 export function formatForecastDate(dateStr: string): string {
     const date = new Date(dateStr);
-    const thisYear = date.getUTCFullYear() === new Date().getUTCFullYear();
-    return date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        ...(thisYear ? {} : { year: "numeric" }),
-        timeZone: "UTC",
-    });
+    // the one date rule of the page: the tiles, the evidence facts and the Completion range card
+    return date.toLocaleDateString("en-US", dayFormat(date));
 }
 
 // A tile with no value reads "Not reported" (CHAOS-8480): the web shows no dash and no made-up date.
