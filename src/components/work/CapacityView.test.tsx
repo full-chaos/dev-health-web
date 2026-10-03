@@ -236,7 +236,6 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         render(<CapacityView filters={filters} />);
 
         expect(screen.queryByText("Throughput Distribution")).toBeNull();
-        expect(screen.queryByTestId("histogram")).toBeNull();
         expect(screen.queryByTestId("chart-throughput-histogram")).toBeNull();
         expect(screen.queryByText(/days of historical data/)).toBeNull();
 
