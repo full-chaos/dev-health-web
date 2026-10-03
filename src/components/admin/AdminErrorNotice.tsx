@@ -9,12 +9,18 @@ import { CTA_LABELS } from "@/lib/design/cta";
  * - A plan-gate answer ("This feature requires the … plan …") is not an error: a warn notice with
  *   the served sentence.
  * - A LOAD failure: one plain sentence + Retry; the backend text is the caller's to log.
- * - An ACTION failure (save, toggle, delete): the served message in a danger notice; it is feedback
- *   the admin must read (for example a validation text).
+ * - An ACTION failure (save, toggle, delete): the served message in a danger notice ONLY for a
+ *   validation answer (a 4xx other than 401/403, with a message the admin must act on, for example a
+ *   bad CIDR). A 5xx, a network failure or an unknown status is one plain sentence; the served text
+ *   is the caller's to log.
  */
 export type AdminErrorNoticeProps = {
     error: string;
     kind: "load" | "action";
+    /** HTTP status of the failed action, when known. Only a validation status shows the served text. */
+    status?: number;
+    /** The served text is an action-level answer to act on (an HTTP 200 with an embedded failure). */
+    served?: boolean;
     /** What failed to load, for the load sentence ("IP allowlist entries"). */
     subject: string;
     onRetryAction: () => void;
@@ -22,7 +28,21 @@ export type AdminErrorNoticeProps = {
 
 const PLAN_GATE = /^This feature requires the /u;
 
-export function AdminErrorNotice({ error, kind, subject, onRetryAction }: AdminErrorNoticeProps) {
+/** A 4xx other than 401/403: a validation-style answer whose message the admin must act on. */
+export function isValidationStatus(status: number | undefined): boolean {
+    return (
+        status !== undefined && status >= 400 && status < 500 && status !== 401 && status !== 403
+    );
+}
+
+export function AdminErrorNotice({
+    error,
+    kind,
+    status,
+    served = false,
+    subject,
+    onRetryAction,
+}: AdminErrorNoticeProps) {
     if (PLAN_GATE.test(error)) {
         return (
             <Notice variant="warn" live={false}>
@@ -41,9 +61,16 @@ export function AdminErrorNotice({ error, kind, subject, onRetryAction }: AdminE
             </Notice>
         );
     }
+    if (served || isValidationStatus(status)) {
+        return (
+            <Notice variant="danger" live={false}>
+                {error}
+            </Notice>
+        );
+    }
     return (
         <Notice variant="danger" live={false}>
-            {error}
+            That change could not be completed. Try again in a moment.
         </Notice>
     );
 }

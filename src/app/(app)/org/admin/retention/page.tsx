@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus } from "lucide-react";
 
-import { AdminErrorNotice } from "@/components/admin/AdminErrorNotice";
+import { AdminErrorNotice, isValidationStatus } from "@/components/admin/AdminErrorNotice";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminPager } from "@/components/admin/AdminPager";
 import { Button } from "@/components/shared/Button";
@@ -43,6 +43,20 @@ export default function RetentionPolicyPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [errorKind, setErrorKind] = useState<"load" | "action">("load");
+    const [errorStatus, setErrorStatus] = useState<number | undefined>(undefined);
+    const [errorServed, setErrorServed] = useState(false);
+
+    // An action failure: the served text shows only for a validation answer (or an embedded
+    // action-level answer); a 5xx or a network failure is one plain sentence and the text is logged.
+    const reportActionError = (message: string, status?: number, served = false) => {
+        if (!served && !isValidationStatus(status)) {
+            logger.error({ err: message, status }, "Admin action failed");
+        }
+        setErrorKind("action");
+        setErrorStatus(status);
+        setErrorServed(served);
+        setError(message);
+    };
     const [offset, setOffset] = useState(0);
     const limit = 50;
 
@@ -60,6 +74,8 @@ export default function RetentionPolicyPage() {
                 // The backend text goes to the log; the page says one plain sentence + Retry.
                 logger.error({ err: apiError }, "Failed to load retention policies");
                 setErrorKind("load");
+                setErrorStatus(undefined);
+                setErrorServed(false);
                 setError(apiError);
             } else if (data) {
                 setPolicies(data.items);
@@ -67,6 +83,8 @@ export default function RetentionPolicyPage() {
         } catch (err) {
             logger.error({ err }, "Failed to load retention policies");
             setErrorKind("load");
+            setErrorStatus(undefined);
+            setErrorServed(false);
             setError("An unexpected error occurred");
         } finally {
             setLoading(false);
@@ -92,8 +110,7 @@ export default function RetentionPolicyPage() {
                 : await createRetentionPolicy(data as RetentionPolicyCreate);
         setSaving(false);
         if (result.error) {
-            setErrorKind("action");
-            setError(result.error);
+            reportActionError(result.error, result.status);
         } else {
             setFormState({ mode: "closed" });
             fetchPolicies();
@@ -102,23 +119,21 @@ export default function RetentionPolicyPage() {
 
     const handleToggle = async (policy: RetentionPolicy) => {
         setTogglingId(policy.id);
-        const { error: apiError } = await updateRetentionPolicy(policy.id, {
+        const res = await updateRetentionPolicy(policy.id, {
             is_active: !policy.is_active,
         });
         setTogglingId(null);
-        if (apiError) {
-            setErrorKind("action");
-            setError(apiError);
+        if (res.error) {
+            reportActionError(res.error, res.status);
         } else {
             fetchPolicies();
         }
     };
 
     const handleDelete = async (policy: RetentionPolicy) => {
-        const { error: apiError } = await deleteRetentionPolicy(policy.id);
-        if (apiError) {
-            setErrorKind("action");
-            setError(apiError);
+        const res = await deleteRetentionPolicy(policy.id);
+        if (res.error) {
+            reportActionError(res.error, res.status);
         } else {
             fetchPolicies();
         }
@@ -127,15 +142,13 @@ export default function RetentionPolicyPage() {
     const handleExecute = async (id: string) => {
         const result = await executeRetentionPolicy(id, false);
         if (result.error) {
-            setErrorKind("action");
-            setError(result.error);
+            reportActionError(result.error, result.status);
         } else if (result.data?.error) {
-            setErrorKind("action");
             // The backend can report a failed run as an HTTP 200 with an
             // embedded error (e.g. the policy went inactive, or the resource
             // type isn't implemented) — surface it instead of silently
             // refetching as if the run succeeded.
-            setError(result.data.error);
+            reportActionError(result.data.error, undefined, true);
         } else {
             fetchPolicies();
         }
@@ -164,6 +177,8 @@ export default function RetentionPolicyPage() {
                     <AdminErrorNotice
                         error={error}
                         kind={errorKind}
+                        status={errorStatus}
+                        served={errorServed}
                         subject="Retention policies"
                         onRetryAction={fetchPolicies}
                     />

@@ -3,6 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, cleanup, userEvent, waitFor, within } from "@/test/utils";
 import type { RetentionPolicy } from "@/lib/admin/types";
 
+const logError = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/logger", () => ({
+    logger: { error: logError, warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
+}));
+
 const mockListRetentionPolicies = vi.fn();
 const mockCreateRetentionPolicy = vi.fn();
 const mockUpdateRetentionPolicy = vi.fn();
@@ -253,14 +258,11 @@ describe("RetentionPolicyPage design A6/A7 (CHAOS-8239)", () => {
         );
     });
 
-    it("keeps the served message of a failed action (feedback the admin must read)", async () => {
+    async function failToggleWith(result: { error: string; status?: number }) {
         mockListRetentionPolicies.mockResolvedValue(respondWith([makePolicy()]));
-        mockUpdateRetentionPolicy.mockResolvedValue({
-            data: undefined,
-            error: "Rule overlaps an existing rule",
-        });
+        mockUpdateRetentionPolicy.mockResolvedValue({ data: undefined, ...result });
         const user = userEvent.setup();
-        render(<RetentionPolicyPage />);
+        const view = render(<RetentionPolicyPage />);
         await waitFor(() => expect(screen.getByText("audit_logs")).toBeInTheDocument());
 
         await user.click(screen.getByRole("button", { name: /^(Disable|Enable)/u }));
@@ -269,9 +271,51 @@ describe("RetentionPolicyPage design A6/A7 (CHAOS-8239)", () => {
                 name: /^(Disable|Enable)/u,
             }),
         );
+        return view;
+    }
+
+    it("shows the served message of a failed action only for a validation answer (4xx)", async () => {
+        await failToggleWith({ error: "Rule overlaps an existing rule", status: 409 });
 
         expect(await screen.findByText("Rule overlaps an existing rule")).toBeInTheDocument();
         expect(screen.queryByText(/could not be loaded/u)).toBeNull();
+    });
+
+    it("logs the backend text of a 5xx and of a network failure, but not of a validation answer", async () => {
+        logError.mockClear();
+        await failToggleWith({ error: "backend 502 text", status: 502 });
+        expect(await screen.findByText(/That change could not be completed/u)).toBeInTheDocument();
+        expect(logError).toHaveBeenCalledWith(
+            expect.objectContaining({ err: "backend 502 text", status: 502 }),
+            "Admin action failed",
+        );
+
+        cleanup();
+        logError.mockClear();
+        await failToggleWith({ error: "Bad CIDR", status: 422 });
+        expect(await screen.findByText("Bad CIDR")).toBeInTheDocument();
+        expect(logError).not.toHaveBeenCalledWith(expect.anything(), "Admin action failed");
+    });
+
+    it("shows one plain sentence for a 5xx, and not the served text", async () => {
+        const { container } = await failToggleWith({
+            error: "GET /api/v1/admin/x 502 upstream",
+            status: 502,
+        });
+
+        expect(
+            await screen.findByText("That change could not be completed. Try again in a moment."),
+        ).toBeInTheDocument();
+        expect(container.textContent).not.toContain("502");
+    });
+
+    it("shows one plain sentence for a network failure (no status), and not the served text", async () => {
+        const { container } = await failToggleWith({ error: "fetch failed: ECONNRESET" });
+
+        expect(
+            await screen.findByText("That change could not be completed. Try again in a moment."),
+        ).toBeInTheDocument();
+        expect(container.textContent).not.toContain("ECONNRESET");
     });
 
     it("shows the dashed empty state and no pager when there are no rows", async () => {

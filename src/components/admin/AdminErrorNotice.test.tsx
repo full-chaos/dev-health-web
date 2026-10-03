@@ -24,18 +24,53 @@ describe("AdminErrorNotice", () => {
         expect(retry).toHaveBeenCalledTimes(1);
     });
 
-    it("an action failure keeps the served message, in a danger notice without Retry", () => {
+    it("an action failure shows the served message only for a validation status (a 4xx but 401/403)", () => {
+        for (const status of [400, 409, 422]) {
+            const { unmount } = render(
+                <AdminErrorNotice
+                    error="Rule overlaps"
+                    kind="action"
+                    status={status}
+                    subject="Rules"
+                    onRetryAction={vi.fn()}
+                />,
+            );
+            expect(variantOf(screen.getByText("Rule overlaps"))).toBe("danger");
+            expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+            unmount();
+        }
+    });
+
+    it("a 5xx, 401, 403, no status and an unknown status read one plain sentence, not the served text", () => {
+        for (const status of [500, 502, 401, 403, undefined]) {
+            const { container, unmount } = render(
+                <AdminErrorNotice
+                    error="secret backend text"
+                    kind="action"
+                    status={status}
+                    subject="Rules"
+                    onRetryAction={vi.fn()}
+                />,
+            );
+            expect(container.textContent).not.toContain("secret backend text");
+            expect(
+                screen.getByText("That change could not be completed. Try again in a moment."),
+            ).toBeInTheDocument();
+            unmount();
+        }
+    });
+
+    it("an embedded action-level answer (served) is shown as served", () => {
         render(
             <AdminErrorNotice
-                error="Rule overlaps"
+                error="The policy is inactive"
                 kind="action"
+                served
                 subject="Rules"
                 onRetryAction={vi.fn()}
             />,
         );
-
-        expect(variantOf(screen.getByText("Rule overlaps"))).toBe("danger");
-        expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+        expect(screen.getByText("The policy is inactive")).toBeInTheDocument();
     });
 
     it("a plan-gate sentence is a warning for both kinds", () => {

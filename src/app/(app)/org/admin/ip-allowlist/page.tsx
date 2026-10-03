@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Plus } from "lucide-react";
 
-import { AdminErrorNotice } from "@/components/admin/AdminErrorNotice";
+import { AdminErrorNotice, isValidationStatus } from "@/components/admin/AdminErrorNotice";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { AdminPager } from "@/components/admin/AdminPager";
 import { Button } from "@/components/shared/Button";
@@ -35,6 +35,20 @@ export default function IPAllowlistPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [errorKind, setErrorKind] = useState<"load" | "action">("load");
+    const [errorStatus, setErrorStatus] = useState<number | undefined>(undefined);
+    const [errorServed, setErrorServed] = useState(false);
+
+    // An action failure: the served text shows only for a validation answer (or an embedded
+    // action-level answer); a 5xx or a network failure is one plain sentence and the text is logged.
+    const reportActionError = (message: string, status?: number, served = false) => {
+        if (!served && !isValidationStatus(status)) {
+            logger.error({ err: message, status }, "Admin action failed");
+        }
+        setErrorKind("action");
+        setErrorStatus(status);
+        setErrorServed(served);
+        setError(message);
+    };
     const [offset, setOffset] = useState(0);
     const limit = 50;
 
@@ -52,6 +66,8 @@ export default function IPAllowlistPage() {
                 // The backend text goes to the log; the page says one plain sentence + Retry.
                 logger.error({ err: apiError }, "Failed to load ip allowlist entries");
                 setErrorKind("load");
+                setErrorStatus(undefined);
+                setErrorServed(false);
                 setError(apiError);
             } else if (data) {
                 setEntries(data.items);
@@ -59,6 +75,8 @@ export default function IPAllowlistPage() {
         } catch (err) {
             logger.error({ err }, "Failed to load ip allowlist entries");
             setErrorKind("load");
+            setErrorStatus(undefined);
+            setErrorServed(false);
             setError("An unexpected error occurred");
         } finally {
             setLoading(false);
@@ -84,8 +102,7 @@ export default function IPAllowlistPage() {
                 : await createIPAllowlistEntry(data as IPAllowlistCreate);
         setSaving(false);
         if (result.error) {
-            setErrorKind("action");
-            setError(result.error);
+            reportActionError(result.error, result.status);
         } else {
             setFormState({ mode: "closed" });
             fetchEntries();
@@ -94,23 +111,21 @@ export default function IPAllowlistPage() {
 
     const handleToggle = async (entry: IPAllowlist) => {
         setTogglingId(entry.id);
-        const { error: apiError } = await updateIPAllowlistEntry(entry.id, {
+        const res = await updateIPAllowlistEntry(entry.id, {
             is_active: !entry.is_active,
         });
         setTogglingId(null);
-        if (apiError) {
-            setErrorKind("action");
-            setError(apiError);
+        if (res.error) {
+            reportActionError(res.error, res.status);
         } else {
             fetchEntries();
         }
     };
 
     const handleDelete = async (entry: IPAllowlist) => {
-        const { error: apiError } = await deleteIPAllowlistEntry(entry.id);
-        if (apiError) {
-            setErrorKind("action");
-            setError(apiError);
+        const res = await deleteIPAllowlistEntry(entry.id);
+        if (res.error) {
+            reportActionError(res.error, res.status);
         } else {
             fetchEntries();
         }
@@ -138,6 +153,8 @@ export default function IPAllowlistPage() {
                     <AdminErrorNotice
                         error={error}
                         kind={errorKind}
+                        status={errorStatus}
+                        served={errorServed}
                         subject="IP allowlist entries"
                         onRetryAction={fetchEntries}
                     />

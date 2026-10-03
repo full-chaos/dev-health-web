@@ -90,6 +90,25 @@ export async function updateSecuritySetting(
     });
 }
 
+// ---- IP allowlist and retention: mutations that report the HTTP status ----
+// The pages show the served text only for a validation answer (a 4xx, for example a bad CIDR) and
+// one plain sentence for a 5xx or a network failure, so these results carry `status` (CHAOS-8239).
+
+async function withHttpStatus<T>(fn: () => Promise<T>): Promise<ActionResult<T>> {
+    try {
+        return { data: await fn() };
+    } catch (err) {
+        if (err instanceof AdminApiError) {
+            const detail = err.detail || err.message;
+            return {
+                error: typeof detail === "string" ? detail : JSON.stringify(detail),
+                status: err.status,
+            };
+        }
+        return { error: err instanceof Error ? err.message : "Unknown error" };
+    }
+}
+
 // ---- IP Allowlist ----
 
 export async function listIPAllowlistEntries(
@@ -105,7 +124,7 @@ export async function listIPAllowlistEntries(
 export async function createIPAllowlistEntry(
     data: IPAllowlistCreate,
 ): Promise<ActionResult<IPAllowlist>> {
-    return withErrorHandling(async () => {
+    return withHttpStatus(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.ipAllowlist.create(data, token, orgId);
         revalidatePath("/org/admin/ip-allowlist");
@@ -117,7 +136,7 @@ export async function updateIPAllowlistEntry(
     id: string,
     data: IPAllowlistUpdate,
 ): Promise<ActionResult<IPAllowlist>> {
-    return withErrorHandling(async () => {
+    return withHttpStatus(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.ipAllowlist.update(id, data, token, orgId);
         revalidatePath("/org/admin/ip-allowlist");
@@ -126,7 +145,7 @@ export async function updateIPAllowlistEntry(
 }
 
 export async function deleteIPAllowlistEntry(id: string): Promise<ActionResult<void>> {
-    return withErrorHandling(async () => {
+    return withHttpStatus(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.ipAllowlist.delete(id, token, orgId);
         revalidatePath("/org/admin/ip-allowlist");
@@ -171,7 +190,7 @@ export async function listRetentionPolicies(
 export async function createRetentionPolicy(
     data: RetentionPolicyCreate,
 ): Promise<ActionResult<RetentionPolicy>> {
-    return withErrorHandling(async () => {
+    return withHttpStatus(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.retention.create(data, token, orgId);
         revalidatePath("/org/admin/retention");
@@ -183,7 +202,7 @@ export async function updateRetentionPolicy(
     id: string,
     data: RetentionPolicyUpdate,
 ): Promise<ActionResult<RetentionPolicy>> {
-    return withErrorHandling(async () => {
+    return withHttpStatus(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.retention.update(id, data, token, orgId);
         revalidatePath("/org/admin/retention");
@@ -192,7 +211,7 @@ export async function updateRetentionPolicy(
 }
 
 export async function deleteRetentionPolicy(id: string): Promise<ActionResult<void>> {
-    return withErrorHandling(async () => {
+    return withHttpStatus(async () => {
         const { token, orgId } = await getSessionContext();
         const result = await adminApi.retention.delete(id, token, orgId);
         revalidatePath("/org/admin/retention");
@@ -204,7 +223,7 @@ export async function executeRetentionPolicy(
     id: string,
     dryRun = true,
 ): Promise<ActionResult<RetentionExecuteResponse>> {
-    return withErrorHandling(async () => {
+    return withHttpStatus(async () => {
         const { token, orgId } = await getSessionContext();
         return adminApi.retention.execute(id, dryRun, token, orgId);
     });

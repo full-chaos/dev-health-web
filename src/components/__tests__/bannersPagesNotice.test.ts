@@ -108,8 +108,8 @@ describe("client admin list pages use AdminErrorNotice", () => {
     ]) {
         it(file, () => {
             const s = src(file);
-            expect(s).toContain(
-                'import { AdminErrorNotice } from "@/components/admin/AdminErrorNotice";',
+            expect(s).toMatch(
+                /import \{ AdminErrorNotice(?:, isValidationStatus)? \} from "@\/components\/admin\/AdminErrorNotice";/u,
             );
             expect(s).toContain("<AdminErrorNotice");
             expect(s).not.toMatch(/(?:bg|border)-red-\d+/u);
