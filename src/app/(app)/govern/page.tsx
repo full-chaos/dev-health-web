@@ -1,3 +1,5 @@
+import { NoOrgNotice } from "@/components/NoOrgNotice";
+import { requireSession } from "@/lib/auth";
 import { PageFactsEvidenceAction } from "@/components/evidence/PageFactsEvidenceAction";
 import { AreaOverview } from "@/components/navigation/AreaOverview";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -25,6 +27,8 @@ export default async function GovernPage({ searchParams }: GovernPageProps) {
     const env = getServerEnv();
     const isTestMode =
         env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+    // No org on the session: nothing is requested (the TestOps reads reject without one).
+    if (!isTestMode && !(await requireSession()).user.org_id) return <NoOrgNotice />;
 
     const rangeDays = filters?.time?.range_days ?? 14;
     const today = new Date();

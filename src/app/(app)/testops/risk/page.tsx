@@ -1,3 +1,5 @@
+import { NoOrgNotice } from "@/components/NoOrgNotice";
+import { requireSession } from "@/lib/auth";
 import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { Section } from "@/components/ui/Section";
@@ -28,6 +30,8 @@ export default async function RiskPage({ searchParams }: RiskPageProps) {
     const env = getServerEnv();
     const isTestMode =
         env.DEV_HEALTH_TEST_MODE === "true" || env.NEXT_PUBLIC_DEV_HEALTH_TEST_MODE === "true";
+    // No org on the session: nothing is requested (the TestOps reads reject without one).
+    if (!isTestMode && !(await requireSession()).user.org_id) return <NoOrgNotice />;
 
     const rangeDays = filters?.time?.range_days ?? 14;
     const today = new Date();
