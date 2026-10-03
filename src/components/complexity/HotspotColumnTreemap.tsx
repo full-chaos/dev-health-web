@@ -133,7 +133,9 @@ export function HotspotColumnTreemap({ data, height = 260, width }: HotspotColum
                                 className="fill-foreground text-xs font-medium"
                                 data-testid="hotspot-column-head"
                             >
-                                {fit(column.name, column.w - 4)}
+                                {/* The repository name without its owner ("full-chaos/"), as the
+                                    prototype heads read; the full name is the tooltip. */}
+                                {fit(column.name.split("/").pop() ?? column.name, column.w - 4)}
                                 <title>{column.name}</title>
                             </text>
                             {column.cells.map((cell) => {

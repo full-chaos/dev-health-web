@@ -62,6 +62,27 @@ describe("HotspotColumnTreemap", () => {
             "dev-health-opsdev-health-ops",
             "dev-health-webdev-health-web",
         ]);
+        // The owner prefix is left out of the head; the full name stays in the tooltip.
+        cleanup();
+        render(
+            <HotspotColumnTreemap
+                data={{
+                    name: "Hotspots",
+                    value: 1,
+                    children: [
+                        {
+                            name: "full-chaos/dev-health-ops",
+                            value: 1,
+                            children: [leaf("a.go", 1)],
+                        },
+                    ],
+                }}
+                width={600}
+            />,
+        );
+        const [owned] = screen.getAllByTestId("hotspot-column-head");
+        expect(owned.firstChild?.textContent).toBe("dev-health-ops");
+        expect(owned.querySelector("title")?.textContent).toBe("full-chaos/dev-health-ops");
         // The prototype prints "<sum> risk" under the name; the sum would be web-made.
         for (const head of heads) {
             expect(head.textContent).not.toMatch(/risk|120|80/i);
