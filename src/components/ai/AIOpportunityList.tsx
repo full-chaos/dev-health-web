@@ -143,16 +143,25 @@ export function AIOpportunityList({
                             </span>
                         </div>
                         {/* The served names of the row's repository and team (CHAOS-8114). A name
-                            that is not served reads "Not reported"; an id is never drawn as a name. */}
+                            that is not served reads "Not reported"; an id is never drawn as a name.
+                            Capitals are for the kind only: a served name keeps its case. */}
                         <p
-                            className="mt-2 text-label-caps uppercase text-(--ink-muted)"
+                            className="mt-2 text-label-caps text-(--ink-muted)"
                             data-testid="ai-opportunity-scope"
                         >
-                            {[
-                                item.kind.replace(/_/g, " "),
-                                ...(item.repoId ? [servedName("Repository", item.repoName)] : []),
-                                ...(item.teamId ? [servedName("Team", item.teamName)] : []),
-                            ].join(" · ")}
+                            <span className="uppercase">{item.kind.replace(/_/g, " ")}</span>
+                            {item.repoId ? (
+                                <>
+                                    {" · "}
+                                    <span>{servedName("Repository", item.repoName)}</span>
+                                </>
+                            ) : null}
+                            {item.teamId ? (
+                                <>
+                                    {" · "}
+                                    <span>{servedName("Team", item.teamName)}</span>
+                                </>
+                            ) : null}
                         </p>
                         {item.workGraphDrilldowns.length > 0 && (
                             <div className="mt-3 flex flex-wrap gap-2">

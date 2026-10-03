@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { DataState } from "@/components/ui/DataState";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { ErrorCard } from "@/components/ui/ErrorCard";
-import { EntityLabel } from "@/components/labels/EntityLabel";
+import { NOT_REPORTED } from "@/components/evidence/EvidenceFacts";
 import { encodeAIFilter, type AIFilter } from "@/lib/filters/ai";
 import type { AiAttributedPr } from "@/lib/graphql/__generated__/types";
 import { useAIAttributedPrs } from "@/lib/graphql/hooks/useAIReviewRisk";
@@ -154,8 +154,14 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
                                                 <td className="px-4 py-3 text-(--ink-muted)">
                                                     {pr.workType ?? "—"}
                                                 </td>
-                                                <td className="whitespace-nowrap px-4 py-3 text-xs text-(--ink-muted)">
-                                                    <EntityLabel id={pr.repoId} />
+                                                {/* The served repository name. A name that is not
+                                                    served reads "Not reported": an id token is
+                                                    not a name. */}
+                                                <td
+                                                    data-testid="ai-impact-evidence-repo"
+                                                    className="whitespace-nowrap px-4 py-3 text-xs text-(--ink-muted)"
+                                                >
+                                                    {pr.repoName?.trim() || NOT_REPORTED}
                                                 </td>
                                                 <td className="whitespace-nowrap px-4 py-3 text-(--ink-muted)">
                                                     {formatMergedAt(pr.mergedAt)}

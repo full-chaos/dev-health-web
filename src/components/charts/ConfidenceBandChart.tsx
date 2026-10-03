@@ -54,7 +54,8 @@ const formatMarkerDate = (value: string | undefined): string | null => {
     if (!value) return null;
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return null;
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    // The served date is a UTC day: print the day it names, in every time zone (CHAOS-8507).
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 };
 
 /** "P85 · Oct 1 · 3 days": percentile, completion date when known, days. */
