@@ -241,6 +241,16 @@ describe("toHomeResponse (CHAOS-7064 normalize-then-compare equality proof)", ()
         expect(result.signals?.[0].scope_entity).toBeNull();
     });
 
+    it("keeps a coverage that is not served as null: never three zeros", () => {
+        // The contract's `freshness.coverage` is nullable. Missing is not 0%.
+        const result = toHomeResponse({
+            ...graphqlFixture,
+            freshness: { ...graphqlFixture.freshness, coverage: null },
+        });
+
+        expect(result.freshness.coverage).toBeNull();
+    });
+
     it("handles empty freshness.sources and tiles as empty dicts, not undefined", () => {
         const result = toHomeResponse({
             ...graphqlFixture,

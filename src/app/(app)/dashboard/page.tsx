@@ -1,3 +1,4 @@
+import { ClientTimestamp } from "@/components/ClientTimestamp";
 import { CockpitSummary } from "@/components/home/CockpitSummary";
 import { RankedSignals } from "@/components/home/RankedSignals";
 import { DataConfidenceIndicator } from "@/components/home/DataConfidenceIndicator";
@@ -10,14 +11,13 @@ import { PageHeader } from "@/components/shell/PageHeader";
 import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { getLensFromSearchParams, getLensConfig, DEFAULT_ROLE } from "@/lib/lensContext";
-import { checkApiHealth, getApiMeta } from "@/lib/api/system";
+import { checkApiHealth } from "@/lib/api/system";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { getSetupStatus } from "@/lib/admin/server";
 import { SetupBanner } from "@/components/onboarding/SetupBanner";
 import { auth } from "@/lib/auth";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { formatCoveragePct } from "@/lib/cockpit/coverage";
-import { formatNumber } from "@/lib/formatters";
 import { buildThreadApiUrl } from "@/lib/cockpit/evidenceRef";
 import type { HomeResponse } from "@/lib/types";
 
@@ -54,10 +54,9 @@ export default async function Home({ searchParams }: HomePageProps) {
     const activeRole = activeLensId === "neutral" ? DEFAULT_ROLE : activeLensId;
 
     // Run health check in parallel with data fetches to eliminate the waterfall.
-    const [health, home, meta, setupResult, session] = await Promise.all([
+    const [health, home, setupResult, session] = await Promise.all([
         checkApiHealth(),
         loadHome(filters),
-        getApiMeta(),
         getSetupStatus(),
         auth(),
     ]);
@@ -70,12 +69,11 @@ export default async function Home({ searchParams }: HomePageProps) {
         // The shared app shell owns the `<main>` landmark for this route.
         return <ServiceUnavailable landmark={false} />;
     }
-    // The coverage counts of the meta endpoint, as served (key and number). The old header strip
-    // showed the first three; the page evidence drawer lists every one.
-    const coverageCounts = Object.entries(meta?.coverage ?? {}).filter(
-        (entry): entry is [string, number] =>
-            typeof entry[1] === "number" && Number.isFinite(entry[1]),
-    );
+    // The freshness facts of the Home answer, read for the signed-in organization: the last ingest
+    // time and the three coverage percents. The public meta route serves no organization data, so
+    // it is not read. A fact that is not served has no value here and reads "Not reported".
+    const lastIngested = home?.freshness?.last_ingested_at;
+    const coverage = home?.freshness?.coverage;
 
     return (
         // Rendered inside the shared app shell: the layout owns the navigation, the
@@ -92,8 +90,8 @@ export default async function Home({ searchParams }: HomePageProps) {
                             apiUrl: buildThreadApiUrl("/api/v1/home", filters),
                             filters,
                             // The served coverage of the page: read here, not in the body. First
-                            // the source coverage of the Home response, then one row per coverage
-                            // count that the meta endpoint served (none when it served none).
+                            // the source coverage of the Home response, then its freshness facts:
+                            // the last ingest time and the three coverage percents.
                             intro: (
                                 <EvidenceFactList
                                     aria-label="Page data confidence"
@@ -105,13 +103,34 @@ export default async function Home({ searchParams }: HomePageProps) {
                                             home?.data_confidence?.coverage_pct,
                                         )}
                                     />
-                                    {coverageCounts.map(([key, count]) => (
-                                        <EvidenceFact
-                                            key={key}
-                                            label={`Coverage: ${key}`}
-                                            value={formatNumber(count)}
-                                        />
-                                    ))}
+                                    <EvidenceFact
+                                        label="Last ingested"
+                                        value={
+                                            lastIngested ? (
+                                                // An unparseable value is shown as served.
+                                                <ClientTimestamp
+                                                    value={lastIngested}
+                                                    fallback={lastIngested}
+                                                />
+                                            ) : undefined
+                                        }
+                                    />
+                                    <EvidenceFact
+                                        label="Repositories covered"
+                                        value={formatCoveragePct(coverage?.repos_covered_pct)}
+                                    />
+                                    <EvidenceFact
+                                        label="PRs linked to issues"
+                                        value={formatCoveragePct(
+                                            coverage?.prs_linked_to_issues_pct,
+                                        )}
+                                    />
+                                    <EvidenceFact
+                                        label="Issues with cycle states"
+                                        value={formatCoveragePct(
+                                            coverage?.issues_with_cycle_states_pct,
+                                        )}
+                                    />
                                 </EvidenceFactList>
                             ),
                         }}
