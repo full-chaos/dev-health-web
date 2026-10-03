@@ -227,7 +227,7 @@ export function OverviewView({
                     <p className="mt-4 text-label-caps uppercase text-(--ink-muted)">
                         Aggregation contract
                     </p>
-                    <Inset title="Team/repo-first by default" className="mt-2">
+                    <Inset title="Team/repo-first by default">
                         Cognitive-load signals are presented as system pressure: review queues,
                         context spread, after-hours trend, and weekend trend. They are coaching
                         prompts, not performance judgments. Open the Context Switching, Focus
