@@ -3,11 +3,18 @@ import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { STATUS_PILL } from "@/lib/statusPill";
 
-export function formatForecastDate(dateStr: string | undefined): string {
-    if (!dateStr) return "—";
+/** A served date as "Jun 10". The caller makes sure the date is served. */
+export function formatForecastDate(dateStr: string): string {
     const date = new Date(dateStr);
     return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
+
+/**
+ * A percentile date for a tile: the served date, or nothing when the API did not serve it. A tile
+ * with no value reads "Not reported" (CHAOS-8480); the web shows no dash and no made-up date.
+ */
+const servedDate = (dateStr: string | undefined) =>
+    dateStr ? formatForecastDate(dateStr) : undefined;
 
 function lowVarianceWeeks(days: number): string {
     const weeks = Math.max(1, Math.round(days / 7));
@@ -86,27 +93,29 @@ export function ForecastTiles({ forecast }: { forecast: CapacityForecast }) {
                     testId="tile-range"
                     label="Forecast range"
                     valueText={lowVarianceWeeks(forecast.p50Days ?? 0)}
-                    caption={`low variance · ${formatForecastDate(forecast.p50Date)}`}
+                    caption={["low variance", servedDate(forecast.p50Date)]
+                        .filter(Boolean)
+                        .join(" · ")}
                 />
             ) : (
                 <>
                     <Tile
                         testId="tile-p50"
                         label="P50 · optimistic"
-                        valueText={formatForecastDate(forecast.p50Date)}
+                        valueText={servedDate(forecast.p50Date)}
                         caption={daysCaption(forecast.p50Days)}
                     />
                     <Tile
                         testId="tile-p85"
                         label="P85 · target"
                         pill="Target"
-                        valueText={formatForecastDate(forecast.p85Date)}
+                        valueText={servedDate(forecast.p85Date)}
                         caption={daysCaption(forecast.p85Days)}
                     />
                     <Tile
                         testId="tile-p95"
                         label="P95 · conservative"
-                        valueText={formatForecastDate(forecast.p95Date)}
+                        valueText={servedDate(forecast.p95Date)}
                         caption={daysCaption(forecast.p95Days)}
                     />
                 </>
