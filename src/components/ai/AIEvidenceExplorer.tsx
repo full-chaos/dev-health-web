@@ -238,7 +238,7 @@ export function EvidencePanel({
         <aside
             className={PANEL_SHELL}
             aria-label="Work Graph evidence"
-            data-testid="ai-evidence-panel"
+            data-testid="ai-work-graph-evidence"
         >
             {showTitle ? <h3 className="text-h3 font-semibold">{title}</h3> : null}
             <div className={showTitle ? "mt-2" : undefined}>{body}</div>

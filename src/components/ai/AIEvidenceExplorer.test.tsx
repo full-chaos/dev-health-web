@@ -188,7 +188,7 @@ describe("AIEvidenceExplorer", () => {
         expect(ends).not.toHaveTextContent("pr:");
         // CHAOS-8216: a titled side panel beside the table, the count line, a "confidence" word,
         // and the selected row marked.
-        const panel = screen.getByTestId("ai-evidence-panel");
+        const panel = screen.getByTestId("ai-work-graph-evidence");
         expect(
             within(panel).getByRole("heading", { level: 3, name: "Work Graph evidence · PR #42" }),
         ).toBeInTheDocument();
