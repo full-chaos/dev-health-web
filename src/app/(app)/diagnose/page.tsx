@@ -1,9 +1,8 @@
 import { AreaOverview } from "@/components/navigation/AreaOverview";
-import { areaOverviewEvidenceSubject } from "@/components/navigation/areaOverviewEvidence";
+import { AreaOverviewEvidenceAction } from "@/components/navigation/areaOverviewEvidence";
 import { DiagnoseQuestions } from "./DiagnoseQuestions";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { PageHeader } from "@/components/shell/PageHeader";
-import { PageHeaderEvidenceAction } from "@/components/shell/PageHeaderEvidenceAction";
 import { ScopeBar } from "@/components/shell/ScopeBar";
 import { getDiagnoseSignals } from "@/lib/areaSignals/diagnose";
 import { checkApiHealth } from "@/lib/api/system";
@@ -45,13 +44,7 @@ export default async function DiagnosePage({ searchParams }: DiagnosePageProps) 
                 subtitle="Investigate flow, investment, landscape, work graph, complexity, cognitive load, bottlenecks, and code."
                 actions={
                     // The subject is the page: every served signal, in body order.
-                    <PageHeaderEvidenceAction
-                        subject={areaOverviewEvidenceSubject(
-                            "Diagnose",
-                            diagnoseSignals,
-                            "Diagnostic sub-areas, ordered by severity.",
-                        )}
-                    />
+                    <AreaOverviewEvidenceAction title="Diagnose" signals={diagnoseSignals} />
                 }
             />
 

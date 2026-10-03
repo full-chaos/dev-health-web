@@ -22,7 +22,6 @@ const ACCENT_TEXT_FILES = [
     "components/navigation/AreaSignalCard.tsx",
     // Text badges and emphasis: contrast is the reason, not meaning (ruling).
     "components/admin/users/UserTable.tsx",
-    "components/evidence/EvidenceContext.tsx",
     "app/(app)/superadmin/orgs/[id]/page.tsx",
     "app/(app)/code/page.tsx",
     "app/(app)/data-health/_components/AliasSuggestionRow.tsx",

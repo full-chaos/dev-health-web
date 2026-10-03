@@ -1,7 +1,11 @@
 "use client";
 
-import { Info, OctagonAlert, TriangleAlert } from "lucide-react";
+import { ArrowRight, Info, OctagonAlert, TriangleAlert } from "lucide-react";
 
+import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import { Button } from "@/components/shared/Button";
+import { CTA_LABELS } from "@/lib/design/cta";
 import { DataState } from "@/components/ui/DataState";
 import type { ImproveOpportunity } from "@/lib/graphql/__generated__/types";
 import { resolveEntityLabel } from "@/lib/labels/entityLabel";
@@ -50,6 +54,57 @@ function EntityCell({ item }: { item: ImproveOpportunity }) {
     );
 }
 
+/** The row's served fields in the shared drawer: the detection, then each evidence reference. */
+function RowEvidenceButton({ item }: { item: ImproveOpportunity }) {
+    const evidence = useEvidenceDrawer();
+    const entity = resolveEntityLabel(item.entityId, { unresolvedFallback: "Unresolved" });
+    const entityText = `${item.entityType} ${
+        entity.resolved ? entity.label : `${entity.short ?? entity.label} · Unresolved`
+    }`;
+    return (
+        <Button
+            variant="ghost"
+            size="sm"
+            icon={<ArrowRight />}
+            iconPosition="start"
+            data-testid="detection-evidence-button"
+            aria-label={`Evidence for ${kindLabel(item.kind)}`}
+            onClick={() =>
+                evidence.open({
+                    title: kindLabel(item.kind),
+                    content: (
+                        <EvidenceFactList aria-label="Detection" testId="detection-evidence-facts">
+                            <EvidenceFact label="Signal" value={kindLabel(item.kind)} />
+                            <EvidenceFact label="Captured entity" value={entityText} />
+                            <EvidenceFact label="Severity" value={item.severity} />
+                            <EvidenceFact label="Detail" value={item.rationale} stacked />
+                            <EvidenceFact
+                                label="Recommended"
+                                value={item.recommendedAction}
+                                stacked
+                            />
+                            {item.evidenceRefs.length > 0 ? (
+                                item.evidenceRefs.map((ref, index) => (
+                                    <EvidenceFact
+                                        key={`${ref}-${index}`}
+                                        label={`Evidence reference ${index + 1}`}
+                                        value={ref}
+                                        stacked
+                                    />
+                                ))
+                            ) : (
+                                <EvidenceFact label="Evidence references" />
+                            )}
+                        </EvidenceFactList>
+                    ),
+                })
+            }
+        >
+            {CTA_LABELS.evidence}
+        </Button>
+    );
+}
+
 export function ImproveOpportunityList({
     detectorReady,
     opportunities,
@@ -86,13 +141,20 @@ export function ImproveOpportunityList({
             <table className="w-full text-sm" data-testid="improve-automations-table">
                 <thead className="text-xs uppercase tracking-[0.15em] text-(--ink-muted)">
                     <tr>
-                        {["Signal", "Entity", "Severity", "Detail", "Recommended", "Evidence"].map(
-                            (label) => (
-                                <th key={label} className="px-3 py-2 text-left font-medium">
-                                    {label}
-                                </th>
-                            ),
-                        )}
+                        {[
+                            "Signal",
+                            "Captured entity",
+                            "Value",
+                            "Threshold",
+                            "Severity",
+                            "Detail",
+                            "Recommended",
+                            "Evidence",
+                        ].map((label) => (
+                            <th key={label} className="px-3 py-2 text-left font-medium">
+                                {label}
+                            </th>
+                        ))}
                     </tr>
                 </thead>
                 <tbody>
@@ -108,6 +170,19 @@ export function ImproveOpportunityList({
                             <td className="px-3 py-3">
                                 <EntityCell item={item} />
                             </td>
+                            {/* Not served per detection yet (CHAOS-7626): never computed here. */}
+                            <td
+                                className="px-3 py-3 text-(--ink-muted)"
+                                data-testid="detection-value"
+                            >
+                                Not reported
+                            </td>
+                            <td
+                                className="px-3 py-3 text-(--ink-muted)"
+                                data-testid="detection-threshold"
+                            >
+                                Not reported
+                            </td>
                             <td className="px-3 py-3">
                                 <SeverityBadge severity={item.severity} />
                             </td>
@@ -115,8 +190,8 @@ export function ImproveOpportunityList({
                             <td className="px-3 py-3 text-(--ink-muted)">
                                 {item.recommendedAction}
                             </td>
-                            <td className="px-3 py-3 text-xs text-(--ink-muted)">
-                                {item.evidenceRefs.join(" · ")}
+                            <td className="px-3 py-3">
+                                <RowEvidenceButton item={item} />
                             </td>
                         </tr>
                     ))}

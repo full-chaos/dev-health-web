@@ -36,6 +36,7 @@ export function MetricEvidenceCards({
                 // A metric with no served row keeps its catalog name; a raw key is never shown.
                 const label = data?.label ?? getMetricLabel(metric);
                 const hasValue = !placeholderDeltas && data?.value !== undefined;
+                const delta = placeholderDeltas ? undefined : data?.delta_pct;
 
                 return (
                     <MetricCard
@@ -46,7 +47,9 @@ export function MetricEvidenceCards({
                         unit={data?.unit}
                         spark={data?.spark}
                         // A missing delta (placeholder rows, or no data row) is "No prior period", never 0.
-                        delta={placeholderDeltas ? undefined : data?.delta_pct}
+                        delta={delta}
+                        // The served delta compares the window with the previous window of the same length.
+                        caption={delta !== undefined ? "vs previous window" : undefined}
                         inverseGood={metricInverseGood(metric)}
                         // One evidence path per tile: the button opens the shared drawer, and
                         // the drawer footer links to Explore for the metric (with the role).

@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { AdminTierProvider } from "@/components/admin/AdminTierContext";
 import { EvidenceDrawerProvider } from "@/components/evidence/EvidenceDrawerProvider";
@@ -113,16 +114,57 @@ describe("Opportunities in the shared app shell", () => {
         ).toBeTruthy();
     });
 
-    it("keeps the link to the AI automations with the filter and the role", async () => {
+    it("has no 'Automation opportunities for AI-assisted work' banner: the prototype view has none", async () => {
         await renderPage();
 
-        const link = within(screen.getByTestId("improve-ai-automations-crosslink")).getByRole(
-            "link",
+        expect(screen.queryByTestId("improve-ai-automations-crosslink")).toBeNull();
+        expect(screen.queryByText(/Automation opportunities for AI-assisted work/)).toBeNull();
+    });
+
+    it("has a View evidence action listing the open count and each opportunity's served rationale", async () => {
+        getOpportunitiesMock.mockResolvedValue({
+            items: [
+                {
+                    id: "a",
+                    title: "Reduce Review Latency",
+                    rationale: "Review Latency climbed 258% in the last 90 days.",
+                    evidence_links: [],
+                    suggested_experiments: [],
+                },
+                {
+                    id: "b",
+                    title: "Reduce Cycle Time",
+                    rationale: "Cycle Time climbed 655% in the last 90 days.",
+                    evidence_links: [],
+                    suggested_experiments: [],
+                },
+            ],
+        });
+        await renderPage();
+
+        await userEvent.click(
+            within(screen.getByTestId("page-header")).getByRole("button", {
+                name: "View evidence",
+            }),
         );
-        const url = new URL(link.getAttribute("href") ?? "", "https://app.example");
-        expect(url.pathname).toBe("/ai/automations");
-        expect(decodeFilter(url.searchParams.get("f"))).toEqual(FILTERS);
-        expect(url.searchParams.get("role")).toBe("em");
+        const rows = within(await screen.findByTestId("page-evidence-facts"))
+            .getAllByTestId("evidence-fact")
+            .map((row) => [
+                row.querySelector("dt")?.textContent,
+                row.querySelector("dd")?.textContent,
+            ]);
+        expect(rows).toEqual([
+            ["Open opportunities", "2"],
+            ["Reduce Review Latency", "Review Latency climbed 258% in the last 90 days."],
+            ["Reduce Cycle Time", "Cycle Time climbed 655% in the last 90 days."],
+        ]);
+    });
+
+    it("has no View evidence action when the fetch failed", async () => {
+        getOpportunitiesMock.mockRejectedValue(new Error("down"));
+        await renderPage();
+
+        expect(screen.queryByRole("button", { name: "View evidence" })).toBeNull();
     });
 
     it("shows a failed fetch as an error with Retry, not as an empty state", async () => {

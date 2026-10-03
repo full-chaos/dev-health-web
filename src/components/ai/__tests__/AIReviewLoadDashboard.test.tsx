@@ -213,6 +213,18 @@ describe("AIReviewLoadDashboard", () => {
             expect(card).toHaveTextContent("Reviewers");
         });
 
+        it("draws the reviewer concentration card as a shared Section (CHAOS-8094)", () => {
+            loaded({ dataAvailable: true, reviewerCount: 5, reviewerGini: 0.42 });
+            render(<AIReviewLoadDashboard filter={filter} />);
+            const concentration = screen.getByTestId("ai-reviewer-concentration");
+            expect(
+                within(concentration).getByRole("heading", {
+                    level: 3,
+                    name: "Reviewer concentration",
+                }),
+            ).toBeInTheDocument();
+        });
+
         it("shows the missing-data panel (not a zero) when reviewer concentration is unavailable", () => {
             loaded({ dataAvailable: false, reviewerCount: 0, reviewerGini: null });
             render(<AIReviewLoadDashboard filter={filter} />);

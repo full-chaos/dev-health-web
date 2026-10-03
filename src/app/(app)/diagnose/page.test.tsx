@@ -140,7 +140,8 @@ describe("Diagnose overview layout (approved prototype diagnoseHub, CHAOS-8065)"
         expect(screen.queryByTestId("evidence-panel")).toBeNull();
         expect(evidencePanelSpy).not.toHaveBeenCalled();
         const drawer = within(screen.getByRole("dialog"));
-        expect(drawer.getByText("Diagnostic sub-areas, ordered by severity.")).toBeInTheDocument();
+        // The shared page-facts helper (one pattern with Plan and Improve).
+        expect(drawer.getByTestId("page-evidence-facts")).toBeInTheDocument();
         expect(drawer.getAllByTestId("evidence-fact").map((row) => row.textContent)).toEqual([
             "Code · Code churn1,320,441 · Critical",
             "Complexity · Avg complexity121.3 · High",
