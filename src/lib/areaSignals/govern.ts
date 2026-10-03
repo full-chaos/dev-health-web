@@ -361,6 +361,20 @@ export async function getGovernSignals(
             : UNAVAILABLE,
     );
 
+    // Compounding Risk — GraphQL compoundingRisk rows[].severity (RETURNED, worst).
+    // Pushed before Incident Correlation: the push order decides between cards of
+    // equal severity, and it follows the approved overview order (see areas.ts).
+    const worstRow = pickWorstCompoundingRow(compounding);
+    push(
+        "risk-compounding",
+        worstRow
+            ? {
+                  state: mapCompoundingSeverity(worstRow.severity),
+                  value: worstRow.score != null ? formatNumber(worstRow.score) : "",
+              }
+            : UNAVAILABLE,
+    );
+
     // Incident Correlation — home REST signals[change_failure_rate].severity (RETURNED).
     // Same backend metric as Quality; the two surfaces frame it differently.
     push(
@@ -375,19 +389,7 @@ export async function getGovernSignals(
             : UNAVAILABLE,
     );
 
-    // Compounding Risk — GraphQL compoundingRisk rows[].severity (RETURNED, worst).
-    const worstRow = pickWorstCompoundingRow(compounding);
-    push(
-        "risk-compounding",
-        worstRow
-            ? {
-                  state: mapCompoundingSeverity(worstRow.severity),
-                  value: worstRow.score != null ? formatNumber(worstRow.score) : "",
-              }
-            : UNAVAILABLE,
-    );
-
-    // Feature Flags — fetchFeatureFlagsData summary (RETURNED severity, demoted).
+    // Feature Flags — fetchFeatureFlagsData summary (RETURNED severity). A normal Risk card.
     const ffSummary = featureFlags?.summary;
     push(
         "feature-flags",

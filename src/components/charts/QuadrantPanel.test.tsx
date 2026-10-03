@@ -107,4 +107,97 @@ describe("QuadrantPanel", () => {
             expect(document.activeElement).toBe(guideButton);
         });
     });
+
+    describe("card head (shared Section look, optional action)", () => {
+        const action = <a href="/explore?metric=cycle_time">Metric evidence</a>;
+
+        it("draws the title as the card's h2 with the description under it", () => {
+            render(<QuadrantPanel {...defaultProps} />);
+            const card = screen.getByTestId("quadrant-panel");
+            const title = within(card).getByRole("heading", { level: 2, name: "Test Quadrant" });
+            expect(title.className).toContain("text-h3");
+            expect(title.className).toContain("font-semibold");
+            const description = within(card).getByText("Test description");
+            expect(description.className).toContain("text-xs");
+            expect(
+                title.compareDocumentPosition(description) & Node.DOCUMENT_POSITION_FOLLOWING,
+            ).toBeTruthy();
+            // The legacy card look is gone.
+            expect(card.className).toContain("rounded-(--radius-md)");
+            expect(card.className).not.toContain("rounded-3xl");
+            expect(title.className).not.toContain("text-xl");
+        });
+
+        it("has ONE action in the head: the caller's; the guide is a ghost small button in the control row under it", () => {
+            render(<QuadrantPanel {...defaultProps} action={action} showViewGuide={true} />);
+            const slot = screen.getByTestId("quadrant-panel-action");
+            const link = within(slot).getByRole("link", { name: "Metric evidence" });
+            expect(link).toHaveAttribute("href", "/explore?metric=cycle_time");
+            // The head row holds the title block and the action slot, nothing else.
+            const head = slot.parentElement as HTMLElement;
+            expect(Array.from(head.children)).toHaveLength(2);
+            expect(within(head).queryByRole("button", { name: /view guide/i })).toBeNull();
+
+            const controls = screen.getByTestId("quadrant-controls");
+            const guide = within(controls).getByRole("button", { name: "View guide" });
+            expect(guide.className).toContain("border-transparent");
+            expect(guide.className).toContain("min-h-7");
+            expect(guide.className).not.toContain("uppercase");
+            // The icon comes before the text.
+            expect(guide.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+            expect(
+                head.compareDocumentPosition(controls) & Node.DOCUMENT_POSITION_FOLLOWING,
+            ).toBeTruthy();
+        });
+
+        it("draws no upper-case dot hint in the head (the note under the chart says it)", () => {
+            render(<QuadrantPanel {...defaultProps} action={action} />);
+            expect(screen.queryByText(/select a dot to investigate$/i)).toBeNull();
+            expect(
+                screen.getByText("Select a dot in the chart above to investigate patterns."),
+            ).toBeInTheDocument();
+        });
+
+        it("draws no action slot when the caller gives none", () => {
+            render(<QuadrantPanel {...defaultProps} />);
+            expect(screen.queryByTestId("quadrant-panel-action")).toBeNull();
+        });
+
+        it("keeps the title, description and action when there are no points: an explicit empty state", () => {
+            render(
+                <QuadrantPanel
+                    {...defaultProps}
+                    data={null}
+                    emptyState="Quadrant data unavailable for this scope."
+                    action={action}
+                />,
+            );
+            const card = screen.getByTestId("quadrant-panel");
+            expect(card).toHaveAttribute("data-empty", "true");
+            expect(
+                within(card).getByRole("heading", { level: 2, name: "Test Quadrant" }),
+            ).toBeInTheDocument();
+            expect(within(card).getByText("Test description")).toBeInTheDocument();
+            expect(within(card).getByRole("link", { name: "Metric evidence" })).toBeInTheDocument();
+            expect(within(card).getByTestId("quadrant-empty")).toHaveTextContent(
+                "Quadrant data unavailable for this scope.",
+            );
+            // No chart, no dot prompt and no invented point.
+            expect(screen.queryByTestId("quadrant-chart")).toBeNull();
+            expect(screen.queryByText(/select a dot/i)).toBeNull();
+        });
+
+        it("treats an empty point list like no data", () => {
+            render(
+                <QuadrantPanel
+                    {...defaultProps}
+                    data={{ ...defaultProps.data, points: [] }}
+                    emptyState="Nothing to plot."
+                />,
+            );
+            expect(screen.getByTestId("quadrant-panel")).toHaveAttribute("data-empty", "true");
+            expect(screen.getByTestId("quadrant-empty")).toHaveTextContent("Nothing to plot.");
+            expect(screen.queryByTestId("quadrant-chart")).toBeNull();
+        });
+    });
 });
