@@ -166,7 +166,9 @@ describe("AIImpactEvidenceList", () => {
             const row = screen.getByTestId("ai-impact-evidence-row");
             expect(row).toHaveTextContent("#7");
             expect(row).toHaveTextContent("(untitled)");
-            expect(row).toHaveTextContent("repo-1");
+            // No repository name is served for this row: the cell says so and shows no id.
+            expect(row.querySelectorAll("td")[4]).toHaveTextContent(/^Not reported$/);
+            expect(row).not.toHaveTextContent("repo-1");
             expect(row).toHaveTextContent("Agent-created");
             expect(row.querySelectorAll("td")[3]).toHaveTextContent("—");
             expect(row.querySelectorAll("td")[5]).toHaveTextContent("—");
