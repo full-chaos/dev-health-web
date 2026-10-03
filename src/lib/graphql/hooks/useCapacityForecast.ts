@@ -41,7 +41,7 @@ interface UseCapacityForecastResult {
  *   });
  *
  *   if (loading) return <Spinner />;
- *   if (error) return <ReadFailed />; // never print the error text (use readFailureMessage)
+ *   if (error) return <ReadFailed />; // never print the error text
  *   return <ForecastChart forecast={data} />;
  * }
  * ```

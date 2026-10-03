@@ -1,67 +1,87 @@
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
+import { sourceFiles } from "@/test/sourceTree";
 
 /**
  * CHAOS-8434 (ruling 107): a component never renders the text of a backend or thrown error. A failed
- * read shows `readFailureMessage(error, "<operation>")`; a failed action shows
- * `actionFailureMessage` / `failureResult`, which keep the served text ONLY for a 4xx other than
- * 401/403 (or a plan-gate sentence). The detail goes to the log. This scan fails when a `.ts` or
- * `.tsx` file under src/ reads `<error>.message` or `graphQLErrors`, except for the files below.
+ * read shows `READ_FAILED_MESSAGE` (or `readFailureMessage` in a server loader, which also logs).
+ *
+ * This scan checks one thing: a `.tsx` file under src/ reads a `.message` / `?.message` property
+ * (any object name, so `(a.error || b.error)?.message` is caught too) unless the file is in the
+ * allow-list with a reason. It does NOT see error text that reaches a component as a plain string
+ * prop (`error={result.error}`); those are covered by the tests of each place and, in the actions PR,
+ * by the guard for strings made in `.ts` files.
  */
 const ALLOW: Record<string, string> = {
     "components/evidence/EvidencePanel.tsx":
         "the text goes to the log and to the dev-diagnostics block (flag-gated), not to users",
+    "components/admin/llm/ByoLlmSpendSummary.tsx":
+        "locked.message: the 402/403 card text, kept only when it is a plan-gate sentence (isPlanGateMessage)",
+    "components/admin/llm/ByoLlmSettings.tsx":
+        "locked.message: the 402/403 card text, kept only when it is a plan-gate sentence (isPlanGateMessage)",
     "components/admin/billing/PlanManager.tsx":
         "client-side JSON validation text authored by this page (parsePriceJson), not backend text",
-    "lib/graphql/server.ts":
-        "builds the thrown Error from the GraphQL error; callers log it and show a plain sentence",
-    "lib/graphql/validate.ts": "builds the schema-validation Error (thrown, then logged)",
-    "lib/graphql/urqlExchanges.ts": "passes graphQLErrors to the logger only",
-    "lib/acr/contracts.ts": "ajv schema error text for a developer-facing contract check",
-    "lib/result.ts": "withResult: not used by a screen (test-only helper)",
-    "lib/admin/api/_request.ts":
-        "reads the served detail into AdminApiError; failureResult gates it",
-    "lib/admin/server/orgs.ts":
-        "reads the served detail into AdminApiError; failureResult gates it",
-    "lib/actionFailure.ts": "the one place that decides whether served text is shown (4xx rule)",
+    "components/admin/integrations/customer-push/RejectedRecordsTable.tsx":
+        "a stored rejected-record message shown as table data, not an error of this read",
+    "components/admin/integrations/EditCredentialModal.tsx":
+        "the result of a connection test (success flag + message): data of a completed test, not an error text",
+    "components/admin/integrations/wizard/VerifyConnectionStep.tsx":
+        "the result of a connection test (success flag + message): data of a completed test, not an error text",
+    "components/admin/sync/CreateCredentialModal.tsx":
+        "the result of a connection test (success flag + message): data of a completed test, not an error text",
+    "components/admin/sync/config-form/PagerDutyServiceMappings.tsx":
+        "validity sentences authored by this form",
+    "components/admin/sync/config-form/CreateSyncConfigWizard.tsx":
+        "validity sentence authored by this form",
+    "components/admin/identities/IdentityForm.tsx": "validation sentence authored by this form",
+    "app/(app)/prs/[pr_id]/page.tsx": "a commit message shown as data, not an error",
 };
 
 const SRC = join(process.cwd(), "src");
-const RENDERED = /\b\w*(?:[eE]rr|[eE]rror|cause)\w*\??\.message\b|graphQLErrors/u;
+const MESSAGE_PROPERTY = /\??\.message\b/u;
 
-function walk(dir: string, out: string[] = []): string[] {
-    for (const name of readdirSync(dir)) {
-        const full = join(dir, name);
-        if (statSync(full).isDirectory()) {
-            if (["__tests__", "generated", "__generated__"].includes(name)) continue;
-            walk(full, out);
-        } else if (/\.tsx?$/u.test(name) && !/\.(test|spec)\.tsx?$/u.test(name)) {
-            out.push(full);
-        }
-    }
-    return out;
-}
+const files = sourceFiles(SRC).filter(
+    (f) =>
+        /\.tsx$/u.test(f) && !/\.(test|spec)\.tsx$/u.test(f) && !/__(tests|generated)__/u.test(f),
+);
 
-describe("no component renders backend error text", () => {
-    const files = walk(SRC);
-
+describe("components read no .message property outside the allow-list", () => {
     it("scans a real set of files (a scan of nothing is a failure)", () => {
         expect(files.length).toBeGreaterThan(200);
     });
 
-    it("finds no error.message / graphQLErrors read outside the allow-list (.ts and .tsx)", () => {
+    it("catches the shape that reached AIImpactDashboard (a parenthesised error)", () => {
+        expect(MESSAGE_PROPERTY.test("(a.error || b.error)?.message ?? 'x'")).toBe(true);
+        expect(MESSAGE_PROPERTY.test("error.message")).toBe(true);
+        expect(MESSAGE_PROPERTY.test("readFailureMessage(error)")).toBe(false);
+    });
+
+    it("finds no .message read outside the allow-list", () => {
         const offenders = files
             .map((f) => relative(SRC, f))
             .filter((rel) => !(rel in ALLOW))
-            .filter((rel) => RENDERED.test(readFileSync(join(SRC, rel), "utf8")));
+            .filter((rel) => MESSAGE_PROPERTY.test(readFileSync(join(SRC, rel), "utf8")));
         expect(offenders).toEqual([]);
     });
 
-    it("keeps the allow-list honest: every entry exists and still reads error text", () => {
+    it("logs nothing while rendering: readFailureMessage (which logs) is called in server files only", () => {
+        const users = files
+            .map((f) => relative(SRC, f))
+            .filter((rel) => /\breadFailureMessage\(/u.test(readFileSync(join(SRC, rel), "utf8")));
+        expect(users.length).toBeGreaterThan(0);
+        const clientUsers = users.filter((rel) =>
+            /^\s*["']use client["']/u.test(readFileSync(join(SRC, rel), "utf8")),
+        );
+        expect(clientUsers).toEqual([]);
+    });
+
+    it("keeps the allow-list honest: every entry exists and still reads .message", () => {
         for (const rel of Object.keys(ALLOW)) {
             const text = readFileSync(join(SRC, rel), "utf8");
-            expect(RENDERED.test(text), `${rel} no longer needs its allow-list entry`).toBe(true);
+            expect(MESSAGE_PROPERTY.test(text), `${rel} no longer needs its allow-list entry`).toBe(
+                true,
+            );
         }
     });
 });

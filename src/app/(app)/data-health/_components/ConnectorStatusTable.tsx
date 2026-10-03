@@ -64,13 +64,13 @@ export function ConnectorStatusTable({ data, isPending }: ConnectorStatusTablePr
         },
         {
             key: "message",
-            header: "Message",
+            header: "Last failure",
+            // The stored worker error text is never shown (ruling 107): a plain sentence and the time.
             render: (row) => (
-                <span
-                    className="text-sm text-(--ink-muted) truncate max-w-xs block"
-                    title={row.lastFailure?.message ?? ""}
-                >
-                    {row.lastFailure ? row.lastFailure.message : "-"}
+                <span className="text-sm text-(--ink-muted) block">
+                    {row.lastFailure
+                        ? `Last sync failed ${new Date(row.lastFailure.occurredAt).toLocaleString()}`
+                        : "-"}
                 </span>
             ),
         },

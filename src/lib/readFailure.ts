@@ -4,8 +4,11 @@ import { logger } from "@/lib/logger";
 export const READ_FAILED_MESSAGE = "Could not be read";
 
 /**
- * The plain message for a FAILED read. The error goes to the log (client console shim or server
- * pino) with the operation name, so a developer can still debug; the screen gets one sentence.
+ * The plain message for a FAILED read in a SERVER loader (a server component that catches a thrown
+ * error): the error goes to the server log with the operation name, once per request, and the
+ * screen gets one sentence. Do not call this while rendering a client view: a urql failure is
+ * already logged once by the errorExchange (src/lib/graphql/urqlExchanges.ts), so a client view
+ * shows `READ_FAILED_MESSAGE` and logs nothing more.
  *
  * Only for the failed state. An empty read ("No data for this window") and a value the API does not
  * serve ("Not reported") keep their own words; never route them through here.

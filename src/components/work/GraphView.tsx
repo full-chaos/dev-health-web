@@ -1,6 +1,6 @@
 "use client";
 
-import { readFailureMessage } from "@/lib/readFailure";
+import { READ_FAILED_MESSAGE } from "@/lib/readFailure";
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -761,7 +761,7 @@ export function GraphView({
                             <DataState
                                 variant="error"
                                 title="Failed to load work graph"
-                                description={readFailureMessage(error, "workGraph")}
+                                description={READ_FAILED_MESSAGE}
                             />
                         )}
 
@@ -1004,7 +1004,7 @@ function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowVi
                 <DataState
                     variant="error"
                     title="Failed to load work graph"
-                    description={readFailureMessage(error, "workGraph")}
+                    description={READ_FAILED_MESSAGE}
                 />
             ) : rows.length === 0 ? (
                 <DataState
@@ -1148,7 +1148,7 @@ function ArtifactsView({ rows, loading, error }: ArtifactsViewProps) {
                 <DataState
                     variant="error"
                     title="Failed to load work graph"
-                    description={readFailureMessage(error, "workGraph")}
+                    description={READ_FAILED_MESSAGE}
                 />
             ) : rows.length === 0 ? (
                 <DataState
