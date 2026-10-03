@@ -13,6 +13,7 @@ import {
 import { Notice } from "@/components/ui/Notice";
 import { useEvidenceDrawer } from "@/components/evidence/EvidenceDrawerProvider";
 import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import type { PageFact } from "@/components/evidence/PageFactsEvidenceAction";
 import { Button } from "@/components/shared/Button";
 import { Section } from "@/components/ui/Section";
 import { buttonClassName } from "@/components/shared/Button";
@@ -188,7 +189,7 @@ function parseGraphNode(value: string | null): SelectedNode | null {
     };
 }
 
-function getGraphSearchState(searchParams: URLSearchParams) {
+export function getGraphSearchState(searchParams: URLSearchParams) {
     const subcategoryParam = searchParams.get("graph_subcategory");
     const themeParam = searchParams.get("graph_theme");
     const connectionParam = searchParams.get("graph_connection");
@@ -868,17 +869,34 @@ export function balanceLabel(inflow: number, outflow: number): string {
     return "Balanced";
 }
 
+/**
+ * The Inflow / Outflow rows as the body draws them: from the server-side workGraphFlow aggregate
+ * (CHAOS-2442), all-zero rows dropped, ranked by total volume for a stable, readable order.
+ */
+export function orderFlowRows(serverRows: WorkGraphFlowRow[]): WorkGraphFlowRow[] {
+    return serverRows
+        .filter((row) => row.inflow > 0 || row.outflow > 0)
+        .sort((a, b) => b.inflow + b.outflow - (a.inflow + a.outflow));
+}
+
+/** The page evidence of the Inflow / Outflow tab: the body rows, as served. */
+export function flowEvidenceFacts(serverRows: WorkGraphFlowRow[]): PageFact[] {
+    return orderFlowRows(serverRows).map((row) => ({
+        label: NODE_TYPE_LABELS[row.nodeType],
+        value: `Inflow ${formatNumber(row.inflow)} · Outflow ${formatNumber(row.outflow)} · ${balanceLabel(row.inflow, row.outflow)}`,
+    }));
+}
+
+/** The page evidence of the Artifact browser: the body rows (type, entity, connections). No names of people. */
+export function artifactEvidenceFacts(rows: WorkGraphArtifactRow[]): PageFact[] {
+    return rows.map((row) => ({
+        label: `${NODE_TYPE_LABELS[row.nodeType]} · ${row.displayName?.trim() || "Unresolved"}`,
+        value: `${formatNumber(row.degree)} connections`,
+    }));
+}
+
 function InflowOutflowView({ rows: serverRows, loading, error }: InflowOutflowViewProps) {
-    // Rows now come from the server-side workGraphFlow aggregate (CHAOS-2442),
-    // so they are no longer derived from a capped edge page. We only drop
-    // all-zero rows and rank by total volume for a stable, readable order.
-    const rows = useMemo(
-        () =>
-            serverRows
-                .filter((row) => row.inflow > 0 || row.outflow > 0)
-                .sort((a, b) => b.inflow + b.outflow - (a.inflow + a.outflow)),
-        [serverRows],
-    );
+    const rows = useMemo(() => orderFlowRows(serverRows), [serverRows]);
 
     const max = rows.reduce((m, r) => Math.max(m, r.inflow, r.outflow), 1);
 

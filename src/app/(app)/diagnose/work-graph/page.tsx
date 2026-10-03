@@ -1,6 +1,7 @@
 import { ViewSet } from "@/components/navigation/ViewSet";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { GraphView, type WorkGraphTab } from "@/components/work/GraphView";
+import { WorkGraphEvidenceAction } from "@/components/work/WorkGraphEvidenceAction";
 import { WorkGraphHeaderActions } from "@/components/work/WorkGraphHeaderActions";
 import { buildWorkGraphTabs } from "./buildTabs";
 import { checkApiHealth } from "@/lib/api/system";
@@ -145,6 +146,7 @@ export default async function WorkGraphPage({ searchParams }: WorkGraphPageProps
                         {reviewFacts ? (
                             <PageFactsEvidenceAction title="Review Network" facts={reviewFacts} />
                         ) : null}
+                        <WorkGraphEvidenceAction filters={filters} activeTab={activeTab} />
                         <WorkGraphHeaderActions
                             filters={filters}
                             activeTab={activeTab}

@@ -16,6 +16,12 @@ vi.mock("@/components/navigation/ViewSet", () => ({
 vi.mock("@/components/work/GraphView", () => ({
     GraphView: () => <div data-testid="graph-view" />,
 }));
+vi.mock("@/components/work/WorkGraphEvidenceAction", () => ({
+    WorkGraphEvidenceAction: ({ activeTab }: { activeTab: string }) =>
+        activeTab === "inflow-outflow" || activeTab === "artifacts" ? (
+            <button type="button">View evidence</button>
+        ) : null,
+}));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({ ok: true }) }));
 vi.mock("@/lib/auth", () => ({
     requireSession: vi.fn().mockResolvedValue({ user: { org_id: "org-1" } }),
@@ -73,6 +79,19 @@ describe("Work Graph page header", () => {
             ["Total reviews", "7"],
         ]);
     });
+
+    it.each(["inflow-outflow", "artifacts"])(
+        "tab %s has the page-head View evidence action",
+        async (tab) => {
+            await renderPage(tab);
+
+            expect(
+                within(screen.getByTestId("page-header")).getByRole("button", {
+                    name: "View evidence",
+                }),
+            ).toBeInTheDocument();
+        },
+    );
 
     it("keeps the Open evidence link on the Overview, with the arrow first", async () => {
         await renderPage();
