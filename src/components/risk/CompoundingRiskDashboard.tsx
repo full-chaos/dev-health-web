@@ -342,7 +342,7 @@ function ScopeTable({
                                     {workGraphHref ? (
                                         <Link
                                             href={workGraphHref}
-                                            className="text-xs font-semibold uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
+                                            className="text-xs text-(--accent-2) hover:underline"
                                             data-testid="open-in-work-graph"
                                         >
                                             {CTA_LABELS.openWorkGraph} ↗

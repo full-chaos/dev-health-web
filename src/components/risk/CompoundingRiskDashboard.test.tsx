@@ -128,6 +128,9 @@ describe("CompoundingRiskDashboard", () => {
         const filters = decodeFilter(new URL(href, "http://localhost").searchParams.get("f"));
         expect(filters.scope).toEqual({ level: "repo", ids: ["repo-a"] });
         expect(filters.what.repos).toEqual(["repo-a"]);
+        // Concept `govern-compounding-risk`: a sentence-case text link, the arrow after the text.
+        expect(drilldownLinks[0].textContent).toBe("Open Work Graph ↗");
+        expect(drilldownLinks[0].className).not.toMatch(/uppercase|tracking-|font-semibold/u);
     });
 
     it("renders a disabled indicator (not an active link) for team-scope rows, since Work Graph has no team\u2192repo resolution", () => {

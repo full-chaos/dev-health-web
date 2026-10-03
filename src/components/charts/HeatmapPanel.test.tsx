@@ -53,6 +53,29 @@ describe("HeatmapPanel — hotspot evidence contract (CHAOS-2035)", () => {
         expect(screen.queryByTestId("heatmap-chart")).not.toBeInTheDocument();
     });
 
+    it("shows the served unit in the head as an info pill (prototype pill('hours', 'info')), not caps text", () => {
+        const data = {
+            ...baseResponse([
+                { x: "Mon", y: "auth", value: 5 },
+                { x: "Tue", y: "billing", value: 9 },
+            ]),
+            legend: { unit: "hours", scale: "linear" as const },
+        };
+        render(
+            <HeatmapPanel
+                title="Review wait density"
+                description="Where review wait accumulates."
+                request={request}
+                initialData={data}
+            />,
+        );
+        const pill = screen.getByTestId("heatmap-unit");
+        expect(pill.textContent).toBe("hours");
+        expect(pill.className).toContain("bg-(--info-wash)");
+        expect(pill.className).toContain("text-(--info)");
+        expect(pill.className).not.toMatch(/uppercase|tracking-/u);
+    });
+
     it("renders a default summary and human-readable typed artifacts — never raw paths/UUIDs/JSON", () => {
         const data: HeatmapResponse = {
             ...baseResponse([

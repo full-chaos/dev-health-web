@@ -896,6 +896,23 @@ describe("IncidentCorrelationDashboard", () => {
         expect(screen.queryByTestId("horizontal-bar-chart")).toBeNull();
     });
 
+    it("draws the card-head 'Open evidence' links as sentence-case text links, arrow after the text", () => {
+        const drivers = [
+            { id: "d1", label: "Long PR", value: 5, delta_pct: 30, evidence_link: "/e/1" },
+        ];
+        renderWithEvidenceDrawer(<IncidentCorrelationDashboard {...baseProps} drivers={drivers} />);
+        // Change Failure Associations and Contributors each have one head link.
+        const links = screen.getAllByRole("link", { name: "Open evidence" });
+        expect(links).toHaveLength(2);
+        for (const link of links) {
+            expect(link.textContent).toBe("Open evidence →");
+            expect(link.lastElementChild).toHaveAttribute("aria-hidden", "true");
+            expect(link.lastElementChild?.textContent).toBe("→");
+            expect(link.className).not.toMatch(/uppercase|tracking-/u);
+            expect(link.getAttribute("href")).toContain("change_failure_rate");
+        }
+    });
+
     it("renders the server-resolved display name for a contributor (no raw UUID)", () => {
         // CHAOS-2089: backend now resolves repo/team ids to display names.
         const contributors = [
