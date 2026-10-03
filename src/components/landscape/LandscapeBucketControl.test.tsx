@@ -16,6 +16,8 @@ describe("LandscapeBucketControl (concept L13)", () => {
         render(<LandscapeBucketControl value="week" hrefs={hrefs} labels={labels} />);
         const group = screen.getByRole("group", { name: "Bucket" });
         expect(group).toHaveAttribute("data-testid", "landscape-bucket");
+        // The caps row around it must not reach the values (sentence case, no letter-spacing).
+        expect(group).toHaveClass("normal-case", "tracking-normal");
         const week = screen.getByRole("button", { name: "Week" });
         const month = screen.getByRole("button", { name: "Month" });
         expect(week).toHaveAttribute("aria-pressed", "true");

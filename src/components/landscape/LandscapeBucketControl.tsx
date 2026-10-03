@@ -25,6 +25,8 @@ export function LandscapeBucketControl({
         <SegmentedControl<LandscapeBucket>
             ariaLabel="Bucket"
             testId="landscape-bucket"
+            // The page row around it sets the caps "BUCKET" label; the values read as words.
+            className="normal-case tracking-normal"
             value={value}
             onChange={(next) => {
                 if (next !== value) router.push(hrefs[next]);
