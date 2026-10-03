@@ -48,6 +48,8 @@ type InvestmentMixSectionProps = {
     setFocusTheme: (value: string | null) => void;
     setFocusSubcategory: (value: string | null) => void;
     themeColorMap: Map<string, string>;
+    /** Series colors for unlabelled meter bars. */
+    themeBarColorMap: Map<string, string>;
 };
 
 export function InvestmentMixSection({
@@ -63,6 +65,7 @@ export function InvestmentMixSection({
     setFocusTheme,
     setFocusSubcategory,
     themeColorMap,
+    themeBarColorMap,
 }: InvestmentMixSectionProps) {
     const chartTheme = useChartTheme();
     const evidence = useEvidenceDrawer();
@@ -399,7 +402,7 @@ export function InvestmentMixSection({
                                                 title: formatSubcategoryLabel(entry.key, true),
                                                 value: pctOfTheme,
                                                 display: `${formatNumber(pctOfTheme, { maximumFractionDigits: 1 })}%`,
-                                                color: themeColorMap.get(focusTheme),
+                                                color: themeBarColorMap.get(focusTheme),
                                                 onSelect: () => handleSubcategoryClick(entry.key),
                                                 selected: focusSubcategory === entry.key,
                                             };
@@ -424,7 +427,7 @@ export function InvestmentMixSection({
                                             label: titleCase(entry.key),
                                             value: pct,
                                             display: `${formatNumber(pct, { maximumFractionDigits: 1 })}%`,
-                                            color: themeColorMap.get(entry.key),
+                                            color: themeBarColorMap.get(entry.key),
                                             onSelect: () => handleThemeClick(entry.key),
                                         };
                                     })}
