@@ -135,6 +135,8 @@ export const CTA_LABELS = {
     /** Row action of the Home investigation threads (approved copy, app.js line 100). */
     inspect: "Inspect",
     openWorkView: "Open Work view",
+    /** Row action of a worklist: open the destination named by the row (approved copy, app.js line 113). */
+    open: "Open",
     evidence: "Evidence",
     /** Section action on a Flow tab: the evidence page of the tab's metric (approved copy, app.js line 98). */
     metricEvidence: "Metric evidence",

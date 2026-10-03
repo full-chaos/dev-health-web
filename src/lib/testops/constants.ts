@@ -4,6 +4,11 @@ export type TestOpsMeasureDef = {
     id: MeasureInput;
     label: string;
     description: string;
+    /**
+     * Short note of the metric tile, after the change value (approved tile copy, app.js line 54).
+     * Not set where the approved tile has no note; the full `description` is in the evidence drawer.
+     */
+    note?: string;
     unit: "percentage" | "duration" | "count" | "number";
     goodDirection: "up" | "down";
 };
@@ -14,6 +19,7 @@ export const TESTOPS_MEASURES: Record<string, TestOpsMeasureDef> = {
         label: "Success Rate",
         description:
             "Share of completed pipeline runs that succeed; excludes cancelled and skipped runs",
+        note: "completed pipeline runs",
         unit: "percentage",
         goodDirection: "up",
     },
@@ -22,6 +28,7 @@ export const TESTOPS_MEASURES: Record<string, TestOpsMeasureDef> = {
         label: "Failure Rate",
         description:
             "Share of completed pipeline runs that fail; with Success Rate need not sum to 100% (runs can be cancelled or skipped)",
+        note: "completed pipeline runs",
         unit: "percentage",
         goodDirection: "down",
     },
@@ -29,6 +36,7 @@ export const TESTOPS_MEASURES: Record<string, TestOpsMeasureDef> = {
         id: "PIPELINE_DURATION_P95",
         label: "P95 Duration",
         description: "95th percentile of pipeline execution time",
+        note: "pipeline execution",
         unit: "duration",
         goodDirection: "down",
     },
@@ -36,6 +44,7 @@ export const TESTOPS_MEASURES: Record<string, TestOpsMeasureDef> = {
         id: "PIPELINE_QUEUE_TIME",
         label: "Queue Time",
         description: "Average time pipelines spend waiting to start",
+        note: "waiting to start",
         unit: "duration",
         goodDirection: "down",
     },
@@ -43,6 +52,7 @@ export const TESTOPS_MEASURES: Record<string, TestOpsMeasureDef> = {
         id: "PIPELINE_RERUN_RATE",
         label: "Rerun Rate",
         description: "Percentage of pipelines that are rerun",
+        note: "pipelines rerun",
         unit: "percentage",
         goodDirection: "down",
     },
@@ -50,6 +60,7 @@ export const TESTOPS_MEASURES: Record<string, TestOpsMeasureDef> = {
         id: "TEST_PASS_RATE",
         label: "Pass Rate",
         description: "Percentage of tests that pass",
+        note: "tests passed",
         unit: "percentage",
         goodDirection: "up",
     },
@@ -71,6 +82,7 @@ export const TESTOPS_MEASURES: Record<string, TestOpsMeasureDef> = {
         id: "TEST_SUITE_DURATION_P95",
         label: "P95 Suite Duration",
         description: "95th percentile of test suite execution time",
+        note: "test execution",
         unit: "duration",
         goodDirection: "down",
     },
