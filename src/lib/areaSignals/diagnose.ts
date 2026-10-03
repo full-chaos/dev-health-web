@@ -53,6 +53,7 @@ import { logger } from "@/lib/logger";
 
 import { deriveState } from "./deriveState";
 import type { SeverityThresholds } from "./deriveState";
+import { markFailedSignals } from "./failedRead";
 import type { AreaSignal, AreaSignalState } from "./types";
 
 // ── Provisional Complexity thresholds (CHAOS-2074) ────────────────────────────
@@ -215,14 +216,14 @@ async function safe<T>(
 }
 
 /** The read each Diagnose card depends on, so a failed read marks only its own cards. */
-const SIGNAL_SOURCE: Record<string, string> = {
-    flow: "home",
-    code: "home",
-    bottleneck: "home",
-    landscape: "bus-factor",
-    complexity: "complexity",
-    "cognitive-load": "cognitive-load",
-    investment: "investment",
+const SIGNAL_SOURCES: Record<string, readonly string[]> = {
+    flow: ["home"],
+    code: ["home"],
+    bottleneck: ["home"],
+    landscape: ["bus-factor"],
+    complexity: ["complexity"],
+    "cognitive-load": ["cognitive-load"],
+    investment: ["investment"],
 };
 
 // ── Resolver ──────────────────────────────────────────────────────────────────
@@ -487,9 +488,5 @@ export async function getDiagnoseSignals(
     );
 
     // A card whose backing read FAILED says so; an empty read keeps the empty state (CHAOS-8168).
-    return signals.map((signal) =>
-        signal.state === "unavailable" && failedSources.has(SIGNAL_SOURCE[signal.id] ?? "")
-            ? { ...signal, failed: true }
-            : signal,
-    );
+    return markFailedSignals(signals, SIGNAL_SOURCES, failedSources);
 }

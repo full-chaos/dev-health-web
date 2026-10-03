@@ -73,6 +73,7 @@ export function AreaSignalCard({ signal, filters, role, emphasized = false }: Ar
                         message="The data for this view could not be read. Try again in a moment."
                         className="mt-3"
                         compact
+                        headingLevel={4}
                         data-testid="area-signal-failed"
                     />
                 ) : (

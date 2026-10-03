@@ -203,6 +203,18 @@ describe("AreaSignalCard approved look (CHAOS-8062)", () => {
             );
         });
 
+        it("the failed state is compact and its title sits one level below the card title (CHAOS-8269)", () => {
+            draw({ ...empty, failed: true });
+            const failed = screen.getByTestId("area-signal-failed");
+            // The card title is the h3; the error title under it is an h4, never an h2.
+            expect(screen.getByRole("heading", { level: 3, name: base.label })).toBeInTheDocument();
+            expect(failed.querySelector("h2")).toBeNull();
+            expect(failed.querySelector("h4")).toHaveTextContent("Could not be read");
+            // Compact box, like the empty state next to it.
+            expect(failed.firstElementChild).toHaveClass("p-5");
+            expect(failed.firstElementChild).not.toHaveClass("p-8");
+        });
+
         it("a served value is drawn as the value, with neither state", () => {
             draw(base);
             expect(screen.queryByTestId("area-signal-failed")).not.toBeInTheDocument();
