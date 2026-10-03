@@ -49,7 +49,8 @@ const ALLOW_BODY_ERROR: Record<string, { reads: number; reason: string }> = {
 /**
  * STORED RECORDS: a detail page of a stored failure keeps the record's text (team-lead ruling, curated
  * reason: CHAOS-8437). These expressions are NOT caught by the scans above (they are not `.message`
- * reads); the entries pin them so a new stored-text place has to be added here on purpose.
+ * reads). The entries only pin that these two places still hold their expressions (so a move or a
+ * rewrite is noticed); they do NOT find a NEW stored-text place.
  */
 const STORED_RECORD_TEXT: Record<string, { expr: string; reason: string }> = {
     "components/admin/sync/SyncRunDetailLive.tsx": {

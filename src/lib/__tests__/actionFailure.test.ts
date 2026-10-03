@@ -85,7 +85,6 @@ describe("failureFromError", () => {
         ).toEqual({ error: "Name taken", status: 422 });
         expect(failureFromError("op", new AdminApiError(500, "Boom", HOSTILE, "PATCH")).error).toBe(
             ACTION_FAILED_MESSAGE,
-            TOO_MANY_REQUESTS_MESSAGE,
         );
     });
 
