@@ -573,6 +573,31 @@ describe("ByoLlmSettings", () => {
         expect(screen.queryByLabelText("Provider")).not.toBeInTheDocument();
     });
 
+    it("draws the card as the shared Section in the form, locked and error states (CHAOS-8240)", async () => {
+        const cardOf = () =>
+            screen.getByRole("heading", { name: "BYO LLM", level: 2 }).closest("section");
+
+        mockLoad.mockResolvedValue({ data: {} });
+        const first = renderForm();
+        await screen.findByText("Not configured");
+        expect(cardOf()).not.toBeNull();
+        expect(cardOf()).toHaveTextContent(/Provide your own provider, model, and credentials/);
+        first.unmount();
+
+        mockLoad.mockResolvedValue({ error: "This feature requires the Team plan.", status: 402 });
+        const second = renderForm();
+        await screen.findByText("BYO-LLM is locked");
+        expect(cardOf()).toHaveTextContent(
+            "Bring your own model provider for AI explanations and reports.",
+        );
+        second.unmount();
+
+        mockLoad.mockResolvedValue({ error: "fetch failed", status: 500 });
+        renderForm();
+        await screen.findByText("fetch failed");
+        expect(cardOf()).toHaveTextContent("Bring your own model provider");
+    });
+
     it("renders a locked state without an upgrade link when the flag is off (403)", async () => {
         mockLoad.mockResolvedValue({
             error: "BYO LLM is not enabled for this organization",

@@ -153,16 +153,20 @@ export function ByoLlmSpendSummary({ loadSpendAction }: ByoLlmSpendSummaryProps)
     } else {
         body = (
             <div className="space-y-3">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm">
-                        <thead>
-                            <tr className="border-b border-(--card-stroke) text-xs uppercase tracking-wide text-(--ink-muted)">
-                                <th className="py-2 pr-4 font-medium">Run</th>
-                                <th className="py-2 pr-4 font-medium">Model</th>
-                                <th className="py-2 pr-4 text-right font-medium">Calls</th>
-                                <th className="py-2 pr-4 text-right font-medium">Input tokens</th>
-                                <th className="py-2 pr-4 text-right font-medium">Output tokens</th>
-                                <th className="py-2 font-medium">Failures by class</th>
+                <div className="overflow-x-auto rounded-(--radius-sm) border border-(--card-stroke)">
+                    <table className="w-full text-left text-sm" data-testid="byo-llm-spend-table">
+                        <thead className="bg-background text-label-caps uppercase text-(--ink-muted)">
+                            <tr>
+                                <th className="px-3 py-2.75 font-medium">Run</th>
+                                <th className="px-3 py-2.75 font-medium">Model</th>
+                                <th className="px-3 py-2.75 text-right font-medium">Calls</th>
+                                <th className="px-3 py-2.75 text-right font-medium">
+                                    Input tokens
+                                </th>
+                                <th className="px-3 py-2.75 text-right font-medium">
+                                    Output tokens
+                                </th>
+                                <th className="px-3 py-2.75 font-medium">Failures by class</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -171,20 +175,20 @@ export function ByoLlmSpendSummary({ loadSpendAction }: ByoLlmSpendSummaryProps)
                                     key={run.run_id}
                                     className="border-b border-(--card-stroke)/60 last:border-0"
                                 >
-                                    <td className="py-2 pr-4 font-mono text-xs" title={run.run_id}>
+                                    <td className="px-3 py-3 font-mono text-xs" title={run.run_id}>
                                         {run.run_id.slice(0, 8)}
                                     </td>
-                                    <td className="py-2 pr-4">{run.model ?? "—"}</td>
-                                    <td className="py-2 pr-4 text-right">
+                                    <td className="px-3 py-3">{run.model ?? "—"}</td>
+                                    <td className="px-3 py-3 text-right">
                                         {formatNumber(run.calls)}
                                     </td>
-                                    <td className="py-2 pr-4 text-right">
+                                    <td className="px-3 py-3 text-right">
                                         {formatNumber(run.input_tokens)}
                                     </td>
-                                    <td className="py-2 pr-4 text-right">
+                                    <td className="px-3 py-3 text-right">
                                         {formatNumber(run.output_tokens)}
                                     </td>
-                                    <td className="py-2">
+                                    <td className="px-3 py-3">
                                         <FailureBadges failuresByClass={run.failures_by_class} />
                                     </td>
                                 </tr>

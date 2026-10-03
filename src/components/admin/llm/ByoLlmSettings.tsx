@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { toast } from "sonner";
 import { DataState } from "@/components/ui/DataState";
+import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import {
     LLM_PROVIDERS,
@@ -195,6 +196,9 @@ function formatCheckedAt(value: string | null): string {
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? "Not checked" : date.toLocaleString();
 }
+
+/** The one-line description of the BYO LLM card (design: "Bring your own model provider for AI explanations and reports."). */
+const BYO_DESCRIPTION = "Bring your own model provider for AI explanations and reports.";
 
 export function ByoLlmSettings({
     loadSettingsAction,
@@ -433,19 +437,17 @@ export function ByoLlmSettings({
 
     if (loading) {
         return (
-            <div>
-                <h2 className="text-h2 text-(--text-primary)">BYO LLM</h2>
-                <div className="mt-6 py-12 text-center text-(--text-muted)">
+            <Section title="BYO LLM" description={BYO_DESCRIPTION}>
+                <div className="py-12 text-center text-(--text-muted)">
                     Loading BYO LLM settings...
                 </div>
-            </div>
+            </Section>
         );
     }
 
     if (locked) {
         return (
-            <div>
-                <h2 className="mb-6 text-h2 text-(--text-primary)">BYO LLM</h2>
+            <Section title="BYO LLM" description={BYO_DESCRIPTION}>
                 <div className="rounded-3xl border border-(--card-stroke) bg-(--card-80) p-8 text-center">
                     <div className="mx-auto max-w-md space-y-4">
                         <p className="text-xs font-semibold uppercase tracking-wider text-(--accent-text)">
@@ -469,17 +471,13 @@ export function ByoLlmSettings({
                         ) : null}
                     </div>
                 </div>
-            </div>
+            </Section>
         );
     }
 
     if (loadError) {
         return (
-            <div>
-                <header className="mb-8">
-                    <h2 className="text-h2 text-(--text-primary)">BYO LLM</h2>
-                </header>
-
+            <Section title="BYO LLM" description={BYO_DESCRIPTION}>
                 <div className="rounded-2xl border border-(--negative)/20 bg-(--negative)/10 p-6 text-sm text-(--negative)">
                     <p>{loadError}</p>
                     <button
@@ -490,7 +488,7 @@ export function ByoLlmSettings({
                         {CTA_LABELS.retry}
                     </button>
                 </div>
-            </div>
+            </Section>
         );
     }
 
@@ -688,18 +686,11 @@ export function ByoLlmSettings({
     );
 
     return (
-        <div>
-            <header className="mb-8 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                <div>
-                    <h2 className="text-h2 text-(--text-primary)">BYO LLM</h2>
-                    <p className="mt-1 max-w-2xl text-sm text-(--ink-muted)">
-                        Provide your own provider, model, and credentials. Resolution precedence:
-                        per-call kill-switch › org settings › platform default.
-                    </p>
-                </div>
-                <div className="shrink-0">{statusBadge}</div>
-            </header>
-
+        <Section
+            title="BYO LLM"
+            description="Provide your own provider, model, and credentials. Resolution precedence: per-call kill-switch › org settings › platform default."
+            action={statusBadge}
+        >
             {formError && (
                 <div className="mb-6 rounded-2xl border border-(--negative)/20 bg-(--negative)/10 p-4 text-sm text-(--negative)">
                     {formError}
@@ -894,6 +885,6 @@ export function ByoLlmSettings({
             )}
 
             {byoPreflightPanel}
-        </div>
+        </Section>
     );
 }

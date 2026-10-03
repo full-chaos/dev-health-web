@@ -34,6 +34,31 @@ describe("ByoLlmSpendSummary", () => {
         ).toBeInTheDocument();
     });
 
+    it("draws the runs as a bordered table with a caps header band (CHAOS-8240)", async () => {
+        mockLoad.mockResolvedValue({
+            data: {
+                since: "2024-01-01T00:00:00Z",
+                limit: 20,
+                runs: [
+                    {
+                        run_id: "run-1",
+                        calls: 42,
+                        input_tokens: 12345,
+                        output_tokens: 6789,
+                        model: "gpt-4o",
+                        failures_by_class: {},
+                    },
+                ],
+                legacy: [],
+            },
+        });
+        renderPanel();
+        const table = await screen.findByTestId("byo-llm-spend-table");
+        expect(table.parentElement?.className).toContain("border-(--card-stroke)");
+        expect(table.querySelector("thead")?.className).toContain("uppercase");
+        expect(table).toHaveTextContent("12,345");
+    });
+
     it("renders per-run rows with calls, tokens, model, and failures-by-class", async () => {
         mockLoad.mockResolvedValue({
             data: {
