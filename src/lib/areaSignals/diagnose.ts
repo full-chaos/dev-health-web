@@ -123,6 +123,17 @@ function buildSignal(
 /** The unavailable (honest-empty) resolution — no fabricated value. */
 const UNAVAILABLE = { state: "unavailable" as const, value: "" };
 
+/** The order the resolver pushes the cards in (kept in step with the pushes below). */
+const DIAGNOSE_CARD_ORDER = [
+    "flow",
+    "code",
+    "landscape",
+    "complexity",
+    "cognitive-load",
+    "investment",
+    "bottleneck",
+] as const;
+
 const VALID_SEVERITIES = new Set(["critical", "high", "medium", "low"]);
 
 function normalizeReturnedSeverity(severity: string | undefined): AreaSignalState {
@@ -179,23 +190,40 @@ function avgInterruptionLoad(result: CognitiveLoadResult | undefined): number | 
 }
 
 /** Resolve the org scope from the auth session (mirrors the area fetchers). */
-async function resolveOrgId(): Promise<string> {
+async function resolveOrgId(): Promise<string | null> {
     const session = await auth();
-    return (session?.user?.org_id as string | undefined) ?? "default-org";
+    return (session?.user?.org_id as string | undefined) || null;
 }
 
 /**
  * Run a source fetch, swallowing failures to `undefined` so one dead source
  * degrades to a single honest-empty card instead of failing the whole area.
  */
-async function safe<T>(fn: () => Promise<T>, source: string): Promise<T | undefined> {
+async function safe<T>(
+    fn: () => Promise<T>,
+    source: string,
+    failedSources: Set<string>,
+): Promise<T | undefined> {
     try {
         return await fn();
     } catch (error) {
+        // The backend text goes to the log only; the card says "could not be read" (CHAOS-8168).
         logger.error({ err: error, source }, "Diagnose signal source failed");
+        failedSources.add(source);
         return undefined;
     }
 }
+
+/** The read each Diagnose card depends on, so a failed read marks only its own cards. */
+const SIGNAL_SOURCE: Record<string, string> = {
+    flow: "home",
+    code: "home",
+    bottleneck: "home",
+    landscape: "bus-factor",
+    complexity: "complexity",
+    "cognitive-load": "cognitive-load",
+    investment: "investment",
+};
 
 // ── Resolver ──────────────────────────────────────────────────────────────────
 
@@ -232,7 +260,18 @@ export async function getDiagnoseSignals(
 
     // Resolve the org scope server-side (the complexity GraphQL call needs it
     // threaded in as a variable AND as the `X-Org-Id` header).
+    // No org on the session: the org-scoped reads below are skipped (cards read
+    // "unavailable"), never sent with an empty or made-up org.
     const orgId = isTestMode ? "default-org" : await resolveOrgId();
+    // Short-circuit BEFORE any read: every source below is org-scoped, so with no
+    // org nothing is asked and every card is unavailable (not failed).
+    if (!orgId) {
+        // Same card order as the normal path below.
+        return DIAGNOSE_CARD_ORDER.flatMap((id) => {
+            const d = descriptor(id);
+            return d ? [buildSignal(d, UNAVAILABLE)] : [];
+        });
+    }
     const complexityScopeInput = complexityScopeInputFromFilter(filters);
 
     // cognitiveLoad only supports org-wide or team aggregation (the resolver takes orgId
@@ -254,30 +293,34 @@ export async function getDiagnoseSignals(
 
     // ── Fetch every source in parallel (no serial N+1) ───────────────────────
     // Metrics + Code + Bottlenecks all come from a single getHomeData call.
+    const failedSources = new Set<string>();
     const [homeData, complexityData, busFactor, cognitiveLoad, investmentMix] = await Promise.all([
-        safe(() => getHomeDataViaGraphQL(filters), "home"),
+        safe(() => getHomeDataViaGraphQL(filters), "home", failedSources),
         safe(
             () =>
                 isTestMode
                     ? Promise.resolve(SAMPLE_DIAGNOSE_COMPLEXITY)
-                    : graphqlFetch<{
-                          complexityTimeseries: ComplexityTimeseriesResult;
-                      }>(
-                          COMPLEXITY_TIMESERIES_QUERY,
-                          {
-                              input: {
-                                  orgId,
-                                  sinceUtc,
-                                  untilUtc,
-                                  granularity: "DAY",
-                                  scope: "REPO",
-                                  ...complexityScopeInput,
-                                  limit: 50,
-                              },
-                          },
-                          { orgId },
-                      ).then((r) => r.complexityTimeseries),
+                    : !orgId
+                      ? Promise.resolve(undefined)
+                      : graphqlFetch<{
+                            complexityTimeseries: ComplexityTimeseriesResult;
+                        }>(
+                            COMPLEXITY_TIMESERIES_QUERY,
+                            {
+                                input: {
+                                    orgId,
+                                    sinceUtc,
+                                    untilUtc,
+                                    granularity: "DAY",
+                                    scope: "REPO",
+                                    ...complexityScopeInput,
+                                    limit: 50,
+                                },
+                            },
+                            { orgId },
+                        ).then((r) => r.complexityTimeseries),
             "complexity",
+            failedSources,
         ),
         safe(
             () =>
@@ -285,12 +328,13 @@ export async function getDiagnoseSignals(
                     ? Promise.resolve(SAMPLE_DIAGNOSE_BUS_FACTOR)
                     : getBusFactorData(filters),
             "bus-factor",
+            failedSources,
         ),
         safe(
             () =>
                 isTestMode
                     ? Promise.resolve(SAMPLE_DIAGNOSE_COGNITIVE_LOAD)
-                    : !cognitiveLoadScopeSupported
+                    : !orgId || !cognitiveLoadScopeSupported
                       ? Promise.resolve(undefined)
                       : getCognitiveLoadViaGraphQL({
                             orgId,
@@ -299,12 +343,14 @@ export async function getDiagnoseSignals(
                             teamId: cognitiveLoadTeamId,
                         }),
             "cognitive-load",
+            failedSources,
         ),
         // Same read as the Investment page, with the page filters (scope + window).
         safe(
             () =>
                 isTestMode ? Promise.resolve(SAMPLE_DIAGNOSE_INVESTMENT) : getInvestment(filters),
             "investment",
+            failedSources,
         ),
     ]);
 
@@ -440,5 +486,10 @@ export async function getDiagnoseSignals(
             : UNAVAILABLE,
     );
 
-    return signals;
+    // A card whose backing read FAILED says so; an empty read keeps the empty state (CHAOS-8168).
+    return signals.map((signal) =>
+        signal.state === "unavailable" && failedSources.has(SIGNAL_SOURCE[signal.id] ?? "")
+            ? { ...signal, failed: true }
+            : signal,
+    );
 }

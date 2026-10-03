@@ -273,3 +273,18 @@ describe("PrDetailPage", () => {
         });
     });
 });
+
+describe("PrDetailPage org scope (CHAOS-8272)", () => {
+    it("makes no request when the session has no org", async () => {
+        getPrDetailViaGraphQLMock.mockReset();
+        getAIWorkflowDrilldownViaGraphQLMock.mockReset();
+        checkApiHealthMock.mockResolvedValue({ ok: true });
+        requireSessionMock.mockResolvedValue({ user: {} });
+        getFlameMock.mockResolvedValue(null);
+        getPrDetailViaGraphQLMock.mockResolvedValue(samplePr);
+        getAIWorkflowDrilldownViaGraphQLMock.mockResolvedValue(emptyDrilldown);
+        await renderPage();
+        expect(getPrDetailViaGraphQLMock).not.toHaveBeenCalled();
+        expect(getAIWorkflowDrilldownViaGraphQLMock).not.toHaveBeenCalled();
+    });
+});

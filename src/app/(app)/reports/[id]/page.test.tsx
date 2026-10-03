@@ -5,6 +5,8 @@ import { ReportStatus } from "@/lib/reports/types";
 import type { ReportRun, SavedReport } from "@/lib/reports/types";
 
 const mockPush = vi.fn();
+const orgIdRef = vi.hoisted(() => ({ current: "org-session-1" as string | null }));
+vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => orgIdRef.current }));
 vi.mock("next/navigation", () => ({
     useParams: () => ({ id: "report-1" }),
     useRouter: () => ({ push: mockPush }),
@@ -74,6 +76,14 @@ describe("SingleReportPage — CHAOS-4318 manual refresh (no timer-driven pollin
         expect(mockFetchReportRuns).toHaveBeenCalledTimes(1);
         expect(screen.getByTestId("refresh-control-button")).toBeInTheDocument();
         expect(screen.getByText(/Last updated:/)).toBeInTheDocument();
+    });
+
+    it("reads the report and its runs in the signed-in session's org, never a literal org id", async () => {
+        render(<SingleReportPage />);
+        await flush();
+
+        expect(mockFetchSavedReport.mock.calls[0][0]).toBe("org-session-1");
+        expect(mockFetchReportRuns.mock.calls[0][0]).toBe("org-session-1");
     });
 
     it("never re-fetches run history on its own, however long the page stays open", async () => {
@@ -237,5 +247,19 @@ describe("SingleReportPage — run date (CHAOS-8096)", () => {
         render(<SingleReportPage />);
 
         expect(await screen.findByText("Run date not reported")).toBeInTheDocument();
+    });
+});
+
+describe("Single report page without a session org (CHAOS-8213)", () => {
+    it("makes no request until the session org is there", async () => {
+        orgIdRef.current = null;
+        mockFetchSavedReport.mockReset();
+        mockFetchReportRuns.mockReset();
+        await act(async () => {
+            render(<SingleReportPage />);
+        });
+        expect(mockFetchSavedReport).not.toHaveBeenCalled();
+        expect(mockFetchReportRuns).not.toHaveBeenCalled();
+        orgIdRef.current = "org-session-1";
     });
 });
