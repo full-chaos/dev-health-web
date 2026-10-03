@@ -6,8 +6,12 @@ import { describeArtifact, HeatmapPanel } from "./HeatmapPanel";
 import type { HeatmapResponse } from "@/lib/types";
 
 // Stub the echarts-backed chart so the panel renders in jsdom without echarts.
+const { chartProps } = vi.hoisted(() => ({ chartProps: vi.fn() }));
 vi.mock("./HeatmapChart", () => ({
-    HeatmapChart: () => <div data-testid="heatmap-chart" />,
+    HeatmapChart: (props: unknown) => {
+        chartProps(props);
+        return <div data-testid="heatmap-chart" />;
+    },
 }));
 
 vi.mock("@/lib/api/visuals", () => ({
@@ -49,6 +53,17 @@ describe("HeatmapPanel — axis captions on the hours by weekdays grid (CHAOS-85
         draw("temporal_load");
         expect(screen.getByTestId("heatmap-axis-captions")).toHaveTextContent(
             "Hour of day · day of weekReview wait density · team scope",
+        );
+    });
+
+    it("turns the weekHours layout on for the temporal grid only", () => {
+        chartProps.mockClear();
+        draw("temporal_load");
+        expect((chartProps.mock.calls.at(-1)?.[0] as { weekHours?: boolean }).weekHours).toBe(true);
+        chartProps.mockClear();
+        draw("risk");
+        expect((chartProps.mock.calls.at(-1)?.[0] as { weekHours?: boolean }).weekHours).toBe(
+            false,
         );
     });
 
