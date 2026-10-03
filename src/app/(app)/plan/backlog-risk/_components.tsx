@@ -6,13 +6,16 @@
 import type { ReactNode } from "react";
 import { CircleCheck, TriangleAlert } from "lucide-react";
 
+import { EvidenceFact, EvidenceFactList } from "@/components/evidence/EvidenceFacts";
+import type { PageFact } from "@/components/evidence/PageFactsEvidenceAction";
+import { MetricCard } from "@/components/metrics/MetricCard";
+import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { DataState } from "@/components/ui/DataState";
+import { Section } from "@/components/ui/Section";
 import { Notice } from "@/components/ui/Notice";
 import { formatNumber } from "@/lib/formatters";
 import type { ThroughputForecast, ThroughputRiskOverlay } from "@/lib/graphql/types";
 import { STATUS_PILL } from "@/lib/statusPill";
-
-const CARD = "rounded-(--radius-lg) border border-(--border) bg-(--surface) p-6";
 
 // ── StatusBadge ───────────────────────────────────────────────────────────────
 
@@ -64,39 +67,46 @@ const openItems = (count: number) =>
 type EstimateCoverage = ThroughputForecast["estimateCoverage"];
 type StaleWip = ThroughputForecast["staleWip"];
 
-function Row({ label, value }: { label: string; value: ReactNode }) {
-    return (
-        <div className="flex items-center justify-between gap-3 border-t border-(--border) py-3 text-sm first:border-t-0 first:pt-0">
-            <dt className="text-(--text-muted)">{label}</dt>
-            <dd className="font-semibold tabular-nums text-foreground">{value}</dd>
-        </div>
-    );
-}
-
 // ── Tiles ─────────────────────────────────────────────────────────────────────
 
 function Tile({
     label,
     value,
+    unit,
+    valueText,
     caption,
     pill,
     testId,
 }: {
     label: string;
-    value: string;
+    /** The served number; undefined reads "Not reported". */
+    value?: number;
+    /** The unit word, drawn small beside the number. */
+    unit?: string;
+    /**
+     * A ready text, for the congestion ratio only: the shared formatter keeps one decimal, and the
+     * ratio needs two ("1.25×", as its threshold caption reads).
+     */
+    valueText?: string;
     caption: string;
     pill?: ReactNode;
     testId: string;
 }) {
     return (
-        <div data-testid={testId} className={CARD}>
-            <div className="flex min-h-6 items-center justify-between gap-2">
-                <p className="text-xs uppercase tracking-[0.18em] text-(--text-muted)">{label}</p>
-                {pill}
-            </div>
-            <p className="mt-3 text-3xl font-semibold tabular-nums">{value}</p>
-            <p className="mt-2 text-xs text-(--text-muted)">{caption}</p>
-        </div>
+        <MetricCard
+            testId={testId}
+            label={label}
+            value={value}
+            unit={unit}
+            valueText={valueText}
+            hideTrend
+            deltaSlot={
+                <>
+                    {pill ? <span className="mr-2">{pill}</span> : null}
+                    <span>{caption}</span>
+                </>
+            }
+        />
     );
 }
 
@@ -106,15 +116,31 @@ type TilesProps = {
     estimateCoverage: EstimateCoverage;
 };
 
-/** The unestimated tile: a count, "No data" (a dash, never 0) when coverage is unavailable, or a real 0 for an empty backlog. */
-function unestimatedTile(estimateCoverage: EstimateCoverage): { value: string; caption: string } {
-    if (!estimateCoverage) return { value: "—", caption: "No data" };
-    if (estimateCoverage.backlogSize === 0 && estimateCoverage.ratio == null) {
-        return { value: "0", caption: "No open backlog" };
+/** An age as a number and a unit word: hours under 24, else days with one decimal (as `formatAgeHours`). */
+function ageParts(hours: number | null | undefined): { value?: number; unit?: string } {
+    if (hours == null) return {};
+    if (hours < 24) {
+        const rounded = Math.round(hours);
+        return { value: rounded, unit: rounded === 1 ? "hour" : "hours" };
     }
-    if (estimateCoverage.ratio == null) return { value: "—", caption: "No data" };
+    const days = Math.round((hours / 24) * 10) / 10;
+    return { value: days, unit: days === 1 ? "day" : "days" };
+}
+
+/** The unestimated tile: a count, "Not reported" when coverage is unavailable, or a real 0 for an empty backlog. */
+function unestimatedTile(estimateCoverage: EstimateCoverage): {
+    value?: number;
+    unit?: string;
+    caption: string;
+} {
+    if (!estimateCoverage) return { caption: "No data" };
+    if (estimateCoverage.backlogSize === 0 && estimateCoverage.ratio == null) {
+        return { value: 0, caption: "No open backlog" };
+    }
+    if (estimateCoverage.ratio == null) return { caption: "No data" };
     return {
-        value: `${formatNumber(estimateCoverage.unestimatedCount)} items`,
+        value: estimateCoverage.unestimatedCount,
+        unit: estimateCoverage.unestimatedCount === 1 ? "item" : "items",
         caption: `${formatRatioAsPercent(estimateCoverage.ratio)} estimate coverage`,
     };
 }
@@ -125,33 +151,34 @@ export function BacklogTiles({ overlay, staleWip, estimateCoverage }: TilesProps
     const unestimated = unestimatedTile(estimateCoverage);
 
     return (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4" data-testid="backlog-tiles">
+        <MetricStrip data-testid="backlog-tiles">
             <Tile
                 testId="tile-wip-congestion"
                 label="WIP congestion"
-                value={formatCongestion(overlay.value)}
+                valueText={formatCongestion(overlay.value)}
                 pill={<StatusBadge active={overlay.active} />}
                 caption={`vs typical · threshold ${formatCongestion(overlay.threshold)}`}
             />
             <Tile
                 testId="tile-stale-wip"
                 label="Stale WIP · P90"
-                value={p90 == null ? "—" : formatAgeHours(p90)}
+                {...ageParts(p90)}
                 caption={p90 == null ? "No data" : "90th percentile age of in-progress items"}
             />
             <Tile
                 testId="tile-median-wip-age"
                 label="Median WIP age"
-                value={p50 == null ? "—" : formatAgeHours(p50)}
+                {...ageParts(p50)}
                 caption={p50 == null ? "No data" : "Median in-progress age"}
             />
             <Tile
                 testId="tile-unestimated"
                 label="Unestimated work"
                 value={unestimated.value}
+                unit={unestimated.unit}
                 caption={unestimated.caption}
             />
-        </section>
+        </MetricStrip>
     );
 }
 
@@ -173,19 +200,22 @@ export function BacklogConditionCard({
     const p50 = staleWip?.p50AgeHours;
 
     return (
-        <section data-testid="backlog-condition" className={CARD}>
-            <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-(--text-muted)">
-                Backlog condition
-            </h2>
-            <dl className="mt-4">
-                <Row label="WIP congestion" value={formatCongestion(overlay.value)} />
-                <Row label="Open items · WIP panel" value={formatNumber(backlogSize)} />
-                {p90 != null ? <Row label="P90 work age" value={formatAgeHours(p90)} /> : null}
-                {p90 != null && p50 != null ? (
-                    <Row label="Median work age" value={formatAgeHours(p50)} />
+        <Section
+            data-testid="backlog-condition"
+            title="Backlog condition"
+            description="Normal congestion and aging work can coexist; do not flatten the panels into one status."
+        >
+            <EvidenceFactList aria-label="Backlog condition" testId="backlog-condition-facts">
+                <EvidenceFact label="WIP congestion" value={formatCongestion(overlay.value)} />
+                <EvidenceFact label="Open items · WIP panel" value={formatNumber(backlogSize)} />
+                {p90 != null ? (
+                    <EvidenceFact label="P90 work age" value={formatAgeHours(p90)} />
                 ) : null}
-            </dl>
-            <p className="mt-3 text-xs text-(--text-muted)">
+                {p90 != null && p50 != null ? (
+                    <EvidenceFact label="Median work age" value={formatAgeHours(p50)} />
+                ) : null}
+            </EvidenceFactList>
+            <p className="mt-3 text-xs text-(--ink-muted)">
                 Threshold {formatCongestion(overlay.threshold)} — ratio of current WIP to recent
                 average. Items in backlog are the current snapshot.
             </p>
@@ -197,82 +227,79 @@ export function BacklogConditionCard({
                     description="Sync in-progress work item age data to show how long current WIP has been open."
                 />
             ) : null}
-            <p className="mt-3 text-xs text-(--text-muted)">
-                Normal congestion and aging work can coexist; do not flatten the panels into one
-                status.
-            </p>
-        </section>
+        </Section>
     );
 }
 
 // ── Estimate coverage card ────────────────────────────────────────────────────
 
-export function EstimateCoverageCard({ estimateCoverage }: { estimateCoverage: EstimateCoverage }) {
-    const title = (
-        <h2 className="text-sm font-semibold uppercase tracking-[0.15em] text-(--text-muted)">
-            Estimate coverage
-        </h2>
-    );
+const COVERAGE_DESCRIPTION = "Missing estimates remain explicit.";
 
+export function EstimateCoverageCard({ estimateCoverage }: { estimateCoverage: EstimateCoverage }) {
     if (!estimateCoverage) {
         return (
-            <section className={CARD}>
-                {title}
+            <Section title="Estimate coverage" description={COVERAGE_DESCRIPTION}>
                 <DataState
                     variant="insufficient-confidence"
-                    className="mt-4"
                     title="Estimate coverage unavailable"
                     description="Sync open backlog estimate coverage to show how much work is planned without an estimate."
                     data-testid="unestimated-debt-unavailable"
                 />
-            </section>
+            </Section>
         );
     }
 
     if (estimateCoverage.backlogSize === 0 && estimateCoverage.ratio == null) {
         return (
-            <section className={CARD}>
-                {title}
+            <Section title="Estimate coverage" description={COVERAGE_DESCRIPTION}>
                 <DataState
                     variant="detector-enabled-no-findings"
-                    className="mt-4"
                     title="No open backlog"
                     description="Estimate coverage is connected, and there are no open backlog items in the selected scope."
                     data-testid="unestimated-debt-empty-backlog"
                 />
-            </section>
+            </Section>
         );
     }
 
     if (estimateCoverage.ratio == null) {
         return (
-            <section className={CARD}>
-                {title}
+            <Section title="Estimate coverage" description={COVERAGE_DESCRIPTION}>
                 <DataState
                     variant="insufficient-confidence"
-                    className="mt-4"
                     title="Estimate coverage unavailable"
                     description="The backlog exists, but estimate coverage was not computed for this scope."
                     data-testid="unestimated-debt-ratio-unavailable"
                 />
-            </section>
+            </Section>
         );
     }
 
     return (
-        <section className={CARD} data-testid="unestimated-debt-card">
-            {title}
-            <dl className="mt-4">
-                <Row label="Coverage" value={formatRatioAsPercent(estimateCoverage.ratio)} />
-                <Row label="Estimated" value={formatNumber(estimateCoverage.estimatedCount)} />
-                <Row label="Unestimated" value={formatNumber(estimateCoverage.unestimatedCount)} />
-                <Row
+        <Section
+            data-testid="unestimated-debt-card"
+            title="Estimate coverage"
+            description={COVERAGE_DESCRIPTION}
+        >
+            <EvidenceFactList aria-label="Estimate coverage" testId="estimate-coverage-facts">
+                <EvidenceFact
+                    label="Coverage"
+                    value={formatRatioAsPercent(estimateCoverage.ratio)}
+                />
+                <EvidenceFact
+                    label="Estimated"
+                    value={formatNumber(estimateCoverage.estimatedCount)}
+                />
+                <EvidenceFact
+                    label="Unestimated"
+                    value={formatNumber(estimateCoverage.unestimatedCount)}
+                />
+                <EvidenceFact
                     label="Open backlog · estimates panel"
                     value={formatNumber(estimateCoverage.backlogSize)}
                 />
-            </dl>
-            <p className="mt-3 text-xs text-(--text-muted)">Missing estimates remain explicit.</p>
-        </section>
+            </EvidenceFactList>
+        </Section>
     );
 }
 
@@ -300,6 +327,38 @@ export function PopulationNotice({
     );
 }
 
+// ── Evidence ──────────────────────────────────────────────────────────────────
+
+/** The page's served values for the evidence drawer, as the tiles and cards show them. No new number. */
+export function backlogFacts(forecast: ThroughputForecast): PageFact[] {
+    const { wipCongestion, staleWip, estimateCoverage } = forecast;
+    const p90 = staleWip?.p90AgeHours;
+    const p50 = staleWip?.p50AgeHours;
+    const ratio = estimateCoverage?.ratio;
+    return [
+        {
+            label: "WIP congestion",
+            value: `${formatCongestion(wipCongestion.value)} · ${wipCongestion.active ? "Elevated" : "Normal"}`,
+        },
+        { label: "Open items · WIP panel", value: formatNumber(forecast.backlogSize) },
+        { label: "P90 work age", value: p90 == null ? undefined : formatAgeHours(p90) },
+        { label: "Median work age", value: p50 == null ? undefined : formatAgeHours(p50) },
+        { label: "Coverage", value: ratio == null ? undefined : formatRatioAsPercent(ratio) },
+        {
+            label: "Estimated",
+            value: estimateCoverage ? formatNumber(estimateCoverage.estimatedCount) : undefined,
+        },
+        {
+            label: "Unestimated",
+            value: estimateCoverage ? formatNumber(estimateCoverage.unestimatedCount) : undefined,
+        },
+        {
+            label: "Open backlog · estimates panel",
+            value: estimateCoverage ? formatNumber(estimateCoverage.backlogSize) : undefined,
+        },
+    ];
+}
+
 // ── ForecastContent ───────────────────────────────────────────────────────────
 
 type ForecastContentProps = { forecast: ThroughputForecast };
@@ -313,14 +372,14 @@ export function ForecastContent({ forecast }: ForecastContentProps) {
                 estimateCoverage={forecast.estimateCoverage}
             />
 
-            <section className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 md:grid-cols-2">
                 <BacklogConditionCard
                     overlay={forecast.wipCongestion}
                     backlogSize={forecast.backlogSize}
                     staleWip={forecast.staleWip}
                 />
                 <EstimateCoverageCard estimateCoverage={forecast.estimateCoverage} />
-            </section>
+            </div>
 
             <PopulationNotice
                 wipCount={forecast.backlogSize}

@@ -65,7 +65,9 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
 
         const tile = (id: string) => within(screen.getByTestId(id));
         expect(tile("tile-remaining").getByText("Remaining work")).toBeInTheDocument();
-        expect(tile("tile-remaining").getByText("42 items")).toBeInTheDocument();
+        // The number and its unit apart: the unit is drawn small beside the number.
+        expect(tile("tile-remaining").getByTestId("metric-value")).toHaveTextContent("42 items");
+        expect(tile("tile-remaining").getByTestId("metric-unit")).toHaveTextContent("items");
         expect(tile("tile-p50").getByText("P50 · optimistic")).toBeInTheDocument();
         expect(tile("tile-p50").getByText("9 days")).toBeInTheDocument();
         expect(tile("tile-p85").getByText("P85 · target")).toBeInTheDocument();
@@ -75,6 +77,24 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(tile("tile-p95").getByText("30 days")).toBeInTheDocument();
         // The old "50% chance" rows are gone.
         expect(screen.queryByText("50% chance")).toBeNull();
+    });
+
+    it("draws the tiles as one joined strip with a column per tile", () => {
+        render(<CapacityView filters={filters} />);
+
+        expect(screen.getByTestId("forecast-tiles")).toHaveAttribute("data-columns", "4");
+        expect(screen.getAllByTestId(/^tile-/)).toHaveLength(4);
+    });
+
+    it("lays the projection beside the Forecast inputs card, and keeps the distribution below", () => {
+        render(<CapacityView filters={filters} />);
+
+        for (const name of ["Completion projection", "Forecast inputs", "Interpretation"]) {
+            expect(screen.getByRole("heading", { level: 2, name })).toBeInTheDocument();
+        }
+        expect(
+            screen.getByRole("heading", { name: "Throughput Distribution" }),
+        ).toBeInTheDocument();
     });
 
     it("sends only the first team id and the filter's range as history days", () => {
@@ -139,10 +159,14 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         ).toBeInTheDocument();
     });
 
-    it("keeps the How to Interpret texts", () => {
+    it("shows the Interpretation section with the three percentile texts", () => {
         render(<CapacityView filters={filters} />);
 
-        expect(screen.getByText("How to Interpret")).toBeInTheDocument();
+        const interp = within(screen.getByTestId("forecast-interpretation"));
+        expect(interp.getByRole("heading", { name: "Interpretation" })).toBeInTheDocument();
+        expect(screen.queryByText("How to Interpret")).toBeNull();
+        // Three inset cards, one per percentile.
+        expect(interp.getAllByRole("heading", { level: 4 })).toHaveLength(3);
         expect(
             screen.getByText("Optimistic estimate. Half of simulations complete by this date."),
         ).toBeInTheDocument();
