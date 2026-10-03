@@ -65,10 +65,10 @@ export function DangerZone({ orgName }: DangerZoneProps) {
                         </p>
                     </div>
                     <Button
+                        variant="danger"
                         onClick={handleStartDelete}
                         disabled={isPending}
                         icon={<Trash2 />}
-                        className="border-(--negative) text-(--negative) hover:bg-(--negative)/12"
                     >
                         {isPending ? "Loading..." : "Delete Organization"}
                     </Button>
