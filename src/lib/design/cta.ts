@@ -346,6 +346,7 @@ export const CTA_LABELS = {
     /** Marketing link to the customer doc explaining Ask Dev / Context Fabric (CHAOS-3215). */
     viewAskDevDocs: "Learn more",
     confirmMapping: "Confirm Mapping",
+    mapIdentity: "Map identity",
     deleteUser: "Delete User",
     editUser: "Edit User",
     editProfile: "Edit Profile",
