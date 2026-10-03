@@ -30,6 +30,14 @@ vi.mock("@/components/charts/HeatmapPanel", () => ({
     HeatmapPanel: () => <section data-testid="heatmap-panel" />,
 }));
 
+const timeseriesSpy = vi.fn();
+vi.mock("@/components/charts/TimeseriesChart", () => ({
+    TimeseriesChart: (props: unknown) => {
+        timeseriesSpy(props);
+        return <div data-testid="timeseries-chart" />;
+    },
+}));
+
 vi.mock("@/components/charts/QuadrantPanel", () => ({
     QuadrantPanel: () => <section data-testid="quadrant-panel" />,
 }));
@@ -373,5 +381,147 @@ describe("CodePage", () => {
             expect(rows).toContainEqual(["org/ops", "Bus factor 1 · 1,947 samples"]);
             expect(JSON.stringify(rows)).not.toContain("someone");
         });
+    });
+});
+
+// CHAOS-8105: the Churn trend is the served churn series of the page scope (`home.deltas[churn].spark`,
+// one point per day). The web draws the served points; it adds, sums and fills nothing.
+describe("CodePage churn trend", () => {
+    const churn = (spark: Array<{ ts: string; value: number | null }>) => ({
+        metric: "churn",
+        label: "Code Churn",
+        value: 1200,
+        unit: "loc",
+        delta_pct: 12,
+        spark,
+    });
+
+    function serve(home: unknown) {
+        vi.clearAllMocks();
+        checkApiHealthMock.mockResolvedValue({ ok: true });
+        if (home instanceof Error) getHomeDataMock.mockRejectedValue(home);
+        else getHomeDataMock.mockResolvedValue(home);
+        getExplainDataMock.mockResolvedValue({ contributors: [], unit: "loc" });
+        getQuadrantMock.mockResolvedValue(null);
+        getBusFactorDataMock.mockResolvedValue(null);
+    }
+
+    it("draws the served churn points, one per served day, with the date as the axis label", async () => {
+        serve({
+            deltas: [
+                churn([
+                    { ts: "2026-08-02T00:00:00", value: 39 },
+                    { ts: "2026-08-01T00:00:00", value: 36 },
+                    { ts: "2026-08-03T00:00:00", value: null },
+                ]),
+            ],
+        });
+        await renderPage();
+
+        const card = screen.getByTestId("code-churn-trend");
+        expect(
+            within(card).getByRole("heading", { level: 2, name: "Churn trend" }),
+        ).toBeInTheDocument();
+        expect(card).toHaveTextContent(
+            "Churn is a code-change signal, not an individual performance score.",
+        );
+        expect(within(card).getByTestId("timeseries-chart")).toBeInTheDocument();
+        // The served points as they are: the full served stamp orders them, a null stays null.
+        expect(timeseriesSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+            data: [
+                { day: "2026-08-02T00:00:00", label: "2026-08-02", value: 39 },
+                { day: "2026-08-01T00:00:00", label: "2026-08-01", value: 36 },
+                { day: "2026-08-03T00:00:00", label: "2026-08-03", value: null },
+            ],
+            valueFormat: "number",
+        });
+    });
+
+    it("puts the Churn trend beside Ownership concentration, trend first", async () => {
+        serve({ deltas: [churn([{ ts: "2026-08-01T00:00:00", value: 36 }])] });
+        await renderPage();
+
+        const grid = screen.getByTestId("code-trend-ownership");
+        const trend = within(grid).getByTestId("code-churn-trend");
+        const ownership = within(grid).getByTestId("ownership-patterns-card");
+        expect(
+            Boolean(trend.compareDocumentPosition(ownership) & Node.DOCUMENT_POSITION_FOLLOWING),
+        ).toBe(true);
+        // After the tiles, before the repository table.
+        const tiles = screen.getByTestId("code-tiles");
+        const table = screen.getByTestId("code-repo-bus-factor");
+        expect(
+            Boolean(tiles.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING),
+        ).toBe(true);
+        expect(
+            Boolean(grid.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING),
+        ).toBe(true);
+    });
+
+    it.each([
+        ["no delta is served", { deltas: [] }],
+        [
+            "the served deltas have no churn entry",
+            {
+                deltas: [
+                    { ...churn([{ ts: "2026-08-01T00:00:00", value: 5 }]), metric: "cycle_time" },
+                ],
+            },
+        ],
+    ])(
+        "reads 'Not reported' and draws no chart when %s (never the placeholder series)",
+        async (_name, home) => {
+            serve(home);
+            await renderPage();
+
+            const card = screen.getByTestId("code-churn-trend");
+            expect(within(card).getByTestId("code-churn-trend-not-reported")).toHaveTextContent(
+                "Not reported",
+            );
+            expect(within(card).queryByTestId("timeseries-chart")).toBeNull();
+            expect(timeseriesSpy).not.toHaveBeenCalled();
+        },
+    );
+
+    it.each([
+        ["the served series is empty", []],
+        [
+            "every served point is null",
+            [
+                { ts: "2026-08-01T00:00:00", value: null },
+                { ts: "2026-08-02T00:00:00", value: null },
+            ],
+        ],
+    ])("reads 'No data for this window' and draws no chart when %s", async (_name, spark) => {
+        serve({ deltas: [churn(spark)] });
+        await renderPage();
+
+        const card = screen.getByTestId("code-churn-trend");
+        expect(within(card).getByTestId("code-churn-trend-empty")).toHaveTextContent(
+            "No data for this window",
+        );
+        expect(within(card).queryByTestId("timeseries-chart")).toBeNull();
+    });
+
+    it("draws a served 0 as a point (0 is a value, not 'no data')", async () => {
+        serve({ deltas: [churn([{ ts: "2026-08-01T00:00:00", value: 0 }])] });
+        await renderPage();
+
+        expect(
+            within(screen.getByTestId("code-churn-trend")).getByTestId("timeseries-chart"),
+        ).toBeInTheDocument();
+    });
+
+    it("reads 'Could not be read' when the read failed, and never the backend error text", async () => {
+        serve(new Error("[GraphQL] home is served by query-api and has no Python implementation"));
+        await renderPage();
+
+        const card = screen.getByTestId("code-churn-trend");
+        expect(within(card).getByTestId("code-churn-trend-failed")).toHaveTextContent(
+            "Could not be read",
+        );
+        expect(card).not.toHaveTextContent(/GraphQL|query-api|Python/);
+        expect(within(card).queryByTestId("timeseries-chart")).toBeNull();
+        expect(within(card).queryByTestId("code-churn-trend-not-reported")).toBeNull();
     });
 });

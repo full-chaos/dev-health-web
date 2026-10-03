@@ -12,6 +12,7 @@ import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { buttonClassName } from "@/components/shared/Button";
 import { MeterRows, type MeterRow } from "@/components/ui/MeterRows";
 import { Section } from "@/components/ui/Section";
+import { ChurnTrend } from "./ChurnTrend";
 import { RepoEvidenceButton } from "./RepoEvidenceButton";
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
 import { getBusFactorData } from "@/lib/api/code";
@@ -80,6 +81,8 @@ export default async function CodePage({ searchParams }: CodePageProps) {
     const placeholderDeltas = !home?.deltas?.length;
 
     const churnMetric = getMetric(deltas, "churn");
+    // The churn entry the API served (no fallback): its daily series is the Churn trend.
+    const servedChurn = home?.deltas?.find((item) => item.metric === "churn");
     const hasBusFactorEvidence = (busFactor?.evidenceSampleCount ?? 0) > 0;
     const topMaintainers = (busFactor?.topMaintainers ?? []).slice(0, 5);
     const riskyRepos = (busFactor?.repos ?? [])
@@ -192,24 +195,32 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                 />
             </MetricStrip>
 
-            <Section
-                data-testid="ownership-patterns-card"
-                title="Ownership concentration"
-                description="Git-blame shares of recent change; identity labels are aggregated, no names."
+            {/* Approved layout (prototype `code()`): the churn trend beside the ownership shares. */}
+            <div
+                className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]"
+                data-testid="code-trend-ownership"
             >
-                {hasBusFactorEvidence && ownershipRows.length ? (
-                    <MeterRows
-                        rows={ownershipRows}
-                        max={100}
-                        aria-label="Ownership concentration"
-                    />
-                ) : (
-                    <p className="text-sm text-(--ink-muted)">
-                        Connect a Git provider with commit history to surface ownership
-                        concentration here.
-                    </p>
-                )}
-            </Section>
+                <ChurnTrend readFailed={home === null} spark={servedChurn?.spark} />
+
+                <Section
+                    data-testid="ownership-patterns-card"
+                    title="Ownership concentration"
+                    description="Git-blame shares of recent change; identity labels are aggregated, no names."
+                >
+                    {hasBusFactorEvidence && ownershipRows.length ? (
+                        <MeterRows
+                            rows={ownershipRows}
+                            max={100}
+                            aria-label="Ownership concentration"
+                        />
+                    ) : (
+                        <p className="text-sm text-(--ink-muted)">
+                            Connect a Git provider with commit history to surface ownership
+                            concentration here.
+                        </p>
+                    )}
+                </Section>
+            </div>
 
             <Section
                 data-testid="code-repo-bus-factor"
