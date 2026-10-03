@@ -174,6 +174,81 @@ describe("QuadrantPanel", () => {
             expect(link.firstElementChild?.tagName.toLowerCase()).toBe("svg");
         });
 
+        it("default: no chip, and the guide and the related links stay under the head (every other page)", () => {
+            render(
+                <QuadrantPanel
+                    {...defaultProps}
+                    relatedLinks={[{ label: "Open evidence", href: "/explore" }]}
+                />,
+            );
+            expect(screen.queryByTestId("quadrant-head-actions")).toBeNull();
+            expect(screen.queryByTestId("quadrant-head-hint")).toBeNull();
+            expect(
+                within(screen.getByTestId("quadrant-controls")).getByRole("button", {
+                    name: "View guide",
+                }),
+            ).toBeInTheDocument();
+            const related = screen.getByTestId("quadrant-related-links");
+            const head = screen.getByRole("heading", { level: 2 }).closest("div")
+                ?.parentElement as HTMLElement;
+            expect(head).not.toContainElement(related);
+        });
+
+        it("headChip: the chip sits beside the title inside the head, sentence case as given", () => {
+            render(
+                <QuadrantPanel {...defaultProps} headChip={<span>Primary for this lens</span>} />,
+            );
+            const title = screen.getByRole("heading", { level: 2, name: "Test Quadrant" });
+            const chip = screen.getByText("Primary for this lens");
+            expect(title.parentElement).toContainElement(chip);
+        });
+
+        it("actionsInHead: View guide and Open evidence are in the card head, right, and not under the chart", async () => {
+            render(
+                <QuadrantPanel
+                    {...defaultProps}
+                    actionsInHead
+                    relatedLinks={[{ label: "Open evidence", href: "/explore" }]}
+                />,
+            );
+            const actions = screen.getByTestId("quadrant-head-actions");
+            const head = actions.parentElement as HTMLElement;
+            expect(within(head).getByRole("heading", { level: 2 })).toBeInTheDocument();
+            expect(within(actions).getByRole("button", { name: "View guide" })).toBeInTheDocument();
+            expect(within(actions).getByRole("link", { name: "Open evidence" })).toHaveAttribute(
+                "href",
+                "/explore",
+            );
+            // Bordered buttons, icon first, as the concept draws them (default pages keep ghost).
+            for (const el of [
+                within(actions).getByRole("button", { name: "View guide" }),
+                within(actions).getByRole("link", { name: "Open evidence" }),
+            ]) {
+                expect(el.className).toContain("border-(--card-stroke)");
+                expect(el.className).not.toContain("border-transparent");
+                expect(el.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+            }
+            // The caption sits in the head, left of the buttons, sentence case.
+            const hint = within(actions).getByText("Select a dot to investigate");
+            expect(hint.className).not.toMatch(/uppercase|tracking-/);
+            expect(
+                hint.compareDocumentPosition(
+                    within(actions).getByRole("button", { name: "View guide" }),
+                ) & Node.DOCUMENT_POSITION_FOLLOWING,
+            ).toBeTruthy();
+            // Each exists once: nothing is repeated under the chart.
+            expect(screen.getAllByRole("button", { name: "View guide" })).toHaveLength(1);
+            expect(screen.getAllByRole("link", { name: "Open evidence" })).toHaveLength(1);
+            expect(
+                within(screen.getByTestId("quadrant-controls")).queryByRole("button", {
+                    name: "View guide",
+                }),
+            ).toBeNull();
+            // The guide still opens from the head.
+            fireEvent.click(within(actions).getByRole("button", { name: "View guide" }));
+            expect(screen.getByRole("dialog")).toBeInTheDocument();
+        });
+
         it("draws no action slot when the caller gives none", () => {
             render(<QuadrantPanel {...defaultProps} />);
             expect(screen.queryByTestId("quadrant-panel-action")).toBeNull();
