@@ -59,6 +59,13 @@
     --theme-risk: var(--chart-color-2);
     --theme-maintenance: var(--chart-color-3);
     --theme-operational: var(--chart-color-1);
+    /* Flame branch fills (Elapsed Time Breakdown): the first five series, by branch order. Aliases,
+     * so the flame can differ from the raw series colors; light keeps today's values. */
+    --flame-branch-1: var(--chart-color-1);
+    --flame-branch-2: var(--chart-color-2);
+    --flame-branch-3: var(--chart-color-3);
+    --flame-branch-4: var(--chart-color-4);
+    --flame-branch-5: var(--chart-color-5);
     --seq-0: #dbeaee;
     --seq-1: #b0dbe5;
     --seq-2: #7fc9d8;
@@ -126,11 +133,19 @@
     --chart-color-8: #e56ce5;
     --chart-color-9: #808990;
     --chart-color-10: #a7afb5;
-    --theme-feature: var(--chart-color-5);
-    --theme-quality: var(--chart-color-4);
-    --theme-risk: var(--chart-color-2);
-    --theme-maintenance: var(--chart-color-3);
-    --theme-operational: var(--chart-color-1);
+    /* Investment theme and flame branch fills, dark theme (CHAOS-8510): the same hues as the series
+     * colors, darker, so ONE ink (white) reaches 4.5:1 on every tile and on its depth / opacity
+     * tints down to opacity .66. The raw --chart-color-1..10 are unchanged. */
+    --theme-feature: #a64807;
+    --theme-quality: #016e7f;
+    --theme-risk: #885a00;
+    --theme-maintenance: #cc1f00;
+    --theme-operational: #086d86;
+    --flame-branch-1: #086d86;
+    --flame-branch-2: #885a00;
+    --flame-branch-3: #cc1f00;
+    --flame-branch-4: #016e7f;
+    --flame-branch-5: #a64807;
     --seq-0: #162d36;
     --seq-1: #17566a;
     --seq-2: #0b7691;
