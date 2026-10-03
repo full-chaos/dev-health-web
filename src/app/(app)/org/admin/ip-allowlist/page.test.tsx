@@ -3,6 +3,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, cleanup, userEvent, waitFor, within } from "@/test/utils";
 import type { IPAllowlist } from "@/lib/admin/types";
 
+const logError = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/logger", () => ({
+    logger: { error: logError, warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
+}));
+
 const mockListIPAllowlistEntries = vi.fn();
 const mockCreateIPAllowlistEntry = vi.fn();
 const mockUpdateIPAllowlistEntry = vi.fn();
@@ -156,5 +161,146 @@ describe("IPAllowlistPage", () => {
         await waitFor(() =>
             expect(screen.getByText("No IP allowlist entries configured.")).toBeInTheDocument(),
         );
+    });
+});
+
+describe("IPAllowlistPage design A6/A7 (CHAOS-8239)", () => {
+    beforeEach(() => {
+        mockListIPAllowlistEntries.mockReset();
+        mockDeleteIPAllowlistEntry.mockReset();
+        mockUpdateIPAllowlistEntry.mockReset();
+    });
+    afterEach(() => cleanup());
+
+    it("has the h1 Organization, the add action in the header as the primary button with the icon first, and a section card", async () => {
+        mockListIPAllowlistEntries.mockResolvedValue(respondWith([makeEntry()]));
+        render(<IPAllowlistPage />);
+        await waitFor(() => expect(screen.getByText("192.168.1.0/24")).toBeInTheDocument());
+
+        expect(screen.getByRole("heading", { level: 1, name: "Organization" })).toBeInTheDocument();
+        const add = within(screen.getByTestId("page-header")).getByRole("button", {
+            name: "Add IP Rule",
+        });
+        expect(add.firstElementChild?.querySelector("svg") ?? null).not.toBeNull();
+        expect(add.className).toContain("bg-(--action)");
+        expect(screen.getByTestId("admin-pager")).toHaveTextContent("Showing 1–1");
+    });
+
+    it("says one plain sentence with a Retry that re-runs the load, and never prints the backend text", async () => {
+        mockListIPAllowlistEntries.mockResolvedValueOnce({
+            data: undefined,
+            error: "GET /api/v1/admin/x 502 upstream",
+        });
+        const user = userEvent.setup();
+        const { container } = render(<IPAllowlistPage />);
+
+        expect(
+            await screen.findByText(/IP allowlist entries could not be loaded\. Retry/u),
+        ).toBeInTheDocument();
+        expect(container.textContent).not.toContain("502");
+
+        mockListIPAllowlistEntries.mockResolvedValueOnce(respondWith([makeEntry()]));
+        await user.click(screen.getByRole("button", { name: "Retry" }));
+
+        await waitFor(() => expect(screen.getByText("192.168.1.0/24")).toBeInTheDocument());
+        expect(screen.queryByText(/could not be loaded/u)).toBeNull();
+    });
+
+    it("shows a plan-gate answer as a warning notice with the served sentence, not a danger error", async () => {
+        mockListIPAllowlistEntries.mockResolvedValueOnce({
+            data: undefined,
+            error: "This feature requires the enterprise plan (current plan: community).",
+        });
+        render(<IPAllowlistPage />);
+
+        const text = await screen.findByText(
+            "This feature requires the enterprise plan (current plan: community).",
+        );
+        expect(text.closest("[data-notice-variant]")).toHaveAttribute(
+            "data-notice-variant",
+            "warn",
+        );
+    });
+
+    async function failToggleWith(result: { error: string; status?: number }) {
+        mockListIPAllowlistEntries.mockResolvedValue(respondWith([makeEntry()]));
+        mockUpdateIPAllowlistEntry.mockResolvedValue({ data: undefined, ...result });
+        const user = userEvent.setup();
+        const view = render(<IPAllowlistPage />);
+        await waitFor(() => expect(screen.getByText("192.168.1.0/24")).toBeInTheDocument());
+
+        await user.click(screen.getByRole("button", { name: /^(Disable|Enable)/u }));
+        await user.click(
+            within(await screen.findByRole("dialog")).getByRole("button", {
+                name: /^(Disable|Enable)/u,
+            }),
+        );
+        return view;
+    }
+
+    it("shows the served message of a failed action only for a validation answer (4xx)", async () => {
+        await failToggleWith({ error: "Rule overlaps an existing rule", status: 409 });
+
+        expect(await screen.findByText("Rule overlaps an existing rule")).toBeInTheDocument();
+        expect(screen.queryByText(/could not be loaded/u)).toBeNull();
+    });
+
+    it("logs the backend text of a 5xx and of a network failure, but not of a validation answer", async () => {
+        logError.mockClear();
+        await failToggleWith({ error: "backend 502 text", status: 502 });
+        expect(await screen.findByText(/That change could not be completed/u)).toBeInTheDocument();
+        expect(logError).toHaveBeenCalledWith(
+            expect.objectContaining({ err: "backend 502 text", status: 502 }),
+            "Admin action failed",
+        );
+
+        cleanup();
+        logError.mockClear();
+        await failToggleWith({ error: "Bad CIDR", status: 422 });
+        expect(await screen.findByText("Bad CIDR")).toBeInTheDocument();
+        expect(logError).not.toHaveBeenCalledWith(expect.anything(), "Admin action failed");
+    });
+
+    it("shows one plain sentence for a 5xx, and not the served text", async () => {
+        const { container } = await failToggleWith({
+            error: "GET /api/v1/admin/x 502 upstream",
+            status: 502,
+        });
+
+        expect(
+            await screen.findByText("That change could not be completed. Try again in a moment."),
+        ).toBeInTheDocument();
+        expect(container.textContent).not.toContain("502");
+    });
+
+    it("shows one plain sentence for a network failure (no status), and not the served text", async () => {
+        const { container } = await failToggleWith({ error: "fetch failed: ECONNRESET" });
+
+        expect(
+            await screen.findByText("That change could not be completed. Try again in a moment."),
+        ).toBeInTheDocument();
+        expect(container.textContent).not.toContain("ECONNRESET");
+    });
+
+    it("shows the dashed empty state and no pager when there are no rows", async () => {
+        mockListIPAllowlistEntries.mockResolvedValue(respondWith([]));
+        render(<IPAllowlistPage />);
+
+        expect(
+            await screen.findByTestId("data-state-detector-enabled-no-findings"),
+        ).toBeInTheDocument();
+        expect(screen.queryByTestId("admin-pager")).toBeNull();
+    });
+
+    it("draws the status as a pill with an icon, and Delete as the danger outline that wins over the secondary look", async () => {
+        mockListIPAllowlistEntries.mockResolvedValue(respondWith([makeEntry()]));
+        render(<IPAllowlistPage />);
+
+        const pill = await screen.findByText("Active");
+        expect(pill.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+        expect(pill.className).not.toMatch(/(^|\s)border/u);
+        const del = screen.getByRole("button", { name: "Delete" });
+        expect(del).toHaveClass("text-(--negative)!");
+        expect(del).toHaveClass("hover:bg-(--negative-wash)!");
     });
 });

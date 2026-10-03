@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { Button } from "@/components/shared/Button";
 import { discoverTeams, importTeams } from "@/lib/admin/server";
 import type { DiscoveredTeam, TeamImportResponse } from "@/lib/admin/types";
 import { CTA_LABELS } from "@/lib/design/cta";
@@ -121,15 +122,7 @@ export function ImportTeamsDialog() {
     };
 
     if (!isOpen) {
-        return (
-            <button
-                type="button"
-                onClick={handleOpen}
-                className="cursor-pointer rounded-lg border border-(--card-stroke) bg-(--card) px-4 py-2 text-sm font-medium text-foreground hover:bg-(--card-80) transition-colors"
-            >
-                {CTA_LABELS.importTeams}
-            </button>
-        );
+        return <Button onClick={handleOpen}>{CTA_LABELS.importTeams}</Button>;
     }
 
     return (
