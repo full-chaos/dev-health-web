@@ -19,10 +19,6 @@ test.describe("CHAOS-2035 screenshots", () => {
         await page
             .getByRole("heading", { name: "Churn and Ownership" })
             .waitFor({ timeout: 10000 });
-        await page
-            .getByText(/Leading hotspots:/)
-            .first()
-            .waitFor({ timeout: 10000 });
         const ownershipCard = page.getByTestId("ownership-patterns-card");
         // Meter rows with the aggregated labels; author names and emails are not shown.
         await expect(ownershipCard).toContainText("Ownership concentration");
@@ -34,5 +30,21 @@ test.describe("CHAOS-2035 screenshots", () => {
             path: "docs/screenshots/CHAOS-2035/churn-ownership-evidence.png",
             fullPage: true,
         });
+    });
+
+    // The Hotspot concentration heatmap (and its default hotspot summary) moved from the Code page
+    // to the Complexity Hotspots tab.
+    test("hotspot concentration heatmap on the Complexity Hotspots tab (authenticated)", async ({
+        page,
+    }) => {
+        await page.goto("/complexity?tab=hotspots");
+        await page.waitForSelector("main", { timeout: 10000 });
+        const card = page.getByTestId("hotspot-heatmap-section");
+        await card.waitFor({ timeout: 10000 });
+        await expect(card).toContainText("Hotspot concentration");
+        await card
+            .getByText(/Leading hotspots:/)
+            .first()
+            .waitFor({ timeout: 10000 });
     });
 });
