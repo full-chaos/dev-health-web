@@ -9,8 +9,12 @@ import {
     MARGIN_Y,
     LAYERED_TYPE_ORDER,
     MIN_ROW_GAP,
+    BOW_PAD,
+    INNER_LINK_CURVENESS,
+    LABEL_WIDTH,
     countCrossings,
     defaultGraphMode,
+    innerLinkCurveness,
     layoutLayered,
     type LayoutLink,
     type LayoutNode,
@@ -128,5 +132,78 @@ describe("defaultGraphMode", () => {
     it("the limit is the only knob: a limit of 0 always opens Network, Infinity always Layered", () => {
         expect(defaultGraphMode([{ count: 1 }], 0)).toBe("network");
         expect(defaultGraphMode([{ count: 9999 }], Infinity)).toBe("layered");
+    });
+});
+
+// The Dependencies tab links issue to issue: every link stays inside ONE column. Such a link is a
+// bow beside the column, so the layout must leave room for it and must say how wide it may be.
+describe("links inside one column", () => {
+    const flag = n("FEATURE_FLAG", "f");
+    const inner = [l(issues[0], issues[3]), l(issues[1], issues[2]), l(issues[0], flag)];
+    const usable = 1000 - MARGIN_LEFT - MARGIN_RIGHT;
+
+    it("puts each column in the middle of its band, so the drawing is centred", () => {
+        const layout = layoutLayered([...issues, flag], inner, { width: 1000 });
+        expect(layout.innerLinks).toBe(true);
+        expect(layout.columns.map((c) => c.x)).toEqual([usable / 4, (3 * usable) / 4]);
+    });
+
+    it("keeps the columns edge to edge when every link goes between columns", () => {
+        const layout = layoutLayered([...issues, ...prs], crossed, { width: 1000 });
+        expect(layout.innerLinks).toBe(false);
+        expect(layout.columns.map((c) => c.x)).toEqual([0, usable]);
+    });
+
+    it("a link whose two ends are not both nodes does not count as a link inside a column", () => {
+        const layout = layoutLayered(
+            [issues[0], prs[0]],
+            [{ source: issues[0].id, target: "ISSUE:missing" }],
+            { width: 1000 },
+        );
+        expect(layout.innerLinks).toBe(false);
+    });
+
+    it("gives each column the free room on its left: to the canvas edge, or to the labels of the column before", () => {
+        const layout = layoutLayered([...issues, flag], inner, { width: 1000 });
+        expect(layout.columns.map((c) => c.bowRoom)).toEqual([
+            MARGIN_LEFT + usable / 4 - BOW_PAD,
+            usable / 2 - LABEL_WIDTH - BOW_PAD,
+        ]);
+    });
+
+    it("the room is never negative on a narrow card", () => {
+        const many = LAYERED_TYPE_ORDER.map((type) => n(type, "a"));
+        const layout = layoutLayered(many, [l(many[0], many[0])], { width: 420 });
+        for (const column of layout.columns) expect(column.bowRoom).toBeGreaterThanOrEqual(0);
+    });
+});
+
+describe("innerLinkCurveness", () => {
+    // ECharts puts the control point of a curved link at (mid x) - (y1 - y2) * curveness, in
+    // screen px. For a vertical link the bow is on the LEFT when (y1 - y2) * curveness > 0.
+    const bowsLeft = (y1: number, y2: number, room: number) =>
+        (y1 - y2) * innerLinkCurveness(y1, y2, room) > 0;
+
+    it("bows to the left of the column, whichever end is on top", () => {
+        expect(bowsLeft(0, 100, 50)).toBe(true);
+        expect(bowsLeft(100, 0, 50)).toBe(true);
+        expect(innerLinkCurveness(0, 100, 50)).toBeLessThan(0);
+        expect(innerLinkCurveness(100, 0, 50)).toBeGreaterThan(0);
+    });
+
+    it("never strays further than the room, for a short link and for a very long one", () => {
+        for (const length of [10, 100, 1000, 13000]) {
+            const curveness = Math.abs(innerLinkCurveness(0, length, 40));
+            // the peak of the curve is half of the control point's distance from the line
+            expect((curveness * length) / 2).toBeLessThanOrEqual(40 + 1e-9);
+            expect(curveness).toBeLessThanOrEqual(INNER_LINK_CURVENESS);
+        }
+        expect(Math.abs(innerLinkCurveness(0, 10, 40))).toBe(INNER_LINK_CURVENESS);
+    });
+
+    it("is flat when the link has no length or the column has no room", () => {
+        expect(innerLinkCurveness(50, 50, 40)).toBe(0);
+        expect(innerLinkCurveness(0, 100, 0)).toBe(0);
+        expect(innerLinkCurveness(0, 100, -5)).toBe(0);
     });
 });

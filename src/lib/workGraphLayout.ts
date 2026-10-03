@@ -35,6 +35,12 @@ export const MARGIN_LEFT = 56;
 export const MARGIN_RIGHT = 140;
 /** Rows of the tallest column that fit the box without scrolling at the minimum pitch. */
 export const FIT_ROWS = Math.floor((BOX_HEIGHT - 2 * MARGIN_Y) / MIN_ROW_GAP);
+/** Width in px kept for a node label, on the right of its node. */
+export const LABEL_WIDTH = MARGIN_RIGHT - 24;
+/** Clear px between a bow and what is beside it (the canvas edge, or the labels of a column). */
+export const BOW_PAD = 8;
+/** How far a link inside one column bows, as a share of its length (ECharts `curveness`). */
+export const INNER_LINK_CURVENESS = 0.45;
 const SWEEPS = 4;
 
 export type GraphMode = "layered" | "network";
@@ -54,8 +60,14 @@ export type LayoutNode = { id: string; type: WorkGraphNodeType };
 export type LayoutLink = { source: string; target: string };
 
 export type LayeredLayout = {
-    /** Columns left to right, with their node count. Empty columns are not listed. */
-    columns: Array<{ type: WorkGraphNodeType; count: number; x: number }>;
+    /**
+     * Columns left to right, with their node count. Empty columns are not listed. `bowRoom` is
+     * the free width in px on the left of the column: to the canvas edge for the first column,
+     * to the labels of the column before for the others. A link inside the column bows into it.
+     */
+    columns: Array<{ type: WorkGraphNodeType; count: number; x: number; bowRoom: number }>;
+    /** True when a link joins two nodes of one column (for example issue to issue). */
+    innerLinks: boolean;
     /** Coordinates per node id, in px inside the drawing area (margins are added by the chart). */
     positions: Map<string, { x: number; y: number }>;
     /** Height in px of the drawing area, and the row pitch used. */
@@ -143,22 +155,55 @@ export function layoutLayered(
         options.width === undefined
             ? undefined
             : Math.max(0, options.width - MARGIN_LEFT - MARGIN_RIGHT);
+    // A link between two nodes of ONE column is drawn as a bow beside the column. A graph with
+    // such links needs room beside every column, so each column sits in the middle of its own
+    // band of the width: the drawing is centred. A graph whose links all go between columns
+    // keeps the columns edge to edge.
+    const innerLinks = links.some(
+        ({ source, target }) =>
+            typeOf.has(source) && typeOf.has(target) && typeOf.get(source) === typeOf.get(target),
+    );
+    const columnX = (columnIndex: number) =>
+        usableWidth === undefined
+            ? columnIndex * COLUMN_GAP
+            : innerLinks
+              ? ((columnIndex + 0.5) * usableWidth) / present.length
+              : present.length > 1
+                ? (columnIndex * usableWidth) / (present.length - 1)
+                : usableWidth / 2;
     const positions = new Map<string, { x: number; y: number }>();
     const columns = present.map((type, columnIndex) => {
         const ids = order.get(type) ?? [];
-        const x =
-            usableWidth === undefined
-                ? columnIndex * COLUMN_GAP
-                : present.length > 1
-                  ? (columnIndex * usableWidth) / (present.length - 1)
-                  : usableWidth / 2;
+        const x = columnX(columnIndex);
         ids.forEach((id, index) => {
             positions.set(id, { x, y: ((index + 0.5) * height) / ids.length });
         });
-        return { type, count: ids.length, x };
+        const bowRoom =
+            columnIndex === 0
+                ? MARGIN_LEFT + x - BOW_PAD
+                : x - columnX(columnIndex - 1) - LABEL_WIDTH - BOW_PAD;
+        return { type, count: ids.length, x, bowRoom: Math.max(0, bowRoom) };
     });
 
-    return { columns, positions, order, height, rowPitch };
+    return { columns, innerLinks, positions, order, height, rowPitch };
+}
+
+/**
+ * The ECharts `curveness` of a link between two rows of ONE column.
+ *
+ * - It always bows to the LEFT of the column: the node labels are on the right. ECharts puts the
+ *   control point at (mid x) - (y1 - y2) * curveness, so the sign follows the link's direction.
+ * - It never strays further than `room` px from the column (the peak of the curve is half of the
+ *   control point's distance, curveness * length / 2), so a long link is a flat bow and no link
+ *   leaves the canvas or crosses the labels of the column before.
+ *
+ * `sourceY` and `targetY` are the layout y of the two ends (y grows downward, as on screen).
+ */
+export function innerLinkCurveness(sourceY: number, targetY: number, room: number): number {
+    const length = Math.abs(targetY - sourceY);
+    if (length === 0 || room <= 0) return 0;
+    const size = Math.min(INNER_LINK_CURVENESS, (2 * room) / length);
+    return sourceY > targetY ? size : -size;
 }
 
 /** Number of link crossings between neighbouring columns (for tests and tuning). */
