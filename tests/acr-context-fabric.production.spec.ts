@@ -394,7 +394,7 @@ test.describe("Context Fabric production entitlement boundary", () => {
         await page.getByRole("button", { name: "Account options" }).click();
         await page.getByRole("link", { name: "Preferences" }).click();
         await expect(page).toHaveURL(/\/settings$/);
-        await expect(page.getByRole("heading", { name: "Preferences", level: 1 })).toBeVisible();
+        await expect(page.getByRole("heading", { name: "Settings", level: 1 })).toBeVisible();
 
         await page.getByRole("button", { name: "Account options" }).click();
         await page.getByRole("link", { name: "Admin Panel" }).click();
