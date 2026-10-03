@@ -9,6 +9,10 @@ import GovernPage from "./page";
 
 const getGovernSignalsMock = vi.hoisted(() => vi.fn());
 
+const envRef = vi.hoisted(() => ({ testMode: "true" }));
+const requireSessionMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/auth", () => ({ requireSession: requireSessionMock }));
+beforeEach(() => requireSessionMock.mockResolvedValue({ user: { org_id: "org-1" } }));
 vi.mock("next/link", () => ({
     default: ({
         href,
@@ -58,7 +62,7 @@ vi.mock("@/lib/testops/fetchers", () => ({
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({ ok: true }) }));
 vi.mock("@/lib/config", async (importOriginal) => ({
     ...(await importOriginal<typeof import("@/lib/config")>()),
-    getServerEnv: () => ({ DEV_HEALTH_TEST_MODE: "true" }),
+    getServerEnv: () => ({ DEV_HEALTH_TEST_MODE: envRef.testMode }),
 }));
 
 /**
@@ -252,5 +256,18 @@ describe("Govern overview page — approved layout", () => {
             "Incident Correlation — Change failure rate=7",
             "Feature Flags — Active flags=Not reported",
         ]);
+    });
+});
+
+describe("GovernPage org scope (CHAOS-8272)", () => {
+    it("shows one plain sentence and makes no request when the session has no org", async () => {
+        envRef.testMode = "false";
+        requireSessionMock.mockResolvedValue({ user: {} });
+        const { fetchTestOpsData: spy } = await import("@/lib/testops/fetchers");
+        vi.mocked(spy).mockClear();
+        render(await GovernPage({ searchParams: Promise.resolve({}) }));
+        expect(screen.getByText(/no organization selected/i)).toBeInTheDocument();
+        expect(vi.mocked(spy)).not.toHaveBeenCalled();
+        envRef.testMode = "true";
     });
 });

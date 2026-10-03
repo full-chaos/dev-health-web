@@ -6,6 +6,9 @@ const { mockFetchRiskMetrics, quadrantProps } = vi.hoisted(() => ({
     quadrantProps: vi.fn(),
 }));
 
+const requireSessionMock = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/auth", () => ({ requireSession: requireSessionMock }));
+beforeEach(() => requireSessionMock.mockResolvedValue({ user: { org_id: "org-1" } }));
 vi.mock("@/lib/api/system", () => ({ checkApiHealth: vi.fn().mockResolvedValue({ ok: true }) }));
 vi.mock("@/lib/testops/fetchers", () => ({ fetchRiskMetrics: mockFetchRiskMetrics }));
 vi.mock("@/lib/config", () => ({ getServerEnv: () => ({}) }));
@@ -106,5 +109,15 @@ describe("Delivery Risk page", () => {
             expect(within(card).getByRole("heading", { level: 2 })).toHaveTextContent(title);
             expect(within(card).getByTestId(chart)).toBeInTheDocument();
         }
+    });
+});
+
+describe("RiskPage org scope (CHAOS-8272)", () => {
+    it("shows one plain sentence and makes no request when the session has no org", async () => {
+        requireSessionMock.mockResolvedValue({ user: {} });
+        mockFetchRiskMetrics.mockClear();
+        render(await RiskPage({ searchParams: Promise.resolve({}) }));
+        expect(screen.getByText(/no organization selected/i)).toBeInTheDocument();
+        expect(mockFetchRiskMetrics).not.toHaveBeenCalled();
     });
 });

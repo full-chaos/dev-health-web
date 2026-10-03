@@ -123,6 +123,17 @@ function buildSignal(
 /** The unavailable (honest-empty) resolution — no fabricated value. */
 const UNAVAILABLE = { state: "unavailable" as const, value: "" };
 
+/** The order the resolver pushes the cards in (kept in step with the pushes below). */
+const DIAGNOSE_CARD_ORDER = [
+    "flow",
+    "code",
+    "landscape",
+    "complexity",
+    "cognitive-load",
+    "investment",
+    "bottleneck",
+] as const;
+
 const VALID_SEVERITIES = new Set(["critical", "high", "medium", "low"]);
 
 function normalizeReturnedSeverity(severity: string | undefined): AreaSignalState {
@@ -237,7 +248,13 @@ export async function getDiagnoseSignals(
     const orgId = isTestMode ? "default-org" : await resolveOrgId();
     // Short-circuit BEFORE any read: every source below is org-scoped, so with no
     // org nothing is asked and every card is unavailable (not failed).
-    if (!orgId) return diagnose.hubItems.map((d) => buildSignal(d, UNAVAILABLE));
+    if (!orgId) {
+        // Same card order as the normal path below.
+        return DIAGNOSE_CARD_ORDER.flatMap((id) => {
+            const d = descriptor(id);
+            return d ? [buildSignal(d, UNAVAILABLE)] : [];
+        });
+    }
     const complexityScopeInput = complexityScopeInputFromFilter(filters);
 
     // cognitiveLoad only supports org-wide or team aggregation (the resolver takes orgId
