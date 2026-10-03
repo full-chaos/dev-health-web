@@ -3,6 +3,7 @@ import net from "node:net";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createGuardianCompletionCoordinator } from "../owned-process-guardian-completion.mjs";
+import { waitForProcessGroupGone } from "../owned-process-posix.mjs";
 import {
     groupHasDescendants,
     groupMemberIdentities,
@@ -53,6 +54,14 @@ function waitForListener(tree) {
         });
         tree.once("error", reject);
     });
+}
+
+function collectStderr(tree) {
+    let text = "";
+    tree.stderr.on("data", (chunk) => {
+        text += chunk.toString();
+    });
+    return () => text;
 }
 
 function waitForExit(tree) {
@@ -111,6 +120,37 @@ describe("owned POSIX group inspection", () => {
     });
 });
 
+describe("waitForProcessGroupGone (CHAOS-8457)", () => {
+    const clock = () => {
+        let t = 0;
+        return { now: () => t, wait: async (ms) => void (t += ms) };
+    };
+
+    it("polls until the group is gone", async () => {
+        const { now, wait } = clock();
+        let calls = 0;
+        const exists = () => ++calls <= 3;
+
+        await waitForProcessGroupGone(42, { deadlineMs: 1_000, exists, now, wait });
+
+        expect(calls).toBe(4);
+    });
+
+    it("throws at the deadline when the group stays alive", async () => {
+        const { now, wait } = clock();
+
+        await expect(
+            waitForProcessGroupGone(42, { deadlineMs: 100, exists: () => true, now, wait }),
+        ).rejects.toThrow("remained alive");
+    });
+
+    it("returns at once when the group is already gone", async () => {
+        const { now, wait } = clock();
+
+        await waitForProcessGroupGone(42, { deadlineMs: 100, exists: () => false, now, wait });
+    });
+});
+
 describe("guardian completion coordinator", () => {
     it("falls back to the guardian exit event when a drained message is dropped", async () => {
         const completion = createGuardianCompletionCoordinator();
@@ -163,11 +203,15 @@ describe("run-owned-process", () => {
         });
         const listenerProcess = await waitForListener(tree);
         const startedAt = Date.now();
+        const stderr = collectStderr(tree);
 
         tree.kill("SIGTERM");
         await waitForExit(tree);
 
         expect(Date.now() - startedAt).toBeLessThan(10_000);
+        // The SIGKILL path completes from the guardian's death (it kills itself with its group): the
+        // supervisor says so, then verifies the group before it exits.
+        expect(stderr()).toContain("the guardian exited before announcing drain");
         expect(await portIsReleased(listenerProcess.port)).toBe(true);
         expect(() => process.kill(listenerProcess.pid, 0)).toThrow();
     }, 15_000);
@@ -211,14 +255,22 @@ describe("run-owned-process", () => {
         const tree = spawn("node", [runner, "node", "-e", stubbornGrandchildListener], {
             stdio: ["ignore", "pipe", "pipe"],
         });
-        const ownedListener = await waitForListener(tree);
+        try {
+            const ownedListener = await waitForListener(tree);
 
-        tree.kill("SIGTERM");
-        await waitForExit(tree);
+            tree.kill("SIGTERM");
+            await waitForExit(tree);
 
-        expect(await portIsReleased(ownedListener.port)).toBe(true);
-        expect(await portIsReleased(unrelatedProcess.port)).toBe(false);
-        unrelated.kill("SIGKILL");
-        await waitForExit(unrelated);
+            expect(await portIsReleased(ownedListener.port)).toBe(true);
+            expect(await portIsReleased(unrelatedProcess.port)).toBe(false);
+        } finally {
+            // Always release the unrelated listener and the tree, even when an assertion fails: a
+            // failed run used to leave them (and their process groups) behind (CHAOS-8426).
+            if (tree.exitCode === null && tree.signalCode === null) tree.kill("SIGKILL");
+            if (unrelated.exitCode === null && unrelated.signalCode === null) {
+                unrelated.kill("SIGKILL");
+                await waitForExit(unrelated);
+            }
+        }
     }, 15_000);
 });

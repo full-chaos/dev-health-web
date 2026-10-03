@@ -3,7 +3,11 @@ import { fileURLToPath } from "node:url";
 import { OWNED_PROCESS_WAIT_TIMEOUT_MS } from "./owned-process-lifecycle.mjs";
 import { selectOwnedTreeController } from "./owned-process-controller.mjs";
 import { createGuardianCompletionCoordinator } from "./owned-process-guardian-completion.mjs";
-import { processGroupExists, processGroupIsOwned } from "./owned-process-posix.mjs";
+import {
+    processGroupExists,
+    processGroupIsOwned,
+    waitForProcessGroupGone,
+} from "./owned-process-posix.mjs";
 
 const [command, ...args] = process.argv.slice(2);
 if (!command) throw new Error("Expected a command to supervise");
@@ -79,10 +83,6 @@ function errorMessage(error) {
     return error instanceof Error ? error.message : String(error);
 }
 
-function wait(milliseconds) {
-    return new Promise((resolve) => setTimeout(resolve, milliseconds));
-}
-
 function waitForGuardianDrain() {
     return new Promise((resolve) => {
         const timeout = setTimeout(() => {
@@ -110,12 +110,10 @@ async function stopOwnedTree(signal) {
             );
         }
         process.kill(-child.pid, signal);
-        const deadline = Date.now() + SHUTDOWN_TIMEOUT_MS;
-        while (processGroupExists(child.pid)) {
-            if (Date.now() >= deadline)
-                throw new Error("Verified owned POSIX process group remained alive after cleanup.");
-            await wait(POLL_INTERVAL_MS);
-        }
+        await waitForProcessGroupGone(child.pid, {
+            deadlineMs: SHUTDOWN_TIMEOUT_MS,
+            pollIntervalMs: POLL_INTERVAL_MS,
+        });
         return;
     }
 
@@ -124,8 +122,21 @@ async function stopOwnedTree(signal) {
     if (drainSource !== undefined) return;
 
     child.send({ signal: "SIGKILL", type: "stop" });
-    if ((await waitForGuardianDrain()) === undefined) {
+    const killSource = await waitForGuardianDrain();
+    if (killSource === undefined) {
         throw new Error("Owned process group remained alive after SIGKILL.");
+    }
+    if (killSource === "exit_event") {
+        // The guardian kills its own group, itself included, so after SIGKILL it can never announce
+        // "drained": its death is the only signal. Its death does not prove the other members are
+        // gone (their teardown can lag), so check the group before the supervisor exits.
+        console.error(
+            "owned-process: the guardian exited before announcing drain; verifying the owned group is gone",
+        );
+        await waitForProcessGroupGone(child.pid, {
+            deadlineMs: SHUTDOWN_TIMEOUT_MS,
+            pollIntervalMs: POLL_INTERVAL_MS,
+        });
     }
 }
 
