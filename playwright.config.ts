@@ -12,6 +12,26 @@ const webServerPort = Number(process.env.PLAYWRIGHT_WEB_PORT ?? "3001");
 const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${webServerPort}`;
 const mockServerUrl = `http://127.0.0.1:${mockServerPort}`;
 
+// CHAOS-8538. On 2026-10-03 two CI jobs ran 35 minutes of 30 s timeouts: the
+// dev server did not answer the app-shell logo request, so the `load` event
+// never fired on a signed-in page. The four settings below make that class of
+// failure name itself and stop early.
+//
+// 1. Server output. Playwright drops a web server's stdout by default, so the
+//    job log had no server-side record. In CI both streams go to the job log
+//    as `[WebServer]` lines.
+const serverStdout = isCI ? "pipe" : "ignore";
+// 2. Pending requests on a timeout: see the reporter entry below.
+// 3. `maxFailures`. A test counts once, after its last retry. Ten failed tests
+//    in one shard is a shared cause, not ten defects: on 2026-10-03, 90% of
+//    the spec files had nine tests or fewer, so one broken page does not
+//    reach the limit and all of its failures are reported. What the limit
+//    cuts: after the tenth failed test the remaining tests of that job do not
+//    run. With 30 s timeouts and two retries that is about 16 minutes, not
+//    the job limit.
+// 4. Logo canary: see the `shell-logo-canary` project below.
+const ciMaxFailures = 10;
+
 // The guided first-run onboarding journey (auth-onboard.spec.ts) runs with
 // NEXT_PUBLIC_GUIDED_ONBOARDING enabled and therefore lives in its own config
 // (playwright.onboarding.config.ts). Running a second flag-on `next dev` server
@@ -39,15 +59,32 @@ export default defineConfig({
     workers: isCI ? 1 : undefined,
     reporter: [
         ["list"],
+        // CHAOS-8538 (2): on a test timeout, prints the requests that had no
+        // response, with their age. It reads the trace of the failed try; it
+        // runs after the try and cannot change a test.
+        ["./ci/playwright-pending-requests.ts"],
         ["html", { outputFolder: htmlOutputFolder, open: "never" }],
         ["junit", { outputFile: junitOutputFile }],
     ],
     retries: isCI ? 2 : 0,
+    maxFailures: isCI ? ciMaxFailures : 0,
     forbidOnly: isCI,
     projects: [
         {
             name: "auth-setup",
             testMatch: /auth\.setup\.ts/,
+        },
+        {
+            // CHAOS-8538 (4): logo canary. A dependency project runs in each
+            // shard, before the first test of `authenticated`. It fails in
+            // 10 s with the URL when the server does not answer the app-shell
+            // logo, and `authenticated` then does not start.
+            name: "shell-logo-canary",
+            testMatch: /shell-logo-canary\.setup\.ts/,
+            dependencies: ["auth-setup"],
+            use: {
+                storageState: authFile,
+            },
         },
         {
             // These specs select a process-global MSW scenario through the mock
@@ -80,7 +117,7 @@ export default defineConfig({
                 /pagerduty-final-qa-p[0-3]\.spec\.ts/,
                 /acr-device-fresh-session\.spec\.ts/,
             ],
-            dependencies: ["auth-setup"],
+            dependencies: ["auth-setup", "shell-logo-canary"],
             use: {
                 storageState: authFile,
             },
@@ -110,6 +147,8 @@ export default defineConfig({
             url: `${mockServerUrl}/health`,
             reuseExistingServer: false,
             timeout: 30_000,
+            stdout: serverStdout,
+            stderr: "pipe",
             env: {
                 MOCK_SERVER_PORT: String(mockServerPort),
             },
@@ -119,6 +158,8 @@ export default defineConfig({
             url: baseURL,
             reuseExistingServer: false,
             timeout: 120_000,
+            stdout: serverStdout,
+            stderr: "pipe",
             env: {
                 PLAYWRIGHT_TEST: "true",
                 DEV_HEALTH_TEST_MODE: "true",
