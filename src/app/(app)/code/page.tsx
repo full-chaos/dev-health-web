@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { ArrowRight } from "lucide-react";
 
-import { HeatmapPanel } from "@/components/charts/HeatmapPanel";
 import { QuadrantPanel } from "@/components/charts/QuadrantPanel";
 import {
     PageFactsEvidenceAction,
@@ -20,12 +19,11 @@ import { checkApiHealth } from "@/lib/api/system";
 import { getExplainData } from "@/lib/api/home";
 import { getHomeDataViaGraphQL } from "@/lib/graphql/homeFetchers";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { getHeatmap, getQuadrant } from "@/lib/api/visuals";
+import { getQuadrant } from "@/lib/api/visuals";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { fetchOrNull } from "@/lib/fetchOrNull";
 import { buildExploreUrl, withFilterParam } from "@/lib/filters/url";
 import { formatMetricValue, formatNumber } from "@/lib/formatters";
-import { resolveEntityLabel } from "@/lib/labels/entityLabel";
 import { FALLBACK_DELTAS } from "@/lib/metrics/catalog";
 import type { MetricDelta } from "@/lib/types";
 import { PageHeader } from "@/components/shell/PageHeader";
@@ -55,37 +53,24 @@ export default async function CodePage({ searchParams }: CodePageProps) {
               : "org";
 
     // Run health check in parallel with all data fetches to eliminate the waterfall.
-    const [health, home, churnExplain, hotspotHeatmap, churnThroughput, busFactor] =
-        await Promise.all([
-            checkApiHealth(),
-            fetchOrNull(getHomeDataViaGraphQL(filters), "code/home-data"),
-            fetchOrNull(getExplainData({ metric: "churn", filters }), "code/explain-churn"),
-            fetchOrNull(
-                getHeatmap({
-                    type: "risk",
-                    metric: "hotspot_risk",
-                    scope_type: filters.scope.level,
-                    scope_id: scopeId,
-                    range_days: filters.time.range_days,
-                    start_date: filters.time.start_date,
-                    end_date: filters.time.end_date,
-                }),
-                "code/hotspot-heatmap",
-            ),
-            fetchOrNull(
-                getQuadrant({
-                    type: "churn_throughput",
-                    scope_type: quadrantScope,
-                    scope_id: scopeId,
-                    range_days: filters.time.range_days,
-                    bucket: "week",
-                    start_date: filters.time.start_date,
-                    end_date: filters.time.end_date,
-                }),
-                "code/churn-throughput-quadrant",
-            ),
-            fetchOrNull(getBusFactorData(filters), "code/bus-factor"),
-        ]);
+    const [health, home, churnExplain, churnThroughput, busFactor] = await Promise.all([
+        checkApiHealth(),
+        fetchOrNull(getHomeDataViaGraphQL(filters), "code/home-data"),
+        fetchOrNull(getExplainData({ metric: "churn", filters }), "code/explain-churn"),
+        fetchOrNull(
+            getQuadrant({
+                type: "churn_throughput",
+                scope_type: quadrantScope,
+                scope_id: scopeId,
+                range_days: filters.time.range_days,
+                bucket: "week",
+                start_date: filters.time.start_date,
+                end_date: filters.time.end_date,
+            }),
+            "code/churn-throughput-quadrant",
+        ),
+        fetchOrNull(getBusFactorData(filters), "code/bus-factor"),
+    ]);
 
     if (!health.ok) {
         return <ServiceUnavailable landmark={false} />;
@@ -96,12 +81,6 @@ export default async function CodePage({ searchParams }: CodePageProps) {
 
     const churnMetric = getMetric(deltas, "churn");
     const hotspots = (churnExplain?.contributors ?? []).slice(0, 6);
-    const hotspotHighlights = hotspots
-        .slice(0, 3)
-        .map((item) => resolveEntityLabel(item.id, { name: item.label }).label);
-    const hotspotSummary = hotspotHighlights.length
-        ? `Leading hotspots: ${hotspotHighlights.join(", ")}. Higher values lean toward concentrated change and ownership load — open a cell to trace the files, PRs, and commits behind it.`
-        : undefined;
     const hasBusFactorEvidence = (busFactor?.evidenceSampleCount ?? 0) > 0;
     const topMaintainers = (busFactor?.topMaintainers ?? []).slice(0, 5);
     const riskyRepos = (busFactor?.repos ?? [])
@@ -318,27 +297,6 @@ export default async function CodePage({ searchParams }: CodePageProps) {
                     ))}
                 </div>
             </Section>
-
-            <section>
-                <HeatmapPanel
-                    title="Hotspot concentration"
-                    description="Where churn and ownership load accumulate over time."
-                    request={{
-                        type: "risk",
-                        metric: "hotspot_risk",
-                        scope_type: filters.scope.level,
-                        scope_id: scopeId,
-                        range_days: filters.time.range_days,
-                        start_date: filters.time.start_date,
-                        end_date: filters.time.end_date,
-                    }}
-                    initialData={hotspotHeatmap}
-                    emptyState="Hotspot heatmap unavailable."
-                    evidenceTitle="Hotspot evidence"
-                    defaultSummary={hotspotSummary}
-                    flatStateLabel="No hotspot variance in this window — churn is evenly spread, so no single area stands out yet."
-                />
-            </section>
 
             <section>
                 <QuadrantPanel

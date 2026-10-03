@@ -40,6 +40,8 @@ type HeatmapPanelProps = {
     defaultSummary?: string;
     /** Message shown when every cell carries the same value (no variance to map). */
     flatStateLabel?: string;
+    /** Sits inside a Section card that already carries the title and description: no own card, no heading. */
+    embedded?: boolean;
 };
 
 const asText = (value: unknown): string | null =>
@@ -173,6 +175,7 @@ export function HeatmapPanel({
     evidenceTitle = "Evidence",
     defaultSummary,
     flatStateLabel = "No variance in this window — every cell shares the same value.",
+    embedded = false,
 }: HeatmapPanelProps) {
     const evidenceDrawer = useEvidenceDrawer();
     // The artifacts shown under the chart before any selection (served with the grid).
@@ -223,12 +226,14 @@ export function HeatmapPanel({
     const showArtifacts = artifacts.length > 0;
 
     return (
-        <div className="rounded-3xl border border-(--card-stroke) bg-card p-5">
+        <div className={embedded ? "" : "rounded-3xl border border-(--card-stroke) bg-card p-5"}>
             <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                    <h2 className="font-(--font-display) text-xl">{title}</h2>
-                    <p className="mt-2 text-sm text-(--ink-muted)">{description}</p>
-                </div>
+                {embedded ? null : (
+                    <div>
+                        <h2 className="font-(--font-display) text-xl">{title}</h2>
+                        <p className="mt-2 text-sm text-(--ink-muted)">{description}</p>
+                    </div>
+                )}
                 {/* Prototype `pill(unit, 'info')` (app.js:79): the served unit as an info pill. */}
                 {data.legend.unit ? (
                     <StatusPill tone="info" testId="heatmap-unit">
