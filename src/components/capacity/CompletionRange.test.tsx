@@ -75,6 +75,9 @@ const base = (over: Partial<CapacityForecast> = {}): CapacityForecast => ({
     highVariance: false,
     completionDistribution: {
         runs: 200,
+        // every run finished inside the horizon
+        unfinishedRuns: 0,
+        horizonDays: 365,
         days: [
             { value: 18, count: 50, cumulativeShare: 0.25 },
             { value: 19, count: 120, cumulativeShare: 0.85 },
@@ -248,6 +251,186 @@ describe("CompletionRange — words", () => {
         const text = option().tooltip.formatter({ data: [19, 0.85] });
         expect(text).toContain("120 runs ended on this day");
         expect(text).not.toMatch(/\bof 2\d\d\b/u);
+    });
+});
+
+// CHAOS-8532: the simulation stops a run at the horizon (365 days, served as `horizonDays`). A run
+// that is stopped there is NOT done. The API counts only the finished runs in `cumulativeShare`,
+// so the curve can end below 100%, and it serves how many runs did not finish. The card shows that
+// as served: it never closes the curve and it never names a date for "the horizon or later".
+describe("CompletionRange — runs that did not finish inside the horizon", () => {
+    // 200 runs: 50 done on day 18, 70 on day 19, and 80 stopped at the horizon, not done.
+    const capped = (over: Partial<Distribution> = {}, forecast: Partial<CapacityForecast> = {}) =>
+        base({
+            p50Days: 19,
+            p85Days: 365,
+            p95Days: 365,
+            p50Date: "2026-06-20",
+            p85Date: "2027-06-01",
+            p95Date: "2027-06-01",
+            completionDistribution: {
+                runs: 200,
+                unfinishedRuns: 80,
+                horizonDays: 365,
+                days: [
+                    { value: 18, count: 50, cumulativeShare: 0.25 },
+                    { value: 19, count: 70, cumulativeShare: 0.6 },
+                    { value: 365, count: 80, cumulativeShare: 0.6 },
+                ],
+                items: null,
+                ...over,
+            },
+            ...forecast,
+        });
+    const unfinishedLine = () => screen.queryByTestId("completion-range-unfinished");
+
+    it("draws the curve as served: it ends below 100% and is not closed to 100%", () => {
+        render(<CompletionRange forecast={capped()} />);
+        expect(curve().data).toEqual([
+            [18, 0.25],
+            [19, 0.6],
+            [365, 0.6],
+        ]);
+        expect(Math.max(...curve().data.map(([, share]) => share))).toBe(0.6);
+    });
+
+    it("says how many runs did not finish, with the served numbers and the served horizon", () => {
+        render(<CompletionRange forecast={capped()} />);
+        expect(unfinishedLine()).toHaveTextContent(
+            /^80 of 200 runs did not finish within 365 days\.$/u,
+        );
+    });
+
+    it("takes the horizon from the API: it has no 365 of its own", () => {
+        render(
+            <CompletionRange
+                forecast={capped({
+                    horizonDays: 200,
+                    days: [
+                        { value: 18, count: 50, cumulativeShare: 0.25 },
+                        { value: 200, count: 150, cumulativeShare: 0.25 },
+                    ],
+                    unfinishedRuns: 150,
+                })}
+            />,
+        );
+        expect(unfinishedLine()).toHaveTextContent(
+            /^150 of 200 runs did not finish within 200 days\.$/u,
+        );
+    });
+
+    it("says nothing about unfinished runs when every run finished", () => {
+        render(<CompletionRange forecast={base()} />);
+        expect(unfinishedLine()).toBeNull();
+    });
+
+    it.each([
+        ["null", null],
+        ["absent", undefined],
+    ])(
+        "says nothing when the count of unfinished runs is not served (%s): it counts none itself",
+        (_name, unfinishedRuns) => {
+            render(<CompletionRange forecast={capped({ unfinishedRuns })} />);
+            expect(unfinishedLine()).toBeNull();
+            // the curve is still the served points
+            expect(curve().data.at(-1)).toEqual([365, 0.6]);
+        },
+    );
+
+    it("says nothing when the horizon is not served: it has no horizon of its own to name", () => {
+        const forecast = capped();
+        const withoutHorizon = {
+            ...forecast.completionDistribution!,
+            horizonDays: undefined,
+        } as unknown as Distribution;
+        render(
+            <CompletionRange forecast={{ ...forecast, completionDistribution: withoutHorizon }} />,
+        );
+        expect(unfinishedLine()).toBeNull();
+        // with no served horizon no day is "the horizon": the markers keep their served dates
+        expect(curve().markLine!.data[1].label.formatter).toBe("P85 · Jun 1 · 365 days");
+    });
+
+    it("leaves the run total out of the sentence when it is not served", () => {
+        const forecast = capped();
+        const withoutRuns = {
+            ...forecast.completionDistribution!,
+            runs: undefined,
+        } as unknown as Distribution;
+        render(<CompletionRange forecast={{ ...forecast, completionDistribution: withoutRuns }} />);
+        expect(unfinishedLine()).toHaveTextContent(/^80 runs did not finish within 365 days\.$/u);
+    });
+
+    it("says run, not runs, for one unfinished run with no served total", () => {
+        const forecast = capped({ unfinishedRuns: 1 });
+        const withoutRuns = {
+            ...forecast.completionDistribution!,
+            runs: undefined,
+        } as unknown as Distribution;
+        render(<CompletionRange forecast={{ ...forecast, completionDistribution: withoutRuns }} />);
+        expect(unfinishedLine()).toHaveTextContent(/^1 run did not finish within 365 days\.$/u);
+    });
+
+    it("a percentile at the horizon reads 'or more' and names no date; the others keep their date", () => {
+        render(<CompletionRange forecast={capped()} />);
+        expect(curve().markLine!.data.map((mark) => [mark.xAxis, mark.label.formatter])).toEqual([
+            [19, "P50 · Jun 20 · 19 days"],
+            [365, "P85 · 365 days or more"],
+            [365, "P95 · 365 days or more"],
+        ]);
+    });
+
+    it("the tooltip of the horizon bin says the runs did not finish, not that they ended on that day", () => {
+        render(<CompletionRange forecast={capped()} />);
+        const text = option().tooltip.formatter({ data: [365, 0.6] });
+        expect(text).toContain("365 days or more after the forecast");
+        expect(text).toContain("60% of the runs were done by this day");
+        expect(text).toContain("80 of 200 runs did not finish within 365 days");
+        expect(text).not.toContain("ended on this day");
+        // the heading is not a finish date
+        expect(text).toContain("or later");
+    });
+
+    it("a bin before the horizon keeps its words", () => {
+        render(<CompletionRange forecast={capped()} />);
+        const text = option().tooltip.formatter({ data: [19, 0.6] });
+        expect(text).toContain("19 days after the forecast");
+        expect(text).toContain("70 of 200 runs ended on this day");
+        expect(text).not.toContain("or more");
+        expect(text).not.toContain("or later");
+    });
+
+    it("a day equal to 365 is a normal day when the served horizon is another number", () => {
+        render(
+            <CompletionRange
+                forecast={capped(
+                    { horizonDays: 400, unfinishedRuns: 0 },
+                    { p85Days: 365, p95Days: 365 },
+                )}
+            />,
+        );
+        const text = option().tooltip.formatter({ data: [365, 0.6] });
+        expect(text).toContain("80 of 200 runs ended on this day");
+        expect(curve().markLine!.data[1].label.formatter).toBe("P85 · Jun 1 · 365 days");
+    });
+
+    it("draws the curve also when no run finished: one served point at 0%", () => {
+        render(
+            <CompletionRange
+                forecast={capped(
+                    { unfinishedRuns: 200, days: [{ value: 365, count: 200, cumulativeShare: 0 }] },
+                    { p50Days: 365, p85Days: 365, p95Days: 365 },
+                )}
+            />,
+        );
+        expect(curve().data).toEqual([[365, 0]]);
+        expect(unfinishedLine()).toHaveTextContent(
+            /^200 of 200 runs did not finish within 365 days\.$/u,
+        );
+        expect(screen.getByTestId("completion-range")).not.toHaveAttribute(
+            "data-reported",
+            "false",
+        );
     });
 });
 

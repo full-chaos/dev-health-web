@@ -259,6 +259,8 @@ query CapacityForecast($orgId: String!, $input: CapacityForecastInput) {
     highVariance
     completionDistribution {
       runs
+      unfinishedRuns
+      horizonDays
       days {
         value
         count
