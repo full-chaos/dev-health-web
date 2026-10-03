@@ -191,7 +191,7 @@ export default async function PlanPage({ searchParams }: PlanPageProps) {
     const [health, session] = await Promise.all([checkApiHealth(), requireSession()]);
     if (!health.ok) return <ServiceUnavailable landmark={false} />;
 
-    const orgId = session.user.org_id ?? "default-org";
+    const orgId = session.user.org_id ?? "";
     const forecast = await fetchOrNull(
         getThroughputForecastViaGraphQL(orgId, {
             teamIds,

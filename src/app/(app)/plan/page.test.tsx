@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { requireSession } from "@/lib/auth";
 import { render, screen, within } from "@testing-library/react";
 
 import { STATUS_PILL } from "@/lib/statusPill";
@@ -420,5 +421,18 @@ describe("Plan overview — page pass", () => {
 
         const destinations = screen.getByTestId("plan-destinations");
         expect(destinations.nextElementSibling).toBeNull();
+    });
+});
+
+describe("Plan overview — org scope (CHAOS-8272)", () => {
+    it('asks for the session org, and never the "default-org" placeholder', async () => {
+        mockForecast.mockResolvedValue(forecast());
+        await renderPage();
+        expect(mockForecast).toHaveBeenCalledWith("org-1", expect.anything());
+
+        vi.mocked(requireSession).mockResolvedValueOnce({ user: {} } as never);
+        mockForecast.mockClear();
+        await renderPage();
+        expect(mockForecast.mock.calls[0]?.[0]).toBe("");
     });
 });

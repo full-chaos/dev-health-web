@@ -24,6 +24,7 @@ import { graphqlFetch } from "@/lib/graphql/server";
 import { getBusFactorData } from "@/lib/api/code";
 import { getInvestment } from "@/lib/api/investment";
 import { getCognitiveLoadViaGraphQL } from "@/lib/graphql/cognitiveLoadFetchers";
+import { auth } from "@/lib/auth";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 
 import { getDiagnoseSignals } from "../diagnose";
@@ -673,5 +674,18 @@ describe("Investment card (CHAOS-7612 5.2b)", () => {
         const card = await investment(true);
         expect(mockGetInvestment).not.toHaveBeenCalled();
         expect(card).toMatchObject({ state: "neutral", value: "Feature Delivery 42%" });
+    });
+});
+
+describe("getDiagnoseSignals — org scope comes from the session (CHAOS-8272)", () => {
+    it('never sends the "default-org" placeholder when the session has no org', async () => {
+        vi.mocked(auth).mockResolvedValueOnce({ user: {} } as never);
+        await getDiagnoseSignals(defaultMetricFilter);
+        expect(JSON.stringify(mockGraphql.mock.calls)).not.toContain("default-org");
+    });
+
+    it("sends the session org when present", async () => {
+        await getDiagnoseSignals(defaultMetricFilter);
+        expect(JSON.stringify(mockGraphql.mock.calls)).toContain("org-test");
     });
 });

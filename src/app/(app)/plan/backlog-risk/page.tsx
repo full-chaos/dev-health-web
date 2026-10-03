@@ -32,7 +32,7 @@ export default async function BacklogRiskPage({ searchParams }: BacklogRiskPageP
     const [health, session] = await Promise.all([checkApiHealth(), requireSession()]);
     if (!health.ok) return <ServiceUnavailable landmark={false} />;
 
-    const orgId = session.user.org_id ?? "default-org";
+    const orgId = session.user.org_id ?? "";
     let forecast: ThroughputForecast | null = null;
     let forecastFetchFailed = false;
     try {

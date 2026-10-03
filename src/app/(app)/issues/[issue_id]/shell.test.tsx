@@ -6,6 +6,9 @@ import { AppShell } from "@/components/shell/AppShell";
 import { defaultMetricFilter } from "@/lib/filters/defaults";
 import { encodeFilterParam } from "@/lib/filters/encode";
 
+import { requireSession } from "@/lib/auth";
+import { getAIWorkflowDrilldownViaGraphQL } from "@/lib/graphql/workGraphFetchers";
+
 import IssueDetailPage from "./page";
 
 // The issue detail page inside the shared app shell. Diagnose owns the
@@ -104,5 +107,16 @@ describe("Issue detail in the shared app shell", () => {
             const url = new URL(link.getAttribute("href") ?? "", "https://app.example");
             expect(url.searchParams.get("f"), url.pathname).toBe(DEFAULT_F);
         }
+    });
+});
+
+describe("Issue detail org scope (CHAOS-8272)", () => {
+    it('never sends the "default-org" placeholder when the session has no org', async () => {
+        vi.mocked(requireSession).mockResolvedValueOnce({ user: {} } as never);
+        vi.mocked(getAIWorkflowDrilldownViaGraphQL).mockClear();
+        await renderPage();
+        expect(getAIWorkflowDrilldownViaGraphQL).toHaveBeenCalledWith(
+            expect.objectContaining({ orgId: "" }),
+        );
     });
 });

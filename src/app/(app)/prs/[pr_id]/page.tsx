@@ -160,7 +160,7 @@ export default async function PrDetailPage({ params }: PrDetailPageProps) {
     const { pr_id: encodedPrId } = await params;
     const prId = decodeURIComponent(encodedPrId);
     const session = await requireSession();
-    const orgId = session.user.org_id ?? "default-org";
+    const orgId = session.user.org_id ?? "";
     const demoMode = isExplicitDemoMode();
     const prResult = await getPrDetailViaGraphQL({ orgId, id: prId })
         .then((pr) => ({ pr, error: null }))

@@ -91,7 +91,7 @@ function buildSignal(
 /** Resolve the org scope from the auth session. */
 async function resolveOrgId(): Promise<string> {
     const session = await auth();
-    return (session?.user?.org_id as string | undefined) ?? "default-org";
+    return (session?.user?.org_id as string | undefined) ?? "";
 }
 
 /**
