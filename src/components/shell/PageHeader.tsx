@@ -14,6 +14,12 @@ type PageHeaderProps = {
      * Pass it for a page the nav config does not name (a detail page).
      */
     title?: string;
+    /**
+     * A small mark beside the title, in the same row (a pill such as "Platform admin" or
+     * "Preview"). It sits next to the `h1`, never inside it, so the page's one heading stays the
+     * title alone. Omitted: nothing is drawn.
+     */
+    titleAdornment?: ReactNode;
     /** One line under the title. */
     subtitle?: ReactNode;
     /** Right-aligned page actions (buttons from the CTA registry). */
@@ -34,7 +40,14 @@ type PageHeaderProps = {
  * config, so it cannot drift from the sidebar and the breadcrumbs. It is left
  * out when it would only repeat the title (A8).
  */
-export function PageHeader({ title, subtitle, actions, back, children }: PageHeaderProps) {
+export function PageHeader({
+    title,
+    titleAdornment,
+    subtitle,
+    actions,
+    back,
+    children,
+}: PageHeaderProps) {
     const pathname = usePathname() ?? "";
     const heading = title ?? navTitleForPathname(pathname);
     const trail = navTrailForPathname(pathname)
@@ -62,7 +75,14 @@ export function PageHeader({ title, subtitle, actions, back, children }: PageHea
                             {eyebrow}
                         </p>
                     ) : null}
-                    <h1 className="text-h1 text-(--text-primary)">{heading}</h1>
+                    {titleAdornment ? (
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <h1 className="text-h1 text-(--text-primary)">{heading}</h1>
+                            <div data-testid="page-header-title-adornment">{titleAdornment}</div>
+                        </div>
+                    ) : (
+                        <h1 className="text-h1 text-(--text-primary)">{heading}</h1>
+                    )}
                     {subtitle ? (
                         <p className="mt-2 max-w-3xl text-body text-(--text-secondary)">
                             {subtitle}
