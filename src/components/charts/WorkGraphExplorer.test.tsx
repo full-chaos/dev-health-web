@@ -288,6 +288,18 @@ describe("layered mode with links inside a column", () => {
         expect(screen.queryByRole("button", { name: "Reset zoom" })).toBeNull();
     });
 
+    it("each zoom button has its icon before its label (the icon is not part of the name)", () => {
+        open();
+        fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+        for (const name of ["Zoom in", "Zoom out", "Reset zoom"]) {
+            const button = screen.getByRole("button", { name });
+            const icon = button.firstElementChild as HTMLElement;
+            expect(icon.getAttribute("aria-hidden"), name).toBe("true");
+            expect(icon.querySelector("svg"), name).not.toBeNull();
+            expect(button.lastChild?.textContent, name).toBe(name);
+        }
+    });
+
     it("the zoom has an end on both sides", () => {
         open();
         expect(screen.getByRole("button", { name: "Zoom out" })).toBeDisabled();

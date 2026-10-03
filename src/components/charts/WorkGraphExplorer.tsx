@@ -11,6 +11,7 @@ import {
     useState,
 } from "react";
 import type { EChartsOption } from "echarts";
+import { RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { GraphChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
@@ -707,6 +708,7 @@ export function WorkGraphExplorer({
                     <Button
                         variant="ghost"
                         size="sm"
+                        icon={<ZoomIn />}
                         onClick={() => changeZoom(1)}
                         disabled={zoomStep === ZOOM_LEVELS.length - 1}
                     >
@@ -715,13 +717,19 @@ export function WorkGraphExplorer({
                     <Button
                         variant="ghost"
                         size="sm"
+                        icon={<ZoomOut />}
                         onClick={() => changeZoom(-1)}
                         disabled={zoomStep === 0}
                     >
                         {CTA_LABELS.zoomOut}
                     </Button>
                     {zoomStep > 0 ? (
-                        <Button variant="ghost" size="sm" onClick={() => changeZoom(0)}>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={<RotateCcw />}
+                            onClick={() => changeZoom(0)}
+                        >
                             {CTA_LABELS.resetZoom}
                         </Button>
                     ) : null}
