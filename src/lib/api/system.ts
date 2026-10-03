@@ -1,4 +1,4 @@
-import type { HealthResponse, MetaResponse } from "@/lib/types";
+import type { HealthResponse } from "@/lib/types";
 import { apiClient } from "@/lib/apiClient";
 
 export async function checkApiHealth() {
@@ -9,15 +9,5 @@ export async function checkApiHealth() {
         return { ok: data.status === "ok", data };
     } catch {
         return { ok: false, data: null as HealthResponse | null };
-    }
-}
-
-export async function getApiMeta(): Promise<MetaResponse | null> {
-    try {
-        return await apiClient.getJson<MetaResponse>("/api/v1/meta", undefined, {
-            cache: "no-store",
-        });
-    } catch {
-        return null;
     }
 }

@@ -51,10 +51,12 @@ describe("AIImpactEvidenceList look (CHAOS-7769)", () => {
         expect(screen.getByTestId("ai-impact-evidence-row").className).toContain("var(--accent)");
     });
 
-    it("never prints a raw repo id: it shows a short token with the Unresolved badge", () => {
+    it("never prints a raw repo id: with no served name the cell reads 'Not reported', with no id token and no badge", () => {
         render(<AIImpactEvidenceList filter={filter} />);
         const row = screen.getByTestId("ai-impact-evidence-row");
         expect(row).not.toHaveTextContent("11111111-2222-3333-4444-555555555555");
-        expect(row).toHaveTextContent("Unresolved");
+        expect(row).not.toHaveTextContent("11111111");
+        expect(row).not.toHaveTextContent("Unresolved");
+        expect(screen.getByTestId("ai-impact-evidence-repo")).toHaveTextContent(/^Not reported$/);
     });
 });

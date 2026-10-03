@@ -74,6 +74,7 @@ export function InvestmentCharts({
     const [chartType, setChartType] = useState<InvestmentFlowChartType>("sankey");
     const {
         themeColorMap,
+        themeBarColorMap,
         prepareSankeyFlow,
         resolveSubcategoryIdFromLabel,
         buildSankeyTooltipFormatter,
@@ -131,6 +132,7 @@ export function InvestmentCharts({
             setFocusTheme={setFocusTheme}
             setFocusSubcategory={setFocusSubcategory}
             themeColorMap={themeColorMap}
+            themeBarColorMap={themeBarColorMap}
         />
     );
 

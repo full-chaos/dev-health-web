@@ -1,20 +1,33 @@
 "use client";
 
-import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+    type CSSProperties,
+    type MouseEvent as ReactMouseEvent,
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from "react";
 import type { EChartsOption } from "echarts";
+import { RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
 import { GraphChart } from "echarts/charts";
 
 import { Chart } from "./Chart";
+import { Button } from "@/components/shared/Button";
 import { NODE_TYPE_COLOR_SOURCE } from "@/lib/workGraphNodeColors";
 import { type ChartTokens, useChartColors, useChartTheme, useChartTokens } from "./chartTheme";
 import { echarts } from "@/lib/echartsInit";
 import { CTA_LABELS } from "@/lib/design/cta";
 import {
     BOX_HEIGHT,
+    LABEL_WIDTH,
     MARGIN_LEFT,
     MARGIN_RIGHT,
     MARGIN_Y,
     defaultGraphMode,
+    innerLinkCurveness,
     layoutLayered,
 } from "@/lib/workGraphLayout";
 import { ChartTypeToggle } from "./ChartTypeToggle";
@@ -112,6 +125,16 @@ const ALL_NODE_TYPES: WorkGraphNodeType[] = [
 ];
 
 export type WorkGraphLayoutMode = "layered" | "network";
+
+/**
+ * Width steps of the layered drawing. 1 = the drawing fits the box. A larger step makes the
+ * drawing wider than the box (more room between the columns), and the box scrolls sideways.
+ */
+export const ZOOM_LEVELS = [1, 1.5, 2, 3, 4] as const;
+/** A drag shorter than this is a click (the chart library uses the same limit). */
+const DRAG_START_PX = 4;
+/** The wheel gives at most one zoom step in this time (a pinch sends many wheel events). */
+const WHEEL_ZOOM_GAP_MS = 150;
 
 const LAYOUT_MODE_OPTIONS: Array<{ id: WorkGraphLayoutMode; label: string }> = [
     { id: "layered", label: "Layered" },
@@ -271,6 +294,19 @@ export function WorkGraphExplorer({
     const [chosenMode, setChosenMode] = useState<WorkGraphLayoutMode | null>(null);
     const scrollRef = useRef<HTMLDivElement | null>(null);
     const [boxWidth, setBoxWidth] = useState(900);
+    // The layered drawing is moved with the scroll of its box, NOT with a zoom of the chart
+    // library: an "inside" data zoom takes every wheel event over the chart, so the box (which
+    // can be thousands of px high) could no longer be scrolled with the wheel. So: the box
+    // scrolls both ways, a drag scrolls it, and a zoom step makes the drawing wider.
+    const [zoomStep, setZoomStep] = useState(0);
+    const canvasWidth = Math.round(boxWidth * ZOOM_LEVELS[zoomStep]);
+    const stripRef = useRef<HTMLDivElement | null>(null);
+    // The point of the drawing that stays at the same place of the box through a zoom step.
+    const zoomAnchor = useRef<{ share: number; offset: number } | null>(null);
+    const lastWheelZoom = useRef(0);
+    const dragged = useRef(false);
+    const endDrag = useRef<(() => void) | null>(null);
+    useEffect(() => () => endDrag.current?.(), []);
     const [ownHiddenNodeTypes, setHiddenNodeTypes] = useState<Set<WorkGraphNodeType>>(
         () => new Set(),
     );
@@ -298,12 +334,16 @@ export function WorkGraphExplorer({
     );
 
     const layered = useMemo(
-        () => layoutLayered(nodes, links, { width: boxWidth }),
-        [nodes, links, boxWidth],
+        () => layoutLayered(nodes, links, { width: canvasWidth }),
+        [nodes, links, canvasWidth],
     );
     // One rule picks the opening mode (see defaultGraphMode); an explicit choice always wins.
     const layoutMode: WorkGraphLayoutMode = chosenMode ?? defaultGraphMode(layered.columns);
     const setLayoutMode = setChosenMode;
+    // The scroll box is on the page only in the layered mode of a graph that has edges. The
+    // effects that need the box run again when this changes (a graph can get its edges after the
+    // first draw).
+    const boxDrawn = layoutMode === "layered" && edges.length > 0;
     const layeredHeight =
         layered.height + 2 * MARGIN_Y > BOX_HEIGHT ? layered.height + 2 * MARGIN_Y : BOX_HEIGHT;
 
@@ -317,7 +357,7 @@ export function WorkGraphExplorer({
         });
         observer.observe(element);
         return () => observer.disconnect();
-    }, [layoutMode]);
+    }, [boxDrawn]);
 
     const categories = useMemo(
         () =>
@@ -364,7 +404,7 @@ export function WorkGraphExplorer({
             label: {
                 // layered: every row is labelled (the canvas scrolls); network: production rule
                 show: isLayered ? true : showNodeLabels && node.symbolSize > 25,
-                ...(isLayered ? { width: MARGIN_RIGHT - 24, overflow: "truncate" as const } : {}),
+                ...(isLayered ? { width: LABEL_WIDTH, overflow: "truncate" as const } : {}),
                 position: isLayered ? ("right" as const) : ("bottom" as const),
                 fontSize: 10,
                 color: chartTheme.text,
@@ -372,11 +412,20 @@ export function WorkGraphExplorer({
         }));
 
         const nodeById = new Map(nodes.map((node) => [node.id, node]));
+        const bowRoom = new Map(layered.columns.map((column) => [column.type, column.bowRoom]));
         const echartsLinks = links.map((link) => {
             const linkStyle = edgeTypeStyles[link.edgeType] ?? {
                 color: chartTheme.muted,
                 type: "solid" as const,
             };
+            const sourceType = nodeById.get(link.source)?.type;
+            // A link inside one column (same type) bows out so it stays readable: always to the
+            // left of the column (the labels are on the right), and never wider than the free
+            // room there, so it does not leave the canvas.
+            const insideColumn =
+                isLayered && sourceType !== undefined
+                    ? sourceType === nodeById.get(link.target)?.type
+                    : false;
             return {
                 source: link.source,
                 target: link.target,
@@ -385,12 +434,13 @@ export function WorkGraphExplorer({
                     type: linkStyle.type,
                     width: link.lineStyle?.width ?? 1,
                     opacity: link.lineStyle?.opacity ?? 0.6,
-                    // a link inside one column (same type) bows out so it stays readable
-                    curveness:
-                        isLayered &&
-                        nodeById.get(link.source)?.type === nodeById.get(link.target)?.type
-                            ? 0.45
-                            : 0.1,
+                    curveness: insideColumn
+                        ? innerLinkCurveness(
+                              layered.positions.get(link.source)?.y ?? 0,
+                              layered.positions.get(link.target)?.y ?? 0,
+                              (sourceType && bowRoom.get(sourceType)) || 0,
+                          )
+                        : 0.1,
                 },
             };
         });
@@ -431,7 +481,7 @@ export function WorkGraphExplorer({
                           type: "value" as const,
                           show: false,
                           min: 0,
-                          max: Math.max(1, boxWidth - MARGIN_LEFT - MARGIN_RIGHT),
+                          max: Math.max(1, canvasWidth - MARGIN_LEFT - MARGIN_RIGHT),
                       },
                       yAxis: {
                           type: "value" as const,
@@ -460,7 +510,8 @@ export function WorkGraphExplorer({
                               bottom: MARGIN_Y,
                               center: ["50%", "50%"],
                           }),
-                    // layered: the area scrolls, so no wheel zoom / drag pan fights it
+                    // layered: the box scrolls (wheel, drag) and the zoom steps change the
+                    // width, so no wheel zoom / drag pan of the chart library fights them
                     roam: !isLayered,
                     draggable: useForceLayout,
                     force: useForceLayout
@@ -498,7 +549,7 @@ export function WorkGraphExplorer({
         edgeTypeStyles,
         layoutMode,
         layered,
-        boxWidth,
+        canvasWidth,
     ]);
 
     const handleEvents = useMemo(
@@ -513,6 +564,101 @@ export function WorkGraphExplorer({
         }),
         [onNodeClickAction],
     );
+
+    // The column names are outside the box (always in view), so they follow its sideways scroll.
+    const syncColumnNames = useCallback(() => {
+        const box = scrollRef.current;
+        const strip = stripRef.current;
+        if (box && strip) strip.style.transform = `translateX(${-box.scrollLeft}px)`;
+    }, []);
+
+    // One zoom step in (1), out (-1) or back to the fit (0). `offset` is the place of the box
+    // (px from its left edge) that keeps its point of the drawing: the pointer for the wheel,
+    // the middle of the box for the buttons.
+    const changeZoom = useCallback(
+        (direction: 1 | -1 | 0, offset?: number) => {
+            const next =
+                direction === 0
+                    ? 0
+                    : Math.min(ZOOM_LEVELS.length - 1, Math.max(0, zoomStep + direction));
+            // At an end of the range nothing changes, so no point is kept: a kept point would
+            // move the box at the next change of the width (a resize of the card).
+            if (next === zoomStep) return;
+            const box = scrollRef.current;
+            if (box && canvasWidth > 0) {
+                const at = offset ?? box.clientWidth / 2;
+                zoomAnchor.current = { share: (box.scrollLeft + at) / canvasWidth, offset: at };
+            }
+            setZoomStep(next);
+        },
+        [canvasWidth, zoomStep],
+    );
+
+    // After the width changed: put the kept point back at its place, then the column names.
+    useLayoutEffect(() => {
+        const box = scrollRef.current;
+        const anchor = zoomAnchor.current;
+        zoomAnchor.current = null;
+        if (box && anchor) box.scrollLeft = Math.max(0, anchor.share * canvasWidth - anchor.offset);
+        syncColumnNames();
+    }, [canvasWidth, boxDrawn, syncColumnNames]);
+
+    // Ctrl (or the Command key) + wheel, which is also what a pinch on a trackpad sends, zooms.
+    // The plain wheel is NOT touched: it scrolls the box. The listener is added by hand because
+    // it must be able to stop the browser's own page zoom (React's wheel listener is passive).
+    useEffect(() => {
+        const box = scrollRef.current;
+        if (!box) return;
+        const onWheel = (event: WheelEvent) => {
+            if (!event.ctrlKey && !event.metaKey) return;
+            event.preventDefault();
+            const now = Date.now();
+            if (event.deltaY === 0 || now - lastWheelZoom.current < WHEEL_ZOOM_GAP_MS) return;
+            lastWheelZoom.current = now;
+            changeZoom(event.deltaY < 0 ? 1 : -1, event.clientX - box.getBoundingClientRect().left);
+        };
+        box.addEventListener("wheel", onWheel, { passive: false });
+        return () => box.removeEventListener("wheel", onWheel);
+    }, [boxDrawn, changeZoom]);
+
+    // A drag with the mouse scrolls the box (touch and trackpad scroll it without help).
+    const startDrag = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+        const box = event.currentTarget;
+        dragged.current = false;
+        // The main button only, and not the scroll bar of the box (its target is the box).
+        if (event.button !== 0 || event.target === box) return;
+        const from = {
+            x: event.clientX,
+            y: event.clientY,
+            left: box.scrollLeft,
+            top: box.scrollTop,
+        };
+        const onMove = (move: MouseEvent) => {
+            const dx = move.clientX - from.x;
+            const dy = move.clientY - from.y;
+            if (!dragged.current && Math.hypot(dx, dy) < DRAG_START_PX) return;
+            dragged.current = true;
+            box.scrollLeft = from.left - dx;
+            box.scrollTop = from.top - dy;
+        };
+        const stop = () => {
+            window.removeEventListener("mousemove", onMove);
+            window.removeEventListener("mouseup", stop);
+            endDrag.current = null;
+        };
+        endDrag.current?.();
+        endDrag.current = stop;
+        window.addEventListener("mousemove", onMove);
+        window.addEventListener("mouseup", stop);
+    }, []);
+
+    // The drawing moves with the pointer, so the chart sees a drag as a click on the node under
+    // the pointer. A click that ends a drag is not a selection: it does not reach the chart.
+    const dropClickAfterDrag = useCallback((event: ReactMouseEvent<HTMLDivElement>) => {
+        if (!dragged.current) return;
+        dragged.current = false;
+        event.stopPropagation();
+    }, []);
 
     if (edges.length === 0) {
         return (
@@ -541,18 +687,59 @@ export function WorkGraphExplorer({
             {layoutMode === "layered" && (
                 // the column strip stays outside the scroll area, so it is always visible
                 <div
-                    className="relative mb-1 h-5 text-xs text-(--ink-muted)"
+                    className="relative mb-1 h-5 overflow-hidden text-xs text-(--ink-muted)"
                     data-testid="work-graph-columns"
                 >
-                    {layered.columns.map((column) => (
-                        <span
-                            key={column.type}
-                            className="absolute top-0 whitespace-nowrap"
-                            style={{ left: MARGIN_LEFT + column.x - 6 }}
+                    <div
+                        ref={stripRef}
+                        className="absolute inset-y-0 left-0"
+                        style={{ width: canvasWidth }}
+                    >
+                        {layered.columns.map((column) => (
+                            <span
+                                key={column.type}
+                                className="absolute top-0 whitespace-nowrap"
+                                style={{ left: MARGIN_LEFT + column.x - 6 }}
+                            >
+                                {NODE_TYPE_LABELS[column.type]} · {column.count}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            )}
+            {layoutMode === "layered" && (
+                <div className="mb-2 flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-xs text-(--ink-muted)">
+                    <p className="mr-1" data-testid="work-graph-move-hint">
+                        Drag or scroll to move. Zoom with the buttons or Ctrl + wheel.
+                    </p>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<ZoomIn />}
+                        onClick={() => changeZoom(1)}
+                        disabled={zoomStep === ZOOM_LEVELS.length - 1}
+                    >
+                        {CTA_LABELS.zoomIn}
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        icon={<ZoomOut />}
+                        onClick={() => changeZoom(-1)}
+                        disabled={zoomStep === 0}
+                    >
+                        {CTA_LABELS.zoomOut}
+                    </Button>
+                    {zoomStep > 0 ? (
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={<RotateCcw />}
+                            onClick={() => changeZoom(0)}
                         >
-                            {NODE_TYPE_LABELS[column.type]} · {column.count}
-                        </span>
-                    ))}
+                            {CTA_LABELS.resetZoom}
+                        </Button>
+                    ) : null}
                 </div>
             )}
             {layoutMode === "layered" && layered.columns.length < 3 && (
@@ -595,13 +782,20 @@ export function WorkGraphExplorer({
             {layoutMode === "layered" ? (
                 <div
                     ref={scrollRef}
-                    className="overflow-y-auto overflow-x-hidden"
+                    className="overflow-auto select-none"
                     style={{ maxHeight: BOX_HEIGHT }}
                     data-testid="work-graph-scroll"
+                    data-zoom={ZOOM_LEVELS[zoomStep]}
+                    onScroll={syncColumnNames}
+                    onMouseDown={startDrag}
+                    onClickCapture={dropClickAfterDrag}
                 >
                     <Chart
                         option={option}
-                        style={{ height: layeredHeight, width: "100%" }}
+                        style={{
+                            height: layeredHeight,
+                            width: zoomStep === 0 ? "100%" : canvasWidth,
+                        }}
                         onEvents={handleEvents}
                         chartTheme={chartTheme}
                     />

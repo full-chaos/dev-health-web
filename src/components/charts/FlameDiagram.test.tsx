@@ -100,7 +100,9 @@ describe("FlameDiagram", () => {
     it("label ink is white or near-black and is never dropped", () => {
         for (const s of ["active", "ci", "waiting", "blocked"]) {
             const ink = render1(s).textContent.style;
-            expect(["#ffffff", "#15171a"]).toContain(ink.fill);
+            expect(["#ffffff", "#050505"]).toContain(ink.fill);
+            expect(ink.stroke).toBeUndefined();
+            expect(ink.lineWidth).toBeUndefined();
         }
     });
 });
