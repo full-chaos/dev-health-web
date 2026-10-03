@@ -392,7 +392,8 @@ test.describe("Journey 3 — job history", () => {
         // disabled — there is nothing before or after the current page.
         await expect(table.locator("tbody tr")).toHaveCount(6);
         await expect(page.getByText("Showing 1-6", { exact: false })).toBeVisible();
-        const historyCard = table.locator("xpath=ancestor::div[contains(@class,'rounded-xl')]");
+        // CHAOS-8242: the table wrapper has no frame class of its own now (the Section is the frame).
+        const historyCard = page.getByTestId("sync-job-history-table");
         await expect(historyCard.getByRole("button", { name: /^Previous$/ })).toBeDisabled();
         await expect(historyCard.getByRole("button", { name: /^Next$/ })).toBeDisabled();
     });
