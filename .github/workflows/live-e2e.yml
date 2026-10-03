@@ -305,9 +305,15 @@ jobs:
               # meta and home are, and home mounts now that the step above provisions /query
               # (GO_API_ENVELOPE_*, GO_API_REGISTRY_POSTGRES_URI). Everything else falls to go-api,
               # whose ~100 ledger paths mount unconditionally.
+              #
+              # CHAOS-8553: the input is the ops ingress contract (planes.json). The ledger
+              # (go_served_paths.tsv) is the second input, for an ops ref that has no contract yet;
+              # ops deletes the ledger (dev-health-ops #3761). The generator reads the first input
+              # that exists and fails when none exists.
               run: |
                   mkdir -p /tmp/traefik-dynamic
                   node ci/generate-live-e2e-plane-router.mjs \
+                    dev-health-ops/contracts/ingress/v1/planes.json \
                     dev-health-ops/ci/go_served_paths.tsv \
                     --api-port 8001 --go-api-port 8001 --query-api-port 8090 \
                     --query-api-only /api/v1/meta,/api/v1/home --query-api-extra /graphql \
