@@ -131,12 +131,11 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                         <MetricCard
                             label={SECURITY_KPI_LABELS.critical}
                             value={kpis?.critical}
-                            deltaSlot={
+                            deltaSlot={false}
+                            headAction={
                                 kpis && kpis.critical > 0 ? (
                                     <SeverityPill label="Critical" tone="negative" />
-                                ) : (
-                                    false
-                                )
+                                ) : undefined
                             }
                             hideTrend
                             className={IN_STRIP}
@@ -152,12 +151,11 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
                         <MetricCard
                             label={SECURITY_KPI_LABELS.high}
                             value={kpis?.high}
-                            deltaSlot={
+                            deltaSlot={false}
+                            headAction={
                                 kpis && kpis.high > 0 ? (
                                     <SeverityPill label="High" tone="caution" />
-                                ) : (
-                                    false
-                                )
+                                ) : undefined
                             }
                             hideTrend
                             className={IN_STRIP}
