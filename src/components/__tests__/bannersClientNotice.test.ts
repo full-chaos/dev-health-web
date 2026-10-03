@@ -79,7 +79,7 @@ describe("client banners", () => {
     it("the forecast error notice keeps its heading and is a page-load notice", () => {
         const s = src("components/work/CapacityView.tsx");
         expect(s).toMatch(
-            /<Notice variant="danger" live=\{false\} titleAs="h3" title="Forecast Unavailable"/u,
+            /<Notice variant="danger" live=\{false\} titleAs="h3" title="Forecast unavailable"/u,
         );
         expect(s).not.toMatch(RED);
     });

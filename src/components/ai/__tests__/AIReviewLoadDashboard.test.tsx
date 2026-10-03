@@ -265,7 +265,8 @@ describe("AIReviewLoadDashboard", () => {
             });
             render(<AIReviewLoadDashboard filter={filter} />);
             expect(screen.getByText("Failed to load AI review load")).toBeInTheDocument();
-            expect(screen.getByText("boom")).toBeInTheDocument();
+            expect(screen.queryByText("boom")).toBeNull();
+            expect(screen.getByText("Could not be read")).toBeInTheDocument();
         });
     });
 });
