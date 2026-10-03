@@ -1,5 +1,7 @@
 "use client";
 
+import { Search } from "lucide-react";
+
 import { useMemo, useState, type ReactNode } from "react";
 
 import type { AIFilter } from "@/lib/filters/ai";
@@ -232,10 +234,10 @@ export function EvidencePanel({
                                         {edge.provider}
                                     </span>
                                 )}
+                                <span data-testid="ai-edge-confidence">
+                                    confidence {edge.confidence.toFixed(2)}
+                                </span>
                             </div>
-                            <p className="mt-1.5 text-xs text-(--ink-muted)">
-                                confidence {edge.confidence.toFixed(2)}
-                            </p>
                             <p className="mt-1 text-(--ink-muted)">{edge.evidence}</p>
                         </li>
                     ))}
@@ -322,15 +324,21 @@ export function AIEvidenceExplorer({ filter, layout = "side" }: AIEvidenceExplor
                 >
                     Filter PRs
                 </label>
-                <input
-                    id="ai-drilldown-search"
-                    type="search"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                    placeholder="Search title, kind, or PR number"
-                    className="mt-1 w-full rounded-full border border-(--card-stroke) bg-background/60 px-4 py-2 text-sm focus:border-(--accent-positive) focus:outline-none"
-                    data-testid="ai-drilldown-search"
-                />
+                <div className="relative mt-1">
+                    <Search
+                        aria-hidden="true"
+                        className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-(--ink-muted)"
+                    />
+                    <input
+                        id="ai-drilldown-search"
+                        type="search"
+                        value={search}
+                        onChange={(event) => setSearch(event.target.value)}
+                        placeholder="Search title, kind, or PR number"
+                        className="w-full rounded-full border border-(--card-stroke) bg-background/60 py-2 pl-10 pr-4 text-sm focus:border-(--accent-positive) focus:outline-none"
+                        data-testid="ai-drilldown-search"
+                    />
+                </div>
 
                 <div className="mt-4">
                     {error ? (

@@ -199,7 +199,18 @@ describe("AIReviewLoadDashboard", () => {
                 within(dialog).getByText(/Pick an AI-attributed PR to see its Work Graph evidence/),
             ).toBeInTheDocument();
 
-            fireEvent.click(within(dialog).getByRole("button", { name: /close/i }));
+            // The concept's frame: eyebrow "Evidence & context", the metric as a caps line at the top of
+            // the body, and a Close button in the footer next to the icon Close at the top.
+            expect(within(dialog).getByText("Evidence & context")).toBeInTheDocument();
+            expect(within(dialog).getByTestId("ai-drilldown-metric")).toHaveTextContent(
+                "Pickup latency",
+            );
+            expect(within(dialog).getAllByRole("button", { name: "Close" })).toHaveLength(2);
+            fireEvent.click(
+                within(dialog.querySelector("footer") as HTMLElement).getByRole("button", {
+                    name: "Close",
+                }),
+            );
             expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
             fireEvent.click(screen.getAllByRole("button", { name: "Open evidence" })[5]);

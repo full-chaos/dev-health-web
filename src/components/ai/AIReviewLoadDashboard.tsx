@@ -12,9 +12,8 @@ import {
     valueDelta,
 } from "@/lib/graphql/hooks/useAIReviewRisk";
 import { AIComparisonMetricCard } from "./AIComparisonMetricCard";
-import { Drawer } from "@/components/ui/Drawer";
 import { Section } from "@/components/ui/Section";
-import { AIEvidenceExplorer } from "./AIEvidenceExplorer";
+import { AIEvidenceDrawer } from "./AIEvidenceDrawer";
 import { AIMissingDataPanel } from "./AIMissingDataPanel";
 import { AIReviewAmplificationTrend } from "./AIReviewAmplificationTrend";
 
@@ -168,22 +167,12 @@ export function AIReviewLoadDashboard({ filter }: AIReviewLoadDashboardProps) {
 
             <AIReviewAmplificationTrend daily={reviewLoad?.daily ?? []} loading={fetching} />
 
-            {/* A8: the shared Drawer replaces the centred modal on this page. The body is the same PR
-                explorer; the modal component stays for the Governance Risk page. */}
-            <Drawer
-                open={drilldownMetric !== null}
+            {/* A8: the shared Drawer, same PR explorer inside (AIEvidenceDrawer). */}
+            <AIEvidenceDrawer
+                metric={drilldownMetric}
+                filter={filter}
                 onCloseAction={() => setDrilldownMetric(null)}
-                eyebrow={drilldownMetric ?? undefined}
-                title="Evidence by pull request"
-                size="wide"
-                data-testid="ai-drilldown-drawer"
-            >
-                <p className="text-sm text-(--ink-muted)">
-                    Pick an AI-attributed PR to see its Work Graph evidence. Filtered to the current
-                    dashboard range, repo, and work type.
-                </p>
-                <AIEvidenceExplorer filter={filter} layout="stacked" />
-            </Drawer>
+            />
         </div>
     );
 }
