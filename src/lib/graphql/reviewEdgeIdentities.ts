@@ -5,7 +5,9 @@
  * What `reviewEdges` serves for the reviewer and for the author (CHAOS-8485):
  * - a display name, or null when no name is known (the cell then reads "Not reported");
  * - an opaque key: one key per person in the org, the same as reviewer and as author. It tells
- *   people apart and joins rows. It is never shown.
+ *   people apart and joins rows. It is never shown. One limit of the data: the store holds ONE
+ *   placeholder for every person with no stored identity, so those people share one key and
+ *   count as one person.
  * The request does not select the stored identities (`reviewer` / `author`), which can be e-mail
  * addresses.
  *
@@ -45,9 +47,6 @@ export interface ReviewEdgeRow {
 // ("Name <a@b.c>"). A lone "@handle" is not an address.
 const EMAIL_ADDRESS = /[^\s@]+@[^\s@]+/u;
 
-/** What the pipeline stores for a person with no stored e-mail and no stored name. */
-const NO_STORED_IDENTITY = "unknown";
-
 /** True when the text is, or holds, an e-mail address. */
 export function hasEmailAddress(text: string): boolean {
     return EMAIL_ADDRESS.test(text);
@@ -57,7 +56,8 @@ export function hasEmailAddress(text: string): boolean {
  * The served rows as the page gets them, with no e-mail address in any field.
  *
  * - The served name is the name. A name that is not served stays null. A name that is, or holds,
- *   an address is not passed on (null). The stored placeholder "unknown" is not a name (null).
+ *   an address is not passed on (null). The web makes no name and changes none: the API serves
+ *   null for a person with no known name (also for the stored placeholder "unknown").
  * - The served key is the key. A key that holds an address is replaced by an opaque key: an index
  *   in the order of first appearance in THIS answer (never made from the address); one address
  *   has one key, as reviewer and as author.
@@ -83,9 +83,7 @@ export function withoutEmailAddresses(edges: ServedReviewEdgeRow[]): ReviewEdgeR
         return key;
     };
     const nameOf = (served: string | null | undefined): string | null =>
-        typeof served !== "string" || served === NO_STORED_IDENTITY || hasEmailAddress(served)
-            ? null
-            : served;
+        typeof served !== "string" || hasEmailAddress(served) ? null : served;
 
     return edges.map((edge) => ({
         reviewer: keyOf(edge.reviewerKey),

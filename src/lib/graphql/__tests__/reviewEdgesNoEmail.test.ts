@@ -197,8 +197,12 @@ describe("getReviewEdgesViaGraphQL — no e-mail address leaves the server", () 
         }
     });
 
-    it('gives the stored placeholder "unknown" no name: it is not a person\'s name', async () => {
-        const { edges } = await read([served(["k-unknown", "unknown"], ANA)]);
-        expect(edges[0].reviewerName).toBeNull();
+    // The API serves null for a person with no known name, also for the stored placeholder
+    // "unknown" (the ops change pins it). The web has no list of placeholder words of its own:
+    // it shows the served name as it is served.
+    it("changes no served name: it has no placeholder words of its own", async () => {
+        const { edges } = await read([served(["k-1", "unknown"], ["k-2", "Unknown Fake"])]);
+        expect(edges[0].reviewerName).toBe("unknown");
+        expect(edges[0].authorName).toBe("Unknown Fake");
     });
 });
