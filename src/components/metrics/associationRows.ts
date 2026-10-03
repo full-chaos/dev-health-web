@@ -2,11 +2,16 @@ import type { MeterRow } from "@/components/ui/MeterRows";
 import { formatMetricValue, formatNumber } from "@/lib/formatters";
 import type { Contributor } from "@/lib/types";
 
-/** A served percent change with its sign, as an association row shows it ("+10%", "-20%"). */
-export const signedPercent = (value: number) =>
-    `${value > 0 ? "+" : value < 0 ? "-" : ""}${formatNumber(Math.abs(value), {
-        maximumFractionDigits: 1,
-    })}%`;
+/**
+ * A served percent change with its sign, as an association row shows it ("+10%", "-20%"). A
+ * non-zero change that rounds to 0 at one decimal reads "<0.1%" with its sign ("+<0.1%"), never
+ * "+0%" (the formatter rule of CHAOS-8174).
+ */
+export const signedPercent = (value: number) => {
+    const sign = value > 0 ? "+" : value < 0 ? "-" : "";
+    const digits = formatNumber(Math.abs(value), { maximumFractionDigits: 1 });
+    return `${sign}${value !== 0 && digits === "0" ? "<0.1" : digits}%`;
+};
 
 type Labels = { labels: string[]; titles: (string | undefined)[] };
 
