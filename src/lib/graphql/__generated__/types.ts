@@ -491,9 +491,9 @@ export type CapacityDistribution = {
   items?: Maybe<Array<CapacityDistributionBin>>;
   /**
    * The number of simulation runs behind each mode (CHAOS-8477): the counts of one
-   * mode's bins sum to it, so the share of the runs that ended at or below a bin is
-   * the running sum of the counts divided by this value. The modes of one forecast
-   * come from one simulation and hold the same number of runs.
+   * mode's bins sum to it. The modes of one forecast come from one simulation and
+   * hold the same number of runs. The running share of the runs is served on each
+   * bin (cumulativeShare).
    */
   runs: Scalars['Int']['output'];
 };
@@ -502,7 +502,23 @@ export type CapacityDistributionBin = {
   __typename?: 'CapacityDistributionBin';
   /** How many simulation runs ended on this value. */
   count: Scalars['Int']['output'];
-  /** The outcome: a day count (days) or an item count (items). */
+  /**
+   * The share of the mode's simulation runs that completed on this value or a
+   * lower one (CHAOS-8477), from the same Monte Carlo distribution as p50Days /
+   * p85Days / p95Days: 0 to 1, never lower than on the bin before, and 1 on the
+   * last bin. In the days mode it is the share of the runs in which the target
+   * items were done on or before that day. The percentile days are an
+   * interpolated rank of the same runs: the day on which this share first reaches
+   * 0.50 and p50Days both lie between the outcomes of the same two consecutive
+   * ranked runs, so they are the same day unless those two runs ended on
+   * different days (and so for 0.85 and p85Days, 0.95 and p95Days).
+   */
+  cumulativeShare: Scalars['Float']['output'];
+  /**
+   * The outcome: a day count (days) or an item count (items). A day count is the
+   * number of days after the day the forecast was computed: the same axis as
+   * p50Days, p85Days and p95Days (p50Date is that day plus p50Days).
+   */
   value: Scalars['Int']['output'];
 };
 

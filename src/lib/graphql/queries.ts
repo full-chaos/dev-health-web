@@ -262,10 +262,12 @@ query CapacityForecast($orgId: String!, $input: CapacityForecastInput) {
       days {
         value
         count
+        cumulativeShare
       }
       items {
         value
         count
+        cumulativeShare
       }
     }
   }

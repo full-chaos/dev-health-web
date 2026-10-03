@@ -24,11 +24,8 @@ vi.mock("@/lib/graphql/hooks", () => ({
     },
 }));
 vi.mock("@/lib/graphql/provider", () => ({ useOrgId: () => "org-1" }));
-vi.mock("@/components/charts/ConfidenceBandChart", () => ({
-    ConfidenceBandChart: () => <div data-testid="band-chart" />,
-}));
-vi.mock("@/components/charts/CompletionSpreadChart", () => ({
-    CompletionSpreadChart: () => <div data-testid="spread-chart" />,
+vi.mock("@/components/charts/CompletionRangeChart", () => ({
+    CompletionRangeChart: () => <div data-testid="range-chart" />,
 }));
 
 import { CapacityView } from "./CapacityView";
@@ -91,15 +88,10 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
     it("lays the projection beside the Forecast inputs card, then the simulated outcomes, with the Interpretation below", () => {
         render(<CapacityView filters={filters} />);
 
-        // No other section: these four, in this order, are all the page draws under the tiles.
+        // No other section: these three, in this order, are all the page draws under the tiles.
         expect(
             screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent),
-        ).toEqual([
-            "Completion projection",
-            "Forecast inputs",
-            "Simulated outcomes",
-            "Interpretation",
-        ]);
+        ).toEqual(["Completion range", "Forecast inputs", "Interpretation"]);
     });
 
     it("sends every selected team id and the filter's range as history days", () => {
@@ -157,55 +149,61 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         ).toBeInTheDocument();
     });
 
-    it("keeps the projection chart, its caption and the section title", () => {
+    // CHAOS-8477: the prototype's "Completion range" card takes the place of the burn-down chart.
+    // The curve comes from the API's completionDistribution and nothing else.
+    const distribution = {
+        runs: 100,
+        days: [
+            { value: 9, count: 40, cumulativeShare: 0.4 },
+            { value: 10, count: 60, cumulativeShare: 1 },
+        ],
+        items: null,
+    };
+
+    it("draws the Completion range card with the Monte Carlo words when the forecast has a distribution", () => {
+        hook.state = { ...hook.state, data: forecast({ completionDistribution: distribution }) };
         render(<CapacityView filters={filters} />);
 
-        expect(screen.getByTestId("band-chart")).toBeInTheDocument();
-        expect(screen.getByText("Completion projection")).toBeInTheDocument();
-        expect(screen.getByText("Monte Carlo forecast for work completion")).toBeInTheDocument();
+        const card = within(screen.getByTestId("completion-range-card"));
         expect(
-            screen.getByText(
-                /Line = backlog burned at the mean throughput; markers = the forecast's P50 \/ P85 \/ P95 days\. The spread of the simulated outcomes is shown below\./,
+            card.getByRole("heading", { level: 2, name: "Completion range" }),
+        ).toBeInTheDocument();
+        expect(
+            card.getByText(
+                "Monte Carlo forecast: the chance that the remaining work is done by each day.",
             ),
         ).toBeInTheDocument();
-        expect(screen.queryByText(/No distribution is drawn/)).toBeNull();
+        expect(card.getByTestId("range-chart")).toBeInTheDocument();
+        expect(card.getByTestId("completion-range-note")).toHaveTextContent(
+            "Monte Carlo forecast: each step is the share of the 100 simulation runs in which all 42 items were done by that day.",
+        );
+        expect(
+            card.getByText(
+                "Use the target and conservative dates as different planning choices, not as one promise.",
+            ),
+        ).toBeInTheDocument();
     });
 
-    // CHAOS-7977: the spread comes from the API's completionDistribution and nothing else.
-    it("draws the simulated spread in its own card when the forecast has a distribution", () => {
-        hook.state = {
-            ...hook.state,
-            data: forecast({
-                completionDistribution: {
-                    runs: 100,
-                    days: [
-                        { value: 9, count: 40 },
-                        { value: 10, count: 60 },
-                    ],
-                    items: null,
-                },
-            }),
-        };
+    it("draws no burn-down chart and no histogram card", () => {
+        hook.state = { ...hook.state, data: forecast({ completionDistribution: distribution }) };
         render(<CapacityView filters={filters} />);
 
-        const card = within(screen.getByTestId("completion-spread-card"));
-        expect(card.getByText("Simulated outcomes")).toBeInTheDocument();
-        expect(card.getByTestId("completion-spread")).toBeInTheDocument();
-        expect(card.getByTestId("spread-chart")).toBeInTheDocument();
-    });
-
-    it("says so, and draws no chart, when the forecast has no stored distribution", () => {
-        render(<CapacityView filters={filters} />);
-
-        const card = within(screen.getByTestId("completion-spread-card"));
-        expect(card.getByTestId("completion-spread")).toHaveTextContent(/^Not reported/);
-        expect(card.queryByTestId("spread-chart")).toBeNull();
-    });
-
-    it("has no spread card while there is no forecast", () => {
-        hook.state = { ...hook.state, data: null };
-        render(<CapacityView filters={filters} />);
+        expect(screen.queryByText("Completion projection")).toBeNull();
+        expect(screen.queryByText(/backlog burned at the mean throughput/)).toBeNull();
+        expect(screen.queryByText("Simulated outcomes")).toBeNull();
         expect(screen.queryByTestId("completion-spread-card")).toBeNull();
+        expect(screen.getAllByTestId("range-chart")).toHaveLength(1);
+    });
+
+    it("reads Not reported, and draws no chart, when the forecast has no stored distribution", () => {
+        render(<CapacityView filters={filters} />);
+
+        const card = within(screen.getByTestId("completion-range-card"));
+        expect(card.getByTestId("completion-range")).toHaveAttribute("data-reported", "false");
+        expect(card.getByTestId("completion-range")).toHaveTextContent(/^Not reported/);
+        expect(card.queryByTestId("range-chart")).toBeNull();
+        // The served tiles stay: the percentile dates do not need the distribution.
+        expect(within(screen.getByTestId("tile-p50")).getByText("9 days")).toBeInTheDocument();
     });
 
     it("shows the Interpretation section with the three percentile texts", () => {

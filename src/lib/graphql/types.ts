@@ -392,16 +392,25 @@ export interface CapacityForecast {
 
 /** One simulated outcome and how many runs ended on it. */
 export interface CapacityDistributionBin {
+    /**
+     * The outcome. In the days mode: the number of days after the day the forecast was computed,
+     * the same axis as p50Days / p85Days / p95Days.
+     */
     value: number;
     count: number;
+    /**
+     * The share of the mode's runs that completed on this value or a lower one (CHAOS-8477): 0 to
+     * 1, computed by the API. The chance curve is these points as served.
+     */
+    cumulativeShare: number;
 }
 
 /** Per mode, ascending by value. A mode that did not simulate is null. */
 export interface CapacityDistribution {
     /**
      * The number of simulation runs behind each mode (CHAOS-8477): the counts of one mode's bins
-     * sum to it. The share of the runs that ended at or below a bin is the running sum of the
-     * counts divided by this value; the web adds up no total of its own.
+     * sum to it. The running share is served on each bin (`cumulativeShare`); the web adds up no
+     * total and no share of its own.
      */
     runs: number;
     /** Fixed-scope mode: days to complete the target items. */
