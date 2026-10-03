@@ -18,6 +18,10 @@ const PARTIAL_BATCH_ID = "batch-partial-1";
 // The expect timeouts are NOT raised.
 const AUTH_STATE = "test-results/.auth/state.json";
 test.beforeAll(async ({ browser, baseURL }) => {
+    // The hook has its own timeout (the 30 s test default would end it: the first CI run of this warm-up
+    // spent 17 s + 15 s on two routes, and the hook failed, skipping every test in the first pass). This
+    // sets the HOOK timeout only; the test and expect timeouts are unchanged.
+    test.setTimeout(300_000);
     const context = await browser.newContext({ baseURL, storageState: AUTH_STATE });
     const page = await context.newPage();
     const base = `/org/admin/integrations/github/customer-push/${SEEDED_SOURCE_ID}`;
