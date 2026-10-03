@@ -1,6 +1,6 @@
 import type { ButtonHTMLAttributes, ReactNode, Ref } from "react";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "dangerSolid";
 export type ButtonSize = "sm" | "md";
 
 // Approved prototype `.btn` (style.css + theme.css): sentence case, 6px radius, weight 550, 7px
@@ -25,6 +25,14 @@ const VARIANTS: Record<ButtonVariant, string> = {
     secondary: "border-(--card-stroke) bg-(--card) text-foreground hover:bg-(--card-80)",
     // Link-like: the action/link token (approved `--blueInk`), never the orange selection token.
     ghost: "border-transparent bg-transparent text-(--accent-2) hover:bg-(--card-80)",
+    // Destructive outline: red outline, red text and icon (`--negative` on `--card`: 4.5:1 or more in both
+    // themes, pinned in Button.test.tsx). A page does not re-colour a button with its own class: the variant
+    // carries the text colour, so no class-order override is needed.
+    danger: "border-(--negative) bg-(--card) text-(--negative) hover:bg-(--negative-wash)",
+    // Destructive confirm: filled with `--negative`, the label token `--accent-foreground` on it (7.64:1 light,
+    // 7.39:1 dark, pinned in Button.test.tsx).
+    dangerSolid:
+        "border-(--negative) bg-(--negative) text-(--accent-foreground) hover:brightness-110",
 };
 
 /**
