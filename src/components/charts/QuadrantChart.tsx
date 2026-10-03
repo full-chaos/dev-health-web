@@ -152,6 +152,29 @@ export const percentAxisRange = (
         ? { min: 0, max: 100, interval: 25 }
         : undefined;
 
+/** Plot-area insets with no point labels (the axis labels are kept in by `containLabel`). */
+const GRID = { left: 48, right: 24, top: 24, bottom: 48 };
+/** Approximate advance of one character of a point label (11px at most). */
+const POINT_LABEL_CHAR_PX = 6.5;
+/** Height of a point label above its dot (label line plus the gap to the dot). */
+const POINT_LABEL_HEIGHT_PX = 22;
+
+/**
+ * Plot-area insets that keep a point label inside the chart. A label is centred above its dot, so a
+ * point on the right edge (a percent axis ending at 100) needs half its label width of room on the
+ * right, and a point on the top edge needs the label height above. Display only.
+ */
+export const quadrantGrid = (labels: readonly string[]) => {
+    if (labels.length === 0) return { ...GRID, containLabel: true };
+    const longest = Math.max(...labels.map((label) => label.length));
+    return {
+        ...GRID,
+        right: Math.max(GRID.right, Math.ceil((longest * POINT_LABEL_CHAR_PX) / 2) + 8),
+        top: Math.max(GRID.top, POINT_LABEL_HEIGHT_PX + 8),
+        containLabel: true,
+    };
+};
+
 export const buildQuadrantOption = ({
     data,
     chartTheme,
@@ -197,6 +220,10 @@ export const buildQuadrantOption = ({
           ? data.points.filter((point) => !focusPointIds.has(point.entity_id))
           : data.points;
     const backgroundOpacity = 1;
+    // The labels drawn above the dots: every point on a team / repo chart, the focus points always.
+    const pointLabels = [...(showPointLabels ? backgroundPoints : []), ...focusPoints].map(
+        (point) => chartEntityLabel(point.entity_label),
+    );
 
     const focusData = focusPoints.map((point) => ({
         value: [point.x, point.y] as [number, number],
@@ -299,7 +326,7 @@ export const buildQuadrantOption = ({
                 ].join("");
             },
         },
-        grid: { left: 48, right: 24, top: 24, bottom: 48, containLabel: true },
+        grid: quadrantGrid(pointLabels),
         xAxis: {
             name: xAxisLabel,
             nameLocation: "middle",

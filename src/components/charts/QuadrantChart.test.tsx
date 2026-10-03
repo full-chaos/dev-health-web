@@ -1,8 +1,9 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { render, screen } from "@/test/utils";
 
-import { QuadrantChart, buildQuadrantOption } from "./QuadrantChart";
+import { QuadrantChart, buildQuadrantOption, quadrantGrid } from "./QuadrantChart";
 import type { QuadrantResponse } from "@/lib/types";
+import { chartEntityLabel } from "@/lib/labels/entityLabel";
 
 const chartTheme = {
     text: "#111827",
@@ -157,6 +158,47 @@ describe("QuadrantChart", () => {
         }) as unknown as { xAxis: { max?: number }; yAxis: { max?: number } };
         expect(plain.xAxis.max).toBeUndefined();
         expect(plain.yAxis.max).toBeUndefined();
+    });
+
+    it("gives the plot room for a point label on the right and top edges (a label is never clipped)", () => {
+        const edge: QuadrantResponse = {
+            axes: {
+                x: { metric: "pipeline_success_rate", label: "Pipeline Success Rate", unit: "%" },
+                y: { metric: "test_pass_rate", label: "Test Pass Rate", unit: "%" },
+            },
+            points: [
+                {
+                    ...sampleData.points[0],
+                    entity_id: "repo-edge",
+                    entity_label: "full-chaos/cloudymccloudflare",
+                    x: 100,
+                    y: 100,
+                },
+            ],
+            annotations: [],
+        };
+        const option = buildQuadrantOption({
+            data: edge,
+            chartTheme,
+            colors: chartColors,
+            scopeType: "repo",
+        }) as unknown as { grid: { right: number; top: number; containLabel: boolean } };
+        // The label as drawn (the shared chart label: the repository name without its owner).
+        const label = chartEntityLabel("full-chaos/cloudymccloudflare");
+        expect(label).toBe("cloudymccloudflare");
+        // Half the label (it is centred on the dot) fits right of the plot; the label fits above it.
+        expect(option.grid.right).toBeGreaterThanOrEqual(Math.ceil((label.length * 6.5) / 2));
+        // A label line and its gap to the dot (22px) plus a margin: more than the 24px inset.
+        expect(option.grid.top).toBeGreaterThanOrEqual(30);
+        expect(option.grid.containLabel).toBe(true);
+        // Without point labels the plot keeps its old insets.
+        expect(quadrantGrid([])).toEqual({
+            left: 48,
+            right: 24,
+            top: 24,
+            bottom: 48,
+            containLabel: true,
+        });
     });
 
     it("handles empty data and null click payload gracefully", () => {
