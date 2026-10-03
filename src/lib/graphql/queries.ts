@@ -387,12 +387,14 @@ query OperatingReview($orgId: String!, $input: OperatingReviewInput!) {
         label
         value
         unit
+        hasData
         delta {
           value
           priorValue
           absolute
           percent
           status
+          hasPriorData
         }
       }
     }

@@ -2,7 +2,6 @@ import { StatusPill } from "@/components/admin/StatusPill";
 import Link from "next/link";
 
 import { ServiceUnavailable } from "@/components/ServiceUnavailable";
-import { MetricCard } from "@/components/metrics/MetricCard";
 import { MetricStrip } from "@/components/metrics/MetricStrip";
 import { buttonClassName } from "@/components/shared/Button";
 import { DataState } from "@/components/ui/DataState";
@@ -13,15 +12,15 @@ import { auth } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import { decodeFilter, filterFromQueryParams } from "@/lib/filters/encode";
 import { CTA_LABELS } from "@/lib/design/cta";
-import { formatMetricValue as fmtMetric } from "@/lib/formatters";
 import { getOperatingReviewViaGraphQL } from "@/lib/graphql/operatingReviewFetchers";
-import type { OperatingReview, OperatingReviewMetric } from "@/lib/graphql/types";
+import type { OperatingReview } from "@/lib/graphql/types";
 import { aggregateOperatingReviews } from "@/lib/operatingReviewAggregate";
 import { balancedColumns } from "@/lib/operatingReviewColumns";
 import { selectedOperatingReviewTeamIds } from "@/lib/operatingReviewScope";
+
+import { MetricTile, TINT } from "./MetricTile";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
-import { STATUS_PILL, type StatusPillTone } from "@/lib/statusPill";
 
 /** Discriminated fetch result: distinguishes a real error from a genuine empty payload. */
 type ReviewResult =
@@ -43,22 +42,6 @@ const sectionDescriptions: Record<string, string> = {
 };
 
 const AI_WORKFLOW_SECTION_KEY = "ai_workflow_intelligence";
-
-/**
- * Fill and text of a status chip: the status pill's classes without its border
- * (these chips never had one). Derived from `STATUS_PILL`, so the two cannot
- * drift; the literal classes live in `lib/statusPill.ts`.
- */
-const statusTint = (tone: StatusPillTone) =>
-    STATUS_PILL[tone]
-        .split(" ")
-        .filter((cls) => !cls.startsWith("border-"))
-        .join(" ");
-const TINT = {
-    improved: statusTint("positive"),
-    worsened: statusTint("negative"),
-    changed: statusTint("info"),
-} as const;
 
 export default async function OperatingReviewPage({ searchParams }: OperatingReviewPageProps) {
     const params = (await searchParams) ?? {};
@@ -348,37 +331,6 @@ function AIWorkflowIntelligenceCallout() {
     );
 }
 
-/**
- * `narrow`: five or more cards share a row, so a label can run under a top-right pill. The pill
- * then sits in the flow, before the prior-period line.
- */
-function MetricTile({ metric, narrow }: { metric: OperatingReviewMetric; narrow: boolean }) {
-    return (
-        <MetricCard
-            label={metric.label}
-            value={metric.value}
-            unit={metric.unit}
-            hideTrend
-            deltaSlot={
-                <>
-                    <span
-                        className={`${narrow ? "mr-2" : "absolute right-4 top-4"} ${statusClass(metric.delta.status)}`}
-                    >
-                        {metric.delta.status}
-                    </span>
-                    <span>
-                        Prior: {fmtMetric(metric.delta.priorValue, metric.unit)} · Δ{" "}
-                        {formatSigned(metric.delta.absolute, metric.unit)}
-                        {metric.delta.percent === null || metric.delta.percent === undefined
-                            ? ""
-                            : ` (${formatSigned(metric.delta.percent, "%")})`}
-                    </span>
-                </>
-            }
-        />
-    );
-}
-
 function DeltaPill({
     improved,
     worsened,
@@ -460,18 +412,4 @@ function normalizeWeekStart(value: string | undefined): string {
         Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffToMonday),
     );
     return monday.toISOString().slice(0, 10);
-}
-
-function formatSigned(value: number, unit: string): string {
-    // Object.is distinguishes -0 from +0 so we never emit "+0"
-    const sign = Object.is(value, 0) || Object.is(value, -0) ? "" : value > 0 ? "+" : "";
-    return `${sign}${fmtMetric(value, unit)}`;
-}
-
-function statusClass(status: string): string {
-    const base = "rounded-full px-2 py-1 text-xs font-medium capitalize";
-    if (status === "improved") return `${base} ${TINT.improved}`;
-    if (status === "worsened") return `${base} ${TINT.worsened}`;
-    if (status === "changed") return `${base} ${TINT.changed}`;
-    return `${base} bg-muted text-muted-foreground`;
 }
