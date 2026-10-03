@@ -21,6 +21,19 @@ beforeEach(() => {
 });
 
 describe("ShellTopBar — location trail from the nav config (A6)", () => {
+    it("names the metric on a metric evidence page", () => {
+        navigationMock.pathname = "/explore";
+        navigationMock.search = "metric=blocked_work";
+        render(<ShellTopBar />);
+
+        const trail = screen.getByRole("navigation", { name: "Breadcrumb" });
+        expect(trail).toHaveTextContent("Diagnose");
+        expect(within(trail).getByText("Blocked Work evidence")).toHaveAttribute(
+            "aria-current",
+            "page",
+        );
+    });
+
     it("is one banner landmark", () => {
         render(<ShellTopBar />);
 

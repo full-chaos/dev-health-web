@@ -27,6 +27,7 @@ import { formatNumber, formatTimestamp } from "@/lib/formatters";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { getMetricLabel, metricInverseGood } from "@/lib/metrics/catalog";
 import { METRIC_TABS } from "@/lib/metrics/metricTabs";
+import { metricEvidenceLeaf } from "@/lib/navigation/evidenceTrail";
 import { getTabSet, tabHref } from "@/lib/navigation/tabs";
 import { PageHeader } from "@/components/shell/PageHeader";
 import { ScopeBar } from "@/components/shell/ScopeBar";
@@ -294,6 +295,7 @@ export default async function Explore({ searchParams }: ExplorePageProps) {
         <div className="flex min-w-0 flex-1 flex-col gap-8 text-foreground">
             <PageHeader
                 title={metricLabel}
+                trailLeaf={metricEvidenceLeaf("/explore", { metric, api: apiParam }) ?? undefined}
                 subtitle={
                     isBlockedWork
                         ? "Evidence table for the selected metric."
