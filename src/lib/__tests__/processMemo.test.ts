@@ -89,4 +89,36 @@ describe("processMemo", () => {
         expect(read("auth.ts")).toContain('"impersonationStatusMemo"');
         expect(read("auth.ts")).not.toMatch(/impersonationStatusMemo = new Map/u);
     });
+
+    it("key and lifetime are unchanged: two tokens never share an entry; an expired entry is not served", async () => {
+        fetchMock.mockImplementation(
+            async () =>
+                new Response(JSON.stringify({ valid: true }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                }),
+        );
+        const copy = await loadCopy();
+        copy.resetValidationMemoForTests();
+        const now = Date.now();
+
+        await copy.applyBackendValidationMemo({ id: "u1", access_token: "token-A" } as never, now);
+        await copy.applyBackendValidationMemo({ id: "u2", access_token: "token-B" } as never, now);
+        // Two different tokens: two calls.
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+
+        // The same token inside the 5 minute interval: served from the memo, no call.
+        await copy.applyBackendValidationMemo(
+            { id: "u1", access_token: "token-A" } as never,
+            now + 4 * 60 * 1000,
+        );
+        expect(fetchMock).toHaveBeenCalledTimes(2);
+
+        // The same token after the interval: the entry has expired, so the backend is asked again.
+        await copy.applyBackendValidationMemo(
+            { id: "u1", access_token: "token-A" } as never,
+            now + 5 * 60 * 1000 + 1,
+        );
+        expect(fetchMock).toHaveBeenCalledTimes(3);
+    });
 });
