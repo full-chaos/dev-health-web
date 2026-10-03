@@ -1,5 +1,6 @@
 "use client";
 
+import { readFailureMessage } from "@/lib/readFailure";
 import { useState } from "react";
 
 import { STATUS_PILL } from "@/lib/statusPill";
@@ -41,7 +42,7 @@ function OpportunityEvidence({ selected }: { selected: AiWorkGraphDrilldownRef |
             <p
                 className={`mt-3 rounded-(--radius-sm) border px-3 py-2 text-xs ${STATUS_PILL.negative}`}
             >
-                Evidence unavailable: {error.message}
+                Evidence unavailable. {readFailureMessage(error, "aiOpportunityEvidence")}
             </p>
         );
     }

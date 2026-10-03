@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+const HOSTILE =
+    "[GraphQL] capacityForecast is served by query-api and has no Python implementation. The Go dispatcher did not intercept this request (cmd/query-api/query_route.go)";
 
 import { render, screen, within } from "@/test/utils";
 import type { CapacityForecast } from "@/lib/graphql/types";
@@ -193,11 +195,12 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
         expect(screen.queryByTestId("forecast-tiles")).toBeNull();
     });
 
-    it("shows the error title and message, and the empty text", () => {
-        hook.state = { ...hook.state, data: null, error: new Error("boom") };
+    it("shows the error title and the plain sentence, and the empty text", () => {
+        hook.state = { ...hook.state, data: null, error: new Error(HOSTILE) };
         const first = render(<CapacityView filters={filters} />);
-        expect(screen.getByText("Forecast Unavailable")).toBeInTheDocument();
-        expect(screen.getByText("boom")).toBeInTheDocument();
+        expect(screen.getByText("Forecast unavailable")).toBeInTheDocument();
+        expect(screen.queryByText(HOSTILE)).toBeNull();
+        expect(screen.getByText("Could not be read")).toBeInTheDocument();
         first.unmount();
 
         hook.state = { ...hook.state, data: null, error: null };

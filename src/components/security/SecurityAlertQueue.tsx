@@ -1,5 +1,6 @@
 "use client";
 
+import { readFailureMessage } from "@/lib/readFailure";
 import { useSecurityAlerts } from "@/lib/graphql/hooks/useSecurity";
 import type { SecurityFilter } from "@/lib/filters/security";
 import { SecurityAlertRow } from "./SecurityAlertRow";
@@ -19,7 +20,7 @@ export function SecurityAlertQueue({ filter, lockedRepoId }: SecurityAlertQueueP
             <DataState
                 variant="error"
                 title="Failed to load security alerts"
-                message={error.message}
+                message={readFailureMessage(error, "securityAlerts")}
             />
         );
     }

@@ -1,5 +1,6 @@
 "use client";
 
+import { readFailureMessage } from "@/lib/readFailure";
 import { useSecurityOverview } from "@/lib/graphql/hooks/useSecurity";
 import type { SecurityFilter } from "@/lib/filters/security";
 import { SECURITY_KPI_LABELS } from "@/lib/security/kpiLabels";
@@ -95,7 +96,10 @@ export function SecurityDashboard({ filter }: SecurityDashboardProps) {
         <div className="flex flex-col gap-6">
             {/* Banner-level error notice — does NOT replace the grid structure */}
             {error && (
-                <ErrorCard title="Failed to load security overview" message={error.message} />
+                <ErrorCard
+                    title="Failed to load security overview"
+                    message={readFailureMessage(error, "securityOverview")}
+                />
             )}
 
             {/* Row 1: KPI tiles in the shared metric strip (the one metric tile, MAPPING S3-S5).

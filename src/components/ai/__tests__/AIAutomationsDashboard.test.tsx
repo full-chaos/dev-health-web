@@ -59,7 +59,8 @@ describe("AIAutomationsDashboard", () => {
         mockOpps.mockReturnValue({ fetching: false, error: new Error("boom"), data: undefined });
         render(<AIAutomationsDashboard filter={filter} />);
         expect(screen.getByText("AI automation opportunities could not load")).toBeInTheDocument();
-        expect(screen.getByText("boom")).toBeInTheDocument();
+        expect(screen.queryByText("boom")).toBeNull();
+        expect(screen.getByText("Could not be read")).toBeInTheDocument();
     });
 
     it("keeps the two honest empty states apart", () => {

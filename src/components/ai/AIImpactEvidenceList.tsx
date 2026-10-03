@@ -1,5 +1,6 @@
 "use client";
 
+import { readFailureMessage } from "@/lib/readFailure";
 import { useMemo, useState } from "react";
 
 import { DataState } from "@/components/ui/DataState";
@@ -64,7 +65,12 @@ export function AIImpactEvidenceList({ filter }: AIImpactEvidenceListProps) {
     );
 
     if (error) {
-        return <ErrorCard title="Failed to load AI-attributed PRs" message={error.message} />;
+        return (
+            <ErrorCard
+                title="Failed to load AI-attributed PRs"
+                message={readFailureMessage(error, "aiImpactEvidence")}
+            />
+        );
     }
 
     if (!fetching && data && !data.dataAvailable) {

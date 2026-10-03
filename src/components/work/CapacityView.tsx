@@ -1,5 +1,6 @@
 "use client";
 
+import { readFailureMessage } from "@/lib/readFailure";
 import { useMemo } from "react";
 
 import { ForecastInputsCard } from "@/components/capacity/ForecastInputsCard";
@@ -65,8 +66,8 @@ export function CapacityView({ filters, orgId: propOrgId }: CapacityViewProps) {
                     ))}
                 </div>
             ) : error ? (
-                <Notice variant="danger" live={false} titleAs="h3" title="Forecast Unavailable">
-                    {error.message}
+                <Notice variant="danger" live={false} titleAs="h3" title="Forecast unavailable">
+                    {readFailureMessage(error, "capacityForecast")}
                 </Notice>
             ) : forecast ? (
                 <>
