@@ -12,7 +12,7 @@ export default async function OrganizationSettingsPage() {
     const org = result.data;
 
     return (
-        <div>
+        <div className="flex flex-col gap-6" data-testid="org-settings-page">
             <AdminHeader
                 title="Organization"
                 description="Manage your organization's profile, billing, and security settings."
@@ -24,11 +24,11 @@ export default async function OrganizationSettingsPage() {
                     title="Organization settings could not be loaded"
                     message="The request failed. Retry, or check again in a moment."
                     action={<RetryButton />}
-                    className="mb-6 max-w-4xl"
+                    className=""
                 />
             )}
 
-            <div className="max-w-4xl">
+            <div data-testid="org-settings-sections">
                 <GeneralSettings org={org} />
                 <BillingSettings tier={org?.tier} />
                 <SecuritySettings />

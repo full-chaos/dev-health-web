@@ -74,7 +74,7 @@ export function SecuritySettings() {
             title="Security"
             description="Configure security settings for your organization."
         >
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="max-w-3xl space-y-4">
                 <div>
                     <label
                         htmlFor="sessionTimeout"

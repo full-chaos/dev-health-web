@@ -37,4 +37,12 @@ describe("Organization settings load error (CHAOS-8241)", () => {
         render(await OrganizationSettingsPage());
         expect(screen.queryByText("Organization settings could not be loaded")).toBeNull();
     });
+
+    it("uses the full width and spaces the cards from the header (CHAOS-8255)", async () => {
+        getOrg.mockResolvedValue({ data: { name: "Acme", tier: "community" } });
+        render(await OrganizationSettingsPage());
+        const page = screen.getByTestId("org-settings-page");
+        expect(page.className).toContain("gap-6");
+        expect(screen.getByTestId("org-settings-sections").className).not.toContain("max-w-");
+    });
 });
