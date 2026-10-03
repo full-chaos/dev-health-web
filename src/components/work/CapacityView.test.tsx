@@ -177,6 +177,7 @@ describe("CapacityView — what the page shows (pins, updated for the page pass)
             ...hook.state,
             data: forecast({
                 completionDistribution: {
+                    runs: 100,
                     days: [
                         { value: 9, count: 40 },
                         { value: 10, count: 60 },

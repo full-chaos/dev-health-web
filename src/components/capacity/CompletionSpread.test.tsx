@@ -33,11 +33,20 @@ vi.mock("@/components/charts/Chart", () => ({
 import { CompletionSpread } from "./CompletionSpread";
 
 type Mark = { xAxis: number; label: { formatter: string } };
+type Series = {
+    type: string;
+    name?: string;
+    yAxisIndex?: number;
+    step?: string;
+    data: Array<[number, number]>;
+    markLine?: { data: Mark[] };
+    markArea?: { data: Array<[{ xAxis: number; name?: string }, { xAxis: number }]> };
+};
 type Option = {
     xAxis: { type: string; name?: string };
-    yAxis: { name?: string };
+    yAxis: Array<{ name?: string; min?: number; max?: number }>;
     tooltip: { formatter: (params: unknown) => string };
-    series: Array<{ type: string; data: Array<[number, number]>; markLine?: { data: Mark[] } }>;
+    series: Series[];
 };
 const options = () => chartSpy.mock.calls.map((call) => (call[0] as { option: Option }).option);
 
@@ -57,6 +66,7 @@ const base = (over: Partial<CapacityForecast> = {}): CapacityForecast => ({
     insufficientHistory: false,
     highVariance: false,
     completionDistribution: {
+        runs: 200,
         days: [
             { value: 18, count: 50 },
             { value: 19, count: 120 },
@@ -81,7 +91,7 @@ describe("CompletionSpread — the days histogram", () => {
             [19, 120],
             [24, 30],
         ]);
-        expect(options()[0].yAxis.name).toBe("Simulation runs");
+        expect(options()[0].yAxis[0].name).toBe("Simulation runs");
     });
 
     it("puts the markers where the forecast's OWN p50 / p85 / p95 say, not where the bins would put them", () => {
@@ -94,19 +104,18 @@ describe("CompletionSpread — the days histogram", () => {
         expect(marks[0].label.formatter).toContain("40 days");
     });
 
-    it("says how many runs ended on a value: the returned count, and no total the API did not serve", () => {
+    it("says how many runs ended on a value, of the SERVED run total", () => {
         render(<CompletionSpread forecast={base()} />);
-        const text = options()[0].tooltip.formatter({ data: [19, 120] });
-        expect(text).toContain("120 runs ended here");
-        expect(text).toContain("19");
-        // The bins sum to 200 (50 + 120 + 30). The API serves no run total, so the web shows none.
-        expect(text).not.toContain("200");
-        expect(text).not.toMatch(/\bof\b/);
+        const text = options()[0].tooltip.formatter({ seriesType: "bar", data: [19, 120] });
+        expect(text).toContain("120 of 200 runs ended here");
+        expect(text).toContain("Day 19");
     });
 
     it("says 1 run, not 1 runs", () => {
         render(<CompletionSpread forecast={base()} />);
-        expect(options()[0].tooltip.formatter({ data: [19, 1] })).toContain("1 run ended here");
+        expect(options()[0].tooltip.formatter({ seriesType: "bar", data: [19, 1] })).toContain(
+            "1 of 200 runs ended here",
+        );
     });
 
     it("skips a marker whose percentile the forecast does not carry", () => {
@@ -118,7 +127,11 @@ describe("CompletionSpread — the days histogram", () => {
         render(
             <CompletionSpread
                 forecast={base({
-                    completionDistribution: { days: [{ value: 9, count: 200 }], items: null },
+                    completionDistribution: {
+                        runs: 200,
+                        days: [{ value: 9, count: 200 }],
+                        items: null,
+                    },
                 })}
             />,
         );
@@ -153,7 +166,7 @@ describe("CompletionSpread — states, never zero-filled", () => {
     it("an object with both lists null or empty is also no distribution", () => {
         render(
             <CompletionSpread
-                forecast={base({ completionDistribution: { days: [], items: null } })}
+                forecast={base({ completionDistribution: { runs: 200, days: [], items: null } })}
             />,
         );
         expect(screen.queryByTestId("chart")).toBeNull();
@@ -172,6 +185,7 @@ describe("CompletionSpread — states, never zero-filled", () => {
                     p85Items: 35,
                     p95Items: 30,
                     completionDistribution: {
+                        runs: 100,
                         days: null,
                         items: [
                             { value: 30, count: 10 },
@@ -197,6 +211,7 @@ describe("CompletionSpread — states, never zero-filled", () => {
             <CompletionSpread
                 forecast={base({
                     completionDistribution: {
+                        runs: 10,
                         days: [
                             { value: 19, count: 5 },
                             { value: 20, count: 5 },
@@ -226,5 +241,170 @@ describe("CompletionSpread — states, never zero-filled", () => {
         expect(
             region.getByText(/Based on 90 days of history; read it as a range, not a promise\./),
         ).toBeInTheDocument();
+    });
+});
+
+// CHAOS-8477: the API serves the run total (`runs`). The chance curve is the running sum of the
+// SERVED counts over the SERVED total (the rule the contract itself gives); the web adds up no
+// total of its own, and with no served total it draws no curve.
+describe("CompletionSpread — the served run total and the chance curve", () => {
+    const bars = (option: Option) => option.series.find((series) => series.type === "bar")!;
+    const curve = (option: Option) => option.series.find((series) => series.type === "line");
+    /** An answer from before the field existed: the distribution with no `runs`. */
+    const withoutRuns = (distribution: {
+        days: Array<{ value: number; count: number }> | null;
+        items: Array<{ value: number; count: number }> | null;
+    }) => distribution as unknown as NonNullable<CapacityForecast["completionDistribution"]>;
+
+    it("draws the chance of being done by each day: running sum of the counts over the served runs", () => {
+        render(<CompletionSpread forecast={base({ targetItems: 42 })} />);
+        const option = options()[0];
+
+        expect(curve(option)!.data).toEqual([
+            [18, 25],
+            [19, 85],
+            [24, 100],
+        ]);
+        expect(curve(option)!.yAxisIndex).toBe(1);
+        // A day nobody ended on keeps the chance of the day before: a step, not a slope.
+        expect(curve(option)!.step).toBe("end");
+        expect(option.yAxis[1]).toMatchObject({
+            name: "Chance all 42 items are done",
+            min: 0,
+            max: 100,
+        });
+        // The bars stay what they were: the served counts on the first axis.
+        expect(bars(option).data).toEqual([
+            [18, 50],
+            [19, 120],
+            [24, 30],
+        ]);
+    });
+
+    it("divides by the SERVED run total, not by a sum of the bins", () => {
+        // The bins sum to 200; the API says 400 runs. A curve from a web-made sum would end at 100%.
+        const forecast = base({
+            completionDistribution: {
+                runs: 400,
+                days: [
+                    { value: 18, count: 50 },
+                    { value: 19, count: 120 },
+                    { value: 24, count: 30 },
+                ],
+                items: null,
+            },
+        });
+        render(<CompletionSpread forecast={forecast} />);
+
+        expect(curve(options()[0])!.data).toEqual([
+            [18, 12.5],
+            [19, 42.5],
+            [24, 50],
+        ]);
+        expect(options()[0].tooltip.formatter({ seriesType: "bar", data: [19, 120] })).toContain(
+            "120 of 400 runs ended here",
+        );
+    });
+
+    it("says the chance in words on a bar and on the curve", () => {
+        render(<CompletionSpread forecast={base()} />);
+        const { formatter } = options()[0].tooltip;
+
+        expect(formatter({ seriesType: "bar", data: [19, 120] })).toContain(
+            "85% of the runs were done by day 19",
+        );
+        expect(formatter({ seriesType: "line", data: [18, 25] })).toContain(
+            "25% of the runs were done by day 18",
+        );
+    });
+
+    it("names the axis without a number when the target item count is not served", () => {
+        render(<CompletionSpread forecast={base({ targetItems: undefined })} />);
+        expect(options()[0].yAxis[1].name).toBe("Chance the target items are done");
+    });
+
+    it("shows the served run total under the chart", () => {
+        render(<CompletionSpread forecast={base()} />);
+        expect(screen.getByTestId("completion-spread-runs")).toHaveTextContent(
+            /^200 simulation runs\.$/u,
+        );
+    });
+
+    it("marks the planning range between the served P50 and P95 days", () => {
+        render(<CompletionSpread forecast={base()} />);
+        const area = curve(options()[0])!.markArea!.data;
+        expect(area).toHaveLength(1);
+        expect(area[0][0]).toMatchObject({ xAxis: 19, name: "planning range" });
+        expect(area[0][1]).toMatchObject({ xAxis: 27 });
+    });
+
+    it.each([
+        ["P50", { p50Days: undefined }],
+        ["P95", { p95Days: undefined }],
+        ["both the same day", { p50Days: 19, p85Days: 19, p95Days: 19 }],
+    ] as const)("draws no planning range when it has no two ends (%s)", (_name, over) => {
+        render(<CompletionSpread forecast={base(over)} />);
+        expect(curve(options()[0])!.markArea).toBeUndefined();
+    });
+
+    it("draws no curve, no total and no chance when the run total is not served", () => {
+        const forecast = base({
+            completionDistribution: withoutRuns({
+                days: [
+                    { value: 18, count: 50 },
+                    { value: 19, count: 120 },
+                    { value: 24, count: 30 },
+                ],
+                items: null,
+            }),
+        });
+        render(<CompletionSpread forecast={forecast} />);
+        const option = options()[0];
+
+        expect(curve(option)).toBeUndefined();
+        expect(option.yAxis).toHaveLength(1);
+        const text = option.tooltip.formatter({ seriesType: "bar", data: [19, 120] });
+        expect(text).toContain("120 runs ended here");
+        // The bins sum to 200. The web shows no total and no share it would have to add up.
+        expect(text).not.toContain("200");
+        expect(text).not.toMatch(/\bof\b/u);
+        expect(text).not.toContain("%");
+        expect(screen.queryByTestId("completion-spread-runs")).toBeNull();
+        // The bars are still the served counts.
+        expect(bars(option).data).toHaveLength(3);
+    });
+
+    it.each([0, -5])("treats a run total of %i as not served: nothing is divided by it", (runs) => {
+        const forecast = base({
+            completionDistribution: { runs, days: [{ value: 18, count: 50 }], items: null },
+        });
+        render(<CompletionSpread forecast={forecast} />);
+
+        expect(curve(options()[0])).toBeUndefined();
+        expect(screen.queryByTestId("completion-spread-runs")).toBeNull();
+    });
+
+    it("the items chart has the served total in its tooltip and no chance curve", () => {
+        const forecast = base({
+            p50Items: 40,
+            p85Items: 35,
+            p95Items: 30,
+            completionDistribution: {
+                runs: 100,
+                days: null,
+                items: [
+                    { value: 30, count: 10 },
+                    { value: 40, count: 90 },
+                ],
+            },
+        });
+        render(<CompletionSpread forecast={forecast} />);
+        const option = options()[0];
+
+        expect(curve(option)).toBeUndefined();
+        expect(option.yAxis).toHaveLength(1);
+        const text = option.tooltip.formatter({ seriesType: "bar", data: [40, 90] });
+        expect(text).toContain("90 of 100 runs ended here");
+        expect(text).not.toContain("%");
     });
 });

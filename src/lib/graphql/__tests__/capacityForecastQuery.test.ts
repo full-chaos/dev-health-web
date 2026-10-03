@@ -5,10 +5,11 @@ import { CAPACITY_FORECAST_QUERY } from "../queries";
 // CHAOS-7977: the capacity page asks for the simulation spread. The text of this query is what
 // query-api matches against its registered document (the paired ops change), so it is pinned.
 describe("CAPACITY_FORECAST_QUERY", () => {
-    it("asks for the completion distribution, both lists, value and count", () => {
+    it("asks for the completion distribution: the run total, both lists, value and count", () => {
         const compact = CAPACITY_FORECAST_QUERY.replace(/\s+/g, " ");
+        // CHAOS-8477: `runs` is the served total the chance curve divides by.
         expect(compact).toContain(
-            "completionDistribution { days { value count } items { value count } }",
+            "completionDistribution { runs days { value count } items { value count } }",
         );
     });
 

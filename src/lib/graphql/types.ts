@@ -398,6 +398,12 @@ export interface CapacityDistributionBin {
 
 /** Per mode, ascending by value. A mode that did not simulate is null. */
 export interface CapacityDistribution {
+    /**
+     * The number of simulation runs behind each mode (CHAOS-8477): the counts of one mode's bins
+     * sum to it. The share of the runs that ended at or below a bin is the running sum of the
+     * counts divided by this value; the web adds up no total of its own.
+     */
+    runs: number;
     /** Fixed-scope mode: days to complete the target items. */
     days?: CapacityDistributionBin[] | null;
     /** Fixed-date mode: items completed by the target date. */
