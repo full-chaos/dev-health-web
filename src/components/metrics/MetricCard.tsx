@@ -59,6 +59,11 @@ type MetricCardProps = {
     hideTrend?: boolean;
     /** Opt-in. `data-testid` on the root element. */
     testId?: string;
+    /**
+     * Opt-in. A small node (a status pill) at the right end of the tile head, on the title line.
+     * Not part of the tile's link or button: it is a mark, not a control.
+     */
+    headAction?: ReactNode;
 };
 
 /** `<></>`: a caller that wants no delta at all passes an empty fragment as `deltaSlot`. */
@@ -84,6 +89,7 @@ export function MetricCard({
     className,
     lineageMetricId,
     deltaSlot,
+    headAction,
     onOpenEvidence,
     evidenceHref,
     noTrendLabel = "No trend yet",
@@ -174,6 +180,11 @@ export function MetricCard({
             >
                 <span>{label}</span>
                 {lineageMetricId && <LineagePopover metricId={lineageMetricId} />}
+                {headAction ? (
+                    <span data-testid="metric-head-action" className="ml-auto pl-2">
+                        {headAction}
+                    </span>
+                ) : null}
             </div>
             {/* Prototype `.metric-value`: 28px bold, tight tracking, the unit small and muted beside it. */}
             <p

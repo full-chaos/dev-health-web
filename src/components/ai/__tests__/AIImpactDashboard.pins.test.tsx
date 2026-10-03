@@ -140,6 +140,9 @@ describe("AI Impact page pinned (CHAOS-7768)", () => {
         expect(pill).toHaveTextContent("Unknown");
         expect(pill.className).toContain("border-dashed");
         expect(within(strip).getAllByTestId("ai-unknown-pill")).toHaveLength(1);
+        // CHAOS-8214: the pill sits in the tile head (right end of the title line), not in the meta line.
+        expect(pill.closest("[data-testid=metric-title]")).not.toBeNull();
+        expect(pill.closest("[data-testid=metric-head-action]")).not.toBeNull();
     });
 
     it("shows Not reported, never 0, when the summary does not serve the counts", () => {
