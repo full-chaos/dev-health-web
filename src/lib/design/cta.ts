@@ -100,6 +100,18 @@ export const CTA_LABELS = {
     evidence: "Evidence",
     /** Section action on a Flow tab: the evidence page of the tab's metric (approved copy, app.js line 98). */
     metricEvidence: "Metric evidence",
+    /** Investment Confidence, "Low-confidence areas" action: the Evidence tab (approved copy, app.js line 74). */
+    evidenceDrilldown: "Evidence drilldown",
+    /** Investment Allocation, selected-path aside: the Evidence tab (approved copy, app.js line 71). */
+    inspectAllocationEvidence: "Inspect allocation evidence",
+    /** Investment "Read this with context": open the collapsed AI explanation. */
+    showAiExplanation: "Show AI explanation",
+    /** Investment "Read this with context": collapse the AI explanation again. */
+    hideAiExplanation: "Hide AI explanation",
+    /** Investment AI explanation: ask for a new explanation of the same window. */
+    regenerate: "Regenerate",
+    /** Investment AI explanation: shown on the Regenerate button while the request runs. */
+    generating: "Generating...",
     aiImpact: "Impact",
     aiReviewLoad: "Review Load",
     aiRisk: "Risk",

@@ -1,6 +1,11 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { ArrowRight, ChevronDown, ChevronRight } from "lucide-react";
+import { useId, useState, type ReactNode } from "react";
 import Link from "next/link";
 
+import { Button, buttonClassName } from "@/components/shared/Button";
+import { Section } from "@/components/ui/Section";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { formatNumber } from "@/lib/formatters";
 import type { SankeyResponse } from "@/lib/types";
@@ -16,7 +21,7 @@ type ReadWithContextCardProps = {
     isCoverageLoading: boolean;
     /** Href of the Confidence tab (carries the page's filters). */
     confidenceHref: string;
-    /** The labelled AI explanation block. */
+    /** The labelled AI explanation block. Collapsed until the reader asks for it. */
     children: ReactNode;
 };
 
@@ -37,6 +42,9 @@ function Fact({ label, value, testId }: { label: string; value: string; testId: 
  * the confidence level and mean from the explanation (the same fields, and the same
  * formatting, as the Confidence tab's "Classification confidence"), coverage from
  * `combineCoverage` (the Allocation strip). Nothing here is computed afresh.
+ *
+ * The prototype card has no AI block: the AI explanation stays reachable behind a ghost
+ * "Show AI explanation" button and is collapsed by default.
  */
 export function ReadWithContextCard({
     mixExplanation,
@@ -56,17 +64,12 @@ export function ReadWithContextCard({
     const confidence = explained?.confidence ?? null;
     const coverage = combineCoverage(teamCategoryFlow, repoTeamFlow);
     const pct = (value: number | null) => (value === null ? "unavailable" : `${asPct(value)}%`);
+    const [showAi, setShowAi] = useState(false);
+    const aiRegionId = useId();
 
     return (
-        <section
-            className="rounded-3xl border border-(--card-stroke) bg-card p-5"
-            aria-label="Read this with context"
-            data-testid="read-with-context"
-        >
-            <h3 className="font-(--font-display) text-lg">Read this with context</h3>
-            <p className="mt-3 text-xs uppercase tracking-[0.2em] text-(--ink-muted)">
-                Evidence quality
-            </p>
+        <Section title="Read this with context" data-testid="read-with-context">
+            <p className="text-label-caps uppercase text-(--ink-muted)">Evidence quality</p>
             {confidence ? (
                 <div className="mt-2" data-testid="context-quality">
                     <div className="flex flex-wrap items-center gap-2">
@@ -133,13 +136,26 @@ export function ReadWithContextCard({
                     testId="context-unassigned"
                 />
             </dl>
-            <Link
-                href={confidenceHref}
-                className="mt-4 inline-block text-xs uppercase tracking-[0.18em] text-(--accent-2) hover:underline"
-            >
+            <Link href={confidenceHref} className={buttonClassName("primary", "md", "mt-4")}>
+                <ArrowRight aria-hidden="true" className="h-4 w-4" />
                 {CTA_LABELS.inspectConfidence}
             </Link>
-            <div className="mt-5 border-t border-(--card-stroke) pt-4">{children}</div>
-        </section>
+            <div className="mt-5 border-t border-(--card-stroke) pt-3">
+                <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={showAi ? <ChevronDown /> : <ChevronRight />}
+                    aria-expanded={showAi}
+                    aria-controls={aiRegionId}
+                    data-testid="ai-explanation-toggle"
+                    onClick={() => setShowAi((open) => !open)}
+                >
+                    {showAi ? CTA_LABELS.hideAiExplanation : CTA_LABELS.showAiExplanation}
+                </Button>
+                <div id={aiRegionId} hidden={!showAi} data-testid="ai-explanation-region">
+                    {showAi ? <div className="mt-3">{children}</div> : null}
+                </div>
+            </div>
+        </Section>
     );
 }
