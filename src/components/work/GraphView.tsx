@@ -877,8 +877,8 @@ export function GraphView({
                         href={buildExploreUrl({ metric: "throughput", filters, role: activeRole })}
                         className={`mt-2 ${buttonClassName("ghost", "sm")}`}
                     >
-                        <ArrowRight aria-hidden="true" className="h-4 w-4" />
                         {CTA_LABELS.openEvidence}
+                        <ArrowRight aria-hidden="true" className="h-4 w-4" />
                     </Link>
                 </aside>
             </div>

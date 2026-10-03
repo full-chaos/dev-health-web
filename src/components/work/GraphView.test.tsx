@@ -868,13 +868,15 @@ describe("GraphView", () => {
         ]);
     });
 
-    it("Overview keeps the scope-preserving Open evidence link in the body, arrow first", () => {
+    it("Overview keeps the scope-preserving Open evidence link in the body, arrow after the text", () => {
         render(<GraphView filters={filters} />);
         const link = within(screen.getByTestId("graph-context")).getByRole("link", {
             name: "Open evidence",
         });
         expect(link.getAttribute("href")).toContain("/explore");
-        expect(link.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+        // A text link: the arrow follows the words (an icon leads only on a button).
+        expect(link.lastElementChild?.tagName.toLowerCase()).toBe("svg");
+        expect(link.firstElementChild?.tagName.toLowerCase()).not.toBe("svg");
     });
 
     it("pages the served artifact rows (10 per page), with no total", async () => {
