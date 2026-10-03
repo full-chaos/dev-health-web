@@ -158,6 +158,22 @@ describe("QuadrantPanel", () => {
             ).toBeInTheDocument();
         });
 
+        it("draws a related link as a ghost small button with the arrow first, not an upper-case pill", () => {
+            render(
+                <QuadrantPanel
+                    {...defaultProps}
+                    relatedLinks={[{ label: "Explore work", href: "/work" }]}
+                />,
+            );
+            const link = within(screen.getByTestId("quadrant-related-links")).getByRole("link", {
+                name: "Explore work",
+            });
+            expect(link).toHaveAttribute("href", "/work");
+            expect(link.className).toContain("border-transparent");
+            expect(link.className).not.toContain("uppercase");
+            expect(link.firstElementChild?.tagName.toLowerCase()).toBe("svg");
+        });
+
         it("draws no action slot when the caller gives none", () => {
             render(<QuadrantPanel {...defaultProps} />);
             expect(screen.queryByTestId("quadrant-panel-action")).toBeNull();

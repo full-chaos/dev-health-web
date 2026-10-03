@@ -3,6 +3,8 @@ import { render, screen, userEvent } from "@/test/utils";
 
 vi.mock("next/navigation", () => ({
     useRouter: () => ({ refresh: vi.fn() }),
+    usePathname: () => "/org/admin/integrations",
+    useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("@/lib/admin/server", () => ({
@@ -11,6 +13,7 @@ vi.mock("@/lib/admin/server", () => ({
 }));
 
 import { ProvidersPage } from "./ProvidersPage";
+import { AddProviderButton, ProvidersWizardProvider } from "./ProvidersWizardContext";
 import type { ProviderRow } from "./ProviderTable";
 
 function makeRow(overrides: Partial<ProviderRow> = {}): ProviderRow {
@@ -29,11 +32,19 @@ function makeRow(overrides: Partial<ProviderRow> = {}): ProviderRow {
     };
 }
 
+// The page puts the header action and the body under one provider, as the route does.
+function Page(props: React.ComponentProps<typeof ProvidersPage>) {
+    return (
+        <ProvidersWizardProvider>
+            <AddProviderButton />
+            <ProvidersPage {...props} />
+        </ProvidersWizardProvider>
+    );
+}
+
 describe("ProvidersPage", () => {
     it("renders the provider table with an Add Provider action, not a card grid", () => {
-        render(
-            <ProvidersPage canCreatePagerDuty={false} providers={[makeRow()]} credentials={[]} />,
-        );
+        render(<Page canCreatePagerDuty={false} providers={[makeRow()]} credentials={[]} />);
 
         expect(screen.getByRole("table")).toBeInTheDocument();
         expect(screen.getByRole("button", { name: "Add Provider" })).toBeInTheDocument();
@@ -41,7 +52,7 @@ describe("ProvidersPage", () => {
 
     it("keeps PagerDuty in the provider catalog with a direct manage route", () => {
         render(
-            <ProvidersPage
+            <Page
                 canCreatePagerDuty
                 providers={[makeRow({ id: "pagerduty", name: "PagerDuty" })]}
                 credentials={[]}
@@ -55,7 +66,7 @@ describe("ProvidersPage", () => {
 
     it("hides an unconfigured PagerDuty catalog row when creation is unavailable", () => {
         render(
-            <ProvidersPage
+            <Page
                 canCreatePagerDuty={false}
                 providers={[makeRow({ id: "pagerduty", name: "PagerDuty" })]}
                 credentials={[]}
@@ -67,7 +78,7 @@ describe("ProvidersPage", () => {
 
     it("keeps an existing PagerDuty catalog row reachable for management when creation is unavailable", () => {
         render(
-            <ProvidersPage
+            <Page
                 canCreatePagerDuty={false}
                 providers={[
                     makeRow({
@@ -89,14 +100,36 @@ describe("ProvidersPage", () => {
     });
 
     it("opens the Add Provider wizard, starting on the provider-select step", async () => {
-        render(
-            <ProvidersPage canCreatePagerDuty={false} providers={[makeRow()]} credentials={[]} />,
-        );
+        render(<Page canCreatePagerDuty={false} providers={[makeRow()]} credentials={[]} />);
 
         await userEvent.click(screen.getByRole("button", { name: "Add Provider" }));
 
         expect(
             screen.getByText("Choose the tool you want Dev Health to connect to."),
         ).toBeInTheDocument();
+    });
+});
+
+describe("ProvidersPage header and notice (CHAOS-8099)", () => {
+    it("has Add Provider with the icon before the label, and the Providers section", () => {
+        render(<Page canCreatePagerDuty={false} providers={[makeRow()]} credentials={[]} />);
+
+        const add = screen.getByRole("button", { name: "Add Provider" });
+        expect(add.firstElementChild?.querySelector("svg") ?? null).not.toBeNull();
+        expect(add.lastChild?.nodeType).toBe(Node.TEXT_NODE);
+        expect(screen.getByRole("heading", { level: 2, name: "Providers" })).toBeInTheDocument();
+    });
+
+    it("shows the given notice above the table", () => {
+        render(
+            <Page
+                canCreatePagerDuty={false}
+                providers={[makeRow()]}
+                credentials={[]}
+                notice={<p>Providers could not be loaded.</p>}
+            />,
+        );
+
+        expect(screen.getByText("Providers could not be loaded.")).toBeInTheDocument();
     });
 });
