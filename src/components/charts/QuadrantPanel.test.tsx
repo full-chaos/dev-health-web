@@ -111,17 +111,33 @@ describe("QuadrantPanel", () => {
     });
 
     describe("overlay checkbox instead of the guide link (CHAOS-8562)", () => {
-        it("without an overlay the checkbox is drawn, disabled, with the hint, and there is no guide link", () => {
-            render(
-                <QuadrantPanel {...defaultProps} showViewGuide={false} alwaysShowOverlayToggle />,
-            );
+        it("without an overlay the checkbox is drawn, disabled, with the hint; the guide is the icon-only help button", () => {
+            render(<QuadrantPanel {...defaultProps} alwaysShowOverlayToggle />);
             const box = screen.getByRole("checkbox", { name: "Show interpretive overlay" });
             expect(box).toBeDisabled();
             expect(box).not.toBeChecked();
             expect(
                 screen.getByText("Zones appear when two or more entities are in scope."),
             ).toBeInTheDocument();
-            expect(screen.queryByRole("button", { name: /view guide/i })).toBeNull();
+            // No guide LINK with text any more: the guide is the icon-only help button beside it.
+            const help = screen.getByRole("button", { name: "View guide" });
+            expect(help).toHaveAttribute("data-testid", "quadrant-guide-help");
+            expect(help).toHaveTextContent("");
+            expect(help.className).toContain("h-6");
+            expect(help.className).toContain("w-6");
+        });
+
+        it("the help button opens the same guide dialog and gives focus back to itself on close", async () => {
+            render(<QuadrantPanel {...defaultProps} alwaysShowOverlayToggle />);
+            const help = screen.getByTestId("quadrant-guide-help");
+            fireEvent.click(help);
+            const dialog = screen.getByRole("dialog", { name: "View guide" });
+            expect(within(dialog).getByText("Quadrant guide")).toBeInTheDocument();
+            expect(within(dialog).getByText(/1\. Emphasis:/u)).toBeInTheDocument();
+            expect(within(dialog).getByText(/2\. Dot:/u)).toBeInTheDocument();
+            expect(within(dialog).getByText(/3\. Next:/u)).toBeInTheDocument();
+            fireEvent.click(within(dialog).getByRole("button", { name: /close/i }));
+            await waitFor(() => expect(document.activeElement).toBe(help));
         });
 
         it("by default (no prop) a panel with no overlay draws no checkbox", () => {
@@ -129,13 +145,14 @@ describe("QuadrantPanel", () => {
             expect(screen.queryByRole("checkbox")).toBeNull();
         });
 
-        it("the metrics and bottleneck pages ask for the checkbox and drop the guide link", () => {
+        it("the metrics and bottleneck pages ask for the checkbox and keep the guide (no showViewGuide={false})", () => {
             for (const file of [
                 "src/app/(app)/metrics/page.tsx",
                 "src/app/(app)/bottleneck/page.tsx",
             ]) {
                 const src = readFileSync(join(process.cwd(), file), "utf8");
-                expect(src, file).toMatch(/showViewGuide=\{false\}\s+alwaysShowOverlayToggle/u);
+                expect(src, file).toMatch(/alwaysShowOverlayToggle/u);
+                expect(src, file).not.toContain("showViewGuide={false}");
             }
         });
     });

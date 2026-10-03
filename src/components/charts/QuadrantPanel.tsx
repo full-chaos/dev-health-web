@@ -375,16 +375,32 @@ export function QuadrantPanel({
     // In the head (Landscape, L13) the two actions are bordered buttons, as the concept draws them;
     // everywhere else they stay ghost buttons under the head.
     const actionVariant = actionsInHead ? "secondary" : "ghost";
+    // With the overlay checkbox in the row (`alwaysShowOverlayToggle`) the guide is an icon-only help
+    // button beside it: the same dialog, kept in a named place (scope document 6, CHAOS-8562).
     const guideButton = showViewGuide ? (
-        <button
-            ref={triggerRef}
-            type="button"
-            onClick={() => setIsGuideOpen(true)}
-            className={buttonClassName(actionVariant, "sm")}
-        >
-            <Info aria-hidden="true" className="h-3.5 w-3.5" />
-            {CTA_LABELS.viewGuide}
-        </button>
+        alwaysShowOverlayToggle && !actionsInHead ? (
+            <button
+                ref={triggerRef}
+                type="button"
+                onClick={() => setIsGuideOpen(true)}
+                aria-label={CTA_LABELS.viewGuide}
+                title={CTA_LABELS.viewGuide}
+                data-testid="quadrant-guide-help"
+                className="inline-flex h-6 w-6 items-center justify-center rounded-full text-(--ink-muted) hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-2)"
+            >
+                <Info aria-hidden="true" className="h-3.5 w-3.5" />
+            </button>
+        ) : (
+            <button
+                ref={triggerRef}
+                type="button"
+                onClick={() => setIsGuideOpen(true)}
+                className={buttonClassName(actionVariant, "sm")}
+            >
+                <Info aria-hidden="true" className="h-3.5 w-3.5" />
+                {CTA_LABELS.viewGuide}
+            </button>
+        )
     ) : null;
     const relatedLinksNode =
         supplementalLinks.length > 0 ? (
@@ -538,7 +554,7 @@ export function QuadrantPanel({
                 data-testid="quadrant-controls"
                 className="mt-3 flex flex-wrap items-start gap-3 text-xs text-(--ink-muted)"
             >
-                {actionsInHead ? null : guideButton}
+                {actionsInHead || alwaysShowOverlayToggle ? null : guideButton}
                 {hasInterpretationOverlay || alwaysShowOverlayToggle ? (
                     <div className="space-y-1">
                         <label className="inline-flex items-center gap-2 rounded-full border border-(--card-stroke) bg-(--card-80) px-3 py-2 text-xs">
@@ -558,6 +574,7 @@ export function QuadrantPanel({
                         </p>
                     </div>
                 ) : null}
+                {alwaysShowOverlayToggle && !actionsInHead ? guideButton : null}
             </div>
             <div className="flex flex-col lg:flex-row gap-6 mt-6">
                 <div className="flex-1 min-w-0 flex flex-col gap-6">
