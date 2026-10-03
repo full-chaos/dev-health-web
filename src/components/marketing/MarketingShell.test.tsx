@@ -17,7 +17,7 @@ describe("MarketingShell brand", () => {
         );
 
         const logo = screen.getByRole("img", { name: "Full Chaos Dev Health logo" });
-        expectStaticLogo(logo, { file: "fc-logo-120.png", width: 44, height: 40 });
+        expectStaticLogo(logo, { file: "fc-logo-120.webp", width: 44, height: 40 });
         expect(logo).toHaveClass("h-10", "w-auto");
     });
 

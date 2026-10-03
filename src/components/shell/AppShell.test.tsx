@@ -155,7 +155,7 @@ describe("AppShell — a route in the registry gets the shared shell", () => {
         ];
         expect(screen.getAllByRole("img", logoName)).toHaveLength(2);
         for (const logo of logos) {
-            expectStaticLogo(logo, { file: "fc-logo-96.png", width: 35, height: 32 });
+            expectStaticLogo(logo, { file: "fc-logo-96.webp", width: 35, height: 32 });
             expect(logo).toHaveClass("h-8", "w-auto");
         }
     });

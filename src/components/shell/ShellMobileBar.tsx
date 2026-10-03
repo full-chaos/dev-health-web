@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { RefObject } from "react";
 
-import fcLogo from "@/assets/fc-logo-96.png";
+import fcLogo from "@/assets/fc-logo-96.webp";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { CTA_LABELS } from "@/lib/design/cta";

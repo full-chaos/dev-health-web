@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { SessionProvider } from "@/components/auth/SessionProvider";
-import fcLogo from "@/assets/fc-logo-120.png";
+import fcLogo from "@/assets/fc-logo-120.webp";
 import { CTA_LABELS } from "@/lib/design/cta";
 import { Toaster } from "sonner";
 

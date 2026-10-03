@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Suspense, useEffect, useRef, type RefObject } from "react";
 
-import fcLogo from "@/assets/fc-logo-96.png";
+import fcLogo from "@/assets/fc-logo-96.webp";
 import { UserMenu } from "@/components/auth/UserMenu";
 import {
     OrgSwitcher,
