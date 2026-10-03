@@ -19,6 +19,11 @@ describe("metricEvidenceLeaf", () => {
         ).toBe("Blocked Work evidence");
     });
 
+    it("returns null, never throws, for an api value that is not a URL (/explore?api=//)", () => {
+        expect(() => metricEvidenceLeaf("/explore", { api: "//" })).not.toThrow();
+        expect(metricEvidenceLeaf("/explore", { api: "//" })).toBeNull();
+    });
+
     it("is null for a drilldown read and for other routes", () => {
         expect(metricEvidenceLeaf("/explore", { api: "/api/v1/drilldown/prs" })).toBeNull();
         expect(metricEvidenceLeaf("/metrics", { metric: "blocked_work" })).toBeNull();

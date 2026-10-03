@@ -14,7 +14,15 @@ type EvidenceTrailParams = {
  */
 export function metricEvidenceLeaf(pathname: string, params: EvidenceTrailParams): string | null {
     if (pathname !== "/explore") return null;
-    const api = params.api ? new URL(params.api, "http://localhost") : null;
+    // A malformed `api` value must not throw inside the shell top bar (the page reports it).
+    let api: URL | null = null;
+    if (params.api) {
+        try {
+            api = new URL(params.api, "http://localhost");
+        } catch {
+            return null;
+        }
+    }
     if (api && api.pathname !== "/api/v1/explain") return null;
     const metric = api?.searchParams.get("metric") ?? params.metric ?? "cycle_time";
     return `${getMetricLabel(metric)} evidence`;
